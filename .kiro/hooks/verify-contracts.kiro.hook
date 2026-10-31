@@ -1,0 +1,17 @@
+{
+  "name": "Verify Domain Contracts & Schema Parity",
+  "version": "1.0.0",
+  "description": "Validates the 14 Albedian domain contracts and runs contract/evidence unit and property-based tests when contract or evidence schemas change.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "packages/contracts/src/**/*.ts",
+      "packages/evidence/src/**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "pnpm --filter @albedian/contracts --filter @albedian/evidence test",
+    "timeout": 60000
+  }
+}
