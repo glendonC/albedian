@@ -1,0 +1,29 @@
+{
+  "name": "albedian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Albedian — See (Beyond) the Night Sky. Observation-centered, evidence-aware night media restoration and calibrated astronomical spatial exploration.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.7.1",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' build && pnpm --filter @albedian/web build",
+    "dev": "pnpm --filter @albedian/web dev",
+    "test": "vitest run",
+    "test:pbt": "vitest run --testNamePattern='PBT|Property'",
+    "test:python": "uv run pytest",
+    "test:all": "pnpm test && pnpm test:python",
+    "typecheck": "pnpm -r typecheck",
+    "verify:contracts": "node scripts/verify-contracts.mjs",
+    "verify:docs": "node scripts/verify-docs.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "fast-check": "^3.23.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7",
+    "zod": "^3.24.2"
+  }
+}

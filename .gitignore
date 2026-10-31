@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.vite/
+
+# Runtime & user media storage (never commit private user media or credentials)
+.runtime/
+data/uploads/
+data/artifacts/
+apps/web/public/morocco/
+*.sqlite
+*.sqlite3
+*.db
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# NOTE: /.kiro is intentionally tracked in version control per Kiroween 2026 rules.
+!/.kiro/
+!/.kiro/**
