@@ -53,7 +53,7 @@ export function worldToPixelWCS(
 
   const scaleRadPerPx = wcs.scaleDegPerPx * DEG_TO_RAD;
   const uPx = wcs.crpixX + xDistRad / scaleRadPerPx;
-  const vPx = wcs.crpixY + yDistRad / scaleRadPerPx;
+  const vPx = wcs.crpixY - yDistRad / scaleRadPerPx;
 
   return { uPx, vPx, visible };
 }
@@ -69,7 +69,7 @@ export function pixelToWorldWCS(
 ): { raDeg: number; decDeg: number } {
   const scaleRadPerPx = wcs.scaleDegPerPx * DEG_TO_RAD;
   const xDistRad = (uPx - wcs.crpixX) * scaleRadPerPx;
-  const yDistRad = (vPx - wcs.crpixY) * scaleRadPerPx;
+  const yDistRad = -(vPx - wcs.crpixY) * scaleRadPerPx;
 
   const rDist = Math.hypot(xDistRad, yDistRad);
   let rUndist = rDist;
