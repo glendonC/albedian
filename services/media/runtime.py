@@ -5,8 +5,6 @@ honest evaluation metrics, and FFmpeg audio-preserving remux export (`EXP-04`, `
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -17,6 +15,13 @@ from typing import Sequence
 import numpy as np
 from scipy import ndimage
 
+from services.media.models import (
+    ExportRemuxResult,
+    RestorationBranchResult,
+    RestorationMetrics,
+    compute_file_sha256,
+    compute_frames_sha256,
+)
 from services.science.solver import (
     SourceDetection,
     _estimate_background_and_noise,
@@ -24,177 +29,6 @@ from services.science.solver import (
     detect_point_sources,
     stack_video_frames_for_calibration,
 )
-
-
-@dataclass(frozen=True)
-class RestorationMetrics:
-    """Honest signal-level evaluation metrics for a media restoration attempt."""
-
-    evaluation_method: str
-    has_paired_reference: bool
-    shadow_snr_gain_db: float
-    estimated_noise_reduction_pct: float
-    point_source_retention_ratio: float
-    false_point_artifact_count: int
-    temporal_flicker_index: float
-    audio_sync_offset_ms: float = 0.0
-    face_region_stability_score: float = 1.0
-    validity_notes: list[str] = field(default_factory=list)
-
-    def to_contract_dict(self) -> dict:
-        return {
-            "evaluationMethod": self.evaluation_method,
-            "hasPairedReference": bool(self.has_paired_reference),
-            "shadowSnrGainDb": float(self.shadow_snr_gain_db),
-            "estimatedNoiseReductionPct": float(
-                max(0.0, min(100.0, self.estimated_noise_reduction_pct))
-            ),
-            "pointSourceRetentionRatio": float(
-                max(0.0, min(1.5, self.point_source_retention_ratio))
-            ),
-            "falsePointArtifactCount": int(max(0, self.false_point_artifact_count)),
-            "faceRegionStabilityScore": float(
-                max(0.0, min(1.0, self.face_region_stability_score))
-            ),
-            "temporalFlickerIndex": float(max(0.0, self.temporal_flicker_index)),
-            "audioSyncOffsetMs": float(max(0.0, self.audio_sync_offset_ms)),
-            "validityNotes": list(self.validity_notes),
-        }
-
-
-@dataclass(frozen=True)
-class RestorationBranchResult:
-    """Output of a deterministic restoration branch execution."""
-
-    attempt_id: str
-    profile: str
-    source_sha256: str
-    output_sha256: str
-    cache_key: str
-    restored_frames: list[np.ndarray]
-    source_detections: list[SourceDetection]
-    restored_detections: list[SourceDetection]
-    metrics: RestorationMetrics
-    elapsed_ms: float
-    allow_synthetic_sky: bool = False
-
-    @property
-    def primary_frame(self) -> np.ndarray:
-        return self.restored_frames[0]
-
-    @property
-    def shadow_snr_gain_db(self) -> float:
-        return self.metrics.shadow_snr_gain_db
-
-    @property
-    def point_source_retention_ratio(self) -> float:
-        return self.metrics.point_source_retention_ratio
-
-    @property
-    def false_point_artifact_count(self) -> int:
-        return self.metrics.false_point_artifact_count
-
-    @property
-    def temporal_flicker_index(self) -> float:
-        return self.metrics.temporal_flicker_index
-
-    def to_contract_dict(self, source_asset_id: str = "asset-0") -> dict:
-        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        return {
-            "id": self.attempt_id,
-            "sourceAssetId": source_asset_id,
-            "graphId": f"graph-{self.profile}",
-            "label": f"Restoration ({self.profile})",
-            "status": "ready",
-            "cacheKey": self.cache_key,
-            "startedAtUTC": now_iso,
-            "completedAtUTC": now_iso,
-            "elapsedMs": float(self.elapsed_ms),
-            "cpuMs": float(self.elapsed_ms),
-            "gpuMs": 0.0,
-            "peakMemoryBytes": int(
-                sum(f.nbytes for f in self.restored_frames) * 2
-            ),
-            "outputVariantId": f"variant-{self.attempt_id}",
-            "metrics": self.metrics.to_contract_dict(),
-        }
-
-
-@dataclass(frozen=True)
-class ExportRemuxResult:
-    """Verified output & provenance manifest from `export_video_with_audio_remux` (`EXP-10`)."""
-
-    id: str
-    output_path: str
-    output_sha256: str
-    source_sha256: str
-    video_codec: str
-    audio_preserved: bool
-    audio_codec: str | None
-    video_duration_sec: float
-    audio_duration_sec: float | None
-    duration_drift_ms: float
-    audio_sync_offset_ms: float
-    stream_types: list[str]
-    frame_count: int
-    fps: int
-    strict_fidelity_enforced: bool = True
-
-    def to_contract_dict(
-        self,
-        session_id: str = "session-0",
-        source_asset_id: str = "asset-0",
-        variant_id: str = "variant-0",
-        graph_id: str = "graph-star-protected",
-    ) -> dict:
-        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        return {
-            "id": self.id,
-            "sessionId": session_id,
-            "sourceAssetId": source_asset_id,
-            "sourceSha256": self.source_sha256,
-            "exportedVariantId": variant_id,
-            "outputUri": f"file://{Path(self.output_path).resolve()}",
-            "outputSha256": self.output_sha256,
-            "containerFormat": "mp4",
-            "videoCodec": self.video_codec,
-            "audioPreserved": bool(self.audio_preserved),
-            "audioCodec": self.audio_codec,
-            "audioSyncOffsetMs": float(self.audio_sync_offset_ms),
-            "processingGraphId": graph_id,
-            "catalogCitations": [
-                "Gaia Collaboration (2023) Gaia DR3",
-                "Bailer-Jones et al. (2021) AJ 161, 147",
-            ],
-            "epistemicSummary": {
-                "observedCount": 0,
-                "catalogMatchedCount": 0,
-                "predictedCount": 0,
-                "simulatedViewsIncluded": False,
-                "strictFidelityEnforced": bool(self.strict_fidelity_enforced),
-            },
-            "exportedAtUTC": now_iso,
-        }
-
-
-def compute_frames_sha256(frames: Sequence[np.ndarray]) -> str:
-    """Compute a deterministic content-addressed SHA-256 digest over a sequence of frames."""
-    hasher = hashlib.sha256()
-    hasher.update(f"count={len(frames)}".encode("utf-8"))
-    for idx, frame in enumerate(frames):
-        arr = np.ascontiguousarray(np.round(np.asarray(frame, dtype=np.float64), 4))
-        hasher.update(f"frame={idx}:shape={arr.shape}:".encode("utf-8"))
-        hasher.update(arr.tobytes())
-    return hasher.hexdigest()
-
-
-def compute_file_sha256(file_path: str | Path) -> str:
-    """Compute the SHA-256 hex digest of a file on disk without mutating it."""
-    hasher = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
 
 
 def _build_star_protection_mask(
@@ -214,7 +48,6 @@ def _build_star_protection_mask(
         x_slice = slice(max(0, x0 - win), min(w, x0 + win + 1))
         yy, xx = np.mgrid[y_slice, x_slice]
         w_patch = np.exp(-((xx - det.x_px) ** 2 + (yy - det.y_px) ** 2) / (2.0 * sigma * sigma))
-        # Ensure the central 3x3 PSF core has weight ~1.0 to prevent any peak attenuation
         w_patch = np.clip(w_patch * 1.25, 0.0, 1.0)
         mask[y_slice, x_slice] = np.maximum(mask[y_slice, x_slice], w_patch)
     return mask
@@ -280,29 +113,25 @@ class MediaExperimentRuntime:
         preserve_stars: bool = True,
         foreground_mask: np.ndarray | None = None,
     ) -> RestorationBranchResult:
-        """Execute a deterministic restoration branch without mutating input `frames`.
-
-        Supported profiles:
-        - `"tone_only"` / `"natural"`: Shadow logarithmic tone curve without spatial blur.
-        - `"conventional_denoise"`: Unprotected Gaussian spatial smoothing (baseline that
-          attenuates faint star peaks by >35%, demonstrating `EXP-04`).
-        - `"star_protected"`: Detects source-only point sources first, applies background
-          spatial denoise + gentle shadow lift while protecting star PSF cores and
-          `foreground_mask` (`EXP-04`).
-        - `"temporal"`: Motion-aligned multi-frame temporal denoise + star & foreground
-          protection (`EXP-02` / `EXP-10`).
-        """
+        """Execute a deterministic restoration branch without mutating input `frames`."""
         if len(frames) == 0:
             raise ValueError("frames must be non-empty.")
 
-        valid_profiles = {"tone_only", "natural", "conventional_denoise", "star_protected", "temporal"}
+        valid_profiles = {
+            "tone_only",
+            "natural",
+            "conventional_denoise",
+            "star_protected",
+            "temporal",
+        }
         if profile not in valid_profiles:
-            raise ValueError(f"Unsupported restoration profile '{profile}'. Expected one of {valid_profiles}.")
+            raise ValueError(
+                f"Unsupported restoration profile '{profile}'. Expected one of {valid_profiles}."
+            )
 
         t0 = time.perf_counter()
         self._attempt_counter += 1
 
-        # Copy inputs to guarantee SourceAsset immutability
         src_frames = [np.asarray(f, dtype=np.float64).copy() for f in frames]
         source_sha256 = compute_frames_sha256(src_frames)
 
@@ -324,13 +153,11 @@ class MediaExperimentRuntime:
                 luma = _to_luma_2d(f)
                 bg, _ = _estimate_background_and_noise(luma, sky_mask)
                 res = luma - bg
-                # Gentle shadow tone lift on smooth background while keeping point-source residuals exact
                 bg_lifted = bg + 2.5 * np.log1p(np.maximum(0.0, bg) / 16.0)
                 out = np.where(fg_bool, luma, bg_lifted + res)
                 restored_frames.append(np.clip(out, 0.0, 255.0))
 
         elif profile == "conventional_denoise":
-            # Conventional unprotected spatial smoothing smears stellar PSFs into the background
             for f in src_frames:
                 luma = _to_luma_2d(f)
                 smoothed = ndimage.gaussian_filter(luma, sigma=2.2, mode="nearest")
@@ -348,12 +175,9 @@ class MediaExperimentRuntime:
                 else:
                     star_mask = np.zeros_like(luma)
 
-                # Attenuate background read noise via soft shrinkage + mild spatial smoothing
-                # without creating star-sized correlated noise blobs
                 bg_res_denoised = 0.18 * res + 0.14 * ndimage.gaussian_filter(
                     res * (1.0 - star_mask), sigma=1.8, mode="nearest"
                 )
-                # Recombine unattenuated observed star cores with denoised sky background
                 protected_res = star_mask * res + (1.0 - star_mask) * bg_res_denoised
                 bg_lifted = bg + 1.5 * np.log1p(np.maximum(0.0, bg) / 20.0)
                 out_sky = bg_lifted + protected_res
@@ -408,7 +232,6 @@ class MediaExperimentRuntime:
         out_bg, out_sigma_bg = _estimate_background_and_noise(out_luma, sky_mask)
         out_detections = detect_point_sources(out_luma, sky_mask=sky_mask, snr_threshold=3.5)
 
-        # Compute honest shadow SNR gain (dB) and noise reduction percentage
         sigma_in = max(src_sigma_bg, 1e-5)
         sigma_out = max(out_sigma_bg, 1e-5)
         if sigma_out < sigma_in:
@@ -418,19 +241,14 @@ class MediaExperimentRuntime:
             snr_gain_db = 0.0
             noise_red_pct = 0.0
 
-        # Compute point-source retention ratio against source-detected star peaks
         src_peaks = _measure_star_peak_fluxes(ref_luma, src_detections, sky_mask)
         out_peaks = _measure_star_peak_fluxes(out_luma, src_detections, sky_mask)
         if src_peaks and out_peaks:
-            ratios = [
-                o / max(s, 1e-6) for s, o in zip(src_peaks, out_peaks) if s > 1e-3
-            ]
+            ratios = [o / max(s, 1e-6) for s, o in zip(src_peaks, out_peaks) if s > 1e-3]
             retention_ratio = float(np.median(ratios)) if ratios else 1.0
         else:
             retention_ratio = 1.0
 
-        # Count false point artifacts: any detection in output whose peak above background
-        # exceeds the source detection noise floor (3.5 * sigma_in) that was not in source/composite
         ref_pool = list(src_detections)
         if profile == "temporal" and len(src_frames) > 1:
             comp_pool = detect_point_sources(
@@ -459,7 +277,6 @@ class MediaExperimentRuntime:
         if len(restored_frames) == 1:
             out_flicker = sigma_out
 
-        # Measure foreground stability when foreground_mask is present
         if foreground_mask is not None and np.any(fg_bool):
             fg_diff = float(np.mean(np.abs(out_luma[fg_bool] - ref_luma[fg_bool])))
             fg_stability = max(0.0, min(1.0, 1.0 - fg_diff / 64.0))
@@ -509,11 +326,7 @@ class MediaExperimentRuntime:
         output_path: str | Path,
         audio_source_path: str | Path | None = None,
     ) -> ExportRemuxResult:
-        """Encode restored video frames to H.264 MP4 and stream-copy/remux original audio (`EXP-10`).
-
-        Verifies via `ffprobe` that the output MP4 contains playable video and original audio
-        streams, measures duration sync offset (`<= 35 ms`), and produces a SHA-256 manifest.
-        """
+        """Encode restored video frames to H.264 MP4 and stream-copy/remux original audio (`EXP-10`)."""
         if len(frames) == 0:
             raise ValueError("Cannot export empty frame sequence.")
         if fps <= 0:
@@ -522,7 +335,6 @@ class MediaExperimentRuntime:
         out_file = Path(output_path)
         out_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Prepare raw RGB24 buffer with even dimensions for yuv420p H.264 compatibility
         rgb_frames: list[np.ndarray] = []
         for frame in frames:
             arr = np.asarray(frame, dtype=np.float64)
@@ -664,11 +476,11 @@ class MediaExperimentRuntime:
 
         audio_preserved = "audio" in stream_types if audio_source_path is not None else False
         duration_drift_ms = abs(video_duration - expected_duration_sec) * 1000.0
-        if audio_duration is not None:
-            # Measure frame-accurate timeline alignment against expected clip duration
-            audio_sync_offset_ms = abs(video_duration - expected_duration_sec) * 1000.0
-        else:
-            audio_sync_offset_ms = 0.0
+        audio_sync_offset_ms = (
+            abs(video_duration - expected_duration_sec) * 1000.0
+            if audio_duration is not None
+            else 0.0
+        )
 
         output_sha256 = compute_file_sha256(out_file)
 
@@ -689,3 +501,13 @@ class MediaExperimentRuntime:
             fps=fps,
             strict_fidelity_enforced=True,
         )
+
+
+__all__ = [
+    "ExportRemuxResult",
+    "MediaExperimentRuntime",
+    "RestorationBranchResult",
+    "RestorationMetrics",
+    "compute_file_sha256",
+    "compute_frames_sha256",
+]

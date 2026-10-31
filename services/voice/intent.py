@@ -22,20 +22,10 @@ from services.science.catalog import (
 )
 from services.science.ephemeris import compute_solar_system_ephemerides
 
-# Sort stars by descending name length so multi-word names ("Deneb Algedi", "Gamma Cas")
-# match before single-word prefixes ("Deneb").
 _STARS_BY_NAME_LEN: tuple[CatalogStar, ...] = tuple(
     sorted(ALL_SKY_CATALOG_STARS, key=lambda s: len(s.common_name), reverse=True)
 )
-
-_SOLAR_SYSTEM_BODIES: tuple[str, ...] = (
-    "jupiter",
-    "uranus",
-    "saturn",
-    "mars",
-    "venus",
-    "moon",
-)
+_SOLAR_SYSTEM_BODIES: tuple[str, ...] = ("jupiter", "uranus", "saturn", "mars", "venus", "moon")
 
 
 @dataclass(frozen=True)
@@ -91,20 +81,13 @@ class ActionContext:
             session_id=str(data.get("sessionId", data.get("session_id", "session-0"))),
             source_asset_id=str(data.get("sourceAssetId", data.get("source_asset_id", "asset-0"))),
             source_time_sec=float(data.get("sourceTimeSec", data.get("source_time_sec", 0.0))),
-            navigation_state=str(
-                data.get("navigationState", data.get("navigation_state", "source"))
-            ),
-            calibration_state=str(
-                data.get("calibrationState", data.get("calibration_state", "calibrated"))
-            ),
+            navigation_state=str(data.get("navigationState", data.get("navigation_state", "source"))),
+            calibration_state=str(data.get("calibrationState", data.get("calibration_state", "calibrated"))),
             selected_finding_id=data.get("selectedFindingId", data.get("selected_finding_id")),
             focused_finding_id=data.get("focusedFindingId", data.get("focused_finding_id")),
             recent_pointer=ptr,
             simulation_epoch_iso=str(
-                data.get(
-                    "simulationEpochISO",
-                    data.get("simulation_epoch_iso", "2026-10-20T22:21:02Z"),
-                )
+                data.get("simulationEpochISO", data.get("simulation_epoch_iso", "2026-10-20T22:21:02Z"))
             ),
             view_revision=int(data.get("viewRevision", data.get("view_revision", 1))),
             reduced_motion=bool(data.get("reducedMotion", data.get("reduced_motion", False))),
@@ -146,7 +129,6 @@ def _build_scientific_explanation(
         or ""
     )
 
-    # Check if finding_id maps to a catalog star
     star_key = finding_id.replace("finding-", "")
     if star_key in STAR_BY_ID:
         star = STAR_BY_ID[star_key]
@@ -160,7 +142,6 @@ def _build_scientific_explanation(
             f"{star.pm_dec_mas_yr:+.1f}) mas/yr."
         )
 
-    # Check if finding_id maps to a Solar System ephemeris body
     for body_lower in _SOLAR_SYSTEM_BODIES:
         if body_lower in finding_id.lower() or body_lower in utterance.lower():
             body_cap = body_lower.capitalize()
@@ -277,32 +258,18 @@ def parse_voice_intent(
     rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
     text = utterance.strip().lower()
 
-    # Optional Claude API copilot translation when explicitly enabled
     claude_action = _try_claude_api_intent(utterance, ctx, request_id, rev)
     if claude_action is not None:
         return claude_action
 
-    # 1. Interruption / Barge-In Cancel
     if text in ("stop", "wait", "cancel", "hold on", "pause transition"):
-        return {
-            "type": "navigation.cancel",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-        }
+        return {"type": "navigation.cancel", "requestId": request_id, "expectedViewRevision": rev}
 
-    # 2. Return to Original Source Moment ("Back to Moment")
-    if any(
-        phrase in text
-        for phrase in (
-            "back to moment",
-            "back to my video",
-            "back to the video",
-            "back to photo",
-            "return to source",
-            "return to original",
-            "original recording",
-        )
-    ):
+    return_phrases = (
+        "back to moment", "back to my video", "back to the video",
+        "back to photo", "return to source", "return to original", "original recording",
+    )
+    if any(phrase in text for phrase in return_phrases):
         return {
             "type": "source.return",
             "requestId": request_id,
@@ -310,7 +277,6 @@ def parse_voice_intent(
             "restoreAudio": True,
         }
 
-    # 3. Step back / partial rewind
     if "go back" in text or "step back" in text or "halfway back" in text:
         is_partial = "halfway" in text or "partway" in text
         action: dict[str, Any] = {
@@ -323,17 +289,11 @@ def parse_voice_intent(
             action["fraction"] = 0.5
         return action
 
-    # 4. Historical / Future Epoch Propagation (e.g. "1026 CE" or "1000 years ago")
     epoch_match = re.search(r"(\d{3,4})\s*(ce|ad|bce|bc)?", text)
     if ("epoch" in text or "year" in text or "ce" in text or "ago" in text) and epoch_match:
         val = int(epoch_match.group(1))
         suffix = (epoch_match.group(2) or "").lower()
-        if "ago" in text:
-            year_ce = 2026 - val
-        elif suffix in ("bce", "bc"):
-            year_ce = -val
-        else:
-            year_ce = val
+        year_ce = (2026 - val) if "ago" in text else (-val if suffix in ("bce", "bc") else val)
         return {
             "type": "space.epoch",
             "requestId": request_id,
@@ -342,11 +302,7 @@ def parse_voice_intent(
             "yearCE": year_ce,
         }
 
-    # 5. Media Restoration
-    if any(
-        kw in text
-        for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")
-    ):
+    if any(kw in text for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")):
         profile = "temporal" if "temporal" in text or "stack" in text else "star_protected"
         if "natural" in text or "tone" in text:
             profile = "natural"
@@ -363,11 +319,7 @@ def parse_voice_intent(
             },
         }
 
-    # 6. Enter 3D Space / Fly toward target ("take me to Fomalhaut", "fly to Betelgeuse")
-    if any(
-        kw in text
-        for kw in ("3d", "space", "fly", "travel", "go to", "take me to", "enter", "beyond")
-    ):
+    if any(kw in text for kw in ("3d", "space", "fly", "travel", "go to", "take me to", "enter", "beyond")):
         target_id = _resolve_target_finding_id(utterance, ctx) or "finding-star-betelgeuse"
         return {
             "type": "space.enter",
@@ -377,19 +329,8 @@ def parse_voice_intent(
             "distancePolicy": "measured_or_estimated",
         }
 
-    # 7. Describe / Inspect a finding ("what is that", "how far is...", "where is Saturn?")
-    if any(
-        kw in text
-        for kw in (
-            "what is",
-            "what were we",
-            "how far",
-            "where is",
-            "describe",
-            "tell me about",
-            "identify",
-        )
-    ):
+    describe_kws = ("what is", "what were we", "how far", "where is", "describe", "tell me about", "identify")
+    if any(kw in text for kw in describe_kws):
         target_id = _resolve_target_finding_id(utterance, ctx) or "finding-star-betelgeuse"
         return {
             "type": "finding.describe",
@@ -399,11 +340,8 @@ def parse_voice_intent(
             "fields": ["distance", "type", "motion", "evidence"],
         }
 
-    # 8.Explicit target selection ("select the Moon", "focus on Fomalhaut")
     resolved_target = _resolve_target_finding_id(utterance, ctx)
-    if resolved_target is not None and any(
-        kw in text for kw in ("select", "focus", "lock", "point", "show me")
-    ):
+    if resolved_target is not None and any(kw in text for kw in ("select", "focus", "lock", "point", "show me")):
         return {
             "type": "finding.select",
             "requestId": request_id,
@@ -411,24 +349,12 @@ def parse_voice_intent(
             "findingId": resolved_target,
         }
 
-    # 9. Show calibrated or predicted sky
     if "predicted" in text or "planet" in text or "ephemeris" in text:
-        return {
-            "type": "sky.show",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "mode": "predicted",
-        }
+        return {"type": "sky.show", "requestId": request_id, "expectedViewRevision": rev, "mode": "predicted"}
 
     if "sky" in text or "calibrate" in text or "constellation" in text:
-        return {
-            "type": "sky.show",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "mode": "measured",
-        }
+        return {"type": "sky.show", "requestId": request_id, "expectedViewRevision": rev, "mode": "measured"}
 
-    # Default fallback: select the resolved target finding
     target_id = resolved_target or "finding-star-betelgeuse"
     return {
         "type": "finding.select",
@@ -445,28 +371,18 @@ def validate_and_execute_voice_command(
 ) -> dict[str, Any]:
     """Validate revision, epistemic boundaries, and deictic disambiguation before executing."""
     ctx = ActionContext.from_dict(context)
-    action = (
-        proposed_action
-        if proposed_action is not None
-        else parse_voice_intent(utterance, ctx)
-    )
+    action = proposed_action if proposed_action is not None else parse_voice_intent(utterance, ctx)
     action_id = str(action.get("requestId", "req-voice-1"))
     action_type = str(action.get("type", ""))
     expected_rev = int(action.get("expectedViewRevision", ctx.view_revision))
     lower_utt = utterance.lower()
 
-    # 1. Reject unsafe synthetic sky edits immediately
-    if any(
-        phrase in lower_utt
-        for phrase in ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
-    ):
+    if any(p in lower_utt for p in ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")):
         return {
             "status": "rejected",
             "actionId": action_id,
             "reason": "unsafe_synthetic_edit",
-            "explanation": (
-                "Albedian never fabricates or replaces sky observations with synthetic stars."
-            ),
+            "explanation": "Albedian never fabricates or replaces sky observations with synthetic stars.",
             "scientificExplanation": (
                 "Scientific Integrity Policy: Albedian never injects synthetic catalog stars "
                 "into sensor restoration outputs (`allowSyntheticSky: false`)."
@@ -474,21 +390,16 @@ def validate_and_execute_voice_command(
             "nextActions": ["media.restore(star_protected)", "sky.show(predicted)"],
         }
 
-    # 2. Enforce optimistic concurrency revision gate (`expectedViewRevision == context.viewRevision`)
     if expected_rev != ctx.view_revision:
         return {
             "status": "rejected",
             "actionId": action_id,
             "reason": "stale_revision",
-            "explanation": (
-                f"Action expected viewRevision {expected_rev}, but current session is at "
-                f"revision {ctx.view_revision}."
-            ),
+            "explanation": f"Action expected viewRevision {expected_rev}, but current session is at revision {ctx.view_revision}.",
             "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism.",
             "nextActions": ["Refresh context and retry command"],
         }
 
-    # 3. Handle immediate barge-in / cancellation
     if action_type == "navigation.cancel":
         return {
             "status": "canceled",
@@ -498,7 +409,6 @@ def validate_and_execute_voice_command(
             "scientificExplanation": "Camera transition halted immediately on user barge-in.",
         }
 
-    # 4. Deictic ambiguity check: if pointer overlaps multiple candidates and no explicit name was spoken
     if (
         ctx.recent_pointer is not None
         and len(ctx.recent_pointer.overlapping_candidate_ids) > 1
@@ -520,26 +430,16 @@ def validate_and_execute_voice_command(
                 "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
             }
 
-    # 5. Epistemic calibration check: cannot enter calibrated 3D space if sky is unresolved
-    if action_type == "space.enter" and ctx.calibration_state not in (
-        "calibrated",
-        "predicted_only",
-        "approximate",
-    ):
+    if action_type == "space.enter" and ctx.calibration_state not in ("calibrated", "predicted_only", "approximate"):
         return {
             "status": "rejected",
             "actionId": action_id,
             "reason": "unresolved_sky",
-            "explanation": (
-                f"Cannot enter calibrated 3D catalog space while calibrationState is '{ctx.calibration_state}'."
-            ),
-            "scientificExplanation": (
-                "3D catalog space requires a calibrated WCS or GPS+Horizon sky registration."
-            ),
+            "explanation": f"Cannot enter calibrated 3D catalog space while calibrationState is '{ctx.calibration_state}'.",
+            "scientificExplanation": "3D catalog space requires a calibrated WCS or GPS+Horizon sky registration.",
             "nextActions": ["sky.show(predicted)", "media.restore(temporal)"],
         }
 
-    # 6. Epoch range check
     if action_type == "space.epoch":
         year_ce = int(action.get("yearCE", 2026))
         if not (-10000 <= year_ce <= 12000):
@@ -553,11 +453,10 @@ def validate_and_execute_voice_command(
             }
 
     sci_explanation = _build_scientific_explanation(utterance, action, ctx)
-    new_rev = ctx.view_revision + 1
     return {
         "status": "completed",
         "actionId": action_id,
-        "newStateVersion": new_rev,
+        "newStateVersion": ctx.view_revision + 1,
         "spokenFeedback": sci_explanation,
         "scientificExplanation": sci_explanation,
         "visualStatus": f"Completed {action_type}",

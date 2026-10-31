@@ -22,29 +22,25 @@ import {
  * ============================================================================
  */
 
+type RejectionReason =
+  | 'stale_revision'
+  | 'unresolved_sky'
+  | 'ambiguous_target'
+  | 'no_distance_estimate'
+  | 'invalid_epoch'
+  | 'missing_source'
+  | 'unsafe_synthetic_edit';
+
 function rejectAction(
   session: ObservationSession,
   actionId: string,
-  reason:
-    | 'stale_revision'
-    | 'unresolved_sky'
-    | 'ambiguous_target'
-    | 'no_distance_estimate'
-    | 'invalid_epoch'
-    | 'missing_source'
-    | 'unsafe_synthetic_edit',
+  reason: RejectionReason,
   explanation: string,
   nextActions: string[]
 ): { session: ObservationSession; outcome: ActionOutcome } {
   return {
     session,
-    outcome: ActionOutcomeSchema.parse({
-      status: 'rejected',
-      actionId,
-      reason,
-      explanation,
-      nextActions,
-    }),
+    outcome: ActionOutcomeSchema.parse({ status: 'rejected', actionId, reason, explanation, nextActions }),
   };
 }
 
@@ -57,24 +53,12 @@ function completeAction(
 ): { session: ObservationSession; outcome: ActionOutcome } {
   return {
     session,
-    outcome: ActionOutcomeSchema.parse({
-      status: 'completed',
-      actionId,
-      newStateVersion,
-      spokenFeedback,
-      visualStatus,
-    }),
+    outcome: ActionOutcomeSchema.parse({ status: 'completed', actionId, newStateVersion, spokenFeedback, visualStatus }),
   };
 }
 
 /**
  * Authoritative revision-checked `AlbedianAction` dispatcher and reducer.
- * - Rejects any action with `expectedViewRevision !== session.viewRevision` (`reason: 'stale_revision'`)
- *   and leaves `ObservationSession` untouched (`PBT-VOICE-1`).
- * - Enforces scientific calibration and distance prerequisites (`space.enter` requires a
- *   `catalog_matched` finding with a valid `inferredDistancePc`).
- * - Pushes immutable `CameraCheckpoint`s when departing `source`/`comparison` for `sky_registered` or `space`.
- * - Restores `anchorMomentCheckpoint` identically on `source.return` (`PBT-NAV-1`).
  */
 export function dispatchAlbedianAction(
   session: ObservationSession,
@@ -90,629 +74,372 @@ export function dispatchAlbedianAction(
     );
   }
 
-  const baseSession = syncAnchorCheckpointIfInitial(session);
-  const nextRevision = baseSession.viewRevision + 1;
+  const base = syncAnchorCheckpointIfInitial(session);
+  const nextRev = base.viewRevision + 1;
 
   switch (action.type) {
     case 'media.restore': {
-      if (action.sourceAssetId !== baseSession.sourceAsset.id) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'missing_source',
-          `SourceAsset "${action.sourceAssetId}" does not match active session asset "${baseSession.sourceAsset.id}".`,
-          ['Dispatch media.restore with the active SourceAsset ID']
-        );
+      if (action.sourceAssetId !== base.sourceAsset.id) {
+        return rejectAction(session, action.requestId, 'missing_source', `SourceAsset "${action.sourceAssetId}" does not match active session asset "${base.sourceAsset.id}".`, ['Dispatch media.restore with the active SourceAsset ID']);
       }
-
       if ((action.constraints as { allowSyntheticSky?: boolean }).allowSyntheticSky !== false) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'unsafe_synthetic_edit',
-          'Synthetic sky generation is forbidden by Albedian fidelity policy.',
-          ['Use star_protected or temporal restoration profiles']
-        );
+        return rejectAction(session, action.requestId, 'unsafe_synthetic_edit', 'Synthetic sky generation is forbidden by Albedian fidelity policy.', ['Use star_protected or temporal restoration profiles']);
       }
-
-      const matchingGraph = baseSession.processingGraphs.find(
-        (g) =>
-          g.profileName === action.profile ||
-          (action.profile === 'natural' && g.profileName === 'star_protected')
-      );
-      const matchingVariant =
-        baseSession.mediaVariants.find((v) => v.graphId === matchingGraph?.id) ??
-        baseSession.mediaVariants[baseSession.mediaVariants.length - 1];
-
-      if (!matchingVariant) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'missing_source',
-          `No MediaVariant available for profile "${action.profile}".`,
-          ['Run restoration pipeline first']
-        );
+      const graph = base.processingGraphs.find((g) => g.profileName === action.profile || (action.profile === 'natural' && g.profileName === 'star_protected'));
+      const variant = base.mediaVariants.find((v) => v.graphId === graph?.id) ?? base.mediaVariants[base.mediaVariants.length - 1];
+      if (!variant) {
+        return rejectAction(session, action.requestId, 'missing_source', `No MediaVariant available for profile "${action.profile}".`, ['Run restoration pipeline first']);
       }
-
-      const statusText = `Applied ${matchingVariant.label} (${matchingVariant.summaryNote})`;
+      const status = `Applied ${variant.label} (${variant.summaryNote})`;
       return completeAction(
-        {
-          ...baseSession,
-          viewRevision: nextRevision,
-          activeVariantId: matchingVariant.id,
-          machines: { ...baseSession.machines, restoration: 'ready', voice: 'listening' },
-          lastStatusBanner: statusText,
-        },
+        { ...base, viewRevision: nextRev, activeVariantId: variant.id, machines: { ...base.machines, restoration: 'ready', voice: 'listening' }, lastStatusBanner: status },
         action.requestId,
-        nextRevision,
-        `Restored sky clarity using ${matchingVariant.label} while preserving people and original audio.`,
-        statusText
+        nextRev,
+        `Restored sky clarity using ${variant.label} while preserving people and original audio.`,
+        status
       );
     }
 
     case 'media.compare': {
-      const variantA = baseSession.mediaVariants.find((v) => v.id === action.variantAId);
-      const variantB = baseSession.mediaVariants.find((v) => v.id === action.variantBId);
+      const variantA = base.mediaVariants.find((v) => v.id === action.variantAId);
+      const variantB = base.mediaVariants.find((v) => v.id === action.variantBId);
       if (!variantA || !variantB) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'missing_source',
-          `Cannot compare missing media variants (${action.variantAId} vs ${action.variantBId}).`,
-          ['Select valid media variants from session.mediaVariants']
-        );
+        return rejectAction(session, action.requestId, 'missing_source', `Cannot compare missing media variants (${action.variantAId} vs ${action.variantBId}).`, ['Select valid media variants from session.mediaVariants']);
       }
-
-      const statusText = `Comparing ${variantA.label} with ${variantB.label} at ${baseSession.currentSourceTimeSec.toFixed(1)}s.`;
+      const status = `Comparing ${variantA.label} with ${variantB.label} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
       return completeAction(
-        {
-          ...baseSession,
-          viewRevision: nextRevision,
-          activeVariantId: variantB.id,
-          compareVariantId: variantA.id,
-          compareWipePosition: 0.5,
-          machines: { ...baseSession.machines, navigation: 'comparison', voice: 'listening' },
-          lastStatusBanner: statusText,
-        },
+        { ...base, viewRevision: nextRev, activeVariantId: variantB.id, compareVariantId: variantA.id, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison', voice: 'listening' }, lastStatusBanner: status },
         action.requestId,
-        nextRevision,
+        nextRev,
         `Comparing ${variantA.label} and ${variantB.label}.`,
-        statusText
+        status
       );
     }
 
     case 'media.seek': {
-      const maxTimeSec = baseSession.sourceAsset.durationMs / 1000;
-      const clampedSec = Math.min(Math.max(0, action.sourceTimeSec), maxTimeSec);
-      const statusText = `Seeked to ${clampedSec.toFixed(2)}s (audio stream synchronized).`;
+      const clampedSec = Math.min(Math.max(0, action.sourceTimeSec), base.sourceAsset.durationMs / 1000);
+      const status = `Seeked to ${clampedSec.toFixed(2)}s (audio stream synchronized).`;
       return completeAction(
-        {
-          ...baseSession,
-          viewRevision: nextRevision,
-          currentSourceTimeSec: clampedSec,
-          lastStatusBanner: statusText,
-        },
+        { ...base, viewRevision: nextRev, currentSourceTimeSec: clampedSec, lastStatusBanner: status },
         action.requestId,
-        nextRevision,
+        nextRev,
         `Seeked to ${clampedSec.toFixed(1)} seconds.`,
-        statusText
+        status
       );
     }
 
     case 'sky.show': {
-      if (
-        baseSession.machines.calibration === 'unresolved' ||
-        baseSession.observationSolution.status === 'unresolved'
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'unresolved_sky',
-          'Sky registration is unresolved: insufficient star detections and no timestamp/location fallback.',
-          ['Provide capture timestamp and location for predicted sky model']
-        );
+      if (base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
+        return rejectAction(session, action.requestId, 'unresolved_sky', 'Sky registration is unresolved: insufficient star detections and no timestamp/location fallback.', ['Provide capture timestamp and location for predicted sky model']);
       }
-
-      if (
-        action.mode === 'measured' &&
-        (baseSession.machines.calibration !== 'calibrated' ||
-          baseSession.observationSolution.status !== 'calibrated')
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'unresolved_sky',
-          `Direct measured pixel registration requires a calibrated WCS solution (current status: ${baseSession.observationSolution.status}).`,
-          ['Show predicted sky model instead (`mode: "predicted"`)']
-        );
+      if (action.mode === 'measured' && (base.machines.calibration !== 'calibrated' || base.observationSolution.status !== 'calibrated')) {
+        return rejectAction(session, action.requestId, 'unresolved_sky', `Direct measured pixel registration requires a calibrated WCS solution (current status: ${base.observationSolution.status}).`, ['Show predicted sky model instead (`mode: "predicted"`)']);
       }
-
-      const shouldPushCheckpoint =
-        baseSession.machines.navigation === 'source' ||
-        baseSession.machines.navigation === 'comparison';
-      const nextHistory = shouldPushCheckpoint
-        ? pushCheckpointIfDepartingSource(baseSession, 'Departure from Source to Registered Sky')
-        : baseSession.navigationHistory;
-
-      const isCalibrated = baseSession.observationSolution.status === 'calibrated';
-      const statusText = isCalibrated
-        ? `Calibrated sky registered (${baseSession.observationSolution.quality.heldOutInliers} held-out stars, ${baseSession.observationSolution.quality.medianResidualPx.toFixed(2)} px median residual).`
+      const fromSource = base.machines.navigation === 'source' || base.machines.navigation === 'comparison';
+      const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, 'Departure from Source to Registered Sky') : base.navigationHistory;
+      const isCal = base.observationSolution.status === 'calibrated';
+      const status = isCal
+        ? `Calibrated sky registered (${base.observationSolution.quality.heldOutInliers} held-out stars, ${base.observationSolution.quality.medianResidualPx.toFixed(2)} px median residual).`
         : 'Showing predicted sky model from recorded timestamp and location (separate from source pixels).';
 
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
-          machines: { ...baseSession.machines, navigation: 'sky_registered', voice: 'listening' },
+          ...base,
+          viewRevision: nextRev,
+          machines: { ...base.machines, navigation: 'sky_registered', voice: 'listening' },
           spatialView: {
-            ...baseSession.spatialView,
+            ...base.spatialView,
             mode: 'registered_sky',
             transitionPhase: 'at_registered_sky',
             transitionProgress: 1,
             activeTransitionId: action.requestId,
-            activeOverlays: {
-              ...baseSession.spatialView.activeOverlays,
-              observedMarkers: isCalibrated,
-              catalogMatchedLabels: isCalibrated,
-              predictedEphemerides: true,
-              constellationLines: true,
-            },
+            activeOverlays: { ...base.spatialView.activeOverlays, observedMarkers: isCal, catalogMatchedLabels: isCal, predictedEphemerides: true, constellationLines: true },
           },
           navigationHistory: nextHistory,
-          lastStatusBanner: statusText,
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
-        statusText,
-        statusText
+        nextRev,
+        status,
+        status
       );
     }
 
     case 'finding.select': {
-      const finding = baseSession.observationSolution.findings.find(
-        (f) => f.id === action.findingId
-      );
+      const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'ambiguous_target',
-          `CelestialFinding "${action.findingId}" does not exist in active ObservationSolution.`,
-          ['Select a visible star or planet marker']
-        );
+        return rejectAction(session, action.requestId, 'ambiguous_target', `CelestialFinding "${action.findingId}" does not exist in active ObservationSolution.`, ['Select a visible star or planet marker']);
       }
-
       const badge = getEpistemicBadgeDescriptor(finding.evidenceClass);
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      const anchorNdc = computeStarAnchorNdc(finding, baseSession.sourceAsset);
-      const statusText = `${finding.title} (${finding.subtitle}) · ${badge.label} · ${distInfo.lightYearText}`;
-
+      const status = `${finding.title} (${finding.subtitle}) · ${badge.label} · ${distInfo.lightYearText}`;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
+          ...base,
+          viewRevision: nextRev,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          spatialView: { ...baseSession.spatialView, lockedAnchorNdc: anchorNdc },
-          lastStatusBanner: statusText,
+          spatialView: { ...base.spatialView, lockedAnchorNdc: computeStarAnchorNdc(finding, base.sourceAsset) },
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
+        nextRev,
         `${finding.title}, ${finding.subtitle}. ${badge.label}. ${distInfo.lightYearText}.`,
-        statusText
+        status
       );
     }
 
     case 'finding.describe': {
-      const finding = baseSession.observationSolution.findings.find(
-        (f) => f.id === action.findingId
-      );
+      const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'ambiguous_target',
-          `Cannot describe unknown finding "${action.findingId}".`,
-          ['Select a finding first']
-        );
+        return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot describe unknown finding "${action.findingId}".`, ['Select a finding first']);
       }
-
       const badge = getEpistemicBadgeDescriptor(finding.evidenceClass);
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
       const segments: string[] = [`${finding.title} (${finding.subtitle})`];
-
-      if (action.fields.includes('distance')) {
-        segments.push(`Distance: ${distInfo.lightYearText} [${distInfo.parsecText}]`);
+      if (action.fields.includes('distance')) segments.push(`Distance: ${distInfo.lightYearText} [${distInfo.parsecText}]`);
+      if (action.fields.includes('type') && finding.catalogRef?.spectralType) segments.push(`Spectral type: ${finding.catalogRef.spectralType}`);
+      if (action.fields.includes('motion') && finding.catalogRef?.properMotionRaMasYr !== undefined) {
+        segments.push(`Proper motion: (${finding.catalogRef.properMotionRaMasYr}, ${finding.catalogRef.properMotionDecMasYr ?? 0}) mas/yr`);
       }
-      if (action.fields.includes('type') && finding.catalogRef?.spectralType) {
-        segments.push(`Spectral type: ${finding.catalogRef.spectralType}`);
-      }
-      if (
-        action.fields.includes('motion') &&
-        finding.catalogRef?.properMotionRaMasYr !== undefined
-      ) {
-        segments.push(
-          `Proper motion: (${finding.catalogRef.properMotionRaMasYr}, ${finding.catalogRef.properMotionDecMasYr ?? 0}) mas/yr`
-        );
-      }
-      if (action.fields.includes('evidence')) {
-        segments.push(`Evidence: ${badge.label} — ${badge.disclosure}`);
-      }
+      if (action.fields.includes('evidence')) segments.push(`Evidence: ${badge.label} — ${badge.disclosure}`);
       if (action.fields.includes('behind_sightline')) {
-        segments.push(
-          `Sightline cone active along RA ${finding.skyPosition.raDeg.toFixed(2)}°, Dec ${finding.skyPosition.decDeg.toFixed(2)}° showing deeper catalog background.`
-        );
+        segments.push(`Sightline cone active along RA ${finding.skyPosition.raDeg.toFixed(2)}°, Dec ${finding.skyPosition.decDeg.toFixed(2)}° showing deeper catalog background.`);
       }
-
-      const descriptionText = segments.join(' · ');
-      const enableSightline =
-        action.fields.includes('behind_sightline') ||
-        baseSession.spatialView.activeOverlays.sightlineCone;
-
+      const text = segments.join(' · ');
+      const sightlineCone = action.fields.includes('behind_sightline') || base.spatialView.activeOverlays.sightlineCone;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
+          ...base,
+          viewRevision: nextRev,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          spatialView: {
-            ...baseSession.spatialView,
-            activeOverlays: { ...baseSession.spatialView.activeOverlays, sightlineCone: enableSightline },
-          },
-          lastStatusBanner: descriptionText,
+          spatialView: { ...base.spatialView, activeOverlays: { ...base.spatialView.activeOverlays, sightlineCone } },
+          lastStatusBanner: text,
         },
         action.requestId,
-        nextRevision,
-        descriptionText,
-        descriptionText
+        nextRev,
+        text,
+        text
       );
     }
 
     case 'space.enter': {
-      if (
-        baseSession.machines.calibration === 'unresolved' ||
-        baseSession.observationSolution.status === 'unresolved'
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'unresolved_sky',
-          'Cannot enter 3D catalog space from an unresolved sky.',
-          ['Calibrate sky first']
-        );
+      if (base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
+        return rejectAction(session, action.requestId, 'unresolved_sky', 'Cannot enter 3D catalog space from an unresolved sky.', ['Calibrate sky first']);
       }
-
-      const finding = baseSession.observationSolution.findings.find(
-        (f) => f.id === action.findingId
-      );
+      const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
       if (!finding) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'ambiguous_target',
-          `Target finding "${action.findingId}" not found in active ObservationSolution.`,
-          ['Select a catalog-matched star first']
-        );
+        return rejectAction(session, action.requestId, 'ambiguous_target', `Target finding "${action.findingId}" not found in active ObservationSolution.`, ['Select a catalog-matched star first']);
       }
-
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      if (
-        finding.evidenceClass !== 'catalog_matched' ||
-        !finding.inferredDistancePc ||
-        !distInfo.canEnter3DSpace
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'no_distance_estimate',
-          `${finding.title} (${finding.evidenceClass}) lacks a verified catalog parallax or Bailer-Jones distance prior required for 3D space navigation.`,
-          ['Select a catalog-matched star with a verified distance interval (e.g. Betelgeuse, Rigel, Aldebaran)']
-        );
+      if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {
+        return rejectAction(session, action.requestId, 'no_distance_estimate', `${finding.title} (${finding.evidenceClass}) lacks a verified catalog parallax or Bailer-Jones distance prior required for 3D space navigation.`, ['Select a catalog-matched star with a verified distance interval']);
       }
-
-      const nextHistory = pushCheckpointIfDepartingSource(
-        baseSession,
-        `Checkpoint before entering 3D space toward ${finding.title}`
-      );
-      const targetCoords =
-        finding.cartesianParsecICRS ??
-        computeCartesianParsecICRS(
-          finding.skyPosition.raDeg,
-          finding.skyPosition.decDeg,
-          finding.inferredDistancePc.median
-        );
-      const statusText = `Entered 3D Space · ${finding.title} (${distInfo.lightYearText}) · Catalog Geometry · Distance Estimates`;
-
+      const nextHistory = pushCheckpointIfDepartingSource(base, `Checkpoint before entering 3D space toward ${finding.title}`);
+      const targetCoords = finding.cartesianParsecICRS ?? computeCartesianParsecICRS(finding.skyPosition.raDeg, finding.skyPosition.decDeg, finding.inferredDistancePc.median);
+      const status = `Entered 3D Space · ${finding.title} (${distInfo.lightYearText}) · Catalog Geometry · Distance Estimates`;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
+          ...base,
+          viewRevision: nextRev,
           isPlaying: false,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          machines: { ...baseSession.machines, navigation: 'space', voice: 'listening' },
+          machines: { ...base.machines, navigation: 'space', voice: 'listening' },
           spatialView: {
-            ...baseSession.spatialView,
+            ...base.spatialView,
             mode: 'catalog_3d',
             transitionPhase: 'at_space',
             transitionProgress: 1,
             activeTransitionId: action.requestId,
             observerOriginParsec: targetCoords,
             fovVerticalDeg: 45,
-            lockedAnchorNdc: computeStarAnchorNdc(finding, baseSession.sourceAsset),
+            lockedAnchorNdc: computeStarAnchorNdc(finding, base.sourceAsset),
           },
           navigationHistory: nextHistory,
-          lastStatusBanner: statusText,
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
+        nextRev,
         `Arrived near ${finding.title}, approximately ${distInfo.lightYearText} from Earth. Catalog geometry and distance estimates active.`,
-        statusText
+        status
       );
     }
 
     case 'space.viewpoint': {
-      const finding = baseSession.observationSolution.findings.find(
-        (f) => f.id === action.targetFindingId
-      );
+      const finding = base.observationSolution.findings.find((f) => f.id === action.targetFindingId);
       if (!finding) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'ambiguous_target',
-          `Cannot shift viewpoint around unknown finding "${action.targetFindingId}".`,
-          ['Select a catalog-matched star first']
-        );
+        return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot shift viewpoint around unknown finding "${action.targetFindingId}".`, ['Select a catalog-matched star first']);
       }
-
       const distInfo = formatDistanceWithUncertainty(finding.inferredDistancePc);
-      if (
-        finding.evidenceClass !== 'catalog_matched' ||
-        !finding.inferredDistancePc ||
-        !distInfo.canEnter3DSpace
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'no_distance_estimate',
-          `${finding.title} lacks a catalog distance estimate for 3D viewpoint displacement.`,
-          ['Select a catalog-matched star with a verified distance estimate']
-        );
+      if (finding.evidenceClass !== 'catalog_matched' || !finding.inferredDistancePc || !distInfo.canEnter3DSpace) {
+        return rejectAction(session, action.requestId, 'no_distance_estimate', `${finding.title} lacks a catalog distance estimate for 3D viewpoint displacement.`, ['Select a catalog-matched star with a verified distance estimate']);
       }
-
-      const nextHistory = pushCheckpointIfDepartingSource(
-        baseSession,
-        `Checkpoint before ${action.trajectory} viewpoint around ${finding.title}`
-      );
-      const baseCoords =
-        finding.cartesianParsecICRS ??
-        computeCartesianParsecICRS(
-          finding.skyPosition.raDeg,
-          finding.skyPosition.decDeg,
-          finding.inferredDistancePc.median
-        );
+      const nextHistory = pushCheckpointIfDepartingSource(base, `Checkpoint before ${action.trajectory} viewpoint around ${finding.title}`);
+      const baseCoords = finding.cartesianParsecICRS ?? computeCartesianParsecICRS(finding.skyPosition.raDeg, finding.skyPosition.decDeg, finding.inferredDistancePc.median);
       const displacedOrigin: [number, number, number] = [
         Number((baseCoords[0] + action.offsetParsec[0]).toFixed(6)),
         Number((baseCoords[1] + action.offsetParsec[1]).toFixed(6)),
         Number((baseCoords[2] + action.offsetParsec[2]).toFixed(6)),
       ];
-      const statusText = `Simulated 3D Viewpoint (${action.trajectory}) near ${finding.title} · Offset [${action.offsetParsec.join(', ')}] pc · Catalog Geometry · Distance Estimates`;
-
+      const status = `Simulated 3D Viewpoint (${action.trajectory}) near ${finding.title} · Offset [${action.offsetParsec.join(', ')}] pc · Catalog Geometry · Distance Estimates`;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
+          ...base,
+          viewRevision: nextRev,
           isPlaying: false,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          machines: { ...baseSession.machines, navigation: 'space', voice: 'listening' },
+          machines: { ...base.machines, navigation: 'space', voice: 'listening' },
           spatialView: {
-            ...baseSession.spatialView,
+            ...base.spatialView,
             mode: 'catalog_3d',
             transitionPhase: 'at_space',
             transitionProgress: 1,
             activeTransitionId: action.requestId,
             observerOriginParsec: displacedOrigin,
             cameraQuaternion: [0, 0.258819, 0, 0.965926],
-            activeOverlays: { ...baseSession.spatialView.activeOverlays, earthDirectionVector: true },
+            activeOverlays: { ...base.spatialView.activeOverlays, earthDirectionVector: true },
           },
           navigationHistory: nextHistory,
-          lastStatusBanner: statusText,
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
+        nextRev,
         `Shifted to alternative 3D viewpoint around ${finding.title}. Earth direction vector enabled.`,
-        statusText
+        status
       );
     }
 
     case 'space.epoch': {
-      if (
-        !Number.isInteger(action.yearCE) ||
-        action.yearCE < -10000 ||
-        action.yearCE > 12000 ||
-        !action.epochISO ||
-        action.epochISO.trim().length < 4
-      ) {
-        return rejectAction(
-          session,
-          action.requestId,
-          'invalid_epoch',
-          `Epoch year ${action.yearCE} CE is outside the valid proper-motion integration bounds (-10000 to 12000 CE).`,
-          ['Specify an epoch between 10,000 BCE and 12,000 CE']
-        );
+      if (!Number.isInteger(action.yearCE) || action.yearCE < -10000 || action.yearCE > 12000 || !action.epochISO || action.epochISO.trim().length < 4) {
+        return rejectAction(session, action.requestId, 'invalid_epoch', `Epoch year ${action.yearCE} CE is outside the valid proper-motion integration bounds (-10000 to 12000 CE).`, ['Specify an epoch between 10,000 BCE and 12,000 CE']);
       }
-
-      const shouldPushCheckpoint =
-        baseSession.machines.navigation === 'source' ||
-        baseSession.machines.navigation === 'comparison';
-      const nextHistory = shouldPushCheckpoint
-        ? pushCheckpointIfDepartingSource(baseSession, `Checkpoint before epoch change to ${action.yearCE} CE`)
-        : baseSession.navigationHistory;
-      const nextNavState = shouldPushCheckpoint ? 'sky_registered' : baseSession.machines.navigation;
-      const statusText = `Modeled Sky · Epoch ${action.yearCE} CE (Gaia DR3 proper motion propagation)`;
-
+      const fromSource = base.machines.navigation === 'source' || base.machines.navigation === 'comparison';
+      const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, `Checkpoint before epoch change to ${action.yearCE} CE`) : base.navigationHistory;
+      const nextNavState = fromSource ? 'sky_registered' : base.machines.navigation;
+      const status = `Modeled Sky · Epoch ${action.yearCE} CE (Gaia DR3 proper motion propagation)`;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
+          ...base,
+          viewRevision: nextRev,
           isPlaying: false,
-          machines: { ...baseSession.machines, navigation: nextNavState, voice: 'listening' },
+          machines: { ...base.machines, navigation: nextNavState, voice: 'listening' },
           spatialView: {
-            ...baseSession.spatialView,
+            ...base.spatialView,
             mode: 'modeled_epoch',
             transitionPhase: nextNavState === 'space' ? 'at_space' : 'at_registered_sky',
             transitionProgress: 1,
             simulationEpochISO: action.epochISO,
           },
           navigationHistory: nextHistory,
-          lastStatusBanner: statusText,
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
+        nextRev,
         `Showing modeled sky at ${action.yearCE} CE using Gaia proper motions.`,
-        statusText
+        status
       );
     }
 
     case 'history.back': {
       if (action.mode === 'partial') {
         const fraction = Math.min(Math.max(action.fraction ?? 0.35, 0.05), 1);
-        const currentOrigin = baseSession.spatialView.observerOriginParsec;
-        const anchorOrigin =
-          baseSession.navigationHistory.anchorMomentCheckpoint.spatialView.observerOriginParsec;
+        const cur = base.spatialView.observerOriginParsec;
+        const anc = base.navigationHistory.anchorMomentCheckpoint.spatialView.observerOriginParsec;
         const interpolatedOrigin: [number, number, number] = [
-          Number((currentOrigin[0] * (1 - fraction) + anchorOrigin[0] * fraction).toFixed(6)),
-          Number((currentOrigin[1] * (1 - fraction) + anchorOrigin[1] * fraction).toFixed(6)),
-          Number((currentOrigin[2] * (1 - fraction) + anchorOrigin[2] * fraction).toFixed(6)),
+          Number((cur[0] * (1 - fraction) + anc[0] * fraction).toFixed(6)),
+          Number((cur[1] * (1 - fraction) + anc[1] * fraction).toFixed(6)),
+          Number((cur[2] * (1 - fraction) + anc[2] * fraction).toFixed(6)),
         ];
-        const currentFov = baseSession.spatialView.fovVerticalDeg;
-        const anchorFov = baseSession.navigationHistory.anchorMomentCheckpoint.spatialView.fovVerticalDeg;
-        const statusText = `Stepped back ${Math.round(fraction * 100)}% toward observation checkpoint.`;
-
+        const curFov = base.spatialView.fovVerticalDeg;
+        const ancFov = base.navigationHistory.anchorMomentCheckpoint.spatialView.fovVerticalDeg;
+        const status = `Stepped back ${Math.round(fraction * 100)}% toward observation checkpoint.`;
         return completeAction(
           {
-            ...baseSession,
-            viewRevision: nextRevision,
+            ...base,
+            viewRevision: nextRev,
             spatialView: {
-              ...baseSession.spatialView,
+              ...base.spatialView,
               observerOriginParsec: interpolatedOrigin,
-              fovVerticalDeg: Number((currentFov * (1 - fraction) + anchorFov * fraction).toFixed(4)),
+              fovVerticalDeg: Number((curFov * (1 - fraction) + ancFov * fraction).toFixed(4)),
               transitionProgress: Number((1 - fraction).toFixed(4)),
             },
-            lastStatusBanner: statusText,
+            lastStatusBanner: status,
           },
           action.requestId,
-          nextRevision,
-          statusText,
-          statusText
+          nextRev,
+          status,
+          status
         );
       }
 
-      const checkpoints = baseSession.navigationHistory.checkpoints;
-      const lastCheckpoint = checkpoints[checkpoints.length - 1];
-      const targetCheckpoint =
-        checkpoints.length > 1 && lastCheckpoint
-          ? lastCheckpoint
-          : baseSession.navigationHistory.anchorMomentCheckpoint;
-      const remainingCheckpoints =
-        checkpoints.length > 1
-          ? checkpoints.slice(0, checkpoints.length - 1)
-          : [baseSession.navigationHistory.anchorMomentCheckpoint];
-      const statusText = `Restored checkpoint: ${targetCheckpoint.label}`;
-
+      const checkpoints = base.navigationHistory.checkpoints;
+      const last = checkpoints[checkpoints.length - 1];
+      const target = checkpoints.length > 1 && last ? last : base.navigationHistory.anchorMomentCheckpoint;
+      const remaining = checkpoints.length > 1 ? checkpoints.slice(0, checkpoints.length - 1) : [base.navigationHistory.anchorMomentCheckpoint];
+      const status = `Restored checkpoint: ${target.label}`;
       return completeAction(
-        restoreSessionToCheckpoint(
-          baseSession,
-          nextRevision,
-          targetCheckpoint,
-          false,
-          remainingCheckpoints,
-          statusText
-        ),
+        restoreSessionToCheckpoint(base, nextRev, target, false, remaining, status),
         action.requestId,
-        nextRevision,
-        statusText,
-        statusText
+        nextRev,
+        status,
+        status
       );
     }
 
     case 'navigation.cancel': {
       const settledNavState =
-        baseSession.machines.navigation === 'transitioning' ||
-        baseSession.machines.navigation === 'returning'
-          ? baseSession.spatialView.mode === 'source_2d'
+        base.machines.navigation === 'transitioning' || base.machines.navigation === 'returning'
+          ? base.spatialView.mode === 'source_2d'
             ? 'source'
             : 'sky_registered'
-          : baseSession.machines.navigation;
-      const statusText = 'Navigation transition canceled; camera settled at current pose.';
-
+          : base.machines.navigation;
+      const status = 'Navigation transition canceled; camera settled at current pose.';
       return {
         session: {
-          ...baseSession,
-          viewRevision: nextRevision,
-          machines: { ...baseSession.machines, navigation: settledNavState, voice: 'interrupted' },
-          spatialView: { ...baseSession.spatialView, activeTransitionId: undefined },
-          lastStatusBanner: statusText,
+          ...base,
+          viewRevision: nextRev,
+          machines: { ...base.machines, navigation: settledNavState, voice: 'interrupted' },
+          spatialView: { ...base.spatialView, activeTransitionId: undefined },
+          lastStatusBanner: status,
         },
-        outcome: ActionOutcomeSchema.parse({
-          status: 'canceled',
-          actionId: action.requestId,
-          settledStateVersion: nextRevision,
-          visualStatus: statusText,
-        }),
+        outcome: ActionOutcomeSchema.parse({ status: 'canceled', actionId: action.requestId, settledStateVersion: nextRev, visualStatus: status }),
       };
     }
 
     case 'ui.overlay': {
-      const statusText = `${action.enabled ? 'Enabled' : 'Disabled'} overlay: ${action.overlay}.`;
+      const status = `${action.enabled ? 'Enabled' : 'Disabled'} overlay: ${action.overlay}.`;
       return completeAction(
         {
-          ...baseSession,
-          viewRevision: nextRevision,
-          spatialView: {
-            ...baseSession.spatialView,
-            activeOverlays: { ...baseSession.spatialView.activeOverlays, [action.overlay]: action.enabled },
-          },
-          lastStatusBanner: statusText,
+          ...base,
+          viewRevision: nextRev,
+          spatialView: { ...base.spatialView, activeOverlays: { ...base.spatialView.activeOverlays, [action.overlay]: action.enabled } },
+          lastStatusBanner: status,
         },
         action.requestId,
-        nextRevision,
-        statusText,
-        statusText
+        nextRev,
+        status,
+        status
       );
     }
 
     case 'source.return': {
-      const allCheckpoints = [
-        baseSession.navigationHistory.anchorMomentCheckpoint,
-        ...baseSession.navigationHistory.checkpoints,
-      ];
-      const targetCheckpoint = action.checkpointId
-        ? (allCheckpoints.find((c) => c.id === action.checkpointId) ??
-          baseSession.navigationHistory.anchorMomentCheckpoint)
-        : baseSession.navigationHistory.anchorMomentCheckpoint;
-      const statusText = `Returned to Moment (${targetCheckpoint.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
-
+      const all = [base.navigationHistory.anchorMomentCheckpoint, ...base.navigationHistory.checkpoints];
+      const target = action.checkpointId
+        ? (all.find((c) => c.id === action.checkpointId) ?? base.navigationHistory.anchorMomentCheckpoint)
+        : base.navigationHistory.anchorMomentCheckpoint;
+      const status = `Returned to Moment (${target.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
       return completeAction(
-        restoreSessionToCheckpoint(
-          baseSession,
-          nextRevision,
-          targetCheckpoint,
-          true,
-          [targetCheckpoint],
-          statusText
-        ),
+        restoreSessionToCheckpoint(base, nextRev, target, true, [target], status),
         action.requestId,
-        nextRevision,
+        nextRev,
         'Returned to your original recorded moment.',
-        statusText
+        status
       );
     }
   }
 }
 
-/**
- * Alias for `dispatchAlbedianAction` per architectural design specification.
- */
 export const validateAndDispatchAction = dispatchAlbedianAction;

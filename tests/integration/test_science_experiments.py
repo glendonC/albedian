@@ -682,3 +682,24 @@ def test_fastapi_endpoints() -> None:
         assert vc_data["proposedAction"]["type"] == expected_type
         assert expected_target_substr in vc_data["proposedAction"]["findingId"]
         assert len(vc_data.get("scientificExplanation", "")) > 20
+
+    # 9. GET /api/media/discover (Dynamic Media Discovery without hardcoded filenames)
+    r_disc = client.get("/api/media/discover")
+    assert r_disc.status_code == 200
+    disc_data = r_disc.json()
+    assert disc_data["count"] >= 3
+    assert len(disc_data["items"]) == disc_data["count"]
+    for item in disc_data["items"]:
+        assert len(item["sha256"]) == 64
+        assert item["width"] > 0 and item["height"] > 0
+        assert "observerLocation" in item
+        assert -90.0 <= item["observerLocation"]["latDeg"] <= 90.0
+        assert -180.0 <= item["observerLocation"]["lonDeg"] <= 180.0
+        assert item["observationSolution"] is not None
+        assert item["observationSolution"]["status"] in (
+            "calibrated",
+            "approximate",
+            "predicted_only",
+        )
+        assert len(item["ephemerides"]) >= 6
+
