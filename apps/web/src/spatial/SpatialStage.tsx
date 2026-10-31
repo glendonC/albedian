@@ -11,10 +11,14 @@ import {
 } from '@albedian/camera-rig';
 import { MarkerOverlay, ProjectedMarker } from './MarkerOverlay.js';
 import {
-  ORION_CONSTELLATION_EDGES,
   render2DMediaVariantPass,
   render3DCatalogSpacePass,
+  renderConstellationStickFigures,
 } from './canvasRenderers.js';
+import {
+  computeAspectFitRect,
+  computeLiveVideoTrackingOffset,
+} from './liveVideoTracker.js';
 
 export interface SpatialStageProps {
   session: ObservationSession;
@@ -32,11 +36,13 @@ export interface SpatialStageProps {
   onSelectFinding: (findingId: string, pointerEvent?: { xPx: number; yPx: number }) => void;
   onChangeCompareWipe: (position: number) => void;
   onVideoTimeUpdate?: (timeSec: number) => void;
+  showIsometricGrid?: boolean;
+  showGeodesicRays?: boolean;
+  showExplodedTeardown?: boolean;
 }
 
 /**
  * Unified Frontier Observational & 3D Spatial Rendering Stage (`Reveal` + `Register` + `Explore`).
- * Delegates 2D/3D canvas passes to `canvasRenderers.ts` and SVG marker rendering to `MarkerOverlay.tsx`.
  */
 export const SpatialStage: React.FC<SpatialStageProps> = ({
   session,
@@ -47,6 +53,9 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
   onSelectFinding,
   onChangeCompareWipe,
   onVideoTimeUpdate,
+  showIsometricGrid = true,
+  showGeodesicRays = true,
+  showExplodedTeardown = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -138,7 +147,6 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
     session.spatialView.transitionPhase === 'phase_b_sky_to_space' ||
     session.spatialView.transitionPhase === 'at_space';
 
-  // Synchronize HTML5 <video> elements
   useEffect(() => {
     const vOrig = origVideoRef.current;
     const v1 = v1VideoRef.current;
@@ -196,10 +204,24 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
   const wcs = session.observationSolution.wcs;
   const srcWidth = session.sourceAsset.width;
   const srcHeight = session.sourceAsset.height;
-  const scaleX = viewport.width / srcWidth;
-  const scaleY = viewport.height / srcHeight;
   const aspect = viewport.width / Math.max(1, viewport.height);
   const simulationYear = parseInt(session.spatialView.simulationEpochISO.slice(0, 4), 10) || 2026;
+
+  // Aspect-preserving fit rect for real media (portrait or landscape)
+  const fitRect = useMemo(() => {
+    const hasExternalMedia = Boolean(realMediaSet || uploadedMediaUrl);
+    if (!hasExternalMedia) {
+      return {
+        x: 0,
+        y: 0,
+        width: viewport.width,
+        height: viewport.height,
+        scaleX: viewport.width / Math.max(1, srcWidth),
+        scaleY: viewport.height / Math.max(1, srcHeight),
+      };
+    }
+    return computeAspectFitRect(srcWidth, srcHeight, viewport.width, viewport.height);
+  }, [realMediaSet, uploadedMediaUrl, srcWidth, srcHeight, viewport.width, viewport.height]);
 
   const selectedFinding =
     session.observationSolution.findings.find((f) => f.id === session.selectedFindingId) ?? null;
@@ -243,12 +265,25 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
     ]);
   }, [targetCenterParsec, effectiveObserverOriginParsec]);
 
+  const liveBeaconOffsetPx = useMemo<[number, number]>(() => {
+    if (isSpace3D) return [0, 0];
+    const moonFinding = session.observationSolution.findings.find(
+      (f) => f.id === 'finding-observed-moon' && f.sourceDetection
+    );
+    return computeLiveVideoTrackingOffset({
+      videoEl: origVideoRef.current,
+      moonFinding,
+      srcWidth,
+      srcHeight,
+    });
+  }, [isSpace3D, session.observationSolution.findings, srcWidth, srcHeight, videoFrameTick, realImagesRevision]);
+
   const projectedMarkers: ProjectedMarker[] = session.observationSolution.findings.map((finding) => {
     if (!isSpace3D && finding.sourceDetection && finding.evidenceClass === 'observed' && simulationYear === 2026) {
       return {
         finding,
-        screenX: finding.sourceDetection.xPx * scaleX,
-        screenY: finding.sourceDetection.yPx * scaleY,
+        screenX: fitRect.x + (finding.sourceDetection.xPx + liveBeaconOffsetPx[0]) * fitRect.scaleX,
+        screenY: fitRect.y + (finding.sourceDetection.yPx + liveBeaconOffsetPx[1]) * fitRect.scaleY,
         distancePc: finding.inferredDistancePc?.median ?? 0,
         visible: true,
       };
@@ -263,12 +298,24 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
         dec = prop.decDeg;
       }
       const px = worldToPixelWCS(ra, dec, wcs);
+      const uShifted = px.uPx + liveBeaconOffsetPx[0];
+      const vShifted = px.vPx + liveBeaconOffsetPx[1];
+      const maxSkyY =
+        session.observationSolution.status === 'approximate' &&
+        session.machines.navigation !== 'sky_registered'
+          ? srcHeight * 0.46
+          : srcHeight + 12;
       return {
         finding,
-        screenX: px.uPx * scaleX,
-        screenY: px.vPx * scaleY,
+        screenX: fitRect.x + uShifted * fitRect.scaleX,
+        screenY: fitRect.y + vShifted * fitRect.scaleY,
         distancePc: finding.inferredDistancePc?.median ?? 0,
-        visible: px.visible && px.uPx >= -20 && px.uPx <= srcWidth + 20 && px.vPx >= -20 && px.vPx <= srcHeight + 20,
+        visible:
+          px.visible &&
+          uShifted >= -12 &&
+          uShifted <= srcWidth + 12 &&
+          vShifted >= -12 &&
+          vShifted <= maxSkyY,
       };
     }
 
@@ -322,7 +369,6 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
     };
   });
 
-  // Render canvas background
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -348,6 +394,7 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
           ctx,
           width: w,
           height: h,
+          fitRect,
           variantProfile: profile,
           origVideo: origVideoRef.current,
           v1Video: v1VideoRef.current,
@@ -358,6 +405,7 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
           realV2Img: realV2ImgRef.current,
           uploadedImg: uploadedImgRef.current,
           projectedMarkers,
+          wcs,
         });
 
       if (session.machines.navigation === 'comparison') {
@@ -403,37 +451,38 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
         frustumShiftNdc: session.spatialView.frustumShiftNdc,
         showConstellationLines: session.spatialView.activeOverlays.constellationLines,
         showEarthDirectionVector: session.spatialView.activeOverlays.earthDirectionVector,
+        selectedFinding,
       });
     }
 
-    if (
-      session.spatialView.activeOverlays.constellationLines ||
-      session.machines.navigation === 'sky_registered' ||
-      isSpace3D
-    ) {
-      const markerMap = new Map(projectedMarkers.map((m) => [m.finding.id, m]));
-      ctx.save();
-      ctx.strokeStyle = isSpace3D ? 'rgba(171, 176, 214, 0.42)' : 'rgba(129, 197, 204, 0.30)';
-      ctx.lineWidth = 1.25;
-      for (const [idA, idB] of ORION_CONSTELLATION_EDGES) {
-        const a = markerMap.get(idA);
-        const b = markerMap.get(idB);
-        if (a?.visible && b?.visible) {
-          ctx.beginPath();
-          ctx.moveTo(a.screenX, a.screenY);
-          ctx.lineTo(b.screenX, b.screenY);
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-    }
+    renderConstellationStickFigures({
+      ctx,
+      projectedMarkers,
+      wcs,
+      fitRect,
+      srcWidth,
+      srcHeight,
+      liveBeaconOffsetPx,
+      isSpace3D,
+      selectedFinding,
+      showIsometricGrid,
+      showGeodesicRays,
+      showExplodedTeardown,
+      simulationYear,
+    });
   }, [
     viewport,
+    fitRect,
     session.activeVariantId,
     session.machines.navigation,
     session.compareWipePosition,
     session.spatialView,
+    session.observationSolution.status,
     projectedMarkers,
+    wcs,
+    srcWidth,
+    srcHeight,
+    liveBeaconOffsetPx,
     isSpace3D,
     realImagesRevision,
     videoFrameTick,
@@ -442,6 +491,10 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
     aspect,
     simulationYear,
     realMediaSet,
+    selectedFinding,
+    showIsometricGrid,
+    showGeodesicRays,
+    showExplodedTeardown,
   ]);
 
   const [ox, oy, oz] = effectiveObserverOriginParsec;

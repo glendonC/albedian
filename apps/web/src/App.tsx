@@ -19,6 +19,7 @@ import { BottomTransportRail } from './components/BottomTransportRail.js';
 import { TopObservationalBar } from './components/TopObservationalBar.js';
 import { AlbedianWebAudioBus } from './audio/WebAudioBus.js';
 import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
+import { useGuidedSkyTour } from './hooks/useGuidedSkyTour.js';
 import {
   DiscoveredMediaItem,
   buildSessionFromDiscoveredMedia,
@@ -49,6 +50,12 @@ export const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { animatePhaseAToPhaseBSpaceFlight } = useCameraFlightAnimation(session, setSession);
+  const { isTourActive, startGuidedTour, stopGuidedTour } = useGuidedSkyTour(
+    session,
+    setSession,
+    animatePhaseAToPhaseBSpaceFlight,
+    () => audioBusRef.current?.playCalibrationHarmonic(isMuted)
+  );
 
   useEffect(() => {
     audioBusRef.current = new AlbedianWebAudioBus();
@@ -422,6 +429,11 @@ export const App: React.FC = () => {
           }))
         }
         onExportWithProvenance={handleExportWithProvenance}
+        isTourActive={isTourActive}
+        onToggleGuidedTour={() => {
+          if (isTourActive) stopGuidedTour();
+          else startGuidedTour();
+        }}
       />
 
       <main className="alb-main-workspace">
