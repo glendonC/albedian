@@ -293,76 +293,84 @@ export function renderIsometricGeodesicHologram(
     const isMoon = selectedFinding.id.includes('moon');
 
     // Exploded axis vector (upper-left to lower-right isometric expansion)
-    const axisDx = 48;
-    const axisDy = -26;
+    const axisDx = 54;
+    const axisDy = -34;
 
     const layers = isMoon
       ? [
           {
-            offset: -1.6,
+            offset: -1.75,
             radius: 56,
             color: 'rgba(56, 189, 248, 0.55)',
             title: 'RAYLEIGH-MIE SCATTER VEIL',
             sub: '18.95 MAG/ARCSEC² · HALO SUBTRACTED',
             side: 'left' as const,
+            yShift: -24,
           },
           {
-            offset: -0.5,
+            offset: -0.65,
             radius: 38,
             color: 'rgba(251, 191, 36, 0.75)',
             title: 'WAXING GIBBOUS TERMINATOR',
             sub: '79.1% ILLUMINATED · SELENOGRAPHIC LIMB',
             side: 'right' as const,
+            yShift: -32,
           },
           {
-            offset: 0.6,
+            offset: 0.65,
             radius: 22,
             color: '#FF4522',
             title: 'SENSOR PSF CENTROID CORE',
             sub: '0.35 PX WCS RESIDUAL · SNR 12.5',
             side: 'left' as const,
+            yShift: 22,
           },
           {
-            offset: 1.6,
+            offset: 1.75,
             radius: 32,
             color: 'rgba(16, 185, 129, 0.75)',
             title: 'TOPOCENTRIC EPHEMERIS LOCK',
             sub: '0.00257 AU · 1.28 LIGHT-SECONDS',
             side: 'right' as const,
+            yShift: 26,
           },
         ]
       : [
           {
-            offset: -1.7,
+            offset: -1.8,
             radius: 64,
             color: 'rgba(56, 189, 248, 0.52)',
             title: 'GAIA DR3 PARALLAX CONE',
             sub: `${selectedFinding.inferredDistancePc?.median.toFixed(1) ?? '168.0'} PC · 68% CI SHELL`,
             side: 'left' as const,
+            yShift: -24,
           },
           {
-            offset: -0.6,
+            offset: -0.65,
             radius: 46,
             color: 'rgba(251, 191, 36, 0.72)',
             title: 'CIRCUMSTELLAR DUST ENVELOPE',
             sub: `${astro ? `${astro.radiusSolar} R☉` : '3.5 AU'} · RADIATIVE BOUNDARY`,
             side: 'right' as const,
+            yShift: -34,
           },
           {
-            offset: 0.5,
+            offset: 0.65,
             radius: 28,
             color: '#FF4522',
             title: 'CONVECTIVE PHOTOSPHERE',
             sub: `${astro ? `${astro.teffK.toLocaleString()} K · ${astro.spectralClass}` : 'M1-M2 IA-AB'}`,
             side: 'left' as const,
+            yShift: 22,
           },
           {
-            offset: 1.6,
+            offset: 1.8,
             radius: 16,
             color: '#10B981',
             title: 'HELIUM / CARBON FUSION CORE',
             sub: `${astro ? `${astro.luminositySolar.toLocaleString()} L☉` : '41,687 L☉'} · 1478 CE PHOTONS`,
             side: 'right' as const,
+            yShift: 26,
           },
         ];
 
@@ -413,20 +421,21 @@ export function renderIsometricGeodesicHologram(
       // Horizontal technical leader-line callout (`■ TITLE / SUB`)
       const dir = layer.side === 'right' ? 1 : -1;
       const anchorX = lx + dir * layer.radius * 0.82;
-      const anchorY = ly - layer.radius * 0.18;
-      const elbowX = anchorX + dir * 46;
-      const endX = elbowX + dir * 118;
+      const anchorY = ly;
+      const elbowX = anchorX + dir * 44;
+      const shelfY = anchorY + layer.yShift;
+      const endX = elbowX + dir * 124;
 
       ctx.strokeStyle = 'rgba(226, 232, 240, 0.48)';
       ctx.lineWidth = 0.95;
       ctx.beginPath();
       ctx.moveTo(anchorX, anchorY);
-      ctx.lineTo(elbowX, anchorY - 12);
-      ctx.lineTo(endX, anchorY - 12);
+      ctx.lineTo(elbowX, shelfY);
+      ctx.lineTo(endX, shelfY);
       ctx.stroke();
 
       const textX = layer.side === 'right' ? elbowX + 6 : endX;
-      const textY = anchorY - 17;
+      const textY = shelfY - 5;
 
       // Vermilion square bullet `■`
       ctx.fillStyle = '#FF4522';

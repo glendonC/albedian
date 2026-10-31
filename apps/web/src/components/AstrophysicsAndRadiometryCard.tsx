@@ -47,7 +47,7 @@ export const AstrophysicsAndRadiometryCard: React.FC<AstrophysicsAndRadiometryCa
         {
           idx: '02',
           name: 'BOLOMETRIC LUM',
-          sub: astro.evolutionaryState.toUpperCase(),
+          sub: astro.evolutionaryStage.toUpperCase(),
           badge: `${astro.luminositySolar >= 100 ? Math.round(astro.luminositySolar).toLocaleString() : astro.luminositySolar} L☉`,
           color: '#10B981',
         },

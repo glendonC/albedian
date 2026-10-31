@@ -185,7 +185,9 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
             </span>
             <span style={{ color: 'rgba(148, 163, 184, 0.72)' }}>DISTANCE</span>
             <span style={{ color: '#38BDF8', fontWeight: 600, textAlign: 'right' }}>
-              {distInfo ? distInfo.primaryLabel.split('(')[0]?.trim() : '1.28 LT-SEC'}
+              {distInfo && distInfo.canEnter3DSpace
+                ? distInfo.parsecText.split('(')[0]?.trim()
+                : '1.28 LT-SEC'}
             </span>
           </div>
         </div>
@@ -208,7 +210,9 @@ export const ContextualInspector: React.FC<ContextualInspectorProps> = ({
           <span style={{ color: 'rgba(148, 163, 184, 0.75)' }}>
             LIGHT FLIGHT{' '}
             <strong style={{ color: '#FF4522' }}>
-              {distInfo?.secondaryLightYearsLabel.split('(')[0]?.trim() ?? '1.28 s'}
+              {distInfo && distInfo.canEnter3DSpace
+                ? distInfo.lightYearText.split('(')[0]?.trim()
+                : '1.28 s'}
             </strong>
           </span>
         </div>

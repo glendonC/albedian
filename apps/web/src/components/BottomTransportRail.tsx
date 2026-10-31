@@ -1,19 +1,6 @@
 import React from 'react';
 import { ExportArtifact, ObservationSession } from '@albedian/contracts';
 
-const QUICK_VOICE_UTTERANCES = [
-  'Make the sky clearer',
-  "Don't change the people",
-  'What were we looking at?',
-  'Select Betelgeuse',
-  'How far away is it?',
-  'Take me there',
-  "What's behind it?",
-  'Where is Earth?',
-  'Show me this sky a thousand years ago',
-  'Go back',
-];
-
 export interface BottomTransportRailProps {
   session: ObservationSession;
   commandText: string;
@@ -35,7 +22,8 @@ export interface BottomTransportRailProps {
 }
 
 /**
- * Bottom Transport, Restoration Branches, and Direct-Manipulation Voice/Command Rail.
+ * Panel 08: Field Simulator Observation Log & Voice Direct Manipulation Track
+ * inspired by @elvar_official's `| FLIGHT LOG 08` timeline scrubber.
  */
 export const BottomTransportRail: React.FC<BottomTransportRailProps> = ({
   session,
@@ -49,210 +37,294 @@ export const BottomTransportRail: React.FC<BottomTransportRailProps> = ({
   onTogglePlay,
   onSeekTimeline,
   onToggleMute,
-  onSelectVariant,
   onSelectDisambiguationChoice,
   onDismissExport,
 }) => {
+  const durationSec = Math.max(1, session.sourceAsset.durationMs / 1000);
+  const progressPct = Math.min(100, Math.max(0, (session.currentSourceTimeSec / durationSec) * 100));
+
   return (
-    <footer className="alb-bottom-rail">
-      {/* Row 1: Timeline, Audio Status, and Restoration Attempt Branches */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
+    <footer
+      className="albedian-glass-panel"
+      style={{
+        position: 'absolute',
+        bottom: 10,
+        left: 14,
+        right: 14,
+        height: 62,
+        zIndex: 25,
+        borderRadius: 8,
+        padding: '6px 14px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 390px',
+        alignItems: 'center',
+        gap: 18,
+      }}
+    >
+      {/* Left: | OBSERVATION LOG 08 + Vermilion Play Circle + Waypoint Scrubber */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 8.5,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 2, height: 9, background: '#FF4522', display: 'inline-block' }} />
+            <span style={{ fontWeight: 600, color: '#F8FAFC', letterSpacing: '0.08em' }}>
+              OBSERVATION LOG
+            </span>
+            <span style={{ color: 'rgba(148, 163, 184, 0.65)', marginLeft: 4 }}>
+              TAKE-OFF · 00.0S
+            </span>
+          </div>
+
+          <span
+            style={{
+              color: '#FF4522',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: 420,
+            }}
+          >
+            OPERATOR · {(session.lastStatusBanner || 'WCS CALIBRATED').toUpperCase()}
+          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              onClick={onToggleMute}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: isMuted ? '#FF4522' : '#10B981',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 8.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {isMuted
+                ? 'AUDIO: MUTED'
+                : session.machines.navigation === 'space'
+                  ? 'AUDIO: -5.2dB SPACE DUCK'
+                  : 'AUDIO: 48KHZ PRESERVED ●'}
+            </button>
+            <span style={{ color: 'rgba(148, 163, 184, 0.7)' }}>08</span>
+          </div>
+        </div>
+
+        {/* Scrubber Track with Vermilion Play Button & Waypoint Ticks */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             type="button"
-            className="alb-btn"
+            aria-label={session.isPlaying ? 'Pause' : 'Play'}
             onClick={onTogglePlay}
             disabled={session.machines.navigation === 'space'}
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: '#FF4522',
+              color: '#FFFFFF',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: 'pointer',
+              flexShrink: 0,
+              boxShadow: '0 0 10px rgba(255, 69, 34, 0.5)',
+            }}
           >
-            {session.isPlaying ? 'Pause' : 'Play'}
+            {session.isPlaying ? '⏸' : '▶'}
           </button>
 
-          <span className="alb-tabular" style={{ fontSize: 12 }}>
-            {session.currentSourceTimeSec.toFixed(2)}s /{' '}
-            {(session.sourceAsset.durationMs / 1000).toFixed(2)}s
+          <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+            <input
+              type="range"
+              className="albedian-scrubber"
+              aria-label="Source Timeline Scrub"
+              min={0}
+              max={durationSec}
+              step={0.1}
+              value={session.currentSourceTimeSec}
+              onChange={(e) => onSeekTimeline(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                background: `linear-gradient(to right, #FF4522 ${progressPct}%, rgba(148, 163, 184, 0.22) ${progressPct}%)`,
+              }}
+            />
+          </div>
+
+          <span
+            style={{
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: 9.5,
+              color: '#F8FAFC',
+              minWidth: 78,
+              textAlign: 'right',
+            }}
+          >
+            {session.currentSourceTimeSec.toFixed(1)}s / {durationSec.toFixed(1)}s
           </span>
-
-          <input
-            type="range"
-            aria-label="Source Timeline Scrub"
-            min={0}
-            max={session.sourceAsset.durationMs / 1000}
-            step={0.1}
-            value={session.currentSourceTimeSec}
-            onChange={(e) => onSeekTimeline(parseFloat(e.target.value))}
-            style={{ width: 150 }}
-          />
-
-          <button type="button" className="alb-btn" onClick={onToggleMute}>
-            {isMuted
-              ? 'Audio: Muted'
-              : session.machines.navigation === 'space'
-                ? 'Original Audio: Ducking in 3D Space'
-                : 'Original Audio: Preserved ●'}
-          </button>
-        </div>
-
-        {/* Restoration Attempt Strip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 11, color: 'var(--alb-text-muted)' }}>
-            Restoration Branches:
-          </span>
-          {session.mediaVariants.map((variant) => (
-            <button
-              key={variant.id}
-              type="button"
-              className={`alb-btn ${
-                session.activeVariantId === variant.id ? 'alb-btn-active' : ''
-              }`}
-              onClick={() => onSelectVariant(variant.id, variant.label, variant.summaryNote)}
-            >
-              {variant.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Row 2: Direct Manipulation Voice & Typed Command Input */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onExecuteUtterance(commandText, 'text');
-          onChangeCommandText('');
-        }}
-        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-      >
-        <button
-          type="button"
-          className={`alb-btn ${
-            session.machines.voice === 'listening' ? 'alb-btn-active' : ''
-          }`}
-          onClick={onPushToTalk}
-          title="Push-to-talk microphone (never listens permanently by default)"
-        >
-          {session.machines.voice === 'listening' ? '● Listening…' : 'Mic (Push-to-Talk)'}
-        </button>
-
-        <input
-          type="text"
-          className="alb-command-input"
-          placeholder='Ask or command: "Make the sky clearer", "What were we looking at?", "How far away is it?", "Take me there", "Go back"...'
-          value={commandText}
-          onChange={(e) => onChangeCommandText(e.target.value)}
-          aria-label="Voice or Typed Direct Manipulation Command"
-        />
-
-        <button type="submit" className="alb-btn alb-btn-primary">
-          Execute ↵
-        </button>
-      </form>
-
-      {/* Row 3: Quick Canonical Utterance Chips & Status Banner */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          {QUICK_VOICE_UTTERANCES.map((utt) => (
-            <button
-              key={utt}
-              type="button"
-              className="alb-btn"
-              style={{ fontSize: 11, minHeight: 24, padding: '2px 8px' }}
-              onClick={() => onExecuteUtterance(utt, 'voice')}
-            >
-              “{utt}”
-            </button>
-          ))}
-        </div>
-
-        {session.lastStatusBanner && (
-          <div
-            className="alb-tabular"
-            role="status"
-            style={{ fontSize: 11, color: 'var(--alb-accent-catalog)' }}
-          >
-            {session.lastStatusBanner}
-          </div>
-        )}
-      </div>
-
-      {/* Disambiguation Prompt Banner when Deictic Target is Ambiguous */}
-      {disambiguationPrompt && (
+      {/* Right: Direct Voice / Natural-Language Command Bar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div
-          role="alert"
           style={{
-            padding: '8px 12px',
-            backgroundColor: 'var(--alb-surface-raised)',
-            border: '1px solid var(--alb-accent-warning)',
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <span style={{ fontSize: 12 }}>{disambiguationPrompt.question}</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {disambiguationPrompt.choices.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className="alb-btn alb-btn-primary"
-                onClick={() => onSelectDisambiguationChoice(c.id)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Export Artifact Provenance Drawer */}
-      {latestExport && (
-        <div
-          className="alb-tabular"
-          style={{
-            padding: '8px 12px',
-            backgroundColor: 'var(--alb-space-0)',
-            border: '1px solid var(--alb-accent-catalog)',
-            borderRadius: 4,
-            fontSize: 11,
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 8,
+            color: 'rgba(148, 163, 184, 0.72)',
           }}
         >
-          <div>
-            <strong>Verified Export Provenance:</strong> {latestExport.outputUri} · Source SHA-256:{' '}
-            {latestExport.sourceSha256.slice(0, 12)}… · Output SHA-256:{' '}
-            {latestExport.outputSha256.slice(0, 12)}… · Audio Preserved:{' '}
-            {latestExport.audioPreserved ? 'Yes' : 'No'} (Drift{' '}
-            {latestExport.audioSyncOffsetMs.toFixed(1)} ms) · Matches:{' '}
-            {latestExport.epistemicSummary.catalogMatchedCount} CAT /{' '}
-            {latestExport.epistemicSummary.observedCount} OBS /{' '}
-            {latestExport.epistemicSummary.predictedCount} PRD
-          </div>
+          <span>DIRECT VOICE & INTENT ENGINE</span>
+          <span style={{ color: '#10B981' }}>● SCHEMA VALIDATED</span>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (commandText.trim()) {
+              onExecuteUtterance(commandText, 'text');
+            }
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
           <button
             type="button"
-            className="alb-btn"
-            style={{ minHeight: 24, fontSize: 11 }}
-            onClick={onDismissExport}
+            onClick={onPushToTalk}
+            style={{
+              background:
+                session.machines.voice === 'listening'
+                  ? 'rgba(16, 185, 129, 0.18)'
+                  : 'rgba(15, 23, 38, 0.75)',
+              color: session.machines.voice === 'listening' ? '#10B981' : '#F8FAFC',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              borderRadius: 4,
+              padding: '5px 8px',
+              fontSize: 8.5,
+              fontWeight: 600,
+              fontFamily: '"JetBrains Mono", monospace',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
-            Dismiss
+            ● VOICE
           </button>
+
+          <input
+            type="text"
+            aria-label="Voice or natural language command input"
+            placeholder='"Make the sky clearer", "Select Betelgeuse", "Take me there"...'
+            value={commandText}
+            onChange={(e) => onChangeCommandText(e.target.value)}
+            style={{
+              flex: 1,
+              background: 'rgba(2, 4, 9, 0.65)',
+              color: '#F8FAFC',
+              border: '1px solid rgba(148, 163, 184, 0.22)',
+              borderRadius: 4,
+              padding: '5px 8px',
+              fontSize: 9.5,
+              fontFamily: '"JetBrains Mono", monospace',
+              outline: 'none',
+            }}
+          />
+
+          <button
+            type="submit"
+            style={{
+              background: '#FF4522',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 4,
+              padding: '5px 9px',
+              fontSize: 8.5,
+              fontWeight: 700,
+              fontFamily: '"JetBrains Mono", monospace',
+              cursor: 'pointer',
+            }}
+          >
+            EXEC ↵
+          </button>
+        </form>
+      </div>
+
+      {/* Floating Disambiguation or Export Toast */}
+      {(disambiguationPrompt || latestExport) && (
+        <div
+          className="albedian-glass-panel"
+          style={{
+            position: 'absolute',
+            bottom: 70,
+            right: 0,
+            padding: '8px 12px',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 9.5,
+          }}
+        >
+          {disambiguationPrompt && (
+            <>
+              <span style={{ color: '#FBBF24' }}>{disambiguationPrompt.question}</span>
+              {disambiguationPrompt.choices.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onSelectDisambiguationChoice(c.id)}
+                  style={{
+                    background: '#FF4522',
+                    color: '#FFF',
+                    border: 'none',
+                    borderRadius: 3,
+                    padding: '2px 6px',
+                    fontSize: 8.5,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </>
+          )}
+          {latestExport && (
+            <>
+              <span style={{ color: '#10B981' }}>
+                Export Verified ({latestExport.sourceSha256.slice(0, 10)}…)
+              </span>
+              <button
+                type="button"
+                onClick={onDismissExport}
+                style={{
+                  background: 'transparent',
+                  color: '#94A3B8',
+                  border: '1px solid rgba(148,163,184,0.3)',
+                  borderRadius: 3,
+                  padding: '1px 5px',
+                  fontSize: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                ×
+              </button>
+            </>
+          )}
         </div>
       )}
     </footer>
