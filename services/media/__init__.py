@@ -1,5 +1,11 @@
-"""Albedian Media Restoration & Export Runtime Package."""
+"""Albedian Media Restoration, Dynamic Discovery & Export Runtime Package."""
 
+from services.media.discovery import (
+    DiscoveredMediaItem,
+    discover_uploaded_media,
+    normalize_creation_utc,
+    parse_iso6709_location,
+)
 from services.media.runtime import (
     ExportRemuxResult,
     MediaExperimentRuntime,
@@ -10,10 +16,14 @@ from services.media.runtime import (
 )
 
 __all__ = [
+    "DiscoveredMediaItem",
     "ExportRemuxResult",
     "MediaExperimentRuntime",
     "RestorationBranchResult",
     "RestorationMetrics",
     "compute_file_sha256",
     "compute_frames_sha256",
+    "discover_uploaded_media",
+    "normalize_creation_utc",
+    "parse_iso6709_location",
 ]

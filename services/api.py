@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.media.discovery import discover_uploaded_media
 from services.media.runtime import MediaExperimentRuntime
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
@@ -282,6 +283,28 @@ def post_science_ephemeris(req: EphemerisRequest) -> dict[str, Any]:
         "observerLocation": {"latDeg": req.lat_deg, "lonDeg": req.lon_deg},
         "evidenceClass": "predicted",
         "findings": findings_dicts,
+    }
+
+
+@app.get("/api/media/discover")
+def get_media_discover(
+    uploads_dir: str = Query(default="data/uploads"),
+    public_dir: str = Query(default="apps/web/public"),
+    artifacts_dir: str = Query(default="data/artifacts"),
+) -> dict[str, Any]:
+    """Dynamically discover all uploaded image/video assets in `data/uploads/`,
+    probe QuickTime/container metadata via `ffprobe`, compute content SHA-256,
+    link rendered variants, and return each item's `ObservationSolution` and ephemerides.
+    """
+    items = discover_uploaded_media(
+        uploads_dir=uploads_dir,
+        public_dir=public_dir,
+        artifacts_dir=artifacts_dir,
+    )
+    return {
+        "uploadsDir": uploads_dir,
+        "count": len(items),
+        "items": [item.to_contract_dict() for item in items],
     }
 
 

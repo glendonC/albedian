@@ -32,9 +32,36 @@ export interface DiscoveredMediaItem {
   solution?: ObservationSession['observationSolution'];
 }
 
+interface RawBackendDiscoveredItem {
+  id: string;
+  filename: string;
+  sha256: string;
+  mediaType?: 'image' | 'video';
+  width: number;
+  height: number;
+  durationSec: number;
+  capturedAtUTC: string;
+  cameraModel?: string | null;
+  observerLocation?: {
+    latDeg: number;
+    lonDeg: number;
+  };
+  variants?: Record<string, string>;
+  observationSolution?: ObservationSession['observationSolution'];
+}
+
 function toCartesian(raDeg: number, decDeg: number, distPc: number): [number, number, number] {
   const u = raDecToUnitVector(raDeg, decDeg);
   return [u[0] * distPc, u[1] * distPc, u[2] * distPc];
+}
+
+function formatReadableTitle(filename: string): string {
+  const stem = filename.replace(/\.[^.]+$/, '');
+  return stem
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 /**
@@ -45,8 +72,38 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
   try {
     const res = await fetch('/api/media/discover');
     if (!res.ok) return [];
-    const data = (await res.json()) as { items?: DiscoveredMediaItem[] };
-    return Array.isArray(data.items) ? data.items : [];
+    const data = (await res.json()) as { items?: RawBackendDiscoveredItem[] };
+    if (!Array.isArray(data.items)) return [];
+
+    return data.items.map((raw) => {
+      const v = raw.variants ?? {};
+      const origUrl = v.orig_png ?? v.default_png ?? v.orig_jpg ?? '';
+      const v1Url = v.v1_png ?? origUrl;
+      const v2Url = v.v2_png ?? v1Url;
+      return {
+        id: raw.id,
+        title: formatReadableTitle(raw.filename),
+        filename: raw.filename,
+        sha256: raw.sha256,
+        mediaKind: raw.mediaType ?? 'video',
+        width: raw.width,
+        height: raw.height,
+        durationSec: raw.durationSec,
+        capturedAtUTC: raw.capturedAtUTC,
+        latDeg: raw.observerLocation?.latDeg ?? 30.0,
+        lonDeg: raw.observerLocation?.lonDeg ?? -40.0,
+        cameraModel: raw.cameraModel ?? 'Field Sensor',
+        urls: {
+          origUrl,
+          v1Url,
+          v2Url,
+          origVideoUrl: v.orig_mp4,
+          v1VideoUrl: v.v1_mp4,
+          v2VideoUrl: v.v2_mp4,
+        },
+        solution: raw.observationSolution,
+      };
+    });
   } catch {
     return [];
   }
