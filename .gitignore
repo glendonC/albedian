@@ -34,6 +34,14 @@ Thumbs.db
 *.swp
 *.swo
 
-# NOTE: /.kiro is intentionally tracked in version control per Kiroween 2026 rules.
-!/.kiro/
-!/.kiro/**
+# Internal ops files — local only, never committed
+docs/internal/
+
+# Kiro local IDE settings — machine-specific, not project config
+.kiro/settings/
+
+# NOTE: .kiro specs, steering, hooks, and agents ARE intentionally tracked.
+!/.kiro/specs/
+!/.kiro/steering/
+!/.kiro/hooks/
+!/.kiro/agents/
