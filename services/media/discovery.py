@@ -19,8 +19,12 @@ from typing import Any
 import numpy as np
 
 from services.media.models import compute_file_sha256
+from services.science.coherent_stack import integrate_wcs_coherent_star_trajectories
+from services.science.deep_sky import DEEP_SKY_CATALOG
 from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
+from services.science.optical_flow import compute_video_pose_trajectory
+from services.science.radiometry import compute_sensor_limiting_magnitude_audit
 from services.science.wcs_models import ObservationSolution
 
 SUPPORTED_MEDIA_EXTENSIONS = {".mov", ".mp4", ".m4v", ".png", ".jpg", ".jpeg"}
@@ -58,6 +62,10 @@ class DiscoveredMediaItem:
     artifact_report_path: str | None = None
     observation_solution: ObservationSolution | None = None
     ephemerides: list[dict[str, Any]] = field(default_factory=list)
+    pose_trajectory: list[dict[str, Any]] = field(default_factory=list)
+    radiometry_audit: dict[str, Any] = field(default_factory=dict)
+    deep_sky_objects: list[dict[str, Any]] = field(default_factory=list)
+    coherent_star_audit: list[dict[str, Any]] = field(default_factory=list)
 
     def to_contract_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +99,10 @@ class DiscoveredMediaItem:
                 else None
             ),
             "ephemerides": list(self.ephemerides),
+            "poseTrajectory": list(self.pose_trajectory),
+            "radiometryAudit": dict(self.radiometry_audit),
+            "deepSkyObjects": list(self.deep_sky_objects),
+            "coherentStarAudit": list(self.coherent_star_audit),
         }
 
 
@@ -151,9 +163,11 @@ def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
         return {}
 
 
-def _extract_representative_luma(file_path: Path, width: int, height: int) -> np.ndarray:
-    """Decode up to 5 representative frames (1 fps) and select the frame with the strongest
-    upper-sky signal as a 2D float64 luminance array in [0, 1].
+def _extract_representative_luma(
+    file_path: Path, width: int, height: int
+) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    """Decode up to 8 representative frames (1 fps), select the frame with the strongest
+    upper-sky signal as a 2D float64 luminance array in [0, 1], and compute 1 fps pose trajectory.
     """
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
@@ -166,7 +180,7 @@ def _extract_representative_luma(file_path: Path, width: int, height: int) -> np
         "-i",
         str(file_path),
         "-frames:v",
-        "5" if is_vid else "1",
+        "8" if is_vid else "1",
         "-vf",
         vf,
         "-f",
@@ -190,15 +204,31 @@ def _extract_representative_luma(file_path: Path, width: int, height: int) -> np
             .astype(np.float64)
             / 255.0
         )
-        sky_h = max(8, int(scale_h * 0.42))
+        sky_h = max(8, int(scale_h * 0.22))
         best_idx = int(
             np.argmax([float(np.max(f[:sky_h, :]) - np.median(f[:sky_h, :])) for f in frames])
         )
         arr_small = frames[best_idx]
         y_idx = np.linspace(0, scale_h - 1, height).astype(np.intp)
         x_idx = np.linspace(0, scale_w - 1, width).astype(np.intp)
-        return arr_small[np.ix_(y_idx, x_idx)]
-    return np.full((height, width), 0.03, dtype=np.float64)
+        rep_luma = arr_small[np.ix_(y_idx, x_idx)]
+
+        raw_traj = compute_video_pose_trajectory(list(frames), fps=1.0)
+        sx = float(width) / float(max(scale_w, 1))
+        sy = float(height) / float(max(scale_h, 1))
+        scaled_traj = [
+            {
+                **step,
+                "duPx": round(float(step["duPx"]) * sx, 3),
+                "dvPx": round(float(step["dvPx"]) * sy, 3),
+            }
+            for step in raw_traj
+        ]
+        return rep_luma, scaled_traj
+    return (
+        np.full((height, width), 0.03, dtype=np.float64),
+        [{"frameIndex": 0, "timeSec": 0.0, "duPx": 0.0, "dvPx": 0.0, "drollDeg": 0.0, "trackingMode": "silhouette_flow"}],
+    )
 
 
 def _discover_matching_variants(
@@ -364,7 +394,9 @@ def discover_uploaded_media(
             if cand_png.exists():
                 frame_source_path = cand_png
 
-        luma = _extract_representative_luma(frame_source_path, width=width, height=height)
+        luma, pose_trajectory = _extract_representative_luma(
+            frame_source_path, width=width, height=height
+        )
         solution = solve_horizon_and_beacon_pose(
             image=luma,
             obs_utc_iso=captured_at_utc,
@@ -375,15 +407,33 @@ def discover_uploaded_media(
             frame_time_sec=0.0,
             solution_id=solution_id,
         )
-        ephemerides = [
-            b.to_contract_dict()
-            for b in compute_solar_system_ephemerides(
-                obs_utc_iso=captured_at_utc,
-                lat_deg=lat_deg,
-                lon_deg=lon_deg,
-                observation_solution_id=solution_id,
-            )
+        ephem_objs = compute_solar_system_ephemerides(
+            obs_utc_iso=captured_at_utc,
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+            observation_solution_id=solution_id,
+        )
+        ephemerides = [b.to_contract_dict() for b in ephem_objs]
+        moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
+        moon_alt = float(moon_eph.alt_deg) if moon_eph is not None else -15.0
+        radiometry_audit = compute_sensor_limiting_magnitude_audit(
+            obs_utc_iso=captured_at_utc,
+            moon_alt_deg=moon_alt,
+            target_sep_deg=8.2,
+            target_alt_deg=max(10.0, moon_alt if moon_alt > 0.0 else 30.0),
+            stack_frames=max(1, len(pose_trajectory)),
+        )
+        deep_sky_objects = [
+            dso.to_contract_dict(obs_utc_iso=captured_at_utc, lat_deg=lat_deg, lon_deg=lon_deg)
+            for dso in DEEP_SKY_CATALOG
         ]
+        coherent_audit = (
+            integrate_wcs_coherent_star_trajectories(
+                frames=[luma], wcs=solution.wcs, pose_trajectory=pose_trajectory, max_stars=6
+            )
+            if solution.wcs is not None
+            else []
+        )
 
         try:
             rel_path = primary.relative_to(Path.cwd()).as_posix()
@@ -416,6 +466,10 @@ def discover_uploaded_media(
             artifact_report_path=artifact_report_path,
             observation_solution=solution,
             ephemerides=ephemerides,
+            pose_trajectory=pose_trajectory,
+            radiometry_audit=radiometry_audit,
+            deep_sky_objects=deep_sky_objects,
+            coherent_star_audit=coherent_audit,
         )
         _DISCOVERY_CACHE[cache_key] = {"item": item}
         discovered_items.append(item)

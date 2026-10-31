@@ -16,6 +16,7 @@ export type EvidenceClass = z.infer<typeof EvidenceClassSchema>;
 export const SolutionStatusSchema = z.enum([
   'pending',
   'calibrated',
+  'approximate',
   'predicted_only',
   'unresolved',
   'ambiguous',

@@ -22,6 +22,10 @@ from services.media.models import (
     compute_file_sha256,
     compute_frames_sha256,
 )
+from services.media.silhouette import (
+    compute_2d_sky_silhouette_mask,
+    deband_shadow_macroblocks,
+)
 from services.science.solver import (
     SourceDetection,
     _estimate_background_and_noise,
@@ -134,27 +138,38 @@ class MediaExperimentRuntime:
 
         src_frames = [np.asarray(f, dtype=np.float64).copy() for f in frames]
         source_sha256 = compute_frames_sha256(src_frames)
-
-        fg_bool = (
-            np.asarray(foreground_mask, dtype=bool)
-            if foreground_mask is not None
-            else np.zeros(_to_luma_2d(src_frames[0]).shape, dtype=bool)
-        )
-        sky_mask = ~fg_bool
-
         ref_luma = _to_luma_2d(src_frames[0])
+        h_ref = ref_luma.shape[0]
+        sil_mask_2d, _ = compute_2d_sky_silhouette_mask(ref_luma)
+
+        if foreground_mask is not None:
+            fg_bool = np.asarray(foreground_mask, dtype=bool)
+            sky_mask = ~fg_bool
+            sky_weight_2d = 1.0 - fg_bool.astype(np.float64)
+        else:
+            top_med = float(np.median(ref_luma[: max(4, int(h_ref * 0.35)), :]))
+            bot_med = float(np.median(ref_luma[min(h_ref - 4, int(h_ref * 0.65)) :, :]))
+            has_horizon_step = abs(bot_med - top_med) > max(2.5, 0.25 * max(top_med, 1.0))
+            sky_weight_2d = sil_mask_2d if has_horizon_step else np.ones_like(ref_luma)
+            sky_mask = sky_weight_2d > 0.5
+            fg_bool = ~sky_mask
+
         _, src_sigma_bg = _estimate_background_and_noise(ref_luma, sky_mask)
         src_detections = detect_point_sources(ref_luma, sky_mask=sky_mask, snr_threshold=3.5)
 
         restored_frames: list[np.ndarray] = []
 
         if profile in ("tone_only", "natural"):
-            for f in src_frames:
+            for idx, f in enumerate(src_frames):
                 luma = _to_luma_2d(f)
                 bg, _ = _estimate_background_and_noise(luma, sky_mask)
                 res = luma - bg
-                bg_lifted = bg + 2.5 * np.log1p(np.maximum(0.0, bg) / 16.0)
-                out = np.where(fg_bool, luma, bg_lifted + res)
+                bg_lifted = deband_shadow_macroblocks(
+                    bg + 2.5 * np.log1p(np.maximum(0.0, bg) / 16.0),
+                    sky_weight_2d,
+                    seed=42 + idx,
+                )
+                out = sky_weight_2d * (bg_lifted + res) + (1.0 - sky_weight_2d) * luma
                 restored_frames.append(np.clip(out, 0.0, 255.0))
 
         elif profile == "conventional_denoise":
@@ -164,7 +179,7 @@ class MediaExperimentRuntime:
                 restored_frames.append(np.clip(smoothed, 0.0, 255.0))
 
         elif profile == "star_protected":
-            for f in src_frames:
+            for idx, f in enumerate(src_frames):
                 luma = _to_luma_2d(f)
                 bg, _ = _estimate_background_and_noise(luma, sky_mask)
                 res = luma - bg
@@ -179,12 +194,16 @@ class MediaExperimentRuntime:
                     res * (1.0 - star_mask), sigma=1.8, mode="nearest"
                 )
                 protected_res = star_mask * res + (1.0 - star_mask) * bg_res_denoised
-                bg_lifted = bg + 1.5 * np.log1p(np.maximum(0.0, bg) / 20.0)
+                bg_lifted = deband_shadow_macroblocks(
+                    bg + 1.5 * np.log1p(np.maximum(0.0, bg) / 20.0),
+                    sky_weight_2d,
+                    seed=42 + idx,
+                )
                 out_sky = bg_lifted + protected_res
 
-                if foreground_mask is not None:
+                if foreground_mask is not None or np.any(fg_bool):
                     fg_smooth = ndimage.gaussian_filter(luma, sigma=0.65, mode="nearest")
-                    out = np.where(fg_bool, fg_smooth, out_sky)
+                    out = sky_weight_2d * out_sky + (1.0 - sky_weight_2d) * fg_smooth
                 else:
                     out = out_sky
                 restored_frames.append(np.clip(out, 0.0, 255.0))
@@ -361,96 +380,37 @@ class MediaExperimentRuntime:
                 raise FileNotFoundError(f"Audio source file not found: {src_audio}")
             source_sha256 = compute_file_sha256(src_audio)
             cmd = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                "rgb24",
-                "-s",
-                f"{w_out}x{h_out}",
-                "-r",
-                str(fps),
-                "-i",
-                "pipe:0",
-                "-i",
-                str(src_audio),
-                "-map",
-                "0:v:0",
-                "-map",
-                "1:a:0",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "ultrafast",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "128k",
-                "-t",
-                f"{expected_duration_sec:.6f}",
-                str(out_file),
+                "ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                "-s", f"{w_out}x{h_out}", "-r", str(fps), "-i", "pipe:0",
+                "-i", str(src_audio), "-map", "0:v:0", "-map", "1:a:0",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
+                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+                "-t", f"{expected_duration_sec:.6f}", str(out_file),
             ]
         else:
             source_sha256 = compute_frames_sha256(frames)
             cmd = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "rawvideo",
-                "-pix_fmt",
-                "rgb24",
-                "-s",
-                f"{w_out}x{h_out}",
-                "-r",
-                str(fps),
-                "-i",
-                "pipe:0",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "ultrafast",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
-                "-t",
-                f"{expected_duration_sec:.6f}",
+                "ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                "-s", f"{w_out}x{h_out}", "-r", str(fps), "-i", "pipe:0",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
+                "-pix_fmt", "yuv420p", "-t", f"{expected_duration_sec:.6f}",
                 str(out_file),
             ]
 
         proc = subprocess.run(
-            cmd,
-            input=raw_video_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+            cmd, input=raw_video_bytes, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
         )
         if proc.returncode != 0:
             err_msg = proc.stderr.decode("utf-8", errors="replace")
             raise RuntimeError(f"ffmpeg export failed (code {proc.returncode}): {err_msg}")
 
         probe_cmd = [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "stream=index,codec_type,codec_name,duration",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "json",
-            str(out_file),
+            "ffprobe", "-v", "error",
+            "-show_entries", "stream=index,codec_type,codec_name,duration",
+            "-show_entries", "format=duration", "-of", "json", str(out_file),
         ]
         probe_proc = subprocess.run(
-            probe_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
+            probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
         )
         probe_data = json.loads(probe_proc.stdout.decode("utf-8"))
         streams = probe_data.get("streams", [])

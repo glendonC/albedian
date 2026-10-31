@@ -14,6 +14,10 @@ from services.media.runtime import (
     compute_file_sha256,
     compute_frames_sha256,
 )
+from services.media.silhouette import (
+    compute_2d_sky_silhouette_mask,
+    deband_shadow_macroblocks,
+)
 
 __all__ = [
     "DiscoveredMediaItem",
@@ -21,8 +25,10 @@ __all__ = [
     "MediaExperimentRuntime",
     "RestorationBranchResult",
     "RestorationMetrics",
+    "compute_2d_sky_silhouette_mask",
     "compute_file_sha256",
     "compute_frames_sha256",
+    "deband_shadow_macroblocks",
     "discover_uploaded_media",
     "normalize_creation_utc",
     "parse_iso6709_location",

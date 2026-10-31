@@ -19,7 +19,17 @@ from services.science.catalog import (
     compute_light_travel_time_description,
     icrs_to_altaz,
 )
+from services.science.deep_sky import (
+    DEEP_SKY_CATALOG,
+    compute_3d_nearest_neighbors,
+    compute_stellar_astrophysics,
+)
 from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.radiometry import (
+    compute_krisciunas_schaefer_sky_brightness,
+    compute_lunar_phase_and_illumination,
+    compute_sensor_limiting_magnitude_audit,
+)
 from services.science.solver import (
     SourceDetection,
     detect_point_sources,
@@ -153,6 +163,10 @@ def get_science_sky_context(
                 },
                 "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
                 "lightTravel": light_travel,
+                "astrophysics": compute_stellar_astrophysics(
+                    st.mag, st.bp_rp, st.median_pc, st.spectral_type, st.common_name
+                ),
+                "nearestNeighbors3D": compute_3d_nearest_neighbors(st.id, k=3),
             }
         )
 
@@ -183,6 +197,18 @@ def get_science_sky_context(
         {"constellation": c_name, "fromStarId": sid_a, "toStarId": sid_b}
         for c_name, sid_a, sid_b in CONSTELLATION_EDGES
     ]
+    moon_item = next((e for e in ephem_items if e.name == "Moon"), None)
+    moon_alt_deg = float(moon_item.alt_deg) if moon_item is not None else -15.0
+    radiometry_audit = compute_sensor_limiting_magnitude_audit(
+        obs_utc_iso=obs_utc_iso,
+        moon_alt_deg=moon_alt_deg,
+        target_sep_deg=8.2,
+        target_alt_deg=max(10.0, moon_alt_deg if moon_alt_deg > 0.0 else 30.0),
+    )
+    deep_sky_out = [
+        dso.to_contract_dict(obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg)
+        for dso in DEEP_SKY_CATALOG
+    ]
 
     return {
         "observedAtUTC": obs_utc_iso,
@@ -190,6 +216,46 @@ def get_science_sky_context(
         "stars": stars_out,
         "ephemerides": ephem_out,
         "constellationEdges": edges_out,
+        "deepSkyObjects": deep_sky_out,
+        "radiometryAudit": radiometry_audit,
+    }
+
+
+@app.get("/api/science/radiometry-audit")
+def get_science_radiometry_audit(
+    obs_utc_iso: str = Query(default="2030-11-01T22:32:00Z"),
+    lat_deg: float = Query(default=30.0, ge=-90.0, le=90.0),
+    lon_deg: float = Query(default=-40.0, ge=-180.0, le=180.0),
+    target_sep_deg: float = Query(default=8.2, ge=0.5, le=180.0),
+    target_alt_deg: float = Query(default=32.0, ge=0.0, le=90.0),
+    stack_frames: int = Query(default=9, ge=1, le=600),
+) -> dict[str, Any]:
+    """Return Krisciunas & Schaefer (1991) lunar sky brightness and sensor limiting magnitude audit."""
+    ephem_items = compute_solar_system_ephemerides(
+        obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg, bodies=("Moon",)
+    )
+    moon_alt = float(ephem_items[0].alt_deg) if ephem_items else -15.0
+    lunar_phase = compute_lunar_phase_and_illumination(obs_utc_iso)
+    ks_sky = compute_krisciunas_schaefer_sky_brightness(
+        sep_from_moon_deg=target_sep_deg,
+        target_alt_deg=target_alt_deg,
+        moon_alt_deg=moon_alt,
+        obs_utc_iso=obs_utc_iso,
+    )
+    audit = compute_sensor_limiting_magnitude_audit(
+        obs_utc_iso=obs_utc_iso,
+        moon_alt_deg=moon_alt,
+        target_sep_deg=target_sep_deg,
+        target_alt_deg=target_alt_deg,
+        stack_frames=stack_frames,
+    )
+    return {
+        "observedAtUTC": obs_utc_iso,
+        "observerLocation": {"latDeg": lat_deg, "lonDeg": lon_deg},
+        "moonAltDeg": round(moon_alt, 2),
+        "lunarPhase": lunar_phase,
+        "krisciunasSchaeferSky": ks_sky,
+        "sensorAudit": audit,
     }
 
 

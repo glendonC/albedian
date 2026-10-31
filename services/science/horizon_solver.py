@@ -50,7 +50,7 @@ def solve_horizon_and_beacon_pose(
     else:
         horizon_y = float(h * 0.53)
 
-    sky_limit_y = max(32, min(int(horizon_y - 40), int(h * 0.42)))
+    sky_limit_y = max(32, min(int(horizon_y - 40), int(h * 0.24)))
     sky_band = luma[:sky_limit_y, :]
     sky_med = float(np.median(sky_band))
     sky_mad = float(np.median(np.abs(sky_band - sky_med))) * 1.4826
@@ -214,7 +214,7 @@ def solve_horizon_and_beacon_pose(
         in_fov = (
             not (math.isnan(px) or math.isnan(py))
             and (0.0 <= px < w)
-            and (0.0 <= py < horizon_y + 40.0)
+            and (0.0 <= py < min(horizon_y - 24.0, h * 0.46))
         )
         det_proj = (
             SourceDetection(
@@ -261,7 +261,7 @@ def solve_horizon_and_beacon_pose(
         in_fov = (
             not (math.isnan(px) or math.isnan(py))
             and (0.0 <= px < w)
-            and (0.0 <= py < horizon_y + 40.0)
+            and (0.0 <= py < min(horizon_y - 24.0, h * 0.46))
         )
         det_proj = (
             SourceDetection(
@@ -302,6 +302,14 @@ def solve_horizon_and_beacon_pose(
                 source_sha256=source_sha256,
             )
         )
+
+    # Order findings: 1) observed beacons, 2) stars/planets inside camera FOV, 3) brighter above-horizon context
+    findings.sort(
+        key=lambda f: (
+            0 if f.evidence_class == "observed" else (1 if f.source_detection is not None else 2),
+            f.catalog_star.mag if f.catalog_star is not None else -2.0,
+        )
+    )
 
     quality = SolutionQuality(
         detected_candidate_count=1 if beacon_detection is not None else 0,
