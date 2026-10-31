@@ -464,7 +464,7 @@ export const SpatialStage: React.FC<SpatialStageProps> = ({
       srcHeight,
       liveBeaconOffsetPx,
       isSpace3D,
-      selectedFinding,
+      selectedFinding: selectedFinding ?? undefined,
       showIsometricGrid,
       showGeodesicRays,
       showExplodedTeardown,

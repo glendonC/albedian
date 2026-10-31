@@ -523,8 +523,8 @@ export function render3DCatalogSpacePass(opts: Render3DCatalogSpaceOptions): voi
       ? Math.max(300, Math.min(w - 340, ((earthProj.ndcX + 1) * 0.5) * w))
       : 310;
     const ey = earthProj.visible
-      ? Math.max(80, Math.min(h - 110, ((1 - earthProj.ndcY) * 0.5) * h))
-      : h - 120;
+      ? Math.max(80, Math.min(h - 190, ((1 - earthProj.ndcY) * 0.5) * h))
+      : h - 195;
 
     ctx.save();
     ctx.strokeStyle = '#FF4522';

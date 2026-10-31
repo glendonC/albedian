@@ -14,6 +14,7 @@ import {
 import { querySightlineCone } from '@albedian/camera-rig';
 import { SpatialStage } from './spatial/SpatialStage.js';
 import { ContextualInspector } from './components/ContextualInspector.js';
+import { LeftFieldTelemetryColumn } from './components/LeftFieldTelemetryColumn.js';
 import { ProcessingGraphModal } from './components/ProcessingGraphModal.js';
 import { BottomTransportRail } from './components/BottomTransportRail.js';
 import { TopObservationalBar } from './components/TopObservationalBar.js';
@@ -45,6 +46,9 @@ export const App: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [uploadedMediaUrl, setUploadedMediaUrl] = useState<string | null>(null);
   const [uploadedMediaKind, setUploadedMediaKind] = useState<'image' | 'video' | null>(null);
+  const [showIsometricGrid, setShowIsometricGrid] = useState(true);
+  const [showGeodesicRays, setShowGeodesicRays] = useState(true);
+  const [showExplodedTeardown, setShowExplodedTeardown] = useState(true);
 
   const audioBusRef = useRef<AlbedianWebAudioBus | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -436,7 +440,20 @@ export const App: React.FC = () => {
         }}
       />
 
-      <main className="alb-main-workspace">
+      <main
+        style={{
+          position: 'relative',
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
+        <LeftFieldTelemetryColumn
+          session={session}
+          onOpenGraphModal={() => setIsGraphModalOpen(true)}
+          onSelectFinding={(id) => handleSelectFinding(id)}
+        />
+
         <SpatialStage
           session={session}
           uploadedMediaUrl={uploadedMediaUrl}
@@ -450,6 +467,9 @@ export const App: React.FC = () => {
           onVideoTimeUpdate={(t) =>
             setSession((prev) => ({ ...prev, currentSourceTimeSec: t }))
           }
+          showIsometricGrid={showIsometricGrid}
+          showGeodesicRays={showGeodesicRays}
+          showExplodedTeardown={showExplodedTeardown}
         />
 
         <ContextualInspector
@@ -462,6 +482,37 @@ export const App: React.FC = () => {
           onSetEpochYear={handleSetEpochYear}
           onReturnToMoment={handleReturnToMoment}
           onOpenProcessingGraph={() => setIsGraphModalOpen(true)}
+          showIsometricGrid={showIsometricGrid}
+          showGeodesicRays={showGeodesicRays}
+          showExplodedTeardown={showExplodedTeardown}
+          onToggleIsometricGrid={() => setShowIsometricGrid((v) => !v)}
+          onToggleGeodesicRays={() => setShowGeodesicRays((v) => !v)}
+          onToggleExplodedTeardown={() => setShowExplodedTeardown((v) => !v)}
+          onSelectVariant={(variantId) =>
+            setSession((prev) => ({ ...prev, activeVariantId: variantId }))
+          }
+          onToggleCompare={() => {
+            if (session.machines.navigation === 'comparison') {
+              handleReturnToMoment();
+              return;
+            }
+            const res = dispatchAlbedianAction(session, {
+              type: 'media.compare',
+              requestId: `cmp_${Date.now()}`,
+              expectedViewRevision: session.viewRevision,
+              variantAId: 'variant_original',
+              variantBId:
+                session.activeVariantId === 'variant_original'
+                  ? 'variant_natural'
+                  : session.activeVariantId,
+              preserveTime: true,
+            });
+            setSession(res.session);
+          }}
+          onStartGuidedTour={() => {
+            if (isTourActive) stopGuidedTour();
+            else startGuidedTour();
+          }}
         />
       </main>
 
