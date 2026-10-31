@@ -1,0 +1,53 @@
+{
+  "agents": [
+    {
+      "name": "architecture",
+      "role": "Architecture & Contracts Lead",
+      "mission": "Own the 14 domain entity schemas, cross-service API contracts, ADRs, and integration boundaries.",
+      "ownedPaths": ["packages/contracts", "docs/architecture", "docs/adr"],
+      "steering": [".kiro/steering/product-vision.md", ".kiro/steering/scientific-integrity.md", ".kiro/steering/architecture-contracts.md"]
+    },
+    {
+      "name": "science",
+      "role": "Scientific Computing & Astrometry Lead",
+      "mission": "Own star detection, blind/hinted WCS plate solving, held-out verification, Gaia DR3 subset matching, ephemerides, and Bailer-Jones distance intervals.",
+      "ownedPaths": ["services/science", "packages/evidence", "docs/science"],
+      "steering": [".kiro/steering/scientific-integrity.md", ".kiro/steering/testing-pbt.md"]
+    },
+    {
+      "name": "media",
+      "role": "Media Restoration Runtime Lead",
+      "mission": "Own content-addressed ingestion, FFmpeg/OpenCV restoration DAG, star-protected denoising, synchronized comparison, and audio-preserving export.",
+      "ownedPaths": ["services/media"],
+      "steering": [".kiro/steering/product-vision.md", ".kiro/steering/scientific-integrity.md"]
+    },
+    {
+      "name": "spatial",
+      "role": "Spatial Graphics & Camera Rig Lead",
+      "mission": "Own WCS pixel/world projections, off-axis anchor lock, quaternion SLERP, log-tan-FOV interpolation, floating-origin 3D starfield, and exact checkpoint restoration.",
+      "ownedPaths": ["packages/camera-rig", "apps/web/src/spatial"],
+      "steering": [".kiro/steering/scientific-integrity.md", ".kiro/steering/design-motion.md", ".kiro/steering/testing-pbt.md"]
+    },
+    {
+      "name": "experience",
+      "role": "Experience Design & Shell Lead",
+      "mission": "Own the observational instrument UI shell, Reveal/Explore continuity, Web Audio bus, progressive disclosure inspectors, and accessibility.",
+      "ownedPaths": ["packages/design-system", "apps/web/src"],
+      "steering": [".kiro/steering/product-vision.md", ".kiro/steering/design-motion.md"]
+    },
+    {
+      "name": "voice",
+      "role": "Voice & Context Resolution Lead",
+      "mission": "Own deictic context binding, revision-gated AlbedianAction validation, interruption handling, and typed/spoken command parity.",
+      "ownedPaths": ["packages/observation", "services/voice"],
+      "steering": [".kiro/steering/architecture-contracts.md", ".kiro/steering/testing-pbt.md"]
+    },
+    {
+      "name": "verification",
+      "role": "Quality, PBT & Verification Lead",
+      "mission": "Own property-based test suites, deterministic scientific/media fixtures, experiment registry verification, and Kiro hooks.",
+      "ownedPaths": ["tests", "scripts", "research/experiments", ".kiro/hooks"],
+      "steering": [".kiro/steering/testing-pbt.md", ".kiro/steering/scientific-integrity.md"]
+    }
+  ]
+}

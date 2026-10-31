@@ -1,0 +1,17 @@
+{
+  "name": "Run Camera Projection & Navigation Property Tests",
+  "version": "1.0.0",
+  "description": "Executes fast-check property-based tests on WCS pixel/world round-trips, off-axis anchor stability, floating-origin rebasing, and checkpoint reversibility.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "packages/camera-rig/src/**/*.ts",
+      "packages/observation/src/**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "pnpm --filter @albedian/camera-rig --filter @albedian/observation test",
+    "timeout": 60000
+  }
+}

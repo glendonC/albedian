@@ -1,0 +1,17 @@
+{
+  "name": "Run Deterministic Science & Media Fixtures",
+  "version": "1.0.0",
+  "description": "Runs Python astrometry, WCS verification, Gaia DR3 catalog matching, media DAG, and Hypothesis property-based tests when backend services change.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "services/**/*.py",
+      "tests/integration/**/*.py"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "uv run pytest",
+    "timeout": 90000
+  }
+}
