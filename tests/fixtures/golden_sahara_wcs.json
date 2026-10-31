@@ -1,0 +1,35 @@
+{
+  "fixtureId": "golden_sahara_orion_2026_10_19",
+  "title": "Sahara Night — Orion & Taurus Over Erg Chebbi",
+  "capturedAtUTC": "2026-10-19T22:14:00Z",
+  "observerLocation": {
+    "latDeg": 31.149,
+    "lonDeg": -3.972,
+    "elevationM": 740,
+    "placeName": "Erg Chebbi, Sahara, Morocco"
+  },
+  "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 960,
+    "crpixY": 540,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 0.0,
+    "radialDistortionK1": -0.012,
+    "radialDistortionK2": 0.0015,
+    "parity": -1,
+    "fovHorizontalDeg": 67.2,
+    "fovVerticalDeg": 37.8
+  },
+  "constellationEdges": [
+    ["finding_betelgeuse", "finding_bellatrix"],
+    ["finding_betelgeuse", "finding_alnitak"],
+    ["finding_bellatrix", "finding_mintaka"],
+    ["finding_alnitak", "finding_alnilam"],
+    ["finding_alnilam", "finding_mintaka"],
+    ["finding_alnitak", "finding_saiph"],
+    ["finding_mintaka", "finding_rigel"],
+    ["finding_saiph", "finding_rigel"]
+  ]
+}
