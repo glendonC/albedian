@@ -40,10 +40,12 @@ const VALID_WHEN_TYPES = new Set([
 
 const VALID_THEN_TYPES = new Set(['askAgent', 'runCommand']);
 
-const contractsSource = fs.readFileSync(
-  path.join(ROOT, 'packages/contracts/src/index.ts'),
-  'utf8'
-);
+const contractsSrcDir = path.join(ROOT, 'packages/contracts/src');
+const contractsSource = fs
+  .readdirSync(contractsSrcDir)
+  .filter((f) => f.endsWith('.ts'))
+  .map((f) => fs.readFileSync(path.join(contractsSrcDir, f), 'utf8'))
+  .join('\n');
 
 const missingSchemas = REQUIRED_ENTITY_SCHEMAS.filter(
   (schemaName) => !contractsSource.includes(`export const ${schemaName}`)
