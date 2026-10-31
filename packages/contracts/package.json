@@ -1,0 +1,23 @@
+{
+  "name": "@albedian/contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}
