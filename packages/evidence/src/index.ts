@@ -2,7 +2,12 @@ import {
   CatalogReference,
   CelestialFinding,
   EvidenceClass,
+  EvidenceKind,
+  EvidenceRecord,
+  ObservationSolution,
+  OperationalInstrumentStatus,
   SolutionStatus,
+  SourceAsset,
   SourceDetection,
 } from '@albedian/contracts';
 
@@ -331,3 +336,288 @@ export function getEpistemicBadgeDescriptor(evidenceClass: EvidenceClass): {
       };
   }
 }
+
+/**
+ * Maps `SolutionStatus` and an optional `CelestialFinding` to the 6-state
+ * `OperationalInstrumentStatus` taxonomy (Track 7 & Track 14 Master Brief).
+ */
+export function deriveOperationalInstrumentStatus(
+  solutionStatus: SolutionStatus,
+  finding?: CelestialFinding | null
+): OperationalInstrumentStatus {
+  if (solutionStatus === 'pending') {
+    return 'REGISTERING';
+  }
+  if (solutionStatus === 'unresolved') {
+    return 'SOURCE UNAVAILABLE';
+  }
+
+  if (finding) {
+    if (finding.evidenceClass === 'predicted') {
+      return 'PROPAGATED';
+    }
+    if (finding.evidenceClass === 'simulated') {
+      return 'RECONSTRUCTED';
+    }
+    if (finding.evidenceClass === 'catalog_matched') {
+      if (solutionStatus === 'calibrated' || finding.evidence.verifiedByIndependentHoldout) {
+        return 'MATCHED';
+      }
+      if (solutionStatus === 'approximate') {
+        return 'RECONSTRUCTED';
+      }
+      return 'NO COVERAGE';
+    }
+    if (finding.evidenceClass === 'observed') {
+      if (!finding.sourceDetection) {
+        return 'SOURCE UNAVAILABLE';
+      }
+      if (solutionStatus === 'approximate') {
+        return 'RECONSTRUCTED';
+      }
+      if (solutionStatus === 'calibrated') {
+        return finding.catalogRef ? 'MATCHED' : 'NO COVERAGE';
+      }
+      return 'NO COVERAGE';
+    }
+  }
+
+  switch (solutionStatus) {
+    case 'calibrated':
+      return 'MATCHED';
+    case 'approximate':
+      return 'RECONSTRUCTED';
+    case 'predicted_only':
+      return 'PROPAGATED';
+    case 'ambiguous':
+      return 'NO COVERAGE';
+  }
+}
+
+/**
+ * Maps a `CelestialFinding` and `SolutionStatus` to the granular 8-tier `EvidenceKind`
+ * provenance taxonomy (`captured` | `registered` | `catalog-derived` | `observed-elsewhere`
+ * | `propagated` | `reconstructed` | `simulated` | `illustrative`).
+ */
+export function deriveEvidenceKind(
+  finding: CelestialFinding,
+  solutionStatus: SolutionStatus = 'calibrated'
+): EvidenceKind {
+  switch (finding.evidenceClass) {
+    case 'observed': {
+      const methodLower = finding.evidence.verificationMethod.toLowerCase();
+      if (methodLower.includes('coherent') || methodLower.includes('stack')) {
+        return 'reconstructed';
+      }
+      return 'captured';
+    }
+    case 'catalog_matched': {
+      if (
+        finding.sourceDetection &&
+        (solutionStatus === 'calibrated' || finding.evidence.verifiedByIndependentHoldout)
+      ) {
+        return 'registered';
+      }
+      if (solutionStatus === 'approximate') {
+        return 'reconstructed';
+      }
+      return 'catalog-derived';
+    }
+    case 'predicted': {
+      if (finding.catalogRef?.objectType === 'deep_sky') {
+        return 'observed-elsewhere';
+      }
+      if (solutionStatus === 'approximate') {
+        return 'reconstructed';
+      }
+      return 'propagated';
+    }
+    case 'simulated': {
+      if (finding.inferredDistancePc || finding.cartesianParsecICRS) {
+        return 'simulated';
+      }
+      return 'illustrative';
+    }
+  }
+}
+
+function resolveCatalogLicense(provider: CatalogReference['provider']): string {
+  switch (provider) {
+    case 'Gaia DR3':
+      return 'CC0 1.0 / ESA Gaia Collaboration';
+    case 'Hipparcos':
+      return 'ESA Hipparcos Public Archive';
+    case 'JPL Horizons':
+      return 'NASA JPL Public Domain (DE440/DE441)';
+    case 'SIMBAD':
+      return 'CDS SIMBAD Academic Attribution';
+  }
+}
+
+/**
+ * Builds the structured provenance chain (`EvidenceRecord[]`) for a `CelestialFinding`:
+ * 1. Sensor Capture Record (`captured`)
+ * 2. WCS Sky Registration Record (`registered` | `reconstructed` | `propagated`)
+ * 3. Catalog / Ephemeris / Survey Record (`catalog-derived` | `propagated` | `observed-elsewhere` | `simulated` | `captured`)
+ */
+export function buildFindingEvidenceRecords(
+  sourceAsset: SourceAsset,
+  solution: ObservationSolution,
+  finding: CelestialFinding
+): EvidenceRecord[] {
+  const captureTimeUtc = sourceAsset.capturedAtUTC ?? solution.observedAtUTC;
+  const det = finding.sourceDetection;
+
+  const captureRecord: EvidenceRecord = {
+    id: `${finding.id}:capture:${sourceAsset.id}`,
+    kind: 'captured',
+    title: det
+      ? `Sensor Pixel Centroid (${det.xPx.toFixed(1)}, ${det.yPx.toFixed(1)}) px`
+      : `Source Frame Capture (${sourceAsset.title})`,
+    sourceUrl: sourceAsset.uri,
+    sourceIdentifier: `sha256:${sourceAsset.sha256}`,
+    license:
+      sourceAsset.privacyClass === 'public_sample'
+        ? 'CC-BY-4.0 / Public Sample'
+        : 'Observer First-Party Recording',
+    observationTimeUtc: captureTimeUtc,
+    modelEpochUtc: solution.observedAtUTC,
+    coordinateFrame: 'Sensor Pixel Grid (u, v) Origin Top-Left',
+    coordinateSpace: 'astronomical',
+    units: {
+      xPx: 'px',
+      yPx: 'px',
+      flux: 'ADU',
+      snr: 'sigma',
+    },
+    uncertaintyDescription: det
+      ? `Centroid ±${det.centroidUncertaintyPx.toFixed(2)} px · PSF FWHM ${det.fwhmPx.toFixed(2)} px · SNR ${det.snr.toFixed(1)}`
+      : 'No direct single-frame point-source centroid above SNR threshold.',
+    processingDescription: `Immutable source asset (${sourceAsset.width}×${sourceAsset.height} ${sourceAsset.videoCodec}); ${finding.evidence.verificationMethod}`,
+    coverageDescription: sourceAsset.observerLocation
+      ? `Observer site ${sourceAsset.observerLocation.latDeg.toFixed(4)}°, ${sourceAsset.observerLocation.lonDeg.toFixed(4)}°${sourceAsset.observerLocation.placeName ? ` (${sourceAsset.observerLocation.placeName})` : ''}`
+      : `Sensor frame ${sourceAsset.width}×${sourceAsset.height} px at t=${(det?.frameTimeSec ?? solution.frameTimeSec).toFixed(2)}s`,
+  };
+
+  const wcsKind: EvidenceKind =
+    solution.status === 'calibrated' && solution.quality.passedIndependentVerification
+      ? 'registered'
+      : solution.status === 'approximate'
+        ? 'reconstructed'
+        : 'propagated';
+
+  const wcsRecord: EvidenceRecord = {
+    id: `${finding.id}:wcs:${solution.id}`,
+    kind: wcsKind,
+    title: `WCS Sky Registration (${solution.solver.name} ${solution.solver.version})`,
+    sourceIdentifier: `${solution.id}@rev${solution.revision}`,
+    license: 'Albedian Deterministic Astrometry Pipeline',
+    observationTimeUtc: solution.observedAtUTC,
+    modelEpochUtc: solution.observedAtUTC,
+    coordinateFrame: solution.wcs
+      ? `ICRS / J2000 ${solution.wcs.projection} Tangent Projection`
+      : 'Topocentric Horizon / Uncalibrated Frame',
+    coordinateSpace: 'astronomical',
+    units: {
+      raDeg: 'deg',
+      decDeg: 'deg',
+      residualPx: 'px',
+      residualArcsec: 'arcsec',
+    },
+    uncertaintyDescription: `Held-out median residual ±${solution.quality.medianResidualPx.toFixed(2)} px (±${solution.quality.medianResidualArcsec.toFixed(1)} arcsec), p95 ±${solution.quality.p95ResidualPx.toFixed(2)} px across ${solution.quality.heldOutInliers} held-out inliers${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
+    processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
+    coverageDescription: solution.wcs
+      ? `FOV ${solution.wcs.fovHorizontalDeg.toFixed(1)}°×${solution.wcs.fovVerticalDeg.toFixed(1)}° centered at RA ${solution.wcs.crvalRaDeg.toFixed(4)}°, Dec ${solution.wcs.crvalDecDeg.toFixed(4)}° (${solution.wcs.scaleDegPerPx.toFixed(4)}°/px)`
+      : `Sky position RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° (±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec)`,
+  };
+
+  const cat = finding.catalogRef;
+  if (cat) {
+    const isEphemeris =
+      cat.provider === 'JPL Horizons' ||
+      cat.objectType === 'planet' ||
+      cat.objectType === 'moon' ||
+      cat.objectType === 'satellite_candidate';
+    const isDeepSky = cat.objectType === 'deep_sky';
+    const catalogKind: EvidenceKind =
+      finding.evidenceClass === 'simulated'
+        ? 'simulated'
+        : isEphemeris
+          ? 'propagated'
+          : isDeepSky
+            ? 'observed-elsewhere'
+            : 'catalog-derived';
+
+    const dist = cat.bailerJonesDistancePc;
+    const catalogRecord: EvidenceRecord = {
+      id: `${finding.id}:catalog:${cat.id}`,
+      kind: catalogKind,
+      title: `${cat.provider} (${cat.releaseVersion}) — ${cat.commonName} (${cat.catalogSourceId})`,
+      sourceIdentifier: `${cat.provider}:${cat.catalogSourceId}`,
+      license: resolveCatalogLicense(cat.provider),
+      observationTimeUtc: solution.observedAtUTC,
+      modelEpochUtc: cat.coordinateEpoch,
+      coordinateFrame: 'ICRS (Barycentric / Heliocentric Parsec & Equatorial J2000)',
+      coordinateSpace: 'astronomical',
+      units: {
+        raDeg: 'deg',
+        decDeg: 'deg',
+        apparentMagnitude: 'mag',
+        distancePc: 'pc',
+      },
+      uncertaintyDescription: dist
+        ? `Bailer-Jones distance ${dist.median.toFixed(1)} pc (68% CI: ${dist.lower.toFixed(1)}–${dist.upper.toFixed(1)} pc via ${dist.method})${cat.parallaxMas !== undefined && cat.parallaxErrorMas !== undefined ? `; parallax ${cat.parallaxMas.toFixed(2)} ± ${cat.parallaxErrorMas.toFixed(2)} mas` : ''}`
+        : finding.evidence.distanceUncertaintyNote ??
+          `Angular uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec`,
+      processingDescription: `Citation: ${cat.citation}`,
+      coverageDescription: `${cat.constellation} (${cat.objectType}, m=${cat.apparentMagnitude.toFixed(2)})`,
+    };
+
+    return [captureRecord, wcsRecord, catalogRecord];
+  }
+
+  const uncatalogedOrModelRecord: EvidenceRecord =
+    finding.evidenceClass === 'observed'
+      ? {
+          id: `${finding.id}:catalog:uncataloged`,
+          kind: 'captured',
+          title: `Uncataloged Sensor Locus (${finding.title})`,
+          sourceIdentifier: `uncataloged:${finding.id}`,
+          license: 'Observer First-Party Telemetry',
+          observationTimeUtc: solution.observedAtUTC,
+          modelEpochUtc: solution.observedAtUTC,
+          coordinateFrame: 'ICRS J2000 (WCS Back-Projected)',
+          coordinateSpace: 'astronomical',
+          units: {
+            raDeg: 'deg',
+            decDeg: 'deg',
+            uncertaintyArcsec: 'arcsec',
+          },
+          uncertaintyDescription: `Positional uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec; no static reference entry in ${solution.solver.catalogRelease} within match radius.`,
+          processingDescription:
+            'Differential photometry candidate (Observed ≠ Static Catalog Baseline)',
+          coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° outside bright-star baseline threshold`,
+        }
+      : {
+          id: `${finding.id}:model:${solution.id}`,
+          kind: deriveEvidenceKind(finding, solution.status),
+          title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
+          sourceIdentifier: `${solution.solver.catalogRelease}:${finding.id}`,
+          license: 'NASA JPL / IAU SOFA Ephemeris',
+          observationTimeUtc: solution.observedAtUTC,
+          modelEpochUtc: solution.observedAtUTC,
+          coordinateFrame: 'Topocentric / ICRS J2000',
+          coordinateSpace: 'astronomical',
+          units: {
+            raDeg: 'deg',
+            decDeg: 'deg',
+            uncertaintyArcsec: 'arcsec',
+          },
+          uncertaintyDescription: `Model uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec`,
+          processingDescription: finding.evidence.verificationMethod,
+          coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}°`,
+        };
+
+  return [captureRecord, wcsRecord, uncatalogedOrModelRecord];
+}
+

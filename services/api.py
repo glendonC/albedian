@@ -25,6 +25,7 @@ from services.science.deep_sky import (
     compute_stellar_astrophysics,
 )
 from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.discovery_engine import run_frontier_sky_discovery_audit
 from services.science.radiometry import (
     compute_krisciunas_schaefer_sky_brightness,
     compute_lunar_phase_and_illumination,
@@ -423,3 +424,28 @@ def post_voice_command(req: VoiceCommandRequest) -> dict[str, Any]:
     )
     outcome["proposedAction"] = action
     return outcome
+
+
+class DiscoveryAuditRequest(BaseModel):
+    """Request payload for `POST /api/science/discover-anomalies`."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    session_id: str = Field(default="session-live", alias="sessionId")
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    frame_count: int = Field(default=16, alias="frameCount")
+    sky_brightness_mag_arcsec2: float = Field(default=19.6, alias="skyBrightnessMagArcsec2")
+    median_residual_px: float = Field(default=0.34, alias="medianResidualPx")
+
+
+@app.post("/api/science/discover-anomalies")
+def post_science_discover_anomalies(req: DiscoveryAuditRequest) -> dict[str, Any]:
+    """Run coherent multi-frame stacking SNR recovery, differential photometry, and uncataloged transient isolation."""
+    return run_frontier_sky_discovery_audit(
+        session_id=req.session_id,
+        findings=req.findings,
+        frame_count=req.frame_count,
+        sky_brightness_mag_arcsec2=req.sky_brightness_mag_arcsec2,
+        median_residual_px=req.median_residual_px,
+    )
+

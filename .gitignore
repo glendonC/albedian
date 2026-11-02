@@ -19,6 +19,8 @@ build/
 data/uploads/
 data/artifacts/
 apps/web/public/morocco/
+apps/web/public/splats/*.rad
+apps/web/public/splats/*.zip
 *.sqlite
 *.sqlite3
 *.db

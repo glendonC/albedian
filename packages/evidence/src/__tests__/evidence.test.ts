@@ -2,13 +2,22 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   AuthorizedCalibrationProof,
+  buildFindingEvidenceRecords,
+  deriveEvidenceKind,
+  deriveOperationalInstrumentStatus,
   evaluateWCSVerificationGate,
   formatDistanceWithUncertainty,
   getEpistemicBadgeDescriptor,
   promoteFindingToCatalogMatched,
   validateEvidenceTransition,
 } from '../index.js';
-import { CelestialFinding, EvidenceClass } from '@albedian/contracts';
+import {
+  CelestialFinding,
+  EvidenceClass,
+  EvidenceRecordSchema,
+  ObservationSolution,
+  SourceAsset,
+} from '@albedian/contracts';
 
 describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', () => {
   it('PBT-EVID-1: No Predicted or Simulated finding may ever become Observed, nor become Catalog Matched without valid pixel+WCS proof', () => {
@@ -243,5 +252,208 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
     const [x, y, z] = promoted.cartesianParsecICRS!;
     const norm = Math.hypot(x, y, z);
     expect(norm).toBeCloseTo(264.5, 4);
+  });
+
+  it('derives OperationalInstrumentStatus, EvidenceKind, and structured EvidenceRecord provenance chain', () => {
+    expect(deriveOperationalInstrumentStatus('pending')).toBe('REGISTERING');
+    expect(deriveOperationalInstrumentStatus('calibrated')).toBe('MATCHED');
+    expect(deriveOperationalInstrumentStatus('approximate')).toBe('RECONSTRUCTED');
+    expect(deriveOperationalInstrumentStatus('predicted_only')).toBe('PROPAGATED');
+    expect(deriveOperationalInstrumentStatus('ambiguous')).toBe('NO COVERAGE');
+    expect(deriveOperationalInstrumentStatus('unresolved')).toBe('SOURCE UNAVAILABLE');
+
+    const sourceAsset: SourceAsset = {
+      id: 'asset_01',
+      title: 'High-Altitude Night Field Recording',
+      mediaKind: 'video',
+      sha256: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      uri: '/data/uploads/night_field.mp4',
+      width: 1920,
+      height: 1080,
+      durationMs: 12000,
+      fpsNumerator: 30,
+      fpsDenominator: 1,
+      videoCodec: 'hevc',
+      audioStreams: [],
+      capturedAtUTC: '2026-02-19T00:46:12Z',
+      observerLocation: {
+        latDeg: 30.0,
+        lonDeg: -40.0,
+        elevationM: 712,
+        placeName: 'synthetic site',
+      },
+      privacyClass: 'public_sample',
+      immutable: true,
+    };
+
+    const catalogMatchedFinding: CelestialFinding = {
+      id: 'finding_rigel',
+      observationSolutionId: 'sol_01',
+      evidenceClass: 'catalog_matched',
+      title: 'Rigel',
+      subtitle: 'Beta Orionis · Orion',
+      sourceDetection: {
+        assetId: 'asset_01',
+        frameTimeSec: 2.5,
+        xPx: 642.1,
+        yPx: 318.4,
+        flux: 4820,
+        snr: 18.4,
+        fwhmPx: 2.2,
+        centroidUncertaintyPx: 0.15,
+      },
+      catalogRef: {
+        id: 'cat_rigel',
+        provider: 'Gaia DR3',
+        releaseVersion: 'DR3-2022',
+        catalogSourceId: 'HIP 24436',
+        commonName: 'Rigel',
+        bayerDesignation: 'Beta Orionis',
+        constellation: 'Orion',
+        objectType: 'star',
+        coordinateEpoch: 'J2016.0',
+        raDeg: 78.6345,
+        decDeg: -8.2016,
+        apparentMagnitude: 0.13,
+        bailerJonesDistancePc: {
+          lower: 240.0,
+          median: 264.5,
+          upper: 290.0,
+          method: 'photogeometric_bailer_jones_edr3',
+        },
+        citation: 'ESA Gaia DR3 / Hipparcos HIP 24436',
+      },
+      skyPosition: {
+        raDeg: 78.6345,
+        decDeg: -8.2016,
+        uncertaintyArcsec: 14.2,
+      },
+      inferredDistancePc: {
+        lower: 240.0,
+        median: 264.5,
+        upper: 290.0,
+        method: 'photogeometric_bailer_jones_edr3',
+      },
+      evidence: {
+        id: 'ev_rigel',
+        evidenceClass: 'catalog_matched',
+        verificationMethod: 'Geometric quad hash + held-out TAN WCS verification',
+        sourceAssetSha256: sourceAsset.sha256,
+        wcsSolutionId: 'wcs_01',
+        catalogReferenceId: 'cat_rigel',
+        angularResidualArcsec: 14.2,
+        pixelResidualPx: 0.39,
+        limitations: ['68% Bailer-Jones photogeometric interval'],
+        verifiedByIndependentHoldout: true,
+      },
+    };
+
+    const uncatalogedObservedFinding: CelestialFinding = {
+      id: 'finding-field-star-101',
+      observationSolutionId: 'sol_01',
+      evidenceClass: 'observed',
+      title: 'Uncataloged Sensor Detection #101',
+      subtitle: 'SNR 6.8 · (412.0, 210.5)',
+      sourceDetection: {
+        assetId: 'asset_01',
+        frameTimeSec: 2.5,
+        xPx: 412.0,
+        yPx: 210.5,
+        flux: 520,
+        snr: 6.8,
+        fwhmPx: 2.1,
+        centroidUncertaintyPx: 0.31,
+      },
+      skyPosition: {
+        raDeg: 81.12,
+        decDeg: -4.85,
+        uncertaintyArcsec: 18.0,
+      },
+      evidence: {
+        id: 'ev_101',
+        evidenceClass: 'observed',
+        verificationMethod: 'DAOStarFinder local peak SNR >= 3.5',
+        sourceAssetSha256: sourceAsset.sha256,
+        limitations: ['No static catalog reference entry within match radius'],
+        verifiedByIndependentHoldout: false,
+      },
+    };
+
+    const solution: ObservationSolution = {
+      id: 'sol_01',
+      sourceAssetId: sourceAsset.id,
+      sourceSha256: sourceAsset.sha256,
+      frameTimeSec: 2.5,
+      revision: 1,
+      status: 'calibrated',
+      observedAtUTC: '2026-02-19T00:46:12Z',
+      observerLocation: {
+        latDeg: 30.0,
+        lonDeg: -40.0,
+        placeName: 'synthetic site',
+      },
+      solver: {
+        name: 'AlbedianQuadWCS',
+        version: '2.1.0',
+        catalogRelease: 'Gaia DR3 + Hipparcos Bright Subset',
+      },
+      wcs: {
+        projection: 'TAN',
+        crvalRaDeg: 83.82,
+        crvalDecDeg: -5.39,
+        crpixX: 960,
+        crpixY: 540,
+        scaleDegPerPx: 0.032,
+        rotationDeg: 1.4,
+        radialDistortionK1: -0.002,
+        radialDistortionK2: 0.0001,
+        parity: 1,
+        fovHorizontalDeg: 61.4,
+        fovVerticalDeg: 34.5,
+      },
+      quality: {
+        detectedCandidateCount: 16,
+        matchedInlierCount: 12,
+        heldOutInliers: 8,
+        medianResidualPx: 0.42,
+        p95ResidualPx: 0.91,
+        medianResidualArcsec: 15.1,
+        passedIndependentVerification: true,
+      },
+      findings: [catalogMatchedFinding, uncatalogedObservedFinding],
+      warnings: [],
+    };
+
+    expect(deriveEvidenceKind(catalogMatchedFinding, 'calibrated')).toBe('registered');
+    expect(deriveEvidenceKind(uncatalogedObservedFinding, 'calibrated')).toBe('captured');
+    expect(deriveOperationalInstrumentStatus('calibrated', catalogMatchedFinding)).toBe('MATCHED');
+    expect(deriveOperationalInstrumentStatus('calibrated', uncatalogedObservedFinding)).toBe(
+      'NO COVERAGE'
+    );
+
+    const records = buildFindingEvidenceRecords(sourceAsset, solution, catalogMatchedFinding);
+    expect(records).toHaveLength(3);
+    for (const rec of records) {
+      expect(() => EvidenceRecordSchema.parse(rec)).not.toThrow();
+      expect(rec.sourceIdentifier).toBeTruthy();
+      expect(rec.observationTimeUtc).toBe('2026-02-19T00:46:12Z');
+      expect(rec.modelEpochUtc).toBeTruthy();
+      expect(rec.coordinateFrame).toBeTruthy();
+      expect(rec.uncertaintyDescription).toBeTruthy();
+      expect(rec.coverageDescription).toBeTruthy();
+    }
+    expect(records[0]?.kind).toBe('captured');
+    expect(records[1]?.kind).toBe('registered');
+    expect(records[2]?.kind).toBe('catalog-derived');
+    expect(records[2]?.sourceIdentifier).toBe('Gaia DR3:HIP 24436');
+
+    const uncatalogedRecords = buildFindingEvidenceRecords(
+      sourceAsset,
+      solution,
+      uncatalogedObservedFinding
+    );
+    expect(uncatalogedRecords).toHaveLength(3);
+    expect(uncatalogedRecords[2]?.kind).toBe('captured');
+    expect(uncatalogedRecords[2]?.sourceIdentifier).toBe('uncataloged:finding-field-star-101');
   });
 });

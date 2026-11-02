@@ -14,18 +14,92 @@ import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
  */
 
 export const ALBEDIAN_COLORS = {
-  space0: '#06090D',
-  space1: '#10161D',
-  surfaceRaised: '#1B232B',
-  borderSubtle: 'rgba(209, 233, 239, 0.14)',
-  textPrimary: '#F1F4F6',
-  textSecondary: '#A4ADB5',
-  textMuted: '#85929E',
-  accentObservation: '#D1E9EF',
-  accentCatalog: '#81C5CC',
-  accentPredicted: '#D9AE75',
-  accentWarning: '#E6AA8C',
-  accentSimulation: '#ABB0D6',
+  // Primary Lunar Regolith & CyberLife Obsidian tokens (Detroit: Become Human / ARC Raiders / SpaceX Crew Dragon / GRU Space)
+  voidObsidian: '#040507',
+  instrumentSlate: '#090B10',
+  elevatedHairline: '#1A1E26',
+  starlightBone: '#F4F2ED',
+  tungstenMuted: '#9499A3',
+  dimGraphite: '#585E6B',
+  accentObserved: '#F4F2ED',
+  accentCatalog: '#88C0D0',
+  accentPredicted: '#D9A05B',
+  accentSimulated: '#A39EC4',
+  semanticVerified: '#78A890',
+  semanticCaution: '#D49A54',
+  semanticDanger: '#E04F33',
+
+  // Foundational surface & contrast aliases
+  space0: '#040507',
+  space1: '#090B10',
+  surfaceRaised: '#1A1E26',
+  borderSubtle: 'rgba(244, 242, 237, 0.14)',
+  textPrimary: '#F4F2ED',
+  textSecondary: '#D6D3CD',
+  textMuted: '#8E929B',
+  accentObservation: '#F4F2ED',
+  accentWarning: '#D49A54',
+  accentSimulation: '#A39EC4',
+} as const;
+
+export type AlbedianThemeMode = 'dark' | 'light';
+
+export interface AlbedianThemeTokenSet {
+  mode: AlbedianThemeMode;
+  label: string;
+  bg: string;
+  surface: string;
+  surfaceElevated: string;
+  border: string;
+  borderStrong: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  accentIce: string;
+  accentGold: string;
+  accentVermilion: string;
+  accentLavender: string;
+}
+
+/**
+ * Dual-Theme Observational Instrument Palettes:
+ * - `dark`: CyberLife Obsidian (#040507 / #090B10) with Lunar Bone (#F4F2ED)
+ * - `light`: Lunar Albedo (#F4F2ED / #EAE6DF) with Obsidian Ink (#090B10),
+ *   inspired by Starfield Constellation, Oblivion Lighttable, Detroit: Become Human & Destiny 2 Director.
+ */
+export const ALBEDIAN_THEMES: Record<AlbedianThemeMode, AlbedianThemeTokenSet> = {
+  dark: {
+    mode: 'dark',
+    label: 'CyberLife Obsidian',
+    bg: '#040507',
+    surface: 'rgba(9, 11, 16, 0.78)',
+    surfaceElevated: 'rgba(26, 30, 38, 0.88)',
+    border: 'rgba(244, 242, 237, 0.14)',
+    borderStrong: 'rgba(244, 242, 237, 0.38)',
+    text: '#F4F2ED',
+    textSecondary: '#D6D3CD',
+    textMuted: '#9499A3',
+    accentIce: '#88C0D0',
+    accentGold: '#D9A05B',
+    accentVermilion: '#E04F33',
+    accentLavender: '#A39EC4',
+  },
+  light: {
+    mode: 'light',
+    label: 'Lunar Albedo',
+    bg: '#F4F2ED',
+    surface: 'rgba(234, 230, 223, 0.84)',
+    surfaceElevated: 'rgba(248, 246, 242, 0.94)',
+    border: 'rgba(9, 11, 16, 0.14)',
+    borderStrong: 'rgba(9, 11, 16, 0.42)',
+    text: '#090B10',
+    textSecondary: '#2C313C',
+    textMuted: '#585E6B',
+    accentIce: '#2B6E82',
+    accentGold: '#9E6820',
+    accentVermilion: '#C8371B',
+    accentLavender: '#5B5482',
+  },
 } as const;
 
 export const ALBEDIAN_TYPOGRAPHY = {
@@ -224,6 +298,55 @@ export function getMarkerVisualSpec(params: {
 }
 
 /**
+ * Default baseline visual specifications indexed by `EvidenceClass`.
+ */
+export const EVIDENCE_MARKER_SPECS: Record<EvidenceClass, MarkerVisualSpec> = {
+  observed: getMarkerVisualSpec({
+    evidenceClass: 'observed',
+    title: 'Observed Source',
+    isSelected: false,
+    isFocused: false,
+    isHovered: false,
+  }),
+  catalog_matched: getMarkerVisualSpec({
+    evidenceClass: 'catalog_matched',
+    title: 'Catalog Match',
+    isSelected: false,
+    isFocused: false,
+    isHovered: false,
+  }),
+  predicted: getMarkerVisualSpec({
+    evidenceClass: 'predicted',
+    title: 'Predicted Ephemeris',
+    isSelected: false,
+    isFocused: false,
+    isHovered: false,
+  }),
+  simulated: getMarkerVisualSpec({
+    evidenceClass: 'simulated',
+    title: 'Simulated Model',
+    isSelected: false,
+    isFocused: false,
+    isHovered: false,
+  }),
+};
+
+/**
+ * Computes a clamped [0, 100] split percentage for the synchronized A/B comparison wipe.
+ */
+export function computeWipeSplitPercentage(
+  pointerClientX: number,
+  containerLeftPx: number,
+  containerWidthPx: number
+): number {
+  if (containerWidthPx <= 0) {
+    return 50;
+  }
+  const rawPct = ((pointerClientX - containerLeftPx) / containerWidthPx) * 100;
+  return Math.max(0, Math.min(100, rawPct));
+}
+
+/**
  * Computes WCAG 2.1 relative luminance and contrast ratio between two `#RRGGBB` colors.
  */
 export function computeContrastRatio(hexA: string, hexB: string): number {
@@ -296,3 +419,84 @@ export function computeAudioBusGains(params: {
     sourcePlaybackAllowed: true,
   };
 }
+
+export type CoordinateSpaceBadgeLabel =
+  | 'SPACE: ASTRONOMICAL (SKY / ICRS)'
+  | 'SPACE: EXPLANATORY SPECIMEN'
+  | 'SPACE: GEODESIC MODEL';
+
+export type OperationalInstrumentStatusLabel =
+  | 'MATCHED'
+  | 'REGISTERED'
+  | 'PROPAGATED'
+  | 'RECONSTRUCTED'
+  | 'NO COVERAGE';
+
+/**
+ * Resolves the active Coordinate Space Badge per Track 1 & Track 14 of the Master Brief.
+ */
+export function resolveCoordinateSpaceBadge(params: {
+  lensMode: 'clean_aperture' | 'isometric_strata' | 'geodesic_exploded';
+  isSpace3D: boolean;
+}): CoordinateSpaceBadgeLabel {
+  if (params.isSpace3D) {
+    return 'SPACE: ASTRONOMICAL (SKY / ICRS)';
+  }
+  if (params.lensMode === 'isometric_strata') {
+    return 'SPACE: EXPLANATORY SPECIMEN';
+  }
+  if (params.lensMode === 'geodesic_exploded') {
+    return 'SPACE: GEODESIC MODEL';
+  }
+  return 'SPACE: ASTRONOMICAL (SKY / ICRS)';
+}
+
+/**
+ * Resolves the SpaceX / Mielke Operational Instrument Status Badge per Track 3 of the Master Brief.
+ */
+export function resolveOperationalInstrumentStatus(params: {
+  solutionStatus:
+    | 'pending'
+    | 'calibrated'
+    | 'approximate'
+    | 'predicted_only'
+    | 'unresolved'
+    | 'ambiguous';
+  selectedEvidenceClass?: EvidenceClass;
+  hasCatalogMatch?: boolean;
+  spatialViewMode: 'source_2d' | 'registered_sky' | 'sky_2d' | 'catalog_3d' | 'modeled_epoch';
+  lensMode: 'clean_aperture' | 'isometric_strata' | 'geodesic_exploded';
+  simulationYear: number;
+  captureYear: number;
+}): { label: OperationalInstrumentStatusLabel; colorHex: string } {
+  if (
+    params.solutionStatus === 'predicted_only' ||
+    params.solutionStatus === 'unresolved' ||
+    params.solutionStatus === 'pending' ||
+    params.solutionStatus === 'ambiguous'
+  ) {
+    return { label: 'NO COVERAGE', colorHex: ALBEDIAN_COLORS.semanticDanger };
+  }
+  if (
+    params.spatialViewMode === 'catalog_3d' ||
+    params.lensMode === 'isometric_strata'
+  ) {
+    return { label: 'RECONSTRUCTED', colorHex: ALBEDIAN_COLORS.accentSimulated };
+  }
+  if (
+    params.solutionStatus === 'approximate' ||
+    params.spatialViewMode === 'modeled_epoch' ||
+    params.simulationYear !== params.captureYear
+  ) {
+    return { label: 'PROPAGATED', colorHex: ALBEDIAN_COLORS.accentPredicted };
+  }
+  if (
+    params.solutionStatus === 'calibrated' &&
+    params.selectedEvidenceClass === 'observed' &&
+    !params.hasCatalogMatch
+  ) {
+    return { label: 'REGISTERED', colorHex: ALBEDIAN_COLORS.starlightBone };
+  }
+  return { label: 'MATCHED', colorHex: ALBEDIAN_COLORS.accentCatalog };
+}
+
