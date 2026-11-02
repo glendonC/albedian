@@ -1,233 +1,1459 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 :root {
-  --alb-space-0: #06090D;
-  --alb-space-1: #10161D;
-  --alb-surface-raised: #1B232B;
-  --alb-border-subtle: rgba(209, 233, 239, 0.14);
-  --alb-text-primary: #F1F4F6;
-  --alb-text-secondary: #A4ADB5;
-  --alb-text-muted: #85929E;
-  --alb-accent-observation: #D1E9EF;
-  --alb-accent-catalog: #81C5CC;
-  --alb-accent-predicted: #D9AE75;
-  --alb-accent-warning: #E6AA8C;
-  --alb-accent-simulation: #ABB0D6;
-  --alb-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  --alb-font-mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace;
+  --alb-bg: #020307;
+  --alb-glass: rgba(10, 14, 24, 0.72);
+  --alb-glass-strong: rgba(8, 12, 22, 0.88);
+  --alb-border: rgba(255, 255, 255, 0.11);
+  --alb-border-bright: rgba(255, 255, 255, 0.24);
+  --alb-text: #f8fafc;
+  --alb-text-secondary: rgba(226, 232, 240, 0.76);
+  --alb-text-muted: rgba(148, 163, 184, 0.72);
+  --alb-accent: #60a5fa;
+  --alb-gold: #facc15;
+  --alb-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --alb-font-mono: 'JetBrains Mono', monospace;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  background-color: var(--alb-space-0);
-  color: var(--alb-text-primary);
-  font-family: var(--alb-font-sans);
-  -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-  user-select: none;
-}
-
-.alb-tabular {
-  font-family: var(--alb-font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.alb-shell {
-  display: grid;
-  grid-template-rows: 52px 1fr auto;
+.alb-root {
+  position: relative;
   width: 100vw;
   height: 100vh;
-  background-color: var(--alb-space-0);
+  overflow: hidden;
+  background: var(--alb-bg);
+  color: var(--alb-text);
+  font-family: var(--alb-font-sans);
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
-.alb-topbar {
+.alb-canvas-host {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: grab;
+}
+
+.alb-canvas-host:active {
+  cursor: grabbing;
+}
+
+/* ============================================================================
+   TOP BAR: WHISPER-QUIET ORIGIN BREADCRUMB & INSTRUMENT PILLS
+   ============================================================================ */
+.alb-top-bar {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  background-color: var(--alb-space-1);
-  border-bottom: 1px solid var(--alb-border-subtle);
-  z-index: 20;
+  pointer-events: none;
 }
 
-.alb-brand {
+.alb-origin-pill,
+.alb-instrument-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--alb-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--alb-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.alb-origin-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
+  margin-left: 4px;
+}
+
+.alb-brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--alb-text);
+  padding: 0 2px;
+}
+
+.alb-pill-sep {
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 12px;
+}
+
+.alb-clip-tabs,
+.alb-band-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alb-clip-tab,
+.alb-inst-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--alb-text-secondary);
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.alb-clip-tab:hover,
+.alb-inst-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.alb-clip-tab.is-active,
+.alb-inst-btn.is-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.alb-return-pill-btn {
+  appearance: none;
+  border: 1px solid rgba(250, 204, 21, 0.38);
+  background: rgba(250, 204, 21, 0.12);
+  color: #fef08a;
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.alb-return-pill-btn:hover {
+  background: rgba(250, 204, 21, 0.22);
+}
+
+/* ============================================================================
+   H1: DRAGGABLE SPECTRAL MONOCLE (Toolglass & Magic Lens)
+   ============================================================================ */
+.alb-spectral-monocle {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  z-index: 12;
+  cursor: grab;
+  pointer-events: auto;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 18px 48px rgba(0, 0, 0, 0.55),
+    inset 0 0 28px rgba(96, 165, 250, 0.12);
+  transition: box-shadow 0.2s ease;
+}
+
+.alb-spectral-monocle:active {
+  cursor: grabbing;
+}
+
+.alb-monocle-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.alb-monocle-rim-header {
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(8, 12, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--alb-text);
+}
+
+.alb-monocle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.alb-monocle-code {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+
+.alb-monocle-drag-hint {
+  color: var(--alb-text-muted);
+  font-size: 10.5px;
+  padding-left: 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.alb-monocle-band-pills {
+  position: absolute;
+  bottom: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(8, 12, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  white-space: nowrap;
+}
+
+.alb-monocle-pill {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--alb-text-secondary);
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.alb-monocle-pill.is-active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+/* ============================================================================
+   SKY NODES & SINGLE SELECTED TARGET CALLOUT (Zero Label Collision Clutter)
+   ============================================================================ */
+.alb-sky-markers-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.alb-sky-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.alb-sky-node-ring {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(244, 241, 234, 0.36);
+  background: transparent;
+  transition: all 0.18s ease;
+}
+
+.alb-sky-node:hover .alb-sky-node-ring,
+.alb-sky-node.is-selected .alb-sky-node-ring {
+  width: 14px;
+  height: 14px;
+  border-color: #e2b86b;
+  background: rgba(226, 184, 107, 0.18);
+  box-shadow: 0 0 12px rgba(226, 184, 107, 0.45);
+}
+
+.alb-sky-node-leader {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  pointer-events: none;
+}
+
+.alb-sky-node-line {
+  width: 24px;
+  height: 1px;
+  background: rgba(244, 241, 234, 0.42);
+}
+
+.alb-sky-node-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(244, 241, 234, 0.28);
+  white-space: nowrap;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.92);
+}
+
+.alb-sky-node-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f4f1ea;
+}
+
+.alb-sky-node-dist {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: #e2b86b;
+}
+
+/* ============================================================================
+   3D SUBJECT CALLOUT TAG
+   ============================================================================ */
+.alb-3d-subject-callout {
+  position: absolute;
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.alb-3d-callout-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.alb-3d-callout-line {
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.2));
+}
+
+.alb-3d-callout-body {
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(8, 12, 22, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px);
+}
+
+.alb-3d-callout-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--alb-accent);
+  margin-bottom: 2px;
+}
+
+.alb-3d-callout-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* ============================================================================
+   UPPER-LEFT: IMMUTABLE SOURCE PIP CARD
+   ============================================================================ */
+.alb-source-card {
+  position: absolute;
+  top: 74px;
+  left: 24px;
+  width: 268px;
+  z-index: 18;
+  border-radius: 16px;
+  background: var(--alb-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--alb-border);
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.alb-source-media {
+  position: relative;
+  width: 100%;
+  height: 132px;
+  background: #000;
+}
+
+.alb-source-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.alb-source-badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alb-source-tag {
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(6, 10, 18, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+.alb-source-compare {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.82);
+  color: #ffffff;
+  font-family: var(--alb-font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.alb-source-meta {
+  padding: 10px 12px;
+}
+
+.alb-source-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.alb-source-device {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.alb-source-coords {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: var(--alb-accent);
+}
+
+.alb-source-sub {
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  color: var(--alb-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   RIGHT: EDITORIAL SCIENTIFIC SPECIMEN CARD + H3 PHOTON RECEIPT
+   ============================================================================ */
+.alb-specimen-card {
+  position: absolute;
+  top: 74px;
+  right: 24px;
+  width: 344px;
+  z-index: 18;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--alb-glass);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--alb-border);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.52);
+}
+
+.alb-specimen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.alb-specimen-badge {
+  font-size: 11px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.alb-specimen-title {
+  margin: 0 0 4px 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.alb-specimen-sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--alb-text-muted);
+}
+
+.alb-specimen-index {
+  font-family: var(--alb-font-sans);
+  font-size: 32px;
+  font-weight: 200;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.32);
+  font-variant-numeric: tabular-nums;
+}
+
+/* H3 Photon Receipt */
+.alb-photon-receipt {
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+}
+
+.alb-photon-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 7px;
+}
+
+.alb-photon-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--alb-text-secondary);
+}
+
+.alb-photon-epoch {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: var(--alb-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.alb-photon-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.alb-photon-node {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.alb-photon-node.is-origin {
+  background: var(--alb-gold);
+}
+
+.alb-photon-node.is-arrival {
+  background: #34d399;
+}
+
+.alb-photon-bar {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--alb-gold), #60a5fa, #34d399);
+}
+
+.alb-photon-caption {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.alb-photon-sub {
+  font-size: 11px;
+  color: var(--alb-text-muted);
+}
+
+.alb-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.alb-metric-cell {
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.alb-metric-label {
+  font-size: 10.5px;
+  color: var(--alb-text-muted);
+}
+
+.alb-metric-val {
+  font-family: var(--alb-font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.alb-specimen-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.alb-primary-action-btn {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.94);
+  color: #060911;
+  font-family: var(--alb-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.16s ease;
+}
+
+.alb-primary-action-btn:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.alb-primary-action-btn.is-return {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.alb-secondary-action-btn {
+  appearance: none;
+  border: 1px solid var(--alb-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--alb-text-secondary);
+  font-family: var(--alb-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* ============================================================================
+   H2: SITERRA 7-LAYER TILTING ISOMETRIC EVIDENCE SPECIMEN (01–07)
+   Matches media_1793482708413_8b54d14d.png
+   ============================================================================ */
+.alb-siterra-overlay {
+  position: absolute;
+  inset: 72px 24px 92px 24px;
+  z-index: 25;
+  border-radius: 22px;
+  background: rgba(7, 10, 18, 0.88);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+  display: grid;
+  grid-template-columns: 340px 1fr 370px;
+  align-items: center;
+  padding: 32px 36px;
+  gap: 24px;
+  overflow: hidden;
+}
+
+.alb-siterra-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.alb-siterra-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--alb-text-muted);
+  margin-bottom: 8px;
+}
+
+.alb-siterra-giant-metric {
+  font-family: var(--alb-font-sans);
+  font-size: 86px;
+  font-weight: 200;
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.alb-siterra-metric-unit {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--alb-accent);
+  margin-bottom: 12px;
+}
+
+.alb-siterra-desc {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--alb-text-secondary);
+}
+
+.alb-siterra-prov {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: var(--alb-text-muted);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 16px;
+}
+
+.alb-siterra-thumbs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.alb-siterra-thumb-card {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.alb-siterra-thumb-card img {
+  width: 100%;
+  height: 76px;
+  object-fit: cover;
+  display: block;
+}
+
+.alb-siterra-thumb-card span {
+  display: block;
+  padding: 5px 8px;
+  font-size: 10.5px;
+  color: var(--alb-text-secondary);
+}
+
+.alb-siterra-footer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Center Isometric 3D Plate Stack */
+.alb-siterra-stage {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1300px;
+}
+
+.alb-siterra-stack {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  transform-style: preserve-3d;
+  transition: transform 0.14s ease-out;
+}
+
+.alb-siterra-plate {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: rgba(18, 25, 42, 0.46);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.42),
+    inset 0 0 24px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.alb-siterra-plate.is-active {
+  background: rgba(30, 44, 72, 0.68);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(96, 165, 250, 0.28);
+}
+
+.alb-plate-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.58;
+}
+
+.alb-plate-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.alb-plate-ring {
+  position: absolute;
+  inset: 34px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
+.alb-plate-corner-num {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.alb-plate-corner-title {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* Right Column: Siterra Leader Lines */
+.alb-siterra-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alb-siterra-leader-row {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s ease;
+}
+
+.alb-siterra-leader-row:hover,
+.alb-siterra-leader-row.is-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.alb-leader-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.alb-leader-line {
+  width: 48px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.26);
+  flex-shrink: 0;
+}
+
+.alb-siterra-leader-row.is-active .alb-leader-line {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.alb-leader-num {
+  font-family: var(--alb-font-mono);
+  font-size: 12px;
+  color: var(--alb-text-muted);
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.alb-leader-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.alb-leader-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.alb-leader-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.alb-leader-sub {
+  font-size: 11px;
+  color: var(--alb-text-muted);
+}
+
+/* ============================================================================
+   FRAMELESS DIEGETIC OPTICAL HUD (Two-Tone Starlight Alabaster & Blackbody Gold)
+   Color Theory:
+   - Primary Readout: #F4F1EA (5600K Starlight Alabaster)
+   - Secondary Label: rgba(244, 241, 234, 0.44) (Warm Pewter — Luminance Contrast)
+   - Semantic Accent: #E2B86B (4200K Blackbody Gold — <5% of UI)
+   ============================================================================ */
+
+/* Top-Right Whisper Telemetry Stamp */
+.alb-visor-topright {
+  position: absolute;
+  top: 26px;
+  right: 38px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
+}
+
+.alb-visor-sites,
+.alb-visor-modes {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.alb-brand-title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--alb-text-primary);
-}
-
-.alb-brand-tagline {
-  font-size: 12px;
-  color: var(--alb-text-secondary);
-}
-
-.alb-main-workspace {
-  position: relative;
-  display: flex;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.alb-viewport-container {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  background-color: var(--alb-space-0);
-  overflow: hidden;
-}
-
-.alb-inspector {
-  width: 344px;
-  height: 100%;
-  background-color: var(--alb-space-1);
-  border-left: 1px solid var(--alb-border-subtle);
-  padding: 16px 20px;
-  overflow-y: auto;
-  z-index: 15;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.alb-bottom-rail {
-  background-color: var(--alb-space-1);
-  border-top: 1px solid var(--alb-border-subtle);
-  padding: 10px 20px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 20;
-}
-
-.alb-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 6px 12px;
-  background-color: var(--alb-surface-raised);
-  color: var(--alb-text-primary);
-  border: 1px solid var(--alb-border-subtle);
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: var(--alb-font-sans);
-  cursor: pointer;
-  transition: background-color 140ms ease-out, border-color 140ms ease-out;
-}
-
-.alb-btn:hover:not(:disabled) {
-  background-color: #24303B;
-  border-color: rgba(209, 233, 239, 0.35);
-}
-
-.alb-btn:focus-visible {
-  outline: 2px solid var(--alb-accent-observation);
-  outline-offset: 2px;
-}
-
-.alb-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.alb-btn-active {
-  background-color: rgba(129, 197, 204, 0.16);
-  border-color: var(--alb-accent-catalog);
-  color: var(--alb-accent-observation);
-}
-
-.alb-btn-primary {
-  background-color: rgba(209, 233, 239, 0.14);
-  border-color: var(--alb-accent-observation);
-  color: var(--alb-text-primary);
-  font-weight: 500;
-}
-
-.alb-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 11px;
+.alb-visor-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
   font-family: var(--alb-font-mono);
-  border: 1px solid var(--alb-border-subtle);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  color: rgba(244, 241, 234, 0.42);
+  cursor: pointer;
+  transition: color 0.18s ease;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
 }
 
-.alb-badge-observed {
-  color: var(--alb-accent-observation);
-  border-color: rgba(209, 233, 239, 0.35);
-  background: rgba(209, 233, 239, 0.08);
+.alb-visor-link:hover {
+  color: rgba(244, 241, 234, 0.84);
 }
 
-.alb-badge-catalog_matched {
-  color: var(--alb-accent-catalog);
-  border-color: rgba(129, 197, 204, 0.4);
-  background: rgba(129, 197, 204, 0.1);
+.alb-visor-link.is-active {
+  color: #f4f1ea;
+  font-weight: 600;
 }
 
-.alb-badge-predicted {
-  color: var(--alb-accent-predicted);
-  border-color: rgba(217, 174, 117, 0.4);
-  background: rgba(217, 174, 117, 0.1);
+.alb-visor-divider {
+  color: rgba(244, 241, 234, 0.18);
+  font-size: 10px;
+  user-select: none;
 }
 
-.alb-badge-simulated {
-  color: var(--alb-accent-simulation);
-  border-color: rgba(171, 176, 214, 0.4);
-  background: rgba(171, 176, 214, 0.12);
+.alb-visor-clock {
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(244, 241, 234, 0.64);
 }
 
-.alb-disclosure-pill {
+/* Left Peripheral Two-Tone Telemetry Column (Zero Arbitrary Vertical Lines) */
+.alb-visor-left {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 14px;
-  background-color: rgba(16, 22, 29, 0.92);
-  border: 1px solid var(--alb-border-subtle);
-  border-radius: 4px;
-  font-size: 12px;
-  color: var(--alb-text-primary);
-  pointer-events: none;
-  z-index: 12;
+  top: 76px;
+  left: 38px;
+  z-index: 22;
   display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.alb-visor-metrics-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.alb-visor-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alb-visor-metric-label {
+  font-family: var(--alb-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: rgba(244, 241, 234, 0.44);
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-metric-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.alb-visor-metric-num {
+  font-family: var(--alb-font-sans);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  color: #f4f1ea;
+  text-shadow: 0 4px 22px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-metric-unit {
+  font-family: var(--alb-font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(244, 241, 234, 0.48);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-raw-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  margin-left: 8px;
+  padding: 2px 0;
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: rgba(226, 184, 107, 0.78);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(226, 184, 107, 0.32);
+}
+
+.alb-visor-raw-btn:hover {
+  color: #f4f1ea;
+  border-bottom-color: #f4f1ea;
+}
+
+.alb-visor-route-box {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+
+.alb-visor-micro-pip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.76;
+  transition: opacity 0.2s ease;
+}
+
+.alb-visor-micro-pip:hover {
+  opacity: 1;
+}
+
+.alb-visor-micro-img {
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid rgba(244, 241, 234, 0.18);
+}
+
+.alb-visor-micro-caption {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(244, 241, 234, 0.48);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
+/* In-World Angled Hairline Subject Callout */
+.alb-visor-subject-leader {
+  position: absolute;
+  top: 12%;
+  left: 34%;
+  z-index: 21;
+  width: 260px;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.2s ease;
+}
+
+.alb-visor-subject-leader:hover {
+  transform: translateY(-2px);
+}
+
+.alb-visor-leader-svg {
+  width: 260px;
+  height: 56px;
+  overflow: visible;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.85));
+}
+
+.alb-visor-leader-content {
+  position: absolute;
+  top: 0;
+  left: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.alb-visor-leader-title {
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f4f1ea;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-leader-sub {
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: rgba(244, 241, 234, 0.56);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+/* Bottom-Right Peripheral Target Vector & Scale Horizon */
+.alb-visor-bottomright {
+  position: absolute;
+  right: 38px;
+  bottom: 30px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.alb-visor-delta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.alb-visor-delta-label {
+  font-family: var(--alb-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: rgba(244, 241, 234, 0.44);
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-delta-value {
+  display: flex;
+  align-items: center;
+  font-family: var(--alb-font-sans);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f4f1ea;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-delta-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 2px;
+}
+
+.alb-visor-action-link {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: #e2b86b;
+  cursor: pointer;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.alb-visor-action-link:hover {
+  color: #f4f1ea;
+  transform: translateX(2px);
+}
+
+.alb-visor-action-link.is-muted {
+  color: rgba(244, 241, 234, 0.52);
+  font-weight: 400;
+}
+
+.alb-visor-target-ticks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.alb-visor-tick {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: rgba(244, 241, 234, 0.42);
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+  transition: all 0.16s ease;
+}
+
+.alb-visor-tick:hover {
+  color: rgba(244, 241, 234, 0.84);
+}
+
+.alb-visor-tick.is-active {
+  color: #f4f1ea;
+  font-weight: 600;
+  border-bottom-color: rgba(226, 184, 107, 0.75);
+}
+
+/* Lower Scale Horizon Track */
+.alb-visor-scale-horizon {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 300px;
+}
+
+.alb-visor-scale-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.alb-visor-scale-fraction {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-scale-cur {
+  font-family: var(--alb-font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  color: #f4f1ea;
+  font-variant-numeric: tabular-nums;
+}
+
+.alb-visor-scale-total {
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(244, 241, 234, 0.48);
+}
+
+.alb-visor-scale-extremes {
+  display: flex;
+  align-items: center;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(244, 241, 234, 0.44);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+.alb-visor-progress-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  width: 100%;
+}
+
+.alb-visor-seg {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.alb-visor-seg-line {
+  width: 100%;
+  height: 1.5px;
+  background: rgba(244, 241, 234, 0.18);
+  transition: background 0.2s ease;
+}
+
+.alb-visor-seg.is-passed .alb-visor-seg-line {
+  background: rgba(244, 241, 234, 0.46);
+}
+
+.alb-visor-seg.is-active .alb-visor-seg-line {
+  background: #e2b86b;
+}
+
+.alb-visor-seg-label {
+  font-family: var(--alb-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(244, 241, 234, 0.38);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+  transition: color 0.18s ease;
+}
+
+.alb-visor-seg:hover .alb-visor-seg-label,
+.alb-visor-seg.is-active .alb-visor-seg-label {
+  color: #f4f1ea;
+}
+
+/* Contextual Voice & Command Trigger (Whisper-Quiet Bottom-Left) */
+.alb-visor-summon-trigger {
+  position: absolute;
+  left: 38px;
+  bottom: 30px;
+  z-index: 22;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(244, 241, 234, 0.42);
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  transition: color 0.18s ease;
 }
 
-.alb-command-input {
+.alb-visor-summon-trigger:hover {
+  color: #f4f1ea;
+}
+
+.alb-visor-summon-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e2b86b;
+}
+
+/* Contextual Summoned Voice/Command Overlay (No Basic Boxy Input!) */
+.alb-visor-command-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(520px, 82vw);
+  pointer-events: auto;
+}
+
+.alb-visor-command-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(226, 184, 107, 0.65);
+  background: linear-gradient(180deg, rgba(6, 9, 17, 0.0), rgba(6, 9, 17, 0.55));
+  backdrop-filter: blur(8px);
+}
+
+.alb-visor-mic-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #e2b86b;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.alb-visor-command-input {
   flex: 1;
-  min-height: 36px;
-  padding: 6px 12px;
-  background-color: var(--alb-space-0);
-  color: var(--alb-text-primary);
-  border: 1px solid var(--alb-border-subtle);
-  border-radius: 4px;
-  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: #f4f1ea;
   font-family: var(--alb-font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  outline: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
 }
 
-.alb-command-input:focus {
-  outline: 1px solid var(--alb-accent-catalog);
-  border-color: var(--alb-accent-catalog);
+.alb-visor-command-input::placeholder {
+  color: rgba(244, 241, 234, 0.42);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+.alb-visor-command-close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(244, 241, 234, 0.48);
+  cursor: pointer;
 }
