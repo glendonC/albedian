@@ -11,19 +11,20 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@albedian/contracts": "workspace:*",
-    "@albedian/evidence": "workspace:*",
     "@albedian/camera-rig": "workspace:*",
-    "@albedian/observation": "workspace:*",
+    "@albedian/contracts": "workspace:*",
     "@albedian/design-system": "workspace:*",
+    "@albedian/evidence": "workspace:*",
+    "@albedian/observation": "workspace:*",
+    "@sparkjsdev/spark": "^2.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "three": "^0.174.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "@types/three": "^0.174.0",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^4.3.4",
     "fast-check": "^3.23.2",
     "jsdom": "^26.0.0",
