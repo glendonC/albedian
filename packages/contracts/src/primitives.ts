@@ -13,6 +13,79 @@ export const EvidenceClassSchema = z.enum([
 ]);
 export type EvidenceClass = z.infer<typeof EvidenceClassSchema>;
 
+/**
+ * Granular 8-tier EvidenceKind taxonomy from the Albedian Master Research & Design Brief
+ * (Track 7 & Track 14). Maps cleanly to the 4 top-level EvidenceClass categories while
+ * preserving provenance across captured frames, alternate surveys, reconstructions, and illustrations.
+ */
+export const EvidenceKindSchema = z.enum([
+  'captured',
+  'registered',
+  'catalog-derived',
+  'observed-elsewhere',
+  'propagated',
+  'reconstructed',
+  'simulated',
+  'illustrative',
+]);
+export type EvidenceKind = z.infer<typeof EvidenceKindSchema>;
+
+export const RepresentationModeSchema = z.enum([
+  'capture',
+  'sky',
+  'specimen',
+  'physical-model',
+  'similarity-atlas',
+]);
+export type RepresentationMode = z.infer<typeof RepresentationModeSchema>;
+
+export const CoordinateSpaceKindSchema = z.enum([
+  'astronomical',
+  'similarity',
+  'explanatory',
+]);
+export type CoordinateSpaceKind = z.infer<typeof CoordinateSpaceKindSchema>;
+
+export const OperationalInstrumentStatusSchema = z.enum([
+  'REGISTERING',
+  'MATCHED',
+  'PROPAGATED',
+  'RECONSTRUCTED',
+  'NO COVERAGE',
+  'SOURCE UNAVAILABLE',
+]);
+export type OperationalInstrumentStatus = z.infer<typeof OperationalInstrumentStatusSchema>;
+
+export const EvidenceRecordSchema = z.object({
+  id: z.string(),
+  kind: EvidenceKindSchema,
+  title: z.string(),
+  sourceUrl: z.string().optional(),
+  sourceIdentifier: z.string().optional(),
+  license: z.string().optional(),
+  observationTimeUtc: z.string().optional(),
+  modelEpochUtc: z.string().optional(),
+  coordinateFrame: z.string().optional(),
+  coordinateSpace: CoordinateSpaceKindSchema.optional(),
+  units: z.record(z.string(), z.string()).optional(),
+  uncertaintyDescription: z.string().optional(),
+  processingDescription: z.string().optional(),
+  coverageDescription: z.string().optional(),
+});
+export type EvidenceRecord = z.infer<typeof EvidenceRecordSchema>;
+
+export const MasterObservationStateSchema = z.object({
+  captureId: z.string(),
+  selectedEvidenceId: z.string().optional(),
+  selectedTargetId: z.string().optional(),
+  representation: RepresentationModeSchema,
+  activeBand: z.string().optional(),
+  activeReferenceFrame: z.string().optional(),
+  specimenTiltDeg: z.number().min(0).max(90).optional(),
+  immersive: z.boolean(),
+});
+export type MasterObservationState = z.infer<typeof MasterObservationStateSchema>;
+
 export const SolutionStatusSchema = z.enum([
   'pending',
   'calibrated',
