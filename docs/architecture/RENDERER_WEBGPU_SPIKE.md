@@ -2,7 +2,7 @@
 
 Date: 2026-11-03. Spike code: [`apps/webgpu-spike/`](../../apps/webgpu-spike/) (isolated workspace package, its own `three`).
 Machine: Apple M5 Max (40-core GPU, Metal 4), macOS 26.7, Node 24.15.0, pnpm 10.7.1.
-Sections 9, 10 and 12 were brought up to date with `main` after the spike; the measurements are as taken (see the data note in section 4).
+Sections 9, 10 and 12 were brought up to date with `main` after the spike; the measurements are as taken (see the data note in section 4). Section 10 records milestone 1 of the migration (2026-11-04), with its own measurements.
 
 Every claim carries one label:
 
@@ -122,7 +122,7 @@ Fill-bound work (the volume) runs at nearly the same speed on both backends; Web
 - **Visual parity:** at the same pose the volume and the splats render the same structure, brightness and color ([splats](img/webgpu-spike/local-bubble-splats-three.jpg), [volume](img/webgpu-spike/local-bubble-volume.jpg)); the volume is slightly softer because 0.1-unit voxels blur sheets whose thinnest sigma is 0.042.
 - **Sorting pops:** three's `GaussianSplat` rendered with the order it computed 1.7 degrees earlier (the staleness it shows between re-sorts) against a fresh sort, 24 poses at 1280x720, AA off: largest difference 1 display code value, 0% of pixels at 2 or more. radix and the volume re-rendered at the same pose: 0 difference.
 - **Reddening on the GPU path:** absorption only, extinction x16, bloom and AA off: 665 star pixels dimmed (median display luminance x0.715), their red/blue ratio rose by a median 14.7%, and 86.8% got redder. At x4 (measured in the pane): 128 pixels, +7.4%. At x1 (the splats' own opacity) the stand-in dust is optically thin (tau up to about 0.13) and only 3 star pixels dimmed by more than 15% ([no dust](img/webgpu-spike/reddening-no-dust.jpg), [extinction x16](img/webgpu-spike/reddening-extinction-x16.jpg)).
-- **Bumping `apps/web` to three 0.187 and @types/three 0.187** (on the current WebGLRenderer plus Spark 2.4) typechecked, passed the web tests, and rendered the landing showcase (photosphere, plasma ring, stars and Local Bubble splats visible); the console messages still buffered showed only `THREE.Clock` deprecation warnings. Other regimes were not exercised. The bump was reverted; it is migration step 1.
+- **Bumping `apps/web` to three 0.187 and @types/three 0.187** (on the current WebGLRenderer plus Spark 2.4) typechecked, passed the web tests, and rendered the landing showcase (photosphere, plasma ring, stars and Local Bubble splats visible); the console messages still buffered showed only `THREE.Clock` deprecation warnings. Other regimes were not exercised. The bump was reverted in the spike and landed as migration step 1 (section 10).
 
 ## 5. Dust and nebulae: splats against a ray-marched volume
 
@@ -166,9 +166,10 @@ Because TSL compiles to both backends, compute-only features can degrade on WebG
 
 - **API churn in three's WebGPU path:** `PostProcessing` was renamed to `RenderPipeline` in r183, and r187's compute dispatch check broke radix within a day of its release. Pin exact versions and upgrade deliberately. [verified]
 - **radix maturity:** 0.0.1, a 114-package `dependencies` list, an r187 incompatibility, and missing level of detail. Treat it as a candidate, not a dependency. [verified]
-- **Frame-loop semantics:** in r187 frame-scoped nodes (the scene `PassNode`, bloom) re-render only when the node frame advances, which happens inside `setAnimationLoop`. Offscreen rendering, video export and tests must advance it themselves. [measured]
+- **Frame-loop semantics:** in r187 frame-scoped nodes (the scene `PassNode`, bloom) re-render only when the node frame advances, which happens inside `setAnimationLoop`. Offscreen rendering, video export and tests must advance it themselves. Reproduced in the app in milestone 1 (1 draw call per frame instead of 26); `WebGpuHost.advanceNodeFrame()` does it. [measured]
 - **No large points, no `preserveDrawingBuffer`:** WebGPU points are 1 px, so all five starfield materials and both particle materials need sprites; screenshots need `readRenderTargetPixelsAsync` or a same-task canvas read. [verified]
-- **Color pipeline change:** ACES to AgX, and three code paths tone-map inline (Earth `x/(1+0.56x)`, black hole `x/(1+0.42x)`, nebula plane `x/(1+0.82x)`), which would double-compress under AgX. Needs an art pass. [verified]
+- **Color pipeline change:** ACES to AgX, and three code paths tone-map inline (Earth `x/(1+0.56x)`, black hole `x/(1+0.42x)`, nebula plane `x/(1+0.82x)`), which would double-compress under AgX. Needs an art pass. The Earth's inline curve is gone from the WebGPU port; the atmosphere LUT itself is stored tone-mapped (section 12), so a mild second compression remains there. [verified]
+- **GLSL to WGSL semantics:** the GLSL relied on behaviour WGSL leaves undefined or computes differently: `pow(x, 2.0)` on negative values (NaN in WGSL) and `smoothstep` with reversed edges. Ports must square explicitly and order the edges; a straight transliteration renders NaNs or nothing. [verified]
 - **Depth and velocity:** splats, sprites and volumes write neither, so TRAA, motion blur and depth of field need proxies before they can be trusted on these layers. [inference]
 - **Browser coverage:** measured only in Chromium on macOS. Safari 26 ships WebGPU but was not tested; Firefox, Windows, Android and Linux are unverified. The WebGL2 fallback ran the full spike. [verified, measured]
 - **Measurement fidelity:** GPU timestamps were unusable on this adapter; all numbers are wall clock on one machine. [measured]
@@ -198,21 +199,54 @@ Brought up to date with `main` after the spike, where the Gaia DR3 and Hipparcos
 | | `EffectComposer` + `UnrealBloomPass` + `OutputPass` | | ACES and Unreal bloom | Replace with the spike's `RenderPipeline` chain | 0.5 |
 | | Spark `SparkRenderer`, 3 `SplatMesh` builders, `SparkControls`, `SparkXr` | | Local Bubble, nebula and terrain-mist splats; controls; WebXR | Local Bubble and nebula become volumes; the 1,800 hash-generated terrain-mist splats are dropped or become volume fog; controls and XR move to three | 2.5 |
 
+Milestone 1 ported rows 1, 2, 4, 5, 6 and 12, the Bruneton chunk and the composer for the cislunar scene (section 10).
+
 Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula image plane ported directly, black-hole integrator rewritten), 1 drop (particles), plus infrastructure. About 16 to 17 engineer-days for the port, plus about 30% for integration and visual QA, plus 5 to 8 days for the new physically based layers (catalog stars with GPU culling, dust map volume): roughly 4 to 6 weeks for one engineer. [inference]
 
 ## 10. Migration plan
 
-1. **Bump three in place.** `apps/web` to three 0.187.0 and @types/three 0.187.0 on the current WebGLRenderer and Spark 2.4; replace `THREE.Clock` with `THREE.Timer`. Typecheck, tests and the landing render already pass. [measured, proposed]
-2. **Contracts first.** The architecture owner adds a render-layer contract in `packages/contracts` (layer kind, `EvidenceClass`, disclosure string) so stars, dust and capture-site layers carry their evidence class into the UI. [proposed]
-3. **Renderer host.** A `WebGPURenderer` host in `apps/web/src/spatial` with `forceWebGL` fallback, `setAnimationLoop`, resize and DPR handling, readback-based screenshots, and explicit node-frame advancing for offscreen work. [proposed]
-4. **Post chain.** Replace `EffectComposer` with the spike's [`post.ts`](../../apps/webgpu-spike/src/render/post.ts): HalfFloat pass, dust volume, bloom, cinema optics node, AgX, FXAA by default (SMAA as a quality option). Review the ACES-to-AgX look. [proposed]
-5. **Stars.** Replace the catalog star material in `catalogStars/CatalogStarField.ts` with analytic-PSF sprites fed by the same Gaia DR3 and Hipparcos tiles, then add compute culling for deeper tiles. [proposed]
-6. **Direct ports.** Sky dome, Earth, atmosphere, Moon, photosphere, corona, ring, Bruneton chunk, cinema node. [proposed]
+Milestone 1 (steps 1 to 5, with the step 6 ports the cislunar scene needs) landed on 2026-11-04 on branch `claude/xenodochial-mclean-6796f5`. The WebGL2 and Spark renderer stays the default; `?renderer=webgpu` selects the new host, which draws the cislunar landing scene only. Everything after milestone 1 is still [proposed].
+
+1. **Bump three in place. Landed.** `apps/web` pins three 0.187.0 and @types/three 0.187.0 exactly, on the WebGLRenderer and Spark 2.4; `THREE.Clock` became `THREE.Timer`, connected to the Page Visibility API. Typecheck, tests and the landing render pass, and the console no longer shows the `Clock` deprecation warning. [verified, measured]
+2. **Contracts first. Landed.** `RenderLayerSchema` in [`packages/contracts/src/render-layer.ts`](../../packages/contracts/src/render-layer.ts), mirrored by [`services/contracts/render_layer.py`](../../services/contracts/render_layer.py) (Pydantic). A layer carries `kind`, `evidenceClass`, a one-line `disclosure`, `sources`, and `sourceAssetId` / `observationSolutionId`. The rules hold on both sides: an `observed` or `catalog_matched` layer must name its SourceAsset, a `catalog_matched` layer must name the observation solution with the verified WCS, and `procedural` and `camera_optics` layers must be `simulated`. Unknown fields and explicit nulls are rejected on both sides. The Python side writes `tests/fixtures/render_layer_contract.json`; the Zod tests parse it and compare enums and limits. PBT-LAYER-1 runs on both sides, and removing the always-simulated rule fails both halves (mutation check). `pnpm verify:contracts` now requires the schema. [verified]
+3. **Renderer host. Landed.** [`webgpu/WebGpuHost.ts`](../../apps/web/src/spatial/webgpu/WebGpuHost.ts): `forceWebGL` via `?backend=webgl` (three also falls back by itself when WebGPU cannot start), `setAnimationLoop`, canvas CSS size with the device pixel ratio capped at 2, fixed drawing buffers for benchmarks, readback captures through an RGBA8 render target, `advanceNodeFrame()`, and GPU idle waits (`onSubmittedWorkDone`, or a fence on WebGL2). The host and the cislunar scene load on demand: the build puts them in their own chunk (726 KB, 227 KB gzip), and the default chunk contains no WebGPU backend code. [measured]
+   - The frame-loop trap from section 8 reproduces in the app: rendered outside the loop without advancing the node frame, every frame after the first issues 1 draw call (the final quad) instead of 26. [measured]
+   - At device pixel ratio 2, a 1280x720 CSS canvas gets a 2560x1440 drawing buffer; narrowing it to 900 CSS px gives 1800x1440 with the camera aspect following (1.25). [measured]
+4. **Post chain. Landed.** [`webgpu/postChain.ts`](../../apps/web/src/spatial/webgpu/postChain.ts): `pass()` into HalfFloat, bloom, the cinema optics as a TSL node ([`cinemaOptics.ts`](../../apps/web/src/spatial/webgpu/cinemaOptics.ts): chromatic aberration, the 8-tap anamorphic streak, vignette), AgX and sRGB via `renderOutput`, then FXAA. The GLSL vignette called `smoothstep` with reversed edges, which WGSL leaves undefined; the node uses the identical `1 - smoothstep(0.18, 0.92, r2)`. Bloom uses the spike's settings (strength 0.35, radius 0.5, threshold 2.0), not the composer's 0.64 / 0.72 / 0.6: catalog stars now carry linear flux and their own Airy, halo and spike terms, and a star's core peaks near 318 x 10^(-0.4 m), so a 0.6 threshold put a second glare halo on every star brighter than magnitude 6.8 ([comparison](img/webgpu-migration/stars-before-and-bloom-choice.jpg)). [verified, measured]
+5. **Stars. Landed for the cislunar scene.** [`stars/CatalogStarSpriteField.ts`](../../apps/web/src/spatial/webgpu/stars/CatalogStarSpriteField.ts) streams the same Gaia DR3 and Hipparcos 2007 tiles through `CatalogStarTileLoader` and draws the spike's analytic PSF as instanced sprites, one mesh per tile with its own culling sphere; 7,153 stars are resident in the landing view. Colour comes from the catalog colour index: Gaia BP-RP to B-V by inverting the Gaia DR3 documentation's relation (section 5.5.1, Table 5.9, valid for -0.5 < B-V < 3.5, scatter 0.066 mag), then the blackbody with that B-V (Ballesteros 2012, EPL 97, 34008, eq. 14), then Planck x CIE 1931 to linear sRGB at unit luminance. Colours are observed, not dereddened; a star without a colour index is drawn white. Exposure 650 gives a magnitude 6 star a core peak of 1.27 in linear radiance, against 1.3 at the centre of the WebGL point sprite. The WebGL `CatalogStarField` is unchanged. Compute culling for deeper tiles is still [proposed]. [verified, measured]
+6. **Direct ports. Landed for the cislunar scene; the rest [proposed].** Sky dome as a background node that computes the dome's `SphereGeometry` UVs per pixel and wraps the u derivative at both seams; Earth, atmosphere shell and Moon as node materials; the shared Bruneton lookup as a TSL `Fn` ([`brunetonAtmosphere.ts`](../../apps/web/src/spatial/webgpu/brunetonAtmosphere.ts)) whose loading fallback keys off an explicit ready uniform. The Earth's inline `x/(1+0.56x)` is gone, so AgX is the only tone map. Each layer is declared under the render-layer contract ([`cislunarLayers.ts`](../../apps/web/src/spatial/webgpu/cislunar/cislunarLayers.ts)) and the UI shows "Modeled scene · 6 layers", which expands to each layer's evidence class and disclosure ([screenshot](img/webgpu-migration/cislunar-webgpu-page-disclosure.jpg)). [verified, measured]
+   - Changed on the way: the GLSL squared negative values with `pow(x, 2.0)`, which GLSL leaves undefined and WGSL evaluates as NaN, so the port squares explicitly. Spin and camera easing were per frame; they are now per second at the 60 Hz they were tuned at, so the look no longer depends on refresh rate. `?t=<seconds>` holds the scene clock (showcase drift evaluated at t, no spin) on both renderers, for matched snapshots. [verified, measured]
+   - Dropped: the Moon's four octaves of hashed value noise added as "micro-crater" relief, terrain the LOLA map does not have. The Earth shader's procedural cloud, land and city-light detail went the same way on `main` in `a035536`, replaced by NASA imagery. [verified]
+   - Not ported, because the landing never shows them: the `halpha` and `jwst_ir` band remaps, the spectral monocle, and the unrestored sensor veil of the sky dome; they warn once on the new host. The remaining scenes (photosphere, corona, ring, nebula plane) are [proposed], one landing scene at a time with matched `?t=` snapshots.
 7. **Dust and nebulae.** Local Bubble and nebula as density volumes (voxelized splats for parity first, then the published dust map), half-res march, CCM89 reddening of everything behind them. [proposed]
 8. **Ray-marched set pieces.** Planetary world and black-hole integrator as TSL full-screen passes with adaptive resolution. [proposed]
 9. **Capture-site splats.** three `GaussianSplat` for up to about 1M splats; Spark behind a flag for larger captures until radix or three selects level of detail; move controls off `SparkControls`, and XR off `SparkXr` after a device check. [proposed]
 10. **Remove WebGL-only code.** Drop Spark and the GLSL materials once parity is signed off; keep the WebGL2 fallback through `forceWebGL`. [proposed]
-11. **Verification.** Per-regime readback snapshots, headless WebGPU frame-time budgets in CI using the spike's harness, and Safari and Windows runs before switching the default. [proposed]
+11. **Verification.** Per-regime readback snapshots (the host's `capture()`), headless frame-time budgets in CI with [`frameTimeBench.ts`](../../apps/web/src/spatial/webgpu/frameTimeBench.ts), and Safari and Windows runs before switching the default. [proposed]
+12. **Art pass on the AgX look.** Decide contrast and black level against the measurements below (an AgX look with more contrast, or a lower floor in the sky dome), and whether the Moon's bright limb should keep the composer's bloom and streak. [proposed]
+
+### Milestone 1 frame times, cislunar scene [measured]
+
+Method as in section 4: headless Chrome 156 on the Apple M5 Max, frames from an async loop with the node frame advanced by hand, 60 warm-up frames, 240 serialized frames, 8 pipelined batches of 30. The camera follows the landing's showcase drift over one 14.96 s cycle per 240 frames (the clock is set per frame). Every catalog tile the path needs is loaded before timing. Three runs per backend; each cell lists the three medians.
+
+| Configuration | 1920x1080 | 3840x2160 |
+|---|---|---|
+| WebGPU, pipelined median ms | 0.59, 0.60, 0.59 | 1.04, 1.04, 1.03 |
+| WebGPU, pipelined p95 ms (worst run) | 0.68 | 1.09 |
+| WebGPU, serialized median ms | 0.9, 0.9, 0.9 | 1.4, 1.4, 1.3 |
+| WebGL2 fallback (`forceWebGL`), pipelined median ms | 0.51, 0.50, 0.52 | 1.45, 1.40, 1.41 |
+| WebGL2 fallback, pipelined p95 ms (worst run) | 0.83 | 1.54 |
+| WebGL2 fallback, serialized median ms | 1.4, 1.4, 1.4 | 2.0, 2.0, 2.0 |
+
+Each frame is 26 draw calls and 134,193 triangles; JavaScript submit time was 0.2 ms on WebGPU and 0.1 ms on WebGL2. At 4K the scene uses about 1 ms of the 8.33 ms budget at 120 Hz. An earlier single WebGPU run measured 0.42 ms (1080p) and 1.02 ms (4K) pipelined, within the run-to-run noise noted in section 4. `performance.now()` is coarsened to 0.1 ms in this Chrome, so serialized values come in 0.1 ms steps. The WebGL renderer (`SparkPortalRenderer`) was not timed this way: it has no hook to render frames outside its own requestAnimationFrame loop.
+
+### Milestone 1 before and after, cislunar scene [measured]
+
+`?scene=0&freeze=1&t=4` at 1920x1080, canvas only (page overlays hidden): [WebGL renderer, ACES](img/webgpu-migration/cislunar-webgl-aces-before.jpg), [WebGPU host, AgX](img/webgpu-migration/cislunar-webgpu-agx-after.jpg), [Moon, both](img/webgpu-migration/moon-before-after.jpg).
+
+- The same TSL on the WebGL2 backend matches WebGPU: mean difference 0.009 display code values, 0.01% of pixels differ by 8 or more.
+- The new host against the WebGL renderer: 99.9% of pixels differ by 2 or more (the tone curve changes every pixel), 49.8% by 8 or more. Mean display luminance and its standard deviation per region: Moon sunlit side 67 to 75 (31 to 25), Earth day side 61 to 72 (50 to 42), Milky Way band 16 to 21; the dark sky's median goes from (1, 2, 7) to (1, 4, 14). AgX is brighter and flatter in the midtones and lifts the sky dome's constant blue floor that ACES crushed.
+- Catalog stars are now coloured by temperature with white cores; the WebGL point sprites were pale and small. The Moon loses the bloom and streak on its bright limb (threshold 2.0) and the invented micro-relief.
 
 ## 11. What could not be verified
 
@@ -225,12 +259,19 @@ Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula
 - radix's self-reported speedups over Spark, and the root cause of three's p95 spikes on the 500k fixture.
 - Provenance and license of `apps/web/public/splats/*.spz`.
 - WebXR with the WebGPU backend on headsets.
+- Milestone 1: the WebGL renderer's frame times by the same method (it renders only from its own requestAnimationFrame loop), and the new host in any browser but headless Chrome 156 on this Mac.
 
 ## 12. Findings outside the spike's scope
 
 - Fixed on `main` after the spike: the app's Local Bubble loader drew 2,811 of the 14,281 rows and added a deterministic jitter of `(sin(...) - 0.5) * 0.28`, which ranges from -0.42 to +0.14 and shifted the whole cloud by about -0.14 units per axis on average. Stride 2 dropped every other row, and a cylinder of radius 4.55 around the splat group's z axis, which runs through the star, cut out everything inside it: 63% of the shell's rows. The loader now draws every row at its own position, and the nebula loader no longer drops every other row either. [verified]
 - Also fixed: the bake gave the Local Bubble colours named after emission lines (H-alpha, [O III]) and an opacity ramp, both shaped around that cylinder, although the model carries no density or emission per point. It now keeps the k-NN PCA orientation and footprints and writes one presentation colour and one opacity, 0.0039, which Spark's 8-bit encoding stores as its smallest step, 1/255. The spike's port (`apps/webgpu-spike/src/data/localBubble.ts`) follows the fixed loader; check out `b257439` to reproduce the measured setup. [verified]
-- The landing showcase logs `THREE.Clock` deprecation warnings on three 0.187. [measured]
+- The landing showcase logs `THREE.Clock` deprecation warnings on three 0.187. Fixed in milestone 1 (`THREE.Timer`). [measured]
+- Found while porting the cislunar scene in milestone 1:
+  - The atmosphere LUT (`bruneton_atmo_lut.png`) is not a Bruneton and Neyret (2008) precomputed model. `scripts/bake_bruneton_lut_and_splats.py` integrates single scattering (Rayleigh, Cornette-Shanks Mie, ozone) over 32 steps, adds hand-set "sapphire zenith" and "amber crimson limb" colour terms, and stores 1 - exp(-1.18 x) in 8 bits, so the table is tone-mapped appearance, not radiance. The Earth and its shell are disclosed as modeled. [verified]
+  - The sky dome draws the ESO panorama and the NASA star map at an arbitrary rotation (0.18, 0, 0.32), so neither lines up with the catalog stars, and the star map adds photographic stars at unrelated positions. Its `hAlphaKnots` term is a colour boost of the panorama's red excess, not H-alpha data, and the `halpha` and `jwst_ir` band modes synthesize band images from RGB. Registering the panorama to galactic coordinates (or dropping the star map now that catalog stars are drawn) would make the dome consistent with the catalog. [verified, proposed]
+  - Texture sizes do not match their names or the shader: `nasa_starmap_4k.jpg` and `lro_moon_2k.jpg` are 1024x512, and the Moon's bump step assumes a 2048x1024 relief map, so it spans half a texel (kept in the port for parity). Provenance is recorded only for the Blue Marble and Black Marble textures (`earth_texture_sources.json`); the panorama, star map, cloud and ocean masks, Moon maps and Moon mesh have none. [verified]
+  - The WebGL loop spins the Earth and Moon and eases the camera by fixed amounts per frame, so a 120 Hz display plays the landing twice as fast as a 60 Hz one; the WebGPU port uses per-second rates. [verified]
+  - The Earth and the Moon are lit from different view-space directions, so their lighting is a composition, not one Sun; both layers say so in their disclosures. [verified]
 
 ## 13. Reproducing
 
@@ -240,4 +281,10 @@ pnpm --filter @albedian/webgpu-spike dev              # http://127.0.0.1:5191
 # interactive: ?splats=three|radix|none&volume=off|skip|noskip|skip-half&ext=1|4|8|16&res=3840x2160
 # benchmark:   ?bench=suite[&benchres=1920x1080,3840x2160][&backend=webgl][&quick=1]
 SPIKE_BENCH_OUT=/some/dir pnpm --filter @albedian/webgpu-spike dev   # where results are written
+
+pnpm dev                                              # apps/web, milestone 1 host
+# WebGPU host:    ?scene=0&freeze=1&renderer=webgpu[&backend=webgl][&t=4]
+# WebGL renderer: ?scene=0&freeze=1[&t=4]            (t holds the scene clock on both)
+# In the page:    await window.__albedianCosmos.runBench()          frame times (section 10)
+#                 await window.__albedianCosmos.capturePngDataUrl() readback still
 ```
