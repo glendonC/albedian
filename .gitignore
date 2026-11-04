@@ -47,3 +47,6 @@ docs/internal/
 !/.kiro/steering/
 !/.kiro/hooks/
 !/.kiro/agents/
+
+# Claude Code session worktrees: full repo copies the desktop app manages, never committed
+.claude/worktrees/
