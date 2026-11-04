@@ -53,10 +53,10 @@ class DiscoveredMediaItem:
     audio_codec: str | None
     camera_model: str | None
     location_iso6709: str | None
-    observer_lat: float
-    observer_lon: float
-    observer_elevation_m: float
-    captured_at_utc: str
+    observer_lat: float | None
+    observer_lon: float | None
+    observer_elevation_m: float | None
+    captured_at_utc: str | None
     aliases: list[str] = field(default_factory=list)
     variants: dict[str, str] = field(default_factory=dict)
     artifact_report_path: str | None = None
@@ -84,11 +84,19 @@ class DiscoveredMediaItem:
             "audioCodec": self.audio_codec,
             "cameraModel": self.camera_model,
             "locationIso6709": self.location_iso6709,
-            "observerLocation": {
-                "latDeg": float(self.observer_lat),
-                "lonDeg": float(self.observer_lon),
-                "elevationM": float(self.observer_elevation_m),
-            },
+            "observerLocation": (
+                {
+                    "latDeg": float(self.observer_lat),
+                    "lonDeg": float(self.observer_lon),
+                    "elevationM": (
+                        float(self.observer_elevation_m)
+                        if self.observer_elevation_m is not None
+                        else None
+                    ),
+                }
+                if self.observer_lat is not None and self.observer_lon is not None
+                else None
+            ),
             "capturedAtUTC": self.captured_at_utc,
             "aliases": list(self.aliases),
             "variants": dict(self.variants),
@@ -108,33 +116,33 @@ class DiscoveredMediaItem:
 
 def parse_iso6709_location(
     raw_iso6709: str | None,
-    default_lat: float = 30.0,
-    default_lon: float = -40.0,
-    default_elev_m: float = 700.0,
-) -> tuple[float, float, float]:
-    """Parse an Apple QuickTime ISO-6709 string (e.g. `+30.0-040.0000+705.200/`) into (lat, lon, elev)."""
+) -> tuple[float, float, float | None] | None:
+    """Parse an Apple QuickTime ISO-6709 string (e.g. `+30.0-040.0000+705.200/`) into (lat, lon, elev).
+
+    Returns None when the file carries no parseable location; elevation is None when absent.
+    """
     if not raw_iso6709:
-        return (default_lat, default_lon, default_elev_m)
+        return None
     match = ISO6709_PATTERN.search(raw_iso6709.strip())
     if not match:
-        return (default_lat, default_lon, default_elev_m)
+        return None
     lat = float(match.group(1))
     lon = float(match.group(2))
-    elev = float(match.group(3)) if match.group(3) is not None else default_elev_m
+    elev = float(match.group(3)) if match.group(3) is not None else None
     return (lat, lon, elev)
 
 
-def normalize_creation_utc(raw_date: str | None) -> str:
-    """Normalize QuickTime creation date into an ISO-8601 UTC timestamp (`...Z`)."""
+def normalize_creation_utc(raw_date: str | None) -> str | None:
+    """Normalize QuickTime creation date into an ISO-8601 UTC timestamp (`...Z`), or None when absent or unparseable."""
     if not raw_date:
-        return "2030-01-01T02:00:00Z"
+        return None
     try:
         cleaned = raw_date.strip().replace("Z", "+00:00")
         dt = datetime.fromisoformat(cleaned)
         dt_utc = dt.astimezone(timezone.utc)
         return dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
-        return "2030-01-01T02:00:00Z"
+        return None
 
 
 def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
@@ -368,7 +376,8 @@ def discover_uploaded_media(
             tags.get("com.apple.quicktime.location.ISO6709")
             or tags.get("location")
         )
-        lat_deg, lon_deg, elev_m = parse_iso6709_location(raw_iso6709)
+        location = parse_iso6709_location(raw_iso6709)
+        lat_deg, lon_deg, elev_m = location if location is not None else (None, None, None)
 
         raw_creation = (
             tags.get("com.apple.quicktime.creationdate")
@@ -397,43 +406,51 @@ def discover_uploaded_media(
         luma, pose_trajectory = _extract_representative_luma(
             frame_source_path, width=width, height=height
         )
-        solution = solve_horizon_and_beacon_pose(
-            image=luma,
-            obs_utc_iso=captured_at_utc,
-            observer_lat=lat_deg,
-            observer_lon=lon_deg,
-            source_asset_id=asset_id,
-            source_sha256=sha256,
-            frame_time_sec=0.0,
-            solution_id=solution_id,
-        )
-        ephem_objs = compute_solar_system_ephemerides(
-            obs_utc_iso=captured_at_utc,
-            lat_deg=lat_deg,
-            lon_deg=lon_deg,
-            observation_solution_id=solution_id,
-        )
-        ephemerides = [b.to_contract_dict() for b in ephem_objs]
-        moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
-        moon_alt = float(moon_eph.alt_deg) if moon_eph is not None else -15.0
-        radiometry_audit = compute_sensor_limiting_magnitude_audit(
-            obs_utc_iso=captured_at_utc,
-            moon_alt_deg=moon_alt,
-            target_sep_deg=8.2,
-            target_alt_deg=max(10.0, moon_alt if moon_alt > 0.0 else 30.0),
-            stack_frames=max(1, len(pose_trajectory)),
-        )
-        deep_sky_objects = [
-            dso.to_contract_dict(obs_utc_iso=captured_at_utc, lat_deg=lat_deg, lon_deg=lon_deg)
-            for dso in DEEP_SKY_CATALOG
-        ]
-        coherent_audit = (
-            integrate_wcs_coherent_star_trajectories(
-                frames=[luma], wcs=solution.wcs, pose_trajectory=pose_trajectory, max_stars=6
+        # The sky solution, ephemerides and radiometry all need the real capture time and place;
+        # a file without them gets none rather than a borrowed moment
+        solution: ObservationSolution | None = None
+        ephemerides: list[dict[str, Any]] = []
+        radiometry_audit: dict[str, Any] = {}
+        deep_sky_objects: list[dict[str, Any]] = []
+        coherent_audit: list[dict[str, Any]] = []
+        if lat_deg is not None and lon_deg is not None and captured_at_utc is not None:
+            solution = solve_horizon_and_beacon_pose(
+                image=luma,
+                obs_utc_iso=captured_at_utc,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                source_asset_id=asset_id,
+                source_sha256=sha256,
+                frame_time_sec=0.0,
+                solution_id=solution_id,
             )
-            if solution.wcs is not None
-            else []
-        )
+            ephem_objs = compute_solar_system_ephemerides(
+                obs_utc_iso=captured_at_utc,
+                lat_deg=lat_deg,
+                lon_deg=lon_deg,
+                observation_solution_id=solution_id,
+            )
+            ephemerides = [b.to_contract_dict() for b in ephem_objs]
+            moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
+            moon_alt = float(moon_eph.alt_deg) if moon_eph is not None else -15.0
+            radiometry_audit = compute_sensor_limiting_magnitude_audit(
+                obs_utc_iso=captured_at_utc,
+                moon_alt_deg=moon_alt,
+                target_sep_deg=8.2,
+                target_alt_deg=max(10.0, moon_alt if moon_alt > 0.0 else 30.0),
+                stack_frames=max(1, len(pose_trajectory)),
+            )
+            deep_sky_objects = [
+                dso.to_contract_dict(obs_utc_iso=captured_at_utc, lat_deg=lat_deg, lon_deg=lon_deg)
+                for dso in DEEP_SKY_CATALOG
+            ]
+            coherent_audit = (
+                integrate_wcs_coherent_star_trajectories(
+                    frames=[luma], wcs=solution.wcs, pose_trajectory=pose_trajectory, max_stars=6
+                )
+                if solution.wcs is not None
+                else []
+            )
 
         try:
             rel_path = primary.relative_to(Path.cwd()).as_posix()
@@ -474,5 +491,5 @@ def discover_uploaded_media(
         _DISCOVERY_CACHE[cache_key] = {"item": item}
         discovered_items.append(item)
 
-    discovered_items.sort(key=lambda item: (item.captured_at_utc, item.filename))
+    discovered_items.sort(key=lambda item: (item.captured_at_utc or "", item.filename))
     return discovered_items

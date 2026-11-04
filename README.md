@@ -3,28 +3,28 @@
 **See (Beyond) the Night Sky.**  
 *Start from your photograph—not an anonymous universe.*
 
-Albedian is an observation-centered media restoration and 3D spatial astronomy instrument built for **Kiroween 2026** (*Frankenstein* category). It turns a noisy night-sky photograph or video from Earth into a scientifically calibrated 3D portal—restoring the stars your camera recorded, locking their identity with Gaia DR3 astrometry, and letting any curious explorer fly from their real earthly horizon onto the surfaces of the worlds behind those points of light.
+Albedian is an observation-centered media restoration and 3D spatial astronomy instrument built for **Kiroween 2026** (*Frankenstein* category). It aims to turn a noisy night-sky photograph or video from Earth into a scientifically calibrated 3D portal: restoring only the stars your camera recorded, identifying them against star catalogs once a plate solution passes verification, and letting any curious explorer fly from their real earthly horizon to the worlds behind those points of light.
 
 ---
 
 ## Why Albedian Exists (Problem & Cited Research)
 
 1. **Disappearing Access to the Night Sky:** Over **80% of humanity** (~83% globally, and >99% of the U.S. and Europe) lives under light-polluted skies, and **more than one-third cannot see the Milky Way** ([Falchi et al., 2016, *Science Advances*](https://pmc.ncbi.nlm.nih.gov/articles/PMC4928945/)). Global citizen-science observations from 2011–2022 showed naked-eye star visibility declining at a rate equivalent to **~9.6% annual sky-brightness growth** ([Kyba et al., 2023, *Science*](https://pubmed.ncbi.nlm.nih.gov/36656932/)).
-2. **Photon-Limited Consumer Cameras:** Small apertures on phones and wearables suffer from Poisson photon shot noise, read noise, and Mie atmospheric glare at night ([Hasinoff et al., 2016, *ACM TOG / SIGGRAPH Asia*](http://graphics.stanford.edu/papers/hdrp/hasinoff-hdrplus-sigasia16.pdf); [Liba et al., 2019](https://arxiv.org/html/1910.11336)). Conventional denoisers often erase faint stars, whereas Albedian uses detection-preserving temporal burst restoration (`+5.2 dB SNR`) paired with instant `Hold Original` verification.
+2. **Photon-Limited Consumer Cameras:** Small apertures on phones and wearables suffer from Poisson photon shot noise, read noise, and Mie atmospheric glare at night ([Hasinoff et al., 2016, *ACM TOG / SIGGRAPH Asia*](http://graphics.stanford.edu/papers/hdrp/hasinoff-hdrplus-sigasia16.pdf); [Liba et al., 2019](https://arxiv.org/html/1910.11336)). Conventional denoisers often erase faint stars, whereas Albedian uses detection-preserving temporal burst restoration, reporting the SNR gain measured for each capture, paired with instant `Hold Original` verification.
 3. **The Comprehension & Experience Chasm:** Recognizing a flat 2D dot on a sky map does not produce comprehension of 3D cosmic scale, reference-frame transitions, or light-travel time ([Plummer, 2014](https://eric.ed.gov/?id=EJ1029625); [Plummer et al., 2022, *JRST*](https://onlinelibrary.wiley.com/doi/10.1002/tea.21754); [Schneps et al., 2014](https://dl.acm.org/doi/10.5555/2753872.2753884); [Rajpaul et al., 2018](https://physics.aps.org/articles/v11/93)). Existing tools either paste synthetic 2D labels onto a screen (*Sky Guide*, *Stellarium*) or trap catalog data inside sterile, government-portal database UIs (*NASA Eyes*, *WWT*) disconnected from your own photograph and horizon.
 
 ## Intended Audience (ICP)
 
-- **Primary ICP — The Curious Everyday Explorer:** Anyone who looks up at the night sky, snaps a photo, and wants to experience and understand what is actually out there—without needing a telescope or an astrophysics degree. Albedian pairs exact scientific telemetry with human-understandable readouts (`1.1× Earth` gravity, `-39°C` surface temperature, and historical photon departure eras).
+- **Primary ICP — The Curious Everyday Explorer:** Anyone who looks up at the night sky, snaps a photo, and wants to experience and understand what is actually out there—without needing a telescope or an astrophysics degree. Albedian pairs measured and catalog data with human-understandable readouts such as light-travel time and the historical era when that light set out.
 - **Secondary ICPs — Night-Sky Creators & Science Communicators:** Photographers and educators who turn real night-sky captures into provenance-backed, shareable 3D journeys from recorded camera pixels to planetary surfaces.
 
 ## The Five-Regime Spatial Journey (`@sparkjsdev/spark` + WebGL2 Ray-Marching)
 
-1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording (`+5.2 dB`), locks sub-arcsecond WCS coordinates (`0.38″`), and grounds the sky above a 3D ray-marched local horizon (Sahara synthetic site dunes `30.0°N` or Aoraki / Lake Tekapo `44.0°S`).
+1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording, locks WCS coordinates only after held-out star verification passes, and grounds the sky above a 3D ray-marched local horizon (Sahara synthetic site dunes `30.0°N` or Aoraki / Lake Tekapo `44.0°S`).
 2. **`02 · Cislunar Orbit` (`cislunar` — `1.28 light-sec`):** Transitions into Earth–Moon orbital space with Rayleigh/Mie atmospheric limb scattering and NASA LRO laser-altimetry lunar relief.
 3. **`03 · Nearby Stars` (`solar_neighborhood` — `4.37–548 ly`):** Navigates 3D stellar photospheres and the `@sparkjsdev/spark` 3D Gaussian Splat Local Bubble dust cavity (`O'Neill et al., 2024, ApJ`).
 4. **`04 · Deep Space` (`deep_sky` — `1,344–26,673 ly`):** Renders multi-wavelength 3D Gaussian Splat nebulae and relativistic Kerr/Schwarzschild geodesic gravitational lensing ([James, von Tunzelmann, Franklin & Thorne, 2015](https://iopscience.iop.org/article/10.1088/0264-9381/32/6/065001); [Bruneton, 2020](https://ebruneton.github.io/black_hole_shader/paper.pdf)).
-5. **`05 · World Surface` (`planetary_surface`):** Lands on analytical-derivative GPU ray-marched worlds ([Inigo Quilez](https://iquilezles.org/articles/morenoise/))—including Shackleton Crater on the Moon, the glacial terminator canyons of Proxima Centauri b, Titan's hydrocarbon seas beneath Saturn's rings, and a relativistic tidal ocean world—while `Return to My Photo [Esc]` reversibly restores the exact source recording. See [`docs/product/PRODUCT_THESIS.md`](docs/product/PRODUCT_THESIS.md) for full citations and epistemic boundaries.
+5. **`05 · World Surface` (`planetary_surface`):** Lands on procedurally generated, illustrative worlds (analytical-derivative GPU ray-marching after [Inigo Quilez](https://iquilezles.org/articles/morenoise/)): Shackleton Crater on the Moon, an imagined canyon on Proxima Centauri b, Titan's hydrocarbon seas beneath Saturn's rings, and a fictional relativistic tidal ocean world. `Return to My Photo [Esc]` reversibly restores the exact source recording. See [`docs/product/PRODUCT_THESIS.md`](docs/product/PRODUCT_THESIS.md) for full citations and epistemic boundaries.
 
 ---
 
@@ -48,8 +48,8 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
   apps/
     web/                    # React + TypeScript + WebGL/Three.js + Web Audio observational shell
   services/
-    media/                  # Python Media Experiment Runtime (FFmpeg/OpenCV DAG, probe, audio remux)
-    science/                # Python Astrometry, WCS solver/verifier, Gaia DR3 catalog & ephemerides
+    media/                  # Python Media Experiment Runtime (FFmpeg DAG, probe, audio remux)
+    science/                # Python astrometry, WCS solver/verifier, pinned bright-star catalog & analytical ephemerides
     voice/                  # Context-bound intent parser & authoritative typed action validator
   packages/
     contracts/              # Authoritative TypeScript/Zod & JSON schemas for all 14 domain entities
@@ -58,28 +58,20 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
     camera-rig/             # WCS pixel<->world math, quaternion SLERP, log-tan-FOV & floating origin
     design-system/          # Albedian observational instrument tokens, marker grammar & motion specs
   research/
-    originals/              # Intact foundational research reports (2026-10-31)
-    findings/               # Actionable research synthesis & capability matrix
+    originals/              # Intact foundational research reports (2026-10-31 & 2026-11-02)
     experiments/            # Reproducible technical experiment registry & benchmark harnesses
   docs/
-    product/                # Product thesis & experience states
-    architecture/           # Modular monolith topology & cross-system invariants
-    adr/                    # Architecture Decision Records (ADR-0001 through ADR-0004)
+    product/                # Product thesis, experience states & UI/UX reference system
+    architecture/           # Modular monolith topology, 14 entities, ADRs & licensing
     science/                # Astrometric math, WCS validation & evidence rules
-    design/                 # Visual token specification & functional motion contracts
-    engineering/            # Engineering standards, testing strategy, voice & audio policies
-    operations/             # Security, privacy, licensing ledger, risk register & demo runbook
-    internal/               # Kiro contribution ledger & multi-agent integration ledger
   tests/
     fixtures/               # Deterministic astronomical starfields, media clips & golden WCS fixtures
     integration/            # Cross-package and service-to-UI integration tests
-    e2e/                    # End-to-end journey verification
   .kiro/
     steering/               # Global and file-matched Kiro steering documents
     specs/                  # 8 Kiro domain specifications (requirements.md, design.md, tasks.md)
     hooks/                  # Validated Kiro 1.4.62 workspace hooks (.kiro.hook)
     agents/                 # Specialized agent role definitions
-    settings/               # Workspace MCP & sandbox configuration
 ```
 
 ---
@@ -118,10 +110,10 @@ pnpm dev
 
 - **Photons cannot be invented:** Low-light restoration operates on recorded signal (`Observed-data processing`) and constrained denoising. Albedian never pastes catalog stars onto dark images and claims they were recovered from camera pixels.
 - **Independent WCS Verification:** A plate-solve candidate is accepted as `calibrated` only when at least 6 spatially distributed inliers pass held-out residual verification ($\text{median residual} \le 3.0\text{ px}$). Otherwise, the observation enters `unresolved`, `ambiguous`, or `predicted_only`.
-- **3D Stellar Distances:** A single photograph encodes angular direction ($\alpha, \delta$), not depth. 3D positions in `Explore` mode derive from pinned `Gaia DR3` / Hipparcos parallaxes and Bailer-Jones photogeometric distance estimates (`median`, `lower`, `upper` pc), with explicit uncertainty intervals and a `Catalog Geometry · Distance Estimates` disclosure.
+- **3D Stellar Distances:** A single photograph encodes angular direction ($\alpha, \delta$), not depth. 3D positions in `Explore` mode derive from a pinned list of 71 bright stars with Hipparcos parallax distances (Gaia DR3 for 6 of them) and their uncertainty intervals (`median`, `lower`, `upper` pc), with a `Catalog Geometry · Distance Estimates` disclosure. A full Gaia DR3 layer with Bailer-Jones distances is planned.
 
 ---
 
 ## License
 
-Released under the [MIT License](LICENSE). Third-party astronomical catalog attributions (`ESA Gaia DR3`, `CDS Hipparcos/SIMBAD`, `NASA JPL Ephemerides`) and library licenses are documented in [`docs/operations/SECURITY_PRIVACY_LICENSES.md`](docs/operations/SECURITY_PRIVACY_LICENSES.md).
+Released under the [MIT License](LICENSE). Third-party astronomical catalog attributions (`ESA Gaia DR3`, `CDS Hipparcos/SIMBAD`, `NASA JPL Ephemerides`) and library licenses are documented in [`docs/architecture/ARCHITECTURE_OVERVIEW.md`](docs/architecture/ARCHITECTURE_OVERVIEW.md).

@@ -13,6 +13,18 @@ import {
   raDecToUnitVector,
 } from '@albedian/camera-rig';
 import { computeAudioBusGains } from '@albedian/design-system';
+import { createOriginCameraFrustumIndicator } from '../spatial/referenceFrameContinuity';
+import {
+  BRUNETON_ATMO_GLSL_CHUNK,
+  BRUNETON_ATMO_LUT_URL,
+} from '../spatial/volumetricSplatsAndLut';
+import { observatoryAudio } from '../audio/ObservatoryAudioEngine';
+import {
+  ALBEDIAN_FLAT_WAVEFRONT_PALETTE,
+  ALBEDIAN_PURE_SILVER_PALETTE,
+} from '../components/CoalescingBar';
+import fs from 'node:fs';
+import path from 'node:path';
 
 describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voice Integration', () => {
   it('executes the complete defining experience: Import -> Reveal -> Calibrated Sky -> Select Star -> 3D Space -> Sightline -> 1026 CE Epoch -> Back to Moment', () => {
@@ -117,5 +129,56 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
     const bench = benchmarkRendererAdapters(10000);
     expect(bench.recommendedPrimaryEngine).toBe('custom_wcs_three_rig');
     expect(bench.customRigAnchorDriftPx).toBeLessThan(0.01);
+  });
+
+  it('verifies Track 1 (Origin Frustum Continuity) and Track 2 (Bruneton LUT)', () => {
+    // Track 1: Origin Frustum
+    const frustum = createOriginCameraFrustumIndicator();
+    expect(frustum.name).toBe('OriginCameraFrustumIndicator');
+
+    // Track 2: Bruneton LUT & GLSL Chunk
+    expect(BRUNETON_ATMO_LUT_URL).toBe('/textures/bruneton_atmo_lut.png');
+    expect(BRUNETON_ATMO_GLSL_CHUNK).toContain('sampleBrunetonAtmoLut');
+
+  });
+
+  it('verifies Flat Architectural Vapor-Silver + Luminous Wavefront Refraction palette invariants (@zzzzshawn + Lusion)', () => {
+    // High-albedo Vapor-Silver solid fill (#D4DCE7 -> #EDF2F8 -> #FFFFFF)
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.solidStart).toBe('#D4DCE7');
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.solidMid).toBe('#EDF2F8');
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.solidEnd).toBe('#FFFFFF');
+
+    // Dichroic Ice-Cobalt wavefront refraction strictly inside coalescing dots/slats
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.wavefrontMid).toBe('#5A87E8');
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.wavefrontDim).toBe('#355291');
+    expect(ALBEDIAN_FLAT_WAVEFRONT_PALETTE.restPattern).toBe('#252D3D');
+
+    // Pure Silver alternative
+    expect(ALBEDIAN_PURE_SILVER_PALETTE.solidEnd).toBe('#FFFFFF');
+  });
+
+  it('verifies Living Sky Window Landing Page vs. App View separation, Audio toggle, and 3D showcase invariants', () => {
+    // 1. Audio starts disabled until the user turns it on
+    expect(observatoryAudio.getEnabled()).toBe(false);
+
+    // 2. SpatialObservatoryViewport & SparkPortalRenderer invariants
+    const viewportSrc = fs.readFileSync(
+      path.resolve(__dirname, '../components/SpatialObservatoryViewport.tsx'),
+      'utf8'
+    );
+    expect(viewportSrc).toContain('LANDING_SHOWCASE_SCENES');
+    expect(viewportSrc).toContain('Discover the universe behind');
+    expect(viewportSrc).toContain('the buried night sky.');
+    expect(viewportSrc).toContain('Launch Albedian');
+    expect(viewportSrc).toContain('if (entryStageActive) return;');
+
+    const rendererSrc = fs.readFileSync(
+      path.resolve(__dirname, '../spatial/SparkPortalRenderer.ts'),
+      'utf8'
+    );
+    expect(rendererSrc).toContain('setShowcaseMode(enabled: boolean)');
+    expect(rendererSrc).toContain('transitionToShowcaseScene(');
+    expect(rendererSrc).toContain('this.originFrustumGroup.visible = false;');
+    expect(rendererSrc).toContain('sampleBrunetonAtmoLut');
   });
 });

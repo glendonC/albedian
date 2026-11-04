@@ -9,6 +9,8 @@ import {
 } from '@albedian/contracts';
 import {
   createDefaultSaharaObservationSession,
+  createEmptyObservationSession,
+  createSessionForSourceAsset,
   createUnresolvedObservationSession,
   dispatchAlbedianAction,
   transitionOrthogonalMachine,
@@ -91,6 +93,49 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     expect(
       parsed.observationSolution.findings.filter((f) => f.evidenceClass === 'catalog_matched')
     ).toHaveLength(0);
+  });
+
+  it('validates createEmptyObservationSession with no place, capture time, or findings', () => {
+    const createdAtISO = '2026-11-03T08:00:00.000Z';
+    const parsed = ObservationSessionSchema.parse(createEmptyObservationSession(createdAtISO));
+    expect(parsed.machines.media).toBe('empty');
+    expect(parsed.machines.calibration).toBe('not_requested');
+    expect(parsed.sourceAsset.observerLocation).toBeUndefined();
+    expect(parsed.sourceAsset.capturedAtUTC).toBeUndefined();
+    expect(parsed.observationSolution.status).toBe('pending');
+    expect(parsed.observationSolution.observerLocation).toBeUndefined();
+    expect(parsed.observationSolution.wcs).toBeUndefined();
+    expect(parsed.observationSolution.findings).toHaveLength(0);
+    expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
+    expect(parsed.observationSolution.observedAtUTC).toBe(createdAtISO);
+  });
+
+  it('re-anchors the empty session to an imported asset without inventing location or findings', () => {
+    const createdAtISO = '2026-11-03T08:00:00.000Z';
+    const asset: SourceAsset = {
+      ...createEmptyObservationSession(createdAtISO).sourceAsset,
+      id: 'src_upload_1',
+      title: 'backyard.jpg',
+      sha256: 'ab'.repeat(32),
+      uri: 'blob:backyard',
+    };
+    const session = createSessionForSourceAsset(asset, 'importing', createdAtISO);
+    expect(session.machines.media).toBe('importing');
+    expect(session.machines.calibration).toBe('not_requested');
+    expect(session.observationSolution.sourceAssetId).toBe('src_upload_1');
+    expect(session.observationSolution.sourceSha256).toBe(asset.sha256);
+    expect(session.observationSolution.observerLocation).toBeUndefined();
+    expect(session.observationSolution.findings).toHaveLength(0);
+    expect(session.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe('src_upload_1');
+
+    const located = createSessionForSourceAsset(
+      { ...asset, capturedAtUTC: '2030-11-01T22:32:00Z', observerLocation: { latDeg: -43.99, lonDeg: 170.46 } },
+      'ready',
+      createdAtISO
+    );
+    expect(located.observationSolution.observerLocation).toEqual({ latDeg: -43.99, lonDeg: 170.46, placeName: undefined });
+    expect(located.observationSolution.observedAtUTC).toBe('2030-11-01T22:32:00Z');
+    expect(located.spatialView.simulationEpochISO).toBe('2030-11-01T22:32:00Z');
   });
 
   it('enforces scientific distance prerequisites on space.enter and space.viewpoint', () => {

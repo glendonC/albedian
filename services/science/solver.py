@@ -207,28 +207,13 @@ def _build_unresolved_solution(
     obs_utc_iso: str,
     observer_lat: float,
     observer_lon: float,
-    hint_ra_deg: float | None,
-    hint_dec_deg: float | None,
-    limitation_note: str,
     warning_msg: str,
 ) -> ObservationSolution:
-    """Construct an honest `unresolved` ObservationSolution with `observed` findings only."""
-    findings = [
-        CelestialFindingRecord(
-            id=f"finding-obs-{idx + 1}",
-            observation_solution_id=solution_id,
-            evidence_class="observed",
-            title=f"Observed Point Source #{idx + 1}",
-            subtitle=f"Measured at ({det.x_px:.1f}, {det.y_px:.1f}) px · SNR {det.snr:.1f}",
-            ra_deg=float(hint_ra_deg or 0.0),
-            dec_deg=float(hint_dec_deg or 0.0),
-            source_detection=det,
-            verified_by_holdout=False,
-            limitations=(limitation_note,),
-            source_sha256=source_sha256,
-        )
-        for idx, det in enumerate(detections)
-    ]
+    """Construct an honest `unresolved` ObservationSolution with no findings.
+
+    Without a WCS a detection has no sky position, and every finding needs one, so detections
+    are counted in the quality record instead of listed with invented coordinates.
+    """
     return ObservationSolution(
         id=solution_id,
         source_asset_id=source_asset_id,
@@ -249,21 +234,32 @@ def _build_unresolved_solution(
             median_residual_arcsec=9999.0,
             passed_independent_verification=False,
         ),
-        findings=findings,
-        warnings=[warning_msg],
+        findings=[],
+        warnings=[warning_msg, *_unplaced_detections_warning(len(detections))],
     )
+
+
+def _unplaced_detections_warning(count: int) -> list[str]:
+    """Explain why detections are missing from the findings of a solution without a verified WCS."""
+    if count == 0:
+        return []
+    return [
+        f"{count} point source(s) detected; without a verified WCS they have no sky position, "
+        "so they are counted, not listed."
+    ]
 
 
 def solve_and_verify_field(
     detections: list[SourceDetection],
     width: int,
     height: int,
+    *,
+    obs_utc_iso: str,
+    observer_lat: float,
+    observer_lon: float,
     catalog_stars: list[CatalogStar] | None = None,
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
-    obs_utc_iso: str = "2030-01-01T02:00:00Z",
-    observer_lat: float = 30.0,
-    observer_lon: float = -40.0,
     source_asset_id: str = "asset-0",
     source_sha256: str = "0" * 64,
     frame_time_sec: float = 0.0,
@@ -286,8 +282,7 @@ def solve_and_verify_field(
     if len(detections) < 6 or len(psf_detections) < 4:
         return _build_unresolved_solution(
             detections, solution_id, source_asset_id, source_sha256, frame_time_sec,
-            obs_utc_iso, observer_lat, observer_lon, hint_ra_deg, hint_dec_deg,
-            "Unresolved sky: fewer than 6 stars available for held-out WCS verification.",
+            obs_utc_iso, observer_lat, observer_lon,
             f"Insufficient point sources ({len(detections)} detected) for independent WCS calibration.",
         )
 
@@ -370,8 +365,7 @@ def solve_and_verify_field(
     if best_initial_wcs is None or len(best_consensus_pairs) < 4:
         return _build_unresolved_solution(
             detections, solution_id, source_asset_id, source_sha256, frame_time_sec,
-            obs_utc_iso, observer_lat, observer_lon, hint_ra_deg, hint_dec_deg,
-            "No geometric quad match found against Gaia DR3 / Hipparcos catalog.",
+            obs_utc_iso, observer_lat, observer_lon,
             "Geometric quad pattern matching failed to find a consistent WCS solution.",
         )
 
@@ -459,14 +453,10 @@ def solve_and_verify_field(
                     source_sha256=source_sha256,
                 )
             )
-        else:
+        elif passed_verification:
             rejected_outlier_count += 1
             ra_est, dec_est = refined_wcs.pixel_to_world(det.x_px, det.y_px)
-            reason = (
-                "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
-                if passed_verification
-                else "WCS solution did not pass independent held-out calibration gate."
-            )
+            arcsec_per_px = refined_wcs.scale_deg_per_px * 3600.0
             findings_list.append(
                 CelestialFindingRecord(
                     id=f"finding-obs-{idx + 1}",
@@ -474,9 +464,11 @@ def solve_and_verify_field(
                     evidence_class="observed",
                     title=f"Observed Point Source #{idx + 1}",
                     subtitle=f"Unmatched sensor detection at ({det.x_px:.1f}, {det.y_px:.1f}) px",
-                    ra_deg=ra_est, dec_deg=dec_est, uncertainty_arcsec=60.0,
+                    ra_deg=ra_est, dec_deg=dec_est,
+                    uncertainty_arcsec=math.hypot(median_residual_arcsec, det.centroid_uncertainty_px * arcsec_per_px),
                     source_detection=det, catalog_star=None, verified_by_holdout=False,
-                    limitations=(reason,), source_sha256=source_sha256,
+                    limitations=("Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate.",),
+                    source_sha256=source_sha256,
                 )
             )
 
@@ -484,6 +476,9 @@ def solve_and_verify_field(
         warnings.append(
             f"{rejected_outlier_count} sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
         )
+    if not passed_verification:
+        warnings.append("WCS solution did not pass independent held-out calibration gate.")
+        warnings.extend(_unplaced_detections_warning(len(detections)))
 
     return ObservationSolution(
         id=solution_id, source_asset_id=source_asset_id, source_sha256=source_sha256,

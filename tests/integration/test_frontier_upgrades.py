@@ -284,7 +284,11 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
 
     # 5. FastAPI endpoint GET /api/science/radiometry-audit
     client = TestClient(app)
-    r_rad = client.get("/api/science/radiometry-audit")
+    assert client.get("/api/science/radiometry-audit").status_code == 422
+    r_rad = client.get(
+        "/api/science/radiometry-audit",
+        params={"obs_utc_iso": obs_utc, "lat_deg": 30.0, "lon_deg": -40.0},
+    )
     assert r_rad.status_code == 200
     rad_json = r_rad.json()
     assert "lunarPhase" in rad_json

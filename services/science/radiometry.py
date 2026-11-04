@@ -187,6 +187,9 @@ def compute_sensor_limiting_magnitude_audit(
 ) -> dict[str, Any]:
     """Compute wearable-camera single-frame vs. coherent multi-frame limiting magnitude
     under Krisciunas & Schaefer (1991) sky brightness and 8-bit H.265 quantization.
+
+    The limiting-magnitude coefficients are rough, uncalibrated estimates that have not been
+    fitted to any measured sensor, and the result says so.
     """
     ks = compute_krisciunas_schaefer_sky_brightness(
         sep_from_moon_deg=target_sep_deg,
@@ -217,6 +220,7 @@ def compute_sensor_limiting_magnitude_audit(
         frames_needed_mag3 = min(600, max(2, int(math.ceil(10.0 ** (mag_deficit / 1.25)))))
 
     explanation = (
+        f"Uncalibrated estimate (coefficients not fitted to a measured sensor). "
         f"At {target_sep_deg:.1f}° from the {ks['lunarPhaseName']} "
         f"({ks['illuminationFraction'] * 100.0:.0f}% illuminated, Alt {moon_alt_deg:+.1f}°), "
         f"Rayleigh/Mie scattering brightens the sky by {veil_loss_mag:.2f} mag/arcsec² "
@@ -239,5 +243,6 @@ def compute_sensor_limiting_magnitude_audit(
         "apertureMm": float(aperture_mm),
         "exposureSec": float(exposure_sec),
         "stackFrames": int(n_stack),
+        "calibratedToSensor": False,
         "explanation": explanation,
     }

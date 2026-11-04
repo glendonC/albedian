@@ -77,15 +77,14 @@ def probe_video_metadata(video_path: Path) -> dict[str, Any]:
     creation_utc = (
         tags.get("com.apple.quicktime.creationdate")
         or tags.get("creation_time")
-        or "2030-11-01T22:32:00Z"
     )
     model = tags.get("com.apple.quicktime.model", "Consumer Camera")
     duration_sec = float(info.get("format", {}).get("duration", 5.0))
     return {
         "model": model,
         "location_iso6709": loc_raw,
-        "lat_deg": coords[0] if coords else 30.0,
-        "lon_deg": coords[1] if coords else -40.0,
+        "lat_deg": coords[0] if coords else None,
+        "lon_deg": coords[1] if coords else None,
         "creation_utc": creation_utc,
         "duration_sec": duration_sec,
         "nb_streams": info.get("format", {}).get("nb_streams", 1),
@@ -207,18 +206,24 @@ def main() -> int:
     print(f"      SHA-256: {asset_hash}")
 
     is_video = src_path.suffix.lower() in VIDEO_EXTS
+    # Stills carry no parsed time or place yet; nothing is substituted for them
     meta: dict[str, Any] = {
         "model": "Still Camera",
-        "lat_deg": 30.0,
-        "lon_deg": -40.0,
-        "creation_utc": "2030-11-01T22:32:00Z",
+        "lat_deg": None,
+        "lon_deg": None,
+        "creation_utc": None,
     }
     if is_video:
         meta = probe_video_metadata(src_path)
         t_sec = args.timestamp if args.timestamp is not None else min(4.0, meta["duration_sec"] * 0.35)
+        gps_label = (
+            f"({meta['lat_deg']:.4f}°, {meta['lon_deg']:.4f}°)"
+            if meta["lat_deg"] is not None and meta["lon_deg"] is not None
+            else "none in file"
+        )
         print(
-            f"      Camera: {meta['model']} | GPS: ({meta['lat_deg']:.4f}°, {meta['lon_deg']:.4f}°) | "
-            f"Captured: {meta['creation_utc']} | Sampled @ t={t_sec:.1f}s"
+            f"      Camera: {meta['model']} | GPS: {gps_label} | "
+            f"Captured: {meta['creation_utc'] or 'none in file'} | Sampled @ t={t_sec:.1f}s"
         )
         frames = extract_neighbor_frames(src_path, out_dir, t_sec, count=5)
         raw_rgb = frames[0]
@@ -249,37 +254,46 @@ def main() -> int:
     print("[3/4] Running Source Extraction & Astronomical Calibration...")
     h, w = v2_luma.shape
     detections = detect_point_sources(v2_luma, snr_threshold=5.0)
-    solution = solve_and_verify_field(
-        detections=detections,
-        width=w,
-        height=h,
-        obs_utc_iso=meta["creation_utc"],
-        observer_lat=meta["lat_deg"],
-        observer_lon=meta["lon_deg"],
-        source_sha256=asset_hash,
+    has_moment = (
+        meta["creation_utc"] is not None
+        and meta["lat_deg"] is not None
+        and meta["lon_deg"] is not None
     )
-    ephemerides = compute_solar_system_ephemerides(
-        obs_utc_iso=meta["creation_utc"],
-        lat_deg=meta["lat_deg"],
-        lon_deg=meta["lon_deg"],
-    )
-    visible_bodies = [b for b in ephemerides if b.alt_deg > 0.0]
+    calibration_status = "skipped: no capture time or location in file"
+    visible_bodies = []
     visible_stars = []
-    for star in PINNED_CATALOG_STARS:
-        alt, az = icrs_to_altaz(star.ra_deg, star.dec_deg, meta["lat_deg"], meta["lon_deg"], meta["creation_utc"])
-        if alt > 0.0:
-            visible_stars.append(
-                {
-                    "name": star.common_name,
-                    "designation": star.bayer_designation,
-                    "constellation": star.constellation,
-                    "alt_deg": round(alt, 2),
-                    "az_deg": round(az, 2),
-                    "mag": star.mag,
-                    "distance_pc": star.median_pc,
-                    "evidence_class": "predicted",
-                }
-            )
+    if has_moment:
+        solution = solve_and_verify_field(
+            detections=detections,
+            width=w,
+            height=h,
+            obs_utc_iso=meta["creation_utc"],
+            observer_lat=meta["lat_deg"],
+            observer_lon=meta["lon_deg"],
+            source_sha256=asset_hash,
+        )
+        calibration_status = solution.status
+        ephemerides = compute_solar_system_ephemerides(
+            obs_utc_iso=meta["creation_utc"],
+            lat_deg=meta["lat_deg"],
+            lon_deg=meta["lon_deg"],
+        )
+        visible_bodies = [b for b in ephemerides if b.alt_deg > 0.0]
+        for star in PINNED_CATALOG_STARS:
+            alt, az = icrs_to_altaz(star.ra_deg, star.dec_deg, meta["lat_deg"], meta["lon_deg"], meta["creation_utc"])
+            if alt > 0.0:
+                visible_stars.append(
+                    {
+                        "name": star.common_name,
+                        "designation": star.bayer_designation,
+                        "constellation": star.constellation,
+                        "alt_deg": round(alt, 2),
+                        "az_deg": round(az, 2),
+                        "mag": star.mag,
+                        "distance_pc": star.median_pc,
+                        "evidence_class": "predicted",
+                    }
+                )
 
     report = {
         "source_file": str(src_path),
@@ -293,7 +307,7 @@ def main() -> int:
             "shadow_snr_gain_db": round(rt_branch.metrics.shadow_snr_gain_db, 2),
         },
         "observed_point_detections": len(detections),
-        "wcs_calibration_status": getattr(solution, "state", "failed"),
+        "wcs_calibration_status": calibration_status,
         "predicted_solar_system_above_horizon": [
             {
                 "name": b.name,

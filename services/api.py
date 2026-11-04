@@ -25,7 +25,6 @@ from services.science.deep_sky import (
     compute_stellar_astrophysics,
 )
 from services.science.ephemeris import compute_solar_system_ephemerides
-from services.science.discovery_engine import run_frontier_sky_discovery_audit
 from services.science.radiometry import (
     compute_krisciunas_schaefer_sky_brightness,
     compute_lunar_phase_and_illumination,
@@ -34,7 +33,6 @@ from services.science.radiometry import (
 from services.science.solver import (
     SourceDetection,
     detect_point_sources,
-    render_synthetic_starfield,
     solve_and_verify_field,
     solve_horizon_and_beacon_pose,
 )
@@ -68,9 +66,9 @@ class SolveRequest(BaseModel):
     image_luma: list[list[float]] | None = None
     hint_ra_deg: float | None = Field(default=None, alias="hintRaDeg")
     hint_dec_deg: float | None = Field(default=None, alias="hintDecDeg")
-    obs_utc_iso: str = Field(default="2030-01-01T02:00:00Z", alias="observedAtUTC")
-    observer_lat: float = Field(default=30.0, alias="latDeg")
-    observer_lon: float = Field(default=-40.0, alias="lonDeg")
+    obs_utc_iso: str = Field(alias="observedAtUTC")
+    observer_lat: float = Field(alias="latDeg")
+    observer_lon: float = Field(alias="lonDeg")
     source_asset_id: str = Field(default="asset-demo-orion", alias="sourceAssetId")
 
 
@@ -79,9 +77,9 @@ class EphemerisRequest(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    obs_utc_iso: str = Field(default="2030-01-01T02:00:00Z", alias="observedAtUTC")
-    lat_deg: float = Field(default=30.0, alias="latDeg")
-    lon_deg: float = Field(default=-40.0, alias="lonDeg")
+    obs_utc_iso: str = Field(alias="observedAtUTC")
+    lat_deg: float = Field(alias="latDeg")
+    lon_deg: float = Field(alias="lonDeg")
     bodies: list[str] = Field(
         default_factory=lambda: ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"]
     )
@@ -109,6 +107,17 @@ class VoiceCommandRequest(BaseModel):
     proposed_action: dict[str, Any] | None = Field(default=None, alias="proposedAction")
 
 
+_NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input for a missing observation."
+
+
+def _measured(detection: dict[str, Any], *keys: str) -> float:
+    """Return a detection measurement by any of its accepted keys; a missing one is a client error."""
+    for key in keys:
+        if detection.get(key) is not None:
+            return float(detection[key])
+    raise HTTPException(status_code=422, detail=f"Each detection needs a measured `{keys[-1]}`.")
+
+
 @app.get("/api/health")
 def get_health() -> dict[str, Any]:
     """Return service health and pinned catalog summary."""
@@ -125,9 +134,9 @@ def get_health() -> dict[str, Any]:
 
 @app.get("/api/science/sky-context")
 def get_science_sky_context(
-    obs_utc_iso: str = Query(default="2030-11-01T22:32:00Z"),
-    lat_deg: float = Query(default=30.0, ge=-90.0, le=90.0),
-    lon_deg: float = Query(default=-40.0, ge=-180.0, le=180.0),
+    obs_utc_iso: str = Query(...),
+    lat_deg: float = Query(..., ge=-90.0, le=90.0),
+    lon_deg: float = Query(..., ge=-180.0, le=180.0),
 ) -> dict[str, Any]:
     """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
     Solar System ephemerides, and constellation stick-figure edges.
@@ -224,9 +233,9 @@ def get_science_sky_context(
 
 @app.get("/api/science/radiometry-audit")
 def get_science_radiometry_audit(
-    obs_utc_iso: str = Query(default="2030-11-01T22:32:00Z"),
-    lat_deg: float = Query(default=30.0, ge=-90.0, le=90.0),
-    lon_deg: float = Query(default=-40.0, ge=-180.0, le=180.0),
+    obs_utc_iso: str = Query(...),
+    lat_deg: float = Query(..., ge=-90.0, le=90.0),
+    lon_deg: float = Query(..., ge=-180.0, le=180.0),
     target_sep_deg: float = Query(default=8.2, ge=0.5, le=180.0),
     target_alt_deg: float = Query(default=32.0, ge=0.0, le=90.0),
     stack_frames: int = Query(default=9, ge=1, le=600),
@@ -268,23 +277,26 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
         for d in req.detections:
             parsed_dets.append(
                 SourceDetection(
-                    x_px=float(d.get("x_px", d.get("xPx", 0.0))),
-                    y_px=float(d.get("y_px", d.get("yPx", 0.0))),
-                    flux=float(d.get("flux", 100.0)),
-                    snr=float(d.get("snr", 10.0)),
-                    fwhm_px=float(d.get("fwhm_px", d.get("fwhmPx", 2.4))),
-                    centroid_uncertainty_px=float(
-                        d.get("centroid_uncertainty_px", d.get("centroidUncertaintyPx", 0.15))
-                    ),
+                    x_px=_measured(d, "x_px", "xPx"),
+                    y_px=_measured(d, "y_px", "yPx"),
+                    flux=_measured(d, "flux"),
+                    snr=_measured(d, "snr"),
+                    fwhm_px=_measured(d, "fwhm_px", "fwhmPx"),
+                    centroid_uncertainty_px=_measured(d, "centroid_uncertainty_px", "centroidUncertaintyPx"),
                     asset_id=req.source_asset_id,
+                    # Without a measured ratio only the FWHM half of the hot-pixel test applies
+                    **(
+                        {"peak_to_total_ratio": _measured(d, "peak_to_total_ratio", "peakToTotalRatio")}
+                        if d.get("peak_to_total_ratio", d.get("peakToTotalRatio")) is not None
+                        else {}
+                    ),
                 )
             )
     elif req.image_luma is not None:
         arr = np.asarray(req.image_luma, dtype=np.float64)
         parsed_dets = detect_point_sources(arr, asset_id=req.source_asset_id)
     else:
-        frame, _, _ = render_synthetic_starfield(width=req.width, height=req.height)
-        parsed_dets = detect_point_sources(frame, asset_id=req.source_asset_id)
+        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="detections or image_luma"))
 
     solution = solve_and_verify_field(
         detections=parsed_dets,
@@ -307,13 +319,9 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
 @app.post("/api/science/solve-horizon")
 def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
     """Calibrate camera pose from a detected celestial beacon (e.g. Moon) + horizon line + GPS/UTC."""
-    if req.image_luma is not None:
-        arr = np.asarray(req.image_luma, dtype=np.float64)
-    else:
-        arr = np.zeros((req.height, req.width), dtype=np.float64)
-        arr[int(req.height * 0.55) :, :] = 40.0
-        # Place synthetic Moon beacon in upper right
-        arr[118:126, 930:938] = 240.0
+    if req.image_luma is None:
+        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="image_luma"))
+    arr = np.asarray(req.image_luma, dtype=np.float64)
 
     solution = solve_horizon_and_beacon_pose(
         image=arr,
@@ -383,10 +391,7 @@ def post_media_restore(req: RestoreRequest) -> dict[str, Any]:
     elif req.image_luma is not None:
         frame_arrays = [np.asarray(req.image_luma, dtype=np.float64)]
     else:
-        synth_frame, _, _ = render_synthetic_starfield(
-            width=320, height=180, read_noise_sigma=3.2, seed=101
-        )
-        frame_arrays = [synth_frame]
+        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="frames or image_luma"))
 
     try:
         res = _media_runtime.execute_restoration_branch(
@@ -424,28 +429,4 @@ def post_voice_command(req: VoiceCommandRequest) -> dict[str, Any]:
     )
     outcome["proposedAction"] = action
     return outcome
-
-
-class DiscoveryAuditRequest(BaseModel):
-    """Request payload for `POST /api/science/discover-anomalies`."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    session_id: str = Field(default="session-live", alias="sessionId")
-    findings: list[dict[str, Any]] = Field(default_factory=list)
-    frame_count: int = Field(default=16, alias="frameCount")
-    sky_brightness_mag_arcsec2: float = Field(default=19.6, alias="skyBrightnessMagArcsec2")
-    median_residual_px: float = Field(default=0.34, alias="medianResidualPx")
-
-
-@app.post("/api/science/discover-anomalies")
-def post_science_discover_anomalies(req: DiscoveryAuditRequest) -> dict[str, Any]:
-    """Run coherent multi-frame stacking SNR recovery, differential photometry, and uncataloged transient isolation."""
-    return run_frontier_sky_discovery_audit(
-        session_id=req.session_id,
-        findings=req.findings,
-        frame_count=req.frame_count,
-        sky_brightness_mag_arcsec2=req.sky_brightness_mag_arcsec2,
-        median_residual_px=req.median_residual_px,
-    )
 
