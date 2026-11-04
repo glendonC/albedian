@@ -59,7 +59,11 @@ export interface CislunarWebGpuRendererOptions {
   forceWebGL?: boolean;
   /** Called on every scene jump with the regime shown, as SparkPortalRenderer does. */
   onRegimeChange?: (regime: SpatialScaleRegime) => void;
-  /** Publishes `window.__albedianCosmos` for automated captures and benchmarks. */
+  /**
+   * Publishes `window.__albedianCosmos` for automated captures and benchmarks, once the host runs.
+   * A renderer disposed before then never publishes, so a disposed one cannot replace or delete
+   * the live one's hook (React StrictMode builds the viewport's renderer twice in development).
+   */
   exposeForAutomation?: boolean;
 }
 
@@ -201,9 +205,6 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.ready = this.start(container, options);
     // Logged here; callers that await `ready` still see the rejection
     this.ready.catch((error: unknown) => console.error('[webgpu host] failed to start', error));
-    if (options.exposeForAutomation && typeof window !== 'undefined') {
-      window.__albedianCosmos = this.automation();
-    }
   }
 
   get backend(): WebGpuHostBackend | null {
@@ -399,6 +400,9 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.post = buildCosmosPostChain(host.renderer, this.scene, this.camera, this.postOptions, this.optics);
     if (typeof document !== 'undefined') this.timer.connect(document);
     this.resumeLoop();
+    if (options.exposeForAutomation && typeof window !== 'undefined') {
+      window.__albedianCosmos = this.automation();
+    }
     console.info(`[webgpu host] cislunar scene on ${host.backend}; post: ${this.post.describe()}`);
   }
 

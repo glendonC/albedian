@@ -1,6 +1,6 @@
 # Sky dome registration
 
-The landing scenes draw an all-sky dome behind the catalog stars: ESO's Milky Way panorama. Until this change both renderers drew the dome at an arbitrary rotation, `Euler(0.18, 0, 0.32)`, so the photograph's Milky Way and stars sat at positions unrelated to the Gaia DR3 and Hipparcos stars, which are drawn at their ICRS directions. Both renderers now sample the dome by view direction through the same scene orientation the catalog stars use. On screen, the dome's star images fall a median 0.27 to 0.28 texels from their catalog stars, at most 1.1 [measured, while the dome also drew the NASA star map, since removed (finding 1)].
+The landing scenes draw an all-sky dome behind the catalog stars: ESO's Milky Way panorama. Until this change both renderers drew the dome at an arbitrary rotation, `Euler(0.18, 0, 0.32)`, so the photograph's Milky Way and stars sat at positions unrelated to the Gaia DR3 and Hipparcos stars, which are drawn at their ICRS directions. Both renderers now sample the dome by view direction through the same scene orientation the catalog stars use. On screen, the dome's star images fall a median 0.22 to 0.23 texels from their catalog stars, at most 1.08 [measured, section 3].
 
 The panorama is not in exact galactic coordinates. Its axes sit 3.78 degrees from galactic, and the stitching of its almost 300 fields leaves smooth offsets of up to 2.2 texels. `scripts/register_sky_panorama.py` fits both against catalog stars and writes the solution the renderers use. The image's pixels are not changed. Its provenance is in [`sky_texture_sources.json`](../../apps/web/public/textures/sky_texture_sources.json).
 
@@ -61,16 +61,16 @@ A table built from one half of the stars predicts the other half's residuals, so
 
 ### Check on screen [measured]
 
-`?scene=0&freeze=1&t=4` at 1920x1080 in headless Chrome 156 (WebGPU on the Apple M5 Max), captured with catalog sprites and again with them hidden. Every IAU-named star brighter than magnitude 4.5 was projected through the captured camera (fov 55.4 degrees, view centre RA 0h22m, Dec +1.0), and the dome's star image was centroided within 6 pixels of it. Screen scale at the centre is 1.08 pixels per texel.
+`?scene=0&freeze=1&t=4` at 1920x1080 in headless Chrome 156 (WebGPU on the Apple M5 Max), captured by [`scripts/capture_landing.mjs`](../../scripts/capture_landing.mjs) with the catalog sprites drawn and again with them hidden, and measured by [`scripts/check_sky_dome_on_screen.py`](../../scripts/check_sky_dome_on_screen.py). Every IAU-named star brighter than magnitude 4.5 is projected through the captured camera at its catalog direction (fov 55.4 degrees, view centre RA 0h22m, Dec +1.0); stars behind the Moon, the Earth or its atmosphere shell are left out; and the dome's star image is centroided within 6 pixels (the brightest difference-of-Gaussians peak, refined by the Gaussian-windowed centroid of section 2). Screen scale at the centre is 1.08 pixels per texel.
 
-| Renderer | Before: stars, median, max | After: stars, median, max |
+| Renderer | Before (acecdc9): stars, median, max | After: stars, median, max |
 |---|---|---|
-| WebGL renderer | 16, 4.5, 6.2 texels | **20, 0.28, 1.12 texels** |
-| WebGPU host | 17, 4.0, 6.2 texels | **20, 0.27, 1.09 texels** |
+| WebGL renderer | 19, 4.0, 6.9 texels | **20, 0.23, 1.08 texels** |
+| WebGPU host | 19, 4.0, 6.7 texels | **20, 0.22, 1.08 texels** |
 
-Counted are named stars in clear sky with a dome image at the search position; the 7 behind the Moon or the Earth are left out. Before the change, the peak found was an unrelated star, so those figures only reflect the search window's size. These figures were measured while the dome also drew the NASA star map, whose registered star images sat at the same positions; it has been removed since (finding 1).
+Counted are named stars in clear sky with a dome image at the search position; 7 sit behind the Moon or the Earth. Before the registration, the peak found was an unrelated star, so those figures only reflect the search window's size. The after frames show what ships: the panorama alone, without the NASA star map and the red boost (findings 1 and 3). The branch's first measurement, made with the star map drawn and a different centroid, gave medians of 0.27 to 0.28 texels and a maximum of 1.12. The before and after cameras are identical to the last bit, since the clock is held at t = 4.
 
-Matched captures, canvas only: WebGL [before](img/sky-registration/cislunar-webgl-before.jpg) and [after](img/sky-registration/cislunar-webgl-after.jpg); WebGPU host [before](img/sky-registration/cislunar-webgpu-before.jpg) and [after](img/sky-registration/cislunar-webgpu-after.jpg). [Detail](img/sky-registration/named-stars-detail.jpg), WebGPU host, x5: Hamal, Enif, Algenib and Menkar, each marked at its catalog position. Columns: before with the dome only, after with the dome only, and after with the catalog sprite.
+Matched captures, canvas only: WebGL [before](img/sky-registration/cislunar-webgl-before.jpg) and [after](img/sky-registration/cislunar-webgl-after.jpg); WebGPU host [before](img/sky-registration/cislunar-webgpu-before.jpg) and [after](img/sky-registration/cislunar-webgpu-after.jpg). [Detail](img/sky-registration/named-stars-detail.jpg), WebGPU host, x5: Hamal, Enif, Algenib and Menkar, each marked at its catalog position. Columns: before with the dome only, after with the dome only, and after as shown, with the catalog sprite.
 
 ## 4. Findings and decisions
 
@@ -88,6 +88,11 @@ uv run python scripts/register_sky_panorama.py           # fit and write apps/we
 uv run python scripts/register_sky_panorama.py --verify  # refit and compare byte for byte
 uv run pytest tests/integration/test_sky_registration.py
 pnpm vitest run apps/web/src/spatial/sky
+
+pnpm dev                                                  # the web app, on port 5173
+node scripts/capture_landing.mjs --out /tmp/sky-capture   # both renderers; --url for another port
+uv run python scripts/check_sky_dome_on_screen.py /tmp/sky-capture webgpu   # or webgl; --json, --detail
+uv run pytest tests/integration/test_sky_dome_on_screen.py
 ```
 
 ## 6. Not verified
