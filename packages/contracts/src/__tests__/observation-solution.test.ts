@@ -156,3 +156,47 @@ describe('@albedian/contracts: Python contract parity', () => {
     expect(unplaced.every((f) => f.skyPosition === undefined && f.sourceDetection !== undefined)).toBe(true);
   });
 });
+
+describe('@albedian/contracts: solution quality residuals', () => {
+  const counts = { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false };
+
+  it('accepts a solution without held-out residuals, as when no held-out star paired with the catalog', () => {
+    const parsed = ObservationSolutionSchema.safeParse({
+      ...solution({ wcs: false, passed: false, findings: [] }),
+      quality: counts,
+    });
+    expect(parsed.error?.issues ?? []).toEqual([]);
+  });
+
+  it('rejects a residual sent as null: a missing residual is left out, never null', () => {
+    const parsed = ObservationSolutionSchema.safeParse({
+      ...solution({ wcs: false, passed: false, findings: [] }),
+      quality: { ...counts, medianResidualPx: null, p95ResidualPx: null, medianResidualArcsec: null },
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe('@albedian/contracts: the recording behind the evidence', () => {
+  const withoutHash = (f: ReturnType<typeof finding>) => {
+    const { sourceAssetSha256: _omitted, ...evidence } = f.evidence;
+    return { ...f, evidence };
+  };
+
+  it('accepts a prediction for a time and place that no recording stands behind', () => {
+    const parsed = CelestialFindingSchema.safeParse(withoutHash(finding('moon', 'predicted', { sky: SKY })));
+    expect(parsed.error?.issues ?? []).toEqual([]);
+  });
+
+  it('rejects observed and catalog-matched evidence that names no recording', () => {
+    const observed = CelestialFindingSchema.safeParse(withoutHash(finding('obs', 'observed', { detection: true })));
+    const matched = CelestialFindingSchema.safeParse(withoutHash(finding('rigel', 'catalog_matched', { sky: SKY })));
+    expect(observed.error?.issues.map((i) => i.path.join('.'))).toEqual(['evidence.sourceAssetSha256']);
+    expect(matched.error?.issues.map((i) => i.path.join('.'))).toEqual(['evidence.sourceAssetSha256']);
+  });
+
+  it('rejects a hash sent as null: a missing hash is left out, never null', () => {
+    const f = finding('moon', 'predicted', { sky: SKY });
+    expect(CelestialFindingSchema.safeParse({ ...f, evidence: { ...f.evidence, sourceAssetSha256: null } }).success).toBe(false);
+  });
+});

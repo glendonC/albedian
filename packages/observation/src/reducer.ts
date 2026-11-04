@@ -132,7 +132,7 @@ export function dispatchAlbedianAction(
       const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, 'Departure from Source to Registered Sky') : base.navigationHistory;
       const isCal = base.observationSolution.status === 'calibrated';
       const status = isCal
-        ? `Calibrated sky registered (${base.observationSolution.quality.heldOutInliers} held-out stars, ${base.observationSolution.quality.medianResidualPx.toFixed(2)} px median residual).`
+        ? `Calibrated sky registered (${base.observationSolution.quality.heldOutInliers} held-out stars${base.observationSolution.quality.medianResidualPx !== undefined ? `, ${base.observationSolution.quality.medianResidualPx.toFixed(2)} px median residual` : ''}).`
         : 'Showing predicted sky model from recorded timestamp and location (separate from source pixels).';
 
       return completeAction(

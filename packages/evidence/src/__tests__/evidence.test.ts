@@ -157,6 +157,18 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
     );
   });
 
+  it('never calibrates when a held-out residual is missing', () => {
+    const cases: Array<{ medianResidualPx?: number; p95ResidualPx?: number }> = [{}, { medianResidualPx: 0.5 }, { p95ResidualPx: 0.5 }];
+    for (const residuals of cases) {
+      const gate = evaluateWCSVerificationGate({
+        detectedCandidateCount: 20, matchedInlierCount: 12, heldOutInliers: 8, hasTimestampAndLocation: true, ...residuals,
+      });
+      expect(gate.status).not.toBe('calibrated');
+      expect(gate.passedIndependentVerification).toBe(false);
+      expect(gate.reason).not.toMatch(/NaN|undefined/);
+    }
+  });
+
   it('EXP-12: Distinguishes all four EvidenceClasses by shape, shortCode, and disclosure without relying on color alone', () => {
     const classes: EvidenceClass[] = [
       'observed',
@@ -515,6 +527,20 @@ describe('@albedian/evidence: detections without a sky position', () => {
     expect(records.map((r) => r.kind)).toEqual(['captured', 'reconstructed']);
     expect(records[1]?.coverageDescription).toContain('FOV 37.9°×21.5°');
     expect(records.some((r) => r.title.startsWith('Uncataloged Sensor Locus'))).toBe(false);
+  });
+
+  it('describes a pose with no held-out residual without inventing one', () => {
+    const finding = pixelOnly();
+    const { detectedCandidateCount, matchedInlierCount, heldOutInliers, passedIndependentVerification } =
+      solutionFor(finding, 'approximate', approximateWcs).quality;
+    const solution: ObservationSolution = {
+      ...solutionFor(finding, 'approximate', approximateWcs),
+      quality: { detectedCandidateCount, matchedInlierCount, heldOutInliers, passedIndependentVerification },
+    };
+    const records = buildFindingEvidenceRecords(sourceAsset, solution, finding);
+    const description = records[1]?.uncertaintyDescription ?? '';
+    expect(description).toContain('No held-out star paired with the catalog, so no held-out residual');
+    expect(description).not.toMatch(/NaN|undefined|999/);
   });
 
   it('promotes a detection without a sky position to the position of its verified catalog match', () => {

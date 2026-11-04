@@ -166,6 +166,21 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
     assert _none_paths(payload) == []
 
 
+def test_solution_quality_leaves_out_the_residuals_it_does_not_have() -> None:
+    quality = SolutionQuality(
+        detected_candidate_count=8, matched_inlier_count=0, held_out_inliers=0, median_residual_px=None,
+        p95_residual_px=None, median_residual_arcsec=None, passed_independent_verification=False,
+    )
+    payload = quality.to_contract_dict()
+    assert not {"medianResidualPx", "p95ResidualPx", "medianResidualArcsec"} & payload.keys()
+    assert _none_paths(payload) == []
+    measured = SolutionQuality(
+        detected_candidate_count=12, matched_inlier_count=11, held_out_inliers=7, median_residual_px=0.12,
+        p95_residual_px=0.17, median_residual_arcsec=25.8, passed_independent_verification=True,
+    )
+    assert measured.to_contract_dict()["medianResidualPx"] == 0.12
+
+
 def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> None:
     det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
     pixel_only = CelestialFindingRecord(

@@ -112,6 +112,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     expect(parsed.observationSolution.wcs).toBeUndefined();
     expect(parsed.observationSolution.findings).toHaveLength(0);
     expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
+    expect(parsed.observationSolution.quality.medianResidualPx).toBeUndefined();
     expect(parsed.observationSolution.observedAtUTC).toBe(createdAtISO);
   });
 

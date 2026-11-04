@@ -42,7 +42,9 @@ export const ScientificEvidenceSchema = z.object({
   id: z.string().min(1),
   evidenceClass: EvidenceClassSchema,
   verificationMethod: z.string().min(1),
-  sourceAssetSha256: z.string().min(16),
+  // The recording the evidence rests on. Absent only for a prediction made for a time and place with no
+  // recording behind it; observed and catalog-matched findings must name theirs (CelestialFindingSchema).
+  sourceAssetSha256: z.string().min(16).optional(),
   wcsSolutionId: z.string().optional(),
   catalogReferenceId: z.string().optional(),
   angularResidualArcsec: z.number().nonnegative().optional(),
@@ -121,6 +123,13 @@ export const CelestialFindingSchema = z
         message: 'An observed finding without a sky position needs the source detection that locates it in pixels.',
       });
     }
+    if ((finding.evidenceClass === 'observed' || finding.evidenceClass === 'catalog_matched') && !finding.evidence.sourceAssetSha256) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['evidence', 'sourceAssetSha256'],
+        message: 'Observed and catalog-matched evidence rests on a recording and names its SHA-256.',
+      });
+    }
   });
 export type CelestialFinding = z.infer<typeof CelestialFindingSchema>;
 
@@ -177,9 +186,10 @@ export const ObservationSolutionSchema = z
       detectedCandidateCount: z.number().int().nonnegative(),
       matchedInlierCount: z.number().int().nonnegative(),
       heldOutInliers: z.number().int().nonnegative(),
-      medianResidualPx: z.number().nonnegative(),
-      p95ResidualPx: z.number().nonnegative(),
-      medianResidualArcsec: z.number().nonnegative(),
+      // Held-out residuals: absent when no held-out star paired with the catalog, never a stand-in number
+      medianResidualPx: z.number().nonnegative().optional(),
+      p95ResidualPx: z.number().nonnegative().optional(),
+      medianResidualArcsec: z.number().nonnegative().optional(),
       passedIndependentVerification: z.boolean(),
     }),
     findings: z.array(CelestialFindingSchema),

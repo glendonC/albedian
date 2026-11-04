@@ -61,7 +61,7 @@ export function createEmptyObservationSession(
       id: 'sol_none', sourceAssetId: EMPTY_SOURCE_ASSET_ID, sourceSha256: EMPTY_SHA256, frameTimeSec: 0,
       revision: 1, status: 'pending', observedAtUTC: createdAtISO,
       solver: { name: 'none', version: '0', catalogRelease: 'none' },
-      quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutInliers: 0, medianResidualPx: 0, p95ResidualPx: 0, medianResidualArcsec: 0, passedIndependentVerification: false },
+      quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
       findings: [], warnings: [],
     },
     selectedFindingId: null, focusedFindingId: null, spatialView,

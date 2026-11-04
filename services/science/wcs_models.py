@@ -203,26 +203,35 @@ class WCSModel:
 
 @dataclass(frozen=True)
 class SolutionQuality:
-    """Astrometric verification metrics including independent held-out residual evaluation."""
+    """Astrometric verification metrics including independent held-out residual evaluation.
+
+    The held-out residuals are None when no held-out star paired with the catalog: the contract then leaves them
+    out rather than carry a stand-in number.
+    """
 
     detected_candidate_count: int
     matched_inlier_count: int
     held_out_inliers: int
-    median_residual_px: float
-    p95_residual_px: float
-    median_residual_arcsec: float
+    median_residual_px: float | None
+    p95_residual_px: float | None
+    median_residual_arcsec: float | None
     passed_independent_verification: bool
 
     def to_contract_dict(self) -> dict:
-        return {
+        payload: dict = {
             "detectedCandidateCount": int(self.detected_candidate_count),
             "matchedInlierCount": int(self.matched_inlier_count),
             "heldOutInliers": int(self.held_out_inliers),
-            "medianResidualPx": float(self.median_residual_px),
-            "p95ResidualPx": float(self.p95_residual_px),
-            "medianResidualArcsec": float(self.median_residual_arcsec),
             "passedIndependentVerification": bool(self.passed_independent_verification),
         }
+        for key, value in (
+            ("medianResidualPx", self.median_residual_px),
+            ("p95ResidualPx", self.p95_residual_px),
+            ("medianResidualArcsec", self.median_residual_arcsec),
+        ):
+            if value is not None:
+                payload[key] = float(value)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -392,11 +401,11 @@ class ObservationSolution:
         return self.quality.held_out_inliers
 
     @property
-    def median_residual_px(self) -> float:
+    def median_residual_px(self) -> float | None:
         return self.quality.median_residual_px
 
     @property
-    def p95_residual_px(self) -> float:
+    def p95_residual_px(self) -> float | None:
         return self.quality.p95_residual_px
 
     @property

@@ -33,8 +33,9 @@ export interface WCSGateMetrics {
   detectedCandidateCount: number;
   matchedInlierCount: number;
   heldOutInliers: number;
-  medianResidualPx: number;
-  p95ResidualPx: number;
+  /** Held-out residuals; absent when no held-out star paired with the catalog. */
+  medianResidualPx?: number;
+  p95ResidualPx?: number;
   hasTimestampAndLocation: boolean;
 }
 
@@ -57,16 +58,20 @@ export function evaluateWCSVerificationGate(metrics: WCSGateMetrics): {
   passedIndependentVerification: boolean;
   reason: string;
 } {
+  const median = metrics.medianResidualPx;
+  const p95 = metrics.p95ResidualPx;
   if (
     metrics.heldOutInliers >= MIN_HELD_OUT_INLIERS &&
     metrics.matchedInlierCount >= MIN_HELD_OUT_INLIERS &&
-    metrics.medianResidualPx <= MAX_MEDIAN_RESIDUAL_PX &&
-    metrics.p95ResidualPx <= MAX_P95_RESIDUAL_PX
+    median !== undefined &&
+    p95 !== undefined &&
+    median <= MAX_MEDIAN_RESIDUAL_PX &&
+    p95 <= MAX_P95_RESIDUAL_PX
   ) {
     return {
       status: 'calibrated',
       passedIndependentVerification: true,
-      reason: `Calibrated (${metrics.matchedInlierCount} matches, ${metrics.heldOutInliers} held-out inliers, median residual ${metrics.medianResidualPx.toFixed(2)} px).`,
+      reason: `Calibrated (${metrics.matchedInlierCount} matches, ${metrics.heldOutInliers} held-out inliers, median residual ${median.toFixed(2)} px).`,
     };
   }
 
@@ -80,13 +85,14 @@ export function evaluateWCSVerificationGate(metrics: WCSGateMetrics): {
 
   if (
     metrics.matchedInlierCount >= MIN_HELD_OUT_INLIERS &&
-    (metrics.medianResidualPx > MAX_MEDIAN_RESIDUAL_PX ||
-      metrics.p95ResidualPx > MAX_P95_RESIDUAL_PX)
+    median !== undefined &&
+    p95 !== undefined &&
+    (median > MAX_MEDIAN_RESIDUAL_PX || p95 > MAX_P95_RESIDUAL_PX)
   ) {
     return {
       status: 'ambiguous',
       passedIndependentVerification: false,
-      reason: `High reprojection residual (median ${metrics.medianResidualPx.toFixed(2)} px > ${MAX_MEDIAN_RESIDUAL_PX.toFixed(1)} px threshold).`,
+      reason: `High reprojection residual (median ${median.toFixed(2)} px > ${MAX_MEDIAN_RESIDUAL_PX.toFixed(1)} px threshold).`,
     };
   }
 
@@ -441,6 +447,16 @@ export function deriveEvidenceKind(
   }
 }
 
+/** The held-out residuals a solution measured, or that it measured none. */
+function describeHeldOutResiduals(quality: ObservationSolution['quality']): string {
+  const { medianResidualPx, p95ResidualPx, medianResidualArcsec, heldOutInliers } = quality;
+  if (medianResidualPx === undefined || p95ResidualPx === undefined) {
+    return 'No held-out star paired with the catalog, so no held-out residual';
+  }
+  const arcsec = medianResidualArcsec !== undefined ? ` (±${medianResidualArcsec.toFixed(1)} arcsec)` : '';
+  return `Held-out median residual ±${medianResidualPx.toFixed(2)} px${arcsec}, p95 ±${p95ResidualPx.toFixed(2)} px across ${heldOutInliers} held-out inliers`;
+}
+
 function resolveCatalogLicense(provider: CatalogReference['provider']): string {
   switch (provider) {
     case 'Gaia DR3':
@@ -534,7 +550,7 @@ export function buildFindingEvidenceRecords(
         residualPx: 'px',
         residualArcsec: 'arcsec',
       },
-      uncertaintyDescription: `Held-out median residual ±${solution.quality.medianResidualPx.toFixed(2)} px (±${solution.quality.medianResidualArcsec.toFixed(1)} arcsec), p95 ±${solution.quality.p95ResidualPx.toFixed(2)} px across ${solution.quality.heldOutInliers} held-out inliers${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
+      uncertaintyDescription: `${describeHeldOutResiduals(solution.quality)}${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
       processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
       coverageDescription: registrationCoverage,
     });
