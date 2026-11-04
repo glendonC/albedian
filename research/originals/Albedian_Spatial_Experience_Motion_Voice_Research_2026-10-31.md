@@ -122,7 +122,7 @@ A navigation action pushes an entry only if it changes meaningful state. `Go bac
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ ALBEDIAN      Sahara Night · 2030-01-01         [Original] [Compare]    ↗   │
+│ ALBEDIAN      Night Sky · capture date          [Original] [Compare]    ↗   │
 │                                                                             │
 │                                                                             │
 │                    [ SOURCE VIDEO / PHOTO ]                                 │

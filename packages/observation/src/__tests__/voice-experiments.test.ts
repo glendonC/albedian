@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildActionContext,
-  createDefaultSaharaObservationSession,
-  createUnresolvedObservationSession,
-  executeVoiceOrTextCommand,
-  parseUtteranceToAction,
-} from '../index';
+import { buildActionContext, executeVoiceOrTextCommand, parseUtteranceToAction } from '../index';
+import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions';
 
 describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Barge-In (40+ Cases)', () => {
-  const baseSession = createDefaultSaharaObservationSession();
+  const baseSession = createSyntheticCalibratedSession();
   const withBetelgeuseSelected = {
     ...baseSession,
     selectedFindingId: 'finding_betelgeuse',
@@ -152,7 +147,7 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
     {
       name: '15. What were we looking at? on predicted_only session -> sky.show (predicted)',
       utterance: 'What were we looking at?',
-      session: createUnresolvedObservationSession(),
+      session: createSyntheticUnresolvedSession(),
       expectedActionType: 'sky.show',
       verify: (a) => {
         if (a.type === 'sky.show') {
@@ -581,7 +576,7 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
   });
 
   it('50. rejects 3D space entry on an unresolved sky session', () => {
-    const unresolvedBase = createUnresolvedObservationSession();
+    const unresolvedBase = createSyntheticUnresolvedSession();
     const completelyUnresolved = {
       ...unresolvedBase,
       machines: {

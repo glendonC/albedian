@@ -12,11 +12,11 @@ import {
 describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)', () => {
   it('validates immutable SourceAsset schema and rejects mutable flags', () => {
     const validSource = {
-      id: 'src_sahara_001',
-      title: 'Sahara Night — synthetic site',
+      id: 'src_synthetic_001',
+      title: 'Synthetic night clip',
       mediaKind: 'video' as const,
       sha256: 'a8f5c2d9104e8b771234567890abcdef',
-      uri: 'file://fixtures/sahara_night.mp4',
+      uri: 'file://fixtures/synthetic_night.mp4',
       width: 1920,
       height: 1080,
       durationMs: 12000,
@@ -34,12 +34,13 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
           sha256: 'audio77889900aabb',
         },
       ],
+      // A synthetic moment and place that point at nobody: the open North Atlantic
       capturedAtUTC: '2030-01-01T02:00:00Z',
       observerLocation: {
         latDeg: 30.0,
         lonDeg: -40.0,
-        elevationM: 740,
-        placeName: 'synthetic site, Sahara, Morocco',
+        elevationM: 0,
+        placeName: 'Synthetic place, open North Atlantic',
       },
       privacyClass: 'consented_demo' as const,
       immutable: true as const,

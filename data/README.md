@@ -1,18 +1,18 @@
-# Albedian Local Media & Morocco/Sahara Ingestion Directory
+# Albedian Local Media Ingestion Directory
 
 ## Privacy & Git Isolation Guarantee
 
 All files placed inside `data/uploads/` and `data/artifacts/` are **strictly gitignored** (see root [`.gitignore`](../.gitignore)):
-- `data/uploads/morocco/` — Drop your personal Morocco / Sahara night videos (`.mp4`, `.mov`) and photos (`.jpg`, `.png`, `.heic`, `.dng`) here. Original bytes, audio tracks, faces, and GPS metadata never leave your machine and are never committed to Git.
-- `data/uploads/public_samples/` — Drop rights-cleared or public dark-sky comparison images/videos here.
-- `data/artifacts/` — Output directory where `scripts/run_real_media_experiment.py` writes content-addressed probes, side-by-side comparison frames, audio-preserved restored MP4s, WCS plate-solving diagnostics, and JSON provenance manifests.
+- `data/uploads/<folder>/`: drop your personal night videos (`.mp4`, `.mov`) and photos (`.jpg`, `.png`, `.heic`, `.dng`) here. Original bytes, audio tracks, faces, and GPS metadata never leave your machine and are never committed to Git.
+- `data/uploads/public_samples/`: drop rights-cleared or public dark-sky comparison images/videos here.
+- `data/artifacts/`: the output directory where `scripts/run_real_media_experiment.py` writes content-addressed probes, side-by-side comparison frames, audio-preserved restored MP4s, WCS plate-solving diagnostics, and JSON provenance manifests.
 
 ## Running the Real-Footage Experiment Suite (`E1`–`E6`)
 
-Once you place one or more clips/photos in `data/uploads/morocco/` (or `data/uploads/public_samples/`), run:
+Once you place one or more clips or photos in a folder under `data/uploads/` (for example `data/uploads/public_samples/`), run:
 
 ```bash
-uv run python scripts/run_real_media_experiment.py data/uploads/morocco
+uv run python scripts/run_real_media_experiment.py data/uploads/<folder>
 ```
 
 For each file, the script executes:

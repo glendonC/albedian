@@ -20,7 +20,7 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
 
 ## The Five-Regime Spatial Journey (`@sparkjsdev/spark` + WebGL2 Ray-Marching)
 
-1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording, locks WCS coordinates only after held-out star verification passes, and grounds the sky above a 3D ray-marched local horizon (Sahara synthetic site dunes `30.0°N` or Aoraki / Lake Tekapo `44.0°S`).
+1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording, locks WCS coordinates only after held-out star verification passes, and grounds the sky above a 3D ray-marched local horizon, with a northern or southern landscape picked by the observer's hemisphere.
 2. **`02 · Cislunar Orbit` (`cislunar` — `1.28 light-sec`):** Transitions into Earth–Moon orbital space with Rayleigh/Mie atmospheric limb scattering and NASA LRO laser-altimetry lunar relief.
 3. **`03 · Nearby Stars` (`solar_neighborhood` — `4.37–548 ly`):** Navigates 3D stellar photospheres and the `@sparkjsdev/spark` 3D Gaussian Splat Local Bubble dust cavity (`O'Neill et al., 2024, ApJ`).
 4. **`04 · Deep Space` (`deep_sky` — `1,344–26,673 ly`):** Renders multi-wavelength 3D Gaussian Splat nebulae and relativistic Kerr/Schwarzschild geodesic gravitational lensing ([James, von Tunzelmann, Franklin & Thorne, 2015](https://iopscience.iop.org/article/10.1088/0264-9381/32/6/065001); [Bruneton, 2020](https://ebruneton.github.io/black_hole_shader/paper.pdf)).

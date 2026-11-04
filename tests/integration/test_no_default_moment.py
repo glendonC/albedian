@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 
 from fastapi.testclient import TestClient
 import numpy as np
@@ -15,7 +16,8 @@ from services.science.radiometry import compute_sensor_limiting_magnitude_audit
 from services.science.solver import SourceDetection, solve_and_verify_field
 from services.voice.intent import ActionContext
 
-# Moon at about 33 degrees altitude, azimuth 222 degrees for this moment and place
+# A synthetic moment and place that point at nobody: the open North Atlantic, about 1,321 km from Flores
+# in the Azores. The repo's ephemeris puts the Moon at 33.0 degrees altitude, azimuth 222 degrees, then.
 MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 
@@ -31,7 +33,7 @@ def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
 def test_missing_capture_metadata_stays_missing() -> None:
     assert parse_iso6709_location(None) is None
     assert parse_iso6709_location("not-a-location") is None
-    assert parse_iso6709_location("+30.0-040.0000/") == (30.0, -40.0, None)
+    assert parse_iso6709_location("+30.1250-040.2500/") == (30.125, -40.25, None)
     assert normalize_creation_utc(None) is None
     assert normalize_creation_utc("yesterday") is None
 
@@ -61,7 +63,8 @@ def test_voice_context_without_location_does_not_borrow_one() -> None:
     assert resp.status_code == 200
     explanation = resp.json().get("scientificExplanation", "")
     assert "no observation time and location are set yet" in explanation
-    assert "30.0" not in explanation
+    # No position at all is stated, whether borrowed from a default or from another session
+    assert re.search(r"Lat -?\d", explanation) is None
 
 
 def test_horizon_solver_without_moon_assumes_no_pointing() -> None:
@@ -126,7 +129,7 @@ def test_plate_solver_without_wcs_invents_no_sky_positions() -> None:
 
 
 def test_uncalibrated_estimates_say_so() -> None:
-    audit = compute_sensor_limiting_magnitude_audit(obs_utc_iso=MOMENT["obs_utc_iso"], moon_alt_deg=32.95)
+    audit = compute_sensor_limiting_magnitude_audit(obs_utc_iso=MOMENT["obs_utc_iso"], moon_alt_deg=33.0)
     assert audit["calibratedToSensor"] is False
     assert audit["explanation"].startswith("Uncalibrated estimate")
     assert ActionContext.from_dict({}).calibration_state == "not_requested"

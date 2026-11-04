@@ -8,20 +8,19 @@ import {
   MediaVariant,
 } from '@albedian/contracts';
 import {
-  createDefaultSaharaObservationSession,
   createEmptyObservationSession,
   createSessionForSourceAsset,
-  createUnresolvedObservationSession,
   dispatchAlbedianAction,
   transitionOrthogonalMachine,
   validateMediaTimelineSync,
 } from '../index';
+import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions';
 
 describe('@albedian/observation — Golden Sessions & Core Property-Based Invariants', () => {
-  it('validates createDefaultSaharaObservationSession against ObservationSessionSchema and all 14 findings', () => {
-    const session = createDefaultSaharaObservationSession();
+  it('validates createSyntheticCalibratedSession against ObservationSessionSchema and all 14 findings', () => {
+    const session = createSyntheticCalibratedSession();
     const parsed = ObservationSessionSchema.parse(session);
-    expect(parsed.title).toBe('Sahara Night — Orion & Taurus Over synthetic site');
+    expect(parsed.title).toBe('Synthetic calibrated field (test data)');
     expect(parsed.sourceAsset.capturedAtUTC).toBe('2030-01-01T02:00:00Z');
     expect(parsed.sourceAsset.observerLocation?.latDeg).toBe(30.0);
     expect(parsed.sourceAsset.observerLocation?.lonDeg).toBe(-40.0);
@@ -80,8 +79,8 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     }
   });
 
-  it('validates createUnresolvedObservationSession with zero false catalog_matched claims', () => {
-    const session = createUnresolvedObservationSession();
+  it('validates createSyntheticUnresolvedSession with zero false catalog_matched claims', () => {
+    const session = createSyntheticUnresolvedSession();
     const parsed = ObservationSessionSchema.parse(session);
     expect(parsed.machines.calibration).toBe('predicted_only');
     expect(parsed.observationSolution.status).toBe('predicted_only');
@@ -134,6 +133,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     expect(session.observationSolution.findings).toHaveLength(0);
     expect(session.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe('src_upload_1');
 
+    // A synthetic capture time; the place is the public Lake Tekapo dark-sky reserve
     const located = createSessionForSourceAsset(
       { ...asset, capturedAtUTC: '2030-11-01T22:32:00Z', observerLocation: { latDeg: -43.99, lonDeg: 170.46 } },
       'ready',
@@ -145,7 +145,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
   });
 
   it('enforces scientific distance prerequisites on space.enter and space.viewpoint', () => {
-    const session = createDefaultSaharaObservationSession();
+    const session = createSyntheticCalibratedSession();
 
     // Rejects predicted planet (Jupiter) without Bailer-Jones distance
     const jupiterAttempt = dispatchAlbedianAction(session, {
@@ -177,7 +177,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
   });
 
   it('maintains orthogonality across the 4+1 state machines', () => {
-    const base = createDefaultSaharaObservationSession();
+    const base = createSyntheticCalibratedSession();
     const processing = transitionOrthogonalMachine(base, 'restoration', 'processing');
     expect(processing.machines.restoration).toBe('processing');
     expect(processing.machines.calibration).toBe('calibrated');
@@ -257,7 +257,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
         initialOverrideArb,
         fc.array(stepArbitrary, { minLength: 1, maxLength: 15 }),
         (initOverrides, steps) => {
-          const rawSession = createDefaultSaharaObservationSession();
+          const rawSession = createSyntheticCalibratedSession();
           let session: ObservationSession = {
             ...rawSession,
             currentSourceTimeSec: initOverrides.currentSourceTimeSec,
@@ -366,7 +366,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
   });
 
   it('PBT-VOICE-1: Any AlbedianAction with expectedViewRevision !== session.viewRevision is rejected (stale_revision) and leaves ObservationSession unchanged', () => {
-    const baseSession = createDefaultSaharaObservationSession();
+    const baseSession = createSyntheticCalibratedSession();
 
     const staleRevisionArb = fc
       .integer({ min: 0, max: 10_000 })
@@ -442,7 +442,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
   });
 
   it('PBT-SYNC-1: Media timeline synchronization property test verifying monotonic frame timestamps and bounded audio drift', () => {
-    const baseSession = createDefaultSaharaObservationSession();
+    const baseSession = createSyntheticCalibratedSession();
     const source: SourceAsset = baseSession.sourceAsset;
 
     // 1. All golden variants pass timeline sync
@@ -516,7 +516,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     // Establish a baseline session at the source view, then navigate to sky and space
     // so the checkpoint stack has at least 2 entries, then apply two sequential partial
     // history.back calls and verify the camera stays between the two surrounding checkpoints.
-    const base = createDefaultSaharaObservationSession();
+    const base = createSyntheticCalibratedSession();
 
     // Push a sky checkpoint
     const afterSky = dispatchAlbedianAction(base, {
@@ -579,7 +579,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
 
 describe('@albedian/observation: detections without a sky position', () => {
   it('selects and describes a pixel-only detection without inventing a sightline or a 3D position', () => {
-    const session = createUnresolvedObservationSession();
+    const session = createSyntheticUnresolvedSession();
     const selected = dispatchAlbedianAction(session, {
       type: 'finding.select', requestId: 'sel_obs_1', expectedViewRevision: session.viewRevision,
       findingId: 'finding_obs_overcast_1',

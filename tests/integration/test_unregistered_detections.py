@@ -32,8 +32,9 @@ from services.science.solver import (
 from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SolutionQuality
 
 WIDTH, HEIGHT = 960, 540
+# Synthetic moments at a place that points at nobody (the open North Atlantic, about 1,321 km from Flores in
+# the Azores): Orion high on a moonless night, and the Moon at 33 degrees altitude as in test_no_default_moment
 MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
-# Moon at about 33 degrees altitude for this moment and place, as in test_no_default_moment
 MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 CONTRACT_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_contract_solutions.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"

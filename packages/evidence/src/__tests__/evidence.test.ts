@@ -220,7 +220,7 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
 
     const promoted = promoteFindingToCatalogMatched(baseFinding, {
       kind: 'AuthorizedCalibrationProof',
-      wcsSolutionId: 'wcs_sahara_01',
+      wcsSolutionId: 'wcs_synthetic_01',
       sourceDetection: baseFinding.sourceDetection!,
       catalogRef: {
         id: 'cat_rigel',
@@ -278,12 +278,13 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
       fpsDenominator: 1,
       videoCodec: 'hevc',
       audioStreams: [],
-      capturedAtUTC: '2026-02-19T00:46:12Z',
+      // A synthetic moment and place that point at nobody: the open North Atlantic
+      capturedAtUTC: '2030-01-01T02:00:00Z',
       observerLocation: {
         latDeg: 30.0,
         lonDeg: -40.0,
-        elevationM: 712,
-        placeName: 'synthetic site',
+        elevationM: 0,
+        placeName: 'Synthetic place, open North Atlantic',
       },
       privacyClass: 'public_sample',
       immutable: true,
@@ -389,11 +390,11 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
       frameTimeSec: 2.5,
       revision: 1,
       status: 'calibrated',
-      observedAtUTC: '2026-02-19T00:46:12Z',
+      observedAtUTC: '2030-01-01T02:00:00Z',
       observerLocation: {
         latDeg: 30.0,
         lonDeg: -40.0,
-        placeName: 'synthetic site',
+        placeName: 'Synthetic place, open North Atlantic',
       },
       solver: {
         name: 'AlbedianQuadWCS',
@@ -439,7 +440,7 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
     for (const rec of records) {
       expect(() => EvidenceRecordSchema.parse(rec)).not.toThrow();
       expect(rec.sourceIdentifier).toBeTruthy();
-      expect(rec.observationTimeUtc).toBe('2026-02-19T00:46:12Z');
+      expect(rec.observationTimeUtc).toBe('2030-01-01T02:00:00Z');
       expect(rec.modelEpochUtc).toBeTruthy();
       expect(rec.coordinateFrame).toBeTruthy();
       expect(rec.uncertaintyDescription).toBeTruthy();
@@ -481,6 +482,7 @@ describe('@albedian/evidence: detections without a sky position', () => {
     projection: 'TAN', crvalRaDeg: 222.4, crvalDecDeg: -14.2, crpixX: 480, crpixY: 270, scaleDegPerPx: 0.04,
     rotationDeg: 3.1, radialDistortionK1: 0, radialDistortionK2: 0, parity: -1, fovHorizontalDeg: 37.9, fovVerticalDeg: 21.5,
   };
+  // observedAtUTC is a synthetic moment that points at nobody
   const solutionFor = (finding: CelestialFinding, status: SolutionStatus, wcs?: WCSCalibrationModel): ObservationSolution => ({
     id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
     observedAtUTC: '2030-11-01T22:32:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },

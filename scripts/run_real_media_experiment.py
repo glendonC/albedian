@@ -2,7 +2,7 @@
 """Run Albedian's Media Experiment Runtime & Sky Calibration on real night photos/videos.
 
 Usage:
-    uv run python scripts/run_real_media_experiment.py data/uploads/morocco/clip.mov
+    uv run python scripts/run_real_media_experiment.py data/uploads/<folder>/<clip>.mov
 
 Supports:
 - Images: .png, .jpg, .jpeg, .tif, .tiff, .webp
@@ -46,7 +46,7 @@ def sha256_file(path: Path) -> str:
 
 
 def parse_iso6709(iso_str: str) -> tuple[float, float] | None:
-    """Parse QuickTime ISO6709 string like '+30.0-040.0000/' into (lat, lon)."""
+    """Parse a QuickTime ISO 6709 string such as '+30.1250-040.2500/' into (lat, lon)."""
     m = re.match(r"^([+-]\d+\.\d+)([+-]\d+\.\d+)", iso_str.strip())
     if not m:
         return None
@@ -92,7 +92,7 @@ def probe_video_metadata(video_path: Path) -> dict[str, Any]:
 
 
 def extract_neighbor_frames(video_path: Path, out_dir: Path, timestamp_sec: float, count: int = 5) -> list[np.ndarray]:
-    """Extract closely spaced consecutive frames around timestamp_sec to minimize wearable camera motion."""
+    """Extract closely spaced consecutive frames around timestamp_sec to minimize camera motion."""
     frames_dir = out_dir / "extracted_frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     for old in frames_dir.glob("*.png"):
@@ -121,7 +121,7 @@ def extract_neighbor_frames(video_path: Path, out_dir: Path, timestamp_sec: floa
     return frames
 
 
-def align_and_stack_wearable_frames(frames: list[np.ndarray]) -> np.ndarray:
+def align_and_stack_frames(frames: list[np.ndarray]) -> np.ndarray:
     """Align consecutive frames via FFT phase correlation on bright features, rejecting high-motion frames."""
     if len(frames) <= 1:
         return frames[0]
@@ -155,7 +155,7 @@ def align_and_stack_wearable_frames(frames: list[np.ndarray]) -> np.ndarray:
 def restore_highlight_protected(stacked_rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Produce V1 (Photometric Stretch) and V2 (Highlight-Protected Multi-Scale Retinex + Chroma Denoise)."""
     luma = 0.2126 * stacked_rgb[..., 0] + 0.7152 * stacked_rgb[..., 1] + 0.0722 * stacked_rgb[..., 2]
-    # Protect bright camp lights & Moon core from blowing out
+    # Protect bright ground lights and the Moon core from blowing out
     highlight_mask = np.clip((luma - 0.30) / 0.45, 0.0, 1.0)
     highlight_mask = gaussian_filter(highlight_mask, sigma=14.0)[..., None]
 
@@ -227,7 +227,7 @@ def main() -> int:
         )
         frames = extract_neighbor_frames(src_path, out_dir, t_sec, count=5)
         raw_rgb = frames[0]
-        stacked_rgb = align_and_stack_wearable_frames(frames)
+        stacked_rgb = align_and_stack_frames(frames)
     else:
         raw_rgb = np.asarray(Image.open(src_path).convert("RGB"), dtype=np.float32) / 255.0
         stacked_rgb = raw_rgb

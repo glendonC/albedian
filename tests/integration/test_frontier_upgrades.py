@@ -163,7 +163,10 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
     stacking, and night-scene source classification.
     """
     # 1. Radiometry (`services/science/radiometry.py`)
+    # A synthetic moment and place that point at nobody (the open North Atlantic, about 1,321 km from
+    # Flores in the Azores), with the Moon at 33 degrees altitude by the repo's ephemeris
     obs_utc = "2030-11-01T22:32:00Z"
+    obs_lat, obs_lon = 30.0, -40.0
     phase = compute_lunar_phase_and_illumination(obs_utc)
     assert 0.0 <= float(phase["illuminationFraction"]) <= 1.0
     assert phase["phaseName"] in (
@@ -176,7 +179,7 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
     ks_moonlit = compute_krisciunas_schaefer_sky_brightness(
         sep_from_moon_deg=8.2,
         target_alt_deg=32.0,
-        moon_alt_deg=32.95,
+        moon_alt_deg=33.0,
         obs_utc_iso=obs_utc,
     )
     ks_moonless = compute_krisciunas_schaefer_sky_brightness(
@@ -190,7 +193,7 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
 
     audit = compute_sensor_limiting_magnitude_audit(
         obs_utc_iso=obs_utc,
-        moon_alt_deg=32.95,
+        moon_alt_deg=33.0,
         target_sep_deg=8.2,
         target_alt_deg=32.0,
         stack_frames=16,
@@ -273,7 +276,7 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
     scene_img = np.full((180, 240), 0.03, dtype=np.float64)
     # Compact upper-sky celestial beacon at (y=32, x=190)
     scene_img += 0.75 * np.exp(-((xx - 190.0) ** 2 + (yy - 32.0) ** 2) / (2.0 * 2.0**2))
-    # Extended campfire/tent lantern below horizon at (y=135, x=90)
+    # Extended ground light below the horizon at (y=135, x=90)
     scene_img += 0.85 * np.exp(-((xx - 90.0) ** 2 + (yy - 135.0) ** 2) / (2.0 * 9.0**2))
 
     cls_res = classify_night_scene_sources(scene_img, horizon_y=105.0)
@@ -287,7 +290,7 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
     assert client.get("/api/science/radiometry-audit").status_code == 422
     r_rad = client.get(
         "/api/science/radiometry-audit",
-        params={"obs_utc_iso": obs_utc, "lat_deg": 30.0, "lon_deg": -40.0},
+        params={"obs_utc_iso": obs_utc, "lat_deg": obs_lat, "lon_deg": obs_lon},
     )
     assert r_rad.status_code == 200
     rad_json = r_rad.json()

@@ -268,8 +268,8 @@
           "raDeg": 78.634467,
           "decDeg": -8.201638,
           "uncertaintyArcsec": 13.050233353953237,
-          "altDeg": 3.610026601055327,
-          "azDeg": 101.83847303316479
+          "altDeg": 50.05598438155836,
+          "azDeg": 198.91617832124177
         },
         "evidence": {
           "id": "ev-finding-star-rigel",
@@ -346,8 +346,8 @@
           "raDeg": 88.792939,
           "decDeg": 7.407064,
           "uncertaintyArcsec": 29.15969756247523,
-          "altDeg": 3.085955028552037,
-          "azDeg": 83.20774885276106
+          "altDeg": 67.33064968946184,
+          "azDeg": 185.10244227693028
         },
         "evidence": {
           "id": "ev-finding-star-betelgeuse",
@@ -424,8 +424,8 @@
           "raDeg": 68.980163,
           "decDeg": 16.509302,
           "uncertaintyArcsec": 5.4693991636297925,
-          "altDeg": 24.41808165809806,
-          "azDeg": 84.8214040397246
+          "altDeg": 65.93201522109007,
+          "azDeg": 240.78950511067978
         },
         "evidence": {
           "id": "ev-finding-star-aldebaran",
@@ -565,9 +565,9 @@
       "detectedCandidateCount": 1,
       "matchedInlierCount": 1,
       "heldOutInliers": 0,
-      "medianResidualPx": 5.684341886080801e-13,
-      "p95ResidualPx": 8.753886504564433e-13,
-      "medianResidualArcsec": 8.652718871966924e-11,
+      "medianResidualPx": 2.2737367544323206e-13,
+      "p95ResidualPx": 6.309619493549688e-13,
+      "medianResidualArcsec": 3.467341633394956e-11,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -583,8 +583,8 @@
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
-          "angularResidualArcsec": 1.5478454070330674e-10,
-          "pixelResidualPx": 1.016845989170083e-12,
+          "angularResidualArcsec": 1.0545507883678933e-10,
+          "pixelResidualPx": 6.915300366811402e-13,
           "limitations": [
             "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
             "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
@@ -608,13 +608,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.003 AU · Alt +32.9° · Inside Camera FOV",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 325.0790195412517,
-          "decDeg": -14.463305370455188,
+          "raDeg": 303.644940191076,
+          "decDeg": -15.523417194143088,
           "uncertaintyArcsec": 18.0,
-          "altDeg": 32.94754177145702,
-          "azDeg": 222.22581347760072
+          "altDeg": 32.9964329839963,
+          "azDeg": 221.98228357323
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -629,154 +629,154 @@
         }
       },
       {
-        "id": "finding-predicted-star-fomalhaut",
+        "id": "finding-predicted-star-dabih",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Fomalhaut (Alpha Piscis Austrini)",
-        "subtitle": "Predicted Star (Piscis Austrinus) · 7.7 pc · Alt +27.2° Az 195.9° · Inside Camera FOV",
+        "title": "Dabih (Beta Capricorni)",
+        "subtitle": "Predicted Star (Capricornus) · 101.2 pc · Alt +34.5° Az 221.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 344.412693,
-          "decDeg": -29.622237,
+          "raDeg": 305.252822,
+          "decDeg": -14.78148,
           "uncertaintyArcsec": 45.0,
-          "altDeg": 27.235369601828264,
-          "azDeg": 195.91460543917114
+          "altDeg": 34.515684397799035,
+          "azDeg": 221.01180332911827
         },
         "evidence": {
-          "id": "ev-finding-predicted-star-fomalhaut",
+          "id": "ev-finding-predicted-star-dabih",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
-          "catalogReferenceId": "star-fomalhaut",
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [7.7, 7.7] pc",
+          "catalogReferenceId": "star-dabih",
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [98.0, 104.5] pc",
           "limitations": [
             "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
           ],
           "verifiedByIndependentHoldout": false
         },
         "catalogRef": {
-          "id": "star-fomalhaut",
-          "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
-          "catalogSourceId": "HIP 113368",
-          "commonName": "Fomalhaut",
-          "bayerDesignation": "Alpha Piscis Austrini",
-          "constellation": "Piscis Austrinus",
-          "objectType": "star",
-          "coordinateEpoch": "J2000.0",
-          "raDeg": 344.412693,
-          "decDeg": -29.622237,
-          "apparentMagnitude": 1.16,
-          "colorIndexBpRp": 0.09,
-          "spectralType": "A3 V",
-          "properMotionRaMasYr": 328.95,
-          "properMotionDecMasYr": -164.67,
-          "radialVelocityKmS": 6.5,
-          "parallaxMas": 129.81,
-          "parallaxErrorMas": 0.47,
-          "bailerJonesDistancePc": {
-            "lower": 7.67,
-            "median": 7.7,
-            "upper": 7.73,
-            "method": "geometric_parallax"
-          },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
-        },
-        "inferredDistancePc": {
-          "lower": 7.67,
-          "median": 7.7,
-          "upper": 7.73,
-          "method": "geometric_parallax"
-        },
-        "cartesianParsecICRS": [
-          6.447456645835053,
-          -1.7986226546450026,
-          -3.805950518106506
-        ]
-      },
-      {
-        "id": "finding-predicted-star-deneb-algedi",
-        "observationSolutionId": "sol-horizon-beacon",
-        "evidenceClass": "predicted",
-        "title": "Deneb Algedi (Delta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 11.9 pc · Alt +32.5° Az 219.5° · Inside Camera FOV",
-        "skyPosition": {
-          "raDeg": 326.760184,
-          "decDeg": -16.127289,
-          "uncertaintyArcsec": 45.0,
-          "altDeg": 32.53298083188913,
-          "azDeg": 219.50780435114487
-        },
-        "evidence": {
-          "id": "ev-finding-predicted-star-deneb-algedi",
-          "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
-          "wcsSolutionId": "sol-horizon-beacon",
-          "catalogReferenceId": "star-deneb-algedi",
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [11.7, 12.1] pc",
-          "limitations": [
-            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
-          ],
-          "verifiedByIndependentHoldout": false
-        },
-        "catalogRef": {
-          "id": "star-deneb-algedi",
-          "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
-          "catalogSourceId": "HIP 107556",
-          "commonName": "Deneb Algedi",
-          "bayerDesignation": "Delta Capricorni",
+          "id": "star-dabih",
+          "provider": "Gaia DR3",
+          "releaseVersion": "DR3-2022",
+          "catalogSourceId": "Gaia DR3 6876037282198810112",
+          "commonName": "Dabih",
+          "bayerDesignation": "Beta Capricorni",
           "constellation": "Capricornus",
           "objectType": "star",
           "coordinateEpoch": "J2000.0",
-          "raDeg": 326.760184,
-          "decDeg": -16.127289,
-          "apparentMagnitude": 2.85,
-          "colorIndexBpRp": 0.38,
-          "spectralType": "A7 IIIp",
-          "properMotionRaMasYr": 261.71,
-          "properMotionDecMasYr": -296.68,
-          "radialVelocityKmS": -6.3,
-          "parallaxMas": 84.27,
-          "parallaxErrorMas": 0.69,
+          "raDeg": 305.252822,
+          "decDeg": -14.78148,
+          "apparentMagnitude": 3.05,
+          "colorIndexBpRp": 0.92,
+          "spectralType": "K0 II-III + B8 V",
+          "properMotionRaMasYr": 48.36,
+          "properMotionDecMasYr": 14.02,
+          "radialVelocityKmS": -18.9,
+          "parallaxMas": 9.88,
+          "parallaxErrorMas": 0.31,
           "bailerJonesDistancePc": {
-            "lower": 11.7,
-            "median": 11.9,
-            "upper": 12.1,
-            "method": "geometric_parallax"
+            "lower": 98.0,
+            "median": 101.2,
+            "upper": 104.5,
+            "method": "photogeometric_bailer_jones_edr3"
           },
           "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
         },
         "inferredDistancePc": {
-          "lower": 11.7,
-          "median": 11.9,
-          "upper": 12.1,
-          "method": "geometric_parallax"
+          "lower": 98.0,
+          "median": 101.2,
+          "upper": 104.5,
+          "method": "photogeometric_bailer_jones_edr3"
         },
         "cartesianParsecICRS": [
-          9.561285450480625,
-          -6.266223734187989,
-          -3.3054894717010805
+          56.47809917167081,
+          -79.90631138957208,
+          -25.819483226193
+        ]
+      },
+      {
+        "id": "finding-predicted-star-algedi",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Algedi (Alpha2 Capricorni)",
+        "subtitle": "Predicted Star (Capricornus) · 32.4 pc · Alt +35.9° Az 223.4° · Inside Camera FOV",
+        "skyPosition": {
+          "raDeg": 304.513571,
+          "decDeg": -12.544849,
+          "uncertaintyArcsec": 45.0,
+          "altDeg": 35.87783523027936,
+          "azDeg": 223.35407214183368
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-star-algedi",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "catalogReferenceId": "star-algedi",
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [32.2, 32.7] pc",
+          "limitations": [
+            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "catalogRef": {
+          "id": "star-algedi",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 100064",
+          "commonName": "Algedi",
+          "bayerDesignation": "Alpha2 Capricorni",
+          "constellation": "Capricornus",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 304.513571,
+          "decDeg": -12.544849,
+          "apparentMagnitude": 3.57,
+          "colorIndexBpRp": 0.94,
+          "spectralType": "G8 IIIb",
+          "properMotionRaMasYr": 62.61,
+          "properMotionDecMasYr": 2.66,
+          "radialVelocityKmS": 0.2,
+          "parallaxMas": 30.82,
+          "parallaxErrorMas": 0.19,
+          "bailerJonesDistancePc": {
+            "lower": 32.2,
+            "median": 32.4,
+            "upper": 32.7,
+            "method": "photogeometric_bailer_jones_edr3"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 32.2,
+          "median": 32.4,
+          "upper": 32.7,
+          "method": "photogeometric_bailer_jones_edr3"
+        },
+        "cartesianParsecICRS": [
+          17.919615186543417,
+          -26.059976383528163,
+          -7.037401683587278
         ]
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (GPS 30.0°, -40.0° @ 2030-11-01T22:32:00Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (GPS 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 314.97299813329414,
-      "crvalDecDeg": -44.35163002537942,
+      "crvalRaDeg": 292.96476305814286,
+      "crvalDecDeg": -45.345526660732965,
       "crpixX": 672.0,
       "crpixY": 896.0,
-      "scaleDegPerPx": 0.04228340005157541,
-      "rotationDeg": -37.86038497529181,
+      "scaleDegPerPx": 0.04235980492655092,
+      "rotationDeg": -38.85250730874973,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
-      "fovHorizontalDeg": 52.755982082598706,
-      "fovVerticalDeg": 66.94807855322435
+      "fovHorizontalDeg": 52.838370750707725,
+      "fovVerticalDeg": 67.04329102619182
     }
   },
   "horizon_predicted_only": {
@@ -811,13 +811,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 18.633 AU · Alt +34.0° · Above Horizon",
+        "subtitle": "Predicted Planet · 18.424 AU · Alt +1.9° · Above Horizon",
         "skyPosition": {
-          "raDeg": 62.73971384969124,
-          "decDeg": 20.918468731392927,
+          "raDeg": 81.24564475180148,
+          "decDeg": 23.2782684956807,
           "uncertaintyArcsec": 12.0,
-          "altDeg": 34.026434252658234,
-          "azDeg": 84.56478558156093
+          "altDeg": 1.8516026578268319,
+          "azDeg": 64.02950504808973
         },
         "evidence": {
           "id": "ev-finding-predicted-uranus",
@@ -836,13 +836,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Saturn (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 8.475 AU · Alt +58.9° · Above Horizon",
+        "subtitle": "Predicted Planet · 8.192 AU · Alt +12.6° · Above Horizon",
         "skyPosition": {
-          "raDeg": 10.017139926001914,
-          "decDeg": 1.371823238653201,
+          "raDeg": 65.59186555566932,
+          "decDeg": 19.420393989022187,
           "uncertaintyArcsec": 12.0,
-          "altDeg": 58.89505071363237,
-          "azDeg": 161.74250058988343
+          "altDeg": 12.615956875030017,
+          "azDeg": 74.6798983493424
         },
         "evidence": {
           "id": "ev-finding-predicted-saturn",
@@ -861,13 +861,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.003 AU · Alt +32.9° · Above Horizon",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Above Horizon",
         "skyPosition": {
-          "raDeg": 325.0790195412517,
-          "decDeg": -14.463305370455188,
+          "raDeg": 303.644940191076,
+          "decDeg": -15.523417194143088,
           "uncertaintyArcsec": 18.0,
-          "altDeg": 32.94754177145702,
-          "azDeg": 222.22581347760072
+          "altDeg": 32.9964329839963,
+          "azDeg": 221.98228357323
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -883,7 +883,7 @@
       }
     ],
     "warnings": [
-      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from GPS 30.0°, -40.0° @ 2030-11-01T22:32:00Z, not placed in the frame."
+      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from GPS 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z, not placed in the frame."
     ]
   }
 }

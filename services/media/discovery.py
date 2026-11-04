@@ -117,7 +117,7 @@ class DiscoveredMediaItem:
 def parse_iso6709_location(
     raw_iso6709: str | None,
 ) -> tuple[float, float, float | None] | None:
-    """Parse an Apple QuickTime ISO-6709 string (e.g. `+30.0-040.0000+705.200/`) into (lat, lon, elev).
+    """Parse an Apple QuickTime ISO-6709 string (e.g. `+30.1250-040.2500+12.000/`) into (lat, lon, elev).
 
     Returns None when the file carries no parseable location; elevation is None when absent.
     """

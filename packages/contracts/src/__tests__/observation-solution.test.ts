@@ -37,6 +37,7 @@ function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof
 }
 
 function solution(parts: { wcs: boolean; passed: boolean; findings: unknown[] }) {
+  // observedAtUTC is a synthetic moment that points at nobody
   return {
     id: 'sol_01', sourceAssetId: 'src_01', sourceSha256: SHA, frameTimeSec: 0, revision: 1,
     status: parts.wcs && parts.passed ? 'calibrated' : 'unresolved', observedAtUTC: '2030-01-01T02:00:00Z',

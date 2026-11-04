@@ -49,12 +49,16 @@ from services.science.solver import (
     stack_video_frames_for_calibration,
 )
 
-# The golden synthetic fixture's moment, passed explicitly because the solver has no default place or time
-GOLDEN_SAHARA_MOMENT = {
-    "obs_utc_iso": "2030-01-01T02:00:00Z",
-    "observer_lat": 30.0,
-    "observer_lon": -40.0,
-}
+# Synthetic moments, passed explicitly because the solvers have no default place or time. The place points
+# at nobody: the open North Atlantic, about 1,321 km from Flores in the Azores. PLATE_MOMENT has Orion high
+# on a moonless night; MOON_MOMENT has the Moon at 33 degrees altitude, azimuth 222 degrees (repo ephemeris).
+PLATE_MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+
+
+def _as_request(moment: dict) -> dict:
+    """The same moment under the API's field names."""
+    return {"observedAtUTC": moment["obs_utc_iso"], "latDeg": moment["observer_lat"], "lonDeg": moment["observer_lon"]}
 
 
 # ---------------------------------------------------------------------------
@@ -155,9 +159,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
         detections=detections,
         width=width,
         height=height,
-        obs_utc_iso="2030-01-01T02:00:00Z",
-        observer_lat=30.0,
-        observer_lon=-40.0,
+        **PLATE_MOMENT,
     )
     assert solution.status == "calibrated"
     assert solution.quality.passed_independent_verification is True
@@ -183,7 +185,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     black_frame = np.zeros((height, width), dtype=np.float64)
     black_dets = detect_point_sources(black_frame, snr_threshold=3.5)
     assert len(black_dets) == 0
-    black_sol = solve_and_verify_field(black_dets, width=width, height=height, **GOLDEN_SAHARA_MOMENT)
+    black_sol = solve_and_verify_field(black_dets, width=width, height=height, **PLATE_MOMENT)
     assert black_sol.status in ("predicted_only", "unresolved")
     assert black_sol.status != "calibrated"
     assert black_sol.held_out_inliers == 0
@@ -192,7 +194,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     rng = np.random.default_rng(999)
     noise_frame = rng.normal(loc=20.0, scale=3.0, size=(height, width))
     noise_dets = detect_point_sources(noise_frame, snr_threshold=3.5)
-    noise_sol = solve_and_verify_field(noise_dets, width=width, height=height, **GOLDEN_SAHARA_MOMENT)
+    noise_sol = solve_and_verify_field(noise_dets, width=width, height=height, **PLATE_MOMENT)
     assert noise_sol.status in ("predicted_only", "unresolved")
     assert noise_sol.status != "calibrated"
     assert all(f.evidence_class != "catalog_matched" for f in noise_sol.findings)
@@ -249,7 +251,7 @@ def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     # Verify single frame detects < 4 stars and resolves to "unresolved"
     single_dets = detect_point_sources(frames[0], sky_mask=sky_mask, snr_threshold=4.8)
     assert len(single_dets) < 4
-    single_sol = solve_and_verify_field(single_dets, width=width, height=height, **GOLDEN_SAHARA_MOMENT)
+    single_sol = solve_and_verify_field(single_dets, width=width, height=height, **PLATE_MOMENT)
     assert single_sol.status == "unresolved"
 
     # Align and stack the 10 frames
@@ -261,7 +263,7 @@ def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     )
     assert len(stacked_dets) >= 10
 
-    stacked_sol = solve_and_verify_field(stacked_dets, width=width, height=height, **GOLDEN_SAHARA_MOMENT)
+    stacked_sol = solve_and_verify_field(stacked_dets, width=width, height=height, **PLATE_MOMENT)
     assert stacked_sol.status == "calibrated"
     assert stacked_sol.held_out_inliers >= 6
     assert stacked_sol.median_residual_px <= 2.0
@@ -306,7 +308,7 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
         corrupted[hy, hx] += 220.0
 
     detections = detect_point_sources(corrupted, snr_threshold=3.8)
-    solution = solve_and_verify_field(detections, width=width, height=height, **GOLDEN_SAHARA_MOMENT)
+    solution = solve_and_verify_field(detections, width=width, height=height, **PLATE_MOMENT)
 
     assert solution.status == "calibrated"
     assert solution.held_out_inliers >= 6
@@ -537,7 +539,7 @@ def test_fastapi_endpoints() -> None:
     assert h_data["catalogStarCount"] >= 16
 
     # 2. POST /api/science/solve (the test sends its own synthetic detections; the API invents none)
-    solve_moment = {"observedAtUTC": "2030-01-01T02:00:00Z", "latDeg": 30.0, "lonDeg": -40.0}
+    solve_moment = _as_request(PLATE_MOMENT)
     assert client.post("/api/science/solve", json={"width": 960, "height": 540, **solve_moment}).status_code == 422
     synth_frame, _, _ = render_synthetic_starfield(width=960, height=540)
     synth_dets = [
@@ -569,18 +571,15 @@ def test_fastapi_endpoints() -> None:
     # 3. POST /api/science/ephemeris
     r_ephem = client.post(
         "/api/science/ephemeris",
-        json={
-            "observedAtUTC": "2030-01-01T02:00:00Z",
-            "latDeg": 30.0,
-            "lonDeg": -40.0,
-            "bodies": ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"],
-        },
+        json={**_as_request(PLATE_MOMENT), "bodies": ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"]},
     )
     assert r_ephem.status_code == 200
     e_data = r_ephem.json()
     assert len(e_data["findings"]) == 6
     assert all(f["evidenceClass"] == "predicted" for f in e_data["findings"])
-    alt_deg, az_deg = icrs_to_altaz(88.7929, 7.4071, 30.0, -40.0, "2030-01-01T02:00:00Z")
+    alt_deg, az_deg = icrs_to_altaz(
+        88.7929, 7.4071, PLATE_MOMENT["observer_lat"], PLATE_MOMENT["observer_lon"], PLATE_MOMENT["obs_utc_iso"]
+    )
     assert -90.0 <= alt_deg <= 90.0
     assert 0.0 <= az_deg < 360.0
 
@@ -651,9 +650,9 @@ def test_fastapi_endpoints() -> None:
     r_sky = client.get(
         "/api/science/sky-context",
         params={
-            "obs_utc_iso": "2030-11-01T22:32:00Z",
-            "lat_deg": 30.0,
-            "lon_deg": -40.0,
+            "obs_utc_iso": MOON_MOMENT["obs_utc_iso"],
+            "lat_deg": MOON_MOMENT["observer_lat"],
+            "lon_deg": MOON_MOMENT["observer_lon"],
         },
     )
     assert r_sky.status_code == 200
@@ -667,7 +666,7 @@ def test_fastapi_endpoints() -> None:
     # 7. POST /api/science/solve-horizon. The test draws its own narrow portrait frame (Moon blob
     # above a foreground at 55% height) so the Moon's height above the horizon implies a lens
     # scale inside the solver's range; the API no longer plants a Moon in a blank frame.
-    horizon_moment = {"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0}
+    horizon_moment = _as_request(MOON_MOMENT)
     assert client.post(
         "/api/science/solve-horizon", json={"width": 64, "height": 1792, **horizon_moment}
     ).status_code == 422
@@ -699,7 +698,7 @@ def test_fastapi_endpoints() -> None:
                 "utterance": utterance_text,
                 "context": {
                     "sessionId": "s-frontier",
-                    "sourceAssetId": "asset-camp",
+                    "sourceAssetId": "asset-synthetic",
                     "viewRevision": 10,
                     "calibrationState": "calibrated",
                 },

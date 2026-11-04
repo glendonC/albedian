@@ -77,7 +77,7 @@ def build_render_layer_samples() -> dict[str, Any]:
                 evidenceClass="observed",
                 disclosure="Original pixels of your recording.",
                 sources=[],
-                sourceAssetId="asset-sahara-night",
+                sourceAssetId="asset-synthetic-night",
             ),
             _layer(
                 id="capture.registered",
@@ -86,8 +86,8 @@ def build_render_layer_samples() -> dict[str, Any]:
                 evidenceClass="catalog_matched",
                 disclosure="Your recording placed on the sky by an independently verified plate solution.",
                 sources=["Gaia DR3 (Gaia Collaboration 2023)"],
-                sourceAssetId="asset-sahara-night",
-                observationSolutionId="solution-sahara-night",
+                sourceAssetId="asset-synthetic-night",
+                observationSolutionId="solution-synthetic-night",
             ),
             _layer(
                 id="post.camera-optics",
@@ -102,11 +102,11 @@ def build_render_layer_samples() -> dict[str, Any]:
         {"rule": "observed layer without sourceAssetId", "layer": _layer(evidenceClass="observed")},
         {
             "rule": "catalog_matched layer without observationSolutionId",
-            "layer": _layer(evidenceClass="catalog_matched", sourceAssetId="asset-sahara-night"),
+            "layer": _layer(evidenceClass="catalog_matched", sourceAssetId="asset-synthetic-night"),
         },
         {
             "rule": "camera_optics layer not simulated",
-            "layer": _layer(kind="camera_optics", evidenceClass="observed", sourceAssetId="asset-sahara-night"),
+            "layer": _layer(kind="camera_optics", evidenceClass="observed", sourceAssetId="asset-synthetic-night"),
         },
         {"rule": "procedural layer not simulated", "layer": _layer(kind="procedural", evidenceClass="predicted")},
         {"rule": "blank disclosure", "layer": _layer(disclosure="   ")},

@@ -4,7 +4,6 @@
  * ============================================================================
  */
 
-export * from './fixtures.js';
 export * from './emptySession.js';
 export * from './checkpoints.js';
 export * from './reducer.js';

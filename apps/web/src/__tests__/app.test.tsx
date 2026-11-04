@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { dispatchAlbedianAction, executeVoiceOrTextCommand } from '@albedian/observation';
 import {
-  createDefaultSaharaObservationSession,
-  createUnresolvedObservationSession,
-  dispatchAlbedianAction,
-  executeVoiceOrTextCommand,
-} from '@albedian/observation';
+  createSyntheticCalibratedSession,
+  createSyntheticUnresolvedSession,
+} from '@albedian/observation/testing';
 import {
   benchmarkRendererAdapters,
   computeAnchorLockedPhaseAState,
@@ -30,7 +29,7 @@ import path from 'node:path';
 
 describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voice Integration', () => {
   it('executes the complete defining experience: Import -> Reveal -> Calibrated Sky -> Select Star -> 3D Space -> Sightline -> 1026 CE Epoch -> Back to Moment', () => {
-    let session = createDefaultSaharaObservationSession();
+    let session = createSyntheticCalibratedSession();
     const initialTimeSec = session.currentSourceTimeSec;
     const initialAudioGain = session.audioGain;
     const initialSourceHash = session.sourceAsset.sha256;
@@ -148,7 +147,7 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
   });
 
   it('prevents 3D space transition on unresolved / predicted-only observations and reports renderer benchmark', () => {
-    const unresolvedSession = createUnresolvedObservationSession();
+    const unresolvedSession = createSyntheticUnresolvedSession();
     expect(unresolvedSession.observationSolution.status).not.toBe('calibrated');
 
     const bench = benchmarkRendererAdapters(10000);
