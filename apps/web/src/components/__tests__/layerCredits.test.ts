@@ -8,7 +8,7 @@ import { CISLUNAR_RENDER_LAYERS } from '../../spatial/webgpu/cislunar/cislunarLa
 import {
   BLACK_HOLE_WEBGL_RENDER_LAYERS,
   CISLUNAR_WEBGL_RENDER_LAYERS,
-  ORION_WEBGL_RENDER_LAYERS,
+  DEEP_SKY_WEBGL_RENDER_LAYERS,
   SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS,
 } from '../../spatial/webglRenderLayers.js';
 
@@ -16,7 +16,7 @@ const DECLARED: [string, RenderLayerSet][] = [
   ['WebGPU cislunar', CISLUNAR_RENDER_LAYERS],
   ['WebGL cislunar', CISLUNAR_WEBGL_RENDER_LAYERS],
   ['WebGL black hole', BLACK_HOLE_WEBGL_RENDER_LAYERS],
-  ['WebGL Orion Nebula', ORION_WEBGL_RENDER_LAYERS],
+  ['WebGL deep sky', DEEP_SKY_WEBGL_RENDER_LAYERS],
   ['WebGL Betelgeuse', SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS],
 ];
 // Sources that name a file made in this repository need no third-party credit
@@ -41,15 +41,15 @@ describe('render layer credits', () => {
     expect(LAYER_CREDITS['deep-sky.black-hole']).toEqual(['ESO/R. Colombari']);
     // No credit for the Local Bubble mesh until its origin is traced (data-1e)
     expect(LAYER_CREDITS['local.bubble']).toBeUndefined();
-    // ESO's credit and acknowledgment for eso1006a
-    expect(LAYER_CREDITS['deep-sky.orion-image']).toEqual([
-      'ESO/J. Emerson/VISTA',
-      'Acknowledgment: Cambridge Astronomical Survey Unit',
-    ]);
   });
 
   it('credits the Betelgeuse view without a click: the sky and the catalogs', () => {
     expect(creditsFor(SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS)).toEqual(['ESO/S. Brunier', 'ESA/Gaia/DPAC', 'ESA Hipparcos']);
+  });
+
+  it('keeps no credit for a layer that no view declares', () => {
+    const declared = new Set(DECLARED.flatMap(([, layers]) => layers.map((l) => l.id)));
+    expect(Object.keys(LAYER_CREDITS).filter((id) => !declared.has(id))).toEqual([]);
   });
 
   it('lists each credit once, in draw order', () => {

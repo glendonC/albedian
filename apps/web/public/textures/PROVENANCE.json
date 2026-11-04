@@ -17,21 +17,6 @@
       "note": "Released 2009-09-14 as the first image of ESO's GigaGalaxy Zoom project."
     },
     {
-      "id": "eso1006a",
-      "title": "VISTA's infrared view of the Orion Nebula",
-      "url": "https://www.eso.org/public/images/eso1006a/",
-      "version": "Screen-size JPEG",
-      "license": {
-        "spdx": "CC-BY-4.0",
-        "name": "Creative Commons Attribution 4.0 International",
-        "url": "https://creativecommons.org/licenses/by/4.0/",
-        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated."
-      },
-      "credit": "ESO/J. Emerson/VISTA",
-      "acknowledgement": "Cambridge Astronomical Survey Unit",
-      "note": "Released 2010-02-10. A near-infrared image from ESO's VISTA telescope."
-    },
-    {
       "id": "eso1804a",
       "title": "Star formation region Lupus 3",
       "url": "https://www.eso.org/public/images/eso1804a/",
@@ -252,17 +237,6 @@
         "command": "uv run python scripts/register_sky_panorama.py"
       },
       "note": "The panorama's registration to the catalog stars (docs/science/SKY_PANORAMA_REGISTRATION.md): a rotation from galactic plus a vertical offset, then a smoothed table of the remaining offsets, fitted to 5,021 isolated stars to magnitude 6 from the core tiles of layers 0 and 1, which it pins by one SHA-256, and checked on held-out stars. The panorama's pixels are not changed. `--verify` refits and compares byte for byte on the machine that made the file; tests/integration/test_sky_registration.py allows for platform rounding."
-    },
-    {
-      "path": "eso1006a.jpg",
-      "sha256": "a03f0f7892cfa04c22fa0d12fda99e4a861272d8f471d62663e23dd638210448",
-      "sources": [
-        "eso1006a"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "Byte-identical to https://cdn.eso.org/images/screen/eso1006a.jpg as downloaded on 2026-11-04. A near-infrared view, so its colours are not visible light. Formerly eso_orion_nebula.jpg."
     },
     {
       "path": "eso1804a.jpg",

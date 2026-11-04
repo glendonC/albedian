@@ -3,7 +3,7 @@ import { RenderLayerSetSchema } from '@albedian/contracts';
 import {
   BLACK_HOLE_WEBGL_RENDER_LAYERS,
   CISLUNAR_WEBGL_RENDER_LAYERS,
-  ORION_WEBGL_RENDER_LAYERS,
+  DEEP_SKY_WEBGL_RENDER_LAYERS,
   SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS,
   webglRenderLayersFor,
 } from '../webglRenderLayers.js';
@@ -62,30 +62,15 @@ describe('WebGL renderer: black hole view (landing scene 02)', () => {
   });
 });
 
-describe('WebGL renderer: Orion Nebula view', () => {
-  const orion = (id: string) => ORION_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
-
-  it('declares every layer it draws, all simulated', () => {
-    expect(RenderLayerSetSchema.safeParse(ORION_WEBGL_RENDER_LAYERS).success).toBe(true);
-    expect(ORION_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
+describe('WebGL renderer: deep-sky view without the black hole', () => {
+  it('declares the sky, the catalog stars and the optics, all simulated, and nothing else', () => {
+    expect(RenderLayerSetSchema.safeParse(DEEP_SKY_WEBGL_RENDER_LAYERS).success).toBe(true);
+    expect(DEEP_SKY_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
       'deep-sky.sky',
       'deep-sky.catalog-stars',
-      'deep-sky.particles',
-      'deep-sky.orion-image',
-      'deep-sky.nebula-splats',
       'post.camera-optics',
     ]);
-    expect(ORION_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
-  });
-
-  it('names the image as ESO VISTA near-infrared, credited as ESO asks', () => {
-    expect(orion('deep-sky.orion-image')?.disclosure).toMatch(/VISTA near-infrared/);
-    expect(orion('deep-sky.orion-image')?.sources.join(' ')).toMatch(/ESO\/J\. Emerson\/VISTA, VISTA's infrared view of the Orion Nebula \(eso1006a\)/);
-  });
-
-  it('says the splats are not the Orion Nebula', () => {
-    expect(orion('deep-sky.nebula-splats')?.kind).toBe('procedural');
-    expect(orion('deep-sky.nebula-splats')?.disclosure).toMatch(/not the Orion Nebula/);
+    expect(DEEP_SKY_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
   });
 });
 
@@ -133,7 +118,7 @@ describe('WebGL renderer: which view declares layers', () => {
   it('declares the cislunar, deep-sky and solar-neighbourhood views, until the others are declared', () => {
     expect(webglRenderLayersFor({ regime: 'cislunar', blackHole: false })).toBe(CISLUNAR_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: true })).toBe(BLACK_HOLE_WEBGL_RENDER_LAYERS);
-    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBe(ORION_WEBGL_RENDER_LAYERS);
+    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBe(DEEP_SKY_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'solar_neighborhood', blackHole: false })).toBe(
       SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS
     );

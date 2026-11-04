@@ -72,8 +72,8 @@ next bake deletes it.
   files of the release; the record names its six sources (Gaia DR3 and its astrophysical
   parameters, Bailer-Jones et al. 2021 distances, Hipparcos 2007, the Gaia to Hipparcos
   crossmatch and the IAU Catalog of Star Names), each with its credit and licence.
-- **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the two ESO nebula
-  images (eso1006a, eso1804a), downloaded as is and byte-identical to ESO's downloads; the two
+- **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the ESO image behind the
+  black hole (eso1804a), downloaded as is and byte-identical to ESO's downloads; the two
   SVS 4720 Moon maps, likewise; the Earth day and night maps, which
   `scripts/lookdev/bake_earth_textures.py` makes from pinned NASA inputs; the panorama's
   registration, which `scripts/register_sky_panorama.py` fits; and the Natural Earth water mask,
@@ -120,8 +120,8 @@ a record when the check arrived and are still here, and an entry fails when:
 The list started with 16 entries: six textures (the atmosphere lookup table, which a script
 makes from hand-set parameters with no outside data; three Earth maps that match three.js
 example textures or are unidentified; two files due for deletion), all seven files in
-`models/`, and the three tracked splats. Five unused ones were deleted since (two models, a
-splat and two textures), and left the baseline with them, so they can return only with a
-record. Eleven remain.
+`models/`, and the three tracked splats. Six unused ones were deleted since (two models, a
+splat, two textures and the Orion view's nebula splat rows in `models/`), and left the baseline
+with them, so they can return only with a record. Ten remain.
 
 To close a gap, write the file's record and delete its entry in the same change.

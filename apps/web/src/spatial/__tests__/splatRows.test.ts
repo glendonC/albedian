@@ -7,11 +7,9 @@ const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`,
 const readRows = (rel: string): number[][] => JSON.parse(fs.readFileSync(repoFile(rel), 'utf8'));
 
 describe('splat rows', () => {
-  it.each([
-    ['apps/web/public/models/lb_splats.json', 1.24, 14281],
-    ['apps/web/public/models/nasa_nebula_splats.json', 1.05, 19297],
-  ])('draws every row of %s at its own position', (file, scale, rowCount) => {
-    const raw = readRows(file);
+  it('draws every row of apps/web/public/models/lb_splats.json at its own position', () => {
+    const [scale, rowCount] = [1.24, 14281];
+    const raw = readRows('apps/web/public/models/lb_splats.json');
     const rows = parseSplatRows(raw, scale, 0.005);
     expect(raw).toHaveLength(rowCount);
     expect(rows.count).toBe(rowCount);

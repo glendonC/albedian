@@ -13,7 +13,6 @@ Offline Physical Asset Baker for Albedian Spatial Observatory (Track 2):
 
 2. Enriched Anisotropic 3D Gaussian Splats:
    - `apps/web/public/models/lb_splats.json` (14,281 splats, Harvard CfA Local Bubble Chimney)
-   - `apps/web/public/models/nasa_nebula_splats.json` (19,297 splats, Multi-Wavelength Nebula)
    Each splat is enriched to a 14-tuple rounded to 4 decimal places:
      [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity]
    Positions come from the source models; orientation and footprint from the local 3D k-NN
@@ -395,153 +394,17 @@ def enrich_local_bubble_splats(lb_path: Path) -> int:
     return n
 
 
-def enrich_nebula_splats(neb_path: Path) -> int:
-    """
-    Enriches `nasa_nebula_splats.json` (19,297 splats, positions matching the vertices of
-    `nasa_pillars_3d.glb`) to 14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
-    The colours and opacities are a presentation palette laid out by radius and density; the
-    emission lines named below are what the palette imitates, not measurements.
-    """
-    raw = json.loads(neb_path.read_text(encoding="utf-8"))
-    arr = np.array(raw, dtype=np.float64)
-    xyz = arr[:, :3]
-    n = xyz.shape[0]
-
-    mean_spacing, evals, evecs = compute_local_pca_frame(xyz, k=16)
-
-    inv_spacing = 1.0 / np.maximum(0.015, mean_spacing)
-    p5, p95 = np.percentile(inv_spacing, [5.0, 95.0])
-    density_norm = np.clip((inv_spacing - p5) / max(1e-6, p95 - p5), 0.0, 1.0)
-
-    x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
-    r_3d = np.maximum(1e-4, np.linalg.norm(xyz, axis=1))
-    radial_unit = xyz / r_3d[:, None]
-
-    # Align splats with elongated ionization pillars (swept back radially in dense knots)
-    # and tangential shock fronts along the expanding Strömgren shell
-    t_pca = evecs[:, :, 2]
-    dot_tr = np.sum(t_pca * radial_unit, axis=1, keepdims=True)
-    t_oriented = np.where(dot_tr >= 0.0, t_pca, -t_pca)
-
-    # Dense globule pillars elongate along the swept-back radial wind direction;
-    # outer shell wisps follow the local PCA filament tangent
-    pillar_mix = (0.22 + 0.38 * density_norm)[:, None]
-    u_x = (1.0 - pillar_mix) * t_oriented + pillar_mix * radial_unit
-    u_x /= np.maximum(1e-8, np.linalg.norm(u_x, axis=1, keepdims=True))
-
-    n_pca = evecs[:, :, 0]
-    dot_nr = np.sum(n_pca * radial_unit, axis=1, keepdims=True)
-    n_out = np.where(dot_nr >= 0.0, n_pca, -n_pca)
-    u_z = n_out - np.sum(n_out * u_x, axis=1, keepdims=True) * u_x
-    uz_norm = np.linalg.norm(u_z, axis=1, keepdims=True)
-    fallback_z = np.cross(u_x, np.stack([-y, x, np.zeros_like(z)], axis=1))
-    fallback_z /= np.maximum(1e-8, np.linalg.norm(fallback_z, axis=1, keepdims=True))
-    u_z = np.where(uz_norm > 1e-5, u_z / np.maximum(1e-8, uz_norm), fallback_z)
-    u_y = np.cross(u_z, u_x)
-    u_y /= np.maximum(1e-8, np.linalg.norm(u_y, axis=1, keepdims=True))
-
-    rot = np.stack([u_x, u_y, u_z], axis=2)
-    quats = rotmat_to_quat_batch(rot)
-
-    # Multi-scale anisotropic covariance scales (sx, sy, sz)
-    aniso = np.clip(np.sqrt(evals[:, 2] / np.maximum(1e-5, evals[:, 0])), 1.30, 3.60)
-    idx_mod = (np.arange(n, dtype=np.float64) % 9.0) / 8.0
-    # Dense ionization cores & bright rims are tight and crisp; tenuous outer envelope is broader
-    radial_norm = np.clip((r_3d - 2.6) / 3.8, 0.0, 1.0)
-    base_s = 0.017 + 0.009 * (1.0 - 0.65 * density_norm) + 0.006 * radial_norm + 0.005 * idx_mod
-    sx = np.clip(base_s * (1.45 + 0.38 * (aniso - 1.30)), 0.022, 0.068)
-    sy = np.clip(base_s * (0.95 + 0.18 * idx_mod), 0.014, 0.038)
-    sz = np.clip(base_s * (0.62 + 0.15 * (1.0 - density_norm)), 0.010, 0.026)
-
-    # Presentation palette by radius, imitating photoionization zones and dark dust lanes:
-    # Inner zone (r_3d ~ 2.6..3.8): [O III] 500.7nm doubly-ionized teal-cyan & H-beta core
-    # Mid zone (r_3d ~ 3.8..4.9): Photo-dissociation shock front (golden-amber PAH + coral H-alpha rim)
-    # Outer zone (r_3d ~ 4.9..6.5): H-alpha 656.3nm + [N II] crimson-magenta filaments & dark dust lanes
-    oiii_weight = np.exp(-((r_3d - 3.0) / 1.15) ** 2)
-    pdr_rim_weight = np.exp(-((r_3d - 4.15) / 0.85) ** 2)
-    halpha_weight = 1.0 / (1.0 + np.exp(-(r_3d - 4.35) * 2.2))
-
-    # Azimuthal / 3D turbulence modulation for rich spectral filament contrast
-    turb = 0.5 + 0.5 * np.sin(x * 0.92 - y * 1.14 + z * 1.28)
-    z_band = np.clip(0.5 - 0.12 * z + 0.22 * turb, 0.15, 0.95)
-
-    col_oiii = np.stack(
-        [
-            0.36 + 0.22 * turb,
-            0.84 + 0.12 * (1.0 - turb),
-            0.78 + 0.18 * z_band,
-        ],
-        axis=1,
-    )
-    col_pdr = np.stack(
-        [
-            0.94 + 0.05 * turb,
-            0.66 + 0.16 * (1.0 - turb),
-            0.34 + 0.22 * z_band,
-        ],
-        axis=1,
-    )
-    col_halpha = np.stack(
-        [
-            0.92 + 0.07 * turb,
-            0.32 + 0.18 * (1.0 - halpha_weight),
-            0.52 + 0.28 * z_band,
-        ],
-        axis=1,
-    )
-
-    w_sum = np.maximum(1e-5, oiii_weight + pdr_rim_weight + halpha_weight)[:, None]
-    emission_rgb = (
-        col_oiii * oiii_weight[:, None]
-        + col_pdr * pdr_rim_weight[:, None]
-        + col_halpha * halpha_weight[:, None]
-    ) / w_sum
-
-    # Self-shielded dark dust lanes in dense outer/back-side Bok globule knots
-    shadow_knot = np.clip((density_norm - 0.52) * 2.1, 0.0, 1.0) * np.clip((r_3d - 3.9) / 2.2, 0.0, 1.0)
-    # Bright photo-ionized rim highlight on the inner side of dense knots
-    bright_rim = np.clip((density_norm - 0.45) * 1.8, 0.0, 1.0) * pdr_rim_weight
-
-    tau_ext = shadow_knot * 1.15
-    ext_factors = np.stack(
-        [
-            np.exp(-tau_ext * 0.58),
-            np.exp(-tau_ext * 0.92),
-            np.exp(-tau_ext * 1.18),
-        ],
-        axis=1,
-    )
-    rgb = emission_rgb * ext_factors + np.array([0.14, 0.10, 0.06])[None, :] * bright_rim[:, None]
-    rgb = np.clip(rgb, 0.06, 0.995)
-
-    # Volumetric opacity: dense ionization cores & dark dust pillars have deeper optical depth;
-    # tenuous outer filaments fade softly into the background starfield
-    opacity = (
-        (0.024 + 0.026 * density_norm + 0.012 * bright_rim)
-        * (1.0 - 0.48 * radial_norm)
-    )
-    opacity = np.clip(opacity, 0.0120, 0.0580)
-
-    enriched = np.column_stack([xyz, rgb, sx, sy, sz, quats, opacity])
-    rounded = np.round(enriched, 4).tolist()
-    neb_path.write_text(json.dumps(rounded, separators=(",", ":")), encoding="utf-8")
-    return n
-
-
 def main() -> None:
     lut_path = REPO_ROOT / "apps" / "web" / "public" / "textures" / "bruneton_atmo_lut.png"
     lb_path = REPO_ROOT / "apps" / "web" / "public" / "models" / "lb_splats.json"
-    neb_path = REPO_ROOT / "apps" / "web" / "public" / "models" / "nasa_nebula_splats.json"
 
     bake_bruneton_atmo_lut(lut_path, width=256, height=128)
     lb_count = enrich_local_bubble_splats(lb_path)
-    neb_count = enrich_nebula_splats(neb_path)
 
     print(
         f"[bake_bruneton_lut_and_splats] Wrote {lut_path.relative_to(REPO_ROOT)} "
         f"(256x128 RGBA PNG, {lut_path.stat().st_size:,} bytes), "
-        f"enriched {lb_path.relative_to(REPO_ROOT)} ({lb_count:,}x14 splats), "
-        f"and {neb_path.relative_to(REPO_ROOT)} ({neb_count:,}x14 splats)."
+        f"and enriched {lb_path.relative_to(REPO_ROOT)} ({lb_count:,}x14 splats)."
     )
 
 

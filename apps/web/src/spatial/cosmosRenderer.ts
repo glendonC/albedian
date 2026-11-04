@@ -6,7 +6,7 @@ import type { RenderLayerSet } from '@albedian/contracts';
  * implements the same calls for the scenes ported to it so far.
  */
 
-export type ShowcaseSceneKey = 'cislunar' | 'black_hole' | 'supergiant' | 'orion_nebula' | 'saturn_horizon';
+export type ShowcaseSceneKey = 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon';
 
 export type CosmosRendererKind = 'webgl-spark' | 'webgpu';
 

@@ -29,7 +29,6 @@ import {
   BRUNETON_ATMO_GLSL_CHUNK,
   BRUNETON_ATMO_LUT_URL,
   buildAnisotropicLocalBubbleSplatMesh,
-  buildAnisotropicNebulaSplatMesh,
 } from './volumetricSplatsAndLut.js';
 
 export type SpatialScaleRegime =
@@ -220,7 +219,6 @@ export class SparkPortalRenderer {
     uSunDir: { value: THREE.Vector3 };
   };
   private nebulaUniforms: {
-    uOrionVistaTex: { value: THREE.Texture | null };
     uLupus3Tex: { value: THREE.Texture | null };
     uTime: { value: number };
     uIsBlackHole: { value: number };
@@ -255,7 +253,8 @@ export class SparkPortalRenderer {
   private cislunarEarthMesh: THREE.Mesh | null = null;
   private betelgeuseMesh: THREE.Mesh | null = null;
   private localBubbleCavityGroup: THREE.Group | null = null;
-  private deepSkySculptureGroup: THREE.Group | null = null;
+  /** The black hole's plane and its decorative particles, drawn only in the black hole view. */
+  private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
   private captureHorizonSplatMesh: SplatMesh | null = null;
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
@@ -349,7 +348,6 @@ export class SparkPortalRenderer {
       uSunDir: { value: new THREE.Vector3(0.58, 0.22, 0.78).normalize() },
     };
     this.nebulaUniforms = {
-      uOrionVistaTex: { value: null },
       uLupus3Tex: { value: null },
       uTime: { value: 0.0 },
       uIsBlackHole: { value: 0.0 },
@@ -565,10 +563,6 @@ export class SparkPortalRenderer {
       },
       false
     );
-    // ESO eso1006a, VISTA's near-infrared view of the Orion Nebula (ESO/J. Emerson/VISTA)
-    loadTex('/textures/eso1006a.jpg', (t) => {
-      this.nebulaUniforms.uOrionVistaTex.value = t;
-    });
     // ESO eso1804a, the Lupus 3 star formation region (ESO/R. Colombari), behind the black hole
     loadTex('/textures/eso1804a.jpg', (t) => {
       this.nebulaUniforms.uLupus3Tex.value = t;
@@ -1420,12 +1414,10 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 3: deep sky. For Sagittarius A*, a hand-tuned black hole composition (an approximate
-   * Schwarzschild ray march around a hand-set disk, over ESO's Lupus 3 photograph); see
-   * BLACK_HOLE_WEBGL_RENDER_LAYERS in webglRenderLayers.ts for its disclosure. For other deep-sky
-   * targets: ESO's VISTA near-infrared image of the Orion Nebula (eso1006a) on a plane, upright and
-   * at its own aspect, and Spark splats from
-   * `nasa_nebula_splats.json` (provenance not recorded).
+   * REGIME 3: deep sky: the registered sky and the catalog stars and, for Sagittarius A*, a
+   * hand-tuned black hole composition (an approximate Schwarzschild ray march around a hand-set
+   * disk, over ESO's Lupus 3 photograph) with decorative particles around it; see
+   * webglRenderLayers.ts for the disclosures. The plane and the particles are hidden otherwise.
    */
   private buildDeepSkyWorld(): void {
     const group = this.regimeGroups.deep_sky;
@@ -1433,7 +1425,8 @@ export class SparkPortalRenderer {
     this.addCatalogStarMount(group, 38.0);
 
     const nebulaCenter = new THREE.Vector3(0, 0.3, -13.5);
-    group.add(this.createDecorativeParticles(nebulaCenter, 3.8, 12.8, 2200));
+    const particles = this.createDecorativeParticles(nebulaCenter, 3.8, 12.8, 2200);
+    group.add(particles);
 
     const volGeo = new THREE.PlaneGeometry(31, 19.5);
     const volMat = new THREE.ShaderMaterial({
@@ -1451,7 +1444,6 @@ export class SparkPortalRenderer {
         }
       `,
       fragmentShader: /* glsl */ `
-        uniform sampler2D uOrionVistaTex;
         uniform sampler2D uLupus3Tex;
         uniform float uTime;
         uniform float uIsBlackHole;
@@ -1610,47 +1602,22 @@ export class SparkPortalRenderer {
             return;
           }
 
-          float radialVignette = smoothstep(1.0, 0.18, length((vUv * 2.0 - 1.0) * vec2(0.84, 1.02)));
-
-          // The VISTA image alone, upright and at its own aspect within the 31 x 19.5 plane
-          vec2 imageSize = vec2(textureSize(uOrionVistaTex, 0));
-          vec2 orionUv = vec2(0.5 + (vUv.x - 0.5) * (31.0 / 19.5) * (imageSize.y / imageSize.x), vUv.y);
-          float inImage = step(0.0, orionUv.x) * step(orionUv.x, 1.0);
-          vec3 orionCol = texture2D(uOrionVistaTex, orionUv).rgb * inImage;
-
-          vec3 combined = pow(max(orionCol, vec3(0.0)), vec3(1.75)) * 0.78;
-
-          combined = combined / (vec3(1.0) + combined * 0.82);
-
-          vec3 finalNebula = combined * radialVignette;
-          float alpha = clamp(radialVignette * clamp(dot(combined, vec3(0.58)) * 1.45, 0.0, 0.76), 0.0, 0.76);
-          gl_FragColor = vec4(finalNebula, alpha);
+          // Outside the black hole view the plane is hidden and draws nothing
+          discard;
         }
       `,
     });
 
-    const mainNebulaMesh = new THREE.Mesh(volGeo, volMat);
-    mainNebulaMesh.position.set(0, 0.3, -15.8);
-    group.add(mainNebulaMesh);
+    const blackHoleMesh = new THREE.Mesh(volGeo, volMat);
+    blackHoleMesh.position.set(0, 0.3, -15.8);
+    group.add(blackHoleMesh);
 
-    // 4. Real @sparkjsdev/spark 3D Gaussian Splat Nebula Cloud (`nasa_nebula_splats.json`)
-    const sculptureGroup = new THREE.Group();
-    sculptureGroup.position.set(0.0, 0.2, -11.5);
-    sculptureGroup.rotation.x = 0.24;
-    sculptureGroup.rotation.y = -0.32;
-    group.add(sculptureGroup);
-    this.deepSkySculptureGroup = sculptureGroup;
+    this.deepSkyBlackHoleMeshes = [blackHoleMesh, particles];
+    this.showDeepSkyBlackHole(this.nebulaUniforms.uIsBlackHole.value > 0.5);
+  }
 
-    if (typeof fetch !== 'undefined') {
-      fetch('/models/nasa_nebula_splats.json')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((raw: number[][] | null) => {
-          if (!Array.isArray(raw) || raw.length === 0) return;
-          const nebulaSplatMesh = buildAnisotropicNebulaSplatMesh(raw);
-          sculptureGroup.add(nebulaSplatMesh);
-        })
-        .catch(() => {});
-    }
+  private showDeepSkyBlackHole(visible: boolean): void {
+    for (const mesh of this.deepSkyBlackHoleMeshes) mesh.visible = visible;
   }
 
   /**
@@ -2268,9 +2235,6 @@ export class SparkPortalRenderer {
       if (this.localBubbleCavityGroup) {
         this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
       }
-      if (this.deepSkySculptureGroup) {
-        this.deepSkySculptureGroup.rotation.z += 0.0008 * rotMult;
-      }
       if (this.planetaryParentBodyMesh) {
         this.planetaryParentBodyMesh.rotation.y += 0.0005 * rotMult;
       }
@@ -2421,12 +2385,6 @@ export class SparkPortalRenderer {
           Math.min(0.6, this.localBubbleCavityGroup.rotation.x + deltaPixelsY * 0.0025)
         );
       }
-    } else if (this.activeRegime === 'deep_sky' && this.deepSkySculptureGroup) {
-      this.deepSkySculptureGroup.rotation.z += deltaPixelsX * 0.0045;
-      this.deepSkySculptureGroup.rotation.x = Math.max(
-        -1.65,
-        Math.min(-0.65, this.deepSkySculptureGroup.rotation.x + deltaPixelsY * 0.003)
-      );
     }
   }
 
@@ -2647,9 +2605,7 @@ export class SparkPortalRenderer {
       lower.includes('black hole') ||
       lower.includes('gargantua');
     this.nebulaUniforms.uIsBlackHole.value = isBh ? 1.0 : 0.0;
-    if (this.deepSkySculptureGroup) {
-      this.deepSkySculptureGroup.visible = !isBh;
-    }
+    this.showDeepSkyBlackHole(isBh);
 
     if (lower.includes('uranus')) {
       this.localBubbleUniforms.uCoolColor.value.set(0.08, 0.38, 0.52);
@@ -2802,7 +2758,7 @@ export class SparkPortalRenderer {
   }
 
   public transitionToShowcaseScene(
-    sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'orion_nebula' | 'saturn_horizon',
+    sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon',
     instant = false
   ): void {
     let targetRegime: SpatialScaleRegime = 'cislunar';
@@ -2814,9 +2770,6 @@ export class SparkPortalRenderer {
     } else if (sceneKey === 'supergiant') {
       targetRegime = 'solar_neighborhood';
       this.setTargetAppearance('Betelgeuse (α Orionis)', 1.85, 'star');
-    } else if (sceneKey === 'orion_nebula') {
-      targetRegime = 'deep_sky';
-      this.setTargetAppearance('Orion Nebula (M42)', -0.1, 'nebula');
     } else if (sceneKey === 'saturn_horizon') {
       targetRegime = 'planetary_surface';
       this.setTargetAppearance('Saturn', 0.9, 'planet');

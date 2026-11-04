@@ -12,8 +12,6 @@ import type { RenderLayerSet } from '@albedian/contracts';
  * - NASA Earth Observatory: Blue Marble and Black Marble (textures/PROVENANCE.json).
  * - NASA's Scientific Visualization Studio: the CGI Moon Kit maps (SVS 4720) the Moon draws.
  * - ESO/R. Colombari: ESO's credit for eso1804a, the Lupus 3 photograph behind the black hole.
- * - ESO/J. Emerson/VISTA, with ESO's acknowledgment of the Cambridge Astronomical Survey Unit:
- *   eso1006a, VISTA's near-infrared view of the Orion Nebula.
  * The scene 03 splats sit on a Local Bubble mesh of unrecorded origin, named for O'Neill et al.
  * (2024); it gets a credit once the data lane traces it (data-1e).
  */
@@ -25,7 +23,6 @@ export const LAYER_CREDITS: Readonly<Record<string, readonly string[]>> = {
   'deep-sky.sky': ['ESO/S. Brunier'],
   'deep-sky.catalog-stars': ['ESA/Gaia/DPAC', 'ESA Hipparcos'],
   'deep-sky.black-hole': ['ESO/R. Colombari'],
-  'deep-sky.orion-image': ['ESO/J. Emerson/VISTA', 'Acknowledgment: Cambridge Astronomical Survey Unit'],
   'local.sky': ['ESO/S. Brunier'],
   'local.catalog-stars': ['ESA/Gaia/DPAC', 'ESA Hipparcos'],
 };

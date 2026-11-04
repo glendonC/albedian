@@ -50,7 +50,6 @@ BASELINE_GAPS: dict[str, str] = {
     "apps/web/public/models/lb_splats.json": "626645289f55f59f527d8003c19ed81e0928be21b7505b07e00286352d757b49",
     "apps/web/public/models/local_bubble_oneill2024.glb": "ecc56b0b6f59031b552af1b8410ffaabd19730c8ad2b3c025a4b2d2eaaa5028d",
     "apps/web/public/models/nasa_lro_moon_3d.glb": "75eba4b5f9168c96f8ef9f47d2a346ba54eef05d5f2b81c1de5ed816f8dcd09a",
-    "apps/web/public/models/nasa_nebula_splats.json": "1d696278d8f6069dd20f6c473cc5025cddb04a5754fcf02d336b39ef48f527cc",
     "apps/web/public/models/nasa_pillars_3d.glb": "778910d086d06eb48024ed52d58a6c30bf803dfb3634615b6d23858ed465b1c5",
     "apps/web/public/splats/snow-street.spz": "35840fd3d178388409096537e2f363c49e1502850c5bb81dbaa5cbc4ecb3ecaa",
     "apps/web/public/splats/valley.spz": "565768b0b758698a641521654ac0947a74c85cb69ee0f034e6c928fbefa97833",

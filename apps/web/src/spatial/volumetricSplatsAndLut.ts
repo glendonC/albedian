@@ -44,9 +44,8 @@ vec4 sampleBrunetonAtmoLut(sampler2D lutTex, float viewMu, float sunMu) {
 }
 `;
 
-/** Scene scale of each splat set. It scales positions only; footprints stay as baked. */
+/** Scene scale of the splat set. It scales positions only; footprints stay as baked. */
 const LOCAL_BUBBLE_POSITION_SCALE = 1.24;
-const NEBULA_POSITION_SCALE = 1.05;
 
 function splatMeshFromRows(rows: SplatRows): SplatMesh {
   return new SplatMesh({
@@ -74,13 +73,4 @@ function splatMeshFromRows(rows: SplatRows): SplatMesh {
  */
 export function buildAnisotropicLocalBubbleSplatMesh(raw: unknown): SplatMesh {
   return splatMeshFromRows(parseSplatRows(raw, LOCAL_BUBBLE_POSITION_SCALE, 0.01));
-}
-
-/**
- * Builds the nebula splat mesh from `nasa_nebula_splats.json`, one splat per row at the row's
- * own position. The positions match the vertices of `nasa_pillars_3d.glb`; colour, footprint,
- * orientation and opacity are presentation values from the bake, not measured emission.
- */
-export function buildAnisotropicNebulaSplatMesh(raw: unknown): SplatMesh {
-  return splatMeshFromRows(parseSplatRows(raw, NEBULA_POSITION_SCALE, 0.005));
 }
