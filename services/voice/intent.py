@@ -61,15 +61,24 @@ class ActionContext:
     source_asset_id: str = "asset-0"
     source_time_sec: float = 0.0
     navigation_state: str = "source"
-    calibration_state: str = "calibrated"
+    calibration_state: str = "not_requested"
     selected_finding_id: str | None = None
     focused_finding_id: str | None = None
     recent_pointer: PointerContext | None = None
-    simulation_epoch_iso: str = "2026-10-20T22:21:02Z"
+    simulation_epoch_iso: str | None = None
     view_revision: int = 1
     reduced_motion: bool = False
-    observer_lat: float = 31.2021
-    observer_lon: float = -3.9458
+    observer_lat: float | None = None
+    observer_lon: float | None = None
+
+    @property
+    def has_observation_moment(self) -> bool:
+        """True only when the client supplied a real time and place for the sky."""
+        return (
+            self.simulation_epoch_iso is not None
+            and self.observer_lat is not None
+            and self.observer_lon is not None
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | ActionContext) -> ActionContext:
@@ -82,18 +91,34 @@ class ActionContext:
             source_asset_id=str(data.get("sourceAssetId", data.get("source_asset_id", "asset-0"))),
             source_time_sec=float(data.get("sourceTimeSec", data.get("source_time_sec", 0.0))),
             navigation_state=str(data.get("navigationState", data.get("navigation_state", "source"))),
-            calibration_state=str(data.get("calibrationState", data.get("calibration_state", "calibrated"))),
+            calibration_state=str(data.get("calibrationState", data.get("calibration_state", "not_requested"))),
             selected_finding_id=data.get("selectedFindingId", data.get("selected_finding_id")),
             focused_finding_id=data.get("focusedFindingId", data.get("focused_finding_id")),
             recent_pointer=ptr,
-            simulation_epoch_iso=str(
-                data.get("simulationEpochISO", data.get("simulation_epoch_iso", "2026-10-20T22:21:02Z"))
-            ),
+            simulation_epoch_iso=_optional_str(data, "simulationEpochISO", "simulation_epoch_iso"),
             view_revision=int(data.get("viewRevision", data.get("view_revision", 1))),
             reduced_motion=bool(data.get("reducedMotion", data.get("reduced_motion", False))),
-            observer_lat=float(data.get("observerLat", data.get("observer_lat", 31.2021))),
-            observer_lon=float(data.get("observerLon", data.get("observer_lon", -3.9458))),
+            observer_lat=_optional_float(data, "observerLat", "observer_lat"),
+            observer_lon=_optional_float(data, "observerLon", "observer_lon"),
         )
+
+
+def _optional_float(data: dict[str, Any], *keys: str) -> float | None:
+    """Return the first non-null value among `keys` as a float, or None when none is given."""
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            return float(value)
+    return None
+
+
+def _optional_str(data: dict[str, Any], *keys: str) -> str | None:
+    """Return the first non-null value among `keys` as a string, or None when none is given."""
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            return str(value)
+    return None
 
 
 def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | None:
@@ -145,6 +170,11 @@ def _build_scientific_explanation(
     for body_lower in _SOLAR_SYSTEM_BODIES:
         if body_lower in finding_id.lower() or body_lower in utterance.lower():
             body_cap = body_lower.capitalize()
+            if not context.has_observation_moment:
+                return (
+                    f"{body_cap}'s position depends on when and where you are observing, "
+                    f"and no observation time and location are set yet."
+                )
             try:
                 ephem_list = compute_solar_system_ephemerides(
                     obs_utc_iso=context.simulation_epoch_iso,
@@ -184,11 +214,15 @@ def _build_scientific_explanation(
             "frame timestamp, and synchronized audio stream."
         )
 
+    if not context.has_observation_moment:
+        return (
+            f"No observation time and location are set yet, so there is no sky to describe "
+            f"(calibration state '{context.calibration_state}')."
+        )
     return (
-        f"Calibrated sky view at {context.simulation_epoch_iso} "
-        f"(Lat {context.observer_lat:.3f}°, Lon {context.observer_lon:.3f}°): "
-        f"showing Capricornus & the Moon in the WSW, Fomalhaut in Piscis Austrinus to the South, "
-        f"Saturn & Aquarius to the SE, and the Summer Triangle (Altair, Vega, Deneb) to the West."
+        f"Sky for {context.simulation_epoch_iso} at "
+        f"Lat {context.observer_lat:.3f}°, Lon {context.observer_lon:.3f}° "
+        f"(calibration state '{context.calibration_state}')."
     )
 
 

@@ -48,6 +48,7 @@ for (const orig of [
   'Frontier_Media_Restoration_Research_2026-10-31.md',
   'Observable_Universe_Research_Extension_2026-10-31.md',
   'Albedian_Spatial_Experience_Motion_Voice_Research_2026-10-31.md',
+  'Spatial_Astronomy_Evidence_Competitive_Intelligence_2026-11-02.md',
 ]) {
   const p = path.join(ROOT, 'research/originals', orig);
   if (!fs.existsSync(p)) {
@@ -61,5 +62,5 @@ if (errors > 0) {
 }
 
 console.log(
-  `[verify:docs] OK — Verified ${EXPECTED_SPECS.length} Kiro specs (24 documents), ${steeringFiles.length} steering files, and 3 preserved research reports.`
+  `[verify:docs] OK — Verified ${EXPECTED_SPECS.length} Kiro specs (24 documents), ${steeringFiles.length} steering files, and 4 preserved research reports.`
 );

@@ -2,13 +2,14 @@
 
 **Product:** Albedian  
 **Tagline:** *Start from your photograph—not an anonymous universe.*  
-**One-Sentence Thesis:** Albedian turns a personal night-sky capture from Earth into a scientifically calibrated 3D portal—restoring the stars your camera recorded, locking their identity with Gaia DR3 astrometry, and letting any curious explorer fly from their real earthly horizon onto the worlds behind those points of light.
+**One-Sentence Thesis:** Albedian turns a personal night-sky capture from Earth into a scientifically calibrated 3D portal—restoring the stars your camera recorded, locking their identity with Gaia DR3 astrometry, and letting any curious explorer fly from their real earthly horizon onto the worlds behind those points of light.  
+**Complete Link & Benchmark Archive:** [`research/originals/Spatial_Astronomy_Evidence_Competitive_Intelligence_2026-11-02.md`](../../research/originals/Spatial_Astronomy_Evidence_Competitive_Intelligence_2026-11-02.md)
 
 ---
 
 ## 1. The Problem We Solve (Backed by Peer-Reviewed Research)
 
-Albedian addresses three interlocking barriers that separate everyday people from experiencing and understanding the universe above them:
+Albedian addresses four interlocking barriers that separate everyday people from experiencing and understanding the universe above them:
 
 ### A. Disappearing Access to the Night Sky
 - **Global Skyglow Baseline ([Falchi et al., 2016, *Science Advances*](https://pmc.ncbi.nlm.nih.gov/articles/PMC4928945/)):** More than **80% of humanity** (~83% globally, and >99% of U.S. and European populations) lives under light-polluted skies. Over **one-third of humanity** (including nearly 80% of North Americans and 60% of Europeans) can no longer see the Milky Way from home.
@@ -27,13 +28,17 @@ Albedian addresses three interlocking barriers that separate everyday people fro
   - **Legacy Scientific Simulators (*NASA Eyes*, *WorldWide Telescope*, *Celestia*):** Contain rich catalog data, but present it inside sterile, government-portal database UIs disconnected from the user's own night-sky photograph, local horizon, and visceral surface presence.
   - **Astrophotography Stackers (*PixInsight*, *Siril*):** Process real photons and plate-solve, but stop at a static 2D image with zero navigable 3D world exploration.
 
+### D. Loss of Cosmic Literacy & The "Overview Effect" Disconnect
+- **The Overview Effect & Self-Transcendent Awe ([Yaden et al., 2016, *Psychology of Consciousness: Theory, Research, and Practice*](https://psycnet.apa.org/record/2016-14380-001)):** For hundreds of thousands of years, the night sky was humanity's nightly encounter with vast scale. Yaden et al. formalized how perceiving Earth and our horizon within the vastness of space triggers a measurable cognitive shift—*the Overview Effect*—bridging terrestrial observation with planetary perspective.
+- **Perceived Vastness & The "Small Self" ([Piff, Dietze, Feinberg, Stancato & Keltner, 2015, *Journal of Personality and Social Psychology / APA*](https://psycnet.apa.org/record/2015-22515-001); [Keltner & Haidt, 2003](https://psycnet.apa.org/record/2003-04891-006)):** Encountering true astronomical vastness induces the *"small self"*—a healthy perspective shift that reminds us we are tiny dots in an immense cosmos, increasing humility, curiosity, and prosocial connection. When urban light pollution and indoor screen culture sever 83% of humanity from the night sky, astronomical literacy collapses and that philosophical perspective disappears.
+
 ---
 
 ## 2. Intended Audience (ICP) & High-Value Wedges
 
 | Priority Segment | Profile | Core Job-to-be-Done | How Albedian Delivers |
 |---|---|---|---|
-| **1. The Curious Everyday Explorer (Primary ICP)** | Anyone who looks up at the night sky, snaps a photo or clip, and wants to experience what is actually out there—without a telescope or an astrophysics degree. | *"What are those lights in my photo, and what would it look like to actually go there?"* | Restores their capture, locks onto the real stars/planets above their horizon, and flies them into a cinema-grade 3D world with human-first telemetry (`1.1× Earth Gravity`, `-39°C`, historical light-departure eras). |
+| **1. The Curious Everyday Explorer (Primary ICP)** | Anyone who looks up at the night sky, snaps a photo or clip, and wants to experience what is actually out there—without a telescope or an astrophysics degree. | *"What are those lights in my photo, and what would it look like to actually go there?"* | Restores their capture, locks onto the real stars/planets above their horizon, and flies them into a cinema-grade 3D world with human-first readouts (light-travel time, historical light-departure eras). |
 | **2. Night-Sky Creators & Astrophotographers** | Photographers capturing the Milky Way, Moon, or constellations from dark-sky sites or suburbs. | *"Turn my flat 2D night photo into an awe-inspiring, explainable 3D journey."* | Anchors a continuous 3D camera flight (`01 Sky` $\rightarrow$ `05 Surface`) directly to their SHA-256 verified capture with `Hold Original` proof. |
 | **3. Science Communicators & Educators** | Astronomy storytellers, teachers, and planetarium presenters. | *"Show audiences how a tiny dot in tonight's sky connects to real 3D cosmic structure and exoplanet physics."* | Preserves reference-frame continuity from the local horizon into 3D space while strictly labeling `Captured`, `Catalog`, `Scientific Model`, and `Illustration`. |
 
@@ -45,9 +50,9 @@ The "proof moment" of Albedian is not an isolated GPU effect—it is the user un
 
 | Layer | Epistemic Class (`EvidenceClass`) | Plain-Language UI Disclosure | Scientific & Technical Basis |
 |---|---|---|---|
-| **1. Capture & Restoration** | `observed` | `CAPTURED IN YOUR PHOTO · HOLD ORIGINAL` | Immutable SHA-256 `SourceAsset`; 12-frame temporal burst integration (`+5.2 dB SNR`) and Mie glare stripping. |
-| **2. Astrometric Sky Lock** | `catalog_matched` | `CAPTURED IN YOUR PHOTO · GAIA DR3 LOCK (0.38″)` | Sub-arcsecond WCS plate solution verified against held-out star residuals; matched to ESA Gaia DR3 & JPL DE440 ephemerides. |
-| **3. 3D Cosmic Volumes** | `simulated` (Data-Backed) | `CATALOG 3D GEOMETRY · GAIA DR3 + CfA` / `SCIENTIFIC 3D MODEL` | `@sparkjsdev/spark` 3D Gaussian Splatting of the Harvard CfA Local Bubble (`O'Neill et al., 2024, ApJ`), NASA LRO laser altimetry (`100m`), and DNGR relativistic geodesic ray-marching ([James, von Tunzelmann, Franklin & Thorne, 2015](https://iopscience.iop.org/article/10.1088/0264-9381/32/6/065001); [Bruneton, 2020](https://ebruneton.github.io/black_hole_shader/paper.pdf)). |
+| **1. Capture & Restoration** | `observed` | `CAPTURED IN YOUR PHOTO · HOLD ORIGINAL` | Immutable SHA-256 `SourceAsset`; multi-frame temporal burst integration and Mie glare stripping, with the SNR gain measured and shown per capture. |
+| **2. Astrometric Sky Lock** | `catalog_matched` | `CAPTURED IN YOUR PHOTO · GAIA DR3 LOCK (<measured residual>)` | WCS plate solution verified against held-out star residuals, showing the residual measured for that capture; matched today to a pinned 71-star bright list and analytical ephemerides, with ESA Gaia DR3 and JPL DE440 planned. |
+| **3. 3D Cosmic Volumes** | `simulated` (Data-Backed) | `CATALOG 3D GEOMETRY · GAIA DR3 + CfA` / `SCIENTIFIC 3D MODEL` | `@sparkjsdev/spark` 3D Gaussian Splatting of the Harvard CfA Local Bubble (`O'Neill et al., 2024, ApJ`; model geometry with stylized colors and orientations), an LRO-derived lunar displacement texture, and Schwarzschild geodesic ray-marching after ([James, von Tunzelmann, Franklin & Thorne, 2015](https://iopscience.iop.org/article/10.1088/0264-9381/32/6/065001); [Bruneton, 2020](https://ebruneton.github.io/black_hole_shader/paper.pdf)). |
 | **4. Planetary Surfaces** | `simulated` (Mapped vs. Illustrative) | `MEASURED ALTIMETRY` (Moon) vs. `SCIENTIFIC ILLUSTRATION · MODELED WORLD` (Exoplanets / Titan) | Analytical-derivative multi-fractal GPU ray-marching ([Inigo Quilez](https://iquilezles.org/articles/morenoise/)) and Rayleigh/Mie atmospheric scattering ([Bruneton & Neyret, 2008](https://ebruneton.github.io/precomputed_atmospheric_scattering/)) parameterized by equilibrium temperature, surface gravity, and stellar spectrum. |
 
 ---
@@ -63,3 +68,17 @@ Albedian never models the application as a single flat mode enum. A restoration 
 | **`Calibration`** | `not_requested`, `detecting`, `solving`, `verifying`, `calibrated`, `predicted_only`, `ambiguous`, `unresolved` | Only `calibrated` (passing independent held-out inlier verification) authorizes pixel-registered catalog overlays. |
 | **`Navigation`** | `source`, `comparison`, `sky_registered`, `transitioning`, `space`, `inspecting`, `returning` | Every transition out of `source` or across spatial viewpoints records a reversible `CameraCheckpoint` in `NavigationHistory`. |
 | **`Voice`** | `off`, `permission`, `listening`, `hearing`, `interpreting`, `awaiting_tool`, `speaking`, `interrupted`, `unavailable` | Operates on structured session state through revision-checked `AlbedianAction` dispatch; never fabricates scientific or media state. |
+
+---
+
+## 5. UI/UX Design References & Signature Interaction Patterns
+
+Rather than inventing generic dark-mode dashboard widgets, Albedian adapts four proven visual and interaction benchmarks into its own scientific instrument language:
+
+| Pattern / Screen | Primary Reference | What We Adapt & How We Make It Albedian's Own |
+|---|---|---|
+| **1. Two-Tone Editorial Typography & Hairline Framing** | **MirEye / Siterra** + **[Leica Camera](https://leica-camera.com/)** | High-contrast **Starlight Alabaster (`#F4F1EA`)** lead statements paired inline with muted **Warm Pewter (`rgba(244, 241, 234, 0.44)`)** qualifiers, tabular monospace index numbers (`01 — 05`), and `1px` hairline rules with **Blackbody Gold (`#E2B86B`)** reserved strictly for the active optical lock. |
+| **2. Entry Threshold ("Press & Hold" State Shift & Observer-to-Cosmos Ascent)** | **Lusion — [`exp-gemini.lusion.co`](https://exp-gemini.lusion.co/)**, **[`Of The Oak`](https://lusion.co/projects/of_the_oak/)**, & **[`Synthetic Human`](https://lusion.co/projects/synthetic_human/)** | Instead of a static SaaS landing page or dropping cold into telemetry, Act 0 presents the human observer connection to the cosmos with Lusion's interactive **"PRESS & HOLD"** magnetic optical reticle. Holding strips away urban/lunar Mie skyglow, ignites the 3D starfield and photon stream, swells the spatial audio filter, and lifts the camera into the live Observatory. |
+| **3. Ambient Processing & Intent Perimeter ("Edge Glow + Photon Particles")** | **OpenAI ChatGPT Atlas Browser (Agent Mode)** | When Albedian is actively executing a multi-frame SNR restoration stack, solving a TAN-SIP WCS plate calibration, or interpreting a `[ / ] VOICE & INTENT` command, the viewport perimeter illuminates with a breathing **Blackbody Gold + Starlight Alabaster screen-edge glow and drifting photon particles**, paired with a top-center human-in-the-loop pill (`[ESC] INTERRUPT`). Driven strictly by real `Restoration`, `Calibration`, and `Voice` state machine activity—never fake timers. |
+| **4. Physical Atmospheric Limbs & Relativistic Ray-Marching** | **[FIELD.IO — *Vision Wall*](https://field.io/work/vision-wall)** + **[Eric Bruneton](https://ebruneton.github.io/precomputed_atmospheric_scattering/)** + **[Thorne DNGR](https://iopscience.iop.org/article/10.1088/0264-9381/32/6/065001)** | Pre-baked Rayleigh/Mie atmospheric transmittance LUTs (`bruneton_atmo_lut.png`), `@sparkjsdev/spark` anisotropic 3D Gaussian Splats (`lb_splats.json`, `nasa_nebula_splats.json`), and Schwarzschild black-hole geodesic lensing. |
+

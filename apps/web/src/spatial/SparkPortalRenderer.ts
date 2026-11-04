@@ -14,9 +14,19 @@ import {
 } from '@sparkjsdev/spark';
 import {
   ALL_SKY_CONSTELLATION_EDGES,
-  GAIA_BACKGROUND_STARFIELD_3D,
+  NAMED_ALL_SKY_STARS_3D,
   bpRpToStarColorHex,
 } from './allSkyStarfield.js';
+import {
+  createOriginCameraFrustumIndicator,
+  updateOriginFrustumContinuity,
+} from './referenceFrameContinuity.js';
+import {
+  BRUNETON_ATMO_GLSL_CHUNK,
+  BRUNETON_ATMO_LUT_URL,
+  buildAnisotropicLocalBubbleSplatMesh,
+  buildAnisotropicNebulaSplatMesh,
+} from './volumetricSplatsAndLut.js';
 
 export type SpatialScaleRegime =
   | 'earth_capture'
@@ -199,6 +209,7 @@ export class SparkPortalRenderer {
     uNormalTex: { value: THREE.Texture | null };
     uSpecTex: { value: THREE.Texture | null };
     uCloudsTex: { value: THREE.Texture | null };
+    uBrunetonLutTex: { value: THREE.Texture | null };
     uSunDir: { value: THREE.Vector3 };
     uTime: { value: number };
   };
@@ -233,6 +244,7 @@ export class SparkPortalRenderer {
     uSunAngularRadius: { value: number };
     uHasRings: { value: number };
     uPaletteId: { value: number };
+    uBrunetonLutTex: { value: THREE.Texture | null };
   };
   private cinemaOpticsUniforms: {
     tDiffuse: { value: THREE.Texture | null };
@@ -250,9 +262,11 @@ export class SparkPortalRenderer {
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
   private planetaryRingMesh: THREE.Mesh | null = null;
+  private originFrustumGroup: THREE.Group | null = null;
 
-  private observerLatDeg = 31.2021;
-  private observerLonDeg = -3.9458;
+  // Unknown until a capture or the user supplies a location
+  private observerLatDeg: number | null = null;
+  private observerLonDeg: number | null = null;
 
   private activeRegime: SpatialScaleRegime = 'earth_capture';
   private flightState: {
@@ -273,6 +287,7 @@ export class SparkPortalRenderer {
   };
   private targetFov = 56;
   private curFov = 56;
+  private showcaseMode = false;
   private onRegimeChange?: (regime: SpatialScaleRegime) => void;
   private rafId = 0;
   private clock = new THREE.Clock();
@@ -316,6 +331,7 @@ export class SparkPortalRenderer {
       uNormalTex: { value: null },
       uSpecTex: { value: null },
       uCloudsTex: { value: null },
+      uBrunetonLutTex: { value: null },
       uSunDir: { value: new THREE.Vector3(0.68, 0.28, -0.58).normalize() },
       uTime: { value: 0.0 },
     };
@@ -350,6 +366,7 @@ export class SparkPortalRenderer {
       uSunAngularRadius: { value: 0.095 },
       uHasRings: { value: 0.0 },
       uPaletteId: { value: 1.0 },
+      uBrunetonLutTex: { value: null },
     };
     this.cinemaOpticsUniforms = {
       tDiffuse: { value: null },
@@ -456,6 +473,8 @@ export class SparkPortalRenderer {
       this.buildSolarNeighborhoodWorld();
       this.buildDeepSkyWorld();
       this.buildPlanetarySurfaceWorld();
+      this.originFrustumGroup = createOriginCameraFrustumIndicator();
+      this.localFrame.add(this.originFrustumGroup);
       this.syncRegimeVisibility();
       this.startLoop();
     } catch {
@@ -529,6 +548,21 @@ export class SparkPortalRenderer {
       this.nebulaUniforms.uLagoonTex.value = t;
       this.localBubbleUniforms.uDustTex.value = t;
     });
+    this.textureLoader.load(
+      BRUNETON_ATMO_LUT_URL,
+      (lutTex) => {
+        lutTex.wrapS = THREE.ClampToEdgeWrapping;
+        lutTex.wrapT = THREE.ClampToEdgeWrapping;
+        lutTex.minFilter = THREE.LinearFilter;
+        lutTex.magFilter = THREE.LinearFilter;
+        lutTex.colorSpace = THREE.NoColorSpace;
+        lutTex.needsUpdate = true;
+        this.earthUniforms.uBrunetonLutTex.value = lutTex;
+        this.planetarySkyUniforms.uBrunetonLutTex.value = lutTex;
+      },
+      undefined,
+      () => {}
+    );
   }
 
   /**
@@ -625,7 +659,7 @@ export class SparkPortalRenderer {
     includeDeepFieldCount: number
   ): THREE.Points {
     const count = Math.min(includeDeepFieldCount, 1400);
-    const totalCount = GAIA_BACKGROUND_STARFIELD_3D.length + count;
+    const totalCount = NAMED_ALL_SKY_STARS_3D.length + count;
     const positions = new Float32Array(totalCount * 3);
     const colors = new Float32Array(totalCount * 3);
     const sizes = new Float32Array(totalCount);
@@ -633,7 +667,7 @@ export class SparkPortalRenderer {
 
     const tmpColor = new THREE.Color();
 
-    GAIA_BACKGROUND_STARFIELD_3D.forEach((star, idx) => {
+    NAMED_ALL_SKY_STARS_3D.forEach((star, idx) => {
       const [px, py, pz] = star.cartesianParsec;
       const norm = Math.hypot(px, py, pz) || 1;
       positions[idx * 3] = (px / norm) * radiusScale;
@@ -650,7 +684,7 @@ export class SparkPortalRenderer {
       spikeFlags[idx] = star.name && star.mag < 1.8 ? 1.0 : 0.0;
     });
 
-    const baseIdx = GAIA_BACKGROUND_STARFIELD_3D.length;
+    const baseIdx = NAMED_ALL_SKY_STARS_3D.length;
     for (let i = 0; i < count; i++) {
       const k = baseIdx + i;
       const h1 = Math.sin(i * 12.9898) * 43758.5453;
@@ -983,261 +1017,14 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 0: Calibrated Night Sky Observation (True 0.5° Optical Lunar Scale + 6K Milky Way + Ray-Marched Sahara Dune / Aoraki Alpine Lake Horizon)
+   * REGIME 0: Night Sky (62 hand-entered named stars plus a procedural, hash-generated fill; not Gaia data)
    */
   private buildEarthCaptureWorld(): void {
     const group = this.regimeGroups.earth_capture;
 
-    // 1. Optical Gaia DR3 Starfield with Airy-disk & diffraction spikes across the full night sky
+    // Named bright stars plus procedural fill points, drawn with Airy-disk & diffraction spikes
     const stars = this.createOpticalStarfieldPoints(58.0, 2800);
     group.add(stars);
-
-    // 2. Ray-Marched Earthly Observation Horizon & Airglow Dome (Sahara Erg Chebbi Dunes vs. Aoraki Southern Alps & Lake Tekapo)
-    const horizonGeo = new THREE.SphereGeometry(62, 128, 64);
-    const horizonMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uTime: this.skyDomeUniforms.uTime,
-        uRestoration: this.skyDomeUniforms.uRestoration,
-        uIsSouthern: { value: this.observerLatDeg < -34.0 ? 1.0 : 0.0 },
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vWorldDir;
-        void main() {
-          vWorldDir = normalize(position);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        uniform float uRestoration;
-        uniform float uIsSouthern;
-        varying vec3 vWorldDir;
-
-        float hash2(vec2 p) {
-          p = fract(p * vec2(127.1, 311.7));
-          p += dot(p, p + 34.5);
-          return fract(p.x * p.y);
-        }
-
-        vec3 noised(vec2 x) {
-          vec2 i = floor(x);
-          vec2 f = fract(x);
-          vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-          vec2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
-
-          float a = hash2(i + vec2(0.0, 0.0));
-          float b = hash2(i + vec2(1.0, 0.0));
-          float c = hash2(i + vec2(0.0, 1.0));
-          float d = hash2(i + vec2(1.0, 1.0));
-
-          float k0 = a;
-          float k1 = b - a;
-          float k2 = c - a;
-          float k3 = a - b - c + d;
-
-          return vec3(
-            k0 + k1 * u.x + k2 * u.y + k3 * u.x * u.y,
-            du * (vec2(k1, k2) + k3 * u.yx)
-          );
-        }
-
-        const mat2 m2 = mat2(0.80, -0.60, 0.60, 0.80);
-
-        float earthHorizonTerrain(vec2 p, out vec2 grad) {
-          vec2 pos = p * 0.075;
-          float a = 0.0;
-          float b = 1.0;
-          vec2 d = vec2(0.0);
-          float dist = length(p);
-          float valley = smoothstep(3.0, 16.0, abs(p.x + sin(p.y * 0.07) * 5.0));
-
-          for (int i = 0; i < 7; i++) {
-            vec3 n = noised(pos);
-            d += b * n.yz;
-            float ridge = 1.0 - abs(n.x * 2.0 - 1.0);
-            ridge = ridge * ridge;
-            float sharpMix = (uIsSouthern > 0.5) ? 0.65 : 0.78;
-            a += b * mix(n.x, ridge, sharpMix) / (1.0 + dot(d, d) * 0.82);
-            b *= 0.49;
-            pos = m2 * pos * 2.03;
-          }
-
-          grad = d;
-          float farMountains = smoothstep(16.0, 62.0, dist);
-          if (uIsSouthern > 0.5) {
-            // Aoraki / Lake Tekapo: calm glacial lake basin in foreground + towering Southern Alps across the horizon
-            return -2.85 + a * (2.4 + farMountains * 3.2) * (0.06 + 0.94 * max(valley, farMountains * 0.85));
-          } else {
-            // Sahara Erg Chebbi: sweeping wind-sculpted desert star-dunes & distant mesa ridges
-            float duneWave = sin(p.x * 0.14 + p.y * 0.08 + a * 2.2) * 0.45;
-            return -2.75 + (a * 2.15 + duneWave * 0.55) * (0.28 + 0.72 * valley) + farMountains * a * 2.4;
-          }
-        }
-
-        void main() {
-          vec3 rd = normalize(vWorldDir);
-          if (rd.y > -0.02) discard;
-
-          vec3 ro = vec3(0.0, 9.8, 0.0);
-          vec3 moonLightDir = normalize(vec3(0.22, 0.36, -0.906));
-
-          // Subtle natural night-sky horizon airglow band (OH / OI nightglow + moonlight scattering)
-          float horizonBand = exp(-max(0.0, rd.y + 0.22) * 14.0);
-          vec3 skyAirglow = (uIsSouthern > 0.5)
-            ? vec3(0.04, 0.18, 0.22) * horizonBand * 0.46 + vec3(0.08, 0.07, 0.18) * exp(-max(0.0, rd.y + 0.22) * 6.5) * 0.26
-            : vec3(0.18, 0.12, 0.08) * horizonBand * 0.40 + vec3(0.05, 0.09, 0.18) * exp(-max(0.0, rd.y + 0.22) * 7.0) * 0.30;
-
-          // Ray-march low-elevation terrain & glacial lake along the lower 22% observatory horizon
-          float tMax = 78.0;
-          float t = 14.0;
-          float prevT = t;
-          bool hitTerrain = false;
-          for (int i = 0; i < 96; i++) {
-            vec3 pos = ro + rd * t;
-            vec2 g;
-            float h = earthHorizonTerrain(pos.xz, g);
-            float diff = pos.y - h;
-            if (diff < 0.0015 * t) {
-              // 4-step binary search refinement for razor-sharp ridge silhouettes
-              float lo = prevT;
-              float hi = t;
-              for (int j = 0; j < 4; j++) {
-                float mid = 0.5 * (lo + hi);
-                vec3 mPos = ro + rd * mid;
-                vec2 mg;
-                if (mPos.y - earthHorizonTerrain(mPos.xz, mg) < 0.0) {
-                  hi = mid;
-                } else {
-                  lo = mid;
-                }
-              }
-              t = 0.5 * (lo + hi);
-              hitTerrain = true;
-              break;
-            }
-            if (t > tMax || pos.y > 10.5) break;
-            prevT = t;
-            t += max(0.07, diff * 0.38);
-          }
-
-          // Lake Tekapo water plane at y = -2.28 for Southern Alps (uIsSouthern > 0.5)
-          float waterLevel = -2.28;
-          float tWater = (waterLevel - ro.y) / min(-0.0001, rd.y);
-          bool hitWater = (uIsSouthern > 0.5) && (rd.y < -0.12) && (tWater > 0.0) && (tWater < tMax) && (!hitTerrain || tWater < t);
-
-          if (!hitTerrain && !hitWater) {
-            float alpha = clamp(exp(-max(0.0, rd.y + 0.20) * 14.0) * 0.65, 0.0, 0.70);
-            gl_FragColor = vec4(skyAirglow, alpha);
-            return;
-          }
-
-          if (hitWater) {
-            vec3 wPos = ro + rd * tWater;
-            vec2 wGrad;
-            float bedH = earthHorizonTerrain(wPos.xz, wGrad);
-            float waterDepth = max(0.0, waterLevel - bedH);
-            vec2 waveUv = wPos.xz * 1.45 + vec2(uTime * 0.08, -uTime * 0.06);
-            vec3 wn1 = noised(waveUv);
-            vec3 wn2 = noised(waveUv * 2.7 - vec2(uTime * 0.11, uTime * 0.09));
-            vec3 wNormal = normalize(vec3((wn1.y + wn2.y * 0.5) * 0.035, 1.0, (wn1.z + wn2.z * 0.5) * 0.035));
-            vec3 reflDir = reflect(rd, wNormal);
-            reflDir.y = abs(reflDir.y);
-
-            float fresnel = 0.06 + 0.90 * pow(1.0 - clamp(dot(-rd, wNormal), 0.0, 1.0), 4.2);
-            float moonGlint = pow(max(0.0, dot(reflDir, moonLightDir)), 96.0) * 1.35;
-            vec3 reflSky = vec3(0.02, 0.05, 0.11) + skyAirglow * 1.25 + vec3(0.85, 0.92, 1.0) * moonGlint;
-            vec3 deepLake = vec3(0.008, 0.024, 0.045);
-            vec3 waterCol = mix(deepLake, reflSky, fresnel);
-            float shoreBlend = smoothstep(0.0, 0.25, waterDepth);
-            waterCol = mix(vec3(0.02, 0.03, 0.05), waterCol, shoreBlend);
-            float fog = 1.0 - exp(-tWater * 0.022);
-            vec3 finalWater = mix(waterCol, skyAirglow, fog * 0.65);
-            gl_FragColor = vec4(finalWater, 0.98);
-            return;
-          }
-
-          vec3 pos = ro + rd * t;
-          vec2 grad;
-          float h = earthHorizonTerrain(pos.xz, grad);
-          vec2 eps = vec2(0.08, 0.0);
-          vec2 gX, gZ;
-          float hX = earthHorizonTerrain(pos.xz + eps.xy, gX);
-          float hZ = earthHorizonTerrain(pos.xz + eps.yx, gZ);
-          vec3 N = normalize(vec3(h - hX, eps.x, h - hZ));
-
-          float ndl = max(0.0, dot(N, moonLightDir));
-          float rim = pow(1.0 - max(0.0, dot(N, -rd)), 2.6);
-          float slope = clamp(N.y, 0.0, 1.0);
-
-          vec3 terrainCol;
-          if (uIsSouthern > 0.5) {
-            float snowMask = smoothstep(0.52, 0.80, slope + clamp((h + 1.8) * 0.18, -0.2, 0.35));
-            vec3 basalt = vec3(0.012, 0.018, 0.030);
-            vec3 glacialSnow = vec3(0.16, 0.22, 0.34);
-            vec3 albedo = mix(basalt, glacialSnow, snowMask);
-            terrainCol = albedo * (0.18 + 1.35 * ndl) + vec3(0.08, 0.24, 0.32) * rim * 0.42;
-          } else {
-            // Wind-rippled Sahara sand micro-ripples & moonlit dune crests
-            float ripples = sin(pos.x * 6.5 + pos.z * 3.2) * 0.5 + 0.5;
-            vec3 warmSand = vec3(0.095, 0.072, 0.052) * (0.88 + 0.12 * ripples);
-            vec3 shadowDune = vec3(0.014, 0.012, 0.018);
-            terrainCol = mix(shadowDune, warmSand, 0.16 + 0.84 * pow(ndl, 0.85))
-                       + vec3(0.24, 0.18, 0.12) * rim * 0.38;
-          }
-
-          float fog = 1.0 - exp(-t * 0.024);
-          vec3 finalCol = mix(terrainCol, skyAirglow * 0.85, fog * 0.72);
-          gl_FragColor = vec4(finalCol, 0.98);
-        }
-      `,
-    });
-    const horizonDome = new THREE.Mesh(horizonGeo, horizonMat);
-    horizonDome.name = 'captureHorizonLandscapeDome';
-    group.add(horizonDome);
-
-    // 3. True Optical Angular-Scale Moon (0.52° optical disc in the upper-right sky) + Dynamic Mie Glare Veil
-    const skyMoon = this.createPhotorealisticMoonMesh(0.46);
-    skyMoon.position.set(5.4, 2.8, -26.0);
-    skyMoon.rotation.y = -0.65;
-    group.add(skyMoon);
-    this.skyMoonMesh = skyMoon;
-
-    const coronaGeo = new THREE.PlaneGeometry(14.0, 14.0);
-    const coronaMat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uRestoration: this.skyDomeUniforms.uRestoration,
-      },
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv * 2.0 - 1.0;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uRestoration;
-        varying vec2 vUv;
-        void main() {
-          float r = length(vUv);
-          float rawGlare = exp(-r * 1.8) * 0.55 + exp(-r * 0.75) * 0.25;
-          float restoredAureole = exp(-r * 5.2) * 0.24 + exp(-r * 2.1) * 0.05;
-          float mieGlow = mix(rawGlare, restoredAureole, uRestoration);
-          vec3 col = vec3(1.0, 0.95, 0.86) * mieGlow;
-          gl_FragColor = vec4(col, mieGlow);
-        }
-      `,
-    });
-    const moonCorona = new THREE.Mesh(coronaGeo, coronaMat);
-    moonCorona.position.set(5.4, 2.8, -26.2);
-    group.add(moonCorona);
-
-    this.rebuildCaptureHorizonSplatMesh(this.observerLatDeg, this.observerLonDeg);
   }
 
   /**
@@ -1248,6 +1035,8 @@ export class SparkPortalRenderer {
    */
   public setObserverCoordinates(latDeg: number, lonDeg: number): void {
     if (
+      this.observerLatDeg !== null &&
+      this.observerLonDeg !== null &&
       Math.abs(latDeg - this.observerLatDeg) < 0.01 &&
       Math.abs(lonDeg - this.observerLonDeg) < 0.01
     ) {
@@ -1306,10 +1095,13 @@ export class SparkPortalRenderer {
         uniform sampler2D uNormalTex;
         uniform sampler2D uSpecTex;
         uniform sampler2D uCloudsTex;
+        uniform sampler2D uBrunetonLutTex;
         uniform vec3 uSunDir;
         varying vec3 vObjPos;
         varying vec3 vNormal;
         varying vec3 vViewDir;
+
+        ${BRUNETON_ATMO_GLSL_CHUNK}
 
         float hash21(vec2 p) {
           p = fract(p * vec2(127.1, 311.7));
@@ -1396,9 +1188,11 @@ export class SparkPortalRenderer {
           vec3 nightEarth = darkContinents + cityGlow + vec3(0.012, 0.026, 0.055) * clouds;
 
           float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.8);
-          vec3 atmoTint = mix(vec3(0.06, 0.24, 0.64), vec3(0.22, 0.58, 0.96), dayFactor) * fresnel * (0.38 + 0.48 * dayFactor);
+          vec4 brunetonSample = sampleBrunetonAtmoLut(uBrunetonLutTex, dot(N, V), sunDot);
+          vec3 atmoTint = mix(vec3(0.06, 0.24, 0.64), brunetonSample.rgb * 1.25, 0.68) * fresnel * (0.42 + 0.52 * dayFactor);
+          vec3 lutTwilight = brunetonSample.rgb * twilightFactor * (0.28 + 0.36 * clouds);
 
-          vec3 rawEarth = mix(nightEarth, litEarth, dayFactor) + twilightGlow + atmoTint;
+          vec3 rawEarth = mix(nightEarth, litEarth, dayFactor) + mix(twilightGlow, lutTwilight, 0.65) + atmoTint;
           // Filmic tone-mapping so sunlit clouds & ocean never clip to flat white
           vec3 finalEarth = rawEarth / (vec3(1.0) + rawEarth * 0.56);
           gl_FragColor = vec4(finalEarth, 1.0);
@@ -1422,6 +1216,7 @@ export class SparkPortalRenderer {
       blending: THREE.AdditiveBlending,
       uniforms: {
         uSunDir: this.earthUniforms.uSunDir,
+        uBrunetonLutTex: this.earthUniforms.uBrunetonLutTex,
       },
       vertexShader: /* glsl */ `
         varying vec3 vNormal;
@@ -1435,16 +1230,22 @@ export class SparkPortalRenderer {
       `,
       fragmentShader: /* glsl */ `
         uniform vec3 uSunDir;
+        uniform sampler2D uBrunetonLutTex;
         varying vec3 vNormal;
         varying vec3 vViewDir;
+
+        ${BRUNETON_ATMO_GLSL_CHUNK}
+
         void main() {
           float viewDot = dot(vNormal, vViewDir);
           float limbIntensity = exp(-pow((viewDot + 0.14) * 5.2, 2.0));
           float sunAlign = dot(-vNormal, normalize(uSunDir));
           float sunOrient = 0.22 + 0.78 * smoothstep(-0.20, 0.65, sunAlign);
           float sunriseArc = exp(-pow(sunAlign - 0.32, 2.0) * 6.5) * 0.38;
-          vec3 rayleighCol = mix(vec3(0.14, 0.50, 0.96), vec3(0.52, 0.78, 1.0), sunriseArc) * limbIntensity * sunOrient * 0.95;
-          gl_FragColor = vec4(rayleighCol, clamp(limbIntensity * 0.85, 0.0, 0.82));
+          vec4 lutLimb = sampleBrunetonAtmoLut(uBrunetonLutTex, clamp(viewDot + 0.16, -0.35, 1.0), sunAlign);
+          vec3 baseRayleigh = mix(vec3(0.14, 0.50, 0.96), vec3(0.52, 0.78, 1.0), sunriseArc);
+          vec3 rayleighCol = mix(baseRayleigh, lutLimb.rgb * 1.35, 0.62) * limbIntensity * sunOrient * 0.98;
+          gl_FragColor = vec4(rayleighCol, clamp(limbIntensity * 0.86, 0.0, 0.84));
         }
       `,
     });
@@ -1778,44 +1579,7 @@ export class SparkPortalRenderer {
         .then((res) => (res.ok ? res.json() : null))
         .then((raw: number[][] | null) => {
           if (!Array.isArray(raw) || raw.length === 0) return;
-          const lbSplatMesh = new SplatMesh({
-            constructSplats: (splats: PackedSplats) => {
-              const center = new THREE.Vector3();
-              const scales = new THREE.Vector3();
-              const quat = new THREE.Quaternion();
-              const color = new THREE.Color();
-
-              for (let i = 0; i < raw.length; i += 3) {
-                const pt = raw[i];
-                if (!pt || pt.length < 6) continue;
-                const jx = (Math.sin(i * 12.9898) - 0.5) * 0.35;
-                const jy = (Math.cos(i * 78.233) - 0.5) * 0.35;
-                const jz = (Math.sin(i * 37.719) - 0.5) * 0.35;
-                const x = pt[0]! * 1.24 + jx;
-                const y = pt[1]! * 1.24 + jy;
-                const z = pt[2]! * 1.24 + jz;
-
-                // Keep a wide hollow inner cavity around the central star photosphere so the star stays 100% razor-sharp
-                const xyDist = Math.hypot(x, y);
-                if (xyDist < 4.55) continue;
-
-                center.set(x, y, z);
-
-                const s = 0.095 + (i % 5) * 0.022;
-                scales.set(s * 1.5, s * 1.1, s * 1.5);
-
-                // Warm Planckian interstellar dust & circumstellar shell palette (replaces raw blue mesh vertices)
-                const warmMix = (i % 9) / 9.0;
-                color.setRGB(
-                  0.78 + 0.18 * warmMix,
-                  0.54 + 0.14 * warmMix,
-                  0.36 + 0.12 * (1.0 - warmMix)
-                );
-                const opacity = Math.min(0.014, Math.max(0.004, (xyDist - 4.55) * 0.0035));
-                splats.pushSplat(center, scales, quat, opacity, color);
-              }
-            },
-          });
+          const lbSplatMesh = buildAnisotropicLocalBubbleSplatMesh(raw);
           cavityGroup.add(lbSplatMesh);
         })
         .catch(() => {});
@@ -2053,31 +1817,7 @@ export class SparkPortalRenderer {
         .then((res) => (res.ok ? res.json() : null))
         .then((raw: number[][] | null) => {
           if (!Array.isArray(raw) || raw.length === 0) return;
-          const nebulaSplatMesh = new SplatMesh({
-            constructSplats: (splats: PackedSplats) => {
-              const center = new THREE.Vector3();
-              const scales = new THREE.Vector3();
-              const quat = new THREE.Quaternion();
-              const color = new THREE.Color();
-
-              for (let i = 0; i < raw.length; i += 2) {
-                const pt = raw[i];
-                if (!pt || pt.length < 6) continue;
-                const x = pt[0]! * 1.05;
-                const y = pt[1]! * 1.05;
-                const z = pt[2]! * 1.05;
-                center.set(x, y, z);
-
-                const s = 0.018 + (i % 7) * 0.0035;
-                scales.set(s * 1.35, s * 0.95, s * 1.25);
-                color.setRGB(pt[3]!, pt[4]!, pt[5]!);
-
-                const radial = Math.min(1.0, Math.hypot(x, y, z) / 6.2);
-                const opacity = (1.0 - radial * 0.55) * 0.036;
-                splats.pushSplat(center, scales, quat, opacity, color);
-              }
-            },
-          });
+          const nebulaSplatMesh = buildAnisotropicNebulaSplatMesh(raw);
           sculptureGroup.add(nebulaSplatMesh);
         })
         .catch(() => {});
@@ -2111,6 +1851,7 @@ export class SparkPortalRenderer {
         uAtmoHorizon: this.planetarySkyUniforms.uAtmoHorizon,
         uSunColor: this.planetarySkyUniforms.uSunColor,
         uPaletteId: this.planetarySkyUniforms.uPaletteId,
+        uBrunetonLutTex: this.planetarySkyUniforms.uBrunetonLutTex,
         uEarthDayTex: this.earthUniforms.uDayTex,
         uEarthNightTex: this.earthUniforms.uNightTex,
         uEarthCloudsTex: this.earthUniforms.uCloudsTex,
@@ -2130,12 +1871,15 @@ export class SparkPortalRenderer {
         uniform vec3 uAtmoHorizon;
         uniform vec3 uSunColor;
         uniform float uPaletteId;
+        uniform sampler2D uBrunetonLutTex;
         uniform sampler2D uEarthDayTex;
         uniform sampler2D uEarthNightTex;
         uniform sampler2D uEarthCloudsTex;
         uniform sampler2D uEarthSpecTex;
         uniform sampler2D uMoonAlbedoTex;
         varying vec3 vWorldDir;
+
+        ${BRUNETON_ATMO_GLSL_CHUNK}
 
         // High-precision procedural hash & analytical-derivative multi-fractal noise
         float hash2(vec2 p) {
@@ -2220,10 +1964,13 @@ export class SparkPortalRenderer {
         vec3 evaluateCelestialSky(vec3 rd, bool isReflection) {
           float elev = clamp(rd.y, -0.15, 1.0);
           float horizonGlow = exp(-abs(rd.y - 0.01) * 6.5);
-          vec3 sky = mix(uAtmoHorizon * 0.78, uAtmoZenith, smoothstep(-0.02, 0.52, elev));
-          sky += uAtmoHorizon * horizonGlow * 0.65;
-
           vec3 primaryDir = normalize(vec3(-0.18, 0.22, -0.958));
+          vec4 brunetonSky = sampleBrunetonAtmoLut(uBrunetonLutTex, elev, dot(rd, primaryDir) * 0.38);
+          vec3 baseSky = mix(uAtmoHorizon * 0.78, uAtmoZenith, smoothstep(-0.02, 0.52, elev));
+          baseSky += uAtmoHorizon * horizonGlow * 0.65;
+          vec3 sky = (uPaletteId < 0.5)
+            ? baseSky
+            : mix(baseSky, baseSky * 0.72 + brunetonSky.rgb * uAtmoHorizon * 0.85, 0.42);
 
           if (uPaletteId < 0.5) {
             // PALETTE 0: Lunar South Pole Sky -> Photorealistic 3D Ray-Traced Blue Marble Earth in the Vacuum Sky
@@ -2676,23 +2423,30 @@ export class SparkPortalRenderer {
       this.planetarySkyUniforms.uTime.value = elapsed;
       this.cinemaOpticsUniforms.uTime.value = elapsed;
 
+      const rotMult = this.showcaseMode ? 3.2 : 1.0;
       if (this.cislunarMoonMesh) {
-        this.cislunarMoonMesh.rotation.y += 0.0005;
+        this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
       }
       if (this.cislunarEarthMesh) {
-        this.cislunarEarthMesh.rotation.y += 0.00015;
+        this.cislunarEarthMesh.rotation.y += 0.00018 * rotMult;
       }
       if (this.betelgeuseMesh) {
-        this.betelgeuseMesh.rotation.y += 0.0006;
+        this.betelgeuseMesh.rotation.y += 0.0006 * rotMult;
       }
       if (this.localBubbleCavityGroup) {
-        this.localBubbleCavityGroup.rotation.y += 0.00045;
+        this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
       }
       if (this.deepSkySculptureGroup) {
-        this.deepSkySculptureGroup.rotation.z += 0.0008;
+        this.deepSkySculptureGroup.rotation.z += 0.0008 * rotMult;
       }
       if (this.planetaryParentBodyMesh) {
-        this.planetaryParentBodyMesh.rotation.y += 0.0005;
+        this.planetaryParentBodyMesh.rotation.y += 0.0005 * rotMult;
+      }
+
+      if (this.showcaseMode && !this.flightState?.active) {
+        this.lookTarget.yaw = Math.sin(elapsed * 0.42) * 0.095;
+        this.lookTarget.pitch = Math.cos(elapsed * 0.29) * 0.042;
+        this.targetFov = 53 + Math.sin(elapsed * 0.35) * 2.4;
       }
 
       const prevYaw = this.lookTarget.curYaw;
@@ -2737,6 +2491,10 @@ export class SparkPortalRenderer {
           this.camera.fov = this.curFov;
           this.camera.updateProjectionMatrix();
         }
+      }
+
+      if (this.originFrustumGroup) {
+        this.originFrustumGroup.visible = false;
       }
 
       this.sparkXr?.updateControllers(this.camera);
@@ -2966,6 +2724,13 @@ export class SparkPortalRenderer {
     viewportWidth: number,
     viewportHeight: number
   ): { x: number; y: number; visible: boolean } {
+    if (
+      viewportWidth > 0 &&
+      viewportHeight > 0 &&
+      Math.abs(this.camera.aspect - viewportWidth / viewportHeight) > 0.001
+    ) {
+      this.resize(viewportWidth, viewportHeight);
+    }
     const worldPos = this.getSkyTargetPosition(id, title, raDeg, decDeg);
     this.camera.updateMatrixWorld();
     const camSpace = worldPos.clone().applyMatrix4(this.camera.matrixWorldInverse);
@@ -3137,6 +2902,50 @@ export class SparkPortalRenderer {
   public setSkyRestorationActive(active: boolean): void {
     const val = active ? 1.0 : 0.0;
     this.skyDomeUniforms.uRestoration.value = val;
+  }
+
+  public setShowcaseMode(enabled: boolean): void {
+    this.showcaseMode = enabled;
+    if (!enabled) {
+      this.lookTarget.yaw = 0;
+      this.lookTarget.pitch = 0;
+      this.targetFov = 56;
+    }
+  }
+
+  public transitionToShowcaseScene(
+    sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'orion_nebula' | 'saturn_horizon',
+    instant = false
+  ): void {
+    let targetRegime: SpatialScaleRegime = 'cislunar';
+    if (sceneKey === 'cislunar') {
+      targetRegime = 'cislunar';
+      this.setSpectralBand('optical');
+    } else if (sceneKey === 'black_hole') {
+      targetRegime = 'deep_sky';
+      this.setTargetAppearance('Sagittarius A* (Galactic Center)', 1.85, 'deep_sky');
+      this.setSpectralBand('optical');
+    } else if (sceneKey === 'supergiant') {
+      targetRegime = 'solar_neighborhood';
+      this.setTargetAppearance('Betelgeuse (α Orionis)', 1.85, 'star');
+      this.setSpectralBand('optical');
+    } else if (sceneKey === 'orion_nebula') {
+      targetRegime = 'deep_sky';
+      this.setTargetAppearance('Orion Nebula (M42)', -0.1, 'nebula');
+      this.setSpectralBand('halpha');
+    } else if (sceneKey === 'saturn_horizon') {
+      targetRegime = 'planetary_surface';
+      this.setTargetAppearance('Saturn', 0.9, 'planet');
+      this.rebuildPlanetaryTerrainSplats('titan_methane');
+      this.setSpectralBand('optical');
+    }
+
+    this.jumpToRegime(targetRegime);
+    if (!instant) {
+      this.curFov = 61;
+      this.cinemaOpticsUniforms.uWarpFactor.value = 0.48;
+      this.localBubbleUniforms.uWarpFactor.value = 0.48;
+    }
   }
 
   public setSpectralBand(band: SpectralBandMode): void {

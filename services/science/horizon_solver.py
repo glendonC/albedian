@@ -23,6 +23,11 @@ from services.science.wcs_models import (
 )
 
 
+# The horizon fit is exactly determined (four constraints, four pose parameters), so a pose that
+# cannot reproduce its own constraints within this tolerance is rejected instead of reported
+MAX_POSE_FIT_RESIDUAL_PX = 3.0
+
+
 def solve_horizon_and_beacon_pose(
     image: np.ndarray,
     obs_utc_iso: str,
@@ -31,13 +36,14 @@ def solve_horizon_and_beacon_pose(
     source_asset_id: str = "asset-0",
     source_sha256: str = "0000000000000000000000000000000000000000000000000000000000000000",
     frame_time_sec: float = 0.0,
-    default_az_deg: float = 206.9,
-    default_scale_deg_per_px: float = 0.0398,
     solution_id: str = "sol-horizon-beacon",
 ) -> ObservationSolution:
-    """Calibrate camera pointing & WCS from a detected celestial beacon (e.g. Moon) + horizon line,
-    or fall back to an honest GPS + timestamp + horizon ephemeris solution (`approximate` state)
-    when the sky pixels were crushed by video compression.
+    """Calibrate camera pointing & WCS from a detected celestial beacon (e.g. Moon) + horizon line.
+
+    The pose needs both: the beacon fixes where the camera pointed and the horizon fixes its tilt
+    and scale. Without either, or when one pose cannot reproduce both, camera pointing is unknown
+    and the result is `predicted_only`: the sky predicted from GPS + UTC, with no WCS and no pixel
+    positions.
     """
     luma = _to_luma_2d(image)
     h, w = luma.shape
@@ -45,12 +51,12 @@ def solve_horizon_and_beacon_pose(
     row_profile = np.percentile(luma, 85, axis=1)
     y_lo, y_hi = int(h * 0.38), int(h * 0.72)
     grad = np.gradient(ndimage.gaussian_filter1d(row_profile, sigma=12.0))
+    horizon_y: float | None = None
     if y_hi > y_lo and float(np.max(grad[y_lo:y_hi])) > 1e-4:
         horizon_y = float(y_lo + int(np.argmax(grad[y_lo:y_hi])))
-    else:
-        horizon_y = float(h * 0.53)
 
-    sky_limit_y = max(32, min(int(horizon_y - 40), int(h * 0.24)))
+    sky_limit_y = int(h * 0.24) if horizon_y is None else min(int(horizon_y - 40), int(h * 0.24))
+    sky_limit_y = max(32, sky_limit_y)
     sky_band = luma[:sky_limit_y, :]
     sky_med = float(np.median(sky_band))
     sky_mad = float(np.median(np.abs(sky_band - sky_med))) * 1.4826
@@ -68,14 +74,11 @@ def solve_horizon_and_beacon_pose(
         observation_solution_id=solution_id,
     )
     moon_eph = next((b for b in ephemerides if b.name == "Moon"), None)
+    moon_up = moon_eph is not None and moon_eph.alt_deg > 5.0
+    bright_source = peak_snr >= 10.0 and peak_val > float(np.percentile(luma, 99.0)) * 0.5
 
     beacon_detection: SourceDetection | None = None
-    if (
-        peak_snr >= 10.0
-        and peak_val > float(np.percentile(luma, 99.0)) * 0.5
-        and moon_eph
-        and moon_eph.alt_deg > 5.0
-    ):
+    if moon_up and bright_source:
         r_win = 14
         y0, y1 = max(0, int(peak_y) - r_win), min(sky_limit_y, int(peak_y) + r_win + 1)
         x0, x1 = max(0, int(peak_x) - r_win), min(w, int(peak_x) + r_win + 1)
@@ -85,44 +88,49 @@ def solve_horizon_and_beacon_pose(
             yy, xx = np.mgrid[y0:y1, x0:x1]
             bx = float(np.sum(xx * patch) / tot)
             by = float(np.sum(yy * patch) / tot)
-        else:
-            bx, by = float(peak_x), float(peak_y)
+            # Width from the blob's second moments (2.355 sigma is the Gaussian FWHM); the centroid
+            # uncertainty is the usual FWHM / (2.355 * SNR) statistical estimate
+            sigma_sq = float(np.sum(((xx - bx) ** 2 + (yy - by) ** 2) * patch) / (2.0 * tot))
+            fwhm_px = 2.355 * math.sqrt(max(sigma_sq, 0.0))
+            beacon_detection = SourceDetection(
+                x_px=bx,
+                y_px=by,
+                flux=tot,
+                snr=peak_snr,
+                fwhm_px=fwhm_px,
+                centroid_uncertainty_px=fwhm_px / (2.355 * peak_snr),
+                asset_id=source_asset_id,
+                frame_time_sec=frame_time_sec,
+                peak_to_total_ratio=float(np.max(patch)) / tot,
+            )
 
-        beacon_detection = SourceDetection(
-            x_px=bx,
-            y_px=by,
-            flux=tot,
-            snr=peak_snr,
-            fwhm_px=6.5,
-            centroid_uncertainty_px=0.35,
-            asset_id=source_asset_id,
-            frame_time_sec=frame_time_sec,
-            peak_to_total_ratio=0.12,
-        )
-        raw_scale = max(80.0, horizon_y - by)
-        scale_deg_per_px = float(np.clip(moon_eph.alt_deg / raw_scale, 0.025, 0.065))
-        cos_alt = max(0.25, math.cos(math.radians(moon_eph.alt_deg)))
-        center_az_deg = (moon_eph.az_deg - ((bx - w / 2.0) * scale_deg_per_px / cos_alt)) % 360.0
-        center_alt_deg = float(np.clip((horizon_y - h / 2.0) * scale_deg_per_px, -15.0, 65.0))
-        solver_mode = "moon_horizon_locked"
+    wcs: WCSModel | None = None
+    fit_residuals_px: np.ndarray | None = None
+    pose_rejection: str | None = None
+    if not moon_up:
+        pose_rejection = "The Moon is not above 5° altitude at this time and place"
+    elif beacon_detection is None:
+        pose_rejection = "No compact bright source found in the upper sky"
+    elif horizon_y is None:
+        pose_rejection = "No horizon line found"
     else:
-        scale_deg_per_px = default_scale_deg_per_px
-        center_az_deg = default_az_deg
-        center_alt_deg = float(np.clip((horizon_y - h / 2.0) * scale_deg_per_px, -10.0, 45.0))
-        solver_mode = "gps_timestamp_horizon"
-
-    crval_ra_deg, crval_dec_deg = altaz_to_icrs(
-        center_alt_deg, center_az_deg, observer_lat, observer_lon, obs_utc_iso
-    )
-    zenith_ra, zenith_dec = altaz_to_icrs(
-        min(89.0, center_alt_deg + 1.0), center_az_deg, observer_lat, observer_lon, obs_utc_iso
-    )
-    dra_rad = math.radians(zenith_ra - crval_ra_deg) * math.cos(math.radians(crval_dec_deg))
-    ddec_rad = math.radians(zenith_dec - crval_dec_deg)
-    parallactic_deg = math.degrees(math.atan2(dra_rad, ddec_rad))
-
-    if beacon_detection is not None and moon_eph is not None:
         bx, by = beacon_detection.x_px, beacon_detection.y_px
+        raw_scale = max(80.0, horizon_y - by)
+        scale0 = float(np.clip(moon_eph.alt_deg / raw_scale, 0.025, 0.065))
+        cos_alt = max(0.25, math.cos(math.radians(moon_eph.alt_deg)))
+        center_az_deg = (moon_eph.az_deg - ((bx - w / 2.0) * scale0 / cos_alt)) % 360.0
+        center_alt_deg = float(np.clip((horizon_y - h / 2.0) * scale0, -15.0, 65.0))
+
+        crval_ra0, crval_dec0 = altaz_to_icrs(
+            center_alt_deg, center_az_deg, observer_lat, observer_lon, obs_utc_iso
+        )
+        zenith_ra, zenith_dec = altaz_to_icrs(
+            min(89.0, center_alt_deg + 1.0), center_az_deg, observer_lat, observer_lon, obs_utc_iso
+        )
+        dra_rad = math.radians(zenith_ra - crval_ra0) * math.cos(math.radians(crval_dec0))
+        ddec_rad = math.radians(zenith_dec - crval_dec0)
+        parallactic0 = math.degrees(math.atan2(dra_rad, ddec_rad))
+
         hor_left_ra, hor_left_dec = altaz_to_icrs(
             0.0, (center_az_deg - 10.0) % 360.0, observer_lat, observer_lon, obs_utc_iso
         )
@@ -130,58 +138,66 @@ def solve_horizon_and_beacon_pose(
             0.0, (center_az_deg + 10.0) % 360.0, observer_lat, observer_lon, obs_utc_iso
         )
 
-        def _pose_residuals(params: np.ndarray) -> np.ndarray:
-            ra_c, dec_c, sc, rot = (
-                float(params[0]),
-                float(params[1]),
-                float(params[2]),
-                float(params[3]),
-            )
-            cand = WCSModel(
-                crval_ra_deg=ra_c % 360.0,
-                crval_dec_deg=max(-89.0, min(89.0, dec_c)),
+        def _wcs_for(params: np.ndarray, scale_lo: float, scale_hi: float) -> WCSModel:
+            return WCSModel(
+                crval_ra_deg=float(params[0]) % 360.0,
+                crval_dec_deg=max(-89.0, min(89.0, float(params[1]))),
                 crpix_x=w / 2.0,
                 crpix_y=h / 2.0,
-                scale_deg_per_px=max(0.015, min(0.085, sc)),
-                rotation_deg=rot,
+                scale_deg_per_px=max(scale_lo, min(scale_hi, float(params[2]))),
+                rotation_deg=float(params[3]),
                 k1=0.0,
                 k2=0.0,
                 parity=-1,
                 width=w,
                 height=h,
             )
+
+        def _constraint_residuals(cand: WCSModel) -> np.ndarray:
             mx, my = cand.world_to_pixel(moon_eph.ra_deg, moon_eph.dec_deg)
             lx, ly = cand.world_to_pixel(hor_left_ra, hor_left_dec)
             rx, ry = cand.world_to_pixel(hor_right_ra, hor_right_dec)
-            if any(math.isnan(v) for v in (mx, my, lx, ly, rx, ry)):
-                return np.array([1e4, 1e4, 1e4, 1e4], dtype=np.float64)
             return np.array([mx - bx, my - by, ly - horizon_y, ry - horizon_y], dtype=np.float64)
 
-        p0 = np.array(
-            [crval_ra_deg, crval_dec_deg, scale_deg_per_px, parallactic_deg], dtype=np.float64
-        )
-        res_opt = optimize.least_squares(_pose_residuals, p0, method="lm", max_nfev=80)
-        crval_ra_deg = float(res_opt.x[0] % 360.0)
-        crval_dec_deg = float(max(-89.0, min(89.0, res_opt.x[1])))
-        scale_deg_per_px = float(max(0.02, min(0.075, res_opt.x[2])))
-        parallactic_deg = float(res_opt.x[3])
+        def _pose_residuals(params: np.ndarray) -> np.ndarray:
+            res = _constraint_residuals(_wcs_for(params, 0.015, 0.085))
+            return res if np.all(np.isfinite(res)) else np.full(4, 1e4, dtype=np.float64)
 
-    wcs = WCSModel(
-        crval_ra_deg=crval_ra_deg,
-        crval_dec_deg=crval_dec_deg,
-        crpix_x=w / 2.0,
-        crpix_y=h / 2.0,
-        scale_deg_per_px=scale_deg_per_px,
-        rotation_deg=parallactic_deg,
-        k1=0.0,
-        k2=0.0,
-        parity=-1,
-        width=w,
-        height=h,
-    )
+        p0 = np.array([crval_ra0, crval_dec0, scale0, parallactic0], dtype=np.float64)
+        res_opt = optimize.least_squares(_pose_residuals, p0, method="lm", max_nfev=80)
+
+        # Residuals are measured on the WCS that is actually returned, after its scale clamp
+        candidate = _wcs_for(res_opt.x, 0.02, 0.075)
+        residuals = np.abs(_constraint_residuals(candidate))
+        if not np.all(np.isfinite(residuals)):
+            pose_rejection = "The Moon and horizon do not project into one camera pose"
+        elif float(np.max(residuals)) > MAX_POSE_FIT_RESIDUAL_PX:
+            pose_rejection = (
+                f"The Moon and horizon do not fit one camera pose "
+                f"(largest residual {float(np.max(residuals)):.1f} px)"
+            )
+        else:
+            wcs = candidate
+            fit_residuals_px = residuals
+
+    def _in_camera_field(ra_deg: float, dec_deg: float) -> bool:
+        """Whether a predicted object falls in the frame's sky, only when a pose exists. Its pixel
+        position is not stored as a detection: nothing was measured there, and the WCS can project it."""
+        if wcs is None or horizon_y is None:
+            return False
+        px, py = wcs.world_to_pixel(ra_deg, dec_deg)
+        return (
+            not (math.isnan(px) or math.isnan(py))
+            and (0.0 <= px < w)
+            and (0.0 <= py < min(horizon_y - 24.0, h * 0.46))
+        )
+
+    in_field_ids: set[str] = set()
 
     findings: list[CelestialFindingRecord] = []
-    if beacon_detection is not None and moon_eph is not None:
+    moon_observed = wcs is not None and beacon_detection is not None and moon_eph is not None
+    if moon_observed:
+        moon_residual_px = float(math.hypot(fit_residuals_px[0], fit_residuals_px[1]))
         findings.append(
             CelestialFindingRecord(
                 id="finding-observed-moon",
@@ -193,13 +209,14 @@ def solve_horizon_and_beacon_pose(
                 dec_deg=moon_eph.dec_deg,
                 alt_deg=moon_eph.alt_deg,
                 az_deg=moon_eph.az_deg,
-                uncertainty_arcsec=1.8,
+                uncertainty_arcsec=moon_eph.uncertainty_arcsec,
                 source_detection=beacon_detection,
-                pixel_residual_px=0.35,
-                angular_residual_arcsec=1.8,
+                pixel_residual_px=moon_residual_px,
+                angular_residual_arcsec=moon_residual_px * wcs.scale_deg_per_px * 3600.0,
                 verified_by_holdout=False,
                 limitations=(
-                    "Single celestial beacon (Moon) + horizon lock; <4 stars survived compression for held-out quad verification.",
+                    "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
+                    "The light centroid of a partly lit or saturated Moon is offset from the disk center; that bias is not modeled.",
                 ),
                 source_sha256=source_sha256,
             )
@@ -208,41 +225,23 @@ def solve_horizon_and_beacon_pose(
     for b in ephemerides:
         if b.alt_deg <= 0.0:
             continue
-        if beacon_detection is not None and b.name == "Moon":
+        if moon_observed and b.name == "Moon":
             continue
-        px, py = wcs.world_to_pixel(b.ra_deg, b.dec_deg)
-        in_fov = (
-            not (math.isnan(px) or math.isnan(py))
-            and (0.0 <= px < w)
-            and (0.0 <= py < min(horizon_y - 24.0, h * 0.46))
-        )
-        det_proj = (
-            SourceDetection(
-                x_px=float(px),
-                y_px=float(py),
-                flux=0.0,
-                snr=0.0,
-                fwhm_px=2.5,
-                centroid_uncertainty_px=1.5,
-                asset_id=source_asset_id,
-                frame_time_sec=frame_time_sec,
-            )
-            if in_fov
-            else None
-        )
+        in_field = _in_camera_field(b.ra_deg, b.dec_deg)
+        if in_field:
+            in_field_ids.add(b.id)
         findings.append(
             CelestialFindingRecord(
                 id=b.id,
                 observation_solution_id=solution_id,
                 evidence_class="predicted",
                 title=b.title,
-                subtitle=b.subtitle + (" · Inside Camera FOV" if in_fov else " · Above Horizon"),
+                subtitle=b.subtitle + (" · Inside Camera FOV" if in_field else " · Above Horizon"),
                 ra_deg=b.ra_deg,
                 dec_deg=b.dec_deg,
                 alt_deg=b.alt_deg,
                 az_deg=b.az_deg,
                 uncertainty_arcsec=b.uncertainty_arcsec,
-                source_detection=det_proj,
                 verified_by_holdout=False,
                 limitations=(
                     "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp.",
@@ -251,32 +250,20 @@ def solve_horizon_and_beacon_pose(
             )
         )
 
+    star_limitation = (
+        "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+        if wcs is not None
+        else "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC; camera pointing is unknown, so not placed in the frame."
+    )
     for star in get_all_sky_catalog_stars():
         alt, az = icrs_to_altaz(
             star.ra_deg, star.dec_deg, observer_lat, observer_lon, obs_utc_iso
         )
         if alt <= 0.0:
             continue
-        px, py = wcs.world_to_pixel(star.ra_deg, star.dec_deg)
-        in_fov = (
-            not (math.isnan(px) or math.isnan(py))
-            and (0.0 <= px < w)
-            and (0.0 <= py < min(horizon_y - 24.0, h * 0.46))
-        )
-        det_proj = (
-            SourceDetection(
-                x_px=float(px),
-                y_px=float(py),
-                flux=0.0,
-                snr=0.0,
-                fwhm_px=2.5,
-                centroid_uncertainty_px=1.5,
-                asset_id=source_asset_id,
-                frame_time_sec=frame_time_sec,
-            )
-            if in_fov
-            else None
-        )
+        in_field = _in_camera_field(star.ra_deg, star.dec_deg)
+        if in_field:
+            in_field_ids.add(f"finding-predicted-{star.id}")
         findings.append(
             CelestialFindingRecord(
                 id=f"finding-predicted-{star.id}",
@@ -286,19 +273,16 @@ def solve_horizon_and_beacon_pose(
                 subtitle=(
                     f"Predicted Star ({star.constellation}) · {star.median_pc:.1f} pc · "
                     f"Alt {alt:+.1f}° Az {az:.1f}°"
-                    + (" · Inside Camera FOV" if in_fov else " · Above Horizon")
+                    + (" · Inside Camera FOV" if in_field else " · Above Horizon")
                 ),
                 ra_deg=star.ra_deg,
                 dec_deg=star.dec_deg,
                 alt_deg=alt,
                 az_deg=az,
                 uncertainty_arcsec=45.0,
-                source_detection=det_proj,
                 catalog_star=star,
                 verified_by_holdout=False,
-                limitations=(
-                    "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels.",
-                ),
+                limitations=(star_limitation,),
                 source_sha256=source_sha256,
             )
         )
@@ -306,20 +290,50 @@ def solve_horizon_and_beacon_pose(
     # Order findings: 1) observed beacons, 2) stars/planets inside camera FOV, 3) brighter above-horizon context
     findings.sort(
         key=lambda f: (
-            0 if f.evidence_class == "observed" else (1 if f.source_detection is not None else 2),
+            0 if f.evidence_class == "observed" else (1 if f.id in in_field_ids else 2),
             f.catalog_star.mag if f.catalog_star is not None else -2.0,
         )
     )
 
-    quality = SolutionQuality(
-        detected_candidate_count=1 if beacon_detection is not None else 0,
-        matched_inlier_count=1 if beacon_detection is not None else 0,
-        held_out_inliers=0,
-        median_residual_px=0.35 if beacon_detection is not None else 12.0,
-        p95_residual_px=0.50 if beacon_detection is not None else 18.0,
-        median_residual_arcsec=1.8 if beacon_detection is not None else 120.0,
-        passed_independent_verification=False,
-    )
+    moment = f"GPS {observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}"
+    if wcs is not None and fit_residuals_px is not None and beacon_detection is not None and horizon_y is not None:
+        median_px = float(np.median(fit_residuals_px))
+        quality = SolutionQuality(
+            detected_candidate_count=1,
+            matched_inlier_count=1,
+            held_out_inliers=0,
+            median_residual_px=median_px,
+            p95_residual_px=float(np.percentile(fit_residuals_px, 95.0)),
+            median_residual_arcsec=median_px * wcs.scale_deg_per_px * 3600.0,
+            passed_independent_verification=False,
+        )
+        status = "approximate"
+        warnings = [
+            f"Pose from the Moon at ({beacon_detection.x_px:.1f}, {beacon_detection.y_px:.1f}) px and the "
+            f"horizon at row {horizon_y:.0f} ({moment}). Four constraints fit four pose parameters, so "
+            "near-zero residuals do not measure accuracy, and no stars were held out for verification."
+        ]
+    else:
+        quality = SolutionQuality(
+            detected_candidate_count=1 if beacon_detection is not None else 0,
+            matched_inlier_count=0,
+            held_out_inliers=0,
+            median_residual_px=999.0,
+            p95_residual_px=999.0,
+            median_residual_arcsec=9999.0,
+            passed_independent_verification=False,
+        )
+        status = "predicted_only"
+        warning = (
+            f"{pose_rejection}, so camera pointing is unknown. Showing the sky predicted from {moment}, "
+            "not placed in the frame."
+        )
+        if beacon_detection is not None:
+            warning += (
+                f" A bright source at ({beacon_detection.x_px:.0f}, {beacon_detection.y_px:.0f}) px "
+                "was not confirmed as the Moon."
+            )
+        warnings = [warning]
 
     return ObservationSolution(
         id=solution_id,
@@ -327,15 +341,12 @@ def solve_horizon_and_beacon_pose(
         source_sha256=source_sha256,
         frame_time_sec=frame_time_sec,
         revision=1,
-        status="approximate",
+        status=status,
         observed_at_utc=obs_utc_iso,
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         wcs=wcs,
         quality=quality,
         findings=findings,
-        warnings=[
-            f"Calibrated via {solver_mode} (GPS {observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}); "
-            "fewer than 4 stellar point sources survived video compression for blind quad-hash verification."
-        ],
+        warnings=warnings,
     )

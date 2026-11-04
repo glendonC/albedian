@@ -1,18 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600&family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --alb-bg: #020307;
-  --alb-glass: rgba(10, 14, 24, 0.72);
-  --alb-glass-strong: rgba(8, 12, 22, 0.88);
-  --alb-border: rgba(255, 255, 255, 0.11);
-  --alb-border-bright: rgba(255, 255, 255, 0.24);
-  --alb-text: #f8fafc;
-  --alb-text-secondary: rgba(226, 232, 240, 0.76);
-  --alb-text-muted: rgba(148, 163, 184, 0.72);
-  --alb-accent: #60a5fa;
-  --alb-gold: #facc15;
+  --alb-bg: #07080a;
+  --alb-glass: rgba(13, 15, 20, 0.82);
+  --alb-glass-strong: rgba(10, 12, 16, 0.92);
+  --alb-border: rgba(200, 206, 216, 0.14);
+  --alb-border-bright: rgba(237, 239, 242, 0.28);
+  --alb-text: #edeff2;
+  --alb-text-secondary: #8e95a2;
+  --alb-text-muted: #5e6572;
+  --alb-accent: #8ab4d8;
+  --alb-gold: #d4b483;
   --alb-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --alb-font-mono: 'JetBrains Mono', monospace;
+  --alb-font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+  --alb-font-micro: 'Exo 2', sans-serif;
 }
 
 * {
@@ -264,15 +265,18 @@
 
 .alb-sky-node {
   position: absolute;
+  width: 34px;
+  height: 34px;
   transform: translate(-50%, -50%);
   appearance: none;
   background: transparent;
   border: none;
-  padding: 8px;
+  padding: 0;
   cursor: pointer;
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
 .alb-sky-node-ring {
@@ -286,17 +290,20 @@
 
 .alb-sky-node:hover .alb-sky-node-ring,
 .alb-sky-node.is-selected .alb-sky-node-ring {
-  width: 14px;
-  height: 14px;
-  border-color: #e2b86b;
-  background: rgba(226, 184, 107, 0.18);
-  box-shadow: 0 0 12px rgba(226, 184, 107, 0.45);
+  width: 32px;
+  height: 32px;
+  border-color: rgba(237, 239, 242, 0.85);
+  background: rgba(237, 239, 242, 0.06);
+  box-shadow: 0 0 12px rgba(237, 239, 242, 0.25);
 }
 
 .alb-sky-node-leader {
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
   pointer-events: none;
 }
 
@@ -1457,3 +1464,1023 @@
   color: rgba(244, 241, 234, 0.48);
   cursor: pointer;
 }
+
+/* ============================================================================
+   TRACK 4: CONTEXTUAL LIVE SCIENCE PULSE (Frameless 3-Tier Planckian Typography)
+   - Primary Readout: #F4F1EA (Starlight Alabaster)
+   - Secondary Label: rgba(244, 241, 234, 0.44) (Warm Pewter)
+   - Active Optical Lock Accent: #E2B86B (Blackbody Gold)
+   ============================================================================ */
+.alb-science-pulse {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 332px;
+  margin-top: 6px;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.alb-visor-delta-block .alb-science-pulse,
+.alb-visor-bottomright .alb-science-pulse {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.alb-science-pulse-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(244, 241, 234, 0.44);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.92);
+}
+
+.alb-science-pulse-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #e2b86b;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.92);
+}
+
+.alb-science-pulse-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 1.5px;
+  background: #e2b86b;
+  box-shadow: 0 0 8px rgba(226, 184, 107, 0.55);
+  flex-shrink: 0;
+}
+
+.alb-science-pulse-headline {
+  margin: 0;
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.38;
+  letter-spacing: 0.005em;
+  color: #f4f1ea;
+  opacity: 0.86;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.94);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   TRACK 1: HOLD ORIGINAL OPTICAL RANGEFINDER OVERLAY (Diegetic Sensor Proof)
+   ============================================================================ */
+.alb-rangefinder-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+  user-select: none;
+}
+
+.alb-rangefinder-frame {
+  position: absolute;
+  inset: 58px 46px 76px 46px;
+  border: 1px solid rgba(244, 241, 234, 0.12);
+  pointer-events: none;
+}
+
+.alb-rangefinder-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: #e2b86b;
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+}
+
+.alb-rangefinder-corner.tl {
+  top: -1px;
+  left: -1px;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+
+.alb-rangefinder-corner.tr {
+  top: -1px;
+  right: -1px;
+  border-top-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+.alb-rangefinder-corner.bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom-width: 1.5px;
+  border-left-width: 1.5px;
+}
+
+.alb-rangefinder-corner.br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+.alb-rangefinder-header {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f4f1ea;
+  white-space: nowrap;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+}
+
+.alb-rangefinder-header::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e2b86b;
+  box-shadow: 0 0 8px rgba(226, 184, 107, 0.65);
+}
+
+.alb-rangefinder-centroid {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.alb-rangefinder-centroid-ring {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #e2b86b;
+  box-shadow: 0 0 10px rgba(226, 184, 107, 0.42);
+  flex-shrink: 0;
+}
+
+.alb-rangefinder-centroid-ring::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #f4f1ea;
+  transform: translate(-50%, -50%);
+}
+
+.alb-rangefinder-centroid-label {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: #f4f1ea;
+  white-space: nowrap;
+  padding-bottom: 1px;
+  border-bottom: 1px solid rgba(244, 241, 234, 0.44);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+/* ============================================================================
+   TRACK 3: ASTRONAUT VISOR COMMS SUBTITLE + MICRO-OSCILLOSCOPE
+   Centered at bottom of viewport (bottom: 28px; left: 50%; transform: translateX(-50%))
+   ============================================================================ */
+.alb-visor-comms-bar {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 23;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(620px, 52vw);
+  padding: 4px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(244, 241, 234, 0.24);
+  pointer-events: auto;
+  user-select: none;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.94);
+}
+
+.alb-visor-comms-tag {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e2b86b;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.alb-visor-oscilloscope {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.alb-visor-osc-bar {
+  width: 1.5px;
+  height: 4px;
+  border-radius: 1px;
+  background: rgba(244, 241, 234, 0.44);
+  transition: height 0.12s ease, background-color 0.12s ease;
+}
+
+.alb-visor-comms-bar.is-speaking .alb-visor-osc-bar,
+.alb-visor-oscilloscope.is-active .alb-visor-osc-bar,
+.alb-visor-osc-bar.is-active {
+  background: #e2b86b;
+  animation: albVisorOscWave 0.72s ease-in-out infinite alternate;
+}
+
+.alb-visor-oscilloscope .alb-visor-osc-bar:nth-child(2n) {
+  animation-delay: 0.14s;
+}
+
+.alb-visor-oscilloscope .alb-visor-osc-bar:nth-child(3n) {
+  animation-delay: 0.28s;
+}
+
+@keyframes albVisorOscWave {
+  0% {
+    height: 3px;
+    opacity: 0.55;
+  }
+  100% {
+    height: 11px;
+    opacity: 1;
+  }
+}
+
+.alb-visor-comms-subtitle {
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: #f4f1ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alb-visor-comms-mute {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 241, 234, 0.44);
+  cursor: pointer;
+  flex-shrink: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  transition: color 0.16s ease;
+}
+
+.alb-visor-comms-mute:hover,
+.alb-visor-comms-mute.is-active {
+  color: #f4f1ea;
+}
+
+/* ============================================================================
+   @ZZZZSHAWN COALESCING PRELOADER (Zero Top Buttons, Zero Bottom "NOW LOADING")
+   ============================================================================ */
+.alb-zzzz-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background-color: #07080a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.alb-zzzz-preloader-inner {
+  width: min(520px, 84vw);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.alb-zzzz-preloader-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.alb-zzzz-preloader-brand {
+  font-family: var(--alb-font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #8e95a2;
+}
+
+.alb-zzzz-preloader-pct {
+  font-family: var(--alb-font-mono);
+  font-size: 12px;
+  color: #5e6572;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   LUSION + @ZZZZSHAWN TOP HEADER BAR (50px 65px Frame, Zero Redundant CTA)
+   ============================================================================ */
+.alb-lusion-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 42px 65px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.alb-lusion-header-left,
+.alb-lusion-header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  pointer-events: auto;
+}
+
+.alb-lusion-logo {
+  font-family: var(--alb-font-micro);
+  font-weight: 500;
+  font-size: 10.5px;
+  letter-spacing: 0.285em;
+  text-transform: uppercase;
+  color: #edeff2;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.alb-lusion-sites {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 16px;
+  border-left: 1px solid rgba(200, 206, 216, 0.14);
+}
+
+.alb-lusion-chip {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  background: rgba(239, 239, 239, 0.07);
+  color: #8e95a2;
+  font-family: var(--alb-font-micro);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.alb-lusion-chip:hover,
+.alb-lusion-chip.is-active {
+  color: #edeff2;
+  background: rgba(239, 239, 239, 0.13);
+  border-color: rgba(237, 239, 242, 0.24);
+}
+
+.alb-zzzz-inline-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alb-zzzz-inline-label {
+  font-family: var(--alb-font-micro);
+  font-weight: 500;
+  font-size: 8.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #8e95a2;
+}
+
+/* ============================================================================
+   @NAZYURTAL NON-SCROLLING 100VH ENTRY SHELL + LUSION .GRID-RECT TARGET LOCKS
+   ============================================================================ */
+.alb-nazyurtal-entry-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(6, 8, 13, 0.78) 0%,
+      rgba(6, 8, 13, 0.28) 9%,
+      rgba(6, 8, 13, 0.0) 18%,
+      rgba(6, 8, 13, 0.0) 68%,
+      rgba(6, 8, 13, 0.72) 82%,
+      rgba(6, 8, 13, 0.94) 100%
+    );
+}
+
+.alb-lusion-grid-band {
+  position: absolute;
+  top: 108px;
+  left: 0;
+  right: 0;
+  height: calc(100vh - 340px);
+  min-height: 360px;
+  max-height: 520px;
+  z-index: 18;
+  pointer-events: none;
+}
+
+.alb-lusion-hairline-top,
+.alb-lusion-hairline-bottom {
+  position: absolute;
+  left: 65px;
+  right: 65px;
+  height: 1px;
+  background: rgba(200, 206, 216, 0.09);
+}
+
+.alb-lusion-hairline-top {
+  top: 32px;
+}
+
+.alb-lusion-hairline-bottom {
+  bottom: 32px;
+}
+
+.alb-lusion-tielines-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.alb-lusion-grid-rect {
+  position: absolute;
+  width: 92px;
+  height: 102px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(213, 218, 226, 0.36);
+  background: rgba(237, 239, 242, 0.025);
+  backdrop-filter: contrast(1.18) brightness(1.1);
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.alb-lusion-grid-rect:hover,
+.alb-lusion-grid-rect.is-selected {
+  border-color: rgba(242, 244, 248, 0.68);
+  background: rgba(237, 239, 242, 0.055);
+}
+
+.alb-lusion-corner-pin {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #e4e8ef;
+  pointer-events: none;
+}
+
+.alb-lusion-corner-pin.tr {
+  top: -2px;
+  right: -2px;
+}
+
+.alb-lusion-corner-pin.bl {
+  bottom: -2px;
+  left: -2px;
+}
+
+.alb-lusion-rect-top-label {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  font-family: var(--alb-font-micro);
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #edeff2;
+  white-space: nowrap;
+}
+
+.alb-lusion-rect-bot-label {
+  position: absolute;
+  bottom: -18px;
+  left: 0;
+  font-family: var(--alb-font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: #8e95a2;
+  white-space: nowrap;
+}
+
+/* Exact Lusion 63px .hold-interaction circle */
+.alb-lusion-hold-interaction {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.alb-lusion-hold-ring-wrap {
+  position: relative;
+  width: 63px;
+  height: 63px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alb-lusion-hold-ring-wrap svg {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.alb-lusion-hold-interaction:hover .alb-lusion-hold-ring-wrap svg {
+  transform: scale(1.08);
+}
+
+.alb-lusion-hold-label {
+  padding-top: 9px;
+  font-family: var(--alb-font-micro);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.285em;
+  text-transform: uppercase;
+  color: #edeff2;
+  opacity: 0.78;
+}
+
+/* ============================================================================
+   BOTTOM ARCHITECTURAL SPLIT (@NAZYURTAL EQUAL-HEIGHT 2-COL)
+   ============================================================================ */
+.alb-nazyurtal-footer {
+  position: absolute;
+  bottom: 52px;
+  left: 65px;
+  right: 65px;
+  display: flex;
+  flex-direction: column;
+  z-index: 25;
+  pointer-events: auto;
+}
+
+.alb-nazyurtal-split {
+  display: grid;
+  grid-template-columns: 1.24fr 0.76fr;
+  align-items: stretch;
+  gap: 64px;
+}
+
+.alb-nazyurtal-left {
+  display: flex;
+  align-items: flex-end;
+}
+
+.alb-nazyurtal-headline {
+  font-family: var(--alb-font-sans);
+  font-size: clamp(46px, 3.85vw, 56px);
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: -0.032em;
+  color: #f2f4f8;
+  margin: 0;
+}
+
+.alb-nazyurtal-headline-muted {
+  color: rgba(242, 244, 248, 0.52);
+}
+
+.alb-nazyurtal-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-width: 460px;
+  min-height: 118px;
+}
+
+.alb-nazyurtal-copy {
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  line-height: 1.54;
+  font-weight: 400;
+  letter-spacing: -0.008em;
+  color: #9ea8b8;
+  margin: 0;
+}
+
+.alb-nazyurtal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* Primary Button: Exact SpaceX .spx-button Architecture */
+.alb-nazyurtal-btn-primary {
+  position: relative;
+  appearance: none;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #f0f0fa;
+  border: 1px solid rgba(240, 240, 250, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: var(--alb-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.alb-nazyurtal-btn-primary:hover {
+  background: #f0f0fa;
+  color: #05070b;
+  border-color: #f0f0fa;
+}
+
+.alb-btn-primary-label {
+  white-space: nowrap;
+}
+
+.alb-btn-arrow-svg {
+  flex-shrink: 0;
+  color: currentColor;
+  transition: transform 0.18s ease;
+}
+
+.alb-nazyurtal-btn-primary:hover .alb-btn-arrow-svg {
+  transform: translateX(3px);
+}
+
+/* Secondary Button: Matching SpaceX 4px Wireframe Pair */
+.alb-nazyurtal-btn-secondary {
+  position: relative;
+  appearance: none;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(240, 240, 250, 0.78);
+  border: 1px solid rgba(240, 240, 250, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--alb-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.alb-nazyurtal-btn-secondary:hover {
+  color: #ffffff;
+  border-color: rgba(240, 240, 250, 0.38);
+  background: rgba(240, 240, 250, 0.07);
+}
+
+/* ============================================================================
+   @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
+   ============================================================================ */
+.alb-zzzz-optics-drawer {
+  position: absolute;
+  top: 88px;
+  right: 65px;
+  width: 368px;
+  background: rgba(9, 12, 18, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(184, 208, 250, 0.24);
+  border-radius: 2px;
+  padding: 20px 24px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  z-index: 35;
+  pointer-events: auto;
+}
+
+.alb-zzzz-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(200, 206, 216, 0.12);
+}
+
+.alb-zzzz-drawer-title {
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #f2f4f8;
+}
+
+.alb-zzzz-drawer-sub {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: #7c8596;
+}
+
+.alb-zzzz-slider-group,
+.alb-zzzz-control-row {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.alb-zzzz-slider-header,
+.alb-zzzz-control-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.alb-zzzz-slider-name,
+.alb-zzzz-control-name {
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: #b4bcc9;
+}
+
+.alb-zzzz-slider-val,
+.alb-zzzz-control-val {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: #7c8596;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   TOP BRAND MARK, AUDIO LABEL & SIMPLIFIED APP VIEW (Sharp 2px Architecture)
+   ============================================================================ */
+.alb-lusion-brand-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0;
+  transition: opacity 0.18s ease;
+}
+
+.alb-lusion-brand-btn:hover {
+  opacity: 0.85;
+}
+
+.alb-brand-mark-svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.alb-brand-shoulder-mark {
+  margin-left: -1px;
+  margin-top: -5px;
+}
+
+.alb-brand-wordmark {
+  font-family: var(--alb-font-sans);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.048em;
+  line-height: 1;
+  color: #ffffff;
+}
+
+.alb-audio-label-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--alb-font-sans);
+  font-size: 13px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: #969fac;
+  transition: color 0.16s ease;
+}
+
+.alb-audio-label-btn:hover,
+.alb-audio-label-btn.is-active {
+  color: #f2f4f8;
+}
+
+.alb-app-photo-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alb-app-pill {
+  appearance: none;
+  height: 32px;
+  background: rgba(11, 15, 23, 0.78);
+  border: 1px solid rgba(184, 208, 250, 0.24);
+  border-radius: 2px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--alb-font-sans);
+  font-size: 12.5px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  color: #9ba2af;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all 0.16s ease;
+}
+
+.alb-app-pill:hover {
+  color: #f2f4f8;
+  border-color: rgba(242, 244, 248, 0.52);
+}
+
+.alb-app-pill.is-active {
+  background: rgba(184, 208, 250, 0.14);
+  border-color: rgba(184, 208, 250, 0.68);
+  color: #f2f4f8;
+}
+
+.alb-app-pill-upload {
+  border-color: rgba(90, 135, 232, 0.52);
+  color: #d4dce7;
+}
+
+.alb-app-pill-upload:hover {
+  background: rgba(90, 135, 232, 0.2);
+  border-color: rgba(90, 135, 232, 0.85);
+  color: #ffffff;
+}
+
+.alb-zzzz-drawer-close {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 2px 6px;
+  font-family: var(--alb-font-sans);
+  font-size: 12.5px;
+  color: #9ba2af;
+  cursor: pointer;
+}
+
+.alb-zzzz-drawer-close:hover {
+  color: #f2f4f8;
+}
+
+.alb-app-source-card {
+  position: absolute;
+  bottom: 42px;
+  left: 65px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px 10px 10px;
+  background: rgba(9, 12, 18, 0.86);
+  border: 1px solid rgba(184, 208, 250, 0.24);
+  border-radius: 2px;
+  backdrop-filter: blur(16px);
+}
+
+.alb-app-source-thumb-wrap {
+  width: 72px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+
+.alb-app-source-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.alb-app-source-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.alb-app-source-eyebrow {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: #7c8596;
+}
+
+.alb-app-source-title {
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #f2f4f8;
+}
+
+.alb-app-source-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+}
+
+.alb-app-source-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--alb-font-sans);
+  font-size: 12px;
+  color: #d4dce7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.alb-app-source-btn.is-secondary {
+  color: #8a929e;
+}
+
+.alb-app-source-btn:hover {
+  color: #ffffff;
+}
+
+
+
+
+

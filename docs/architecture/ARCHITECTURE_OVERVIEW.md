@@ -52,3 +52,23 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 12. `VoiceAction` — Schema-validated `AlbedianAction` command bound to `ActionContext` and `expectedViewRevision`.
 13. `NavigationHistory` — Reversible stack of `CameraCheckpoint` snapshots supporting full (`checkpoint`) and continuous (`partial`) backtracking.
 14. `ExportArtifact` — Verified output media file and machine-readable provenance manifest (`sourceSha256`, `outputSha256`, audio sync verification, WCS & catalog citations).
+
+---
+
+## 3. Architecture Decision Summary (ADRs)
+
+- **ADR-0001 — Observation-Centered Modular Monolith:** TypeScript monorepo (`pnpm` workspaces) + unified Python FastAPI scientific/media service (`services/api.py`) sharing strict Zod/Pydantic schemas (`packages/contracts`).
+- **ADR-0002 — Four Classes of Scientific Evidence (`EvidenceClass`):** Every finding and marker is typed as `observed`, `catalog_matched`, `predicted`, or `simulated` (`packages/evidence`).
+- **ADR-0003 — Hybrid 3D Spatial Engine (`@sparkjsdev/spark` + Custom WebGL2 Shaders):** Combines anisotropic 3D Gaussian Splats (`@sparkjsdev/spark`) for volumetric nebulae and the Local Bubble with analytical-derivative GPU ray-marching, pre-baked Bruneton atmospheric LUTs, and relativistic Schwarzschild geodesic shaders (`apps/web/src/spatial/SparkPortalRenderer.ts`).
+- **ADR-0004 — Context-Bound Voice Direct Manipulation:** Spoken and typed intents resolve deictic pronouns (`"that one"`, `"take me there"`, `"go back"`) against `ActionContext` and `expectedViewRevision`.
+
+---
+
+## 4. Engineering Standards, Verification & Catalog Attributions
+
+- **Verification Gates:** All changes require passing `pnpm typecheck`, `pnpm test` (Vitest + `fast-check` property-based tests), and `uv run pytest` (Python + `hypothesis` property-based tests).
+- **Third-Party Astronomical Data & Licenses:**
+  - **ESA Gaia DR3 (`I/355/gaiadr3`) & Bailer-Jones et al. (`I/352`):** Credit: ESA/Gaia/DPAC (CC BY-SA 3.0 IGO).
+  - **CDS Hipparcos (`I/239`) & SIMBAD:** Credit: Centre de Données astronomiques de Strasbourg.
+  - **NASA LRO LOLA & JPL Horizons Ephemerides:** Public domain U.S. government scientific records.
+  - **Precomputed Atmospheric Scattering Formulation:** Adapted from Eric Bruneton (2017/2020, BSD-3-Clause).

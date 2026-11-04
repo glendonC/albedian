@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionContext,
   ObservationSession,
-  deterministicHexDigest,
 } from '@albedian/contracts';
 import {
-  createDefaultSaharaObservationSession,
+  createEmptyObservationSession,
+  createSessionForSourceAsset,
   dispatchAlbedianAction,
   executeVoiceOrTextCommand,
 } from '@albedian/observation';
@@ -14,15 +14,19 @@ import { AlbedianWebAudioBus } from './audio/WebAudioBus.js';
 import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
 import {
   DiscoveredMediaItem,
-  buildSessionFromDiscoveredMedia,
   fetchDiscoveredMedia,
   postVoiceIntentToBackend,
 } from './services/apiClient.js';
 import './styles/albedian.css';
 
+async function sha256HexOfFile(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export const App: React.FC = () => {
   const [session, setSession] = useState<ObservationSession>(() =>
-    createDefaultSaharaObservationSession()
+    createEmptyObservationSession()
   );
   const [discoveredMedia, setDiscoveredMedia] = useState<DiscoveredMediaItem[]>([]);
   const [activeDiscoveredId, setActiveDiscoveredId] = useState<string | null>(null);
@@ -43,16 +47,9 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Dynamically discover any media in data/uploads via backend API and auto-boot into the first real capture
+  // List media found in data/uploads; a capture becomes the session only when the user picks it
   useEffect(() => {
-    void fetchDiscoveredMedia().then((items) => {
-      setDiscoveredMedia(items);
-      if (items.length > 0) {
-        const firstReal = items[0]!;
-        setActiveDiscoveredId(firstReal.id);
-        setSession(buildSessionFromDiscoveredMedia(firstReal));
-      }
-    });
+    void fetchDiscoveredMedia().then(setDiscoveredMedia);
   }, []);
 
   // Sync Web Audio Bus whenever navigation, voice, or playback state changes
@@ -191,20 +188,23 @@ export const App: React.FC = () => {
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
 
-    const baseSession = createDefaultSaharaObservationSession();
-    const fileHash = deterministicHexDigest(`${file.name}:${file.size}:${file.lastModified}`);
-    setSession({
-      ...baseSession,
-      title: `Imported Observation · ${file.name}`,
-      sourceAsset: {
-        ...baseSession.sourceAsset,
-        id: `src_upload_${Date.now()}`,
-        title: file.name,
-        mediaKind: isVideo ? 'video' : 'image',
-        sha256: fileHash,
-        uri: url,
-      },
-      lastStatusBanner: `Imported immutable source "${file.name}" (SHA-256: ${fileHash.slice(0, 16)}…). Ready for restoration and calibration.`,
+    void sha256HexOfFile(file).then((sha256) => {
+      // Dimensions, duration and audio streams stay placeholders until the file is decoded
+      const imported = createSessionForSourceAsset(
+        {
+          ...createEmptyObservationSession().sourceAsset,
+          id: `src_upload_${Date.now()}`,
+          title: file.name,
+          mediaKind: isVideo ? 'video' : 'image',
+          sha256,
+          uri: url,
+        },
+        'importing'
+      );
+      setSession({
+        ...imported,
+        lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Not yet decoded or calibrated.`,
+      });
     });
   };
 
