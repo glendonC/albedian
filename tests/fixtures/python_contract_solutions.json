@@ -612,7 +612,7 @@
         "skyPosition": {
           "raDeg": 303.2093064286311,
           "decDeg": -15.614643052079906,
-          "uncertaintyArcsec": 18.0,
+          "uncertaintyArcsec": 1300.0,
           "altDeg": 32.99874297206753,
           "azDeg": 221.98524298792546
         },
@@ -623,7 +623,8 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+            "Predicted from the given time and place with a low-precision model; not measured in any image.",
+            "Geocentric: from this place the Moon appears about 2,962 arcsec lower than this position (its horizontal parallax, 3,532 arcsec, times the cosine of its altitude)."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -635,11 +636,11 @@
         "title": "Dabih (Beta Capricorni)",
         "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.8° Az 220.7° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 305.252822,
-          "decDeg": -14.78148,
-          "uncertaintyArcsec": 45.0,
-          "altDeg": 34.841015143254026,
-          "azDeg": 220.67104070396687
+          "raDeg": 305.253250394754,
+          "decDeg": -14.781359914174509,
+          "uncertaintyArcsec": 55.0,
+          "altDeg": 34.84135501719781,
+          "azDeg": 220.67071723276584
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -650,7 +651,7 @@
           "catalogReferenceId": "star-dabih",
           "distanceUncertaintyNote": "Distance interval [90.3, 112.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+            "Predicted from its catalog position, carried to the date, for the given time and place and the horizon pose; not claimed as recovered sensor pixels."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -663,9 +664,9 @@
           "bayerDesignation": "Beta Capricorni",
           "constellation": "Capricornus",
           "objectType": "star",
-          "coordinateEpoch": "J2000.0",
-          "raDeg": 305.252822,
-          "decDeg": -14.78148,
+          "coordinateEpoch": "J2030.8",
+          "raDeg": 305.253250394754,
+          "decDeg": -14.781359914174509,
           "apparentMagnitude": 3.05,
           "colorIndexBpRp": 0.92,
           "spectralType": "K0 II-III + B8 V",
@@ -673,9 +674,9 @@
           "properMotionDecMasYr": 14.02,
           "radialVelocityKmS": -18.9,
           "bailerJonesDistancePc": {
-            "lower": 90.33423667570008,
-            "median": 100.20040080160321,
-            "upper": 112.48593925759279,
+            "lower": 90.33369934914909,
+            "median": 100.19980478908623,
+            "upper": 112.48527016817552,
             "method": "geometric_parallax"
           },
           "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
@@ -683,15 +684,15 @@
           "parallaxErrorMas": 1.09
         },
         "inferredDistancePc": {
-          "lower": 90.33423667570008,
-          "median": 100.20040080160321,
-          "upper": 112.48593925759279,
+          "lower": 90.33369934914909,
+          "median": 100.19980478908623,
+          "upper": 112.48527016817552,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          55.920238868716496,
-          -79.11703980052206,
-          -25.564452250541596
+          55.92052871452813,
+          -79.11619484021479,
+          -25.564097129838057
         ]
       },
       {
@@ -701,11 +702,11 @@
         "title": "Algedi (Alpha2 Capricorni)",
         "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +36.2° Az 223.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 304.513571,
-          "decDeg": -12.544849,
-          "uncertaintyArcsec": 45.0,
-          "altDeg": 36.20824804805008,
-          "azDeg": 223.0183875269599
+          "raDeg": 304.51412038563154,
+          "decDeg": -12.544826215897732,
+          "uncertaintyArcsec": 55.0,
+          "altDeg": 36.20859169932962,
+          "azDeg": 223.0178765168827
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -716,7 +717,7 @@
           "catalogReferenceId": "star-algedi",
           "distanceUncertaintyNote": "Distance interval [33.2, 33.6] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
           "limitations": [
-            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+            "Predicted from its catalog position, carried to the date, for the given time and place and the horizon pose; not claimed as recovered sensor pixels."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -729,9 +730,9 @@
           "bayerDesignation": "Alpha2 Capricorni",
           "constellation": "Capricornus",
           "objectType": "star",
-          "coordinateEpoch": "J2000.0",
-          "raDeg": 304.513571,
-          "decDeg": -12.544849,
+          "coordinateEpoch": "J2030.8",
+          "raDeg": 304.51412038563154,
+          "decDeg": -12.544826215897732,
           "apparentMagnitude": 3.57,
           "colorIndexBpRp": 0.94,
           "spectralType": "G8 IIIb",
@@ -739,28 +740,28 @@
           "properMotionDecMasYr": 2.66,
           "radialVelocityKmS": 0.2,
           "bailerJonesDistancePc": {
-            "lower": 33.15436,
-            "median": 33.364403,
-            "upper": 33.55109,
+            "lower": 33.154366268790156,
+            "median": 33.36440930850486,
+            "upper": 33.55109634380344,
             "method": "photogeometric_bailer_jones_edr3"
           },
           "citation": "Catalog id: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric."
         },
         "inferredDistancePc": {
-          "lower": 33.15436,
-          "median": 33.364403,
-          "upper": 33.55109,
+          "lower": 33.154366268790156,
+          "median": 33.36440930850486,
+          "upper": 33.55109634380344,
           "method": "photogeometric_bailer_jones_edr3"
         },
         "cartesianParsecICRS": [
-          18.453001934838113,
-          -26.835665254028278,
-          -7.246873637163101
+          18.453264372092402,
+          -26.83549576312579,
+          -7.246862056529624
         ]
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (GPS 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (30.0000°, -40.0000° @ 2030-11-01T22:32:00Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 2,962 arcsec lower, and the pose carries that offset."
     ],
     "wcs": {
       "projection": "TAN",
@@ -813,7 +814,7 @@
         "skyPosition": {
           "raDeg": 81.24564475180148,
           "decDeg": 23.2782684956807,
-          "uncertaintyArcsec": 12.0,
+          "uncertaintyArcsec": 133.55494397371538,
           "altDeg": 1.5010050031862963,
           "azDeg": 63.77908581171432
         },
@@ -824,7 +825,7 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+            "Predicted from the given time and place with a low-precision model; not measured in any image."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -838,7 +839,7 @@
         "skyPosition": {
           "raDeg": 65.59186555566932,
           "decDeg": 19.420393989022187,
-          "uncertaintyArcsec": 12.0,
+          "uncertaintyArcsec": 929.5384975785149,
           "altDeg": 12.272688461188292,
           "azDeg": 74.41387150088843
         },
@@ -849,7 +850,7 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+            "Predicted from the given time and place with a low-precision model; not measured in any image."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -863,7 +864,7 @@
         "skyPosition": {
           "raDeg": 303.2093064286311,
           "decDeg": -15.614643052079906,
-          "uncertaintyArcsec": 18.0,
+          "uncertaintyArcsec": 1300.0,
           "altDeg": 32.99874297206753,
           "azDeg": 221.98524298792546
         },
@@ -874,14 +875,15 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+            "Predicted from the given time and place with a low-precision model; not measured in any image.",
+            "Geocentric: from this place the Moon appears about 2,962 arcsec lower than this position (its horizontal parallax, 3,532 arcsec, times the cosine of its altitude)."
           ],
           "verifiedByIndependentHoldout": false
         }
       }
     ],
     "warnings": [
-      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from GPS 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z, not placed in the frame."
+      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z, not placed in the frame."
     ]
   }
 }

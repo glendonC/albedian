@@ -1,4 +1,4 @@
-"""Horizon + celestial beacon (Moon) + embedded GPS/UTC camera pose calibration solver."""
+"""Camera pose from the horizon and one celestial beacon (the Moon), for a given time and place."""
 
 from __future__ import annotations
 
@@ -8,12 +8,14 @@ import numpy as np
 from scipy import ndimage, optimize
 
 from services.science.catalog import (
+    _iso_to_julian_date,
     altaz_to_icrs,
     get_all_sky_catalog_stars,
     icrs_to_altaz,
+    propagate_star_epoch,
 )
 from services.science.detector import _to_luma_2d
-from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
@@ -26,6 +28,10 @@ from services.science.wcs_models import (
 # The horizon fit is exactly determined (four constraints, four pose parameters), so a pose that
 # cannot reproduce its own constraints within this tolerance is rejected instead of reported
 MAX_POSE_FIT_RESIDUAL_PX = 3.0
+# A predicted star, carried to the date by its proper motion: the horizon transform leaves out nutation and annual
+# aberration (at most 37 arcsec, tests/integration/test_sky_transforms.py) and UT1 - UTC (at most 14 arcsec), and
+# the pinned positions sit within 3 arcsec of their catalog rows (test_pinned_catalog_matches_tiles.py)
+PREDICTED_STAR_UNCERTAINTY_ARCSEC = 55.0
 
 
 def solve_horizon_and_beacon_pose(
@@ -42,8 +48,8 @@ def solve_horizon_and_beacon_pose(
 
     The pose needs both: the beacon fixes where the camera pointed and the horizon fixes its tilt
     and scale. Without either, or when one pose cannot reproduce both, camera pointing is unknown
-    and the result is `predicted_only`: the sky predicted from GPS + UTC, with no WCS and no pixel
-    positions.
+    and the result is `predicted_only`: the sky predicted for the given time and place, with no WCS and no
+    pixel positions.
     """
     luma = _to_luma_2d(image)
     h, w = luma.shape
@@ -237,19 +243,21 @@ def solve_horizon_and_beacon_pose(
                 az_deg=b.az_deg,
                 uncertainty_arcsec=b.uncertainty_arcsec,
                 verified_by_holdout=False,
-                limitations=(
-                    "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp.",
-                ),
+                limitations=b.limitations,
                 source_sha256=source_sha256,
             )
         )
 
     star_limitation = (
-        "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+        "Predicted from its catalog position, carried to the date, for the given time and place and the horizon "
+        "pose; not claimed as recovered sensor pixels."
         if wcs is not None
-        else "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC; camera pointing is unknown, so not placed in the frame."
+        else "Predicted from its catalog position, carried to the date, for the given time and place; camera pointing "
+        "is unknown, so not placed in the frame."
     )
-    for star in get_all_sky_catalog_stars():
+    year = 2000.0 + (_iso_to_julian_date(obs_utc_iso) - 2451545.0) / 365.25
+    for catalog_star in get_all_sky_catalog_stars():
+        star = propagate_star_epoch(catalog_star, year)
         alt, az = icrs_to_altaz(
             star.ra_deg, star.dec_deg, observer_lat, observer_lon, obs_utc_iso
         )
@@ -273,7 +281,7 @@ def solve_horizon_and_beacon_pose(
                 dec_deg=star.dec_deg,
                 alt_deg=alt,
                 az_deg=az,
-                uncertainty_arcsec=45.0,
+                uncertainty_arcsec=PREDICTED_STAR_UNCERTAINTY_ARCSEC,
                 catalog_star=star,
                 verified_by_holdout=False,
                 limitations=(star_limitation,),
@@ -289,7 +297,7 @@ def solve_horizon_and_beacon_pose(
         )
     )
 
-    moment = f"GPS {observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}"
+    moment = f"{observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}"
     if wcs is not None and fit_residuals_px is not None and beacon_detection is not None and horizon_y is not None:
         median_px = float(np.median(fit_residuals_px))
         quality = SolutionQuality(
@@ -306,6 +314,13 @@ def solve_horizon_and_beacon_pose(
             f"Pose from the Moon at ({beacon_detection.x_px:.1f}, {beacon_detection.y_px:.1f}) px and the "
             f"horizon at row {horizon_y:.0f} ({moment}). Four constraints fit four pose parameters, so "
             "near-zero residuals do not measure accuracy, and no stars were held out for verification."
+            + (
+                f" The Moon's predicted position is geocentric: from this place it appears about "
+                f"{moon_parallax_shift_arcsec(moon_eph.distance_au, moon_eph.alt_deg)[1]:,.0f} arcsec lower, "
+                "and the pose carries that offset."
+                if moon_eph is not None
+                else ""
+            )
         ]
     else:
         quality = SolutionQuality(

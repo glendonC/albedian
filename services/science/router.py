@@ -142,7 +142,6 @@ def get_science_sky_context(
         d["aboveHorizon"] = bool(item.alt_deg >= 0.0)
         d["distanceAu"] = float(item.distance_au)
         d["distancePc"] = float(item.distance_pc)
-        d["apparentMagnitude"] = float(item.apparent_magnitude)
         d["lightTravel"] = compute_light_travel_time_description(item.distance_pc)
         d["evidenceClass"] = "predicted"
         d["evidence_class"] = "predicted"

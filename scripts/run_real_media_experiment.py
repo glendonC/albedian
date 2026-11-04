@@ -315,7 +315,6 @@ def main() -> int:
                 "alt_deg": round(b.alt_deg, 2),
                 "az_deg": round(b.az_deg, 2),
                 "distance_au": round(b.distance_au, 5),
-                "apparent_magnitude": b.apparent_magnitude,
                 "evidence_class": b.evidence_class,
             }
             for b in visible_bodies

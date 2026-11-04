@@ -1,8 +1,11 @@
-"""Deterministic analytical planetary & lunar ephemeris calculator.
+"""Low-precision analytical ephemeris for the Moon and the planets, with its error bounds stated.
 
-All ephemeris findings are explicitly tagged with `evidence_class = "predicted"`
-because they are computed from orbital elements, time, and observer location
-rather than extracted from camera sensor pixels.
+The planets come from the approximate Keplerian elements of Standish and Williams (1992), as JPL's Solar System
+Dynamics group publishes them for 1800 to 2050 ("Approximate Positions of the Planets"), seen from the Earth-Moon
+barycentre and without light-time correction. The Moon comes from Meeus (1998) chapter 47 cut to its 6 largest
+longitude, 4 latitude and 5 distance terms, seen from the Earth's centre. No JPL Horizons request and no DE440
+file is involved; magnitudes are not computed. Every finding is `predicted`: computed from time and place, never
+measured in an image.
 """
 
 from __future__ import annotations
@@ -22,6 +25,34 @@ from services.science.catalog import (
 )
 
 AU_PER_PARSEC = 206264.80624709636
+AU_KM = 149597870.7
+C_AU_PER_DAY = 173.1446326846693
+EARTH_EQUATORIAL_RADIUS_KM = 6378.137
+ARCSEC_PER_RAD = 180.0 * 3600.0 / math.pi
+
+PLANET_METHOD = (
+    "Standish and Williams (1992) approximate Keplerian elements (JPL Solar System Dynamics, valid 1800 to 2050), "
+    "seen from the Earth-Moon barycentre without light-time correction"
+)
+MOON_METHOD = "Meeus (1998) chapter 47, its 6 largest longitude, 4 latitude and 5 distance terms, geocentric"
+# Nominal heliocentric errors of those elements for 1800 to 2050, as published with them: longitude (arcsec),
+# latitude (arcsec), distance (1000 km). "Earth" is the Earth-Moon barycentre row.
+PUBLISHED_ERRORS_1800_2050: dict[str, tuple[float, float, float]] = {
+    "Earth": (20.0, 8.0, 6.0),
+    "Venus": (20.0, 1.0, 4.0),
+    "Mars": (40.0, 2.0, 25.0),
+    "Jupiter": (400.0, 10.0, 600.0),
+    "Saturn": (600.0, 25.0, 1500.0),
+    "Uranus": (50.0, 2.0, 1000.0),
+}
+# The Earth's centre sits up to the Moon's greatest distance (406,700 km) over 82.3 (1 + the Earth/Moon mass
+# ratio 81.3) from the barycentre the planets are seen from
+BARYCENTRE_OFFSET_KM = 5000.0
+# The Moon against the same chapter's 20 largest terms (within 0.02 deg of ERFA's Moon): at most 1,216 arcsec
+# and 1,129 km, measured over 200,000 instants from 2017 to 2050; tests/integration/test_sky_transforms.py and
+# test_ephemeris_labels.py check both bounds
+MOON_UNCERTAINTY_ARCSEC = 1300.0
+MOON_DISTANCE_UNCERTAINTY_KM = 1200.0
 
 
 @dataclass(frozen=True)
@@ -42,7 +73,6 @@ class OrbitalElementsJ2000:
     long_peri_dot_deg: float
     long_node0_deg: float
     long_node_dot_deg: float
-    apparent_mag_nominal: float
 
 
 PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
@@ -61,7 +91,6 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=0.32327364,
         long_node0_deg=0.0,
         long_node_dot_deg=0.0,
-        apparent_mag_nominal=0.0,
     ),
     "Venus": OrbitalElementsJ2000(
         name="Venus",
@@ -78,7 +107,6 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=0.00268329,
         long_node0_deg=76.67984255,
         long_node_dot_deg=-0.27769418,
-        apparent_mag_nominal=-4.2,
     ),
     "Mars": OrbitalElementsJ2000(
         name="Mars",
@@ -95,7 +123,6 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=0.44441088,
         long_node0_deg=49.55953891,
         long_node_dot_deg=-0.29257343,
-        apparent_mag_nominal=0.5,
     ),
     "Jupiter": OrbitalElementsJ2000(
         name="Jupiter",
@@ -112,7 +139,6 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=0.21252668,
         long_node0_deg=100.47390909,
         long_node_dot_deg=0.20469106,
-        apparent_mag_nominal=-2.5,
     ),
     "Saturn": OrbitalElementsJ2000(
         name="Saturn",
@@ -129,7 +155,6 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=-0.41897216,
         long_node0_deg=113.66242448,
         long_node_dot_deg=-0.28867794,
-        apparent_mag_nominal=0.6,
     ),
     "Uranus": OrbitalElementsJ2000(
         name="Uranus",
@@ -146,14 +171,17 @@ PLANET_ELEMENTS: dict[str, OrbitalElementsJ2000] = {
         long_peri_dot_deg=0.40805281,
         long_node0_deg=74.01692503,
         long_node_dot_deg=0.04240589,
-        apparent_mag_nominal=5.7,
     ),
 }
 
 
 @dataclass(frozen=True)
 class EphemerisFinding:
-    """Predicted Solar System body finding with explicit `predicted` epistemic class."""
+    """A predicted Solar System body: where the model puts it at the moment, with the model's error bounds.
+
+    `uncertainty_arcsec` and the distance bounds come from the model's published or measured errors (see the
+    module constants), computed for this moment; `method` names the model and `limitations` what it leaves out.
+    """
 
     id: str
     observation_solution_id: str
@@ -167,14 +195,18 @@ class EphemerisFinding:
     alt_deg: float
     az_deg: float
     distance_au: float
+    distance_lower_au: float
+    distance_upper_au: float
     distance_pc: float
-    apparent_magnitude: float
     uncertainty_arcsec: float
     cartesian_parsec_icrs: tuple[float, float, float]
     obs_utc_iso: str
+    method: str
+    limitations: tuple[str, ...]
 
     def to_contract_dict(self, source_sha256: str = "0" * 64) -> dict:
-        """Format as @albedian/contracts CelestialFinding dictionary."""
+        """Format as @albedian/contracts CelestialFinding dictionary. No catalog reference: no catalog
+        stands behind a position computed from a model."""
         return {
             "id": self.id,
             "observationSolutionId": self.observation_solution_id,
@@ -188,30 +220,10 @@ class EphemerisFinding:
                 "altDeg": float(self.alt_deg),
                 "azDeg": float(self.az_deg),
             },
-            "catalogRef": {
-                "id": f"jpl-{self.name.lower()}",
-                "provider": "JPL Horizons",
-                "releaseVersion": "DE440-Analytical",
-                "catalogSourceId": f"JPL-{self.name.upper()}",
-                "commonName": self.name,
-                "constellation": "Ecliptic",
-                "objectType": self.object_type,
-                "coordinateEpoch": self.obs_utc_iso,
-                "raDeg": float(self.ra_deg),
-                "decDeg": float(self.dec_deg),
-                "apparentMagnitude": float(self.apparent_magnitude),
-                "bailerJonesDistancePc": {
-                    "lower": float(self.distance_pc * 0.999),
-                    "median": float(self.distance_pc),
-                    "upper": float(self.distance_pc * 1.001),
-                    "method": "ephemeris_au",
-                },
-                "citation": "Standish (1992) JPL Planetary and Lunar Ephemerides.",
-            },
             "inferredDistancePc": {
-                "lower": float(self.distance_pc * 0.999),
+                "lower": float(self.distance_lower_au / AU_PER_PARSEC),
                 "median": float(self.distance_pc),
-                "upper": float(self.distance_pc * 1.001),
+                "upper": float(self.distance_upper_au / AU_PER_PARSEC),
                 "method": "ephemeris_au",
             },
             "cartesianParsecICRS": [
@@ -222,13 +234,13 @@ class EphemerisFinding:
             "evidence": {
                 "id": f"ev-ephem-{self.name.lower()}",
                 "evidenceClass": "predicted",
-                "verificationMethod": "Analytical Keplerian / Lunar Ephemeris (time + location)",
+                "verificationMethod": self.method,
                 "sourceAssetSha256": source_sha256,
-                "catalogReferenceId": f"jpl-{self.name.lower()}",
-                "distanceUncertaintyNote": f"{self.distance_au:.4f} AU from geocenter",
-                "limitations": [
-                    "Predicted from timestamp and observer coordinates; not verified as a pixel detection."
-                ],
+                "distanceUncertaintyNote": (
+                    f"Geocentric distance {self.distance_au:.6f} AU, between {self.distance_lower_au:.6f} and "
+                    f"{self.distance_upper_au:.6f} AU from the model's error bounds"
+                ),
+                "limitations": list(self.limitations),
                 "verifiedByIndependentHoldout": False,
             },
         }
@@ -356,6 +368,29 @@ def _compute_moon_geocentric_icrs(t_centuries: float) -> tuple[float, float, flo
     return (ra_deg, dec_deg, dist_au)
 
 
+def moon_parallax_shift_arcsec(distance_au: float, alt_deg: float) -> tuple[float, float]:
+    """The Moon's horizontal parallax at `distance_au`, and how far below its geocentric position an observer sees
+    it at geocentric altitude `alt_deg` (the parallax times the cosine of the altitude), both in arcsec."""
+    parallax_arcsec = math.degrees(math.asin(EARTH_EQUATORIAL_RADIUS_KM / (distance_au * AU_KM))) * 3600.0
+    return parallax_arcsec, parallax_arcsec * math.cos(math.radians(alt_deg))
+
+
+def _planet_error_bound_au(
+    body: str, planet_au: np.ndarray, earth_au: np.ndarray, geocentric_au: np.ndarray, t_centuries: float
+) -> float:
+    """The most the planet's geocentric position can be off, in AU: the published heliocentric errors of the planet
+    and of the Earth-Moon barycentre (angular errors as displacements at their distances, plus the distance
+    errors), the barycentre's offset from the Earth's centre, and the light time the model leaves out."""
+    lon_p, lat_p, dist_p = PUBLISHED_ERRORS_1800_2050[body]
+    lon_e, lat_e, dist_e = PUBLISHED_ERRORS_1800_2050["Earth"]
+    planet = float(np.linalg.norm(planet_au)) * math.hypot(lon_p, lat_p) / ARCSEC_PER_RAD + dist_p * 1000.0 / AU_KM
+    earth = float(np.linalg.norm(earth_au)) * math.hypot(lon_e, lat_e) / ARCSEC_PER_RAD + dist_e * 1000.0 / AU_KM
+    tau_centuries = float(np.linalg.norm(geocentric_au)) / C_AU_PER_DAY / 36525.0
+    earlier = np.array(_heliocentric_ecliptic_xyz_au(PLANET_ELEMENTS[body], t_centuries - tau_centuries))
+    light_time = float(np.linalg.norm(planet_au - earlier))
+    return planet + earth + BARYCENTRE_OFFSET_KM / AU_KM + light_time
+
+
 def compute_solar_system_ephemerides(
     obs_utc_iso: str,
     lat_deg: float,
@@ -363,36 +398,43 @@ def compute_solar_system_ephemerides(
     bodies: tuple[str, ...] = ("Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"),
     observation_solution_id: str = "sol-ephemeris",
 ) -> list[EphemerisFinding]:
-    """Compute predicted positions for requested Solar System bodies at `obs_utc_iso`."""
+    """Predicted positions of the requested bodies at `obs_utc_iso`, with each one's error bounds for the moment."""
     jd = _iso_to_julian_date(obs_utc_iso)
     t_centuries = (jd - 2451545.0) / 36525.0
 
-    earth_elem = PLANET_ELEMENTS["Earth"]
-    ex_ecl, ey_ecl, ez_ecl = _heliocentric_ecliptic_xyz_au(earth_elem, t_centuries)
+    earth_au = np.array(_heliocentric_ecliptic_xyz_au(PLANET_ELEMENTS["Earth"], t_centuries))
+    common = "Predicted from the given time and place with a low-precision model; not measured in any image."
 
     findings: list[EphemerisFinding] = []
     for body_name in bodies:
         if body_name == "Moon":
             ra_deg, dec_deg, dist_au = _compute_moon_geocentric_icrs(t_centuries)
             obj_type = "moon"
-            mag = -12.0
-            uncertainty_arcsec = 18.0
+            uncertainty_arcsec = MOON_UNCERTAINTY_ARCSEC
+            bound_au = MOON_DISTANCE_UNCERTAINTY_KM / AU_KM
+            method = MOON_METHOD
         else:
-            if body_name not in PLANET_ELEMENTS:
+            if body_name not in PLANET_ELEMENTS or body_name == "Earth":
                 raise KeyError(f"Unsupported Solar System body: {body_name}")
-            elem = PLANET_ELEMENTS[body_name]
-            px_ecl, py_ecl, pz_ecl = _heliocentric_ecliptic_xyz_au(elem, t_centuries)
-            gx_ecl = px_ecl - ex_ecl
-            gy_ecl = py_ecl - ey_ecl
-            gz_ecl = pz_ecl - ez_ecl
-            gx_eq, gy_eq, gz_eq = _ecliptic_to_equatorial_icrs(gx_ecl, gy_ecl, gz_ecl)
+            planet_au = np.array(_heliocentric_ecliptic_xyz_au(PLANET_ELEMENTS[body_name], t_centuries))
+            geocentric_au = planet_au - earth_au
+            gx_eq, gy_eq, gz_eq = _ecliptic_to_equatorial_icrs(*geocentric_au)
             dist_au = math.sqrt(gx_eq * gx_eq + gy_eq * gy_eq + gz_eq * gz_eq)
             ra_deg, dec_deg = unit_vector_to_ra_dec((gx_eq, gy_eq, gz_eq))
-            obj_type = elem.object_type
-            mag = elem.apparent_mag_nominal
-            uncertainty_arcsec = 12.0
+            obj_type = PLANET_ELEMENTS[body_name].object_type
+            bound_au = _planet_error_bound_au(body_name, planet_au, earth_au, geocentric_au, t_centuries)
+            # Displacements all across the line of sight would turn the whole bound into direction
+            uncertainty_arcsec = bound_au / dist_au * ARCSEC_PER_RAD
+            method = PLANET_METHOD
 
         alt_deg, az_deg = icrs_to_altaz(ra_deg, dec_deg, lat_deg, lon_deg, obs_utc_iso)
+        limitations: tuple[str, ...] = (common,)
+        if body_name == "Moon":
+            parallax_arcsec, shift_arcsec = moon_parallax_shift_arcsec(dist_au, alt_deg)
+            limitations += (
+                f"Geocentric: from this place the Moon appears about {shift_arcsec:,.0f} arcsec lower than this "
+                f"position (its horizontal parallax, {parallax_arcsec:,.0f} arcsec, times the cosine of its altitude).",
+            )
         dist_pc = max(1e-9, dist_au / AU_PER_PARSEC)
         ux, uy, uz = ra_dec_to_unit_vector(ra_deg, dec_deg)
 
@@ -410,11 +452,14 @@ def compute_solar_system_ephemerides(
                 alt_deg=alt_deg,
                 az_deg=az_deg,
                 distance_au=dist_au,
+                distance_lower_au=max(1e-12, dist_au - bound_au),
+                distance_upper_au=dist_au + bound_au,
                 distance_pc=dist_pc,
-                apparent_magnitude=mag,
                 uncertainty_arcsec=uncertainty_arcsec,
                 cartesian_parsec_icrs=(ux * dist_pc, uy * dist_pc, uz * dist_pc),
                 obs_utc_iso=obs_utc_iso,
+                method=method,
+                limitations=limitations,
             )
         )
     return findings
