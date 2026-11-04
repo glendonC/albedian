@@ -1,0 +1,33 @@
+{
+  "layer": 2,
+  "order": 3,
+  "pix": 0,
+  "stars": [
+    {
+      "catalogId": "72915660589952",
+      "raDeg": 44.702647733711565,
+      "decDeg": 0.40269819741381024,
+      "magnitude": 9.842077,
+      "colorIndex": 1.2580805,
+      "pmRaMasYr": 13.778210381602644,
+      "pmDecMasYr": -2.9411628686063813,
+      "radialVelocityKmS": 44.03256,
+      "distanceMedianPc": 667.9206,
+      "distanceLowerPc": 656.99884,
+      "distanceUpperPc": 678.82135
+    },
+    {
+      "catalogId": "33264522507136",
+      "raDeg": 44.97466211975327,
+      "decDeg": 0.4734652233431856,
+      "magnitude": 9.887423,
+      "colorIndex": 1.2269411,
+      "pmRaMasYr": 10.42019956762403,
+      "pmDecMasYr": -24.870877096086232,
+      "radialVelocityKmS": 17.182444,
+      "distanceMedianPc": 696.59296,
+      "distanceLowerPc": 689.55566,
+      "distanceUpperPc": 703.09735
+    }
+  ]
+}
