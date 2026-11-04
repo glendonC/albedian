@@ -219,8 +219,8 @@ export class SparkPortalRenderer {
     uSunDir: { value: THREE.Vector3 };
   };
   private nebulaUniforms: {
-    uOrionTex: { value: THREE.Texture | null };
-    uLagoonTex: { value: THREE.Texture | null };
+    uOrionVistaTex: { value: THREE.Texture | null };
+    uLupus3Tex: { value: THREE.Texture | null };
     uTime: { value: number };
     uIsBlackHole: { value: number };
   };
@@ -347,8 +347,8 @@ export class SparkPortalRenderer {
       uSunDir: { value: new THREE.Vector3(0.58, 0.22, 0.78).normalize() },
     };
     this.nebulaUniforms = {
-      uOrionTex: { value: null },
-      uLagoonTex: { value: null },
+      uOrionVistaTex: { value: null },
+      uLupus3Tex: { value: null },
       uTime: { value: 0.0 },
       uIsBlackHole: { value: 0.0 },
     };
@@ -564,11 +564,13 @@ export class SparkPortalRenderer {
       },
       false
     );
-    loadTex('/textures/eso_orion_nebula.jpg', (t) => {
-      this.nebulaUniforms.uOrionTex.value = t;
+    // ESO eso1006a, VISTA's near-infrared view of the Orion Nebula (ESO/J. Emerson/VISTA)
+    loadTex('/textures/eso1006a.jpg', (t) => {
+      this.nebulaUniforms.uOrionVistaTex.value = t;
     });
-    loadTex('/textures/eso_lagoon_nebula.jpg', (t) => {
-      this.nebulaUniforms.uLagoonTex.value = t;
+    // ESO eso1804a, the Lupus 3 star formation region (ESO/R. Colombari)
+    loadTex('/textures/eso1804a.jpg', (t) => {
+      this.nebulaUniforms.uLupus3Tex.value = t;
       this.localBubbleUniforms.uDustTex.value = t;
     });
     this.textureLoader.load(
@@ -1417,8 +1419,8 @@ export class SparkPortalRenderer {
    * REGIME 3: deep sky. For Sagittarius A*, a hand-tuned black hole composition (an approximate
    * Schwarzschild ray march around a hand-set disk, over ESO's Lupus 3 photograph); see
    * BLACK_HOLE_WEBGL_RENDER_LAYERS in webglRenderLayers.ts for its disclosure. For other deep-sky
-   * targets: ESO's VISTA near-infrared Orion Nebula image (eso1006a) blended with the Lupus 3
-   * photograph (eso1804a, in eso_lagoon_nebula.jpg) on a plane, and Spark splats from
+   * targets: ESO's VISTA near-infrared image of the Orion Nebula (eso1006a) on a plane, upright and
+   * at its own aspect, and Spark splats from
    * `nasa_nebula_splats.json` (provenance not recorded).
    */
   private buildDeepSkyWorld(): void {
@@ -1445,8 +1447,8 @@ export class SparkPortalRenderer {
         }
       `,
       fragmentShader: /* glsl */ `
-        uniform sampler2D uOrionTex;
-        uniform sampler2D uLagoonTex;
+        uniform sampler2D uOrionVistaTex;
+        uniform sampler2D uLupus3Tex;
         uniform float uTime;
         uniform float uIsBlackHole;
         varying vec2 vUv;
@@ -1586,7 +1588,7 @@ export class SparkPortalRenderer {
             // is a nearby cloud, so this backdrop is not what lies behind Sgr A*
             if (!captured) {
               vec2 lensedUv = vec2(atan(vel.z, vel.x) / 6.28318 + 0.5, asin(clamp(vel.y, -1.0, 1.0)) / 3.14159 + 0.5);
-              vec3 bgNeb = texture2D(uLagoonTex, lensedUv).rgb;
+              vec3 bgNeb = texture2D(uLupus3Tex, lensedUv).rgb;
               // Hand-set brightening near the photon sphere, not a magnification from the geodesics
               float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
               accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;
@@ -1606,13 +1608,13 @@ export class SparkPortalRenderer {
 
           float radialVignette = smoothstep(1.0, 0.18, length((vUv * 2.0 - 1.0) * vec2(0.84, 1.02)));
 
-          vec2 orionUv = vec2(vUv.x, 1.0 - vUv.y);
-          vec3 orionCol = texture2D(uOrionTex, orionUv).rgb;
-          vec3 lagoonCol = texture2D(uLagoonTex, vUv).rgb;
+          // The VISTA image alone, upright and at its own aspect within the 31 x 19.5 plane
+          vec2 imageSize = vec2(textureSize(uOrionVistaTex, 0));
+          vec2 orionUv = vec2(0.5 + (vUv.x - 0.5) * (31.0 / 19.5) * (imageSize.y / imageSize.x), vUv.y);
+          float inImage = step(0.0, orionUv.x) * step(orionUv.x, 1.0);
+          vec3 orionCol = texture2D(uOrionVistaTex, orionUv).rgb * inImage;
 
-          vec3 orionLinear = pow(max(orionCol, vec3(0.0)), vec3(1.75)) * 0.78;
-          vec3 lagoonLinear = pow(max(lagoonCol, vec3(0.0)), vec3(1.85)) * 0.22;
-          vec3 combined = orionLinear + lagoonLinear;
+          vec3 combined = pow(max(orionCol, vec3(0.0)), vec3(1.75)) * 0.78;
 
           combined = combined / (vec3(1.0) + combined * 0.82);
 

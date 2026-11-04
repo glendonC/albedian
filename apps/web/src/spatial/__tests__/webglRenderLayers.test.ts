@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { RenderLayerSetSchema } from '@albedian/contracts';
-import { BLACK_HOLE_WEBGL_RENDER_LAYERS, CISLUNAR_WEBGL_RENDER_LAYERS, webglRenderLayersFor } from '../webglRenderLayers.js';
+import {
+  BLACK_HOLE_WEBGL_RENDER_LAYERS,
+  CISLUNAR_WEBGL_RENDER_LAYERS,
+  ORION_WEBGL_RENDER_LAYERS,
+  webglRenderLayersFor,
+} from '../webglRenderLayers.js';
 import { CISLUNAR_RENDER_LAYERS } from '../webgpu/cislunar/cislunarLayers.js';
 
 const layer = (id: string) => CISLUNAR_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
@@ -56,11 +61,38 @@ describe('WebGL renderer: black hole view (landing scene 02)', () => {
   });
 });
 
+describe('WebGL renderer: Orion Nebula view', () => {
+  const orion = (id: string) => ORION_WEBGL_RENDER_LAYERS.find((l) => l.id === id);
+
+  it('declares every layer it draws, all simulated', () => {
+    expect(RenderLayerSetSchema.safeParse(ORION_WEBGL_RENDER_LAYERS).success).toBe(true);
+    expect(ORION_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
+      'deep-sky.sky',
+      'deep-sky.catalog-stars',
+      'deep-sky.particles',
+      'deep-sky.orion-image',
+      'deep-sky.nebula-splats',
+      'post.camera-optics',
+    ]);
+    expect(ORION_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
+  });
+
+  it('names the image as ESO VISTA near-infrared, credited as ESO asks', () => {
+    expect(orion('deep-sky.orion-image')?.disclosure).toMatch(/VISTA near-infrared/);
+    expect(orion('deep-sky.orion-image')?.sources.join(' ')).toMatch(/ESO\/J\. Emerson\/VISTA, VISTA's infrared view of the Orion Nebula \(eso1006a\)/);
+  });
+
+  it('says the splats are not the Orion Nebula', () => {
+    expect(orion('deep-sky.nebula-splats')?.kind).toBe('procedural');
+    expect(orion('deep-sky.nebula-splats')?.disclosure).toMatch(/not the Orion Nebula/);
+  });
+});
+
 describe('WebGL renderer: which view declares layers', () => {
-  it('declares the cislunar regime and the black hole view only, until the others are declared', () => {
+  it('declares the cislunar regime and both deep-sky views only, until the others are declared', () => {
     expect(webglRenderLayersFor({ regime: 'cislunar', blackHole: false })).toBe(CISLUNAR_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: true })).toBe(BLACK_HOLE_WEBGL_RENDER_LAYERS);
-    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBeNull();
+    expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBe(ORION_WEBGL_RENDER_LAYERS);
     for (const regime of ['earth_capture', 'solar_neighborhood', 'planetary_surface'] as const) {
       expect(webglRenderLayersFor({ regime, blackHole: false })).toBeNull();
     }

@@ -44,6 +44,16 @@ export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
   WEBGL_CAMERA_OPTICS,
 ]);
 
+/** Decorative particles around the deep-sky target, the same in both deep-sky views. */
+const DEEP_SKY_PARTICLES: RenderLayer = {
+  id: 'deep-sky.particles',
+  kind: 'procedural',
+  title: 'Particles',
+  evidenceClass: 'simulated',
+  disclosure: 'Decorative particles moved by noise; not a simulation of gas or plasma.',
+  sources: [],
+};
+
 /**
  * The deep-sky regime when it shows Sagittarius A* (landing scene 02). The black hole is a
  * hand-tuned composition, not a model of Sgr A*: rays bent by an approximate Schwarzschild march
@@ -62,15 +72,42 @@ export const BLACK_HOLE_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSche
     evidenceClass: 'simulated',
     disclosure:
       "A modelled black hole, not Sgr A*'s data: approximate Schwarzschild light bending around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not what lies behind Sgr A*.",
-    sources: ['ESO/R. Colombari, Star formation region Lupus 3 (eso1804a), CC BY 4.0 (file eso_lagoon_nebula.jpg)'],
+    sources: ['ESO/R. Colombari, Star formation region Lupus 3 (eso1804a), CC BY 4.0 (file eso1804a.jpg)'],
+  },
+  DEEP_SKY_PARTICLES,
+  WEBGL_CAMERA_OPTICS,
+]);
+
+/**
+ * The deep-sky regime for other targets (the Orion Nebula view, not in the landing carousel):
+ * ESO's VISTA near-infrared image of the Orion Nebula on a plane in front of the camera, and
+ * splats baked from a NASA 3D model of another object. The contract has no kind for a framed
+ * photograph, so the image is declared as a sky background with a disclosure saying where it is.
+ */
+export const ORION_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
+  { ...sharedLayer('cislunar.sky'), id: 'deep-sky.sky' },
+  { ...WEBGL_CATALOG_STARS, id: 'deep-sky.catalog-stars' },
+  DEEP_SKY_PARTICLES,
+  {
+    id: 'deep-sky.orion-image',
+    kind: 'sky_background',
+    title: 'Orion Nebula image',
+    evidenceClass: 'simulated',
+    disclosure:
+      "ESO's VISTA near-infrared image of the Orion Nebula (eso1006a), on a plane in front of the camera, not at its place or size on the sky.",
+    sources: [
+      "ESO/J. Emerson/VISTA, VISTA's infrared view of the Orion Nebula (eso1006a), CC BY 4.0 (file eso1006a.jpg)",
+      'Acknowledgment: Cambridge Astronomical Survey Unit',
+    ],
   },
   {
-    id: 'deep-sky.particles',
+    id: 'deep-sky.nebula-splats',
     kind: 'procedural',
-    title: 'Particles',
+    title: 'Nebula splats',
     evidenceClass: 'simulated',
-    disclosure: 'Decorative particles moved by noise; not a simulation of gas or plasma.',
-    sources: [],
+    disclosure:
+      'Splats baked from a NASA 3D model of another object (provenance not recorded), not the Orion Nebula or its structure.',
+    sources: ['apps/web/public/models/nasa_nebula_splats.json (provenance not recorded)'],
   },
   WEBGL_CAMERA_OPTICS,
 ]);
@@ -84,6 +121,6 @@ export interface WebglView {
 /** Layers the WebGL renderer declares for a view; null where the view is not declared yet. */
 export function webglRenderLayersFor(view: WebglView): RenderLayerSet | null {
   if (view.regime === 'cislunar') return CISLUNAR_WEBGL_RENDER_LAYERS;
-  if (view.regime === 'deep_sky' && view.blackHole) return BLACK_HOLE_WEBGL_RENDER_LAYERS;
+  if (view.regime === 'deep_sky') return view.blackHole ? BLACK_HOLE_WEBGL_RENDER_LAYERS : ORION_WEBGL_RENDER_LAYERS;
   return null;
 }
