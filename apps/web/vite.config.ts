@@ -7,7 +7,7 @@ export default defineConfig({
     dedupe: ['three'],
   },
   optimizeDeps: {
-    include: ['three', '@sparkjsdev/spark'],
+    include: ['three', 'three/webgpu', 'three/tsl', '@sparkjsdev/spark'],
   },
   server: {
     port: 5173,
