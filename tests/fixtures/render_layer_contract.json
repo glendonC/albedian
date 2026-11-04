@@ -1,0 +1,316 @@
+{
+  "kinds": [
+    "sky_background",
+    "catalog_stars",
+    "solar_system_body",
+    "atmosphere",
+    "dust_volume",
+    "capture_splats",
+    "procedural",
+    "camera_optics"
+  ],
+  "evidenceClasses": [
+    "observed",
+    "catalog_matched",
+    "predicted",
+    "simulated"
+  ],
+  "alwaysSimulatedKinds": [
+    "procedural",
+    "camera_optics"
+  ],
+  "limits": {
+    "titleMaxLength": 80,
+    "disclosureMaxLength": 240,
+    "sourceMaxLength": 200,
+    "maxSources": 12,
+    "idPattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+  },
+  "valid": [
+    {
+      "id": "cislunar.catalog-stars",
+      "kind": "catalog_stars",
+      "title": "Catalog stars",
+      "evidenceClass": "simulated",
+      "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+      "sources": [
+        "Gaia DR3 (Gaia Collaboration 2023)",
+        "Hipparcos 2007 (van Leeuwen 2007)"
+      ]
+    },
+    {
+      "id": "cislunar.earth",
+      "kind": "solar_system_body",
+      "title": "Earth",
+      "evidenceClass": "simulated",
+      "disclosure": "NASA imagery on a globe placed and lit for composition, not at an ephemeris position.",
+      "sources": [
+        "NASA Blue Marble Next Generation, November 2004",
+        "NASA Black Marble 2016"
+      ]
+    },
+    {
+      "id": "sky.moon",
+      "kind": "solar_system_body",
+      "title": "Moon",
+      "evidenceClass": "predicted",
+      "disclosure": "Ephemeris position for the recording time and place; not recovered from camera pixels.",
+      "sources": [
+        "JPL DE440"
+      ]
+    },
+    {
+      "id": "capture.original",
+      "kind": "sky_background",
+      "title": "Your recording",
+      "evidenceClass": "observed",
+      "disclosure": "Original pixels of your recording.",
+      "sources": [],
+      "sourceAssetId": "asset-sahara-night"
+    },
+    {
+      "id": "capture.registered",
+      "kind": "sky_background",
+      "title": "Your recording on the sky",
+      "evidenceClass": "catalog_matched",
+      "disclosure": "Your recording placed on the sky by an independently verified plate solution.",
+      "sources": [
+        "Gaia DR3 (Gaia Collaboration 2023)"
+      ],
+      "sourceAssetId": "asset-sahara-night",
+      "observationSolutionId": "solution-sahara-night"
+    },
+    {
+      "id": "post.camera-optics",
+      "kind": "camera_optics",
+      "title": "Camera optics",
+      "evidenceClass": "simulated",
+      "disclosure": "Modeled lens glare, chromatic aberration, streaks and vignette.",
+      "sources": []
+    }
+  ],
+  "invalid": [
+    {
+      "rule": "observed layer without sourceAssetId",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "observed",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "catalog_matched layer without observationSolutionId",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "catalog_matched",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "sourceAssetId": "asset-sahara-night"
+      }
+    },
+    {
+      "rule": "camera_optics layer not simulated",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "camera_optics",
+        "title": "Catalog stars",
+        "evidenceClass": "observed",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "sourceAssetId": "asset-sahara-night"
+      }
+    },
+    {
+      "rule": "procedural layer not simulated",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "procedural",
+        "title": "Catalog stars",
+        "evidenceClass": "predicted",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "blank disclosure",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "   ",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "disclosure too long",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "blank title",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "too many sources",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Source 0",
+          "Source 1",
+          "Source 2",
+          "Source 3",
+          "Source 4",
+          "Source 5",
+          "Source 6",
+          "Source 7",
+          "Source 8",
+          "Source 9",
+          "Source 10",
+          "Source 11",
+          "Source 12"
+        ]
+      }
+    },
+    {
+      "rule": "missing sources",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function."
+      }
+    },
+    {
+      "rule": "unknown kind",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "hologram",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "unknown evidence class",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "artistic",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "id outside the slug pattern",
+      "layer": {
+        "id": "Cislunar Earth",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ]
+      }
+    },
+    {
+      "rule": "null optional field",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "sourceAssetId": null
+      }
+    },
+    {
+      "rule": "unknown field",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "catalog_stars",
+        "title": "Catalog stars",
+        "evidenceClass": "simulated",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "confidence": 0.9
+      }
+    }
+  ],
+  "invalidSets": [
+    {
+      "rule": "repeated id",
+      "layers": [
+        {
+          "id": "scene.layer",
+          "kind": "catalog_stars",
+          "title": "Catalog stars",
+          "evidenceClass": "simulated",
+          "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+          "sources": [
+            "Gaia DR3 (Gaia Collaboration 2023)"
+          ]
+        },
+        {
+          "id": "scene.layer",
+          "kind": "catalog_stars",
+          "title": "Catalog stars again",
+          "evidenceClass": "simulated",
+          "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+          "sources": [
+            "Gaia DR3 (Gaia Collaboration 2023)"
+          ]
+        }
+      ]
+    }
+  ]
+}
