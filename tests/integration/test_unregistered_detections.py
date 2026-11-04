@@ -4,7 +4,8 @@ Covers:
 - PBT: no finding from a plate solution without a verified WCS carries sky coordinates, and
   every detection is still listed (arbitrary detections and synthetic starfields)
 - PBT: `CelestialFindingRecord` enforces the contract's sky position rules and emits no nulls
-- `ObservationSolution` ties observed sky positions to a verified WCS in both directions
+- `ObservationSolution` ties observed sky positions to a verified WCS in both directions, and
+  accepts catalog matches only with one
 - The Python contract fixture that the TypeScript schema tests parse is current
 """
 
@@ -164,7 +165,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
     assert _none_paths(payload) == []
 
 
-def test_solution_ties_observed_sky_positions_to_a_verified_wcs() -> None:
+def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> None:
     det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
     pixel_only = CelestialFindingRecord(
         id="finding-obs-1", observation_solution_id="sol-1", evidence_class="observed",
@@ -173,6 +174,11 @@ def test_solution_ties_observed_sky_positions_to_a_verified_wcs() -> None:
     placed = CelestialFindingRecord(
         id="finding-obs-2", observation_solution_id="sol-1", evidence_class="observed",
         title="Observed Point Source #2", subtitle="Measured", source_detection=det,
+        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+    )
+    matched = CelestialFindingRecord(
+        id="finding-star-x", observation_solution_id="sol-1", evidence_class="catalog_matched",
+        title="Matched star", subtitle="Catalog", source_detection=det,
         ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
     )
     wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
@@ -199,6 +205,11 @@ def test_solution_ties_observed_sky_positions_to_a_verified_wcs() -> None:
         solution(wcs, False, placed)
     with pytest.raises(ValueError, match="lacks the sky position"):
         solution(wcs, True, pixel_only)
+    # A catalog match follows held-out verification, so only a verified WCS carries one
+    assert solution(wcs, True, matched).findings == [matched]
+    for wcs_model, passed in ((None, False), (wcs, False), (None, True)):
+        with pytest.raises(ValueError, match="needs a verified WCS"):
+            solution(wcs_model, passed, matched)
 
 
 def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:

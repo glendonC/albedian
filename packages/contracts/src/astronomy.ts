@@ -186,19 +186,26 @@ export const ObservationSolutionSchema = z
     warnings: z.array(z.string()),
   })
   .superRefine((solution, ctx) => {
-    // An observed finding has a sky position exactly when the solution's verified WCS gives it one
+    // Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
+    // sky position exactly when there is one, and a catalog match needs one
     const verified = hasVerifiedWcs(solution);
     solution.findings.forEach((finding, index) => {
-      if (finding.evidenceClass !== 'observed' || (finding.skyPosition !== undefined) === verified) {
-        return;
+      if (finding.evidenceClass === 'catalog_matched' && !verified) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['findings', index, 'evidenceClass'],
+          message: 'A catalog_matched finding needs a verified WCS: catalog association follows held-out verification.',
+        });
       }
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['findings', index, 'skyPosition'],
-        message: verified
-          ? 'An observed finding in a solution with a verified WCS needs the sky position that WCS gives it.'
-          : 'An observed finding has no sky position without a verified WCS.',
-      });
+      if (finding.evidenceClass === 'observed' && (finding.skyPosition !== undefined) !== verified) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['findings', index, 'skyPosition'],
+          message: verified
+            ? 'An observed finding in a solution with a verified WCS needs the sky position that WCS gives it.'
+            : 'An observed finding has no sky position without a verified WCS.',
+        });
+      }
     });
   });
 export type ObservationSolution = z.infer<typeof ObservationSolutionSchema>;

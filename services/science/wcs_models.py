@@ -362,9 +362,15 @@ class ObservationSolution:
     warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        # An observed finding has a sky position exactly when the verified WCS gives it one
+        # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
+        # sky position exactly when there is one, and a catalog match needs one
         verified = self.has_verified_wcs
         for finding in self.findings:
+            if finding.evidence_class == "catalog_matched" and not verified:
+                raise ValueError(
+                    f"Catalog-matched finding {finding.id} needs a verified WCS: "
+                    "catalog association follows held-out verification."
+                )
             if finding.evidence_class == "observed" and finding.has_sky_position != verified:
                 raise ValueError(
                     f"Observed finding {finding.id} "
