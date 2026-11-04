@@ -11,6 +11,18 @@ Modules:
   sidereal time, annual aberration, refraction), with its inverse.
 - `geometry`: the ground-truth camera (pinhole intrinsics, Brown-Conrady or Kannala-Brandt
   distortion, attitude) mapping pixels to the sky and back.
+- `cameras`: phone cameras with their makers' published fields of view, and a generic head-worn
+  video camera.
+- `stars`: cone queries over the G 12 catalog tiles, moved to the frame's date.
+- `scene`: sky brightness, the Sun and Moon, the ground and its lights, clouds, aircraft, screens.
+- `render`: optics, sensor and image processing to a JPEG, with the frame's exact truth.
+- `suite`: the seeded frame specs of the full suite and the CI subset.
+- `solvers`: today's solvers behind one interface, with a time limit.
+- `score`: outcomes, false claims and summaries; the parallel runner.
+- `real_clips`: today's solver on the owner's clips, locally only.
+
+Run it with `uv run python -m research.benchmarks.phone_photos run` (see `__main__`); the method
+and results are in docs/science/PHONE_PHOTO_BENCHMARK.md.
 """
 
 EVIDENCE_CLASS = "simulated"

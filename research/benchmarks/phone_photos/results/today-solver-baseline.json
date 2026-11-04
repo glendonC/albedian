@@ -1,0 +1,307 @@
+{
+ "evidenceClass": "simulated",
+ "disclosure": "Simulated frames rendered from catalog stars through modelled cameras; never evidence that a real photo solves.",
+ "suite": "full",
+ "seed": 20261104,
+ "timeoutS": 120.0,
+ "solverCommit": "73bebfb",
+ "environment": {
+  "python": "3.14.7",
+  "numpy": "2.5.4",
+  "scipy": "1.18.1",
+  "pillow": "13.0.0",
+  "libjpegTurbo": "3.2.0",
+  "machine": "arm64",
+  "system": "Darwin",
+  "cpuCount": 18
+ },
+ "solvers": {
+  "today-api": {
+   "evidenceClass": "simulated",
+   "disclosure": "Simulated frames rendered from catalog stars; never evidence that a real photo solves.",
+   "solver": "today-api",
+   "frames": 270,
+   "positives": {
+    "correct": 0,
+    "imprecise": 0,
+    "wrong": 1,
+    "false-solve": 0,
+    "unresolved": 159,
+    "timeout": 50,
+    "error": 0,
+    "count": 210,
+    "falseClaims": 1,
+    "solveRate": 0.0
+   },
+   "negatives": {
+    "correct": 0,
+    "imprecise": 0,
+    "wrong": 0,
+    "false-solve": 0,
+    "unresolved": 42,
+    "timeout": 18,
+    "error": 0,
+    "count": 60,
+    "falseClaims": 0,
+    "falseSolves": 0
+   },
+   "byCategory": {
+    "aircraft": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 6,
+     "timeout": 4,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "cassiopeia": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 1,
+     "false-solve": 0,
+     "unresolved": 5,
+     "timeout": 4,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 1
+    },
+    "crux": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 8,
+     "timeout": 2,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "cygnus": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 6,
+     "timeout": 3,
+     "error": 0,
+     "count": 9,
+     "falseClaims": 0
+    },
+    "dark-frame": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 8,
+     "timeout": 2,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "moon": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 5,
+     "timeout": 5,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "orion": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 6,
+     "timeout": 0,
+     "error": 0,
+     "count": 6,
+     "falseClaims": 0
+    },
+    "overcast": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 5,
+     "timeout": 5,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "random": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 103,
+     "timeout": 28,
+     "error": 0,
+     "count": 131,
+     "falseClaims": 0
+    },
+    "random-dots": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 8,
+     "timeout": 2,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "sagittarius": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 10,
+     "timeout": 5,
+     "error": 0,
+     "count": 15,
+     "falseClaims": 0
+    },
+    "scorpius": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 7,
+     "timeout": 3,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "screen": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 10,
+     "timeout": 0,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    },
+    "taurus": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 8,
+     "timeout": 1,
+     "error": 0,
+     "count": 9,
+     "falseClaims": 0
+    },
+    "ursa-major": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 6,
+     "timeout": 4,
+     "error": 0,
+     "count": 10,
+     "falseClaims": 0
+    }
+   },
+   "byCamera": {
+    "galaxy-s25-ultra-ultra-wide": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 20,
+     "timeout": 10,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "galaxy-s25-ultra-wide": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 29,
+     "timeout": 1,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "head-worn-video": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 21,
+     "timeout": 9,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "iphone-18-pro-main": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 30,
+     "timeout": 0,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "iphone-18-pro-ultra-wide": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 13,
+     "timeout": 17,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "pixel-11-pro-ultrawide": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 0,
+     "false-solve": 0,
+     "unresolved": 17,
+     "timeout": 13,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 0
+    },
+    "pixel-11-pro-wide": {
+     "correct": 0,
+     "imprecise": 0,
+     "wrong": 1,
+     "false-solve": 0,
+     "unresolved": 29,
+     "timeout": 0,
+     "error": 0,
+     "count": 30,
+     "falseClaims": 1
+    }
+   },
+   "timeS": {
+    "median": 15.085172999970382,
+    "p95": 120.01069339010573,
+    "max": 120.0432045829948
+   },
+   "suite": "full",
+   "seed": 20261104,
+   "timeoutS": 120.0,
+   "workers": 8,
+   "wallS": 1935.066146041965,
+   "claimCount": 1
+  }
+ }
+}
