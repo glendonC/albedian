@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PackedSplats, SplatMesh } from '@sparkjsdev/spark';
+import { parseSplatRows, type SplatRows } from './splatRows.js';
 
 export const BRUNETON_ATMO_LUT_URL = '/textures/bruneton_atmo_lut.png';
 
@@ -43,146 +44,43 @@ vec4 sampleBrunetonAtmoLut(sampler2D lutTex, float viewMu, float sunMu) {
 }
 `;
 
-/**
- * Builds an anisotropic 3D Gaussian Splat mesh (`SplatMesh`) for the Harvard CfA
- * O'Neill et al. (2024) Local Bubble Chimney (`lb_splats.json`).
- *
- * Reads the pre-baked 14-tuple `[x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity]`
- * when `pt.length >= 14`, with a graceful fallback if `pt.length >= 6`.
- */
-export function buildAnisotropicLocalBubbleSplatMesh(raw: number[][]): SplatMesh {
+/** Scene scale of each splat set. It scales positions only; footprints stay as baked. */
+const LOCAL_BUBBLE_POSITION_SCALE = 1.24;
+const NEBULA_POSITION_SCALE = 1.05;
+
+function splatMeshFromRows(rows: SplatRows): SplatMesh {
   return new SplatMesh({
     constructSplats: (splats: PackedSplats) => {
-      if (!Array.isArray(raw) || raw.length === 0) return;
-
       const center = new THREE.Vector3();
       const scales = new THREE.Vector3();
       const quat = new THREE.Quaternion();
       const color = new THREE.Color();
-
-      const stride = raw.length > 6000 ? 2 : 1;
-      const enforceInnerCavity = raw.length > 64;
-
-      for (let i = 0; i < raw.length; i += stride) {
-        const pt = raw[i];
-        if (!pt || pt.length < 6) continue;
-
-        const jx = (Math.sin(i * 12.9898) - 0.5) * 0.28;
-        const jy = (Math.cos(i * 78.233) - 0.5) * 0.28;
-        const jz = (Math.sin(i * 37.719) - 0.5) * 0.28;
-        const x = pt[0]! * 1.24 + jx;
-        const y = pt[1]! * 1.24 + jy;
-        const z = pt[2]! * 1.24 + jz;
-
-        // Preserve a clean hollow inner cavity around the central stellar photosphere
-        const xyDist = Math.hypot(x, y);
-        if (enforceInnerCavity && xyDist < 4.55) continue;
-
-        center.set(x, y, z);
-
-        if (pt.length >= 14) {
-          color.setRGB(
-            THREE.MathUtils.clamp(pt[3]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[4]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[5]!, 0.0, 1.0)
-          );
-          scales.set(
-            Math.max(0.01, pt[6]!),
-            Math.max(0.01, pt[7]!),
-            Math.max(0.01, pt[8]!)
-          );
-          quat.set(pt[9]!, pt[10]!, pt[11]!, pt[12]!);
-          if (quat.lengthSq() > 1e-6) {
-            quat.normalize();
-          } else {
-            quat.identity();
-          }
-          const cavityFade = enforceInnerCavity
-            ? Math.min(1.0, Math.max(0.25, (xyDist - 4.55) * 0.55))
-            : 1.0;
-          const opacity = THREE.MathUtils.clamp(pt[13]! * cavityFade, 0.003, 0.045);
-          splats.pushSplat(center, scales, quat, opacity, color);
-        } else {
-          const s = 0.095 + (i % 5) * 0.022;
-          scales.set(s * 1.5, s * 1.1, s * 0.65);
-          quat.identity();
-
-          const warmMix = (i % 9) / 9.0;
-          color.setRGB(
-            0.78 + 0.18 * warmMix,
-            0.54 + 0.14 * warmMix,
-            0.36 + 0.12 * (1.0 - warmMix)
-          );
-          const opacity = Math.min(0.016, Math.max(0.004, Math.max(0.1, xyDist - 4.55) * 0.0035));
-          splats.pushSplat(center, scales, quat, opacity, color);
-        }
+      for (let i = 0; i < rows.count; i++) {
+        center.fromArray(rows.centers, i * 3);
+        scales.fromArray(rows.scales, i * 3);
+        quat.fromArray(rows.quaternions, i * 4);
+        color.fromArray(rows.colors, i * 3);
+        splats.pushSplat(center, scales, quat, rows.opacities[i]!, color);
       }
     },
   });
 }
 
 /**
- * Builds an anisotropic 3D Gaussian Splat mesh (`SplatMesh`) for the Multi-Wavelength
- * Volumetric Nebula (`nasa_nebula_splats.json`).
- *
- * Uses the pre-baked multi-scale anisotropic covariance (`sx, sy, sz`), shock/pillar-aligned
- * orientation quaternions (`qx, qy, qz, qw`), physical emission/extinction colors (`r, g, b`),
- * and volumetric `opacity` when `pt.length >= 14`, with graceful fallback if `pt.length >= 6`.
+ * Builds the Local Bubble splat mesh from `lb_splats.json`, one splat per row at the row's own
+ * position. The positions trace to the O'Neill et al. (2024) Local Bubble surface in
+ * `local_bubble_oneill2024.glb`; colour, footprint, orientation and opacity are presentation
+ * values from the bake, since the model has no dust density or emission per point.
  */
-export function buildAnisotropicNebulaSplatMesh(raw: number[][]): SplatMesh {
-  return new SplatMesh({
-    constructSplats: (splats: PackedSplats) => {
-      if (!Array.isArray(raw) || raw.length === 0) return;
+export function buildAnisotropicLocalBubbleSplatMesh(raw: unknown): SplatMesh {
+  return splatMeshFromRows(parseSplatRows(raw, LOCAL_BUBBLE_POSITION_SCALE, 0.01));
+}
 
-      const center = new THREE.Vector3();
-      const scales = new THREE.Vector3();
-      const quat = new THREE.Quaternion();
-      const color = new THREE.Color();
-
-      const stride = raw.length > 6000 ? 2 : 1;
-
-      for (let i = 0; i < raw.length; i += stride) {
-        const pt = raw[i];
-        if (!pt || pt.length < 6) continue;
-
-        const x = pt[0]! * 1.05;
-        const y = pt[1]! * 1.05;
-        const z = pt[2]! * 1.05;
-        center.set(x, y, z);
-
-        if (pt.length >= 14) {
-          color.setRGB(
-            THREE.MathUtils.clamp(pt[3]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[4]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[5]!, 0.0, 1.0)
-          );
-          scales.set(
-            Math.max(0.005, pt[6]!),
-            Math.max(0.005, pt[7]!),
-            Math.max(0.005, pt[8]!)
-          );
-          quat.set(pt[9]!, pt[10]!, pt[11]!, pt[12]!);
-          if (quat.lengthSq() > 1e-6) {
-            quat.normalize();
-          } else {
-            quat.identity();
-          }
-          const opacity = THREE.MathUtils.clamp(pt[13]!, 0.006, 0.085);
-          splats.pushSplat(center, scales, quat, opacity, color);
-        } else {
-          const s = 0.018 + (i % 7) * 0.0035;
-          scales.set(s * 1.35, s * 0.95, s * 1.25);
-          quat.identity();
-          color.setRGB(
-            THREE.MathUtils.clamp(pt[3]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[4]!, 0.0, 1.0),
-            THREE.MathUtils.clamp(pt[5]!, 0.0, 1.0)
-          );
-          const radial = Math.min(1.0, Math.hypot(x, y, z) / 6.2);
-          const opacity = (1.0 - radial * 0.55) * 0.036;
-          splats.pushSplat(center, scales, quat, opacity, color);
-        }
-      }
-    },
-  });
+/**
+ * Builds the nebula splat mesh from `nasa_nebula_splats.json`, one splat per row at the row's
+ * own position. The positions match the vertices of `nasa_pillars_3d.glb`; colour, footprint,
+ * orientation and opacity are presentation values from the bake, not measured emission.
+ */
+export function buildAnisotropicNebulaSplatMesh(raw: unknown): SplatMesh {
+  return splatMeshFromRows(parseSplatRows(raw, NEBULA_POSITION_SCALE, 0.005));
 }

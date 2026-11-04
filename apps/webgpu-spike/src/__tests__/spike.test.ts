@@ -29,27 +29,25 @@ describe('webgpu spike: Local Bubble loader port', () => {
   const raw = JSON.parse(readFileSync(LB_PATH, 'utf8')) as number[][];
   const arrays = parseLocalBubbleSplats(raw);
 
-  it('applies the app loader stride, cavity and opacity rules to lb_splats.json', () => {
+  it('keeps every row of lb_splats.json at its own scaled position', () => {
     expect(raw.length).toBe(14281);
-    expect(arrays.count).toBe(2811);
+    expect(arrays.count).toBe(14281);
     const C = LOCAL_BUBBLE_LOADER_CONSTANTS;
     for (let i = 0; i < arrays.count; i++) {
-      const x = arrays.centers[i * 3]!;
-      const y = arrays.centers[i * 3 + 1]!;
-      expect(Math.hypot(x, y)).toBeGreaterThanOrEqual(C.innerCavityRadius);
-      expect(arrays.opacities[i]!).toBeGreaterThanOrEqual(C.minOpacity - 1e-7);
-      expect(arrays.opacities[i]!).toBeLessThanOrEqual(C.maxOpacity + 1e-7);
+      for (let k = 0; k < 3; k++) {
+        expect(Math.abs(arrays.centers[i * 3 + k]! - raw[i]![k]! * C.positionScale)).toBeLessThan(1e-5);
+      }
       const q = arrays.quaternions.subarray(i * 4, i * 4 + 4);
       expect(Math.hypot(q[0]!, q[1]!, q[2]!, q[3]!)).toBeCloseTo(1, 5);
     }
   });
 
-  it('keeps every row and skips the cavity rule for tiny inputs', () => {
+  it('skips rows missing a value instead of filling them in', () => {
     const small = parseLocalBubbleSplats([
       [0, 0, 0, 1, 0.5, 0.25, 0.2, 0.1, 0.05, 0, 0, 0, 1, 0.01],
       [1, 1, 1, 0.5, 0.5, 0.5],
     ]);
-    expect(small.count).toBe(2);
+    expect(small.count).toBe(1);
     expect(small.opacities[0]).toBeCloseTo(0.01, 6);
     expect(parseLocalBubbleSplats(null).count).toBe(0);
   });
@@ -156,7 +154,7 @@ describe('webgpu spike: voxelization', () => {
   it('voxelizes the Local Bubble splat set with mostly empty bricks', () => {
     const arrays = parseLocalBubbleSplats(JSON.parse(readFileSync(LB_PATH, 'utf8')));
     const volume = voxelizeSplats(arrays, { voxelSize: 0.2 });
-    expect(volume.stats.splats).toBe(2811);
+    expect(volume.stats.splats).toBe(14281);
     expect(volume.stats.nonEmptyBrickFraction).toBeLessThan(0.5);
     expect(volume.maxSigma).toBeGreaterThan(0);
   });
