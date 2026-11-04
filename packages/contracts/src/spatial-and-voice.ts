@@ -110,6 +110,14 @@ export const ActionContextSchema = z.object({
 });
 export type ActionContext = z.infer<typeof ActionContextSchema>;
 
+/** Scale regimes a voice action can fly to. planetary_surface stays out until it renders real data. */
+export const ScaleRegimeSchema = z.enum(['earth_capture', 'cislunar', 'solar_neighborhood', 'deep_sky']);
+export type ScaleRegime = z.infer<typeof ScaleRegimeSchema>;
+
+/** The landing carousel's scenes by carousel key; each is a disclosed modelled composition. */
+export const LandingSceneSchema = z.enum(['cislunar', 'black_hole', 'supergiant', 'saturn_horizon']);
+export type LandingScene = z.infer<typeof LandingSceneSchema>;
+
 export const AlbedianActionSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('media.restore'),
@@ -216,7 +224,38 @@ export const AlbedianActionSchema = z.discriminatedUnion('type', [
     checkpointId: z.string().optional(),
     restoreAudio: z.literal(true),
   }),
-]);
+  z.object({
+    type: z.literal('space.regime'),
+    requestId: z.string().min(1),
+    expectedViewRevision: z.number().int().nonnegative(),
+    regime: ScaleRegimeSchema,
+  }),
+  z.object({
+    type: z.literal('scene.show'),
+    requestId: z.string().min(1),
+    expectedViewRevision: z.number().int().nonnegative(),
+    scene: LandingSceneSchema,
+  }),
+  z.object({
+    type: z.literal('audio.set'),
+    requestId: z.string().min(1),
+    expectedViewRevision: z.number().int().nonnegative(),
+    muted: z.boolean().optional(),
+    gain: z.number().min(0).max(1).optional(),
+  }),
+  z.object({
+    type: z.literal('question.ask'),
+    requestId: z.string().min(1),
+    expectedViewRevision: z.number().int().nonnegative(),
+    question: z.string().min(1).max(500).regex(/\S/, 'A question needs at least one character that is not a space'),
+    findingId: z.string().min(1).optional(),
+  }),
+]).superRefine((action, ctx) => {
+  // A discriminated union member cannot carry its own refinement, so the audio rule lives here
+  if (action.type === 'audio.set' && action.muted === undefined && action.gain === undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gain'], message: 'audio.set needs muted, gain or both' });
+  }
+});
 export type AlbedianAction = z.infer<typeof AlbedianActionSchema>;
 
 export const VoiceActionSchema = z.object({
@@ -229,10 +268,22 @@ export const VoiceActionSchema = z.object({
 });
 export type VoiceAction = z.infer<typeof VoiceActionSchema>;
 
+/** Who turned the utterance into the action: the deterministic rules, or a model and the model that answered. */
+export const ActionInterpretationSchema = z.discriminatedUnion('parser', [
+  z.object({ parser: z.literal('rules') }),
+  z.object({
+    parser: z.literal('model'),
+    requestedModel: z.string().min(1),
+    servedBy: z.string().min(1),
+  }),
+]);
+export type ActionInterpretation = z.infer<typeof ActionInterpretationSchema>;
+
 export const ActionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('completed'),
     actionId: z.string().min(1),
+    interpretation: ActionInterpretationSchema.optional(),
     newStateVersion: z.number().int().nonnegative(),
     spokenFeedback: z.string().optional(),
     visualStatus: z.string().min(1),
@@ -240,6 +291,7 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('needs_input'),
     actionId: z.string().min(1),
+    interpretation: ActionInterpretationSchema.optional(),
     question: z.string().min(1),
     choices: z.array(
       z.object({
@@ -251,6 +303,7 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('rejected'),
     actionId: z.string().min(1),
+    interpretation: ActionInterpretationSchema.optional(),
     reason: z.enum([
       'stale_revision',
       'unresolved_sky',
@@ -259,6 +312,8 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
       'invalid_epoch',
       'missing_source',
       'unsafe_synthetic_edit',
+      'no_grounded_answer',
+      'not_connected',
     ]),
     explanation: z.string().min(1),
     nextActions: z.array(z.string()),
@@ -266,6 +321,7 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('canceled'),
     actionId: z.string().min(1),
+    interpretation: ActionInterpretationSchema.optional(),
     settledStateVersion: z.number().int().nonnegative(),
     visualStatus: z.string().min(1),
   }),

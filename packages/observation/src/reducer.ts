@@ -22,14 +22,7 @@ import {
  * ============================================================================
  */
 
-type RejectionReason =
-  | 'stale_revision'
-  | 'unresolved_sky'
-  | 'ambiguous_target'
-  | 'no_distance_estimate'
-  | 'invalid_epoch'
-  | 'missing_source'
-  | 'unsafe_synthetic_edit';
+type RejectionReason = Extract<ActionOutcome, { status: 'rejected' }>['reason'];
 
 function rejectAction(
   session: ObservationSession,
@@ -445,6 +438,22 @@ export function dispatchAlbedianAction(
         status
       );
     }
+
+    // Each turns into a real action in the unit that wires it to the viewport or the audio engine
+    case 'space.regime':
+    case 'scene.show':
+    case 'audio.set':
+      return rejectAction(session, action.requestId, 'not_connected', 'Voice cannot do this in the app yet.', []);
+
+    // Answers wait for the M3 tools, which compute every number from the user's own data
+    case 'question.ask':
+      return rejectAction(
+        session,
+        action.requestId,
+        'no_grounded_answer',
+        'No tool can answer questions from your data yet.',
+        []
+      );
   }
 }
 
