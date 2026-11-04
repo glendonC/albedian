@@ -18,14 +18,12 @@ from pathlib import Path
 import numpy as np
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from PIL import Image
 from scipy.spatial.transform import Rotation
 
 from services.science import sky_registration as sr
 
 ROOT = Path(__file__).resolve().parents[2]
 TEXTURES = ROOT / "apps" / "web" / "public" / "textures"
-NAMES = ROOT / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3" / "names.json"
 ARCSEC = math.pi / (180.0 * 3600.0)
 GEOM = sr.PanoramaGeometry(width=720, height=360)
 
@@ -127,20 +125,3 @@ def test_committed_panorama_solution_is_a_fresh_fit():
     assert chosen["medianTexels"] < 0.5 and chosen["p90Texels"] < 1.0
     assert solution["fit"]["heldOut"]["rigidOnly"]["medianTexels"] > chosen["medianTexels"]
 
-
-def test_star_map_is_equatorial_plate_carree_with_ra_zero_at_the_centre():
-    """Bright IAU-named stars in nasa_starmap_4k.jpg sit at RA/Dec plate carree positions."""
-    rgb = np.asarray(Image.open(TEXTURES / "nasa_starmap_4k.jpg").convert("RGB"), dtype=np.float64) / 255.0
-    height, width = rgb.shape[:2]
-    geom = sr.PanoramaGeometry(width=width, height=height)
-    dog = sr.difference_of_gaussians(rgb.mean(axis=2), inner_px=0.7, outer_px=4.0)
-    errors = []
-    for star in json.loads(NAMES.read_text())["names"]:
-        if star["mag"] > 2.5:
-            continue
-        x, y = sr.frame_to_pixel(sr.radec_to_unit(star["raDeg"], star["decDeg"]), geom)
-        found = sr.star_centroid(dog, float(x), float(y), 2, 0.05)
-        if found is not None:
-            errors.append(math.hypot(float(sr.wrap_dx(found[0] - x, width)), found[1] - y))
-    assert len(errors) >= 60
-    assert float(np.median(errors)) < 0.3

@@ -144,5 +144,5 @@ from an early position up to 40 arcsec away) and reads every tile back before wr
   most about 2 arcmin over a decade, for the fastest star; typically under 1 arcsec).
 - Magnitudes are Gaia G except for the 226 Hipparcos entries, which carry Hp; colour tints for
   those use an approximate B-V to BP-RP slope and are a rendering aid only.
-- The sky dome textures in `SparkPortalRenderer` (Milky Way panorama, star map) are not
-  registered to ICRS, so they do not line up with these catalog stars.
+- The sky dome's Milky Way panorama is registered to these catalog stars in both renderers
+  ([SKY_PANORAMA_REGISTRATION.md](SKY_PANORAMA_REGISTRATION.md)).

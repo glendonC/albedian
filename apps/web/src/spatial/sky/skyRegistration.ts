@@ -3,17 +3,15 @@ import { ICRS_TO_SCENE_QUATERNION } from '../catalogStars/CatalogStarField.js';
 import type { Vec3 } from '../catalogStars/healpix.js';
 
 /**
- * Where the sky dome's two images point, so both renderers can sample them by view direction
- * and draw them under the catalog stars (which sit at ICRS directions through
- * `ICRS_TO_SCENE_QUATERNION`). The shaders in `SparkPortalRenderer.ts` (`skyMat`) and
- * `webgpu/cislunar/skyBackground.ts` implement `panoramaUv` and `starMapUv`; these CPU
- * versions are what the tests check against the measured star images.
+ * Where the sky dome's image points, so both renderers can sample it by view direction and draw
+ * it under the catalog stars (which sit at ICRS directions through `ICRS_TO_SCENE_QUATERNION`).
+ * The shaders in `SparkPortalRenderer.ts` (`skyMat`) and `webgpu/cislunar/skyBackground.ts`
+ * implement `panoramaUv`; this CPU version is what the tests check against the measured star
+ * images.
  *
- * - ESO Milky Way panorama (eso0932a): plate carree in its own frame, about 3.8 degrees from
- *   galactic, plus a vertical offset and a table of stitching offsets, all fitted to catalog
- *   stars by `scripts/register_sky_panorama.py` into `eso0932a_registration.json`.
- * - NASA SVS star map: plate carree in ICRF/J2000 right ascension and declination, RA 0h at the
- *   centre and increasing to the left, as SVS publishes it; no fitted terms.
+ * The ESO Milky Way panorama (eso0932a) is plate carree in its own frame, about 3.8 degrees from
+ * galactic, plus a vertical offset and a table of stitching offsets, all fitted to catalog stars
+ * by `scripts/register_sky_panorama.py` into `eso0932a_registration.json`.
  *
  * Texture coordinates follow three: u to the right, v = 1 at the top row of the image.
  */
@@ -127,11 +125,6 @@ export function panoramaUv(sceneDir: Vec3, registration: PanoramaRegistration): 
     u - east / (registration.imageWidth * cosLat),
     v + (north - registration.yOffsetPx) / registration.imageHeight,
   ];
-}
-
-/** NASA SVS star map texture coordinates for a scene direction (equatorial, RA 0h at the centre). */
-export function starMapUv(sceneDir: Vec3): [number, number] {
-  return plateCarreeUv(applyRows(sceneToIcrsRows(), sceneDir));
 }
 
 function base64ToBytes(data: string): Uint8Array {

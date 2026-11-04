@@ -18,21 +18,5 @@
     "credit": "Catalog positions: Gaia DR3 (Gaia Collaboration 2023, ESA/Gaia/DPAC) and Hipparcos 2007 (van Leeuwen 2007).",
     "licence": "Derived from ESA archive data distributed under CC BY-NC 3.0 IGO; commercial use needs ESA's authorisation (see the catalog manifest).",
     "processing": "Regenerate with `uv run python scripts/register_sky_panorama.py`; `--verify` refits and compares byte for byte."
-  },
-  "nasa_starmap_4k.jpg": {
-    "source": "NASA Scientific Visualization Studio, Deep Star Maps: the celestial star map as a 1024x512 print JPEG. SVS offers that size and layout in both releases, as starmap_2020_4k_print.jpg (Deep Star Maps 2020, SVS 4851, plotted from Hipparcos-2, Tycho-2 and Gaia DR2) and starmap_4k_print.jpg (Deep Star Maps, 2012, SVS 3895). Which release this file is was not established.",
-    "candidateUrls": [
-      "https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/starmap_2020_4k_print.jpg",
-      "https://svs.gsfc.nasa.gov/vis/a000000/a003800/a003895/starmap_4k_print.jpg"
-    ],
-    "pages": ["https://svs.gsfc.nasa.gov/4851", "https://svs.gsfc.nasa.gov/3895"],
-    "credit": "NASA/Goddard Space Flight Center Scientific Visualization Studio. Gaia DR2: ESA/Gaia/DPAC (2020 release).",
-    "licence": "The SVS pages ask for the credit above and state no other terms. NASA's general media guidelines were not checked.",
-    "size": [1024, 512],
-    "sha256": "8d2e7e8d515e238deaf90e2b7fb11b2838b6e8db64f933a57540d894468148aa",
-    "identification": "Inference, not verified: the file has no metadata. Its size, layout and look match the SVS print JPEGs: a plot of catalog stars with the Milky Way built from faint ones. It is not a photograph, and not ESO's panorama reprojected. Settling the release needs the SVS files downloaded and hashed.",
-    "projection": "Plate carree in ICRF/J2000 right ascension and declination, RA 0h at the centre and increasing to the left, north at the top, as the SVS 4851 caption states. Measured (tests/integration/test_sky_registration.py): 79 IAU-named stars to magnitude 2.5 sit a median 0.09 pixels (0.03 degrees) from their RA/Dec positions.",
-    "processing": "None to the pixels. Both renderers sample it by right ascension and declination. The shader grades it: black level 0.068, power 1.95, gain 0.72.",
-    "note": "The file name says 4k; the image is 1024x512. Every star it shows duplicates a catalog star the renderer draws from Gaia DR3 / Hipparcos 2007, and its Milky Way duplicates ESO's photograph, so removing it is proposed."
   }
 }

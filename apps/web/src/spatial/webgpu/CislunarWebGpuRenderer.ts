@@ -132,14 +132,13 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.scene.add(this.rig);
     this.scene.add(this.world);
 
-    // ESO eso0932a and a NASA SVS Deep Star Maps print; provenance in sky_texture_sources.json
+    // ESO eso0932a; provenance in sky_texture_sources.json
     const milkyWay = this.loadTexture('/textures/eso_milkyway_panorama.jpg', SRGBColorSpace, true);
-    const starMap = this.loadTexture('/textures/nasa_starmap_4k.jpg', SRGBColorSpace, true);
     // The dome is drawn only with the panorama's fitted registration, never misaligned
     this.pending.push(
       loadPanoramaRegistration().then(
         (registration) => {
-          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, starMap, registration);
+          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, registration);
         },
         (error: unknown) => console.warn('[webgpu host] sky panorama registration failed; no sky dome', error)
       )

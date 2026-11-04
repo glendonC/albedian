@@ -14,7 +14,6 @@ import {
   plateCarreeUv,
   sampleOffsetTable,
   sceneToIcrsRows,
-  starMapUv,
   transposeRows,
   type PanoramaOffsetTable,
 } from '../skyRegistration';
@@ -98,15 +97,6 @@ describe('sky registration: scene axes and plate carree', () => {
       }),
       { numRuns: 300 }
     );
-  });
-
-  it('samples the NASA SVS star map by right ascension with 0h at the centre, increasing to the left', () => {
-    const [u0, v0] = starMapUv(toScene(0, 0));
-    expect(u0).toBeCloseTo(0.5, 12);
-    expect(v0).toBeCloseTo(0.5, 12);
-    expect(starMapUv(toScene(90, 0))[0]).toBeCloseTo(0.25, 12);
-    expect(starMapUv(toScene(270, 0))[0]).toBeCloseTo(0.75, 12);
-    expect(starMapUv(toScene(101.287, -16.716))[1]).toBeCloseTo(0.5 - 16.716 / 180, 12);
   });
 });
 

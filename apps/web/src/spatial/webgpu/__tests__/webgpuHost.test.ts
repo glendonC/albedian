@@ -130,4 +130,10 @@ describe('WebGPU host: cislunar render layers', () => {
     ]);
     expect(CISLUNAR_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
   });
+
+  it('cites the ESO panorama and its registration for the sky, and no plotted star map', () => {
+    const sky = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky');
+    expect(sky?.sources.join(' ')).toContain('eso0932a');
+    expect(`${sky?.disclosure} ${sky?.sources.join(' ')}`).not.toMatch(/star map|plot of catalog stars/i);
+  });
 });

@@ -27,7 +27,7 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
-import { sceneToIcrsRows, sceneToPanoramaRows, type PanoramaRegistration } from '../../sky/skyRegistration.js';
+import { sceneToPanoramaRows, type PanoramaRegistration } from '../../sky/skyRegistration.js';
 
 /** Plate carree coordinates of a unit vector: longitude 0 at u = 0.5, increasing to the left; north at v = 1. */
 function plateCarree(d: Node<'vec3'>): Node<'vec2'> {
@@ -60,26 +60,18 @@ export function createPanoramaOffsetTexture(registration: PanoramaRegistration):
  * The all-sky dome of the landing scenes as a background node, ported from `skyMat` in
  * SparkPortalRenderer.ts (optical band, restoration on, which is what the landing draws), and
  * sampled by view direction so it lines up with the catalog stars (see sky/skyRegistration.ts):
- * the ESO panorama through its fitted rotation and offset table, the NASA SVS star map through
- * right ascension and declination. Screen-space u derivatives are wrapped at the seam so the
- * panorama keeps full mip detail across it.
+ * the ESO panorama through its fitted rotation and offset table. Screen-space u derivatives are
+ * wrapped at the seam so the panorama keeps full mip detail across it.
  *
- * Content: the ESO Milky Way panorama and the NASA star map, black-level clipped, contrast
- * curved and tinted for display, plus a boost of the panorama's red excess (its H II regions);
- * no new structure is synthesized.
+ * Content: the ESO Milky Way panorama, black-level clipped, contrast curved and tinted for
+ * display, plus a boost of its red excess (its H II regions); no new structure is synthesized.
  * Not ported, since the landing never shows them: the halpha and jwst_ir band remaps, the
  * spectral monocle and the unrestored sensor veil.
  */
-export function createSkyBackgroundNode(
-  milkyWay: Texture,
-  starMap: Texture,
-  registration: PanoramaRegistration
-): Node<'vec4'> {
+export function createSkyBackgroundNode(milkyWay: Texture, registration: PanoramaRegistration): Node<'vec4'> {
   const sceneToPanorama = uniform(new Matrix3().set(...sceneToPanoramaRows(registration)));
-  const sceneToIcrs = uniform(new Matrix3().set(...sceneToIcrsRows()));
   const { imageWidth, imageHeight, yOffsetPx, offsetTable } = registration;
   const milkyWayNode = texture(milkyWay);
-  const starMapNode = texture(starMap);
   const offsetNode = texture(createPanoramaOffsetTexture(registration));
 
   return Fn(() => {
@@ -94,19 +86,14 @@ export function createSkyBackgroundNode(
     );
     const [mwGradX, mwGradY] = seamlessGrad(frameUv);
 
-    const starUv = plateCarree(sceneToIcrs.mul(dir).normalize()).toVar('skyStarUv');
-    const [starGradX, starGradY] = seamlessGrad(starUv);
-
     const mwCol = milkyWayNode.sample(mwUv).grad(mwGradX, mwGradY).rgb;
-    const starCol = starMapNode.sample(starUv).grad(starGradX, starGradY).rgb;
     const cleanMw = max(vec3(0.0), mwCol.sub(0.042)).toVar('skyCleanMw');
-    const cleanStars = max(vec3(0.0), starCol.sub(0.068));
 
     const galacticBulge = pow(cleanMw, vec3(1.52)).mul(vec3(1.22, 1.04, 0.9)).mul(1.32);
     // Called hAlphaKnots in the GLSL: a colour boost of the panorama's red excess, not a measurement
     const redExcessBoost = vec3(1.25, 0.28, 0.48).mul(pow(max(0.0, cleanMw.r.sub(cleanMw.g.mul(0.85))), 1.6)).mul(1.85);
     const deepSpaceBase = vec3(0.002, 0.003, 0.008);
-    const sky = deepSpaceBase.add(galacticBulge).add(redExcessBoost).add(pow(cleanStars, vec3(1.95)).mul(0.72));
+    const sky = deepSpaceBase.add(galacticBulge).add(redExcessBoost);
     return vec4(sky, 1.0);
   })() as unknown as Node<'vec4'>;
 }

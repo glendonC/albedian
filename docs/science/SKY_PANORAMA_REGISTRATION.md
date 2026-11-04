@@ -1,8 +1,8 @@
 # Sky dome registration
 
-The landing scenes draw an all-sky dome behind the catalog stars: ESO's Milky Way panorama and a NASA star map. Until this change both renderers drew the dome at an arbitrary rotation, `Euler(0.18, 0, 0.32)`, so the photograph's Milky Way and stars sat at positions unrelated to the Gaia DR3 and Hipparcos stars, which are drawn at their ICRS directions. Both renderers now sample the dome by view direction through the same scene orientation the catalog stars use. On screen, the dome's star images fall a median 0.27 to 0.28 texels from their catalog stars, at most 1.1 [measured].
+The landing scenes draw an all-sky dome behind the catalog stars: ESO's Milky Way panorama. Until this change both renderers drew the dome at an arbitrary rotation, `Euler(0.18, 0, 0.32)`, so the photograph's Milky Way and stars sat at positions unrelated to the Gaia DR3 and Hipparcos stars, which are drawn at their ICRS directions. Both renderers now sample the dome by view direction through the same scene orientation the catalog stars use. On screen, the dome's star images fall a median 0.27 to 0.28 texels from their catalog stars, at most 1.1 [measured, while the dome also drew the NASA star map, since removed (finding 1)].
 
-The panorama is not in exact galactic coordinates. Its axes sit 3.78 degrees from galactic, and the stitching of its almost 300 fields leaves smooth offsets of up to 2.2 texels. `scripts/register_sky_panorama.py` fits both against catalog stars and writes the solution the renderers use. Neither image's pixels are changed. Provenance for both images is in [`sky_texture_sources.json`](../../apps/web/public/textures/sky_texture_sources.json).
+The panorama is not in exact galactic coordinates. Its axes sit 3.78 degrees from galactic, and the stitching of its almost 300 fields leaves smooth offsets of up to 2.2 texels. `scripts/register_sky_panorama.py` fits both against catalog stars and writes the solution the renderers use. The image's pixels are not changed. Its provenance is in [`sky_texture_sources.json`](../../apps/web/public/textures/sky_texture_sources.json).
 
 A texel here is one pixel of the 6000-pixel-wide panorama: 360/6000 degrees, 216 arcseconds.
 
@@ -11,7 +11,8 @@ A texel here is one pixel of the 6000-pixel-wide panorama: 360/6000 degrees, 216
 | File | What it is | Projection | Sampled through |
 |---|---|---|---|
 | `eso_milkyway_panorama.jpg`, 6000x3000 | ESO/S. Brunier, *The Milky Way panorama* (eso0932a, 2009), CC BY 4.0. A photograph stitched from almost 300 fields. Identified from its embedded ESO metadata. [verified] | Plate carree, galactic plane horizontal, longitude increasing to the left. ESO names no projection; the frame was measured (section 2). [measured] | Its fitted solution, `eso0932a_registration.json` |
-| `nasa_starmap_4k.jpg`, 1024x512 | A NASA SVS Deep Star Maps print JPEG: a plot of catalog stars, not a photograph. The file has no metadata; SVS offers this size and layout in both its 2012 and 2020 releases, and which one it is was not established. [inferred] | Plate carree in right ascension and declination, RA 0h at the centre and increasing to the left, as SVS documents. 79 IAU-named stars to magnitude 2.5 sit a median 0.09 pixels (0.03 degrees) from their RA/Dec positions. [verified, measured] | ICRS directly, no fitted terms |
+
+The dome also drew `nasa_starmap_4k.jpg`, a 1024x512 NASA SVS Deep Star Maps print: a plot of catalog stars, registered in right ascension and declination. It was removed (finding 1).
 
 ## 2. Registering the panorama
 
@@ -55,7 +56,7 @@ A table built from one half of the stars predicts the other half's residuals, so
 
 - **WebGL**, `skyMat` in [`SparkPortalRenderer.ts`](../../apps/web/src/spatial/SparkPortalRenderer.ts): the vertex shader passes the direction from the camera, and the dome mesh has no rotation. The panorama texture is bound only once its solution has loaded.
 - **WebGPU host**, [`skyBackground.ts`](../../apps/web/src/spatial/webgpu/cislunar/skyBackground.ts): the background node uses `positionWorldDirection` and is attached only once the solution has loaded.
-- Both apply the rotation as one `mat3`, sample the offset table (RG8, bilinear, repeating in u), and sample both images with screen-space gradients wrapped at the longitude seam. [`skyRegistration.ts`](../../apps/web/src/spatial/sky/skyRegistration.ts) is the CPU version of the same math; its tests reproduce the Python model's position for all 81 bright named check stars to 0.01 pixels.
+- Both apply the rotation as one `mat3`, sample the offset table (RG8, bilinear, repeating in u), and sample the image with screen-space gradients wrapped at the longitude seam. [`skyRegistration.ts`](../../apps/web/src/spatial/sky/skyRegistration.ts) is the CPU version of the same math; its tests reproduce the Python model's position for all 81 bright named check stars to 0.01 pixels.
 - The colour grade is unchanged.
 
 ### Check on screen [measured]
@@ -67,13 +68,13 @@ A table built from one half of the stars predicts the other half's residuals, so
 | WebGL renderer | 16, 4.5, 6.2 texels | **20, 0.28, 1.12 texels** |
 | WebGPU host | 17, 4.0, 6.2 texels | **20, 0.27, 1.09 texels** |
 
-Counted are named stars in clear sky with a dome image at the search position; the 7 behind the Moon or the Earth are left out. Before the change, the peak found was an unrelated star, so those figures only reflect the search window's size.
+Counted are named stars in clear sky with a dome image at the search position; the 7 behind the Moon or the Earth are left out. Before the change, the peak found was an unrelated star, so those figures only reflect the search window's size. These figures were measured while the dome also drew the NASA star map, whose registered star images sat at the same positions; it has been removed since (finding 1).
 
 Matched captures, canvas only: WebGL [before](img/sky-registration/cislunar-webgl-before.jpg) and [after](img/sky-registration/cislunar-webgl-after.jpg); WebGPU host [before](img/sky-registration/cislunar-webgpu-before.jpg) and [after](img/sky-registration/cislunar-webgpu-after.jpg). [Detail](img/sky-registration/named-stars-detail.jpg), WebGPU host, x5: Hamal, Enif, Algenib and Menkar, each marked at its catalog position. Columns: before with the dome only, after with the dome only, and after with the catalog sprite.
 
 ## 4. Findings for decision
 
-1. **The star map duplicates the catalog stars. Proposed: remove it.** It is a plot of Hipparcos-2, Tycho-2 and (2020 release) Gaia DR2 stars, so every star in it is a star the renderer already draws from Gaia DR3 and Hipparcos 2007. Its faint-star Milky Way also duplicates ESO's photograph. It is registered for now, but adds nothing measured. Removing it drops `uStarMapTex` and its term from both shaders. Before the change it was sampled with the panorama's coordinates, so its RA/Dec Milky Way arc crossed the panorama's band. [verified, proposed]
+1. **The star map duplicated the catalog stars. Removed.** It was a plot of Hipparcos-2, Tycho-2 and (2020 release) Gaia DR2 stars, so every star in it is a star the renderer already draws from Gaia DR3 and Hipparcos 2007, and its faint-star Milky Way duplicated ESO's photograph. Before the registration it was sampled with the panorama's coordinates, so its RA/Dec Milky Way arc crossed the panorama's band. Both renderers no longer load it, and the file and its sources entry are gone. [verified]
 2. **The photograph contains two planets.** Venus at RA 23h19m, Dec -3.9 and Jupiter at RA 19h30m, Dec -21.9 are among the image's brightest points that match no star. The repo's ephemeris (`services/science/ephemeris.py`) puts Venus within 0.07 degrees of that point on 2009-01-22 and Jupiter within 0.06 degrees on 2008-06-09. ESO says planets crossed the fields during the months of shooting. Registered, Venus now sits beside the Moon in the landing frame as the brightest point in the sky, with lens spikes from the post chain. Keep it disclosed (the layer disclosure says so now) or mask both planets in the image as a documented retouch. [measured, inferred dates]
 3. **`hAlphaKnots` is not H-alpha.** It boosts the panorama's red excess, `pow(max(0, r - 0.85 g), 1.6)`, with a fixed tint; it is a colour treatment of a broadband RGB photograph. The `halpha` and `jwst_ir` band modes of the WebGL dome mix fixed weights of the same RGB into band-coloured images, so they show no H-alpha or infrared data. Left unchanged for your decision: rename and disclose them, or remove them. [verified]
 4. **The landing looks at RA 0h22m, Dec +1.0** (galactic latitude -61), where there is no Milky Way. The old rotation put a Milky Way band behind the Earth and Moon; the true sky in that direction has none. If the landing should show the Milky Way, turn the composition (camera, Earth and Moon together) toward Sagittarius or Cygnus rather than the sky. [measured, proposed]
@@ -91,7 +92,6 @@ pnpm vitest run apps/web/src/spatial/sky
 
 ## 6. Not verified
 
-- Byte identity of the committed panorama with ESO's current download, and of the star map with either SVS print JPEG: both need the files downloaded.
-- The terms of NASA's general media guidelines for the SVS map; the SVS pages ask only for credit.
+- Byte identity of the committed panorama with ESO's current download: it needs the file downloaded.
 - The capture dates of the planets: the dates above are when the ephemeris agrees, not dates from ESO.
 - Registration away from the landing view in the renderers. The fit covers the whole sky, but the screen check covered one frame.

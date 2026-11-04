@@ -21,7 +21,7 @@ import {
   createOriginCameraFrustumIndicator,
   updateOriginFrustumContinuity,
 } from './referenceFrameContinuity.js';
-import { loadPanoramaRegistration, sceneToIcrsRows, sceneToPanoramaRows } from './sky/skyRegistration.js';
+import { loadPanoramaRegistration, sceneToPanoramaRows } from './sky/skyRegistration.js';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
   BRUNETON_ATMO_LUT_URL,
@@ -196,9 +196,7 @@ export class SparkPortalRenderer {
 
   private skyDomeUniforms: {
     uMilkyWayTex: { value: THREE.Texture | null };
-    uStarMapTex: { value: THREE.Texture | null };
     uSceneToPanorama: { value: THREE.Matrix3 };
-    uSceneToIcrs: { value: THREE.Matrix3 };
     uPanoramaOffsets: { value: THREE.Texture | null };
     uPanoramaGeometry: { value: THREE.Vector3 };
     uPanoramaOffsetDecode: { value: THREE.Vector2 };
@@ -329,10 +327,8 @@ export class SparkPortalRenderer {
 
     this.skyDomeUniforms = {
       uMilkyWayTex: { value: null },
-      uStarMapTex: { value: null },
       // Set from eso0932a_registration.json before the panorama is bound (sky/skyRegistration.ts)
       uSceneToPanorama: { value: new THREE.Matrix3() },
-      uSceneToIcrs: { value: new THREE.Matrix3().set(...sceneToIcrsRows()) },
       uPanoramaOffsets: { value: null },
       // Image width and height in pixels, vertical offset in pixels
       uPanoramaGeometry: { value: new THREE.Vector3(1, 1, 0) },
@@ -523,7 +519,7 @@ export class SparkPortalRenderer {
       );
     };
 
-    // ESO eso0932a and a NASA SVS Deep Star Maps print; provenance in sky_texture_sources.json.
+    // ESO eso0932a; provenance in sky_texture_sources.json.
     // The panorama is bound only with its fitted registration, so it is never drawn misaligned.
     const panorama = new Promise<THREE.Texture>((resolve) => loadTex('/textures/eso_milkyway_panorama.jpg', resolve));
     void Promise.all([loadPanoramaRegistration(), panorama]).then(
@@ -546,9 +542,6 @@ export class SparkPortalRenderer {
       },
       (error: unknown) => console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
     );
-    loadTex('/textures/nasa_starmap_4k.jpg', (t) => {
-      this.skyDomeUniforms.uStarMapTex.value = t;
-    });
     // NASA Blue Marble (Nov 2004) and Black Marble 2016 lights; provenance in earth_texture_sources.json
     loadTex('/textures/earth_day_bluemarble_2004-11_8k.jpg', (t) => {
       this.earthUniforms.uDayTex.value = t;
@@ -609,9 +602,8 @@ export class SparkPortalRenderer {
 
   /**
    * All-sky dome around the camera (in the camera's localFrame): ESO's Milky Way panorama
-   * (eso0932a) and NASA's SVS star map, sampled by view direction so both sit at infinity and
-   * line up with the catalog stars. The panorama goes through its fitted rotation and offset
-   * table, the star map through right ascension and declination (sky/skyRegistration.ts).
+   * (eso0932a), sampled by view direction so it sits at infinity and lines up with the catalog
+   * stars, through its fitted rotation and offset table (sky/skyRegistration.ts).
    */
   private buildGlobalPhotorealisticSkyDome(): void {
     const skyGeo = new THREE.SphereGeometry(900, 96, 64);
@@ -632,9 +624,7 @@ export class SparkPortalRenderer {
       `,
       fragmentShader: /* glsl */ `
         uniform sampler2D uMilkyWayTex;
-        uniform sampler2D uStarMapTex;
         uniform mat3 uSceneToPanorama;
-        uniform mat3 uSceneToIcrs;
         uniform sampler2D uPanoramaOffsets;
         uniform vec3 uPanoramaGeometry;
         uniform vec2 uPanoramaOffsetDecode;
@@ -675,16 +665,8 @@ export class SparkPortalRenderer {
           vec2 mwGradX, mwGradY;
           seamlessGrad(frameUv, mwGradX, mwGradY);
 
-          // NASA star map: right ascension and declination, RA 0h at the centre
-          vec2 starUv = plateCarree(normalize(uSceneToIcrs * dir));
-          vec2 starGradX, starGradY;
-          seamlessGrad(starUv, starGradX, starGradY);
-
           vec3 mwCol = textureGrad(uMilkyWayTex, mwUv, mwGradX, mwGradY).rgb;
-          vec3 starCol = textureGrad(uStarMapTex, starUv, starGradX, starGradY).rgb;
-
           vec3 cleanMw = max(vec3(0.0), mwCol - vec3(0.042));
-          vec3 cleanStars = max(vec3(0.0), starCol - vec3(0.068));
 
           // Deep velvet-obsidian cosmos + smooth Galactic Core dust-lane warmth (zero grainy JPEG noise)
           vec3 galacticBulge = pow(cleanMw, vec3(1.52)) * vec3(1.22, 1.04, 0.90) * 1.32;
@@ -694,8 +676,7 @@ export class SparkPortalRenderer {
           vec3 opticalSky =
             deepSpaceBase +
             galacticBulge +
-            hAlphaKnots +
-            pow(cleanStars, vec3(1.95)) * 0.72;
+            hAlphaKnots;
 
           float hAlphaLum = dot(opticalSky, vec3(0.55, 0.25, 0.20)) + dot(cleanMw, vec3(0.45, 0.15, 0.25)) * 0.75;
           vec3 hAlphaSky = mix(opticalSky, vec3(hAlphaLum * 2.15, hAlphaLum * 0.24, hAlphaLum * 0.62), 0.85);
@@ -718,7 +699,7 @@ export class SparkPortalRenderer {
           float distPx = length(deltaPx);
           float lensMask = uMonocleActive * (1.0 - smoothstep(126.0, 130.0, distPx));
 
-          vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030) + cleanStars * 0.08;
+          vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030);
           vec3 outsideSky = mix(rawSensorVeil, opticalSky, uRestoration);
           vec3 finalCol = mix(outsideSky, lensBandSky, lensMask);
 
