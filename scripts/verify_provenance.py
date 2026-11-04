@@ -49,20 +49,15 @@ GAPS_FORMAT = "albedian.asset-provenance-gaps"
 BASELINE_GAPS: dict[str, str] = {
     "apps/web/public/models/lb_splats.json": "626645289f55f59f527d8003c19ed81e0928be21b7505b07e00286352d757b49",
     "apps/web/public/models/local_bubble_oneill2024.glb": "ecc56b0b6f59031b552af1b8410ffaabd19730c8ad2b3c025a4b2d2eaaa5028d",
-    "apps/web/public/models/nasa_bp_tauri.glb": "368ec13556fad8f13584724bb4345b73b04fff7349aa597aaeca1b05e51902df",
-    "apps/web/public/models/nasa_cas_a.glb": "a3a4230c1adbdbb68d051b42bf0027a0688c022a6492c35a64c86f11028e827c",
     "apps/web/public/models/nasa_lro_moon_3d.glb": "75eba4b5f9168c96f8ef9f47d2a346ba54eef05d5f2b81c1de5ed816f8dcd09a",
     "apps/web/public/models/nasa_nebula_splats.json": "1d696278d8f6069dd20f6c473cc5025cddb04a5754fcf02d336b39ef48f527cc",
     "apps/web/public/models/nasa_pillars_3d.glb": "778910d086d06eb48024ed52d58a6c30bf803dfb3634615b6d23858ed465b1c5",
-    "apps/web/public/splats/distant-igloo.spz": "41579c3bfc754fd40da3db0c9924cfd8b70b403d7448e0f90935e8f62d6f5121",
     "apps/web/public/splats/snow-street.spz": "35840fd3d178388409096537e2f363c49e1502850c5bb81dbaa5cbc4ecb3ecaa",
     "apps/web/public/splats/valley.spz": "565768b0b758698a641521654ac0947a74c85cb69ee0f034e6c928fbefa97833",
     "apps/web/public/textures/bruneton_atmo_lut.png": "9747ec7c4555cba7bc7fbee4ae5839e09196e9d75d23023aec5ff76b3f36c4dd",
-    "apps/web/public/textures/cycles_nebula_volume_4k.png": "ae069b7b3d4681ffc6f0a71e0322fd7279387034d055c7e937b8c1f9013e9197",
     "apps/web/public/textures/earth_clouds.png": "f6f9195b2ca84ef45a7b6ca50bc956c06d694a5ebdc57c6bfcf950d367bc7604",
     "apps/web/public/textures/earth_normal.jpg": "3fc43e9639c34e8223c4a871e3bdf5b2d52ee79f7e89ce3f28cba45d4cac031a",
     "apps/web/public/textures/earth_specular.jpg": "2df48906732d7a458b2d0a7cdec51a829262307c6bdee4cfdf079a4dd7c71c69",
-    "apps/web/public/textures/moon_albedo.jpg": "fcb0f1f5548e6e18d40063dd55c6aacd3daedf2407b181dab85b61e22bf9fe57",
 }
 
 

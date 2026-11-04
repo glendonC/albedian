@@ -108,8 +108,8 @@ machine [measured].
 ## Known gaps
 
 `scripts/provenance_gaps.json` lists the files that have no record yet, each with its reason.
-It may only shrink. `BASELINE_GAPS` in the check pins every file that lacked a record when the
-check arrived, by path and SHA-256, and an entry fails when:
+It may only shrink. `BASELINE_GAPS` in the check pins, by path and SHA-256, the files that lacked
+a record when the check arrived and are still here, and an entry fails when:
 
 - its path is not in the baseline (a new asset needs a record, not a gap);
 - its file has a record now, or is gone (remove the entry);
@@ -118,6 +118,8 @@ check arrived, by path and SHA-256, and an entry fails when:
 The list started with 16 entries: six textures (the atmosphere lookup table, which a script
 makes from hand-set parameters with no outside data; three Earth maps that match three.js
 example textures or are unidentified; two files due for deletion), all seven files in
-`models/`, and the three tracked splats.
+`models/`, and the three tracked splats. Five unused ones were deleted since (two models, a
+splat and two textures), and left the baseline with them, so they can return only with a
+record. Eleven remain.
 
 To close a gap, write the file's record and delete its entry in the same change.

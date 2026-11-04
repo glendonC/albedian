@@ -11,14 +11,6 @@
       "reason": "No source, licence or credit recorded; the name points to O'Neill et al. (2024)."
     },
     {
-      "path": "apps/web/public/models/nasa_bp_tauri.glb",
-      "reason": "Not used by any code; the lead decided to delete it (data-1c)."
-    },
-    {
-      "path": "apps/web/public/models/nasa_cas_a.glb",
-      "reason": "Not used by any code; the lead decided to delete it (data-1c)."
-    },
-    {
       "path": "apps/web/public/models/nasa_lro_moon_3d.glb",
       "reason": "No source, licence or credit recorded; the name suggests a NASA model."
     },
@@ -29,10 +21,6 @@
     {
       "path": "apps/web/public/models/nasa_pillars_3d.glb",
       "reason": "No source, licence or credit recorded; the name suggests a NASA model, but its mesh is named CasA_2025."
-    },
-    {
-      "path": "apps/web/public/splats/distant-igloo.spz",
-      "reason": "Not used by any code; the lead decided to delete it (data-1c)."
     },
     {
       "path": "apps/web/public/splats/snow-street.spz",
@@ -47,10 +35,6 @@
       "reason": "Made by scripts/bake_bruneton_lut_and_splats.py: hand-set single scattering with no outside data, to be replaced by a real Bruneton precomputation. A record needs at least one source."
     },
     {
-      "path": "apps/web/public/textures/cycles_nebula_volume_4k.png",
-      "reason": "Not used by any code; the lead decided to delete it (data-1c)."
-    },
-    {
       "path": "apps/web/public/textures/earth_clouds.png",
       "reason": "Origin unidentified; data-5 proposes a replacement from NASA's Blue Marble cloud layer."
     },
@@ -61,10 +45,6 @@
     {
       "path": "apps/web/public/textures/earth_specular.jpg",
       "reason": "Byte-identical to three.js's example texture earth_specular_2048.jpg, which states no source, author or licence; data-5 proposes a water mask from Natural Earth."
-    },
-    {
-      "path": "apps/web/public/textures/moon_albedo.jpg",
-      "reason": "Not used by any code; the same length as three.js's example texture moon_1024.jpg, which states no source or licence. The lead decided to delete it (data-1c)."
     }
   ]
 }
