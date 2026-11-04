@@ -14,14 +14,13 @@ describe('WebGL renderer: cislunar render layers', () => {
   });
 
   it('shares the WebGPU disclosures where both renderers draw the same data', () => {
-    for (const id of ['cislunar.sky', 'cislunar.earth', 'cislunar.atmosphere']) {
+    for (const id of ['cislunar.sky', 'cislunar.earth', 'cislunar.atmosphere', 'cislunar.moon']) {
       expect(layer(id)).toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === id));
     }
   });
 
   it('says what the WebGL renderer draws differently', () => {
     expect(layer('cislunar.catalog-stars')?.disclosure).toMatch(/point sprites/);
-    expect(layer('cislunar.moon')?.disclosure).toMatch(/procedural noise relief/);
     expect(layer('post.camera-optics')?.disclosure).toMatch(/ACES/);
   });
 });

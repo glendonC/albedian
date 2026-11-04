@@ -787,8 +787,9 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * Helper: Creates a photorealistic 3D Moon sphere using NASA Lunar Reconnaissance Orbiter (LRO)
-   * color albedo + LOLA laser altimeter displacement relief + procedural micro-crater normal detail + Lommel-Seeliger BRDF.
+   * The Moon: NASA SVS's colour map (from LRO's camera) and LOLA relief map, bump-lit with
+   * Lommel-Seeliger shading, an opposition surge and a faint earthshine (the same shading as the
+   * WebGPU port, webgpu/cislunar/bodyMaterials.ts). Only the mapped relief is drawn.
    */
   private createPhotorealisticMoonMesh(radius: number): THREE.Mesh {
     const geo = new THREE.SphereGeometry(radius, 160, 160);
@@ -817,35 +818,6 @@ export class SparkPortalRenderer {
         varying vec3 vViewDir;
         varying vec3 vObjPos;
 
-        float hash2(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-
-        float noise2(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(hash2(i), hash2(i + vec2(1.0, 0.0)), f.x),
-            mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), f.x),
-            f.y
-          );
-        }
-
-        float microRelief(vec2 uv) {
-          vec2 p = uv * vec2(180.0, 90.0);
-          float h = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
-            float n = noise2(p);
-            float crater = abs(n * 2.0 - 1.0);
-            h += a * mix(n, crater * crater, 0.65);
-            p *= 2.15;
-            a *= 0.48;
-          }
-          return h;
-        }
-
         void main() {
           vec3 albedo = texture2D(uAlbedoTex, vUv).rgb;
 
@@ -855,16 +827,7 @@ export class SparkPortalRenderer {
           float hD = texture2D(uDispTex, vUv - vec2(0.0, texel.y)).r;
           float hU = texture2D(uDispTex, vUv + vec2(0.0, texel.y)).r;
 
-          float mL = microRelief(vUv - vec2(0.0008, 0.0));
-          float mR = microRelief(vUv + vec2(0.0008, 0.0));
-          float mD = microRelief(vUv - vec2(0.0, 0.0008));
-          float mU = microRelief(vUv + vec2(0.0, 0.0008));
-
-          vec3 bumpOffset = vec3(
-            (hL - hR) * 3.8 + (mL - mR) * 0.55,
-            (hD - hU) * 3.8 + (mD - mU) * 0.55,
-            0.0
-          );
+          vec3 bumpOffset = vec3((hL - hR) * 3.8, (hD - hU) * 3.8, 0.0);
           vec3 N = normalize(vNormal + bumpOffset * 0.62);
 
           vec3 L = normalize(uSunDir);

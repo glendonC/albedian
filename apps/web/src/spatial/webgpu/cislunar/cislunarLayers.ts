@@ -58,10 +58,12 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     kind: 'solar_system_body',
     title: 'Moon',
     evidenceClass: 'simulated',
-    disclosure: 'Lunar albedo and relief maps on a Moon placed and lit for composition, not at an ephemeris position.',
+    disclosure:
+      'NASA SVS lunar colour and relief maps, made for appearance rather than science, on a Moon placed and lit for composition, not at an ephemeris position.',
     sources: [
-      'LRO albedo (lro_moon_2k.jpg, 1024x512; provenance not recorded)',
-      'LOLA-derived relief (lro_moon_disp.jpg; provenance not recorded)',
+      "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): colour map lroc_color_poles_1k, 1024x512, from the LROC WAC mosaic (lro_moon_2k.jpg)",
+      'SVS 4720 relief map ldem_3_8bit, 1024x512, from LOLA (lro_moon_disp.jpg)',
+      'Mesh: nasa_lro_moon_3d.glb (provenance not recorded)',
     ],
   },
   {

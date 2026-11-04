@@ -137,6 +137,15 @@ describe('WebGPU host: cislunar render layers', () => {
     expect(`${sky?.disclosure} ${sky?.sources.join(' ')}`).not.toMatch(/star map|plot of catalog stars/i);
   });
 
+  it("names the Moon's maps and carries SVS's caveat that they were made for appearance", () => {
+    // The data lane traced lro_moon_2k.jpg and lro_moon_disp.jpg to NASA SVS 4720 (CGI Moon Kit)
+    const moon = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.moon');
+    expect(moon?.disclosure).toMatch(/appearance rather than science/);
+    expect(moon?.sources.join(' ')).toMatch(/SVS 4720/);
+    expect(moon?.sources.join(' ')).toMatch(/lroc_color_poles_1k/);
+    expect(moon?.sources.join(' ')).toMatch(/ldem_3_8bit/);
+  });
+
   it('discloses the two planets the photograph shows and when its shoot photographed them', () => {
     // Kept unretouched (lead decision, 2026-11-04); measured in tests/integration/test_sky_registration.py
     const sky = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky');

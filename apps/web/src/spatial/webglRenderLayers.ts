@@ -31,27 +31,16 @@ const WEBGL_CAMERA_OPTICS: RenderLayer = {
 
 /**
  * What the WebGL renderer (`SparkPortalRenderer`) draws in the cislunar regime, in draw order,
- * with each layer's evidence class and the disclosure the UI shows. The sky, Earth and
- * atmosphere sample the same data the same way as on the WebGPU host, so they share its
- * declarations; the catalog stars, the Moon and the optics are drawn differently here.
+ * with each layer's evidence class and the disclosure the UI shows. The sky, Earth, atmosphere
+ * and Moon sample the same data the same way as on the WebGPU host, so they share its
+ * declarations; the catalog stars and the optics are drawn differently here.
  */
 export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
   sharedLayer('cislunar.sky'),
   WEBGL_CATALOG_STARS,
   sharedLayer('cislunar.earth'),
   sharedLayer('cislunar.atmosphere'),
-  {
-    id: 'cislunar.moon',
-    kind: 'solar_system_body',
-    title: 'Moon',
-    evidenceClass: 'simulated',
-    disclosure:
-      'Lunar albedo and relief maps plus procedural noise relief the maps do not have, on a Moon placed and lit for composition, not at an ephemeris position.',
-    sources: [
-      'LRO albedo (lro_moon_2k.jpg, 1024x512; provenance not recorded)',
-      'LOLA-derived relief (lro_moon_disp.jpg; provenance not recorded)',
-    ],
-  },
+  sharedLayer('cislunar.moon'),
   WEBGL_CAMERA_OPTICS,
 ]);
 
