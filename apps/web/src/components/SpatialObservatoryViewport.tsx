@@ -144,6 +144,10 @@ export const SpatialObservatoryViewport: React.FC<
     rendererRef.current = renderer;
     renderer.setSpectralBand('optical');
     renderer.setSpectralMonocleScreenPos(0.5, 0.5, false);
+    // ?t=<seconds> holds the scene clock, for snapshots of one pose across renderers
+    const heldRaw = new URLSearchParams(window.location.search).get('t');
+    const held = heldRaw === null ? Number.NaN : Number(heldRaw);
+    if (Number.isFinite(held)) renderer.holdClock(held);
 
     const handleResize = () => {
       if (!host) return;
