@@ -57,14 +57,14 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
    - The Open-Meteo free tier.
    - DSS2 imagery and the Mellinger panorama.
 
-   If Albedian will charge or carry ads, request ESA authorisation now. How long that takes is [open].
-2. **The sky dome branch** (`claude/nice-khayyam-277e40`, not merged). It asks four questions:
-   - Remove the NASA star map? Removal is recommended: it duplicates the catalog stars and adds a second, misplaced Milky Way.
-   - Keep Venus and Jupiter with a disclosure, or paint them out? The 2008 to 2009 panorama photographed both planets.
-   - Rename and disclose the `halpha` and `jwst_ir` modes, or remove them? They recolour the RGB photograph.
-   - Turn the landing toward Sagittarius or Cygnus so the Milky Way is in frame?
+   Decided on 2026-11-04: non-commercial for now, with a public demo on 4 December 2026. These sources can be used with their credits, which must be visible in the app. Revisit before any commercial use, sponsorship, prize terms that grant commercial rights, or adoption by a company.
+2. **The sky dome branch** (`claude/nice-khayyam-277e40`). Decided on 2026-11-04, and landing as separate units:
+   - The NASA star map is removed: it duplicated the catalog stars and added a second, misplaced Milky Way.
+   - Venus and Jupiter stay in the panorama, disclosed as planets the 2008 to 2009 shoot photographed.
+   - The `halpha` and `jwst_ir` modes and the red boost are removed: they recoloured the RGB photograph.
+   - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (Track 4). The owner signs off on the picture.
 3. **The AgX look.** Set the contrast and black level for the WebGPU renderer (spike doc section 10, step 12).
-4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Keep them as disclosed models, or rebuild them to physical layouts?
+4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decided on 2026-11-04: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure says plainly that it is a modelled composition.
 5. **Model for intent parsing.** Track 3 starts every route on `claude-opus-5-5`. Whether the latency-critical intent route later moves to a smaller model is yours to decide, after measuring.
 6. **Hosting.** Deep catalogs and dust volumes need object storage and a CDN. For example, Cloudflare R2 costs $0.015 per GB-month with no egress fees [verified].
 
