@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Mapping Harness</title>
+    <style>
+      :root {
+        --bg: #05070b;
+        --panel: #0c1119;
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #e9edf3;
+        --muted: #8a93a3;
+        --accent: #7cc4df;
+        --warn: #e5b567;
+        --silent: #e86446;
+        --ok: #8fd19e;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 10px;
+        color: var(--accent);
+      }
+      .note {
+        color: var(--muted);
+        max-width: 72ch;
+        margin: 0 0 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 12px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        min-width: 0;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 112px 1fr 120px;
+        gap: 8px;
+        align-items: center;
+        margin: 4px 0;
+      }
+      .row label {
+        color: var(--muted);
+      }
+      .row output,
+      .mono {
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .row output {
+        text-align: right;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .missing {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--warn);
+        font-size: 11px;
+      }
+      input[type='range'] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      button,
+      select {
+        background: #172030;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #04121a;
+        border-color: transparent;
+        font-weight: 600;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+      }
+      .status {
+        margin-top: 8px;
+        padding: 8px;
+        border-radius: 6px;
+        background: #070b11;
+        border: 1px solid var(--border);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .status.silent {
+        color: var(--silent);
+      }
+      .status.sounding {
+        color: var(--ok);
+      }
+      meter {
+        width: 140px;
+      }
+      @media (max-width: 480px) {
+        .row {
+          grid-template-columns: 92px 1fr 96px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Audio mapping harness</h1>
+      <button id="start" class="primary" type="button">Start audio</button>
+      <span class="mono" id="engine-status">not started</span>
+      <span class="mono">out <meter id="meter" min="-80" max="0" low="-24" high="-6" optimum="-30"></meter> <span id="meter-db">-inf</span></span>
+    </header>
+    <p class="note">
+      Each slider is one physical input; each readout is the parameter the engine derived from it. Tick
+      "missing" to withhold an input: the sound it drives must go silent. Use headphones for HRTF and the
+      bed. Mappings and sources: docs/architecture/AUDIO_ENGINE.md.
+    </p>
+    <div class="grid" id="panels"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
