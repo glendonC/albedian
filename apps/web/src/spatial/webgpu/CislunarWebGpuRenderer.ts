@@ -20,6 +20,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { RenderLayerSet } from '@albedian/contracts';
 import type { CosmosRenderer, ShowcaseSceneKey, SpectralBand } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
+import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.js';
 import { createCinemaOpticsUniforms } from './cinemaOptics.js';
 import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './cislunar/bodyMaterials.js';
@@ -131,9 +132,18 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.scene.add(this.rig);
     this.scene.add(this.world);
 
+    // ESO eso0932a and a NASA SVS Deep Star Maps print; provenance in sky_texture_sources.json
     const milkyWay = this.loadTexture('/textures/eso_milkyway_panorama.jpg', SRGBColorSpace, true);
     const starMap = this.loadTexture('/textures/nasa_starmap_4k.jpg', SRGBColorSpace, true);
-    this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, starMap);
+    // The dome is drawn only with the panorama's fitted registration, never misaligned
+    this.pending.push(
+      loadPanoramaRegistration().then(
+        (registration) => {
+          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, starMap, registration);
+        },
+        (error: unknown) => console.warn('[webgpu host] sky panorama registration failed; no sky dome', error)
+      )
+    );
 
     this.world.add(this.stars.createMount(CATALOG_STAR_MOUNT_RADIUS));
 
