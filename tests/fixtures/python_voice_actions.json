@@ -1,0 +1,71 @@
+{
+  "media_restore": {
+    "type": "media.restore",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "sourceAssetId": "src_fixture",
+    "profile": "star_protected",
+    "constraints": {
+      "preservePeople": true,
+      "allowSyntheticSky": false,
+      "protectStars": true
+    }
+  },
+  "sky_show": {
+    "type": "sky.show",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "mode": "measured"
+  },
+  "finding_select": {
+    "type": "finding.select",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "findingId": "finding-obs-1"
+  },
+  "finding_describe": {
+    "type": "finding.describe",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "findingId": "finding-star-vega",
+    "fields": [
+      "distance",
+      "type",
+      "motion",
+      "evidence",
+      "behind_sightline"
+    ]
+  },
+  "space_enter": {
+    "type": "space.enter",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "findingId": "finding-predicted-jupiter",
+    "distancePolicy": "measured_or_estimated"
+  },
+  "space_epoch": {
+    "type": "space.epoch",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "epochISO": "0026-01-01T00:00:00Z",
+    "yearCE": 26
+  },
+  "history_back": {
+    "type": "history.back",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "mode": "partial",
+    "fraction": 0.25
+  },
+  "navigation_cancel": {
+    "type": "navigation.cancel",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3
+  },
+  "source_return": {
+    "type": "source.return",
+    "requestId": "req-fixture",
+    "expectedViewRevision": 3,
+    "restoreAudio": true
+  }
+}

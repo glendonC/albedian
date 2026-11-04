@@ -1,17 +1,13 @@
 """Server-side intent parser, authoritative scientific explanation generator,
-optional Claude API copilot adapter, and revision-checked action validator
-mirroring `@albedian/contracts`.
+and revision-checked action validator mirroring `@albedian/contracts`. The optional
+Claude intent path lives in `services/voice/claude.py`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import json
-import os
 import re
 from typing import Any
-
-import httpx
 
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
@@ -21,11 +17,12 @@ from services.science.catalog import (
     compute_light_travel_time_description,
 )
 from services.science.ephemeris import compute_solar_system_ephemerides
+from services.voice.claude import PREDICTED_BODY_KEYS, propose_action_with_claude
 
 _STARS_BY_NAME_LEN: tuple[CatalogStar, ...] = tuple(
     sorted(ALL_SKY_CATALOG_STARS, key=lambda s: len(s.common_name), reverse=True)
 )
-_SOLAR_SYSTEM_BODIES: tuple[str, ...] = ("jupiter", "uranus", "saturn", "mars", "venus", "moon")
+_SOLAR_SYSTEM_BODIES: tuple[str, ...] = PREDICTED_BODY_KEYS
 
 
 @dataclass(frozen=True)
@@ -226,73 +223,22 @@ def _build_scientific_explanation(
     )
 
 
-def _try_claude_api_intent(
-    utterance: str,
-    context: ActionContext,
-    request_id: str,
-    expected_rev: int,
-) -> dict[str, Any] | None:
-    """Optionally invoke Anthropic Claude API if `ANTHROPIC_API_KEY` is configured and reachable."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key or os.environ.get("ALBEDIAN_ENABLE_LIVE_CLAUDE", "0") != "1":
-        return None
-
-    system_prompt = (
-        "You are Albedian's deterministic intent translator. Translate the user's utterance "
-        "into a single JSON object matching one of the AlbedianAction discriminated union types: "
-        "media.restore, sky.show, finding.select, finding.describe, space.enter, space.epoch, "
-        "history.back, navigation.cancel, source.return. Output ONLY valid JSON."
-    )
-    user_msg = json.dumps(
-        {
-            "utterance": utterance,
-            "expectedViewRevision": expected_rev,
-            "requestId": request_id,
-            "sourceAssetId": context.source_asset_id,
-            "selectedFindingId": context.selected_finding_id,
-        }
-    )
-    try:
-        resp = httpx.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-3-5-haiku-latest",
-                "max_tokens": 256,
-                "system": system_prompt,
-                "messages": [{"role": "user", "content": user_msg}],
-            },
-            timeout=3.0,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            text_block = data.get("content", [{}])[0].get("text", "{}")
-            parsed = json.loads(text_block)
-            if isinstance(parsed, dict) and "type" in parsed:
-                parsed["requestId"] = request_id
-                parsed["expectedViewRevision"] = expected_rev
-                return parsed
-    except Exception:
-        return None
-    return None
-
-
 def parse_voice_intent(
     utterance: str,
     context: ActionContext | dict[str, Any],
     request_id: str = "req-voice-1",
     expected_view_revision: int | None = None,
 ) -> dict[str, Any]:
-    """Deterministically translate a natural-language utterance into a schema-valid `AlbedianAction`."""
+    """Translate a natural-language utterance into a schema-valid `AlbedianAction`.
+
+    The Claude intent path answers when it is enabled and returns a valid action; otherwise the
+    deterministic rules below do.
+    """
     ctx = ActionContext.from_dict(context)
     rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
     text = utterance.strip().lower()
 
-    claude_action = _try_claude_api_intent(utterance, ctx, request_id, rev)
+    claude_action = propose_action_with_claude(utterance, ctx, request_id, rev)
     if claude_action is not None:
         return claude_action
 
