@@ -1,10 +1,10 @@
-"""Sky dome registration: galactic frame, panorama model, committed solution, star map projection.
+"""Sky dome registration: galactic frame, panorama model, committed solution, planets in the photograph.
 
 The web renderers sample ESO's Milky Way panorama through the solution in
 apps/web/public/textures/eso0932a_registration.json (written by
-scripts/register_sky_panorama.py) and the NASA SVS star map through right ascension and
-declination. These tests pin the math on synthetic data, check that the committed solution
-is what a fresh fit produces, and measure the star map's star images against the catalog.
+scripts/register_sky_panorama.py). These tests pin the math on synthetic data, check that the
+committed solution is what a fresh fit produces, and measure the two planets the photograph
+shows against the repository's ephemeris.
 """
 
 from __future__ import annotations
@@ -14,14 +14,19 @@ import importlib.util
 import json
 import math
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from PIL import Image
+from scipy import ndimage
+from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
 from services.science import sky_registration as sr
+from services.science.ephemeris import compute_solar_system_ephemerides
 
 ROOT = Path(__file__).resolve().parents[2]
 TEXTURES = ROOT / "apps" / "web" / "public" / "textures"
@@ -201,3 +206,74 @@ def test_committed_panorama_solution_is_a_fresh_fit():
     assert chosen["medianTexels"] < 0.5 and chosen["p90Texels"] < 1.0
     assert solution["fit"]["heldOut"]["rigidOnly"]["medianTexels"] > chosen["medianTexels"]
 
+
+
+# The photograph's two planets (sky layer disclosure; kept unretouched by the lead's decision of
+# 2026-11-04) and the dates on which the repository's ephemeris puts each on its image. ESO gives
+# no capture dates; these are dates of agreement.
+PLANETS_IN_PANORAMA = (("Venus", "2009-01-22"), ("Jupiter", "2008-06-09"))
+SATURATED = 0.9  # mean of R, G and B in [0, 1]
+
+
+def _committed_registration() -> tuple[sr.RigidSolution, np.ndarray]:
+    reg = json.loads((TEXTURES / "eso0932a_registration.json").read_text())
+    table = reg["offsetTable"]
+    offsets = sr.decode_offset_table(base64.b64decode(table["data"]), table["width"], table["height"], table["scale"])
+    return sr.RigidSolution(np.array(reg["galacticToPanorama"]), float(reg["yOffsetPx"])), offsets
+
+
+def _saturated_core(luminance: np.ndarray, x: float, y: float, radius: int = 20) -> tuple[float, float, int] | None:
+    """Centroid and size of the saturated blob nearest (x, y) within a square of +-radius pixels."""
+    x0, y0 = int(round(x)), int(round(y))
+    window = luminance[y0 - radius : y0 + radius + 1, x0 - radius : x0 + radius + 1]
+    labels, count = ndimage.label(window > SATURATED)
+    best = None
+    for k in range(1, count + 1):
+        ys, xs = np.nonzero(labels == k)
+        cx, cy = xs.mean() + x0 - radius, ys.mean() + y0 - radius
+        if best is None or math.hypot(cx - x, cy - y) < math.hypot(best[0] - x, best[1] - y):
+            best = (float(cx), float(cy), int(len(xs)))
+    return best
+
+
+def _planet_offset_deg(body, iso, solution, offsets, luminance, geom) -> tuple[float, int] | None:
+    """Angle from the ephemeris position, mapped through the registration, to the nearest saturated blob."""
+    planet = compute_solar_system_ephemerides(iso, 0.0, 0.0, bodies=(body,))[0]
+    g = sr.radec_to_unit(planet.ra_deg, planet.dec_deg)[None, :] @ sr.ICRS_TO_GALACTIC.T
+    x, y = sr.apply_offsets(g, solution, offsets, geom)
+    core = _saturated_core(luminance, float(x[0]), float(y[0]))
+    if core is None:
+        return None
+    _, lat = sr.lon_lat(g @ solution.rotation.T)
+    dx = float(sr.wrap_dx(core[0] - float(x[0]), geom.width)) * math.cos(float(lat[0]))
+    return math.hypot(dx, core[1] - float(y[0])) * 360.0 / geom.width, core[2]
+
+
+def test_the_panorama_shows_venus_and_jupiter_where_the_ephemeris_puts_them():
+    """Each planet is a saturated point that no catalog star explains, on the ephemeris track.
+
+    On some hour of its date the repository's ephemeris puts the planet within 0.1 deg of a
+    saturated blob of at least 20 pixels with no catalog star to magnitude 8 within 0.3 deg.
+    A month earlier the planet stood elsewhere, and no such blob lies at that position, so the
+    match is not something the search would find anywhere.
+    """
+    rgb = np.asarray(Image.open(TEXTURES / "eso_milkyway_panorama.jpg").convert("RGB"), dtype=np.float64) / 255.0
+    luminance = rgb.mean(axis=2)
+    geom = sr.PanoramaGeometry(width=rgb.shape[1], height=rgb.shape[0])
+    solution, offsets = _committed_registration()
+    icrs, _ = _load_script().load_catalog((0, 1))
+    stars = cKDTree(icrs)
+
+    for body, day in PLANETS_IN_PANORAMA:
+        hours = [f"{day}T{h:02d}:00:00Z" for h in range(24)]
+        measured = [(m, iso) for iso in hours if (m := _planet_offset_deg(body, iso, solution, offsets, luminance, geom))]
+        (offset_deg, core_px), iso = min(measured)
+        assert offset_deg < 0.1, f"{body}: nearest saturated point {offset_deg:.3f} deg from the ephemeris on {day}"
+        assert core_px >= 20, f"{body}: {core_px} saturated pixels"
+        planet = compute_solar_system_ephemerides(iso, 0.0, 0.0, bodies=(body,))[0]
+        chord = 2.0 * math.sin(math.radians(0.3) / 2.0)
+        assert stars.query_ball_point(sr.radec_to_unit(planet.ra_deg, planet.dec_deg), chord) == [], body
+
+        earlier = (datetime.fromisoformat(iso) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        control = _planet_offset_deg(body, earlier, solution, offsets, luminance, geom)
+        assert control is None or control[0] >= 0.1 or control[1] < 20, f"{body} on {earlier}: {control}"

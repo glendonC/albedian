@@ -13,7 +13,7 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Sky panorama',
     evidenceClass: 'simulated',
     disclosure:
-      "ESO's Milky Way photograph, registered to the catalog stars and graded for display. The photograph also shows Venus and Jupiter where they stood in 2008 and 2009.",
+      "ESO's Milky Way photograph, registered to the catalog stars and graded for display. It also shows two planets, Venus and Jupiter, where its 2008 to 2009 shoot photographed them.",
     sources: [
       'ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0',
       'Registration fitted to Gaia DR3 and Hipparcos 2007 stars (eso0932a_registration.json)',

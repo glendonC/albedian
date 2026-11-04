@@ -136,4 +136,13 @@ describe('WebGPU host: cislunar render layers', () => {
     expect(sky?.sources.join(' ')).toContain('eso0932a');
     expect(`${sky?.disclosure} ${sky?.sources.join(' ')}`).not.toMatch(/star map|plot of catalog stars/i);
   });
+
+  it('discloses the two planets the photograph shows and when its shoot photographed them', () => {
+    // Kept unretouched (lead decision, 2026-11-04); measured in tests/integration/test_sky_registration.py
+    const sky = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky');
+    expect(sky?.disclosure).toMatch(/\bplanets\b/);
+    expect(sky?.disclosure).toMatch(/\bVenus\b/);
+    expect(sky?.disclosure).toMatch(/\bJupiter\b/);
+    expect(sky?.disclosure).toMatch(/2008 to 2009/);
+  });
 });
