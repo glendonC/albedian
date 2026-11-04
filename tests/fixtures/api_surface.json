@@ -1,0 +1,990 @@
+{
+  "openapi": {
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Albedian Observation & Media Runtime API",
+      "description": "Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",
+      "version": "0.2.0"
+    },
+    "paths": {
+      "/api/health": {
+        "get": {
+          "summary": "Get Health",
+          "description": "Return service health and pinned catalog summary.",
+          "operationId": "get_health_api_health_get",
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Get Health Api Health Get"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/science/sky-context": {
+        "get": {
+          "summary": "Get Science Sky Context",
+          "description": "Compute full 360-degree topocentric sky context for all 70+ navigational stars,\nSolar System ephemerides, and constellation stick-figure edges.",
+          "operationId": "get_science_sky_context_api_science_sky_context_get",
+          "parameters": [
+            {
+              "name": "obs_utc_iso",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "title": "Obs Utc Iso"
+              }
+            },
+            {
+              "name": "lat_deg",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "title": "Lat Deg"
+              }
+            },
+            {
+              "name": "lon_deg",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "title": "Lon Deg"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Science Sky Context Api Science Sky Context Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/science/radiometry-audit": {
+        "get": {
+          "summary": "Get Science Radiometry Audit",
+          "description": "Return Krisciunas & Schaefer (1991) lunar sky brightness and sensor limiting magnitude audit.",
+          "operationId": "get_science_radiometry_audit_api_science_radiometry_audit_get",
+          "parameters": [
+            {
+              "name": "obs_utc_iso",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "title": "Obs Utc Iso"
+              }
+            },
+            {
+              "name": "lat_deg",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "title": "Lat Deg"
+              }
+            },
+            {
+              "name": "lon_deg",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "title": "Lon Deg"
+              }
+            },
+            {
+              "name": "target_sep_deg",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": 0.5,
+                "default": 8.2,
+                "title": "Target Sep Deg"
+              }
+            },
+            {
+              "name": "target_alt_deg",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": 0.0,
+                "default": 32.0,
+                "title": "Target Alt Deg"
+              }
+            },
+            {
+              "name": "stack_frames",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "maximum": 600,
+                "minimum": 1,
+                "default": 9,
+                "title": "Stack Frames"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Science Radiometry Audit Api Science Radiometry Audit Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/science/solve": {
+        "post": {
+          "summary": "Post Science Solve",
+          "description": "Run point-source extraction, geometric quad plate solving, and held-out WCS verification.",
+          "operationId": "post_science_solve_api_science_solve_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Post Science Solve Api Science Solve Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/science/solve-horizon": {
+        "post": {
+          "summary": "Post Science Solve Horizon",
+          "description": "Calibrate camera pose from a detected celestial beacon (e.g. Moon) + horizon line + GPS/UTC.",
+          "operationId": "post_science_solve_horizon_api_science_solve_horizon_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SolveRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Post Science Solve Horizon Api Science Solve Horizon Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/science/ephemeris": {
+        "post": {
+          "summary": "Post Science Ephemeris",
+          "description": "Compute analytical ephemerides for Solar System bodies with explicit `predicted` evidence class.",
+          "operationId": "post_science_ephemeris_api_science_ephemeris_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemerisRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Post Science Ephemeris Api Science Ephemeris Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/discover": {
+        "get": {
+          "summary": "Get Media Discover",
+          "description": "Dynamically discover all uploaded image/video assets in `data/uploads/`,\nprobe QuickTime/container metadata via `ffprobe`, compute content SHA-256,\nlink rendered variants, and return each item's `ObservationSolution` and ephemerides.",
+          "operationId": "get_media_discover_api_media_discover_get",
+          "parameters": [
+            {
+              "name": "uploads_dir",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "default": "data/uploads",
+                "title": "Uploads Dir"
+              }
+            },
+            {
+              "name": "public_dir",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "default": "apps/web/public",
+                "title": "Public Dir"
+              }
+            },
+            {
+              "name": "artifacts_dir",
+              "in": "query",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "default": "data/artifacts",
+                "title": "Artifacts Dir"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Media Discover Api Media Discover Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/restore": {
+        "post": {
+          "summary": "Post Media Restore",
+          "description": "Execute an astronomy-aware media restoration branch and return honest signal metrics.",
+          "operationId": "post_media_restore_api_media_restore_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Post Media Restore Api Media Restore Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/voice/command": {
+        "post": {
+          "summary": "Post Voice Command",
+          "description": "Parse natural-language voice intent and validate against session revision & epistemic gates.",
+          "operationId": "post_voice_command_api_voice_command_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceCommandRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Post Voice Command Api Voice Command Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "EphemerisRequest": {
+          "properties": {
+            "observedAtUTC": {
+              "type": "string",
+              "title": "Observedatutc"
+            },
+            "latDeg": {
+              "type": "number",
+              "title": "Latdeg"
+            },
+            "lonDeg": {
+              "type": "number",
+              "title": "Londeg"
+            },
+            "bodies": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array",
+              "title": "Bodies"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "observedAtUTC",
+            "latDeg",
+            "lonDeg"
+          ],
+          "title": "EphemerisRequest",
+          "description": "Request payload for `POST /api/science/ephemeris`."
+        },
+        "HTTPValidationError": {
+          "properties": {
+            "detail": {
+              "items": {
+                "$ref": "#/components/schemas/ValidationError"
+              },
+              "type": "array",
+              "title": "Detail"
+            }
+          },
+          "type": "object",
+          "title": "HTTPValidationError"
+        },
+        "RestoreRequest": {
+          "properties": {
+            "profile": {
+              "type": "string",
+              "title": "Profile",
+              "default": "star_protected"
+            },
+            "preserveStars": {
+              "type": "boolean",
+              "title": "Preservestars",
+              "default": true
+            },
+            "frames": {
+              "anyOf": [
+                {
+                  "items": {
+                    "items": {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Frames"
+            },
+            "image_luma": {
+              "anyOf": [
+                {
+                  "items": {
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Image Luma"
+            },
+            "sourceAssetId": {
+              "type": "string",
+              "title": "Sourceassetid",
+              "default": "asset-demo-orion"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "title": "RestoreRequest",
+          "description": "Request payload for `POST /api/media/restore`."
+        },
+        "SolveRequest": {
+          "properties": {
+            "width": {
+              "type": "integer",
+              "exclusiveMinimum": 0.0,
+              "title": "Width",
+              "default": 960
+            },
+            "height": {
+              "type": "integer",
+              "exclusiveMinimum": 0.0,
+              "title": "Height",
+              "default": 540
+            },
+            "detections": {
+              "anyOf": [
+                {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Detections"
+            },
+            "image_luma": {
+              "anyOf": [
+                {
+                  "items": {
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Image Luma"
+            },
+            "hintRaDeg": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hintradeg"
+            },
+            "hintDecDeg": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hintdecdeg"
+            },
+            "observedAtUTC": {
+              "type": "string",
+              "title": "Observedatutc"
+            },
+            "latDeg": {
+              "type": "number",
+              "title": "Latdeg"
+            },
+            "lonDeg": {
+              "type": "number",
+              "title": "Londeg"
+            },
+            "sourceAssetId": {
+              "type": "string",
+              "title": "Sourceassetid",
+              "default": "asset-demo-orion"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "observedAtUTC",
+            "latDeg",
+            "lonDeg"
+          ],
+          "title": "SolveRequest",
+          "description": "Request payload for `POST /api/science/solve`."
+        },
+        "ValidationError": {
+          "properties": {
+            "loc": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array",
+              "title": "Location"
+            },
+            "msg": {
+              "type": "string",
+              "title": "Message"
+            },
+            "type": {
+              "type": "string",
+              "title": "Error Type"
+            },
+            "input": {
+              "title": "Input"
+            },
+            "ctx": {
+              "type": "object",
+              "title": "Context"
+            }
+          },
+          "type": "object",
+          "required": [
+            "loc",
+            "msg",
+            "type"
+          ],
+          "title": "ValidationError"
+        },
+        "VoiceCommandRequest": {
+          "properties": {
+            "utterance": {
+              "type": "string",
+              "title": "Utterance"
+            },
+            "context": {
+              "additionalProperties": true,
+              "type": "object",
+              "title": "Context"
+            },
+            "proposedAction": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proposedaction"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "utterance"
+          ],
+          "title": "VoiceCommandRequest",
+          "description": "Request payload for `POST /api/voice/command`."
+        }
+      }
+    }
+  },
+  "routes": [
+    {
+      "path": "/openapi.json",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "openapi",
+      "responseModel": null,
+      "includeInSchema": false
+    },
+    {
+      "path": "/docs",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "swagger_ui_html",
+      "responseModel": null,
+      "includeInSchema": false
+    },
+    {
+      "path": "/docs/oauth2-redirect",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "swagger_ui_redirect",
+      "responseModel": null,
+      "includeInSchema": false
+    },
+    {
+      "path": "/redoc",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "name": "redoc_html",
+      "responseModel": null,
+      "includeInSchema": false
+    },
+    {
+      "path": "/api/health",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_health",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/science/sky-context",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_science_sky_context",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/science/radiometry-audit",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_science_radiometry_audit",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/science/solve",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_science_solve",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/science/solve-horizon",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_science_solve_horizon",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/science/ephemeris",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_science_ephemeris",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/discover",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_media_discover",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/restore",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_media_restore",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/voice/command",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_voice_command",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    }
+  ],
+  "middleware": [
+    {
+      "class": "starlette.middleware.cors.CORSMiddleware",
+      "args": [],
+      "kwargs": {
+        "allow_origins": [
+          "*"
+        ],
+        "allow_credentials": true,
+        "allow_methods": [
+          "*"
+        ],
+        "allow_headers": [
+          "*"
+        ]
+      }
+    }
+  ],
+  "responses": {
+    "solve without detections or image": {
+      "request": "POST /api/science/solve",
+      "status": 422,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Send detections or image_luma; the API does not substitute synthetic input for a missing observation."
+      }
+    },
+    "solve with an unmeasured detection": {
+      "request": "POST /api/science/solve",
+      "status": 422,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Each detection needs a measured `yPx`."
+      }
+    },
+    "horizon solve without image": {
+      "request": "POST /api/science/solve-horizon",
+      "status": 422,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Send image_luma; the API does not substitute synthetic input for a missing observation."
+      }
+    },
+    "restore without frames or image": {
+      "request": "POST /api/media/restore",
+      "status": 422,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Send frames or image_luma; the API does not substitute synthetic input for a missing observation."
+      }
+    },
+    "unknown path": {
+      "request": "GET /api/unknown",
+      "status": 404,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Not Found"
+      }
+    },
+    "GET on a POST route": {
+      "request": "GET /api/science/solve",
+      "status": 405,
+      "headers": {
+        "allow": "POST",
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Method Not Allowed"
+      }
+    },
+    "POST on a GET route": {
+      "request": "POST /api/health",
+      "status": 405,
+      "headers": {
+        "allow": "GET",
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Method Not Allowed"
+      }
+    },
+    "trailing slash": {
+      "request": "GET /api/health/",
+      "status": 307,
+      "headers": {
+        "location": "http://testserver/api/health",
+        "vary": "Origin"
+      },
+      "body": ""
+    },
+    "CORS preflight": {
+      "request": "OPTIONS /api/science/solve",
+      "status": 200,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-headers": "content-type",
+        "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY",
+        "access-control-allow-origin": "http://localhost:5173",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+      },
+      "body": "OK"
+    },
+    "CORS headers on a browser request": {
+      "request": "GET /api/unknown",
+      "status": 404,
+      "headers": {
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "http://localhost:5173",
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Not Found"
+      }
+    }
+  }
+}

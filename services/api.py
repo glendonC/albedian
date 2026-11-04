@@ -1,124 +1,29 @@
-"""FastAPI backend for Albedian Scientific Astrometry, Media Restoration Runtime, and Voice Intent Service."""
+"""Albedian HTTP API: the app factory, its middleware and the health route.
+
+Each domain serves its routes from a router in its own package: `services/science/router.py`,
+`services/media/router.py` and `services/voice/router.py`. Serve with `uvicorn services.api:app`.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
 
-from services.media.discovery import discover_uploaded_media
-from services.media.runtime import MediaExperimentRuntime
+from services.media.router import router as media_router
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
     CONSTELLATION_EDGES,
     PINNED_CATALOG_STARS,
-    bailer_jones_cartesian_pc,
-    compute_light_travel_time_description,
-    icrs_to_altaz,
 )
-from services.science.deep_sky import (
-    DEEP_SKY_CATALOG,
-    compute_3d_nearest_neighbors,
-    compute_stellar_astrophysics,
-)
-from services.science.ephemeris import compute_solar_system_ephemerides
-from services.science.radiometry import (
-    compute_krisciunas_schaefer_sky_brightness,
-    compute_lunar_phase_and_illumination,
-    compute_sensor_limiting_magnitude_audit,
-)
-from services.science.solver import (
-    SourceDetection,
-    detect_point_sources,
-    solve_and_verify_field,
-    solve_horizon_and_beacon_pose,
-)
-from services.voice.intent import parse_voice_intent, validate_and_execute_voice_command
+from services.science.router import router as science_router
+from services.voice.router import router as voice_router
 
-app = FastAPI(
-    title="Albedian Observation & Media Runtime API",
-    version="0.2.0",
-    description="Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-_media_runtime = MediaExperimentRuntime()
+health_router = APIRouter()
 
 
-class SolveRequest(BaseModel):
-    """Request payload for `POST /api/science/solve`."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    width: int = Field(default=960, gt=0)
-    height: int = Field(default=540, gt=0)
-    detections: list[dict[str, Any]] | None = None
-    image_luma: list[list[float]] | None = None
-    hint_ra_deg: float | None = Field(default=None, alias="hintRaDeg")
-    hint_dec_deg: float | None = Field(default=None, alias="hintDecDeg")
-    obs_utc_iso: str = Field(alias="observedAtUTC")
-    observer_lat: float = Field(alias="latDeg")
-    observer_lon: float = Field(alias="lonDeg")
-    source_asset_id: str = Field(default="asset-demo-orion", alias="sourceAssetId")
-
-
-class EphemerisRequest(BaseModel):
-    """Request payload for `POST /api/science/ephemeris`."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    obs_utc_iso: str = Field(alias="observedAtUTC")
-    lat_deg: float = Field(alias="latDeg")
-    lon_deg: float = Field(alias="lonDeg")
-    bodies: list[str] = Field(
-        default_factory=lambda: ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"]
-    )
-
-
-class RestoreRequest(BaseModel):
-    """Request payload for `POST /api/media/restore`."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    profile: str = Field(default="star_protected")
-    preserve_stars: bool = Field(default=True, alias="preserveStars")
-    frames: list[list[list[float]]] | None = None
-    image_luma: list[list[float]] | None = None
-    source_asset_id: str = Field(default="asset-demo-orion", alias="sourceAssetId")
-
-
-class VoiceCommandRequest(BaseModel):
-    """Request payload for `POST /api/voice/command`."""
-
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
-
-    utterance: str
-    context: dict[str, Any] = Field(default_factory=dict)
-    proposed_action: dict[str, Any] | None = Field(default=None, alias="proposedAction")
-
-
-_NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input for a missing observation."
-
-
-def _measured(detection: dict[str, Any], *keys: str) -> float:
-    """Return a detection measurement by any of its accepted keys; a missing one is a client error."""
-    for key in keys:
-        if detection.get(key) is not None:
-            return float(detection[key])
-    raise HTTPException(status_code=422, detail=f"Each detection needs a measured `{keys[-1]}`.")
-
-
-@app.get("/api/health")
+@health_router.get("/api/health")
 def get_health() -> dict[str, Any]:
     """Return service health and pinned catalog summary."""
     return {
@@ -132,301 +37,25 @@ def get_health() -> dict[str, Any]:
     }
 
 
-@app.get("/api/science/sky-context")
-def get_science_sky_context(
-    obs_utc_iso: str = Query(...),
-    lat_deg: float = Query(..., ge=-90.0, le=90.0),
-    lon_deg: float = Query(..., ge=-180.0, le=180.0),
-) -> dict[str, Any]:
-    """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
-    Solar System ephemerides, and constellation stick-figure edges.
-    """
-    stars_out: list[dict[str, Any]] = []
-    for st in ALL_SKY_CATALOG_STARS:
-        alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
-        cx, cy, cz = bailer_jones_cartesian_pc(st)
-        light_travel = compute_light_travel_time_description(st.median_pc)
-        stars_out.append(
-            {
-                "id": st.id,
-                "commonName": st.common_name,
-                "bayerDesignation": st.bayer_designation,
-                "constellation": st.constellation,
-                "provider": st.provider,
-                "catalogSourceId": st.catalog_source_id,
-                "raDeg": float(st.ra_deg),
-                "decDeg": float(st.dec_deg),
-                "altDeg": float(alt_deg),
-                "azDeg": float(az_deg),
-                "aboveHorizon": bool(alt_deg >= 0.0),
-                "mag": float(st.mag),
-                "bpRp": float(st.bp_rp),
-                "spectralType": st.spectral_type,
-                "properMotionRaMasYr": float(st.pm_ra_mas_yr),
-                "properMotionDecMasYr": float(st.pm_dec_mas_yr),
-                "radialVelocityKmS": float(st.rv_km_s),
-                "distancePc": {
-                    "lower": float(st.lower_pc),
-                    "median": float(st.median_pc),
-                    "upper": float(st.upper_pc),
-                    "method": st.distance_method,
-                },
-                "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
-                "lightTravel": light_travel,
-                "astrophysics": compute_stellar_astrophysics(
-                    st.mag, st.bp_rp, st.median_pc, st.spectral_type, st.common_name
-                ),
-                "nearestNeighbors3D": compute_3d_nearest_neighbors(st.id, k=3),
-            }
-        )
-
-    ephem_items = compute_solar_system_ephemerides(
-        obs_utc_iso=obs_utc_iso,
-        lat_deg=lat_deg,
-        lon_deg=lon_deg,
-        bodies=("Moon", "Saturn", "Uranus", "Jupiter", "Mars", "Venus"),
+def create_app() -> FastAPI:
+    """Build the API: CORS first, then the health, science, media and voice routes in that order."""
+    app = FastAPI(
+        title="Albedian Observation & Media Runtime API",
+        version="0.2.0",
+        description="Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",
     )
-    ephem_out: list[dict[str, Any]] = []
-    for item in ephem_items:
-        d = item.to_contract_dict()
-        d["name"] = item.name
-        d["raDeg"] = float(item.ra_deg)
-        d["decDeg"] = float(item.dec_deg)
-        d["altDeg"] = float(item.alt_deg)
-        d["azDeg"] = float(item.az_deg)
-        d["aboveHorizon"] = bool(item.alt_deg >= 0.0)
-        d["distanceAu"] = float(item.distance_au)
-        d["distancePc"] = float(item.distance_pc)
-        d["apparentMagnitude"] = float(item.apparent_magnitude)
-        d["lightTravel"] = compute_light_travel_time_description(item.distance_pc)
-        d["evidenceClass"] = "predicted"
-        d["evidence_class"] = "predicted"
-        ephem_out.append(d)
 
-    edges_out = [
-        {"constellation": c_name, "fromStarId": sid_a, "toStarId": sid_b}
-        for c_name, sid_a, sid_b in CONSTELLATION_EDGES
-    ]
-    moon_item = next((e for e in ephem_items if e.name == "Moon"), None)
-    moon_alt_deg = float(moon_item.alt_deg) if moon_item is not None else -15.0
-    radiometry_audit = compute_sensor_limiting_magnitude_audit(
-        obs_utc_iso=obs_utc_iso,
-        moon_alt_deg=moon_alt_deg,
-        target_sep_deg=8.2,
-        target_alt_deg=max(10.0, moon_alt_deg if moon_alt_deg > 0.0 else 30.0),
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-    deep_sky_out = [
-        dso.to_contract_dict(obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg)
-        for dso in DEEP_SKY_CATALOG
-    ]
 
-    return {
-        "observedAtUTC": obs_utc_iso,
-        "observerLocation": {"latDeg": lat_deg, "lonDeg": lon_deg},
-        "stars": stars_out,
-        "ephemerides": ephem_out,
-        "constellationEdges": edges_out,
-        "deepSkyObjects": deep_sky_out,
-        "radiometryAudit": radiometry_audit,
-    }
+    for domain_router in (health_router, science_router, media_router, voice_router):
+        app.include_router(domain_router)
+    return app
 
 
-@app.get("/api/science/radiometry-audit")
-def get_science_radiometry_audit(
-    obs_utc_iso: str = Query(...),
-    lat_deg: float = Query(..., ge=-90.0, le=90.0),
-    lon_deg: float = Query(..., ge=-180.0, le=180.0),
-    target_sep_deg: float = Query(default=8.2, ge=0.5, le=180.0),
-    target_alt_deg: float = Query(default=32.0, ge=0.0, le=90.0),
-    stack_frames: int = Query(default=9, ge=1, le=600),
-) -> dict[str, Any]:
-    """Return Krisciunas & Schaefer (1991) lunar sky brightness and sensor limiting magnitude audit."""
-    ephem_items = compute_solar_system_ephemerides(
-        obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg, bodies=("Moon",)
-    )
-    moon_alt = float(ephem_items[0].alt_deg) if ephem_items else -15.0
-    lunar_phase = compute_lunar_phase_and_illumination(obs_utc_iso)
-    ks_sky = compute_krisciunas_schaefer_sky_brightness(
-        sep_from_moon_deg=target_sep_deg,
-        target_alt_deg=target_alt_deg,
-        moon_alt_deg=moon_alt,
-        obs_utc_iso=obs_utc_iso,
-    )
-    audit = compute_sensor_limiting_magnitude_audit(
-        obs_utc_iso=obs_utc_iso,
-        moon_alt_deg=moon_alt,
-        target_sep_deg=target_sep_deg,
-        target_alt_deg=target_alt_deg,
-        stack_frames=stack_frames,
-    )
-    return {
-        "observedAtUTC": obs_utc_iso,
-        "observerLocation": {"latDeg": lat_deg, "lonDeg": lon_deg},
-        "moonAltDeg": round(moon_alt, 2),
-        "lunarPhase": lunar_phase,
-        "krisciunasSchaeferSky": ks_sky,
-        "sensorAudit": audit,
-    }
-
-
-@app.post("/api/science/solve")
-def post_science_solve(req: SolveRequest) -> dict[str, Any]:
-    """Run point-source extraction, geometric quad plate solving, and held-out WCS verification."""
-    if req.detections is not None:
-        parsed_dets: list[SourceDetection] = []
-        for d in req.detections:
-            parsed_dets.append(
-                SourceDetection(
-                    x_px=_measured(d, "x_px", "xPx"),
-                    y_px=_measured(d, "y_px", "yPx"),
-                    flux=_measured(d, "flux"),
-                    snr=_measured(d, "snr"),
-                    fwhm_px=_measured(d, "fwhm_px", "fwhmPx"),
-                    centroid_uncertainty_px=_measured(d, "centroid_uncertainty_px", "centroidUncertaintyPx"),
-                    asset_id=req.source_asset_id,
-                    # Without a measured ratio only the FWHM half of the hot-pixel test applies
-                    **(
-                        {"peak_to_total_ratio": _measured(d, "peak_to_total_ratio", "peakToTotalRatio")}
-                        if d.get("peak_to_total_ratio", d.get("peakToTotalRatio")) is not None
-                        else {}
-                    ),
-                )
-            )
-    elif req.image_luma is not None:
-        arr = np.asarray(req.image_luma, dtype=np.float64)
-        parsed_dets = detect_point_sources(arr, asset_id=req.source_asset_id)
-    else:
-        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="detections or image_luma"))
-
-    solution = solve_and_verify_field(
-        detections=parsed_dets,
-        width=req.width,
-        height=req.height,
-        hint_ra_deg=req.hint_ra_deg,
-        hint_dec_deg=req.hint_dec_deg,
-        obs_utc_iso=req.obs_utc_iso,
-        observer_lat=req.observer_lat,
-        observer_lon=req.observer_lon,
-        source_asset_id=req.source_asset_id,
-    )
-    payload = solution.to_contract_dict()
-    payload["held_out_inliers"] = solution.held_out_inliers
-    payload["median_residual_px"] = solution.median_residual_px
-    payload["p95_residual_px"] = solution.p95_residual_px
-    return payload
-
-
-@app.post("/api/science/solve-horizon")
-def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
-    """Calibrate camera pose from a detected celestial beacon (e.g. Moon) + horizon line + GPS/UTC."""
-    if req.image_luma is None:
-        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="image_luma"))
-    arr = np.asarray(req.image_luma, dtype=np.float64)
-
-    solution = solve_horizon_and_beacon_pose(
-        image=arr,
-        obs_utc_iso=req.obs_utc_iso,
-        observer_lat=req.observer_lat,
-        observer_lon=req.observer_lon,
-        source_asset_id=req.source_asset_id,
-    )
-    return solution.to_contract_dict()
-
-
-@app.post("/api/science/ephemeris")
-def post_science_ephemeris(req: EphemerisRequest) -> dict[str, Any]:
-    """Compute analytical ephemerides for Solar System bodies with explicit `predicted` evidence class."""
-    try:
-        ephem = compute_solar_system_ephemerides(
-            obs_utc_iso=req.obs_utc_iso,
-            lat_deg=req.lat_deg,
-            lon_deg=req.lon_deg,
-            bodies=tuple(req.bodies),
-        )
-    except KeyError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    findings_dicts = []
-    for item in ephem:
-        d = item.to_contract_dict()
-        d["evidence_class"] = "predicted"
-        d["name"] = item.name
-        findings_dicts.append(d)
-
-    return {
-        "observedAtUTC": req.obs_utc_iso,
-        "observerLocation": {"latDeg": req.lat_deg, "lonDeg": req.lon_deg},
-        "evidenceClass": "predicted",
-        "findings": findings_dicts,
-    }
-
-
-@app.get("/api/media/discover")
-def get_media_discover(
-    uploads_dir: str = Query(default="data/uploads"),
-    public_dir: str = Query(default="apps/web/public"),
-    artifacts_dir: str = Query(default="data/artifacts"),
-) -> dict[str, Any]:
-    """Dynamically discover all uploaded image/video assets in `data/uploads/`,
-    probe QuickTime/container metadata via `ffprobe`, compute content SHA-256,
-    link rendered variants, and return each item's `ObservationSolution` and ephemerides.
-    """
-    items = discover_uploaded_media(
-        uploads_dir=uploads_dir,
-        public_dir=public_dir,
-        artifacts_dir=artifacts_dir,
-    )
-    return {
-        "uploadsDir": uploads_dir,
-        "count": len(items),
-        "items": [item.to_contract_dict() for item in items],
-    }
-
-
-@app.post("/api/media/restore")
-def post_media_restore(req: RestoreRequest) -> dict[str, Any]:
-    """Execute an astronomy-aware media restoration branch and return honest signal metrics."""
-    if req.frames is not None:
-        frame_arrays = [np.asarray(f, dtype=np.float64) for f in req.frames]
-    elif req.image_luma is not None:
-        frame_arrays = [np.asarray(req.image_luma, dtype=np.float64)]
-    else:
-        raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="frames or image_luma"))
-
-    try:
-        res = _media_runtime.execute_restoration_branch(
-            frames=frame_arrays,
-            profile=req.profile,
-            preserve_stars=req.preserve_stars,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    contract_dict = res.to_contract_dict(source_asset_id=req.source_asset_id)
-    contract_dict["profile"] = res.profile
-    contract_dict["sourceSha256"] = res.source_sha256
-    contract_dict["outputSha256"] = res.output_sha256
-    contract_dict["allowSyntheticSky"] = False
-    contract_dict["shadow_snr_gain_db"] = res.shadow_snr_gain_db
-    contract_dict["point_source_retention_ratio"] = res.point_source_retention_ratio
-    contract_dict["false_point_artifact_count"] = res.false_point_artifact_count
-    contract_dict["temporal_flicker_index"] = res.temporal_flicker_index
-    return contract_dict
-
-
-@app.post("/api/voice/command")
-def post_voice_command(req: VoiceCommandRequest) -> dict[str, Any]:
-    """Parse natural-language voice intent and validate against session revision & epistemic gates."""
-    action = (
-        req.proposed_action
-        if req.proposed_action is not None
-        else parse_voice_intent(req.utterance, req.context)
-    )
-    outcome = validate_and_execute_voice_command(
-        utterance=req.utterance,
-        context=req.context,
-        proposed_action=action,
-    )
-    outcome["proposedAction"] = action
-    return outcome
-
+app = create_app()
