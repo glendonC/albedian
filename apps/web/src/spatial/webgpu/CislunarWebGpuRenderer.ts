@@ -18,7 +18,7 @@ import {
 import { uniform } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { RenderLayerSet } from '@albedian/contracts';
-import type { CosmosRenderer, ShowcaseSceneKey, SpectralBand } from '../cosmosRenderer.js';
+import type { CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.js';
@@ -226,14 +226,6 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.post = buildCosmosPostChain(this.host.renderer, this.scene, this.camera, this.postOptions, this.optics);
   }
 
-  setSpectralBand(band: SpectralBand): void {
-    if (band !== 'optical') this.warnOnce(`band:${band}`, `spectral band ${band} is not ported to the WebGPU host`);
-  }
-
-  setSpectralMonocleScreenPos(_normX: number, _normY: number, active = true): void {
-    if (active) this.warnOnce('monocle', 'the spectral monocle is not ported to the WebGPU host');
-  }
-
   setObserverCoordinates(latDeg: number, _lonDeg: number): void {
     // As SparkPortalRenderer: turn the globe toward the observer's hemisphere, flip the Moon in the south
     const isSouthern = latDeg < 0;
@@ -256,7 +248,6 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       this.warnOnce(`scene:${sceneKey}`, `showcase scene ${sceneKey} is not ported to the WebGPU host`);
       return;
     }
-    this.setSpectralBand('optical');
     this.rig.position.set(0, 0, 0);
     this.rig.rotation.set(0, 0, 0);
     Object.assign(this.look, { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0 });

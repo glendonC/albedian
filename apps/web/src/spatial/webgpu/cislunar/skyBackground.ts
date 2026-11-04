@@ -58,15 +58,14 @@ export function createPanoramaOffsetTexture(registration: PanoramaRegistration):
 
 /**
  * The all-sky dome of the landing scenes as a background node, ported from `skyMat` in
- * SparkPortalRenderer.ts (optical band, restoration on, which is what the landing draws), and
+ * SparkPortalRenderer.ts (restoration on, which is what the landing draws), and
  * sampled by view direction so it lines up with the catalog stars (see sky/skyRegistration.ts):
  * the ESO panorama through its fitted rotation and offset table. Screen-space u derivatives are
  * wrapped at the seam so the panorama keeps full mip detail across it.
  *
  * Content: the ESO Milky Way panorama, black-level clipped, contrast curved and tinted for
- * display, plus a boost of its red excess (its H II regions); no new structure is synthesized.
- * Not ported, since the landing never shows them: the halpha and jwst_ir band remaps, the
- * spectral monocle and the unrestored sensor veil.
+ * display; no new structure is synthesized. Not ported: the WebGL dome's unrestored sensor veil,
+ * which nothing switches on.
  */
 export function createSkyBackgroundNode(milkyWay: Texture, registration: PanoramaRegistration): Node<'vec4'> {
   const sceneToPanorama = uniform(new Matrix3().set(...sceneToPanoramaRows(registration)));
@@ -90,10 +89,8 @@ export function createSkyBackgroundNode(milkyWay: Texture, registration: Panoram
     const cleanMw = max(vec3(0.0), mwCol.sub(0.042)).toVar('skyCleanMw');
 
     const galacticBulge = pow(cleanMw, vec3(1.52)).mul(vec3(1.22, 1.04, 0.9)).mul(1.32);
-    // Called hAlphaKnots in the GLSL: a colour boost of the panorama's red excess, not a measurement
-    const redExcessBoost = vec3(1.25, 0.28, 0.48).mul(pow(max(0.0, cleanMw.r.sub(cleanMw.g.mul(0.85))), 1.6)).mul(1.85);
     const deepSpaceBase = vec3(0.002, 0.003, 0.008);
-    const sky = deepSpaceBase.add(galacticBulge).add(redExcessBoost);
+    const sky = deepSpaceBase.add(galacticBulge);
     return vec4(sky, 1.0);
   })() as unknown as Node<'vec4'>;
 }

@@ -36,8 +36,6 @@ export type SpatialScaleRegime =
   | 'deep_sky'
   | 'planetary_surface';
 
-export type SpectralBandMode = 'optical' | 'halpha' | 'jwst_ir';
-
 export const SCALE_REGIME_ORDER: SpatialScaleRegime[] = [
   'earth_capture',
   'cislunar',
@@ -201,10 +199,6 @@ export class SparkPortalRenderer {
     uPanoramaGeometry: { value: THREE.Vector3 };
     uPanoramaOffsetDecode: { value: THREE.Vector2 };
     uRestoration: { value: number };
-    uSpectralMode: { value: number };
-    uMonocleActive: { value: number };
-    uMonocleDir: { value: THREE.Vector3 };
-    uMonocleCosRadius: { value: number };
     uTime: { value: number };
   };
   private earthUniforms: {
@@ -226,13 +220,11 @@ export class SparkPortalRenderer {
     uOrionTex: { value: THREE.Texture | null };
     uLagoonTex: { value: THREE.Texture | null };
     uTime: { value: number };
-    uSpectralMode: { value: number };
     uIsBlackHole: { value: number };
   };
   private localBubbleUniforms: {
     uDustTex: { value: THREE.Texture | null };
     uTime: { value: number };
-    uSpectralMode: { value: number };
     uWarpFactor: { value: number };
     uCoolColor: { value: THREE.Vector3 };
     uWarmColor: { value: THREE.Vector3 };
@@ -335,10 +327,6 @@ export class SparkPortalRenderer {
       // Offset table codes per texel and bias
       uPanoramaOffsetDecode: { value: new THREE.Vector2(1, 0) },
       uRestoration: { value: 1.0 },
-      uSpectralMode: { value: 0.0 },
-      uMonocleActive: { value: 0.0 },
-      uMonocleDir: { value: new THREE.Vector3(0.5, 0.48, 0.0) },
-      uMonocleCosRadius: { value: Math.cos(0.185) },
       uTime: { value: 0.0 },
     };
     this.earthUniforms = {
@@ -360,13 +348,11 @@ export class SparkPortalRenderer {
       uOrionTex: { value: null },
       uLagoonTex: { value: null },
       uTime: { value: 0.0 },
-      uSpectralMode: { value: 0.0 },
       uIsBlackHole: { value: 0.0 },
     };
     this.localBubbleUniforms = {
       uDustTex: { value: null },
       uTime: { value: 0.0 },
-      uSpectralMode: { value: 0.0 },
       uWarpFactor: { value: 0.0 },
       uCoolColor: { value: new THREE.Vector3(0.28, 0.03, 0.005) },
       uWarmColor: { value: new THREE.Vector3(0.92, 0.24, 0.03) },
@@ -613,13 +599,11 @@ export class SparkPortalRenderer {
       uniforms: this.skyDomeUniforms,
       vertexShader: /* glsl */ `
         varying vec3 vSkyDir;
-        varying vec4 vClipPos;
         void main() {
           vec4 worldPos = modelMatrix * vec4(position, 1.0);
           // Only the direction from the camera matters for a sky at infinity
           vSkyDir = worldPos.xyz - cameraPosition;
-          vClipPos = projectionMatrix * viewMatrix * worldPos;
-          gl_Position = vClipPos;
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
         }
       `,
       fragmentShader: /* glsl */ `
@@ -629,13 +613,8 @@ export class SparkPortalRenderer {
         uniform vec3 uPanoramaGeometry;
         uniform vec2 uPanoramaOffsetDecode;
         uniform float uRestoration;
-        uniform float uSpectralMode;
-        uniform float uMonocleActive;
-        uniform vec3 uMonocleDir;
-        uniform float uMonocleCosRadius;
         uniform float uTime;
         varying vec3 vSkyDir;
-        varying vec4 vClipPos;
 
         // Plate carree coordinates of a unit vector: longitude 0 at u = 0.5, increasing to the left; north at v = 1
         vec2 plateCarree(vec3 d) {
@@ -670,40 +649,11 @@ export class SparkPortalRenderer {
 
           // Deep velvet-obsidian cosmos + smooth Galactic Core dust-lane warmth (zero grainy JPEG noise)
           vec3 galacticBulge = pow(cleanMw, vec3(1.52)) * vec3(1.22, 1.04, 0.90) * 1.32;
-          vec3 hAlphaKnots = vec3(1.25, 0.28, 0.48) * pow(max(0.0, cleanMw.r - cleanMw.g * 0.85), 1.6) * 1.85;
-
           vec3 deepSpaceBase = vec3(0.002, 0.003, 0.008);
-          vec3 opticalSky =
-            deepSpaceBase +
-            galacticBulge +
-            hAlphaKnots;
-
-          float hAlphaLum = dot(opticalSky, vec3(0.55, 0.25, 0.20)) + dot(cleanMw, vec3(0.45, 0.15, 0.25)) * 0.75;
-          vec3 hAlphaSky = mix(opticalSky, vec3(hAlphaLum * 2.15, hAlphaLum * 0.24, hAlphaLum * 0.62), 0.85);
-
-          float irLum = dot(opticalSky, vec3(0.45, 0.40, 0.15)) + dot(cleanMw, vec3(0.5, 0.35, 0.15)) * 0.78;
-          vec3 jwstIrSky = mix(opticalSky, vec3(irLum * 1.95, irLum * 1.12, irLum * 0.34), 0.85);
-
-          vec3 deepRestoredSky = opticalSky * 1.55 + pow(cleanMw, vec3(1.38)) * vec3(0.28, 0.48, 0.85) * 0.48;
-
-          vec3 lensBandSky = hAlphaSky;
-          if (uSpectralMode < 0.5) {
-            lensBandSky = deepRestoredSky;
-          } else if (uSpectralMode >= 1.5) {
-            lensBandSky = jwstIrSky;
-          }
-
-          vec2 ndc = vClipPos.xy / max(0.0001, vClipPos.w);
-          vec2 screenUv = vec2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
-          vec2 deltaPx = (screenUv - uMonocleDir.xy) * vec2(1600.0, 1000.0);
-          float distPx = length(deltaPx);
-          float lensMask = uMonocleActive * (1.0 - smoothstep(126.0, 130.0, distPx));
+          vec3 opticalSky = deepSpaceBase + galacticBulge;
 
           vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030);
-          vec3 outsideSky = mix(rawSensorVeil, opticalSky, uRestoration);
-          vec3 finalCol = mix(outsideSky, lensBandSky, lensMask);
-
-          gl_FragColor = vec4(finalCol, 1.0);
+          gl_FragColor = vec4(mix(rawSensorVeil, opticalSky, uRestoration), 1.0);
         }
       `,
     });
@@ -1206,7 +1156,6 @@ export class SparkPortalRenderer {
     const starMat = new THREE.ShaderMaterial({
       uniforms: {
         uTime: this.localBubbleUniforms.uTime,
-        uSpectralMode: this.localBubbleUniforms.uSpectralMode,
         uCoolColor: this.localBubbleUniforms.uCoolColor,
         uWarmColor: this.localBubbleUniforms.uWarmColor,
         uHotColor: this.localBubbleUniforms.uHotColor,
@@ -1225,7 +1174,6 @@ export class SparkPortalRenderer {
       `,
       fragmentShader: /* glsl */ `
         uniform float uTime;
-        uniform float uSpectralMode;
         uniform vec3 uCoolColor;
         uniform vec3 uWarmColor;
         uniform vec3 uHotColor;
@@ -1530,7 +1478,6 @@ export class SparkPortalRenderer {
         uniform sampler2D uOrionTex;
         uniform sampler2D uLagoonTex;
         uniform float uTime;
-        uniform float uSpectralMode;
         uniform float uIsBlackHole;
         varying vec2 vUv;
         varying vec3 vLocalPos;
@@ -1695,16 +1642,6 @@ export class SparkPortalRenderer {
           vec3 combined = orionLinear + lagoonLinear;
 
           combined = combined / (vec3(1.0) + combined * 0.82);
-
-          if (uSpectralMode > 0.5 && uSpectralMode < 1.5) {
-            float hAlpha = dot(combined, vec3(0.62, 0.22, 0.16));
-            float oiii = dot(combined, vec3(0.10, 0.52, 0.48));
-            combined = vec3(hAlpha * 1.38, oiii * 0.52, hAlpha * 0.44 + oiii * 0.68);
-          } else if (uSpectralMode >= 1.5) {
-            float pahDust = dot(combined, vec3(0.52, 0.36, 0.12));
-            float hotGas = dot(combined, vec3(0.15, 0.45, 0.40));
-            combined = vec3(pahDust * 1.45, pahDust * 0.88 + hotGas * 0.22, hotGas * 0.65);
-          }
 
           vec3 finalNebula = combined * radialVignette;
           float alpha = clamp(radialVignette * clamp(dot(combined, vec3(0.58)) * 1.45, 0.0, 0.76), 0.0, 0.76);
@@ -2886,24 +2823,19 @@ export class SparkPortalRenderer {
     let targetRegime: SpatialScaleRegime = 'cislunar';
     if (sceneKey === 'cislunar') {
       targetRegime = 'cislunar';
-      this.setSpectralBand('optical');
     } else if (sceneKey === 'black_hole') {
       targetRegime = 'deep_sky';
       this.setTargetAppearance('Sagittarius A* (Galactic Center)', 1.85, 'deep_sky');
-      this.setSpectralBand('optical');
     } else if (sceneKey === 'supergiant') {
       targetRegime = 'solar_neighborhood';
       this.setTargetAppearance('Betelgeuse (α Orionis)', 1.85, 'star');
-      this.setSpectralBand('optical');
     } else if (sceneKey === 'orion_nebula') {
       targetRegime = 'deep_sky';
       this.setTargetAppearance('Orion Nebula (M42)', -0.1, 'nebula');
-      this.setSpectralBand('halpha');
     } else if (sceneKey === 'saturn_horizon') {
       targetRegime = 'planetary_surface';
       this.setTargetAppearance('Saturn', 0.9, 'planet');
       this.rebuildPlanetaryTerrainSplats('titan_methane');
-      this.setSpectralBand('optical');
     }
 
     this.jumpToRegime(targetRegime);
@@ -2912,22 +2844,6 @@ export class SparkPortalRenderer {
       this.cinemaOpticsUniforms.uWarpFactor.value = 0.48;
       this.localBubbleUniforms.uWarpFactor.value = 0.48;
     }
-  }
-
-  public setSpectralBand(band: SpectralBandMode): void {
-    const modeVal = band === 'halpha' ? 1.0 : band === 'jwst_ir' ? 2.0 : 0.0;
-    this.skyDomeUniforms.uSpectralMode.value = modeVal;
-    this.nebulaUniforms.uSpectralMode.value = modeVal;
-    this.localBubbleUniforms.uSpectralMode.value = modeVal;
-  }
-
-  public setSpectralMonocleScreenPos(
-    normX: number,
-    normY: number,
-    active = true
-  ): void {
-    this.skyDomeUniforms.uMonocleActive.value = active ? 1.0 : 0.0;
-    this.skyDomeUniforms.uMonocleDir.value.set(normX, normY, 0.0);
   }
 
   public async enterWebXRSession(): Promise<boolean> {

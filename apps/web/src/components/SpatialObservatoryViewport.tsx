@@ -205,8 +205,6 @@ export const SpatialObservatoryViewport: React.FC<
       }
       attached = renderer;
       rendererRef.current = renderer;
-      renderer.setSpectralBand('optical');
-      renderer.setSpectralMonocleScreenPos(0.5, 0.5, false);
       if (rendererChoice.heldClockSec !== null) renderer.holdClock(rendererChoice.heldClockSec);
       handleResize();
       setRenderLayers(renderer.getRenderLayers?.() ?? null);

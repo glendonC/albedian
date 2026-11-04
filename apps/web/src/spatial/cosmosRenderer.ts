@@ -8,13 +8,9 @@ import type { RenderLayerSet } from '@albedian/contracts';
 
 export type ShowcaseSceneKey = 'cislunar' | 'black_hole' | 'supergiant' | 'orion_nebula' | 'saturn_horizon';
 
-export type SpectralBand = 'optical' | 'halpha' | 'jwst_ir';
-
 export type CosmosRendererKind = 'webgl-spark' | 'webgpu';
 
 export interface CosmosRenderer {
-  setSpectralBand(band: SpectralBand): void;
-  setSpectralMonocleScreenPos(normX: number, normY: number, active?: boolean): void;
   setObserverCoordinates(latDeg: number, lonDeg: number): void;
   setShowcaseMode(enabled: boolean): void;
   transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant?: boolean): void;
