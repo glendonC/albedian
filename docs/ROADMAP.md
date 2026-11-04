@@ -20,7 +20,7 @@ Labels, as AGENTS.md section 3 asks:
 - **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with 61 tests ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). Its data inputs are not connected to the app yet. [tested]
 - **Backend.** Nine FastAPI endpoints. They include a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision ephemeris and a moonlight model. All are tested on synthetic data only. [tested]
 - **Look-dev.** A Blender 5.2 pipeline renders real moments from NASA Blue Marble, Black Marble and LRO data (`scripts/lookdev/`). [tested]
-- **Gates.** `pnpm typecheck`, `pnpm test` (213 tests), `uv run pytest` (46 tests), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`. There is no CI yet. [tested]
+- **Gates.** `pnpm typecheck`, `pnpm test` (262 tests), `uv run pytest` (163 tests), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`. There is no CI yet. [tested]
 
 ### The gap that matters most
 
@@ -39,7 +39,6 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
   - Radiometry assumes a fixed natural sky and has no light-pollution data. Its target is fixed at 8.2 degrees from the Moon and magnitude 3, which was Deneb Algedi in the first test clip: a default in `services/science/router.py:184`, hardcoded in `services/media/discovery.py:439`.
 - **Language.**
   - Commands go through regex parsers.
-  - The optional Claude call is a raw HTTP request to an old, hardcoded model (`claude-3-5-haiku-latest`), and its output is not schema-checked.
   - The backend returns template text instead of executing actions (`services/voice/intent.py`).
   - There is no knowledge base, retrieval or citation system.
 - **Data.** The star tiles stop at G 12 and carry no temperature, luminosity, extinction or parallax error, and their positions stay at epoch J2016.0. Most textures, all models and all splats have no recorded provenance (section 6).
@@ -83,7 +82,7 @@ Owners: `science` and `media`, with `experience` for the upload UI.
   3. **Blind solve.** Without hints, use cedar-solve (Apache-2.0) with a custom 35 to 85 degree database and a distortion search range. Fall back to astrometry.net indexes 4112 to 4119 (11 MB) on a central crop. astrometry.net is GPL v3, so run it as a separate process [inference].
   4. **Lens model.** Fit a full lens model (Brown-Conrady or Kannala-Brandt) against catalog stars from the existing G 12 tiles, which replace the 18-star catalog.
   5. **Accept.** Keep a solution only if it passes the existing held-out gate and two independent paths agree.
-- **M3, golden corpus and benchmark.** Start now, because weather, the Moon and the season limit how fast real data arrives. [proposed] The corpus has four parts:
+- **M3, golden corpus and benchmark.** Start now, because weather, the Moon and the season limit how fast real data arrives. [proposed] The benchmark's ground-truth camera and astrometry landed on 2026-11-04 in `research/benchmarks/phone_photos/`, tested against ERFA and Meeus; the renderer, scorer and baseline follow. [tested] The corpus has four parts:
   - Synthetic Gaia fields rendered through phone fields of view, lens distortion, light-pollution gradients and foregrounds.
   - Real phone frames in RAW and JPEG, with ground truth from a co-mounted narrow-field camera.
   - Hard negatives (cloud, aircraft, the Moon, screens), scored on producing zero false solves.
@@ -130,7 +129,7 @@ Owners: `voice`, with `architecture` for action contracts and `science` for tool
 
 No model training is needed. Claude 3.5 Sonnet already scored 85% on the AstroMLab-1 astronomy benchmark in 2024 [verified]. What a model lacks is the user's own data, so grounding comes from deterministic tools, a licensed corpus and citations, with evidence classes carried into every answer. [inference]
 
-- **M1, a sound model path.** [verified API features; design proposed]
+- **M1, a sound model path.** Landed on 2026-11-04: the official SDK, `claude-opus-5-5` read from configuration, strict tools with `tool_choice` `auto`, a server-side refusal fallback that logs the model that served each answer, and a cached system prompt. Live calls stay off until an eval budget exists. [tested]
   - Use the official Anthropic Python SDK instead of raw HTTP, and `claude-opus-5-5` read from configuration instead of the hardcoded old model.
   - Make output schema-valid with strict tool definitions (`strict: true`) or structured outputs (`output_config.format`). This model rejects forced `tool_choice`, so use `auto` with strict tools.
   - Handle the `refusal` stop reason with server-side fallbacks.
@@ -170,8 +169,8 @@ The WebGPU migration continues from [RENDERER_WEBGPU_SPIKE.md](architecture/REND
 - **Real atmosphere.** Replace the hand-tuned lookup with Bruneton 2017's precomputation (BSD-3; the bake takes about 250 ms on a GPU [verified]) or with `@takram/three-atmosphere/webgpu` (MIT, work in progress, needs three 0.182 or later [verified]). [proposed]
 - **The night sky, physically.** Model airglow, zodiacal light and integrated starlight, which the GAMBONS model covers [verified], plus artificial sky brightness from Track 1 M5. [proposed]
 - **Dust from data.** Render the Track 2 M4 volume with CCM89 reddening of everything behind it, which the spike already measured. [proposed]
-- **Sky dome registration.** Merge `claude/nice-khayyam-277e40` after decision 2. Then fix the parallax between the catalog stars, drawn on an 85-unit sphere, and the dome at infinity. [proposed]
-- **Textures.** `nasa_starmap_4k.jpg` and `lro_moon_2k.jpg` are only 1024x512. Replace them with full-resolution sources whose provenance is recorded. Whether the NASA SVS Deep Star Maps 2020 inherit ESA's non-commercial terms through their Gaia DR2 content is [open].
+- **Sky dome registration.** Landed on 2026-11-04: the ESO panorama is registered to the catalog stars in both renderers, and the plotted star map, the synthesized `halpha` and `jwst_ir` bands and the red boost are removed ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)). [tested] Next: draw the catalog stars at infinity, so they stop shifting against the dome, and show each photograph's credit without a click. [proposed]
+- **Textures.** `lro_moon_2k.jpg` is only 1024x512. It is being replaced by the 8k colour map and the LOLA relief of NASA SVS's CGI Moon Kit (svs.gsfc.nasa.gov/4720), with recorded provenance. [proposed] The plotted star map is gone from the app; the Blender look-dev sky still uses the NASA SVS Deep Star Maps and moves to the registered panorama. [proposed]
 - **Honest set pieces.** Delete `derivePlanetaryWorldDescriptor`, and act on decision 4. [proposed]
 - **Switching the default.** Switch after Safari and Windows runs, per-regime snapshot tests and frame-time budgets in CI. [proposed]
 
@@ -261,7 +260,7 @@ Research checked these on 2026-11-04 at the sources named. Sizes are downloads.
 | O'Neill et al. 2024 | The Local Bubble (Local Chimney) surface | 3.5 GB | CC0 | doi:10.7910/DVN/INB1RB | 2 M4 |
 | Bayestar19 | 3D dust north of declination -30 | 0.73 GB | CC0 | doi:10.7910/DVN/2EJ9TX | 2 M4 |
 | ESO eso0932a | Milky Way panorama (in use) | 6000x3000 | CC BY 4.0, credit ESO/S. Brunier | eso.org | Have |
-| NASA SVS Deep Star Maps 2020 | Plotted star map (in use) | Up to 3.8 GB EXR | NASA credit; whether Gaia DR2 terms apply is [open] | svs.gsfc.nasa.gov/4851 | Decision 2 |
+| NASA SVS Deep Star Maps 2020 | Plotted star map, removed from the app on 2026-11-04; the Blender look-dev sky still uses it | Up to 3.8 GB EXR | NASA credit; whether Gaia DR2 terms apply is [open] | svs.gsfc.nasa.gov/4851 | Removed |
 | CDS HiPS (DSS2, 2MASS, AllWISE, Planck, Fermi) | Multiwavelength all-sky images | Tiled | ODbL packaging. DSS2 is not cleared for products, Planck is CC BY-NC, the others are [open] | alasky.cds.unistra.fr, skies.esac.esa.int | Only once cleared |
 | NASA Exoplanet Archive | 6,451 planets around 4,847 hosts | TAP | No restrictions; cite | exoplanetarchive.ipac.caltech.edu | 2 M2 |
 | ATNF Pulsar Catalogue | 4,503 pulsars | Small | CSIRO property; cite | atnf.csiro.au | 2 M2, 5 |
@@ -284,7 +283,6 @@ Some licences carry obligations:
 ## 6. Assets without recorded provenance
 
 - **Textures:**
-  - `eso_milkyway_panorama.jpg` and `nasa_starmap_4k.jpg` (provenance is recorded only on the sky dome branch).
   - `eso_orion_nebula.jpg`, `eso_lagoon_nebula.jpg`.
   - `earth_clouds.png`, `earth_normal.jpg`, `earth_specular.jpg`.
   - `lro_moon_2k.jpg`, `lro_moon_disp.jpg`, `moon_albedo.jpg`.
