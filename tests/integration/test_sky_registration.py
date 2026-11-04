@@ -9,6 +9,7 @@ is what a fresh fit produces, and measure the star map's star images against the
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import json
 import math
@@ -114,10 +115,85 @@ def test_offset_table_codec_round_trips_and_refuses_overflow():
         raise AssertionError("an offset beyond the byte range must be refused")
 
 
+# A refit on another platform (Linux OpenBLAS and glibc against macOS Accelerate) can move a
+# value's last rounded digit or put an offset table code on the other side of a rounding edge.
+# Inputs, structure and choices must match exactly; numbers may differ only within these bounds.
+REFIT_FLOAT_FLOOR = 1e-8  # radians in the rotation matrices: 2 milliarcseconds
+REFIT_ROUNDING_STEPS = 2  # rounded statistics and positions: two steps of their last digit
+REFIT_COUNT_SLACK = 2  # stars entering or leaving a selection at a threshold
+REFIT_TABLE_CODE_SLACK = 1  # one offset table code is 1/32 texel
+REFIT_TABLE_CELL_FRACTION = 0.005
+REFIT_COUNT_KEYS = {"candidates", "matched", "used", "stars"}
+REFIT_EXACT_FLOAT_KEYS = {
+    "texelArcsec", "scale", "kernelSigmaDeg", "priorWeight", "sigmaDeg", "magnitudeLimit",
+    "isolationDeg", "isolationDeltaMag", "outlierTexels", "raDeg", "decDeg", "mag",
+}
+# Decimal places scripts/register_sky_panorama.py rounds each value to; other numbers get the floor.
+REFIT_ROUNDING_DECIMALS = {
+    "yOffsetPx": 4, "rotationFromGalacticDeg": 4, "lDeg": 4, "bDeg": 4,
+    "medianTexels": 3, "p90Texels": 3, "rmsTexels": 3, "maxTexels": 3, "maxAbsTexels": 3,
+    "modelX": 3, "modelY": 3, "measuredX": 3, "measuredY": 3,
+}
+
+
+def _refit_differences(fresh, committed, path: str = "") -> list[str]:
+    """Paths where a fresh fit differs from the committed one beyond platform rounding."""
+    key = path.rsplit(".", 1)[-1].split("[")[0]
+    if isinstance(committed, dict):
+        if not isinstance(fresh, dict) or fresh.keys() != committed.keys():
+            return [f"{path}: keys differ"]
+        return [d for k in committed for d in _refit_differences(fresh[k], committed[k], f"{path}.{k}")]
+    if isinstance(committed, list):
+        if not isinstance(fresh, list) or len(fresh) != len(committed):
+            return [f"{path}: length differs"]
+        return [d for i, (a, b) in enumerate(zip(fresh, committed)) for d in _refit_differences(a, b, f"{path}[{i}]")]
+    if path.endswith("offsetTable.data"):
+        a = np.frombuffer(base64.b64decode(fresh), dtype=np.uint8).astype(int)
+        b = np.frombuffer(base64.b64decode(committed), dtype=np.uint8).astype(int)
+        if a.shape != b.shape:
+            return [f"{path}: table sizes differ"]
+        diff = np.abs(a - b)
+        if diff.max() > REFIT_TABLE_CODE_SLACK or np.count_nonzero(diff) > REFIT_TABLE_CELL_FRACTION * diff.size:
+            return [f"{path}: {np.count_nonzero(diff)} of {diff.size} codes differ, by at most {diff.max()}"]
+        return []
+    if committed is None or isinstance(committed, (bool, str)):
+        return [] if fresh == committed else [f"{path}: {fresh!r} != {committed!r}"]
+    if isinstance(committed, int):
+        slack = REFIT_COUNT_SLACK if key in REFIT_COUNT_KEYS else 0
+        ok = isinstance(fresh, int) and not isinstance(fresh, bool) and abs(fresh - committed) <= slack
+        return [] if ok else [f"{path}: {fresh!r} != {committed!r}"]
+    if key in REFIT_EXACT_FLOAT_KEYS:
+        return [] if fresh == committed else [f"{path}: {fresh!r} != {committed!r}"]
+    decimals = REFIT_ROUNDING_DECIMALS.get(key)
+    tolerance = REFIT_FLOAT_FLOOR if decimals is None else REFIT_ROUNDING_STEPS * 10.0**-decimals
+    ok = isinstance(fresh, (int, float)) and abs(fresh - committed) <= tolerance
+    return [] if ok else [f"{path}: {fresh!r} != {committed!r} (tolerance {tolerance:g})"]
+
+
+def test_refit_comparison_allows_platform_rounding_and_nothing_more():
+    committed = json.loads((TEXTURES / "eso0932a_registration.json").read_text())
+    assert _refit_differences(committed, committed) == []
+    nudged = json.loads(json.dumps(committed))
+    nudged["yOffsetPx"] += 1e-4
+    nudged["fit"]["selection"]["matched"] += 1
+    assert _refit_differences(nudged, committed) == []
+    for change in (
+        lambda s: s.__setitem__("yOffsetPx", s["yOffsetPx"] + 1e-3),
+        lambda s: s["fit"]["selection"].__setitem__("matched", s["fit"]["selection"]["matched"] + 3),
+        lambda s: s["offsetTable"].__setitem__("kernelSigmaDeg", 2.0),
+        lambda s: s["image"].__setitem__("sha256", "0" * 64),
+        lambda s: s["galacticToPanorama"][0].__setitem__(0, s["galacticToPanorama"][0][0] + 1e-6),
+    ):
+        broken = json.loads(json.dumps(committed))
+        change(broken)
+        assert _refit_differences(broken, committed), "a real change must be reported"
+
+
 def test_committed_panorama_solution_is_a_fresh_fit():
     script = _load_script()
     committed = (TEXTURES / "eso0932a_registration.json").read_text()
-    assert script.dumps(script.solve()) == committed, "rerun scripts/register_sky_panorama.py"
+    differences = _refit_differences(json.loads(script.dumps(script.solve())), json.loads(committed))
+    assert not differences, "rerun scripts/register_sky_panorama.py; differs at: " + "; ".join(differences[:20])
     solution = json.loads(committed)
     held_out = {row["sigmaDeg"]: row for row in solution["fit"]["heldOut"]["withOffsetTable"]}
     chosen = held_out[solution["offsetTable"]["kernelSigmaDeg"]]
