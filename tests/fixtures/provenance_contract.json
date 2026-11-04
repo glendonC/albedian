@@ -1,0 +1,2226 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "recordFilename": "PROVENANCE.json",
+  "spdxLicenseIds": [
+    "CC-BY-4.0",
+    "CC-BY-SA-4.0",
+    "CC-BY-NC-4.0",
+    "CC-BY-NC-3.0-IGO",
+    "CC0-1.0",
+    "ODbL-1.0",
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause"
+  ],
+  "patterns": {
+    "id": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+    "path": "^[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$",
+    "sha256": "^[0-9a-f]{64}$",
+    "httpUrl": "^https?://[^\\t\\n\\u000b\\f\\r \\u0085\\u00a0\\u1680\\u180e\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u2064\\u3000\\ufeff/]+[^\\t\\n\\u000b\\f\\r \\u0085\\u00a0\\u1680\\u180e\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u2064\\u3000\\ufeff]*$",
+    "doi": "^10\\.[0-9]{4,9}/[^\\t\\n\\u000b\\f\\r \\u0085\\u00a0\\u1680\\u180e\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u2064\\u3000\\ufeff]+$",
+    "isoDate": "^(?:19|20|21)[0-9]{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$",
+    "licenseRef": "^LicenseRef-[A-Za-z0-9.-]+$",
+    "text": "^[^\\t\\n\\u000b\\f\\r \\u0085\\u00a0\\u1680\\u180e\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u2064\\u3000\\ufeff](?:[\\s\\S]*[^\\t\\n\\u000b\\f\\r \\u0085\\u00a0\\u1680\\u180e\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u2064\\u3000\\ufeff])?$"
+  },
+  "limits": {
+    "shortTextMaxLength": 300,
+    "creditMaxLength": 200,
+    "textMaxLength": 4000,
+    "urlMaxLength": 2000,
+    "pathMaxLength": 400
+  },
+  "valid": [
+    {
+      "format": "albedian.asset-provenance",
+      "formatVersion": 1,
+      "sources": [
+        {
+          "id": "eso-sample",
+          "title": "ESO sample image",
+          "url": "https://www.eso.org/public/images/",
+          "retrieved": "2026-11-04",
+          "license": {
+            "spdx": "CC-BY-4.0",
+            "name": "Creative Commons Attribution 4.0 International",
+            "url": "https://creativecommons.org/licenses/by/4.0/"
+          },
+          "credit": "ESO"
+        }
+      ],
+      "files": [
+        {
+          "path": "sample_sky.jpg",
+          "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+          "sources": [
+            "eso-sample"
+          ],
+          "producedBy": {
+            "method": "downloaded-as-is"
+          },
+          "note": "Contract test sample; not a record of a real file."
+        }
+      ],
+      "fileSets": []
+    },
+    {
+      "format": "albedian.asset-provenance",
+      "formatVersion": 1,
+      "sources": [
+        {
+          "id": "gaia-dr3",
+          "title": "Gaia Data Release 3",
+          "url": "https://gea.esac.esa.int/archive/",
+          "version": "DR3",
+          "retrieved": "2026-11-03",
+          "license": {
+            "spdx": "CC-BY-NC-3.0-IGO",
+            "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+            "url": "https://www.cosmos.esa.int/web/gaia-users/license",
+            "conditions": "Commercial use needs prior authorisation from ESA."
+          },
+          "credit": "ESA/Gaia/DPAC",
+          "citation": "Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1",
+          "doi": "10.1051/0004-6361/202243940"
+        }
+      ],
+      "files": [],
+      "fileSets": [
+        {
+          "checksums": "SHA256SUMS",
+          "sha256": "b579f01b3a759b00e15aa841431cd6715c92bb8cf77bab6a594021eab8b076fb",
+          "sources": [
+            "gaia-dr3"
+          ],
+          "producedBy": {
+            "method": "script",
+            "script": "scripts/bake_catalog_star_tiles.py",
+            "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3"
+          },
+          "note": "Contract test sample; not a record of a real file."
+        }
+      ]
+    },
+    {
+      "format": "albedian.asset-provenance",
+      "formatVersion": 1,
+      "sources": [
+        {
+          "id": "nasa-sample",
+          "title": "NASA sample image",
+          "url": "https://science.nasa.gov/",
+          "version": "2016",
+          "license": {
+            "spdx": "LicenseRef-NASA-Media-Guidelines",
+            "name": "NASA Images and Media Usage Guidelines",
+            "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+          },
+          "credit": "NASA",
+          "sha256": "d24eab16b38c121d253fd2e559da15073c77f7559a0436398cbddb02091d43c4"
+        },
+        {
+          "id": "sample-software",
+          "title": "Sample software",
+          "url": "https://example.org/sample-software",
+          "version": "1.0",
+          "license": {
+            "spdx": "BSD-3-Clause",
+            "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+            "url": "https://opensource.org/license/BSD-3-Clause"
+          },
+          "credit": "Sample Software authors"
+        }
+      ],
+      "files": [
+        {
+          "path": "maps/sample_night_8k.jpg",
+          "sha256": "a1f02e3fcca4c52fef38a47eeff28713abb6e35d50bafbd332275551cdd6c2fe",
+          "sources": [
+            "nasa-sample",
+            "sample-software"
+          ],
+          "producedBy": {
+            "method": "script",
+            "script": "scripts/lookdev/bake_earth_textures.py"
+          },
+          "note": "Contract test sample; not a record of a real file."
+        },
+        {
+          "path": "sample_lut.png",
+          "sha256": "d50dc55d051425cd6ffac37598af97014a160febb38795801bcc46ba4560fca6",
+          "sources": [
+            "sample-software"
+          ],
+          "producedBy": {
+            "method": "script",
+            "script": "scripts/bake_bruneton_lut_and_splats.py"
+          }
+        }
+      ],
+      "fileSets": []
+    },
+    {
+      "format": "albedian.asset-provenance",
+      "formatVersion": 1,
+      "sources": [
+        {
+          "id": "eso-sample",
+          "title": "ESO sample image",
+          "url": "https://www.eso.org/public/images/",
+          "retrieved": "2026-11-04",
+          "license": {
+            "spdx": "CC-BY-4.0",
+            "name": "Creative Commons Attribution 4.0 International",
+            "url": "https://creativecommons.org/licenses/by/4.0/"
+          },
+          "credit": "\ud83c\udf0cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \ud83c\udf0c"
+        }
+      ],
+      "files": [
+        {
+          "path": "sample_sky.jpg",
+          "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+          "sources": [
+            "eso-sample"
+          ],
+          "producedBy": {
+            "method": "downloaded-as-is"
+          },
+          "note": "Contract test sample; not a record of a real file."
+        }
+      ],
+      "fileSets": []
+    }
+  ],
+  "invalid": [
+    {
+      "rule": "wrong format name",
+      "record": {
+        "format": "albedian.asset-sources",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "unknown format version",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 2,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "boolean format version",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": true,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "no sources",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "no files and no file sets",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "missing fileSets",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ]
+      }
+    },
+    {
+      "rule": "unknown record field",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": [],
+        "evidenceClass": "observed"
+      }
+    },
+    {
+      "rule": "source id outside the slug pattern",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "ESO Sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "repeated source id",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          },
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "source never referenced",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          },
+          {
+            "id": "sample-software",
+            "title": "Sample software",
+            "url": "https://example.org/sample-software",
+            "version": "1.0",
+            "license": {
+              "spdx": "BSD-3-Clause",
+              "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+              "url": "https://opensource.org/license/BSD-3-Clause"
+            },
+            "credit": "Sample Software authors"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "file names an undefined source",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample",
+              "nasa-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "file names a source twice",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample",
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "file names no source",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "neither version nor retrieval date",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "impossible retrieval date",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-02-30",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "retrieval date not ISO",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "04/11/2026",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "url not http",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "ftp://ftp.eso.org/image.jpg",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "url with a space",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/a b.jpg",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "blank title",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": " ",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "title with a trailing space",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image ",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "title starting with a byte order mark",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "\ufeffESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "title ending with a next-line character",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image\u0085",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "title ending with a zero-width space",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image\u200b",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "url with a byte order mark",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/\ufeffimage.jpg",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "credit too long",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "credit one code point too long with astral characters",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "\ud83c\udf0ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \ud83c\udf0c"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "doi outside the DOI pattern",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "doi": "doi:10.1051/0004-6361/202243940"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "input checksum in upper case",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "sha256": "CB77EFF12ECA98DF8C03BE439CEF879616A4A3FE91948782C61838CA702E73CD"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source version",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "version": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source retrieved",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": null,
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source citation",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "citation": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source doi",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "doi": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source acknowledgement",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "acknowledgement": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source sha256",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "sha256": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null source note",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "note": null
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null licence conditions",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/",
+              "conditions": null
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "unknown source field",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO",
+            "evidenceClass": "observed"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "licence id not on the pinned SPDX list",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "licence reference with a space",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "LicenseRef-NASA Media",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "licence without its terms url",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "CC BY 4.0"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "unknown licence field",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/",
+              "commercial": false
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "path climbing out of the folder",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "../textures/sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "absolute path",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "/apps/web/public/sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "hidden file",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": ".sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "empty path segment",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "maps//sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "backslash path",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "maps\\sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "the record file itself",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "PROVENANCE.json",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "repeated path",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          },
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "checksum list path repeats a file path",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": [
+          {
+            "checksums": "sample_sky.jpg",
+            "sha256": "6c52c5546f04c2308cae95a32baae83ba124c73de8cf89c7ba380ee14c9c9b64",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "file checksum too short",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "cb77eff12eca98df8c03be439cef879616a4a3fe91948782c61838ca702e73c",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "unknown production method",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "generated"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "script method without a script",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "script path outside the path pattern",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "../bake.py"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "downloaded as is with a script",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is",
+              "script": "scripts/x.py"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null script command",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "command": null
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null file note",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": null
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null file set note",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [],
+        "fileSets": [
+          {
+            "checksums": "SHA256SUMS",
+            "sha256": "b579f01b3a759b00e15aa841431cd6715c92bb8cf77bab6a594021eab8b076fb",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
+            },
+            "note": null
+          }
+        ]
+      }
+    }
+  ]
+}

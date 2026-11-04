@@ -23,6 +23,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'NavigationHistorySchema',
   'ExportArtifactSchema',
   'RenderLayerSchema',
+  'AssetProvenanceRecordSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
