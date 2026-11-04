@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
-import { raDecToUnitVector } from '@albedian/camera-rig';
+import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -27,15 +27,13 @@ export function useCameraFlightAnimation(
         session.observationSolution.findings[0];
       if (!target) return;
 
+      // The flight needs a measured 3D position: no direction or distance is assumed
+      const targetParsec = resolveFindingParsecPosition(target);
+      if (!targetParsec) return;
+
       if (flightRafRef.current) {
         window.cancelAnimationFrame(flightRafRef.current);
       }
-
-      const targetParsec: [number, number, number] =
-        target.cartesianParsecICRS ??
-        (raDecToUnitVector(target.skyPosition.raDeg, target.skyPosition.decDeg).map(
-          (c) => c * (target.inferredDistancePc?.median ?? 100)
-        ) as [number, number, number]);
 
       const endOrigin: [number, number, number] = [
         Number((targetParsec[0] * 0.45).toFixed(3)),
