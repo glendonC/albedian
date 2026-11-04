@@ -6,16 +6,23 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
+import type { RenderLayerSet } from '@albedian/contracts';
 import {
   SparkPortalRenderer,
   SpatialScaleRegime,
 } from '../spatial/SparkPortalRenderer.js';
+import {
+  WEBGPU_PORTED_SHOWCASE_SCENES,
+  type CosmosRenderer,
+  type CosmosRendererKind,
+} from '../spatial/cosmosRenderer.js';
 import {
   observatoryAudio,
 } from '../audio/ObservatoryAudioEngine.js';
 import {
   CoalescingBar,
 } from './CoalescingBar.js';
+import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
 import '../styles/albedian.css';
 
 export interface SpatialObservatoryViewportProps {
@@ -69,6 +76,30 @@ const LANDING_SHOWCASE_SCENES = [
   },
 ] as const;
 
+interface RendererChoice {
+  kind: CosmosRendererKind;
+  /** Run the WebGPU host's TSL on three's WebGL2 backend (`?backend=webgl`). */
+  forceWebGL: boolean;
+  /** Scene clock held for matched snapshots (`?t=<seconds>`), or null. */
+  heldClockSec: number | null;
+}
+
+/**
+ * `?renderer=webgpu` selects the WebGPU host, which draws only the scenes ported to it so far;
+ * the WebGL2 and Spark renderer stays the default.
+ */
+function readRendererChoice(): RendererChoice {
+  if (typeof window === 'undefined') return { kind: 'webgl-spark', forceWebGL: false, heldClockSec: null };
+  const params = new URLSearchParams(window.location.search);
+  const heldRaw = params.get('t');
+  const held = heldRaw === null ? Number.NaN : Number(heldRaw);
+  return {
+    kind: params.get('renderer') === 'webgpu' ? 'webgpu' : 'webgl-spark',
+    forceWebGL: params.get('backend') === 'webgl',
+    heldClockSec: Number.isFinite(held) ? held : null,
+  };
+}
+
 export const SpatialObservatoryViewport: React.FC<
   SpatialObservatoryViewportProps
 > = ({
@@ -79,7 +110,21 @@ export const SpatialObservatoryViewport: React.FC<
   onTriggerUpload,
 }) => {
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
-  const rendererRef = useRef<SparkPortalRenderer | null>(null);
+  const rendererRef = useRef<CosmosRenderer | null>(null);
+  const [rendererChoice] = useState<RendererChoice>(readRendererChoice);
+  // Bumped when a renderer is attached, so effects that drive it run once it exists (the WebGPU
+  // host is created after an async import)
+  const [rendererGeneration, setRendererGeneration] = useState(0);
+  const [renderLayers, setRenderLayers] = useState<RenderLayerSet | null>(null);
+
+  // The WebGPU host draws only its ported scenes; the carousel cycles through those
+  const showcaseScenes = useMemo(
+    () =>
+      rendererChoice.kind === 'webgpu'
+        ? LANDING_SHOWCASE_SCENES.filter((s) => WEBGPU_PORTED_SHOWCASE_SCENES.includes(s.key))
+        : [...LANDING_SHOWCASE_SCENES],
+    [rendererChoice.kind]
+  );
 
   const [activeRegime, setActiveRegime] =
     useState<SpatialScaleRegime>('cislunar');
@@ -96,13 +141,23 @@ export const SpatialObservatoryViewport: React.FC<
     const raw = new URLSearchParams(window.location.search).get('scene');
     if (raw !== null) {
       const idx = Number.parseInt(raw, 10);
-      if (!Number.isNaN(idx) && idx >= 0 && idx < LANDING_SHOWCASE_SCENES.length) {
-        return idx;
+      const requested = LANDING_SHOWCASE_SCENES[idx];
+      if (!Number.isNaN(idx) && requested) {
+        // `scene` indexes the full carousel; a scene the active renderer lacks falls back to its first
+        const available = showcaseScenes.findIndex((s) => s.key === requested.key);
+        if (available < 0) {
+          console.info(`[viewport] scene ${requested.key} is not ported to the WebGPU host; showing ${showcaseScenes[0]?.key}`);
+        }
+        return Math.max(0, available);
       }
     }
     return 0;
   });
-  const showcaseMountedRef = useRef<boolean>(false);
+  // The showcase scene last started on which renderer; null scene after leaving the landing
+  const appliedShowcaseRef = useRef<{ renderer: CosmosRenderer | null; sceneKey: string | null }>({
+    renderer: null,
+    sceneKey: null,
+  });
 
   const dragStateRef = useRef<{
     dragging: boolean;
@@ -133,40 +188,66 @@ export const SpatialObservatoryViewport: React.FC<
     activeDiscoveredItem?.lonDeg ??
     null;
 
-  // Initialize WebGL2 + @sparkjsdev/spark 3D Gaussian Splatting Observatory Renderer
+  // Initialize the cosmos renderer: WebGL2 + @sparkjsdev/spark by default, the WebGPU host behind ?renderer=webgpu
   useEffect(() => {
     const host = canvasHostRef.current;
     if (!host) return;
-    const renderer = new SparkPortalRenderer(host, (nextRegime) => {
-      setActiveRegime(nextRegime);
-      observatoryAudio.setScaleRegime(nextRegime);
-    });
-    rendererRef.current = renderer;
-    renderer.setSpectralBand('optical');
-    renderer.setSpectralMonocleScreenPos(0.5, 0.5, false);
-    // ?t=<seconds> holds the scene clock, for snapshots of one pose across renderers
-    const heldRaw = new URLSearchParams(window.location.search).get('t');
-    const held = heldRaw === null ? Number.NaN : Number(heldRaw);
-    if (Number.isFinite(held)) renderer.holdClock(held);
+    let disposed = false;
+    let attached: CosmosRenderer | null = null;
 
     const handleResize = () => {
-      if (!host) return;
-      renderer.resize(host.clientWidth || 1440, host.clientHeight || 900);
+      attached?.resize(host.clientWidth || 1440, host.clientHeight || 900);
     };
-    handleResize();
+    const attach = (renderer: CosmosRenderer) => {
+      if (disposed) {
+        renderer.dispose();
+        return;
+      }
+      attached = renderer;
+      rendererRef.current = renderer;
+      renderer.setSpectralBand('optical');
+      renderer.setSpectralMonocleScreenPos(0.5, 0.5, false);
+      if (rendererChoice.heldClockSec !== null) renderer.holdClock(rendererChoice.heldClockSec);
+      handleResize();
+      setRenderLayers(renderer.getRenderLayers?.() ?? null);
+      setRendererGeneration((g) => g + 1);
+    };
+
+    const onRegimeChange = (nextRegime: SpatialScaleRegime) => {
+      setActiveRegime(nextRegime);
+      observatoryAudio.setScaleRegime(nextRegime);
+    };
+    if (rendererChoice.kind === 'webgpu') {
+      // Loaded on demand so the default WebGL path does not carry three's WebGPU build
+      void import('../spatial/webgpu/CislunarWebGpuRenderer.js').then(
+        ({ CislunarWebGpuRenderer }) =>
+          attach(
+            new CislunarWebGpuRenderer(host, {
+              forceWebGL: rendererChoice.forceWebGL,
+              onRegimeChange,
+              exposeForAutomation: true,
+            })
+          ),
+        (error: unknown) => console.error('[viewport] WebGPU host failed to load', error)
+      );
+    } else {
+      attach(new SparkPortalRenderer(host, onRegimeChange));
+    }
+
     window.addEventListener('resize', handleResize);
     return () => {
+      disposed = true;
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
+      attached?.dispose();
       rendererRef.current = null;
     };
-  }, []);
+  }, [rendererChoice]);
 
   // Sync observer geographic coordinates into 3D renderer
   useEffect(() => {
     if (observerLat === null || observerLon === null) return;
     rendererRef.current?.setObserverCoordinates(observerLat, observerLon);
-  }, [observerLat, observerLon]);
+  }, [observerLat, observerLon, rendererGeneration]);
 
   // The header slider is the engine's master volume; the engine keeps it until audio starts
   useEffect(() => {
@@ -179,29 +260,35 @@ export const SpatialObservatoryViewport: React.FC<
     if (!renderer) return;
     if (!entryStageActive) {
       renderer.setShowcaseMode(false);
+      appliedShowcaseRef.current.sceneKey = null;
       return;
     }
 
     renderer.setShowcaseMode(true);
-    const sceneDef =
-      LANDING_SHOWCASE_SCENES[showcaseSceneIdx] ?? LANDING_SHOWCASE_SCENES[0];
-    const isInitial = !showcaseMountedRef.current;
-    showcaseMountedRef.current = true;
-    renderer.transitionToShowcaseScene(sceneDef.key, isInitial);
+    const sceneDef = showcaseScenes[showcaseSceneIdx] ?? showcaseScenes[0];
+    if (!sceneDef) return;
+    // Start the scene when it changes or a renderer attaches; a renderer's first scene starts
+    // without the warp-in. Re-runs for other reasons leave the running scene alone.
+    const applied = appliedShowcaseRef.current;
+    if (applied.renderer !== renderer || applied.sceneKey !== sceneDef.key) {
+      renderer.transitionToShowcaseScene(sceneDef.key, applied.renderer !== renderer);
+      appliedShowcaseRef.current = { renderer, sceneKey: sceneDef.key };
+    }
 
     if (typeof window === 'undefined') return;
     const freeze = new URLSearchParams(window.location.search).get('freeze') === '1';
-    if (freeze) return;
+    // A single scene has nothing to cycle to; re-entering it would replay the warp-in
+    if (freeze || showcaseScenes.length < 2) return;
 
     const DURATION_MS = 7200;
     const timerId = window.setTimeout(() => {
-      setShowcaseSceneIdx((prev) => (prev + 1) % LANDING_SHOWCASE_SCENES.length);
+      setShowcaseSceneIdx((prev) => (prev + 1) % showcaseScenes.length);
     }, DURATION_MS);
 
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [entryStageActive, showcaseSceneIdx]);
+  }, [entryStageActive, showcaseSceneIdx, showcaseScenes, rendererGeneration]);
 
   // Keyboard navigation (WASD + Arrows)
   useEffect(() => {
@@ -309,6 +396,8 @@ export const SpatialObservatoryViewport: React.FC<
         className="alb-canvas-host"
         data-testid="spark-portal-canvas"
       />
+
+      {renderLayers && <RenderLayerDisclosure layers={renderLayers} />}
 
       {/* =======================================================================
           SCREEN 1: CLEAN LANDING PAGE
