@@ -1,0 +1,241 @@
+# Renderer WebGPU Spike
+
+Date: 2026-11-03. Spike code: [`apps/webgpu-spike/`](../../apps/webgpu-spike/) (isolated workspace package, its own `three`).
+Machine: Apple M5 Max (40-core GPU, Metal 4), macOS 26.7, Node 24.15.0, pnpm 10.7.1.
+
+Every claim carries one label:
+
+- **[verified]** checked against the npm registry, release notes, project docs, or installed source in this worktree.
+- **[measured]** timed or observed on this machine during this spike.
+- **[inference]** reasoned from verified or measured facts, not tested directly.
+- **[proposed]** a recommendation or plan.
+
+## 1. Recommendation
+
+**Hybrid now, full migration in stages.** [proposed]
+
+Move the cosmos renderer to three r187 `WebGPURenderer` with TSL now, and choose the primitive per content type instead of defaulting to Gaussian splats: analytic point-spread-function sprites for stars, ray-marched emission-absorption volumes for interstellar dust and nebulae, and splats only for places reconstructed from photos or video. The same TSL code ran on both WebGPU and the WebGL2 fallback on this machine, and the full Local Bubble scene with 100k HDR stars, bloom, AgX and FXAA took 0.85 ms per frame at 3840x2160 with splats and 2.08 ms with a half-resolution dust volume, against an 8.33 ms budget at 120 Hz [measured]. For capture-site splats, three's native `GaussianSplat` handled about 1M splats inside the same renderer [measured]; keep the existing Spark 2.4 (WebGL2) path only for larger captures until a WebGPU splat renderer selects level of detail. `@sparkjsdev/radix` is the likely successor but is 5 days old and already broke on three r187 [verified, measured].
+
+Why not "wait": the WebGPU path is faster than the current stack needs, the TSL post-processing set covers the film look (HDR, AgX, bloom, temporal and morphological AA, depth of field, motion blur), and the fallback is the same code [verified, measured]. Why not "migrate everything now": the photoreal splat options for WebGPU lack streaming level of detail, and three's WebGPU API is still changing release to release [verified].
+
+## 2. Versions and platform status
+
+| Item | Finding | Label |
+|---|---|---|
+| three | Latest `0.187.0` (npm, 2026-10-30). `0.186.0` published 2026-09-08, `0.186.1` 2026-09-24. | [verified] |
+| three native splats | r186 added "Gaussian Splat renderer / loader using TSL for WebGPU/WebGL + glTF import" (PR #33950, merged 2026-08-08), later renamed `GaussianSplatMesh` to `GaussianSplat` (#34306). Addon at `three/addons/objects/GaussianSplat.js`: GPU counting sort (4096 depth bins, re-sort after about 1.8 degrees of rotation, planar depth), CPU sort on the WebGL2 backend, SH up to degree 3, RGBA8 color, loaders for PLY, SPZ, SPLAT, KSPLAT and glTF `KHR_gaussian_splatting`, raycasting. No level of detail or streaming. | [verified] (release notes, installed source) |
+| @types/three | `0.187.0` covers `GaussianSplat`, `GaussianSplatUtils` and every TSL display node used here. | [verified] |
+| @sparkjsdev/spark | Latest `2.4.0` (2026-10-20), peer `three >=0.180.0`. WebGL2 only: `RawShaderMaterial`/`ShaderMaterial` and `renderer.getContext()` WebGL extensions; no WebGPU in any 2.x release note. Level of detail via RAD paging since 2.0. Opacity stored as 8-bit unorm. | [verified] (npm, releases, installed dist) |
+| @sparkjsdev/radix | `0.0.1` (2026-10-29), "An advanced WebGPU 3D Gaussian Splatting renderer for THREE.js" (World Labs). Peer `three >=0.186.0`, developed on 0.186.0. WebGPU compute projection and radix sort every frame, WebGL2 fallback with worker sort, TSL shaders, HDR output, PLY/SPZ/RAD/RDX. Its own docs list level-of-detail selection, skinning and raycasting as not built in (edits only through example ports) and call it new. Its `dependencies` field lists 114 packages (http-server, eslint and similar tooling). | [verified] (npm, installed dist, project docs) |
+| radix on three 0.187 | Throws `A dispatch size cannot be passed to "renderer.compute()" for nodes created with "compute( count )"` (three #34813). A 10-line shim ([`radixCompat.ts`](../../apps/webgpu-spike/src/render/radixCompat.ts)) restores the r186 behavior. | [measured] |
+| Safari 26 | WebKit: WebGPU "is now shipping in Safari 26.0 for macOS, iOS, iPadOS, and visionOS". Safari 26.6.2 is installed here but was not benchmarked. | [verified], not measured |
+| Chrome | Chrome 156.0.8078.80 headless ran WebGPU on the Apple M5 Max adapter (`metal-3`). The Claude desktop Browser pane is Chromium 152 and also exposed WebGPU. | [measured] |
+| TSL post-processing in r187 | `RenderPipeline` (renamed from `PostProcessing` in r183) and `DirectRenderPipeline` (r186). HDR: `pass()` renders to HalfFloat by default. Tone mapping: `AgXToneMapping` and TSL `agxToneMapping`. Bloom: `BloomNode`. AA: `FXAANode`, `SMAANode`, `TRAANode`, `TAAUNode`, `SSAAPassNode`, MSAA via `pass(..., { samples })`. Depth of field: `DepthOfFieldNode`. Motion blur: `MotionBlur.js` (needs a velocity MRT). Also `GTAONode`, `SSRNode`, `SSGINode`, `GodraysNode`, `LensflareNode`, `ChromaticAberrationNode`, `FilmNode`, `Lut3DNode`, `lensDirt` (r187), `FSR1Node`, `OITPassNode`. | [verified] (installed source) |
+| Used and timed here | AgX, bloom, FXAA, SMAA, TRAA, 4x MSAA. Depth of field and motion blur were not built: splats, sprites and volumes write neither depth nor correct velocity, so those nodes need a depth or velocity proxy first. | [measured] / [inference] |
+
+The brief's "current state" was right about `main` but not about this worktree: the worktree started at `bd97a9e`, which predates the spatial pivot (three `^0.174`, no Spark, no `SparkPortalRenderer.ts`). It was fast-forwarded to `main` (`7405315`), where `apps/web` pins three `^0.180.0` (installs 0.180.0) and Spark `^2.4.0` (installs 2.4.0). [verified]
+
+## 3. Rendering primitive per content type
+
+Measured numbers are pipelined medians at 3840x2160 in headless Chrome 156 on WebGPU, each including the post chain (bloom, AgX, FXAA), whose own cost was 0.60 ms. See section 4 for the method and all resolutions.
+
+| Content | Chosen primitive | Physical or mathematical reason | Measured (4K) | Not verified |
+|---|---|---|---|---|
+| Stars (point sources) | Analytic PSF sprites, additive linear HDR, no sort. Chromatic Airy core (ring radius scales with wavelength per channel), Moffat glare halo, four diffraction spikes, energy normalized; flux 10^(-0.4 m); color from Teff through Planck x CIE 1931 to linear sRGB at unit luminance. Faint stars keep only the rings above the display threshold, rescaled by encircled energy so total flux is conserved. ([`stars.ts`](../../apps/webgpu-spike/src/render/stars.ts), [`psfMath.ts`](../../apps/webgpu-spike/src/render/psfMath.ts), [`blackbody.ts`](../../apps/webgpu-spike/src/color/blackbody.ts)) | A star is unresolved, so its image is the instrument PSF scaled by its flux; magnitude is photometry and Teff fixes the spectrum. Addition is commutative, so accumulation is order independent and needs no sorting. WebGPU has only 1 px points, so `gl_PointSize` starfields must become instanced sprites anyway. | 100k stars: 0.74 ms total, about 0.14 ms over the post chain alone. PSF integrates to 0.997 within 120 px; J1 and CCM values match references (unit tests). | Real catalog rows (the 100k stars are a seeded synthetic perf fixture); 1M+ stars, which need GPU culling and LOD; Safari. |
+| Interstellar dust and nebula volumes (Local Bubble) | Ray-marched emission-absorption volume over a 3D density texture: Beer-Lambert transmittance exp(-tau), exact per-step emission integral, CCM89 per-channel extinction, 8^3-brick empty-space skipping, march at half resolution and composite at full resolution. ([`dustVolume.ts`](../../apps/webgpu-spike/src/render/dustVolume.ts), [`voxelize.ts`](../../apps/webgpu-spike/src/data/voxelize.ts)) | 3D dust maps are extinction densities per unit length, which is exactly what this integrates; splats only approximate the integral by sorted alpha blending. Optical depth per channel dims and reddens every background source along the ray, which scalar splat alpha cannot. No sorting, so no pops; the field is view consistent by construction. | Same 2,811-splat data: volume 4.33 ms full res, 1.85 ms half res, 11.33 ms without skipping; splats 0.76 ms (three) and 0.86 ms (radix). With 100k stars: volume half res 2.08 ms, splats 0.85 to 0.95 ms. Reddening and sort stability measured (section 5). | Calibrated densities (the stand-in comes from presentation opacities); finer grids (memory grows with the cube); temporal stability of the start jitter under motion; Safari. |
+| Photoreal places from photos or video (the user's capture site) | Gaussian splats. | Reconstruction output (3DGS) is splats with view-dependent color; no other real-time primitive reproduces captured appearance. | 982k-splat fixture: three 1.56 ms, radix 0.96 ms. 500k fixture: three 1.04 ms median but 15.3 ms p95, radix 0.88 ms median, 4.89 ms p95. | The user's own capture (none in the repo), streaming level of detail on WebGPU, mobile GPUs. |
+| Planets and moons (proposed) | Meshes with TSL node materials (existing LRO, Earth day/night, Bruneton LUT, Lommel-Seeliger). | Opaque surfaces with measured textures. | Not measured. | All. |
+| All-sky background (proposed) | Equirectangular photograph as a background node. | Measured imagery at infinity, not geometry. | Not measured. | All. |
+| Relativistic and procedural set pieces (proposed) | Screen-space analytic ray marching in TSL at adaptive resolution. | Simulated content; cost is per pixel, not per object. | Not measured. | All. |
+
+## 4. Measurements
+
+### Method [measured]
+
+- **Primary run:** headless Chrome 156 (`--headless=new --enable-webgpu-developer-features`, separate profile in the session scratchpad) loading the spike with `?bench=suite`. The page reported `visibilityState=visible`, `hasFocus=true`, rAF at 60 Hz (not display synced), adapter `apple / metal-3 / Apple M5 Max`. Results are POSTed to the dev server and written as JSON.
+- **Cross-check:** the Claude desktop Browser pane (Chromium 152), in its own tab on port 5191. The pane was hidden, so rAF was paused; the harness does not depend on rAF. That run predates the analytic PSF and the volume, and for the configurations both runs share (post only, stars + splats, scaling fixtures) it agreed with the headless run within about 15%.
+- **Frame loop:** frames are rendered from an async loop, not rAF. three r187 only advances its node frame inside its own rAF loop, so the harness advances it per frame; without that, every frame after the first redrew only the final full-screen quad (this invalidated a first round of numbers and is a real migration trap, see section 8).
+- **Pipelined** (the headline number): 30 frames rendered back to back, then `queue.onSubmittedWorkDone()`, divided by 30, 8 batches. **Serialized:** `render()` through queue idle per frame, 240 frames. WebGL2 backend: a `fenceSync` polled across tasks (Chrome's `gl.finish()` does not block).
+- **Camera:** one full orbit of the Local Bubble per 240 frames (radius 22, elevation wave), 60 warm-up frames per configuration. The scaling fixtures orbit their own bounds center at 0.15 of their bounding radius.
+- **GPU timestamps** were recorded but are not used: with Chrome's default quantization they come in 65.5 microsecond steps, and even unquantized their per-pass sums disagree with wall clock by up to 10x on this Metal adapter.
+- **Noise:** an earlier run of the same configuration measured the full-resolution volume at 6.67 ms (4K) against 4.33 ms in the final run; fill-bound configurations varied by up to about 50% between runs, light ones by up to about 25%.
+
+### Local Bubble scene, WebGPU, pipelined median ms [measured]
+
+| Configuration | 1920x1080 | 2560x1440 | 3840x2160 |
+|---|---|---|---|
+| Post only (bloom, AgX, FXAA) | 0.47 | 0.46 | 0.60 |
+| 100k analytic-PSF stars | 0.51 | 0.48 | 0.74 |
+| Local Bubble splats, three `GaussianSplat` | 0.51 | 0.53 | 0.76 |
+| Local Bubble splats, radix | 0.63 | 0.61 | 0.86 |
+| Local Bubble volume, skipping, full res | 1.45 | 1.98 | 4.33 |
+| Local Bubble volume, no skipping | 3.98 | 5.84 | 11.33 |
+| Local Bubble volume, skipping, half res | 0.94 | 1.24 | 1.85 |
+| Stars + three splats | 0.58 | 0.66 | 0.85 |
+| Stars + radix splats | 0.66 | 0.80 | 0.95 |
+| Stars + volume, full res | 1.33 | 2.30 | 4.89 |
+| Stars + volume, half res | 0.86 | 1.28 | 2.08 |
+
+Serialized medians at 4K were 1.4 ms (stars + three splats) and 2.2 ms (stars + half-res volume). JavaScript submit time was 0.2 to 0.4 ms per frame throughout.
+
+### Anti-aliasing at 4K (stars + three splats), pipelined median ms [measured]
+
+| No bloom, no AA | Bloom + FXAA | Bloom + SMAA | Bloom + TRAA | Bloom + 4x MSAA |
+|---|---|---|---|---|
+| 0.34 | 0.85 | 1.08 | 1.43 | 1.07 |
+
+TRAA ran but was not judged for correctness: none of these layers writes velocity, so ghosting under motion is expected [inference].
+
+### Splat-count scaling fixtures, pipelined median (p95) ms [measured]
+
+Two unreferenced `.spz` scenes in `apps/web/public/splats/` (provenance not recorded, not astronomical), SH disabled on both paths, post chain on, no stars.
+
+| Fixture | Path | 1920x1080 | 3840x2160 |
+|---|---|---|---|
+| 500k splats | three | 0.88 (20.39) | 1.04 (15.27) |
+| 500k splats | radix | 0.74 (2.39) | 0.88 (4.89) |
+| 982k splats | three | 1.25 (1.27) | 1.56 (1.66) |
+| 982k splats | radix | 0.61 (0.66) | 0.96 (1.03) |
+
+The three p95 spikes on the 500k scene appeared on both backends; the cause was not isolated (likely very large near-camera footprints, which three caps at 1024 px) [inference].
+
+### Same TSL code on the WebGL2 backend (`forceWebGL`), 4K pipelined median ms [measured]
+
+| Configuration | WebGPU | WebGL2 |
+|---|---|---|
+| Post only | 0.60 | 0.75 |
+| Stars + three splats | 0.85 | 1.04 |
+| Stars + radix splats | 0.95 | 1.47 |
+| Volume, skipping, full res | 4.33 | 4.96 |
+| Volume, no skipping | 11.33 | 11.27 |
+| Stars + volume, half res | 2.08 | 2.16 |
+| 982k splats, three (CPU sort on WebGL2, 1.5 ms of main-thread JS per frame) | 1.56 | 2.05 |
+| 982k splats, radix (worker sort on WebGL2) | 0.96 | 1.27 |
+
+Fill-bound work (the volume) runs at nearly the same speed on both backends; WebGPU is about 20 to 55% faster on draw- and sort-heavy frames.
+
+### Other measurements [measured]
+
+- **Voxelization:** 2,811 splats into 161x240x207 voxels (0.1 units, 8.0M voxels, 64 MB RGBA16F) in 76 ms on the main thread, upload 140 ms; 13.1% of 8^3 bricks are non-empty, which is why skipping gives 2.6x.
+- **Visual parity:** at the same pose the volume and the splats render the same structure, brightness and color ([splats](img/webgpu-spike/local-bubble-splats-three.jpg), [volume](img/webgpu-spike/local-bubble-volume.jpg)); the volume is slightly softer because 0.1-unit voxels blur sheets whose thinnest sigma is 0.042.
+- **Sorting pops:** three's `GaussianSplat` rendered with the order it computed 1.7 degrees earlier (the staleness it shows between re-sorts) against a fresh sort, 24 poses at 1280x720, AA off: largest difference 1 display code value, 0% of pixels at 2 or more. radix and the volume re-rendered at the same pose: 0 difference.
+- **Reddening on the GPU path:** absorption only, extinction x16, bloom and AA off: 665 star pixels dimmed (median display luminance x0.715), their red/blue ratio rose by a median 14.7%, and 86.8% got redder. At x4 (measured in the pane): 128 pixels, +7.4%. At x1 (the splats' own opacity) the stand-in dust is optically thin (tau up to about 0.13) and only 3 star pixels dimmed by more than 15% ([no dust](img/webgpu-spike/reddening-no-dust.jpg), [extinction x16](img/webgpu-spike/reddening-extinction-x16.jpg)).
+- **Bumping `apps/web` to three 0.187 and @types/three 0.187** (on the current WebGLRenderer plus Spark 2.4) typechecked, passed the web tests, and rendered the landing showcase (photosphere, plasma ring, stars and Local Bubble splats visible); the console messages still buffered showed only `THREE.Clock` deprecation warnings. Other regimes were not exercised. The bump was reverted; it is migration step 1.
+
+## 5. Dust and nebulae: splats against a ray-marched volume
+
+| Criterion | Splats (three or radix) | Ray-marched volume |
+|---|---|---|
+| Frame time, same data, 4K | 0.76 to 0.86 ms [measured] | 4.33 ms full res, 1.85 ms half res [measured]; step size and temporal reprojection would cut it further [inference] |
+| Sorting | Required every view change; three re-sorts after about 1.8 degrees with 4096 bins, radix every frame [verified] | None [verified] |
+| Sort pops | Invisible for this data (max 1 code value) because every splat has alpha 0.003 to 0.045, and a pairwise order error is bounded by alpha_i x alpha_j x color difference [measured, inference]. Dense photoreal splats will pop more [inference]. | None [measured] |
+| View-dependent artifacts | Affine (EWA) projection distorts footprints near the camera and at wide FOV; three clips centers outside 1.4x the clip box and caps footprints at 1024 px [verified]. | Resolution limited (voxel size) and stepping noise; the start jitter is a fixed per-pixel pattern that slides with the camera until temporal accumulation is added [inference]. |
+| Physical model | Sorted alpha compositing of projected Gaussians, an approximation of the volume integral; projected opacity is view independent although a real column is not [verified] | Emission-absorption radiative transfer, exact per step; densities can come straight from a 3D dust map in extinction per unit length [proposed] |
+| Chromatic extinction of stars behind dust | No: alpha is one scalar, so attenuation is grey. It would need a per-channel transmittance target or dual-source blending, which none of the three splat renderers provides [verified for three and radix source; inference for Spark]. | Yes, measured above. Because one extinction law applies everywhere, tau at one channel reconstructs all three exactly, so the half-res pass stores only `vec4(L_rgb, tau)` [measured]. |
+| Precision | 8-bit opacity: three 1/255, Spark 1/255, radix 1/128; the Local Bubble's 0.003 to 0.045 lands on about 11 code values in the current app, and 0.003 rounds to 0 in radix [verified]. The spike stores opacity x16 or x32 and divides in the shader [measured]. | Half-float density, no quantization issue at this range [verified]. |
+| Memory | 32 bytes per splat in radix (`extSplats`), about 52 bytes plus sort buffers in three's addon; well under 1 MB for 2,811 splats [verified] | 64 MB for this grid; 0.05 units would be 512 MB, so finer data needs sparse bricks [inference] |
+
+**Answer to the reddening question:** yes. Background stars are dimmed and reddened per ray by the integrated column with CCM89 (R_V = 3.1, A/A_V = 0.887, 1.001, 1.234 at 612, 549 and 465 nm), in the same full-screen pass that integrates the dust emission, for the cost already in the volume numbers. [measured]
+
+**Choice:** volume for dust and nebulae [proposed]. Splats win on frame time for this tiny stand-in, but only the volume is physically correct for extinction, is free of sorting, and matches how the science data is stored. At half resolution it fits the budget with 6 ms to spare at 4K.
+
+## 6. Splats for photoreal capture sites
+
+| Option | Status | Backend | Level of detail | Measured here |
+|---|---|---|---|---|
+| Spark 2.4.0 | Released, documented, many formats (PLY, SPZ, SPLAT, KSPLAT, SOG, RAD), WebXR, edits, skinning [verified] | WebGL2 only [verified] | Yes, RAD paging [verified] | The current app; not benchmarked in the spike |
+| three r186+ `GaussianSplat` | In three's addons, maintained with the renderer [verified] | WebGPU (GPU sort) and WebGL2 (CPU sort) [verified] | No [verified] | 982k at 4K: 1.56 ms; 500k: 15 to 20 ms p95 spikes |
+| @sparkjsdev/radix 0.0.1 | New; self-reported 1.37x Spark over five scenes and 1.8x at 10M splats (not checked) [verified that it claims this] | WebGPU compute, WebGL2 fallback [verified] | Loads LoD trees, does not select yet [verified] | 982k at 4K: 0.96 ms; needed an r187 shim |
+
+Plan: keep Spark for large captures until radix (or three) selects level of detail; use three's `GaussianSplat` inside the WebGPU renderer for captures up to about 1M splats [proposed]. 3DGS captures are trained with blending in sRGB space. In a linear HDR pipeline both radix (which decodes colors to linear for linear targets) and three's addon (which treats colors as linear) blend in linear space, so a trained capture will not match its training views exactly unless it is drawn in a separate sRGB pass, as radix's default `directCanvas` mode does [verified in source]. The capture-site layer must pick a convention deliberately.
+
+## 7. Does WebGPU compute change the platform decision, splats aside?
+
+Yes, for some workloads [inference]:
+
+- **Culling and level of detail for catalogs.** Gaia-scale star sets (10^7 and more) need GPU frustum and magnitude culling with indirect draws; WebGL2 has neither compute nor storage buffers (transform feedback is its only GPU-side option), so this mostly falls back to CPU work.
+- **Sorting.** Only splats need it. On WebGL2 three's sort cost 1.5 ms of main-thread JavaScript per frame at 982k splats [measured].
+- **Accumulation.** Additive PSF accumulation already works with blending on both backends [measured]; compute adds tile-binned rasterization of millions of tiny PSFs and luminance histograms for physically based auto-exposure.
+- **Ray marching.** Works in fragment shaders on both backends at the same speed [measured]. Compute helps with GPU-built occupancy pyramids, tiled marching and temporal reprojection, not with feasibility.
+
+Because TSL compiles to both backends, compute-only features can degrade on WebGL2 without forking the renderer. That favors `WebGPURenderer` as the platform even for users without WebGPU [inference].
+
+## 8. Risks
+
+- **API churn in three's WebGPU path:** `PostProcessing` was renamed to `RenderPipeline` in r183, and r187's compute dispatch check broke radix within a day of its release. Pin exact versions and upgrade deliberately. [verified]
+- **radix maturity:** 0.0.1, a 114-package `dependencies` list, an r187 incompatibility, and missing level of detail. Treat it as a candidate, not a dependency. [verified]
+- **Frame-loop semantics:** in r187 frame-scoped nodes (the scene `PassNode`, bloom) re-render only when the node frame advances, which happens inside `setAnimationLoop`. Offscreen rendering, video export and tests must advance it themselves. [measured]
+- **No large points, no `preserveDrawingBuffer`:** WebGPU points are 1 px, so all five starfield materials and both particle materials need sprites; screenshots need `readRenderTargetPixelsAsync` or a same-task canvas read. [verified]
+- **Color pipeline change:** ACES to AgX, and three code paths tone-map inline (Earth `x/(1+0.56x)`, black hole `x/(1+0.42x)`, nebula plane `x/(1+0.82x)`), which would double-compress under AgX. Needs an art pass. [verified]
+- **Depth and velocity:** splats, sprites and volumes write neither, so TRAA, motion blur and depth of field need proxies before they can be trusted on these layers. [inference]
+- **Browser coverage:** measured only in Chromium on macOS. Safari 26 ships WebGPU but was not tested; Firefox, Windows, Android and Linux are unverified. The WebGL2 fallback ran the full spike. [verified, measured]
+- **Measurement fidelity:** GPU timestamps were unusable on this adapter; all numbers are wall clock on one machine. [measured]
+- **Volume memory:** cubic growth with resolution; science-grade maps need sparse bricks or streaming. [inference]
+- **WebXR on WebGPU:** three added it in r185, but device and browser support was not checked; the app currently uses `SparkXr`. [verified, not tested]
+- **TSL typing:** `@types/three` generics needed explicit type arguments in places, and radix's declarations bind to whichever `@types/three` pnpm hoists unless `paths` pins them (done in the spike's `tsconfig.json`). [measured]
+
+## 9. Custom shader audit: `SparkPortalRenderer.ts`
+
+The file defines 11 `ShaderMaterial`s and 1 `ShaderPass` (12 GLSL programs). At runtime that is 16 `ShaderMaterial` instances (the starfield helper runs 5 times, the particle helper twice) plus the internal materials of `UnrealBloomPass` and `OutputPass`, which is where "about 20" comes from. [verified]
+
+| # | Program (line) | Instances | What it does | Verdict | Days |
+|---|---|---|---|---|---|
+| 1 | `skyMat`, all-sky dome (574) | 1 | ESO Milky Way and NASA star map on a back-side sphere, spectral band remaps, monocle mask with a hard-coded 1600x1000 viewport | Direct port to a background node; replace the hard-coded size with the viewport | 0.5 |
+| 2 | Optical starfield points (729) | 5 | `gl_PointSize` Gaussian core, halo and spikes; 62 named stars plus a hash-generated fill; named stars folded into one hemisphere | Rewrite as the spike's analytic-PSF sprites fed by catalog rows; drop the hash fill | 1.5 |
+| 3 | Curl "plasma" particles (817) | 2 | Vertex-displaced `gl_PointSize` points with sin/cos noise, labeled GPGPU and MHD although it is neither | Drop (or rewrite as sprites with a Modeled label) | 0 to 1 |
+| 4 | Moon (896) | 1 | LRO albedo, LOLA-derived bump, micro-relief noise, Lommel-Seeliger, opposition surge, earthshine | Direct port (TSL node material with a custom lighting function) | 1 |
+| 5 | Earth (1078) | 1 | Day, night, clouds, specular, fbm detail, Bruneton LUT limb, inline tone mapping | Direct port; remove the inline tone mapping | 1.5 |
+| 6 | Earth atmosphere shell (1212) | 1 | Additive back-side limb glow from the Bruneton LUT | Direct port | 0.5 |
+| 7 | Betelgeuse photosphere (1293) | 1 | 6-octave fbm and ridged convection, limb darkening | Direct port (pure math) | 0.75 |
+| 8 | Corona plane (1416) | 1 | Additive fbm rays on a fixed plane | Direct port (billboard it) | 0.25 |
+| 9 | Plasma ring (1491) | 1 | Additive noise filaments on a ring | Direct port | 0.25 |
+| 10 | Nebula plane / black hole (1602) | 1 | Orion and Lagoon image plane, or a 120-step Schwarzschild null-geodesic integrator with disk crossing, Doppler and redshift, inline tone mapping | Split: image plane is a direct port; the geodesic integrator is a rewrite as a TSL full-screen pass at adaptive resolution | 2 |
+| 11 | Planetary world dome (1844) | 1 | 96-step ray-marched terrain with 8-octave analytic-derivative noise, water with Fresnel, four palettes, Saturn rings, Earth disc, Bruneton sky | Rewrite as a TSL full-screen pass at reduced resolution with temporal upsampling | 3.5 |
+| 12 | Cinema optics `ShaderPass` (416) | post | Chromatic aberration, 8-tap anamorphic streak, vignette | Direct port to a TSL post node (r187 has chromatic aberration; the anamorphic streak stays custom) | 0.5 |
+| | Shared `BRUNETON_ATMO_GLSL_CHUNK` | | LUT lookup with analytic fallback (used by 5, 6, 11) | Port once as a TSL `Fn` | 0.5 |
+| | `EffectComposer` + `UnrealBloomPass` + `OutputPass` | | ACES and Unreal bloom | Replace with the spike's `RenderPipeline` chain | 0.5 |
+| | Spark `SparkRenderer`, 3 `SplatMesh` builders, `SparkControls`, `SparkXr` | | Local Bubble, nebula and terrain-mist splats; controls; WebXR | Local Bubble and nebula become volumes; the 1,800 hash-generated terrain-mist splats are dropped or become volume fog; controls and XR move to three | 2.5 |
+
+Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula image plane ported directly, black-hole integrator rewritten), 1 drop (particles), plus infrastructure. About 16 to 17 engineer-days for the port, plus about 30% for integration and visual QA, plus 5 to 8 days for the new physically based layers (catalog stars with GPU culling, dust map volume): roughly 4 to 6 weeks for one engineer. [inference]
+
+## 10. Migration plan
+
+1. **Bump three in place.** `apps/web` to three 0.187.0 and @types/three 0.187.0 on the current WebGLRenderer and Spark 2.4; replace `THREE.Clock` with `THREE.Timer`. Typecheck, tests and the landing render already pass. [measured, proposed]
+2. **Contracts first.** The architecture owner adds a render-layer contract in `packages/contracts` (layer kind, `EvidenceClass`, disclosure string) so stars, dust and capture-site layers carry their evidence class into the UI. [proposed]
+3. **Renderer host.** A `WebGPURenderer` host in `apps/web/src/spatial` with `forceWebGL` fallback, `setAnimationLoop`, resize and DPR handling, readback-based screenshots, and explicit node-frame advancing for offscreen work. [proposed]
+4. **Post chain.** Replace `EffectComposer` with the spike's [`post.ts`](../../apps/webgpu-spike/src/render/post.ts): HalfFloat pass, dust volume, bloom, cinema optics node, AgX, FXAA by default (SMAA as a quality option). Review the ACES-to-AgX look. [proposed]
+5. **Stars.** Replace the five starfield materials with analytic-PSF sprites fed by `allSkyStarfield.ts` data (coordinate with its owner), then Gaia subsets with compute culling; remove the hash-generated fill. [proposed]
+6. **Direct ports.** Sky dome, Earth, atmosphere, Moon, photosphere, corona, ring, Bruneton chunk, cinema node. [proposed]
+7. **Dust and nebulae.** Local Bubble and nebula as density volumes (voxelized splats for parity first, then the published dust map), half-res march, CCM89 reddening of everything behind them. [proposed]
+8. **Ray-marched set pieces.** Planetary world and black-hole integrator as TSL full-screen passes with adaptive resolution. [proposed]
+9. **Capture-site splats.** three `GaussianSplat` for up to about 1M splats; Spark behind a flag for larger captures until radix or three selects level of detail; move controls off `SparkControls`, and XR off `SparkXr` after a device check. [proposed]
+10. **Remove WebGL-only code.** Drop Spark and the GLSL materials once parity is signed off; keep the WebGL2 fallback through `forceWebGL`. [proposed]
+11. **Verification.** Per-regime readback snapshots, headless WebGPU frame-time budgets in CI using the spike's harness, and Safari and Windows runs before switching the default. [proposed]
+
+## 11. What could not be verified
+
+- Safari 26, Firefox, Windows, Android and Linux behavior and performance; only Chromium on this Mac was measured.
+- Display-synced frame pacing at 120 Hz: the headless run is not display synced and the pane was hidden.
+- Real star catalogs (the 100k stars are a synthetic perf fixture) and catalog sizes beyond 100k.
+- Calibrated dust: the volume's densities come from the baked presentation opacities in `lb_splats.json`, not extinction per parsec; which dust-map product underlies the O'Neill et al. 2024 geometry was not checked.
+- The user's capture-site reconstruction (none exists in the repo) and splat level of detail on WebGPU.
+- Correctness of TRAA, depth of field and motion blur on splat, sprite and volume layers.
+- radix's self-reported speedups over Spark, and the root cause of three's p95 spikes on the 500k fixture.
+- Provenance and license of `apps/web/public/splats/*.spz`.
+- WebXR with the WebGPU backend on headsets.
+
+## 12. Findings outside the spike's scope
+
+- The app's Local Bubble loader renders 2,811 of the 14,281 rows (stride 2, then the cylindrical cavity rule) and adds a deterministic jitter of `(sin(...) - 0.5) * 0.28`, which ranges from -0.42 to +0.14 and shifts the whole cloud by about -0.14 units per axis on average. [verified]
+- The Local Bubble opacities quantize to about 11 levels in Spark's 8-bit opacity. [verified]
+- The landing showcase logs `THREE.Clock` deprecation warnings on three 0.187. [measured]
+
+## 13. Reproducing
+
+```sh
+pnpm install
+pnpm --filter @albedian/webgpu-spike dev              # http://127.0.0.1:5191
+# interactive: ?splats=three|radix|none&volume=off|skip|noskip|skip-half&ext=1|4|8|16&res=3840x2160
+# benchmark:   ?bench=suite[&benchres=1920x1080,3840x2160][&backend=webgl][&quick=1]
+SPIKE_BENCH_OUT=/some/dir pnpm --filter @albedian/webgpu-spike dev   # where results are written
+```
