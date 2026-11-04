@@ -198,6 +198,27 @@ def _refine_wcs_least_squares(
     )
 
 
+def _pixel_only_finding(
+    idx: int,
+    det: SourceDetection,
+    solution_id: str,
+    source_sha256: str,
+    limitation: str,
+) -> CelestialFindingRecord:
+    """An `observed` finding located by its pixels alone: without a verified WCS it has no sky position."""
+    return CelestialFindingRecord(
+        id=f"finding-obs-{idx + 1}",
+        observation_solution_id=solution_id,
+        evidence_class="observed",
+        title=f"Observed Point Source #{idx + 1}",
+        subtitle=f"Measured at ({det.x_px:.1f}, {det.y_px:.1f}) px · SNR {det.snr:.1f}",
+        source_detection=det,
+        verified_by_holdout=False,
+        limitations=(limitation,),
+        source_sha256=source_sha256,
+    )
+
+
 def _build_unresolved_solution(
     detections: list[SourceDetection],
     solution_id: str,
@@ -208,12 +229,10 @@ def _build_unresolved_solution(
     observer_lat: float,
     observer_lon: float,
     warning_msg: str,
+    limitation: str,
 ) -> ObservationSolution:
-    """Construct an honest `unresolved` ObservationSolution with no findings.
-
-    Without a WCS a detection has no sky position, and every finding needs one, so detections
-    are counted in the quality record instead of listed with invented coordinates.
-    """
+    """Construct an honest `unresolved` ObservationSolution: every detection is an `observed`
+    finding at its measured pixel position, with no sky position because there is no WCS."""
     return ObservationSolution(
         id=solution_id,
         source_asset_id=source_asset_id,
@@ -234,19 +253,12 @@ def _build_unresolved_solution(
             median_residual_arcsec=9999.0,
             passed_independent_verification=False,
         ),
-        findings=[],
-        warnings=[warning_msg, *_unplaced_detections_warning(len(detections))],
+        findings=[
+            _pixel_only_finding(idx, det, solution_id, source_sha256, limitation)
+            for idx, det in enumerate(detections)
+        ],
+        warnings=[warning_msg],
     )
-
-
-def _unplaced_detections_warning(count: int) -> list[str]:
-    """Explain why detections are missing from the findings of a solution without a verified WCS."""
-    if count == 0:
-        return []
-    return [
-        f"{count} point source(s) detected; without a verified WCS they have no sky position, "
-        "so they are counted, not listed."
-    ]
 
 
 def solve_and_verify_field(
@@ -284,6 +296,7 @@ def solve_and_verify_field(
             detections, solution_id, source_asset_id, source_sha256, frame_time_sec,
             obs_utc_iso, observer_lat, observer_lon,
             f"Insufficient point sources ({len(detections)} detected) for independent WCS calibration.",
+            "Pixel position only: too few point sources for a verified WCS to place it on the sky.",
         )
 
     cat_pool = sorted(catalog, key=lambda s: s.mag)[:18]
@@ -367,6 +380,7 @@ def solve_and_verify_field(
             detections, solution_id, source_asset_id, source_sha256, frame_time_sec,
             obs_utc_iso, observer_lat, observer_lon,
             "Geometric quad pattern matching failed to find a consistent WCS solution.",
+            "Pixel position only: no catalog pattern matched, so no WCS places it on the sky.",
         )
 
     cx0, cy0 = width / 2.0, height / 2.0
@@ -471,6 +485,13 @@ def solve_and_verify_field(
                     source_sha256=source_sha256,
                 )
             )
+        else:
+            findings_list.append(
+                _pixel_only_finding(
+                    idx, det, solution_id, source_sha256,
+                    "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky.",
+                )
+            )
 
     if rejected_outlier_count > 0 and passed_verification:
         warnings.append(
@@ -478,7 +499,6 @@ def solve_and_verify_field(
         )
     if not passed_verification:
         warnings.append("WCS solution did not pass independent held-out calibration gate.")
-        warnings.extend(_unplaced_detections_warning(len(detections)))
 
     return ObservationSolution(
         id=solution_id, source_asset_id=source_asset_id, source_sha256=source_sha256,

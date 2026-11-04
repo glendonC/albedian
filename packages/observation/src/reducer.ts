@@ -203,11 +203,17 @@ export function dispatchAlbedianAction(
         segments.push(`Proper motion: (${finding.catalogRef.properMotionRaMasYr}, ${finding.catalogRef.properMotionDecMasYr ?? 0}) mas/yr`);
       }
       if (action.fields.includes('evidence')) segments.push(`Evidence: ${badge.label} — ${badge.disclosure}`);
+      // A finding without a sky position has no line of sight, so no cone is drawn for it
+      const sky = finding.skyPosition;
       if (action.fields.includes('behind_sightline')) {
-        segments.push(`Sightline cone active along RA ${finding.skyPosition.raDeg.toFixed(2)}°, Dec ${finding.skyPosition.decDeg.toFixed(2)}° showing deeper catalog background.`);
+        segments.push(
+          sky
+            ? `Sightline cone active along RA ${sky.raDeg.toFixed(2)}°, Dec ${sky.decDeg.toFixed(2)}° showing deeper catalog background.`
+            : `No sightline: ${finding.title} has a pixel position only, with no verified WCS to place it on the sky.`
+        );
       }
       const text = segments.join(' · ');
-      const sightlineCone = action.fields.includes('behind_sightline') || base.spatialView.activeOverlays.sightlineCone;
+      const sightlineCone = (action.fields.includes('behind_sightline') && sky !== undefined) || base.spatialView.activeOverlays.sightlineCone;
       return completeAction(
         {
           ...base,

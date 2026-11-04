@@ -88,11 +88,17 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
     expect(parsed.observationSolution.quality.heldOutInliers).toBe(2);
     expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
     expect(
-      parsed.observationSolution.findings.every((f) => f.evidenceClass === 'predicted')
-    ).toBe(true);
-    expect(
       parsed.observationSolution.findings.filter((f) => f.evidenceClass === 'catalog_matched')
     ).toHaveLength(0);
+    // Its two detections are listed at their pixels and placed nowhere on the sky
+    const observed = parsed.observationSolution.findings.filter((f) => f.evidenceClass === 'observed');
+    expect(observed).toHaveLength(2);
+    expect(observed.every((f) => f.sourceDetection !== undefined && f.skyPosition === undefined)).toBe(true);
+    expect(
+      parsed.observationSolution.findings.every(
+        (f) => f.evidenceClass === 'predicted' || f.evidenceClass === 'observed'
+      )
+    ).toBe(true);
   });
 
   it('validates createEmptyObservationSession with no place, capture time, or findings', () => {
@@ -568,5 +574,36 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
       ),
       { numRuns: 80 }
     );
+  });
+});
+
+describe('@albedian/observation: detections without a sky position', () => {
+  it('selects and describes a pixel-only detection without inventing a sightline or a 3D position', () => {
+    const session = createUnresolvedObservationSession();
+    const selected = dispatchAlbedianAction(session, {
+      type: 'finding.select', requestId: 'sel_obs_1', expectedViewRevision: session.viewRevision,
+      findingId: 'finding_obs_overcast_1',
+    });
+    expect(selected.outcome.status).toBe('completed');
+    // Anchored at its measured pixels: (612.4, 214.9) px in a 1920 x 1080 frame
+    expect(selected.session.spatialView.lockedAnchorNdc).toEqual([-0.3621, 0.602]);
+
+    const described = dispatchAlbedianAction(selected.session, {
+      type: 'finding.describe', requestId: 'desc_obs_1', expectedViewRevision: selected.session.viewRevision,
+      findingId: 'finding_obs_overcast_1', fields: ['evidence', 'behind_sightline'],
+    });
+    expect(described.outcome.status).toBe('completed');
+    expect(described.session.lastStatusBanner).toContain('No sightline: Field Source #1 has a pixel position only');
+    expect(described.session.lastStatusBanner).not.toMatch(/RA |Dec /);
+    expect(described.session.spatialView.activeOverlays.sightlineCone).toBe(false);
+
+    const entered = dispatchAlbedianAction(described.session, {
+      type: 'space.enter', requestId: 'space_obs_1', expectedViewRevision: described.session.viewRevision,
+      findingId: 'finding_obs_overcast_1', distancePolicy: 'measured_or_estimated',
+    });
+    expect(entered.outcome.status).toBe('rejected');
+    if (entered.outcome.status === 'rejected') {
+      expect(entered.outcome.reason).toBe('no_distance_estimate');
+    }
   });
 });

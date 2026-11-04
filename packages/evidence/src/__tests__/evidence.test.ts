@@ -13,10 +13,13 @@ import {
 } from '../index.js';
 import {
   CelestialFinding,
+  CelestialFindingSchema,
   EvidenceClass,
   EvidenceRecordSchema,
   ObservationSolution,
+  SolutionStatus,
   SourceAsset,
+  WCSCalibrationModel,
 } from '@albedian/contracts';
 
 describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', () => {
@@ -455,5 +458,75 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
     expect(uncatalogedRecords).toHaveLength(3);
     expect(uncatalogedRecords[2]?.kind).toBe('captured');
     expect(uncatalogedRecords[2]?.sourceIdentifier).toBe('uncataloged:finding-field-star-101');
+  });
+});
+
+describe('@albedian/evidence: detections without a sky position', () => {
+  const sourceAsset: SourceAsset = {
+    id: 'asset_02', title: 'Hazy Field Recording', mediaKind: 'image', sha256: 'b1c2d3e4f5a60718293a4b5c6d7e8f90',
+    uri: '/data/uploads/hazy_field.jpg', width: 960, height: 540, durationMs: 0, fpsNumerator: 1, fpsDenominator: 1,
+    videoCodec: 'none', audioStreams: [], privacyClass: 'private', immutable: true,
+  };
+  const pixelOnly = (xPx = 733.0, yPx = 120.4): CelestialFinding => ({
+    id: 'finding-obs-3', observationSolutionId: 'sol_02', evidenceClass: 'observed',
+    title: 'Observed Point Source #3', subtitle: `Measured at (${xPx.toFixed(1)}, ${yPx.toFixed(1)}) px · SNR 25.0`,
+    sourceDetection: { assetId: sourceAsset.id, frameTimeSec: 0, xPx, yPx, flux: 5000, snr: 25, fwhmPx: 2.5, centroidUncertaintyPx: 0.1 },
+    evidence: {
+      id: 'ev-finding-obs-3', evidenceClass: 'observed', verificationMethod: 'Local Matched-Filter Centroid Extraction',
+      sourceAssetSha256: sourceAsset.sha256, limitations: ['Pixel position only: no WCS places it on the sky.'],
+      verifiedByIndependentHoldout: false,
+    },
+  });
+  const approximateWcs: WCSCalibrationModel = {
+    projection: 'TAN', crvalRaDeg: 222.4, crvalDecDeg: -14.2, crpixX: 480, crpixY: 270, scaleDegPerPx: 0.04,
+    rotationDeg: 3.1, radialDistortionK1: 0, radialDistortionK2: 0, parity: -1, fovHorizontalDeg: 37.9, fovVerticalDeg: 21.5,
+  };
+  const solutionFor = (finding: CelestialFinding, status: SolutionStatus, wcs?: WCSCalibrationModel): ObservationSolution => ({
+    id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
+    observedAtUTC: '2030-11-01T22:32:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
+    wcs,
+    quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutInliers: 0, medianResidualPx: 999, p95ResidualPx: 999, medianResidualArcsec: 9999, passedIndependentVerification: false },
+    findings: [finding], warnings: [],
+  });
+
+  it('PBT-EVID-2: a detection with no WCS keeps only its capture record and is given no sky coordinates', () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: 959, noNaN: true }),
+        fc.double({ min: 0, max: 539, noNaN: true }),
+        fc.constantFrom<SolutionStatus>('pending', 'unresolved', 'ambiguous', 'predicted_only'),
+        (xPx, yPx, status) => {
+          const finding = pixelOnly(xPx, yPx);
+          const records = buildFindingEvidenceRecords(sourceAsset, solutionFor(finding, status), finding);
+          expect(records.map((r) => r.kind)).toEqual(['captured']);
+          expect(records[0]?.title).toBe(`Sensor Pixel Centroid (${xPx.toFixed(1)}, ${yPx.toFixed(1)}) px`);
+          expect(JSON.stringify(records)).not.toMatch(/RA |Dec |raDeg/);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  it('records the unverified pose a detection belongs to without placing the detection itself', () => {
+    const finding = pixelOnly();
+    const records = buildFindingEvidenceRecords(sourceAsset, solutionFor(finding, 'approximate', approximateWcs), finding);
+    expect(records.map((r) => r.kind)).toEqual(['captured', 'reconstructed']);
+    expect(records[1]?.coverageDescription).toContain('FOV 37.9°×21.5°');
+    expect(records.some((r) => r.title.startsWith('Uncataloged Sensor Locus'))).toBe(false);
+  });
+
+  it('promotes a detection without a sky position to the position of its verified catalog match', () => {
+    const finding = pixelOnly();
+    const promoted = promoteFindingToCatalogMatched(finding, {
+      kind: 'AuthorizedCalibrationProof', wcsSolutionId: 'sol_02', sourceDetection: finding.sourceDetection!,
+      catalogRef: {
+        id: 'cat_betelgeuse', provider: 'Gaia DR3', releaseVersion: 'DR3-2022', catalogSourceId: 'HIP 27989',
+        commonName: 'Betelgeuse', constellation: 'Orion', objectType: 'star', coordinateEpoch: 'J2016.0',
+        raDeg: 88.7929, decDeg: 7.4071, apparentMagnitude: 0.42, citation: 'ESA Gaia DR3 / Hipparcos HIP 27989',
+      },
+      heldOutInliers: 8, medianResidualPx: 0.6, angularResidualArcsec: 9.5, pixelResidualPx: 0.4,
+    });
+    expect(promoted.skyPosition).toEqual({ raDeg: 88.7929, decDeg: 7.4071, uncertaintyArcsec: 9.5 });
+    expect(CelestialFindingSchema.safeParse(promoted).success).toBe(true);
   });
 });

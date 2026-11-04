@@ -11,6 +11,8 @@ import numpy as np
 
 from services.science.catalog import CatalogStar, bailer_jones_cartesian_pc
 
+EVIDENCE_CLASSES = ("observed", "catalog_matched", "predicted", "simulated")
+
 
 @dataclass(frozen=True)
 class SourceDetection:
@@ -225,18 +227,23 @@ class SolutionQuality:
 
 @dataclass(frozen=True)
 class CelestialFindingRecord:
-    """Finding record carrying explicit `EvidenceClass` (`observed`, `catalog_matched`, `predicted`, `simulated`)."""
+    """Finding record carrying explicit `EvidenceClass` (`observed`, `catalog_matched`, `predicted`, `simulated`).
+
+    `catalog_matched`, `predicted` and `simulated` findings always carry a sky position. An `observed`
+    finding is a pixel measurement: it carries one only when a verified WCS maps its pixels to the sky
+    (checked by `ObservationSolution`), and without one it carries the detection that locates it.
+    """
 
     id: str
     observation_solution_id: str
     evidence_class: str
     title: str
     subtitle: str
-    ra_deg: float
-    dec_deg: float
+    ra_deg: float | None = None
+    dec_deg: float | None = None
     alt_deg: float | None = None
     az_deg: float | None = None
-    uncertainty_arcsec: float = 5.0
+    uncertainty_arcsec: float | None = None
     source_detection: SourceDetection | None = None
     catalog_star: CatalogStar | None = None
     pixel_residual_px: float | None = None
@@ -245,59 +252,82 @@ class CelestialFindingRecord:
     limitations: tuple[str, ...] = ("Measured from sensor observation.",)
     source_sha256: str = "0" * 64
 
+    def __post_init__(self) -> None:
+        if self.evidence_class not in EVIDENCE_CLASSES:
+            raise ValueError(f"Finding {self.id} has unknown evidence class {self.evidence_class!r}.")
+        sky = (self.ra_deg, self.dec_deg, self.uncertainty_arcsec)
+        if None in sky and any(v is not None for v in (*sky, self.alt_deg, self.az_deg)):
+            raise ValueError(
+                f"Finding {self.id} has a partial sky position: RA, Dec and uncertainty come together, "
+                "and Alt/Az need them."
+            )
+        if not self.has_sky_position and self.evidence_class != "observed":
+            raise ValueError(f"A {self.evidence_class} finding needs a sky position ({self.id}).")
+        if not self.has_sky_position and self.source_detection is None:
+            raise ValueError(
+                f"An observed finding without a sky position needs the detection that locates it in pixels ({self.id})."
+            )
+
+    @property
+    def has_sky_position(self) -> bool:
+        return self.ra_deg is not None
+
     @property
     def common_name(self) -> str | None:
         return self.catalog_star.common_name if self.catalog_star else None
 
     def to_contract_dict(self) -> dict:
-        sky_pos: dict = {
-            "raDeg": float(self.ra_deg % 360.0),
-            "decDeg": float(self.dec_deg),
-            "uncertaintyArcsec": float(self.uncertainty_arcsec),
-        }
-        if self.alt_deg is not None:
-            sky_pos["altDeg"] = float(self.alt_deg)
-        if self.az_deg is not None:
-            sky_pos["azDeg"] = float(self.az_deg)
-
         payload: dict = {
             "id": self.id,
             "observationSolutionId": self.observation_solution_id,
             "evidenceClass": self.evidence_class,
             "title": self.title,
             "subtitle": self.subtitle,
-            "skyPosition": sky_pos,
-            "evidence": {
-                "id": f"ev-{self.id}",
-                "evidenceClass": self.evidence_class,
-                "verificationMethod": (
-                    "Geometric Quad WCS + Held-Out Residual Verification"
-                    if self.evidence_class == "catalog_matched"
-                    else "Local Matched-Filter Centroid Extraction"
-                ),
-                "sourceAssetSha256": self.source_sha256,
-                "wcsSolutionId": self.observation_solution_id,
-                "catalogReferenceId": self.catalog_star.id if self.catalog_star else None,
-                "angularResidualArcsec": (
-                    float(self.angular_residual_arcsec)
-                    if self.angular_residual_arcsec is not None
-                    else None
-                ),
-                "pixelResidualPx": (
-                    float(self.pixel_residual_px)
-                    if self.pixel_residual_px is not None
-                    else None
-                ),
-                "distanceUncertaintyNote": (
-                    f"Bailer-Jones 16th-84th percentile [{self.catalog_star.lower_pc:.1f}, "
-                    f"{self.catalog_star.upper_pc:.1f}] pc"
-                    if self.catalog_star
-                    else None
-                ),
-                "limitations": list(self.limitations),
-                "verifiedByIndependentHoldout": bool(self.verified_by_holdout),
-            },
         }
+        if self.has_sky_position:
+            sky_pos: dict = {
+                "raDeg": float(self.ra_deg % 360.0),
+                "decDeg": float(self.dec_deg),
+                "uncertaintyArcsec": float(self.uncertainty_arcsec),
+            }
+            if self.alt_deg is not None:
+                sky_pos["altDeg"] = float(self.alt_deg)
+            if self.az_deg is not None:
+                sky_pos["azDeg"] = float(self.az_deg)
+            payload["skyPosition"] = sky_pos
+
+        evidence: dict = {
+            "id": f"ev-{self.id}",
+            "evidenceClass": self.evidence_class,
+            "verificationMethod": (
+                "Geometric Quad WCS + Held-Out Residual Verification"
+                if self.evidence_class == "catalog_matched"
+                else "Local Matched-Filter Centroid Extraction"
+            ),
+            "sourceAssetSha256": self.source_sha256,
+            "wcsSolutionId": self.observation_solution_id,
+            "catalogReferenceId": self.catalog_star.id if self.catalog_star else None,
+            "angularResidualArcsec": (
+                float(self.angular_residual_arcsec)
+                if self.angular_residual_arcsec is not None
+                else None
+            ),
+            "pixelResidualPx": (
+                float(self.pixel_residual_px)
+                if self.pixel_residual_px is not None
+                else None
+            ),
+            "distanceUncertaintyNote": (
+                f"Bailer-Jones 16th-84th percentile [{self.catalog_star.lower_pc:.1f}, "
+                f"{self.catalog_star.upper_pc:.1f}] pc"
+                if self.catalog_star
+                else None
+            ),
+            "limitations": list(self.limitations),
+            "verifiedByIndependentHoldout": bool(self.verified_by_holdout),
+        }
+        # The contract's optional evidence fields are left out when unknown, never sent as null
+        payload["evidence"] = {key: value for key, value in evidence.items() if value is not None}
         if self.source_detection is not None:
             payload["sourceDetection"] = self.source_detection.to_contract_dict()
         if self.catalog_star is not None:
@@ -330,6 +360,26 @@ class ObservationSolution:
     quality: SolutionQuality
     findings: list[CelestialFindingRecord] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        # An observed finding has a sky position exactly when the verified WCS gives it one
+        verified = self.has_verified_wcs
+        for finding in self.findings:
+            if finding.evidence_class == "observed" and finding.has_sky_position != verified:
+                raise ValueError(
+                    f"Observed finding {finding.id} "
+                    + (
+                        "lacks the sky position the verified WCS gives it."
+                        if verified
+                        else "has a sky position without a verified WCS."
+                    )
+                )
+
+    @property
+    def has_verified_wcs(self) -> bool:
+        """Whether the WCS passed independent held-out verification, the only way this frame's pixels
+        are placed on the sky."""
+        return self.wcs is not None and self.quality.passed_independent_verification
 
     @property
     def held_out_inliers(self) -> int:

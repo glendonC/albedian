@@ -12,7 +12,9 @@ import {
   querySightlineCone,
   raDecToUnitVector,
 } from '@albedian/camera-rig';
+import { ObservationSolution } from '@albedian/contracts';
 import { computeAudioBusGains } from '@albedian/design-system';
+import { buildSessionFromDiscoveredMedia } from '../services/apiClient';
 import { createOriginCameraFrustumIndicator } from '../spatial/referenceFrameContinuity';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
@@ -55,13 +57,14 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
     const betelgeuse = session.observationSolution.findings.find(
       (f) => f.id === 'finding_betelgeuse'
     )!;
+    const betelgeuseSky = betelgeuse.skyPosition!;
     const phaseA = computeAnchorLockedPhaseAState({
-      anchorRaDeg: betelgeuse.skyPosition.raDeg,
-      anchorDecDeg: betelgeuse.skyPosition.decDeg,
+      anchorRaDeg: betelgeuseSky.raDeg,
+      anchorDecDeg: betelgeuseSky.decDeg,
       anchorTargetNdc: [0.22, -0.18],
       qStart: session.spatialView.cameraQuaternion,
       qEnd: lookAtDirectionQuaternion(
-        raDecToUnitVector(betelgeuse.skyPosition.raDeg, betelgeuse.skyPosition.decDeg)
+        raDecToUnitVector(betelgeuseSky.raDeg, betelgeuseSky.decDeg)
       ),
       fovStartDeg: 37.8,
       fovEndDeg: 28.0,
@@ -93,7 +96,7 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
       [0, 0, 0],
       betelgeuse,
       25
-    );
+    ) ?? [];
     expect(cone.length).toBeGreaterThan(0);
 
     // 6. User says: "Show me this sky a thousand years ago"
@@ -120,6 +123,28 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
     expect(session.currentSourceTimeSec).toBe(initialTimeSec);
     expect(session.audioGain).toBe(initialAudioGain);
     expect(session.sourceAsset.sha256).toBe(initialSourceHash);
+  });
+
+  it('loads backend detections without a sky position and gives them no 3D position', () => {
+    const samples = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/python_contract_solutions.json'), 'utf8')
+    ) as Record<string, ObservationSolution>;
+    for (const name of ['plate_wcs_failed_verification', 'horizon_approximate']) {
+      const solution = samples[name]!;
+      const session = buildSessionFromDiscoveredMedia({
+        id: name, title: name, filename: `${name}.png`, sha256: solution.sourceSha256, mediaKind: 'image',
+        width: 960, height: 540, durationSec: 0, fps: 1, videoCodec: 'none', capturedAtUTC: solution.observedAtUTC,
+        latDeg: solution.observerLocation?.latDeg ?? null, lonDeg: solution.observerLocation?.lonDeg ?? null,
+        cameraModel: 'Unknown camera', urls: { origUrl: `/media/${name}.png`, v1Url: '', v2Url: '' }, solution,
+      });
+      const unplaced = session.observationSolution.findings.filter((f) => f.skyPosition === undefined);
+      expect(unplaced.length).toBeGreaterThan(0);
+      for (const finding of unplaced) {
+        expect(finding.evidenceClass).toBe('observed');
+        expect(finding.sourceDetection).toBeDefined();
+        expect(finding.cartesianParsecICRS).toBeUndefined();
+      }
+    }
   });
 
   it('prevents 3D space transition on unresolved / predicted-only observations and reports renderer benchmark', () => {

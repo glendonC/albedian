@@ -204,18 +204,14 @@ def solve_horizon_and_beacon_pose(
                 observation_solution_id=solution_id,
                 evidence_class="observed",
                 title="Moon (Observed Sensor Beacon + Ephemeris Lock)",
-                subtitle=f"Measured at ({beacon_detection.x_px:.1f}, {beacon_detection.y_px:.1f}) px · Alt +{moon_eph.alt_deg:.1f}° · Az {moon_eph.az_deg:.1f}°",
-                ra_deg=moon_eph.ra_deg,
-                dec_deg=moon_eph.dec_deg,
-                alt_deg=moon_eph.alt_deg,
-                az_deg=moon_eph.az_deg,
-                uncertainty_arcsec=moon_eph.uncertainty_arcsec,
+                subtitle=f"Measured at ({beacon_detection.x_px:.1f}, {beacon_detection.y_px:.1f}) px · pose fit residual {moon_residual_px:.2f} px",
                 source_detection=beacon_detection,
                 pixel_residual_px=moon_residual_px,
                 angular_residual_arcsec=moon_residual_px * wcs.scale_deg_per_px * 3600.0,
                 verified_by_holdout=False,
                 limitations=(
                     "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
+                    "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
                     "The light centroid of a partly lit or saturated Moon is offset from the disk center; that bias is not modeled.",
                 ),
                 source_sha256=source_sha256,
@@ -224,8 +220,6 @@ def solve_horizon_and_beacon_pose(
 
     for b in ephemerides:
         if b.alt_deg <= 0.0:
-            continue
-        if moon_observed and b.name == "Moon":
             continue
         in_field = _in_camera_field(b.ra_deg, b.dec_deg)
         if in_field:
