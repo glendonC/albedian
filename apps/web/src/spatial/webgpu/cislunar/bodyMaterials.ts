@@ -1,7 +1,9 @@
 import { AdditiveBlending, BackSide, NodeMaterial, type Node, type Texture } from 'three/webgpu';
 import {
   Fn,
+  cameraPosition,
   clamp,
+  cross,
   dFdx,
   dFdy,
   dot,
@@ -9,10 +11,12 @@ import {
   fract,
   max,
   mix,
+  modelWorldMatrix,
   normalViewGeometry,
   normalize,
   positionLocal,
   positionView,
+  positionWorld,
   pow,
   smoothstep,
   texture,
@@ -29,10 +33,11 @@ import { gaussian, type BrunetonLut } from '../brunetonAtmosphere.js';
 type Vec3Node = Node<'vec3'>;
 
 /**
- * Earth, its atmosphere shell and the Moon of the cislunar landing scene, ported from the GLSL
- * `ShaderMaterial`s in SparkPortalRenderer.ts. Lighting vectors stay in view space, as there:
- * the composition lights each body from a fixed direction relative to the camera. Materials
- * write linear radiance; AgX in the post chain is the only tone mapping.
+ * Earth, its atmosphere shell and the Moon of the cislunar landing scene. The Earth and its shell
+ * are ported from the GLSL `ShaderMaterial`s in SparkPortalRenderer.ts and keep its lighting in
+ * view space: the composition lights the Earth from a fixed direction relative to the camera.
+ * The Moon is lit by a world-space Sun direction. Materials write linear radiance; AgX in the
+ * post chain is the only tone mapping.
  */
 
 export interface EarthTextures {
@@ -156,58 +161,54 @@ export function createAtmosphereShellMaterial(lut: BrunetonLut, sunDirView: { va
 }
 
 export interface MoonTextures {
-  /** LRO colour albedo (sRGB) */
-  albedo: Texture;
-  /** LOLA-derived relief (linear, red channel used) */
-  relief: Texture;
+  /** NASA SVS 4720 colour from the LROC WAC mosaic (sRGB); longitude -180 at the left edge */
+  colour: Texture;
+  /** Tangent-space normals (east, north, up) from the LOLA heights (linear data), same layout */
+  normal: Texture;
 }
 
 /**
- * Lommel-Seeliger regolith shading with an opposition surge and a faint earthshine on the
- * night side, bump-lit from the relief map.
- *
- * The GLSL also added four octaves of hashed value noise as "micro-crater" relief on top of the
- * LOLA data. That invented terrain the map does not have, so the port leaves it out.
+ * How far past the sphere's terminator relief may still catch the Sun: the sine of 2.7 deg, the
+ * dip of the horizon seen from a 2 km peak, acos(1737.4 / 1739.4).
  */
-export function createMoonMaterial(textures: MoonTextures, sunDirView: { value: unknown }): NodeMaterial {
-  const albedoMap = texture(textures.albedo);
-  const relief = texture(textures.relief);
-  const sunDir = sunDirView as unknown as Vec3Node;
+const MOON_HORIZON_DIP = Math.sin((2.7 * Math.PI) / 180);
+
+/**
+ * The Moon as a sphere carrying the SVS colour map and the LOLA normal map at true slopes
+ * (scripts/bake_moon_maps.py), lit by one world-space Sun direction. Reflectance is
+ * Lommel-Seeliger, 2 mu0 / (mu0 + mu), the single-scattering law of dark regolith, scaled to 1
+ * for light and view along the normal; the colour map supplies the albedo.
+ *
+ * Not modelled: shadows cast by relief, earthshine (the landing looks at the far side, which never
+ * faces the Earth) and the opposition surge (only within about 10 deg of zero phase). For
+ * the missing cast shadows, facets are lit only where the sphere is lit or up to
+ * MOON_HORIZON_DIP beyond its terminator, fading over that band.
+ */
+export function createMoonMaterial(textures: MoonTextures, sunDirWorld: { value: unknown }): NodeMaterial {
+  const colourMap = texture(textures.colour);
+  const normalMap = texture(textures.normal);
+  const sunDir = sunDirWorld as unknown as Vec3Node;
   const material = new NodeMaterial();
   material.name = 'cislunarMoon';
   material.fragmentNode = Fn(() => {
     const coord = uv().toVar('moonUv');
-    const albedo = albedoMap.sample(coord).rgb.toVar('moonAlbedo');
-    // UV step of the GLSL, kept for the same bump strength: it assumed a 2048x1024 map, so on the
-    // 1024x512 relief texture it spans half a texel
-    const texel = vec2(1 / 2048, 1 / 1024);
-    const hL = relief.sample(coord.sub(vec2(texel.x, 0.0))).r;
-    const hR = relief.sample(coord.add(vec2(texel.x, 0.0))).r;
-    const hD = relief.sample(coord.sub(vec2(0.0, texel.y))).r;
-    const hU = relief.sample(coord.add(vec2(0.0, texel.y))).r;
-    const slopeX = hL.sub(hR).toVar('moonSlopeX');
-    const bumpOffset = vec3(slopeX.mul(3.8), hD.sub(hU).mul(3.8), 0.0);
-
-    const geometricN = viewNormal().toVar('moonGeomN');
-    const N = normalize(geometricN.add(bumpOffset.mul(0.62)));
+    const albedo = colourMap.sample(coord).rgb;
+    // SphereGeometry's frame: +y the north pole, +x longitude 0, -z longitude 90 E. The tiny x
+    // term keeps east defined at the poles, where the cross product vanishes.
+    const up = normalize(positionLocal).toVar('moonUp');
+    const east = normalize(cross(vec3(0, 1, 0), up).add(vec3(1e-7, 0, 0))).toVar('moonEast');
+    const north = cross(up, east);
+    const tangentNormal = normalMap.sample(coord).xyz.mul(2).sub(1);
+    const localNormal = east.mul(tangentNormal.x).add(north.mul(tangentNormal.y)).add(up.mul(tangentNormal.z));
+    const N = normalize(modelWorldMatrix.mul(vec4(localNormal, 0)).xyz).toVar('moonN');
+    const sphereNormal = normalize(modelWorldMatrix.mul(vec4(up, 0)).xyz);
     const L = normalize(sunDir).toVar('moonL');
-    const V = viewDirection().toVar('moonV');
-    const rawNdotL = dot(geometricN, L);
-    const NdotL = max(0.0, dot(N, L)).toVar('moonNdotL');
-    const NdotV = max(0.05, dot(N, V));
-
-    const lommelSeeliger = NdotL.div(NdotL.add(NdotV.mul(0.62)).add(0.001));
-    const oppositionSurge = pow(max(0.0, dot(V, L)), 6.0).mul(0.32).add(1.0);
-    const terminatorMask = smoothstep(-0.08, 0.12, rawNdotL.add(slopeX.mul(0.45))).toVar('moonTerminator');
-    const regolithReflectance = lommelSeeliger.mul(terminatorMask).mul(oppositionSurge).mul(1.68);
-
-    const rimFresnel = pow(float(1).sub(max(0.0, dot(geometricN, V))), 2.4);
-    const earthshine = pow(albedo, vec3(1.1))
-      .mul(vec3(0.024, 0.046, 0.088))
-      .mul(float(1).sub(terminatorMask.mul(0.85)))
-      .mul(rimFresnel.mul(0.6).add(0.7));
-    const sunlitMoon = pow(albedo, vec3(1.22)).mul(vec3(1.06, 1.01, 0.93)).mul(regolithReflectance);
-    return vec4(sunlitMoon.add(earthshine), 1.0);
+    const V = normalize(cameraPosition.sub(positionWorld));
+    const mu0 = max(0.0, dot(N, L)).toVar('moonMu0');
+    const mu = max(0.001, dot(N, V));
+    const reflectance = mu0.mul(2.0).div(mu0.add(mu));
+    const sunlit = smoothstep(-MOON_HORIZON_DIP, 0.0, dot(sphereNormal, L));
+    return vec4(albedo.mul(reflectance).mul(sunlit), 1.0);
   })();
   return material;
 }

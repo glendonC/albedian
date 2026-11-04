@@ -20,9 +20,16 @@ describe('WebGL renderer: cislunar render layers', () => {
   });
 
   it('shares the WebGPU disclosures where both renderers draw the same data', () => {
-    for (const id of ['cislunar.sky', 'cislunar.earth', 'cislunar.atmosphere', 'cislunar.moon']) {
+    for (const id of ['cislunar.sky', 'cislunar.earth', 'cislunar.atmosphere']) {
       expect(layer(id)).toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === id));
     }
+  });
+
+  it('declares its own Moon: the old SVS maps on the mesh, until WebGL catches up', () => {
+    const moon = layer('cislunar.moon');
+    expect(moon).not.toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.moon'));
+    expect(moon?.disclosure).toMatch(/appearance rather than science/);
+    expect(moon?.sources.join(' ')).toMatch(/lro_moon_2k\.jpg.*lro_moon_disp\.jpg.*nasa_lro_moon_3d\.glb/);
   });
 
   it('says what the WebGL renderer draws differently', () => {

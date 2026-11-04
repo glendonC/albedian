@@ -73,8 +73,10 @@ next bake deletes it.
   parameters, Bailer-Jones et al. 2021 distances, Hipparcos 2007, the Gaia to Hipparcos
   crossmatch and the IAU Catalog of Star Names), each with its credit and licence.
 - **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the ESO image behind the
-  black hole (eso1804a), downloaded as is and byte-identical to ESO's downloads; the two
-  SVS 4720 Moon maps, likewise; the Earth day and night maps, which
+  black hole (eso1804a), downloaded as is and byte-identical to ESO's downloads; the two 1k
+  SVS 4720 Moon maps, likewise; the 8k Moon colour map and the LOLA normal map, whose entries
+  `scripts/bake_moon_maps.py` rewrites on every bake from two pinned SVS 4720 inputs; the Earth
+  day and night maps, which
   `scripts/lookdev/bake_earth_textures.py` makes from pinned NASA inputs; the panorama's
   registration, which `scripts/register_sky_panorama.py` fits; and the Natural Earth water mask,
   NASA cloud layer, ETOPO 2022 height map and unshaded Blue Marble day map, whose entries

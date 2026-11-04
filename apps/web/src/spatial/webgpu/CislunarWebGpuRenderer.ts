@@ -16,7 +16,6 @@ import {
   type Texture,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { RenderLayerSet } from '@albedian/contracts';
 import type { CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
@@ -43,6 +42,8 @@ const MOON = { radius: 1.98, center: new Vector3(2.45, 1.25, -8.2), yaw: -0.85 }
 const CATALOG_STAR_MOUNT_RADIUS = 85.0;
 const EARTH_SUN_DIR_VIEW = new Vector3(0.68, 0.28, -0.58).normalize();
 const MOON_SUN_DIR_VIEW = new Vector3(0.58, 0.22, 0.78).normalize();
+/** Sharpens the 8k colour and the normal map toward the limb, where the sphere is seen edge-on. */
+const MOON_MAP_ANISOTROPY = 8;
 
 /**
  * The WebGL loop advanced these once per frame (0.00018 and 0.0005 rad, x3.2 on the landing);
@@ -189,21 +190,20 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     atmosphere.position.copy(EARTH.center);
     this.world.add(atmosphere);
 
+    // NASA SVS 4720 colour and LOLA normals, baked by scripts/bake_moon_maps.py
+    const moonColour = this.loadTexture('/textures/moon_svs4720_color_8k.jpg', SRGBColorSpace, true);
+    const moonNormal = this.loadTexture('/textures/moon_svs4720_lola_normal_16ppd.webp', NoColorSpace, true);
+    moonColour.anisotropy = MOON_MAP_ANISOTROPY;
+    moonNormal.anisotropy = MOON_MAP_ANISOTROPY;
     this.moon = new Mesh(
-      new SphereGeometry(MOON.radius, 160, 160),
-      createMoonMaterial(
-        {
-          albedo: this.loadTexture('/textures/lro_moon_2k.jpg', SRGBColorSpace, true),
-          relief: this.loadTexture('/textures/lro_moon_disp.jpg', NoColorSpace, true),
-        },
-        uniform(MOON_SUN_DIR_VIEW.clone())
-      )
+      new SphereGeometry(MOON.radius, 256, 128),
+      // The composition's light direction, now held in world space rather than view space
+      createMoonMaterial({ colour: moonColour, normal: moonNormal }, uniform(MOON_SUN_DIR_VIEW.clone()))
     );
     this.moon.name = 'cislunarMoon';
     this.moon.position.copy(MOON.center);
     this.moon.rotation.y = MOON.yaw;
     this.world.add(this.moon);
-    this.pending.push(this.loadMoonMesh());
 
     this.onRegimeChange = options.onRegimeChange;
     this.ready = this.start(container, options);
@@ -481,22 +481,6 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     tex.wrapS = wrapU ? RepeatWrapping : ClampToEdgeWrapping;
     tex.wrapT = ClampToEdgeWrapping;
     return tex;
-  }
-
-  private loadMoonMesh(): Promise<void> {
-    // NASA LRO Moon mesh at radius 10, rescaled to the scene Moon as the WebGL path does
-    return new GLTFLoader().loadAsync('/models/nasa_lro_moon_3d.glb').then(
-      (gltf) => {
-        gltf.scene.traverse((child) => {
-          const mesh = child as Mesh;
-          if (!mesh.isMesh) return;
-          this.moon.geometry.dispose();
-          this.moon.geometry = mesh.geometry.clone();
-          this.moon.geometry.scale(MOON.radius / 10, MOON.radius / 10, MOON.radius / 10);
-        });
-      },
-      (error: unknown) => console.warn('[webgpu host] Moon mesh failed; keeping the sphere', error)
-    );
   }
 
   private warnOnce(key: string, message: string): void {

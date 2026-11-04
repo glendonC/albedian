@@ -60,6 +60,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA Earth Observatory, Blue Marble Next Generation base map, November 2004, 21600 x 10800"
+    },
+    {
+      "path": ".cache/moon-svs4720/lroc_color_16bit_srgb_8k.tif",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_16bit_srgb_8k.tif",
+      "bytes": 243289792,
+      "sha256": "db7808e878b6a55eb409bb231eab8deb477f84b5c9d7396d76ff73e5d54992d9",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): LROC WAC colour map, 8192 x 4096, 16-bit sRGB"
+    },
+    {
+      "path": ".cache/moon-svs4720/ldem_16_uint.tif",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_16_uint.tif",
+      "bytes": 33201026,
+      "sha256": "45a2b32d56e81ed30db07fead8abc842b249b6511219d9ca2c53f81bc2dc5d62",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): LOLA elevation, 16 samples per degree, unsigned half-metres above 1727.4 km"
     }
   ]
 }

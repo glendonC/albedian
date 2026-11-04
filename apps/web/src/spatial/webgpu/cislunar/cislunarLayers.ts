@@ -59,11 +59,10 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Moon',
     evidenceClass: 'simulated',
     disclosure:
-      'NASA SVS lunar colour and relief maps, made for appearance rather than science, on a Moon placed and lit for composition, not at an ephemeris position.',
+      'NASA SVS lunar colour, made for appearance rather than science, and LOLA relief at true slopes, on a sphere placed and lit for composition, not at an ephemeris position.',
     sources: [
-      "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): colour map lroc_color_poles_1k, 1024x512, from the LROC WAC mosaic (lro_moon_2k.jpg)",
-      'SVS 4720 relief map ldem_3_8bit, 1024x512, from LOLA (lro_moon_disp.jpg)',
-      'Mesh: nasa_lro_moon_3d.glb (provenance not recorded)',
+      "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): colour lroc_color_16bit_srgb_8k from the LROC WAC mosaic (moon_svs4720_color_8k.jpg)",
+      'SVS 4720 LOLA heights ldem_16_uint, 16 per degree, as normals by scripts/bake_moon_maps.py (moon_svs4720_lola_normal_16ppd.webp)',
     ],
   },
   {

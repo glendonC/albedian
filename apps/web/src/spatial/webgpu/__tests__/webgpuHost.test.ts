@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { RenderLayerSetSchema } from '@albedian/contracts';
@@ -138,12 +140,25 @@ describe('WebGPU host: cislunar render layers', () => {
   });
 
   it("names the Moon's maps and carries SVS's caveat that they were made for appearance", () => {
-    // The data lane traced lro_moon_2k.jpg and lro_moon_disp.jpg to NASA SVS 4720 (CGI Moon Kit)
     const moon = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.moon');
     expect(moon?.disclosure).toMatch(/appearance rather than science/);
-    expect(moon?.sources.join(' ')).toMatch(/SVS 4720/);
-    expect(moon?.sources.join(' ')).toMatch(/lroc_color_poles_1k/);
-    expect(moon?.sources.join(' ')).toMatch(/ldem_3_8bit/);
+    expect(moon?.disclosure).toMatch(/true slopes/);
+    const sources = moon?.sources.join(' ') ?? '';
+    expect(sources).toMatch(/SVS 4720/);
+    expect(sources).toMatch(/lroc_color_16bit_srgb_8k.*moon_svs4720_color_8k\.jpg/);
+    expect(sources).toMatch(/ldem_16_uint.*moon_svs4720_lola_normal_16ppd\.webp/);
+    // A sphere, not the old mesh of unrecorded provenance and exaggerated relief
+    expect(sources).not.toMatch(/\.glb/);
+  });
+
+  it("loads the Moon's baked maps, the colour as sRGB and the normals as linear data", () => {
+    const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    expect(host).toMatch(/'\/textures\/moon_svs4720_color_8k\.jpg', SRGBColorSpace/);
+    expect(host).toMatch(/'\/textures\/moon_svs4720_lola_normal_16ppd\.webp', NoColorSpace/);
+    expect(host).not.toMatch(/nasa_lro_moon_3d\.glb|lro_moon_2k|lro_moon_disp/);
+    for (const file of ['moon_svs4720_color_8k.jpg', 'moon_svs4720_lola_normal_16ppd.webp']) {
+      expect(fs.existsSync(fileURLToPath(new URL(`../../../../public/textures/${file}`, import.meta.url)))).toBe(true);
+    }
   });
 
   it('discloses the two planets the photograph shows and when its shoot photographed them', () => {

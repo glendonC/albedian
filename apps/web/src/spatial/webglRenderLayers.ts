@@ -19,6 +19,24 @@ const WEBGL_CATALOG_STARS: RenderLayer = {
   sources: ['Gaia DR3 (Gaia Collaboration 2023)', 'Hipparcos 2007 (van Leeuwen 2007)'],
 };
 
+/**
+ * The WebGL Moon: the 1k SVS maps on the mesh of unrecorded provenance. The WebGPU host has moved
+ * to the 8k colour and LOLA normals on a sphere (cislunarLayers.ts).
+ */
+const WEBGL_MOON: RenderLayer = {
+  id: 'cislunar.moon',
+  kind: 'solar_system_body',
+  title: 'Moon',
+  evidenceClass: 'simulated',
+  disclosure:
+    'NASA SVS lunar colour and relief maps, made for appearance rather than science, on a Moon placed and lit for composition, not at an ephemeris position.',
+  sources: [
+    "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): colour map lroc_color_poles_1k, 1024x512, from the LROC WAC mosaic (lro_moon_2k.jpg)",
+    'SVS 4720 relief map ldem_3_8bit, 1024x512, from LOLA (lro_moon_disp.jpg)',
+    'Mesh: nasa_lro_moon_3d.glb (provenance not recorded)',
+  ],
+};
+
 /** Unreal bloom, the cinema optics pass and ACES tone mapping, the same in every view. */
 const WEBGL_CAMERA_OPTICS: RenderLayer = {
   id: 'post.camera-optics',
@@ -31,16 +49,16 @@ const WEBGL_CAMERA_OPTICS: RenderLayer = {
 
 /**
  * What the WebGL renderer (`SparkPortalRenderer`) draws in the cislunar regime, in draw order,
- * with each layer's evidence class and the disclosure the UI shows. The sky, Earth, atmosphere
- * and Moon sample the same data the same way as on the WebGPU host, so they share its
- * declarations; the catalog stars and the optics are drawn differently here.
+ * with each layer's evidence class and the disclosure the UI shows. The sky, Earth and atmosphere
+ * sample the same data the same way as on the WebGPU host, so they share its declarations; the
+ * catalog stars, the Moon and the optics are drawn differently here.
  */
 export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
   sharedLayer('cislunar.sky'),
   WEBGL_CATALOG_STARS,
   sharedLayer('cislunar.earth'),
   sharedLayer('cislunar.atmosphere'),
-  sharedLayer('cislunar.moon'),
+  WEBGL_MOON,
   WEBGL_CAMERA_OPTICS,
 ]);
 
