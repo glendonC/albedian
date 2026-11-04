@@ -330,8 +330,8 @@ export const SpatialObservatoryViewport: React.FC<
               </div>
               <div className="alb-nazyurtal-right">
                 <p className="alb-nazyurtal-copy">
-                  Light pollution hides the stars for 83% of humanity, severing
-                  our perspective in the cosmos. Upload a night photo to find
+                  Light pollution hides the Milky Way from more than a third of
+                  humanity, severing our perspective in the cosmos. Upload a night photo to find
                   where and when it was taken, see the real sky behind the glow,
                   and fly through the 3D universe behind your frame.
                 </p>
