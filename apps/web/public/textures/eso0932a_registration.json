@@ -62,7 +62,7 @@
         0,
         1
       ],
-      "sha256sumsSha256": "67d41bd3ffb4604ed11637799ef9d7433fb7d4663da8491a1a0cd0167f58fc12"
+      "coreTilesSha256": "88758681f53a384e6466cbf0cf8c0b5326c05614afb45d46715e64f4af2e7681"
     },
     "selection": {
       "magnitudeLimit": 6.0,

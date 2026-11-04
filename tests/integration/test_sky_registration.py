@@ -10,6 +10,7 @@ shows against the repository's ephemeris.
 from __future__ import annotations
 
 import base64
+import hashlib
 import importlib.util
 import json
 import math
@@ -277,3 +278,23 @@ def test_the_panorama_shows_venus_and_jupiter_where_the_ephemeris_puts_them():
         earlier = (datetime.fromisoformat(iso) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
         control = _planet_offset_deg(body, earlier, solution, offsets, luminance, geom)
         assert control is None or control[0] >= 0.1 or control[1] < 20, f"{body} on {earlier}: {control}"
+
+
+def test_committed_solution_pins_only_the_catalog_tiles_the_fit_reads():
+    """A new tile kind elsewhere in the catalog must not stale the panorama's solution.
+
+    The fit reads the core tiles of layers 0 and 1, so the solution records a digest of exactly
+    those files, in SHA256SUMS line form; adding detail or astro tiles changes SHA256SUMS but not
+    this digest.
+    """
+    script = _load_script()
+    committed = json.loads((TEXTURES / "eso0932a_registration.json").read_text())["fit"]["catalog"]
+    assert "sha256sumsSha256" not in committed
+    assert committed["layers"] == [0, 1]
+    assert committed["coreTilesSha256"] == script.core_tiles_digest((0, 1))
+    # The digest covers the 60 core tiles of those layers and no other file
+    catalog = ROOT / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3"
+    lines = [line for line in (catalog / "SHA256SUMS").read_text().splitlines() if line.split()[1].startswith(("L0/", "L1/"))]
+    core = sorted((line for line in lines if line.endswith(".core.bin")), key=lambda l: (l.split()[1].split("/")[0], int(l.split()[1].split("/")[1].split(".")[0])))
+    assert len(core) == 60
+    assert script.core_tiles_digest((0, 1)) == hashlib.sha256("".join(f"{line}\n" for line in core).encode()).hexdigest()

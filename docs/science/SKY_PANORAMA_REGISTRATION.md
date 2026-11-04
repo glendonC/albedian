@@ -29,7 +29,7 @@ The renderers do the same from the scene direction, `p = R A_G S^T d`, where `S`
 
 ### Fit
 
-Code: pure functions in [`services/science/sky_registration.py`](../../services/science/sky_registration.py), run by [`scripts/register_sky_panorama.py`](../../scripts/register_sky_panorama.py). Inputs are repository files only: the panorama (pinned by SHA-256) and catalog tile layers 0 and 1 (to magnitude 8).
+Code: pure functions in [`services/science/sky_registration.py`](../../services/science/sky_registration.py), run by [`scripts/register_sky_panorama.py`](../../scripts/register_sky_panorama.py). Inputs are repository files only: the panorama (pinned by SHA-256) and catalog tile layers 0 and 1 (to magnitude 8), pinned by a digest of their 60 core tiles, so new tile kinds elsewhere in the catalog leave the solution valid.
 
 - **Stars:** the 5,112 catalog stars to magnitude 6.0 with no star within 0.3 degrees brighter than their own magnitude plus 2.
 - **Measurement:** a difference-of-Gaussians image (sigma 1 and 8 pixels, wrapping in longitude). For each star, the brightest peak within 3 pixels of its modelled position, refined with a Gaussian-windowed centroid (sigma 1.5 pixels, re-centred until it settles). Unlike a fixed box, the window has no bias where a star falls on a pixel corner.

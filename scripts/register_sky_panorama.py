@@ -67,13 +67,30 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def core_tiles(layers: tuple[int, ...]) -> list[Path]:
+    """The core tile files of `layers`, in tile order: the only catalog files the fit reads."""
+    return [
+        path
+        for layer in layers
+        for path in sorted((CATALOG_DIR / f"L{layer}").glob("*.core.bin"), key=lambda p: int(p.name.split(".")[0]))
+    ]
+
+
+def core_tiles_digest(layers: tuple[int, ...]) -> str:
+    """SHA-256 over the SHA256SUMS-style lines ("<sha256>  L<n>/<i>.core.bin") of those files.
+
+    It pins exactly the fit's inputs, so new tile kinds elsewhere in the catalog leave it alone.
+    """
+    lines = "".join(f"{sha256_file(path)}  {path.parent.name}/{path.name}\n" for path in core_tiles(layers))
+    return hashlib.sha256(lines.encode()).hexdigest()
+
+
 def load_catalog(layers: tuple[int, ...]) -> tuple[np.ndarray, np.ndarray]:
     dirs, mags = [], []
-    for layer in layers:
-        for path in sorted((CATALOG_DIR / f"L{layer}").glob("*.core.bin"), key=lambda p: int(p.name.split(".")[0])):
-            header, cols = ct.decode_core_tile(path.read_bytes())
-            dirs.append(ct.decode_core_directions(header, cols))
-            mags.append(ct.decode_mag(cols["mag"]))
+    for path in core_tiles(layers):
+        header, cols = ct.decode_core_tile(path.read_bytes())
+        dirs.append(ct.decode_core_directions(header, cols))
+        mags.append(ct.decode_mag(cols["mag"]))
     return np.concatenate(dirs), np.concatenate(mags)
 
 
@@ -266,7 +283,7 @@ def solve() -> dict:
             "catalog": {
                 "releaseId": "gaia-dr3",
                 "layers": [0, 1],
-                "sha256sumsSha256": sha256_file(CATALOG_DIR / "SHA256SUMS"),
+                "coreTilesSha256": core_tiles_digest((0, 1)),
             },
             "selection": {
                 "magnitudeLimit": MAG_LIMIT,
