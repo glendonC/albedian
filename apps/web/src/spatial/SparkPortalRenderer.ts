@@ -24,6 +24,7 @@ import {
   updateOriginFrustumContinuity,
 } from './referenceFrameContinuity.js';
 import { loadPanoramaRegistration, sceneToPanoramaRows } from './sky/skyRegistration.js';
+import { centreOnCamera } from './skyMounts.js';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
   BRUNETON_ATMO_LUT_URL,
@@ -263,6 +264,8 @@ export class SparkPortalRenderer {
   private originFrustumGroup: THREE.Group | null = null;
   // Gaia DR3 / Hipparcos 2007 catalog stars shared by every regime's sky sphere
   private catalogStars: CatalogStarField | null = null;
+  /** One star mount per regime; each is centred on the camera every frame, so the stars sit at infinity. */
+  private readonly catalogStarMounts: THREE.Group[] = [];
 
   // Unknown until a capture or the user supplies a location
   private observerLatDeg: number | null = null;
@@ -672,7 +675,9 @@ export class SparkPortalRenderer {
    */
   private addCatalogStarMount(group: THREE.Group, radius: number): void {
     if (this.catalogStars) {
-      group.add(this.catalogStars.createMount(radius));
+      const mount = this.catalogStars.createMount(radius);
+      group.add(mount);
+      this.catalogStarMounts.push(mount);
     }
   }
 
@@ -2325,6 +2330,7 @@ export class SparkPortalRenderer {
         this.originFrustumGroup.visible = false;
       }
 
+      for (const mount of this.catalogStarMounts) centreOnCamera(mount, this.camera);
       this.catalogStars?.update(this.camera, this.renderer.getPixelRatio());
       this.sparkXr?.updateControllers(this.camera);
       if (this.composer) {

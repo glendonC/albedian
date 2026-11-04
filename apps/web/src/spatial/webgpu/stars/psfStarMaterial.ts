@@ -175,7 +175,9 @@ export function createPsfStarMaterial(
     vCoreGain.assign(coreGain);
     vRadiance.assign(rad);
     const offsetNdc = offsetRef.mul(psfScale).mul(2.0).div(cameraViewport.zw);
-    const placed = clip.add(vec4(offsetNdc.mul(clip.w), 0.0, 0.0));
+    // The star is at infinity: its depth goes to the far plane, so every body in front covers it
+    // whatever radius its mount has (the mount is centred on the camera, skyMounts.ts)
+    const placed = vec4(clip.xy.add(offsetNdc.mul(clip.w)), clip.w, clip.w);
     // A star past the limiting magnitude is moved outside the clip volume, so it costs no fragments
     return select(fade.greaterThan(0.0), placed, vec4(2.0, 2.0, 2.0, 1.0));
   })();

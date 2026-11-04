@@ -21,6 +21,7 @@ import type { RenderLayerSet } from '@albedian/contracts';
 import type { CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
+import { centreOnCamera } from '../skyMounts.js';
 import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.js';
 import { createCinemaOpticsUniforms } from './cinemaOptics.js';
 import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './cislunar/bodyMaterials.js';
@@ -114,6 +115,8 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
   private readonly rig = new Group();
   private readonly world = new Group();
   private readonly stars = new CatalogStarSpriteField();
+  /** The catalog star sphere, centred on the camera every frame so the stars sit at infinity. */
+  private readonly starMount: Group;
   private readonly optics = createCinemaOpticsUniforms();
   private readonly textureLoader = new TextureLoader();
   private readonly pending: Promise<unknown>[] = [];
@@ -148,7 +151,8 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       )
     );
 
-    this.world.add(this.stars.createMount(CATALOG_STAR_MOUNT_RADIUS));
+    this.starMount = this.stars.createMount(CATALOG_STAR_MOUNT_RADIUS);
+    this.world.add(this.starMount);
 
     const lutReady = uniform(0);
     const lutTexture = this.loadTexture(BRUNETON_ATMO_LUT_URL, NoColorSpace, false, () => (lutReady.value = 1));
@@ -445,6 +449,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.camera.fov = this.curFov;
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
+    centreOnCamera(this.starMount, this.camera);
   }
 
   /**
