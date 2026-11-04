@@ -75,6 +75,8 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
     agents/                 # Specialized agent role definitions
 ```
 
+What works, what is still missing, the decisions waiting and the long-running jobs to start early are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 ---
 
 ## Quick Start
