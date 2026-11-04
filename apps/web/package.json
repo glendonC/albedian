@@ -17,6 +17,7 @@
     "@albedian/evidence": "workspace:*",
     "@albedian/observation": "workspace:*",
     "@sparkjsdev/spark": "^2.4.0",
+    "omnitone": "^2.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.180.0"
