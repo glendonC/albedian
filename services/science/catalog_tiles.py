@@ -12,9 +12,9 @@ Tile layout (little-endian), one file per (layer, HEALPix nested pixel) and kind
 
     header (32 bytes)
       0  4s  magic b"ALBS"
-      4  u16 format version
-      6  u8  kind (1 = core, 2 = detail)
-      7  u8  position bits (16 or 32 for core, 0 for detail)
+      4  u16 format version (the header version, 1 for every kind)
+      6  u8  kind (1 = core, 2 = detail, 3 = astro)
+      7  u8  position bits (16 or 32 for core, 0 for detail and astro)
       8  u8  layer
       9  u8  HEALPix order
      10  u16 reserved (0)
@@ -25,6 +25,10 @@ Tile layout (little-endian), one file per (layer, HEALPix nested pixel) and kind
       core:   posU, posV (u16 or u32), mag (u16), color (i16), distance (u16), flags (u8)
       detail: idHi (u32), idLo (u32), pmRa (f16), pmDec (f16), radialVelocity (f16),
               distanceLower (u8), distanceUpper (u8)
+      astro:  teff, teffLower, teffUpper (u16 K), logLum, logLumLower, logLumUpper
+              (i16, 0.001 dex of L/Lsun), a0, a0Lower, a0Upper, ag (u16 mmag), ruwe (f16),
+              parallaxError (f16 mas): Gaia DR3 GSP-Phot temperature and extinction, FLAME
+              luminosity, each with its 16th and 84th percentiles, and astrometric quality
 """
 
 from __future__ import annotations
@@ -40,6 +44,7 @@ TILE_FORMAT_VERSION = 1
 TILE_HEADER_BYTES = 32
 KIND_CORE = 1
 KIND_DETAIL = 2
+KIND_ASTRO = 3
 
 # --- Flags (one byte per star, core tile) ---------------------------------------------------
 DIST_KIND_NONE = 0
@@ -64,6 +69,12 @@ BOUND_MISSING = 0
 BOUND_LOG10_FRAC_MIN = -5.0  # fractional bound (|bound - median| / median) floor of 1e-5
 BOUND_LOWER_LOG10_SPAN = 5.0  # lower fraction in [1e-5, 1]
 BOUND_UPPER_LOG10_SPAN = 7.0  # upper fraction in [1e-5, 100], larger values clamp to code 255
+# Astro tiles: a value the catalog lacks keeps its reserved code and decodes to NaN
+TEFF_MISSING = 0  # temperature code = round(kelvin), 1 K steps
+LOG_LUM_SCALE = 1000.0  # luminosity code = round(log10(L / Lsun) * 1000), 0.001 dex steps
+LOG_LUM_MISSING = -32768
+EXTINCTION_SCALE = 1000.0  # extinction code = round(mag * 1000), 1 mmag steps
+EXTINCTION_MISSING = 65535
 
 HALF_PI = math.pi / 2.0
 SAME_STAR_RADIUS_ARCSEC = 2.0  # bright merge: a Gaia source this close to a Hipparcos star is that star
@@ -301,6 +312,63 @@ def decode_f16(bits) -> np.ndarray:
     return np.asarray(bits, dtype=np.uint16).view(np.float16).astype(np.float64)
 
 
+def encode_teff(kelvin) -> np.ndarray:
+    """Effective temperature in whole kelvin; NaN becomes the missing code, never a value."""
+    k = np.asarray(kelvin, dtype=np.float64)
+    ok = np.isfinite(k)
+    code = np.full(k.shape, float(TEFF_MISSING))
+    code[ok] = np.rint(k[ok])
+    if np.any(code[ok] < 1) or np.any(code[ok] > 65535):
+        raise ValueError("temperature outside encodable range [1, 65535] K")
+    return code.astype(np.uint16)
+
+
+def decode_teff(code) -> np.ndarray:
+    code = np.asarray(code, dtype=np.uint16)
+    out = code.astype(np.float64)
+    out[code == TEFF_MISSING] = np.nan
+    return out
+
+
+def encode_luminosity(lsun) -> np.ndarray:
+    """Luminosity in solar units as log10 in 0.001 dex steps; NaN becomes the missing code."""
+    lum = np.asarray(lsun, dtype=np.float64)
+    ok = np.isfinite(lum)
+    if np.any(lum[ok] <= 0):
+        raise ValueError("luminosity must be positive")
+    code = np.full(lum.shape, float(LOG_LUM_MISSING))
+    code[ok] = np.rint(np.log10(lum[ok]) * LOG_LUM_SCALE)
+    if np.any(code[ok] < -32767) or np.any(code[ok] > 32767):
+        raise ValueError("luminosity outside encodable range [1e-32.767, 1e32.767] Lsun")
+    return code.astype(np.int16)
+
+
+def decode_luminosity(code) -> np.ndarray:
+    """Luminosity in solar units."""
+    code = np.asarray(code, dtype=np.int16)
+    out = np.power(10.0, code.astype(np.float64) / LOG_LUM_SCALE)
+    out[code == LOG_LUM_MISSING] = np.nan
+    return out
+
+
+def encode_extinction(mag) -> np.ndarray:
+    """Extinction in mmag (0 to 65.534 mag); NaN becomes the missing code, zero stays zero."""
+    a = np.asarray(mag, dtype=np.float64)
+    ok = np.isfinite(a)
+    code = np.full(a.shape, float(EXTINCTION_MISSING))
+    code[ok] = np.rint(a[ok] * EXTINCTION_SCALE)
+    if np.any(code[ok] < 0) or np.any(code[ok] > EXTINCTION_MISSING - 1):
+        raise ValueError("extinction outside encodable range [0, 65.534] mag")
+    return code.astype(np.uint16)
+
+
+def decode_extinction(code) -> np.ndarray:
+    code = np.asarray(code, dtype=np.uint16)
+    out = code.astype(np.float64) / EXTINCTION_SCALE
+    out[code == EXTINCTION_MISSING] = np.nan
+    return out
+
+
 def quantize_unit(u, bits: int) -> np.ndarray:
     scale = float(1 << bits)
     code = np.clip(np.floor(np.asarray(u, dtype=np.float64) * scale), 0, scale - 1)
@@ -411,6 +479,53 @@ def encode_detail_tile(
     return blob
 
 
+ASTRO_LAYOUT: list[tuple[str, str]] = [
+    ("teff", "<u2"),
+    ("teffLower", "<u2"),
+    ("teffUpper", "<u2"),
+    ("logLum", "<i2"),
+    ("logLumLower", "<i2"),
+    ("logLumUpper", "<i2"),
+    ("a0", "<u2"),
+    ("a0Lower", "<u2"),
+    ("a0Upper", "<u2"),
+    ("ag", "<u2"),
+    ("ruwe", "<u2"),
+    ("parallaxError", "<u2"),
+]
+ASTRO_STRIDE = 2 * len(ASTRO_LAYOUT)
+
+
+def encode_astro_tile(
+    *,
+    layer: int,
+    order: int,
+    pix: int,
+    teff: np.ndarray,
+    teff_lower: np.ndarray,
+    teff_upper: np.ndarray,
+    log_lum: np.ndarray,
+    log_lum_lower: np.ndarray,
+    log_lum_upper: np.ndarray,
+    a0: np.ndarray,
+    a0_lower: np.ndarray,
+    a0_upper: np.ndarray,
+    ag: np.ndarray,
+    ruwe_f16: np.ndarray,
+    parallax_error_f16: np.ndarray,
+) -> bytes:
+    """One astro tile from already encoded columns, index-aligned with the core tile of the same pixel."""
+    columns = [teff, teff_lower, teff_upper, log_lum, log_lum_lower, log_lum_upper, a0, a0_lower, a0_upper, ag, ruwe_f16, parallax_error_f16]
+    n = len(teff)
+    if any(len(c) != n for c in columns):
+        raise ValueError("astro columns differ in length")
+    parts = [_pack_header(TileHeader(KIND_ASTRO, 0, layer, order, pix, n))]
+    parts += [np.asarray(c).astype(dtype).tobytes() for c, (_, dtype) in zip(columns, ASTRO_LAYOUT, strict=True)]
+    blob = b"".join(parts)
+    assert len(blob) == TILE_HEADER_BYTES + n * ASTRO_STRIDE
+    return blob
+
+
 def _columns(blob: bytes, layout: list[tuple[str, str]], n: int) -> dict[str, np.ndarray]:
     out: dict[str, np.ndarray] = {}
     offset = TILE_HEADER_BYTES
@@ -454,6 +569,13 @@ def decode_detail_tile(blob: bytes) -> tuple[TileHeader, dict[str, np.ndarray]]:
         h.count,
     )
     return h, cols
+
+
+def decode_astro_tile(blob: bytes) -> tuple[TileHeader, dict[str, np.ndarray]]:
+    h = read_header(blob)
+    if h.kind != KIND_ASTRO:
+        raise ValueError("expected an astro tile")
+    return h, _columns(blob, ASTRO_LAYOUT, h.count)
 
 
 def decode_core_directions(h: TileHeader, cols: dict[str, np.ndarray]) -> np.ndarray:

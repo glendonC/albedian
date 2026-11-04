@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
 import {
+  CATALOG_STAR_TILE_ASTRO_ENCODING,
+  CATALOG_STAR_TILE_HEADER_VERSION,
   CatalogStarNameIndexSchema,
   CatalogStarTileManifestSchema,
   type CatalogStarTileManifest,
@@ -18,6 +20,7 @@ import {
 } from '../healpix';
 import {
   catalogIdAt,
+  decodeAstroTile,
   decodeCoreTile,
   decodeDetailTile,
   decodeDistanceBounds,
@@ -113,6 +116,53 @@ describe('catalog star tile codec', () => {
       expect(Math.abs(bounds.upperPc / (star.distanceUpperPc as number) - 1)).toBeLessThan(0.002);
     });
     expect(isNamed(core.flags[1]!)).toBe(true);
+  });
+
+  it('decodes the astro tile of the shared fixture: real Gaia DR3 values, NaN where DR3 has none', () => {
+    const astro = decodeAstroTile(readBuffer('tests/fixtures/catalog_star_tiles/astro.bin'), {
+      layer: expected.layer,
+      order: expected.order,
+      pix: expected.pix,
+    });
+    expect(astro.count).toBe(expected.stars.length);
+    const within = (got: number, want: number | null, tolerance: number, relative = false) => {
+      if (want === null) {
+        expect(got).toBeNaN();
+        return;
+      }
+      expect(relative ? Math.abs(got / want - 1) : Math.abs(got - want)).toBeLessThanOrEqual(tolerance);
+    };
+    expected.stars.forEach((star: Record<string, number | null>, i: number) => {
+      within(astro.teffK[i]!, star.teffK!, 0.5);
+      within(astro.teffLowerK[i]!, star.teffLowerK!, 0.5);
+      within(astro.teffUpperK[i]!, star.teffUpperK!, 0.5);
+      // Half a 0.001 dex step, plus float32 storage
+      within(astro.luminositySolar[i]!, star.luminositySolar!, 0.00116, true);
+      within(astro.luminosityLowerSolar[i]!, star.luminosityLowerSolar!, 0.00116, true);
+      within(astro.luminosityUpperSolar[i]!, star.luminosityUpperSolar!, 0.00116, true);
+      within(astro.a0Mag[i]!, star.a0Mag!, 0.0005);
+      within(astro.a0LowerMag[i]!, star.a0LowerMag!, 0.0005);
+      within(astro.a0UpperMag[i]!, star.a0UpperMag!, 0.0005);
+      within(astro.agMag[i]!, star.agMag!, 0.0005);
+      // float16 keeps 11 significant bits
+      within(astro.ruwe[i]!, star.ruwe!, 0.0005, true);
+      within(astro.parallaxErrorMas[i]!, star.parallaxErrorMas!, 0.0005, true);
+    });
+    // Gaia DR3 has no GSP-Phot or FLAME result for the second fixture star: missing, never filled
+    expect(astro.teffK[1]).toBeNaN();
+    expect(astro.luminositySolar[1]).toBeNaN();
+    expect(astro.ruwe[1]).toBeCloseTo(1.0022594, 3);
+  });
+
+  it('checks tile headers against the header version, which astro tiles share', () => {
+    const astro = readBuffer('tests/fixtures/catalog_star_tiles/astro.bin');
+    expect(new DataView(astro).getUint16(4, true)).toBe(CATALOG_STAR_TILE_HEADER_VERSION);
+    expect(new DataView(astro).getUint8(6)).toBe(CATALOG_STAR_TILE_ASTRO_ENCODING.kind);
+    const bumped = astro.slice(0);
+    new DataView(bumped).setUint16(4, 2, true);
+    expect(() => decodeAstroTile(bumped)).toThrow(/version 2/);
+    expect(() => decodeAstroTile(readBuffer('tests/fixtures/catalog_star_tiles/core.bin'))).toThrow();
+    expect(() => decodeAstroTile(astro.slice(0, astro.byteLength - 2))).toThrow();
   });
 
   it('refuses tiles whose header disagrees with the request', () => {
@@ -281,6 +331,62 @@ describe('CatalogStarTileLoader', () => {
     const bad = { ...fixtureManifest(), evidenceKind: 'observed' };
     await expect(CatalogStarTileLoader.open('/stars', { fetch: mockFetch({ '/stars/manifest.json': bad }) })).rejects.toThrow();
   });
+
+  /** The fixture release as manifest format 2, with the astro tile of the shared fixture. */
+  function astroFiles() {
+    const manifest = structuredClone(fixtureManifest()) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const astro = CATALOG_STAR_TILE_ASTRO_ENCODING;
+    manifest.formatVersion = 2;
+    manifest.tiling.kinds = ['core', 'detail', 'astro'];
+    for (const layer of manifest.layers) {
+      layer.astroBytes = 32 * layer.nonEmptyTiles + astro.bytesPerStar * layer.stars;
+      layer.astroTileBytes = { min: 0, median: 0, max: 0 };
+    }
+    Object.assign(manifest.counts, { withTemperature: 1, withLuminosity: 1, withExtinction: 1, withRuwe: 2, withParallaxError: 2 });
+    manifest.encoding.astro = {
+      kind: astro.kind,
+      bytesPerStar: astro.bytesPerStar,
+      columns: [...astro.columns],
+      teff: { missing: astro.teffMissing },
+      logLum: { scale: astro.logLumScale, missing: astro.logLumMissing },
+      extinction: { scale: astro.extinctionScale, missing: astro.extinctionMissing },
+    };
+    return {
+      ...files(),
+      '/stars/manifest.json': CatalogStarTileManifestSchema.parse(manifest),
+      '/stars/L2/0.astro.bin': readBuffer('tests/fixtures/catalog_star_tiles/astro.bin'),
+    };
+  }
+
+  it('loads astro tiles on request and gives null for what Gaia DR3 does not have', async () => {
+    const fetchImpl = mockFetch(astroFiles());
+    const loader = await CatalogStarTileLoader.open('/stars', { fetch: fetchImpl });
+    const tile = await loader.loadAstro(2, 0);
+    expect(tile.count).toBe(2);
+    expect(await loader.loadAstro(2, 0)).toBe(tile);
+    expect(vi.mocked(fetchImpl).mock.calls.filter(([url]) => String(url).endsWith('.astro.bin'))).toHaveLength(1);
+
+    const giant = await loader.getStarAstrophysics(2, 0, 0);
+    expect(giant.evidenceKind).toBe('catalog-derived');
+    expect(giant.temperatureK?.median).toBe(4632);
+    expect(giant.temperatureK?.lower).toBe(4627);
+    expect(giant.luminositySolar?.median).toBeCloseTo(49.51, 0);
+    expect(giant.extinctionA0Mag?.upper).toBeCloseTo(0.121, 3);
+    expect(giant.extinctionGMag).toBeCloseTo(0.09, 3);
+    expect(giant.sourceIds).toEqual(['gaia-dr3', 'gaia-dr3-astrophysical-parameters']);
+
+    const bare = await loader.getStarAstrophysics(2, 0, 1);
+    expect(bare).toMatchObject({ temperatureK: null, luminositySolar: null, extinctionA0Mag: null, extinctionGMag: null });
+    expect(bare.ruwe).toBeCloseTo(1.002, 3);
+    expect(bare.parallaxErrorMas).toBeCloseTo(0.0155, 4);
+    expect(bare.sourceIds).toEqual(['gaia-dr3']);
+    await expect(loader.getStarAstrophysics(2, 0, 2)).rejects.toThrow(/outside/);
+  });
+
+  it('says plainly when a release has no astro tiles', async () => {
+    const loader = await CatalogStarTileLoader.open('/stars', { fetch: mockFetch(files()) });
+    await expect(loader.loadAstro(2, 0)).rejects.toThrow(/no astro tiles/);
+  });
 });
 
 const releaseManifest = repoFile('apps/web/public/catalog/stars/gaia-dr3/manifest.json');
@@ -311,5 +417,37 @@ describe.skipIf(!fs.existsSync(releaseManifest))('baked gaia-dr3 release', () =>
       const dir: Vec3 = [tile.directions[3 * i]!, tile.directions[3 * i + 1]!, tile.directions[3 * i + 2]!];
       expect(angleBetween(dir, raDecDegToVec(entry!.raDeg, entry!.decDeg)) / ARCSEC).toBeLessThan(0.5);
     }
+  });
+
+  it('decodes real Gaia DR3 astrophysics from astro tiles, and none for Hipparcos entries', () => {
+    const manifest = CatalogStarTileManifestSchema.parse(JSON.parse(fs.readFileSync(releaseManifest, 'utf8')));
+    expect(manifest.formatVersion).toBe(2);
+    const names = CatalogStarNameIndexSchema.parse(
+      JSON.parse(fs.readFileSync(repoFile('apps/web/public/catalog/stars/gaia-dr3/names.json'), 'utf8'))
+    );
+    const astroOf = (name: string) => {
+      const entry = names.names.find((n) => n.nameAscii === name)!;
+      const tile = decodeAstroTile(
+        readBuffer(`apps/web/public/catalog/stars/gaia-dr3/L${entry.layer}/${entry.pix}.astro.bin`),
+        { layer: entry.layer, order: manifest.layers[entry.layer]!.order, pix: entry.pix }
+      );
+      return { entry, tile, i: entry.index };
+    };
+    // Achird as the Gaia archive gives it (2026-11-04): GSP-Phot 5726.01 K (5722.719 to 5730.129),
+    // FLAME 1.2662435 Lsun (1.2604617 to 1.2720298), A0 0, RUWE 3.1213033
+    const achird = astroOf('Achird');
+    expect(achird.entry.catalog).toBe('gaia-dr3');
+    expect(Math.abs(achird.tile.teffK[achird.i]! - 5726.01)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(achird.tile.teffLowerK[achird.i]! - 5722.719)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(achird.tile.luminositySolar[achird.i]! / 1.2662435 - 1)).toBeLessThan(0.00116);
+    expect(Math.abs(achird.tile.luminosityUpperSolar[achird.i]! / 1.2720298 - 1)).toBeLessThan(0.00116);
+    expect(achird.tile.a0Mag[achird.i]).toBe(0);
+    expect(Math.abs(achird.tile.ruwe[achird.i]! / 3.1213033 - 1)).toBeLessThan(0.0005);
+    // Sirius is a Hipparcos entry: no Gaia DR3 astrophysics, so nothing is filled in
+    const sirius = astroOf('Sirius');
+    expect(sirius.entry.catalog).toBe('hipparcos-2007');
+    expect(sirius.tile.teffK[sirius.i]).toBeNaN();
+    expect(sirius.tile.luminositySolar[sirius.i]).toBeNaN();
+    expect(sirius.tile.ruwe[sirius.i]).toBeNaN();
   });
 });

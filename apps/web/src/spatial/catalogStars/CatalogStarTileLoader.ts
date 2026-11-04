@@ -12,6 +12,7 @@ import { angleBetween, tileBoundingRadius, tileCenter, vecToRaDecDeg, type Vec3 
 import {
   catalogIdAt,
   catalogOf,
+  decodeAstroTile,
   decodeCoreTile,
   decodeDetailTile,
   decodeDistanceBounds,
@@ -19,6 +20,7 @@ import {
   halfToFloat,
   magnitudeBandOf,
   usesBMinusV,
+  type CatalogStarAstroTile,
   type CatalogStarCoreTile,
   type CatalogStarDetailTile,
 } from './tileCodec.js';
@@ -86,6 +88,35 @@ export interface CatalogStarRecord {
   sourceIds: string[];
 }
 
+/** A catalog value with its 16th and 84th percentiles; a bound the catalog lacks is null. */
+export interface CatalogStarInterval {
+  median: number;
+  lower: number | null;
+  upper: number | null;
+}
+
+/**
+ * Gaia DR3 astrophysics for one star (manifest format 2 releases). Every field is null where
+ * Gaia DR3 gives no value, which includes every Hipparcos entry; nothing is estimated here.
+ */
+export interface CatalogStarAstrophysics {
+  evidenceKind: 'catalog-derived';
+  /** GSP-Phot effective temperature, kelvin */
+  temperatureK: CatalogStarInterval | null;
+  /** FLAME luminosity, solar units */
+  luminositySolar: CatalogStarInterval | null;
+  /** GSP-Phot monochromatic extinction A0 at 547.7 nm, magnitudes */
+  extinctionA0Mag: CatalogStarInterval | null;
+  /** GSP-Phot extinction in the Gaia G band, magnitudes */
+  extinctionGMag: number | null;
+  /** Renormalised unit weight error of the astrometric solution */
+  ruwe: number | null;
+  /** Standard error of the Gaia parallax, milliarcseconds */
+  parallaxErrorMas: number | null;
+  /** Manifest source ids behind the values present */
+  sourceIds: string[];
+}
+
 export interface CatalogStarTileLoaderOptions {
   fetch?: typeof fetch;
   maxConcurrent?: number;
@@ -105,6 +136,18 @@ interface TileGeometry {
 const tileKeyString = (layer: number, pix: number) => `${layer}/${pix}`;
 const RETRY_AFTER_MS = 15_000;
 
+const valueOrNull = (value: number | undefined) => (value !== undefined && Number.isFinite(value) ? value : null);
+
+function intervalAt(
+  median: Float32Array,
+  lower: Float32Array,
+  upper: Float32Array,
+  index: number
+): CatalogStarInterval | null {
+  const m = valueOrNull(median[index]);
+  return m === null ? null : { median: m, lower: valueOrNull(lower[index]), upper: valueOrNull(upper[index]) };
+}
+
 export class CatalogStarTileLoader {
   readonly manifest: CatalogStarTileManifest;
   readonly baseUrl: string;
@@ -119,6 +162,7 @@ export class CatalogStarTileLoader {
   private readonly inFlight = new Set<string>();
   private readonly failed = new Map<string, number>();
   private readonly details = new Map<string, Promise<CatalogStarDetailTile>>();
+  private readonly astro = new Map<string, Promise<CatalogStarAstroTile>>();
   private namesPromise: Promise<CatalogStarNameIndex> | null = null;
   private wanted: { key: CatalogStarTileKey; distance: number }[] = [];
   private view: CatalogStarView | null = null;
@@ -266,14 +310,65 @@ export class CatalogStarTileLoader {
     };
   }
 
+  /**
+   * The astro tile of one non-empty tile (Gaia DR3 temperature, luminosity, extinction and
+   * astrometric quality, index-aligned with its core tile), fetched once and kept. Releases
+   * with manifest format 1 have none.
+   */
+  loadAstro(layer: number, pix: number): Promise<CatalogStarAstroTile> {
+    if (this.manifest.formatVersion < 2) {
+      return Promise.reject(
+        new Error(`catalog release ${this.manifest.releaseId} has no astro tiles (manifest format ${this.manifest.formatVersion})`)
+      );
+    }
+    const spec = this.manifest.layers[layer];
+    if (!spec || !(pix >= 0 && (spec.tileStarCounts[pix] ?? 0) > 0)) {
+      return Promise.reject(new Error(`no catalog star tile ${tileKeyString(layer, pix)}`));
+    }
+    const key = tileKeyString(layer, pix);
+    let promise = this.astro.get(key);
+    if (!promise) {
+      promise = this.fetchBuffer(this.tileUrl(layer, pix, 'astro')).then((buffer) =>
+        decodeAstroTile(buffer, { layer, order: spec.order, pix })
+      );
+      this.astro.set(key, promise);
+      promise.catch(() => this.astro.delete(key));
+    }
+    return promise;
+  }
+
+  /** Gaia DR3 astrophysics of one star, from its astro tile; null wherever DR3 has no value. */
+  async getStarAstrophysics(layer: number, pix: number, index: number): Promise<CatalogStarAstrophysics> {
+    const tile = await this.loadAstro(layer, pix);
+    if (!Number.isInteger(index) || index < 0 || index >= tile.count) {
+      throw new Error(`star index ${index} outside tile ${tileKeyString(layer, pix)}`);
+    }
+    const luminositySolar = intervalAt(tile.luminositySolar, tile.luminosityLowerSolar, tile.luminosityUpperSolar, index);
+    const record: CatalogStarAstrophysics = {
+      evidenceKind: 'catalog-derived',
+      temperatureK: intervalAt(tile.teffK, tile.teffLowerK, tile.teffUpperK, index),
+      luminositySolar,
+      extinctionA0Mag: intervalAt(tile.a0Mag, tile.a0LowerMag, tile.a0UpperMag, index),
+      extinctionGMag: valueOrNull(tile.agMag[index]),
+      ruwe: valueOrNull(tile.ruwe[index]),
+      parallaxErrorMas: valueOrNull(tile.parallaxErrorMas[index]),
+      sourceIds: [],
+    };
+    const fromGaiaSource = [record.temperatureK, record.extinctionA0Mag, record.extinctionGMag, record.ruwe, record.parallaxErrorMas];
+    if (fromGaiaSource.some((value) => value !== null)) record.sourceIds.push('gaia-dr3');
+    if (luminositySolar !== null) record.sourceIds.push('gaia-dr3-astrophysical-parameters');
+    return record;
+  }
+
   dispose(): void {
     this.disposed = true;
     this.wanted = [];
     this.loaded.clear();
     this.details.clear();
+    this.astro.clear();
   }
 
-  private tileUrl(layer: number, pix: number, kind: 'core' | 'detail'): string {
+  private tileUrl(layer: number, pix: number, kind: 'core' | 'detail' | 'astro'): string {
     const path = this.manifest.tiling.tilePath
       .replace('{layer}', String(layer))
       .replace('{pix}', String(pix))

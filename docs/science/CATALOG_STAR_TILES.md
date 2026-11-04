@@ -4,18 +4,21 @@ The web sky draws real catalog stars: every Gaia DR3 source brighter than G 12, 
 Bailer-Jones (2021) distance estimates, and Hipparcos 2007 entries where Gaia handles bright
 stars poorly. They stream from static HEALPix tiles under `apps/web/public/catalog/stars/`,
 layered by magnitude, so the Unveil gesture can move the limiting magnitude and load only
-what the view needs.
+what the view needs. Beside every tile, an astro tile carries the Gaia DR3 temperature,
+luminosity and extinction of the same stars, with their percentiles and the astrometric quality,
+for the inspector and the audio engine.
 
-These stars are catalog data (`evidenceKind: catalog-derived`). Positions, magnitudes and
-distances come from the catalogs, not from the user's recording, and must never be shown as
-observed. In the sky view they are catalog positions at the catalog epoch; placed in 3D by
+These stars are catalog data (`evidenceKind: catalog-derived`). Positions, magnitudes,
+distances, temperatures, luminosities and extinction come from the catalogs, not from the user's
+recording, and must never be shown as observed. In the sky view they are catalog positions at the catalog epoch; placed in 3D by
 distance they become `simulated` (Catalog Geometry, Distance Estimates).
 
 ## Sources
 
 | Source | Table | Use | Citation |
 |---|---|---|---|
-| Gaia DR3 | `gaiadr3.gaia_source` | position (ICRS, J2016.0), G, BP-RP, proper motion, radial velocity | Gaia Collaboration, Vallenari et al. 2023, A&A 674, A1 (mission: Prusti et al. 2016, A&A 595, A1) |
+| Gaia DR3 | `gaiadr3.gaia_source` | position (ICRS, J2016.0), G, BP-RP, proper motion, radial velocity; GSP-Phot effective temperature and extinction (A0 at 547.7 nm, AG) with their 16th/84th percentiles; RUWE; parallax standard error | Gaia Collaboration, Vallenari et al. 2023, A&A 674, A1 (mission: Prusti et al. 2016, A&A 595, A1); GSP-Phot: Andrae et al., doi:10.1051/0004-6361/202243462 |
+| Gaia DR3 astrophysical parameters | `gaiadr3.astrophysical_parameters` | FLAME luminosity with its 16th/84th percentiles | Creevey et al., Apsis I, doi:10.1051/0004-6361/202243688; Fouesneau et al., Apsis II, doi:10.1051/0004-6361/202243919 |
 | Bailer-Jones et al. 2021 | `external.gaiaedr3_distance` | distance median and 16th/84th percentile bounds; photogeometric when present, else geometric | AJ 161, 147 |
 | Hipparcos 2007 | `public.hipparcos_newreduction` | bright stars Gaia handles poorly: position (propagated J1991.25 to J2016.0), Hp, B-V, parallax distance | van Leeuwen 2007, A&A 474, 653 |
 | Gaia DR3 to Hipparcos-2 crossmatch | `gaiadr3.hipparcos2_best_neighbour` | pairs Hipparcos stars with Gaia sources | Marrese et al. 2019, A&A 621, A144 |
@@ -41,29 +44,39 @@ IAU products are released under Creative Commons Attribution.
 - Result for `gaia-dr3`: 3,087,892 stars, 3,087,666 from Gaia DR3 and 226 from Hipparcos
   (155 Gaia sources removed as duplicates); 3,062,431 with a distance, 2,901,181 with a radial
   velocity; 410 IAU names attached (of 411 with HIP numbers).
+- Astro values: the same Gaia sources left-joined to `gaiadr3.astrophysical_parameters`.
+  1,812,688 stars carry a GSP-Phot temperature and the same 1,812,688 an
+  extinction, 1,780,872 a FLAME luminosity, 3,062,208 a RUWE and
+  3,062,208 a parallax error. The archive's own counts over the whole G < 12
+  selection, before the bright-star merge removes duplicates, are 1,812,696, 1,780,875 and
+  3,062,317 (count queries on 2026-11-04). A value Gaia DR3 lacks stays missing and is never
+  filled; the 226 Hipparcos entries carry none. GSP-Phot and FLAME values are model fits to
+  BP/RP spectra, photometry and parallax; their papers above describe their reach and limits.
 
 ## Format
 
-`<release>/manifest.json` describes the release (validated by `CatalogStarTileManifestSchema`
-in `@albedian/contracts`). Tiles live at `L{layer}/{pix}.{core|detail}.bin`, one file per
-non-empty HEALPix nested pixel. Each layer covers a magnitude band at a fixed HEALPix order:
+`<release>/manifest.json` describes the release (manifest format 2, validated by
+`CatalogStarTileManifestSchema` in `@albedian/contracts`, which still reads format 1). Tiles live
+at `L{layer}/{pix}.{core|detail|astro}.bin`, one file of each kind per non-empty HEALPix nested
+pixel. Each layer covers a magnitude band at a fixed HEALPix order:
 
-| Layer | Magnitude | Order | Position bits | Stars | Tiles | Core MB | Detail MB | Core tile median / max KB | Max position error (arcsec) |
-|---|---|---|---|---|---|---|---|---|---|
-| L0 | below 6.5 | 0 | 32 | 12,192 | 12 | 0.18 | 0.20 | 14.7 / 21.9 | 0.000 |
-| L1 | 6.5 to 8.0 | 1 | 32 | 50,602 | 48 | 0.76 | 0.81 | 13.8 / 26.8 | 0.000 |
-| L2 | 8.0 to 9.5 | 2 | 32 | 231,524 | 192 | 3.48 | 3.71 | 14.6 / 49.0 | 0.000 |
-| L3 | 9.5 to 10.5 | 3 | 16 | 484,765 | 768 | 5.36 | 7.78 | 5.3 / 32.5 | 0.409 |
-| L4 | 10.5 to 11.25 | 3 | 16 | 792,074 | 768 | 8.74 | 12.70 | 7.9 / 57.6 | 0.416 |
-| L5 | 11.25 to 12.0 | 3 | 16 | 1,516,735 | 768 | 16.71 | 24.29 | 14.0 / 114.2 | 0.410 |
+| Layer | Magnitude | Order | Position bits | Stars | Tiles | Core MB | Detail MB | Astro MB | Core tile median / max KB | Max position error (arcsec) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L0 | below 6.5 | 0 | 32 | 12,192 | 12 | 0.18 | 0.20 | 0.29 | 14.7 / 21.9 | 0.000 |
+| L1 | 6.5 to 8.0 | 1 | 32 | 50,602 | 48 | 0.76 | 0.81 | 1.22 | 13.8 / 26.8 | 0.000 |
+| L2 | 8.0 to 9.5 | 2 | 32 | 231,524 | 192 | 3.48 | 3.71 | 5.56 | 14.6 / 49.0 | 0.000 |
+| L3 | 9.5 to 10.5 | 3 | 16 | 484,765 | 768 | 5.36 | 7.78 | 11.66 | 5.3 / 32.5 | 0.409 |
+| L4 | 10.5 to 11.25 | 3 | 16 | 792,074 | 768 | 8.74 | 12.70 | 19.03 | 7.9 / 57.6 | 0.416 |
+| L5 | 11.25 to 12.0 | 3 | 16 | 1,516,735 | 768 | 16.71 | 24.29 | 36.43 | 14.0 / 114.2 | 0.410 |
 
 Totals: 35.2 MB of core tiles (streamed for rendering), 49.5 MB of detail tiles (fetched only
-when a star is inspected), 85.5 MB on disk with the manifest (25 KB), `names.json` (148 KB),
-`bright-star-merge.json` and `SHA256SUMS`.
+when a star is inspected), 74.2 MB of astro tiles (fetched on request), 160.0 MB on disk with
+the manifest (30 KB), `names.json` (148 KB), `bright-star-merge.json` and `SHA256SUMS`.
 
-Every tile starts with a 32-byte little-endian header (`ALBS`, format version, kind, position
-bits, layer, order, pixel, star count) followed by structure-of-arrays columns, brightest star
-first:
+Every tile starts with a 32-byte little-endian header (`ALBS`, header version 1 for every kind,
+kind, position bits, layer, order, pixel, star count) followed by structure-of-arrays columns,
+brightest star first. The astro kind joined in manifest format 2 without changing the header,
+so core and detail tiles kept their bytes:
 
 - **core** (11 bytes per star at 16-bit positions, 15 at 32-bit): sub-pixel position inside
   the tile's HEALPix pixel, magnitude (1 mmag), colour index (1 mmag), distance median
@@ -72,12 +85,19 @@ first:
 - **detail** (16 bytes per star): Gaia `source_id` or HIP number (64-bit), proper motion and
   radial velocity (IEEE half floats, NaN when missing), distance bounds (log fractional offsets
   from the median).
+- **astro** (24 bytes per star): GSP-Phot effective temperature with its 16th and 84th
+  percentiles (whole kelvin), FLAME luminosity with its percentiles (log10 L/Lsun in 0.001 dex),
+  GSP-Phot extinction A0 at 547.7 nm with its percentiles and AG (mmag), RUWE and the parallax
+  standard error in mas (IEEE half floats). Reserved codes (0 K, -32768, 65535, NaN) mark a value
+  Gaia DR3 does not give.
 
 The encoding is defined once in `services/science/catalog_tiles.py` and mirrored by
 `apps/web/src/spatial/catalogStars/tileCodec.ts`; `tests/fixtures/catalog_star_tiles/` holds a
-tile pair both decoders are tested against. Quantization is far below what the sky can show
-(positions within 0.42 arcsec, magnitudes within 0.5 mmag) but it is not the archive value: use
-the archive for science.
+core, detail and astro tile both decoders are tested against, with the archive's own values for
+its two stars (one of which has no GSP-Phot or FLAME result in DR3). Quantization is far below
+what the sky can show (positions within 0.42 arcsec, magnitudes within 0.5 mmag, temperatures
+within 0.5 K, luminosities within 0.0005 dex, extinction within 0.5 mmag) but it is not the
+archive value: use the archive for science.
 
 ## Client
 
@@ -91,10 +111,18 @@ limit. `SparkPortalRenderer.setLimitingMagnitude()` is the Unveil axis (default 
 limit 12). Names come from `names.json`; the renderer does not draw labels on its own, in line
 with labels appearing on focus or a deliberate Show Labels.
 
+Astrophysics load on request, never with the view. `loadAstro(layer, pix)` fetches a tile's
+astro file once and keeps it; `getStarAstrophysics(layer, pix, index)` returns one star's
+temperature, luminosity and A0 with their percentiles, AG, RUWE and parallax error, null
+wherever Gaia DR3 gives no value, and the manifest source ids behind the values present.
+
 ### Measured load times
 
-Cold loads (HTTP cache bypassed) from the Vite dev server on the same machine, 6 concurrent
-requests, for a 56 degree 16:9 view unless noted:
+These were measured once, on 2026-11-03, when the tiles arrived (commit `32acaf4`): cold loads
+(HTTP cache bypassed) from the Vite dev server on the same machine, 6 concurrent requests, for a
+56 degree 16:9 view unless noted. No script in the repository reproduces them and the commit
+does not record how they were collected, so read them as indicative. They predate astro tiles,
+which load only on request:
 
 | View | Limit | Tiles | Stars | Bytes | Wall time | Decode total |
 |---|---|---|---|---|---|---|
@@ -115,14 +143,22 @@ hosting with a higher `maxConcurrent` cuts the latency share.
 ## Rebake and verify
 
 ```bash
-uv run python scripts/bake_catalog_star_tiles.py            # fetch into .cache/catalog-star-bake and bake
-uv run python scripts/bake_catalog_star_tiles.py --offline  # bake from the cache only
-uv run python scripts/bake_catalog_star_tiles.py --verify   # rebake from the cache, compare SHA256SUMS
+uv run python scripts/bake_catalog_star_tiles.py               # fetch into .cache/catalog-star-bake and bake
+uv run python scripts/bake_catalog_star_tiles.py --offline     # bake from the cache only
+uv run python scripts/bake_catalog_star_tiles.py --verify      # rebake from the cache, compare SHA256SUMS
+uv run python scripts/bake_catalog_star_tiles.py --fetch-only  # fill the cache, do not bake
 ```
 
-A full bake makes about 210 archive queries (each planned from an exact count query, because
-the Gaia TAP service silently truncates synchronous results at 50,000 rows) and took 10.5
-minutes; an offline rebake takes about 17 seconds and reproduces every file byte for byte.
+A full bake makes about 210 archive queries for the base columns (each planned from an exact
+count query, because the Gaia TAP service silently truncates synchronous results at 50,000 rows)
+and 207 more for the astro columns: each astro query joins `gaiadr3.astrophysical_parameters` to
+the same chunk of `gaiadr3.gaia_source` and must return exactly that chunk's rows. The base
+fetch took 10.5 minutes. On 2026-11-04 the astro fetch took about 100 minutes over three runs
+(4 workers, then 2): the archive was overloaded, spent from seconds to over ten minutes on each
+join and reset some connections, and a rerun fetches only the chunks still missing. The astro cache
+keeps more DR3 columns than the tiles encode (logg, [M/H], GSP-Phot distance, E(BP-RP), FLAME
+radius, mass and age, flags). An offline rebake takes about 70 seconds and
+reproduces every file byte for byte.
 The bake checks its HEALPix code against the index Gaia encodes in every `source_id`
 (agreement 99.9993 % at order 3; the 23 exceptions are sources whose identifier was assigned
 from an early position up to 40 arcsec away) and reads every tile back before writing it.
@@ -130,7 +166,8 @@ from an early position up to 40 arcsec away) and reads every tile back before wr
 ## Swapping releases (Gaia DR4, due 2 December 2026)
 
 1. Add a `gaia-dr4` entry to `RELEASES` in `scripts/bake_catalog_star_tiles.py`: DR4 table
-   names, the distance catalog that accompanies it, crossmatch table, epoch, and citations.
+   names, the distance catalog that accompanies it, the astrophysical parameters table,
+   crossmatch table, epoch, and citations.
 2. Add the new catalog id to `CatalogStarCatalogIdSchema` in `@albedian/contracts` if tiles
    name it.
 3. Bake into `apps/web/public/catalog/stars/gaia-dr4/` next to `gaia-dr3/` and review the

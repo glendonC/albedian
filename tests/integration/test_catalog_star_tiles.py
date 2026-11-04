@@ -45,6 +45,17 @@ GAIA_ROWS = [
     (72915660589952, 44.702647733711565, 0.40269819741381024, 9.842077, 1.2580805, 13.778210381602644, -2.9411628686063813, 44.03256, 667.9206, 656.99884, 678.82135),
 ]
 
+# The same two sources' astrophysics as the Gaia archive returned them on 2026-11-04: GSP-Phot
+# temperature and extinction and the quality columns from gaiadr3.gaia_source, FLAME luminosity
+# from gaiadr3.astrophysical_parameters. The first source has no GSP-Phot or FLAME result in
+# DR3, so those values stay missing.
+NAN = math.nan
+GAIA_ASTRO_ROWS = {
+    # teff, teff_lower, teff_upper, lum, lum_lower, lum_upper, a0, a0_lower, a0_upper, ag, ruwe, parallax_error
+    33264522507136: (NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, NAN, 1.0022594, 0.015528413),
+    72915660589952: (4631.998, 4626.547, 4636.2188, 49.509373, 47.806786, 51.30432, 0.1159, 0.1089, 0.1213, 0.09, 1.0765792, 0.027890556),
+}
+
 
 # =============================================================================================
 # HEALPix
@@ -124,6 +135,48 @@ def test_color_and_magnitude_codes():
     assert abs(color[0] - 1.227) < 1e-9 and abs(color[1] + 0.03) < 1e-9 and np.isnan(color[2])
 
 
+@settings(max_examples=200, deadline=None)
+@given(
+    st.floats(2_000, 65_000),
+    st.floats(1e-4, 1e7),
+    st.floats(0, 60),
+)
+def test_astro_codes_round_trip_within_their_steps(teff, lum, extinction):
+    assert abs(ct.decode_teff(ct.encode_teff([teff]))[0] - teff) <= 0.5
+    # one code step is 0.001 dex
+    assert abs(math.log10(ct.decode_luminosity(ct.encode_luminosity([lum]))[0] / lum)) <= 0.0005 + 1e-12
+    assert abs(ct.decode_extinction(ct.encode_extinction([extinction]))[0] - extinction) <= 0.0005 + 1e-12
+
+
+def test_astro_codes_keep_missing_values_missing():
+    nan = np.array([np.nan])
+    assert ct.encode_teff(nan)[0] == ct.TEFF_MISSING and np.isnan(ct.decode_teff(ct.encode_teff(nan))[0])
+    assert ct.encode_luminosity(nan)[0] == ct.LOG_LUM_MISSING
+    assert np.isnan(ct.decode_luminosity(ct.encode_luminosity(nan))[0])
+    assert ct.encode_extinction(nan)[0] == ct.EXTINCTION_MISSING
+    assert np.isnan(ct.decode_extinction(ct.encode_extinction(nan))[0])
+    # Zero extinction is a value, not a gap
+    assert ct.decode_extinction(ct.encode_extinction([0.0]))[0] == 0.0
+
+
+@pytest.mark.parametrize(
+    "encode,bad",
+    [
+        ("encode_teff", 70_000.0),
+        ("encode_teff", 0.2),
+        ("encode_luminosity", 0.0),
+        ("encode_luminosity", -3.0),
+        ("encode_luminosity", 1e40),
+        ("encode_extinction", -0.01),
+        ("encode_extinction", 70.0),
+    ],
+)
+def test_astro_codes_refuse_values_they_cannot_hold(encode, bad):
+    # A value outside the code range fails the bake; it is never clipped or dropped to missing
+    with pytest.raises(ValueError):
+        getattr(ct, encode)([bad])
+
+
 # =============================================================================================
 # Tile codec
 # =============================================================================================
@@ -187,6 +240,49 @@ def test_core_and_detail_tiles_round_trip(order, bits, limit_arcsec):
 def test_tile_header_rejects_foreign_bytes():
     with pytest.raises(ValueError):
         ct.read_header(b"PNG\x00" + bytes(28))
+
+
+def test_astro_tiles_round_trip_and_keep_header_version_1():
+    rng = np.random.default_rng(7)
+    n = 129
+    teff = rng.uniform(3000, 30000, n)
+    lum = 10 ** rng.uniform(-2, 5, n)
+    a0 = rng.uniform(0, 4, n)
+    ruwe = rng.uniform(0.8, 3, n)
+    plx_err = rng.uniform(0.01, 0.2, n)
+    teff[::5] = np.nan  # stars without GSP-Phot
+    lum[::3] = np.nan  # stars without FLAME
+    blob = ct.encode_astro_tile(
+        layer=4,
+        order=3,
+        pix=511,
+        teff=ct.encode_teff(teff),
+        teff_lower=ct.encode_teff(teff - 50),
+        teff_upper=ct.encode_teff(teff + 60),
+        log_lum=ct.encode_luminosity(lum),
+        log_lum_lower=ct.encode_luminosity(lum * 0.95),
+        log_lum_upper=ct.encode_luminosity(lum * 1.05),
+        a0=ct.encode_extinction(a0),
+        a0_lower=ct.encode_extinction(a0 * 0.9),
+        a0_upper=ct.encode_extinction(a0 * 1.1),
+        ag=ct.encode_extinction(a0 * 0.8),
+        ruwe_f16=ct.encode_f16(ruwe),
+        parallax_error_f16=ct.encode_f16(plx_err),
+    )
+    assert len(blob) == ct.TILE_HEADER_BYTES + n * ct.ASTRO_STRIDE and ct.ASTRO_STRIDE == 24
+    h, cols = ct.decode_astro_tile(blob)
+    assert (h.kind, h.layer, h.order, h.pix, h.count, h.position_bits) == (ct.KIND_ASTRO, 4, 3, 511, n, 0)
+    assert int.from_bytes(blob[4:6], "little") == ct.TILE_FORMAT_VERSION == 1
+    back = ct.decode_teff(cols["teff"])
+    assert np.array_equal(np.isnan(back), np.isnan(teff))
+    assert np.nanmax(np.abs(back - teff)) <= 0.5
+    assert np.array_equal(np.isnan(ct.decode_luminosity(cols["logLum"])), np.isnan(lum))
+    assert np.allclose(ct.decode_extinction(cols["a0"]), a0, atol=5e-4)
+    assert np.allclose(ct.decode_f16(cols["ruwe"]), ruwe, rtol=1e-3)
+    with pytest.raises(ValueError):
+        ct.decode_core_tile(blob)
+    with pytest.raises(ValueError):
+        ct.decode_astro_tile(blob[:-2])
 
 
 # =============================================================================================
@@ -279,11 +375,100 @@ def test_iau_csn_parser_reads_fixed_columns():
 
 
 # =============================================================================================
+# DR3 astrophysical parameters fetch (GSP-Phot and FLAME)
+# =============================================================================================
+
+
+def _select_list(query: str) -> list[str]:
+    return query.split("SELECT ", 1)[1].split(" FROM ", 1)[0].split(", ")
+
+
+def test_astro_chunk_query_returns_exactly_the_base_chunk_rows():
+    bake = _load_bake_script()
+    cfg = bake.RELEASES["gaia-dr3"]
+    for order, pix in ((2, 5), (3, 17), (4, 300)):
+        base = bake.gaia_chunk_query(cfg, order, pix)
+        astro = bake.gaia_astro_chunk_query(cfg, order, pix)
+        # Same WHERE clause on the same table, and a left join on a table with at most one row per
+        # source, so every chunk returns the base chunk's sources and no others
+        assert astro.split(" WHERE ", 1)[1] == base.split(" WHERE ", 1)[1]
+        assert f"FROM {cfg.gaia_table} AS g LEFT OUTER JOIN {cfg.astro_table} AS ap ON ap.source_id = g.source_id" in astro
+
+
+def test_astro_chunk_query_takes_the_gsp_phot_flame_and_quality_columns():
+    bake = _load_bake_script()
+    selected = _select_list(bake.gaia_astro_chunk_query(bake.RELEASES["gaia-dr3"], 3, 17))
+    assert selected[0] == "g.source_id"
+    assert len(selected) == len(set(selected))
+    gsp_phot = ("teff", "logg", "mh", "distance", "azero", "ag", "ebpminrp")
+    for name in gsp_phot:
+        for suffix in ("", "_lower", "_upper"):
+            assert f"g.{name}_gspphot{suffix}" in selected
+    for name in ("libname_gspphot", "parallax", "parallax_error", "ruwe", "phot_variable_flag", "non_single_star"):
+        assert f"g.{name}" in selected
+    for name in ("lum", "radius", "mass", "age"):
+        for suffix in ("", "_lower", "_upper"):
+            assert f"ap.{name}_flame{suffix}" in selected
+    assert "ap.evolstage_flame" in selected and "ap.flags_flame" in selected
+    # The CSV header the parser expects is the select list without table prefixes
+    assert [c.split(".", 1)[1] for c in selected] == ["source_id", *bake.GAIA_ASTRO_COLUMNS, *bake.FLAME_COLUMNS]
+
+
+def test_astro_chunk_parser_keeps_missing_values_missing():
+    bake = _load_bake_script()
+    header = ["source_id", *bake.GAIA_ASTRO_COLUMNS, *bake.FLAME_COLUMNS]
+    full = {c: "1.5" for c in header}
+    full.update(source_id="33264522507136", libname_gspphot="MARCS", phot_variable_flag="NOT_AVAILABLE", flags_flame="00")
+    empty = {c: "" for c in header}
+    empty["source_id"] = "72915660589952"
+    text = "\n".join([",".join(header), ",".join(full[c] for c in header), ",".join(empty[c] for c in header)]) + "\n"
+    parsed = bake.parse_gaia_astro_chunk(text)
+    assert parsed["source_id"].tolist() == [33264522507136, 72915660589952]
+    assert parsed["teff_gspphot"][0] == 1.5 and np.isnan(parsed["teff_gspphot"][1])
+    assert np.isnan(parsed["lum_flame_upper"][1]) and np.isnan(parsed["non_single_star"][1])
+    assert parsed["libname_gspphot"].tolist() == ["MARCS", ""]
+    assert parsed["flags_flame"].tolist() == ["00", ""]
+    with pytest.raises(ValueError):
+        bake.parse_gaia_astro_chunk("source_id,teff_gspphot\n1,2\n")
+
+
+def test_astro_fetch_keeps_going_past_a_failing_chunk(tmp_path, monkeypatch):
+    """When the archive drops one chunk, the others still reach the cache and a rerun resumes."""
+    bake = _load_bake_script()
+    cfg = bake.RELEASES["gaia-dr3"]
+    header = ",".join(["source_id", *bake.GAIA_ASTRO_COLUMNS, *bake.FLAME_COLUMNS])
+    good = f"{header}\n33264522507136" + "," * (header.count(",")) + "\n"
+
+    def fake_tap(client, url, query):
+        if "BETWEEN 0 AND" in query:
+            raise bake.TapError("archive reset the connection")
+        return good
+
+    monkeypatch.setattr(bake, "tap_csv", fake_tap)
+    chunks = [(2, 0, 1), (2, 1, 1)]
+    merged = bake.fetch_gaia_astro(cfg, None, tmp_path, False, chunks, workers=2, keep_going=True)
+    assert merged is None
+    assert (tmp_path / "gaia-ap" / "o2-p1.csv.gz").exists()
+    assert not (tmp_path / "gaia-ap" / "o2-p0.csv.gz").exists()
+    with pytest.raises(bake.TapError):
+        bake.fetch_gaia_astro(cfg, None, tmp_path, False, chunks, workers=2)
+
+
+def test_archive_requests_identify_only_as_the_research_prototype():
+    bake = _load_bake_script()
+    assert bake.USER_AGENT == "Albedian/0.1 (research prototype)"
+
+
+# =============================================================================================
 # Shared codec fixture for the web decoder
 # =============================================================================================
 
 
-def build_fixture() -> tuple[bytes, bytes, dict]:
+def _or_none(value: float) -> float | None:
+    return None if math.isnan(value) else value
+
+
+def build_fixture() -> tuple[bytes, bytes, bytes, dict]:
     rows = GAIA_ROWS
     ra = np.array([r[1] for r in rows])
     dec = np.array([r[2] for r in rows])
@@ -322,6 +507,42 @@ def build_fixture() -> tuple[bytes, bytes, dict]:
         lower_code=lo_code,
         upper_code=hi_code,
     )
+    astro_rows = [GAIA_ASTRO_ROWS[r[0]] for r in rows]
+
+    def column(k: int) -> np.ndarray:
+        return np.array([a[k] for a in astro_rows], dtype=np.float64)
+
+    astro = ct.encode_astro_tile(
+        layer=2,
+        order=order,
+        pix=int(pix[0]),
+        teff=ct.encode_teff(column(0)),
+        teff_lower=ct.encode_teff(column(1)),
+        teff_upper=ct.encode_teff(column(2)),
+        log_lum=ct.encode_luminosity(column(3)),
+        log_lum_lower=ct.encode_luminosity(column(4)),
+        log_lum_upper=ct.encode_luminosity(column(5)),
+        a0=ct.encode_extinction(column(6)),
+        a0_lower=ct.encode_extinction(column(7)),
+        a0_upper=ct.encode_extinction(column(8)),
+        ag=ct.encode_extinction(column(9)),
+        ruwe_f16=ct.encode_f16(column(10)),
+        parallax_error_f16=ct.encode_f16(column(11)),
+    )
+    astro_keys = (
+        "teffK",
+        "teffLowerK",
+        "teffUpperK",
+        "luminositySolar",
+        "luminosityLowerSolar",
+        "luminosityUpperSolar",
+        "a0Mag",
+        "a0LowerMag",
+        "a0UpperMag",
+        "agMag",
+        "ruwe",
+        "parallaxErrorMas",
+    )
     expected = {
         "layer": 2,
         "order": order,
@@ -339,18 +560,20 @@ def build_fixture() -> tuple[bytes, bytes, dict]:
                 "distanceMedianPc": r[8],
                 "distanceLowerPc": r[9],
                 "distanceUpperPc": r[10],
+                **{key: _or_none(value) for key, value in zip(astro_keys, a, strict=True)},
             }
-            for r in rows
+            for r, a in zip(rows, astro_rows, strict=True)
         ],
     }
-    return core, detail, expected
+    return core, detail, astro, expected
 
 
 def test_shared_codec_fixture_is_current():
-    core, detail, expected = build_fixture()
+    core, detail, astro, expected = build_fixture()
     paths = {
         "core.bin": core,
         "detail.bin": detail,
+        "astro.bin": astro,
         "expected.json": (json.dumps(expected, indent=2) + "\n").encode(),
     }
     if os.environ.get("ALBEDIAN_REGENERATE_FIXTURES"):
@@ -416,3 +639,90 @@ def test_baked_release_named_bright_stars_carry_catalog_distances():
         direction = ct.decode_core_directions(h, cols)[entry["index"]]
         sep = ct.angular_separation_arcsec(direction, ct.radec_to_vec([entry["raDeg"]], [entry["decDeg"]])[0])
         assert float(sep) < 0.5
+
+
+# Gaia DR3 values for two named stars as the archive returned them on 2026-11-04: GSP-Phot
+# temperature with its percentiles, FLAME luminosity with its percentiles, A0, AG, RUWE and the
+# parallax standard error. Achird is a Sun-like dwarf, Segin a hot B star.
+NAMED_GAIA_ASTRO = {
+    "Achird": (5726.01, 5722.719, 5730.129, 1.2662435, 1.2604617, 1.2720298, 0.0, 0.0, 3.1213033, 0.1663396),
+    "Segin": (14805.9375, 14742.155, 14875.629, 3058.6343, 2868.7202, 3262.5151, 0.1224, 0.1215, 2.4672916, 0.24873139),
+}
+# Independent archive counts over every gaia_source row with G < 12 (2026-11-04)
+ARCHIVE_G12_COUNTS = {"withTemperature": 1812696, "withLuminosity": 1780875, "withRuwe": 3062317, "withParallaxError": 3062317}
+
+
+def _astro_at(entry: dict) -> dict[str, float]:
+    _, cols = ct.decode_astro_tile((RELEASE_DIR / f"L{entry['layer']}" / f"{entry['pix']}.astro.bin").read_bytes())
+    i = slice(entry["index"], entry["index"] + 1)
+    return {
+        "teff": float(ct.decode_teff(cols["teff"][i])[0]),
+        "teffLower": float(ct.decode_teff(cols["teffLower"][i])[0]),
+        "teffUpper": float(ct.decode_teff(cols["teffUpper"][i])[0]),
+        "lum": float(ct.decode_luminosity(cols["logLum"][i])[0]),
+        "lumLower": float(ct.decode_luminosity(cols["logLumLower"][i])[0]),
+        "lumUpper": float(ct.decode_luminosity(cols["logLumUpper"][i])[0]),
+        "a0": float(ct.decode_extinction(cols["a0"][i])[0]),
+        "ag": float(ct.decode_extinction(cols["ag"][i])[0]),
+        "ruwe": float(ct.decode_f16(cols["ruwe"][i])[0]),
+        "parallaxError": float(ct.decode_f16(cols["parallaxError"][i])[0]),
+    }
+
+
+@needs_release
+def test_baked_release_astro_tiles_align_with_core_tiles():
+    manifest = json.loads((RELEASE_DIR / "manifest.json").read_text())
+    assert manifest["formatVersion"] == 2
+    assert manifest["tiling"]["kinds"] == ["core", "detail", "astro"]
+    for layer in manifest["layers"]:
+        total = 0
+        for pix, n in enumerate(layer["tileStarCounts"]):
+            path = RELEASE_DIR / f"L{layer['layer']}" / f"{pix}.astro.bin"
+            assert path.exists() == (n > 0)
+            if n:
+                blob = path.read_bytes()
+                h = ct.read_header(blob[: ct.TILE_HEADER_BYTES])
+                assert (h.kind, h.count, h.layer, h.order, h.pix) == (ct.KIND_ASTRO, n, layer["layer"], layer["order"], pix)
+                total += len(blob)
+        assert total == layer["astroBytes"]
+
+
+@needs_release
+def test_baked_release_named_stars_carry_the_archive_astrophysics_or_none():
+    names = json.loads((RELEASE_DIR / "names.json").read_text())["names"]
+    by_name = {n["nameAscii"]: n for n in names}
+    for star, (teff, teff_lo, teff_hi, lum, lum_lo, lum_hi, a0, ag, ruwe, plx_err) in NAMED_GAIA_ASTRO.items():
+        entry = by_name[star]
+        assert entry["catalog"] == "gaia-dr3"
+        got = _astro_at(entry)
+        for key, want in (("teff", teff), ("teffLower", teff_lo), ("teffUpper", teff_hi)):
+            assert abs(got[key] - want) <= 0.5, (star, key, got[key])
+        for key, want in (("lum", lum), ("lumLower", lum_lo), ("lumUpper", lum_hi)):
+            assert abs(math.log10(got[key] / want)) <= 0.0005 + 1e-9, (star, key, got[key])
+        # Half a 1 mmag step; Segin's AG of 0.1215 mag sits exactly on a half step
+        assert abs(got["a0"] - a0) <= 0.0005 + 1e-9 and abs(got["ag"] - ag) <= 0.0005 + 1e-9, star
+        assert abs(got["ruwe"] / ruwe - 1) < 5e-4 and abs(got["parallaxError"] / plx_err - 1) < 5e-4, star
+    # Hipparcos entries carry no Gaia DR3 astrophysics: missing, never filled
+    for star in ("Sirius", "Vega"):
+        entry = by_name[star]
+        assert entry["catalog"] == "hipparcos-2007"
+        assert all(math.isnan(v) for v in _astro_at(entry).values()), star
+
+
+@needs_release
+def test_baked_release_astro_counts_agree_with_the_tiles_and_the_archive():
+    manifest = json.loads((RELEASE_DIR / "manifest.json").read_text())
+    present = {"withTemperature": 0, "withLuminosity": 0, "withExtinction": 0, "withRuwe": 0, "withParallaxError": 0}
+    for path in RELEASE_DIR.glob("L*/*.astro.bin"):
+        _, cols = ct.decode_astro_tile(path.read_bytes())
+        present["withTemperature"] += int(np.count_nonzero(cols["teff"] != ct.TEFF_MISSING))
+        present["withLuminosity"] += int(np.count_nonzero(cols["logLum"] != ct.LOG_LUM_MISSING))
+        present["withExtinction"] += int(np.count_nonzero(cols["a0"] != ct.EXTINCTION_MISSING))
+        present["withRuwe"] += int(np.count_nonzero(np.isfinite(ct.decode_f16(cols["ruwe"]))))
+        present["withParallaxError"] += int(np.count_nonzero(np.isfinite(ct.decode_f16(cols["parallaxError"]))))
+    counts = manifest["counts"]
+    assert {k: counts[k] for k in present} == present
+    # The bright-star merge drops a few Gaia sources, so the tiles hold at most the archive's count
+    dropped = counts["gaiaDropped"]
+    for key, archive in ARCHIVE_G12_COUNTS.items():
+        assert archive - dropped <= counts[key] <= archive, (key, counts[key])

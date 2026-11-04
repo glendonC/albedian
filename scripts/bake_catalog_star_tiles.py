@@ -5,7 +5,10 @@ Pulls every Gaia DR3 source brighter than the release's magnitude limit (G 12 fo
 `gaia-dr3`) with Bailer-Jones distance medians and bounds, BP-RP, proper motion and radial
 velocity, swaps in Hipparcos 2007 entries where Gaia handles bright stars poorly, attaches
 IAU WGSN proper names by HIP number, and writes HEALPix tiles layered by magnitude under
-`apps/web/public/catalog/stars/<release>/` with a manifest of releases and citations.
+`apps/web/public/catalog/stars/<release>/` with a manifest of releases and citations. Astro
+tiles beside the core and detail tiles carry DR3 GSP-Phot temperature and extinction, FLAME
+luminosity (each with its 16th and 84th percentiles), RUWE and the parallax error; a value DR3
+lacks stays missing.
 
 Everything this script writes is catalog data (`evidenceKind: catalog-derived`). None of
 it is measured from a user's recording.
@@ -15,6 +18,7 @@ Usage:
     uv run python scripts/bake_catalog_star_tiles.py --offline    # bake from the cache only
     uv run python scripts/bake_catalog_star_tiles.py --verify     # rebake from the cache and compare
                                                                   # against the committed SHA256SUMS
+    uv run python scripts/bake_catalog_star_tiles.py --fetch-only # fill the cache, do not bake
 
 Archive responses are cached under `.cache/catalog-star-bake/<release>/` so a rebake is
 deterministic and offline. Releases are pinned in `RELEASES`; adding Gaia DR4 means adding
@@ -34,7 +38,7 @@ import shutil
 import sys
 import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,11 +54,15 @@ from services.science import catalog_tiles as ct  # noqa: E402
 DEFAULT_OUT_DIR = ROOT_DIR / "apps" / "web" / "public" / "catalog" / "stars"
 DEFAULT_CACHE_DIR = ROOT_DIR / ".cache" / "catalog-star-bake"
 GAIA_TAP_SYNC = "https://gea.esac.esa.int/tap-server/tap/sync"
+# Every archive request names the project and nothing personal
+USER_AGENT = "Albedian/0.1 (research prototype)"
 # The Gaia archive truncates synchronous results at 50,000 rows without an error, so every
 # chunk is planned below this size from an exact count query and checked against it.
 CHUNK_ROW_TARGET = 45_000
 FETCH_WORKERS = 4
 MANIFEST_FORMAT = "albedian.catalog-star-tiles"
+# Manifest format 2 lists astro tiles; every tile header stays at ct.TILE_FORMAT_VERSION (1)
+MANIFEST_FORMAT_VERSION = 2
 
 ESA_ARCHIVE_TERMS = (
     "Data hosted in the ESA Space Science Archives are distributed under the CC BY-NC 3.0 IGO "
@@ -83,6 +91,7 @@ class ReleaseConfig:
     tap_sync: str
     gaia_table: str
     distance_table: str
+    astro_table: str
     hipparcos_table: str
     best_neighbour_table: str
     epoch: float
@@ -108,10 +117,14 @@ GAIA_ACKNOWLEDGEMENT = (
 RELEASES: dict[str, ReleaseConfig] = {
     "gaia-dr3": ReleaseConfig(
         release_id="gaia-dr3",
-        title="Gaia DR3 stars to G 12 with Bailer-Jones (2021) distances; bright end from Hipparcos 2007",
+        title=(
+            "Gaia DR3 stars to G 12 with Bailer-Jones (2021) distances and DR3 temperatures, luminosities "
+            "and extinction; bright end from Hipparcos 2007"
+        ),
         tap_sync=GAIA_TAP_SYNC,
         gaia_table="gaiadr3.gaia_source",
         distance_table="external.gaiaedr3_distance",
+        astro_table="gaiadr3.astrophysical_parameters",
         hipparcos_table="public.hipparcos_newreduction",
         best_neighbour_table="gaiadr3.hipparcos2_best_neighbour",
         epoch=2016.0,
@@ -144,7 +157,50 @@ RELEASES: dict[str, ReleaseConfig] = {
                 "acknowledgement": GAIA_ACKNOWLEDGEMENT,
                 "license": ESA_ARCHIVE_TERMS,
                 "licenseUrl": "https://www.cosmos.esa.int/web/gaia-users/license",
-                "fields": ["source_id", "ra", "dec", "phot_g_mean_mag", "bp_rp", "pmra", "pmdec", "radial_velocity"],
+                "fields": [
+                    "source_id",
+                    "ra",
+                    "dec",
+                    "phot_g_mean_mag",
+                    "bp_rp",
+                    "pmra",
+                    "pmdec",
+                    "radial_velocity",
+                    "teff_gspphot",
+                    "teff_gspphot_lower",
+                    "teff_gspphot_upper",
+                    "azero_gspphot",
+                    "azero_gspphot_lower",
+                    "azero_gspphot_upper",
+                    "ag_gspphot",
+                    "ruwe",
+                    "parallax_error",
+                ],
+                "note": (
+                    "Temperature and extinction are GSP-Phot results (Andrae et al., "
+                    "doi:10.1051/0004-6361/202243462): teff_gspphot and azero_gspphot (A0 at 547.7 nm) with their "
+                    "16th and 84th percentiles, and ag_gspphot (extinction in G)."
+                ),
+            },
+            {
+                "id": "gaia-dr3-astrophysical-parameters",
+                "title": "Gaia DR3 astrophysical parameters: FLAME luminosity",
+                "provider": "ESA Gaia mission, Gaia DPAC (Apsis)",
+                "table": "gaiadr3.astrophysical_parameters",
+                "archive": "https://gea.esac.esa.int/archive/",
+                "citation": (
+                    "Creevey, O. L., et al., Gaia Data Release 3: Astrophysical parameters inference system (Apsis) I, "
+                    "methods and content overview; Fouesneau, M., et al., Gaia Data Release 3: Apsis II, stellar parameters"
+                ),
+                "doi": "10.1051/0004-6361/202243688",
+                "acknowledgement": GAIA_ACKNOWLEDGEMENT,
+                "license": ESA_ARCHIVE_TERMS,
+                "licenseUrl": "https://www.cosmos.esa.int/web/gaia-users/license",
+                "fields": ["lum_flame", "lum_flame_lower", "lum_flame_upper"],
+                "note": (
+                    "FLAME luminosity from the G magnitude, the GSP-Phot extinction in G and the parallax or distance, "
+                    "with its 16th and 84th percentiles. Apsis II: doi:10.1051/0004-6361/202243919."
+                ),
             },
             {
                 "id": "bailer-jones-2021",
@@ -286,6 +342,31 @@ def gaia_chunk_query(cfg: ReleaseConfig, order: int, pix: int) -> str:
     )
 
 
+# GSP-Phot astrophysical parameters (each with its 16th and 84th percentiles), astrometric
+# quality and two flags, from gaia_source; FLAME luminosity, radius, mass and age from
+# astrophysical_parameters. The cache keeps all of them; the tiles encode a subset.
+GAIA_ASTRO_COLUMNS = tuple(
+    f"{name}_gspphot{suffix}"
+    for name in ("teff", "logg", "mh", "distance", "azero", "ag", "ebpminrp")
+    for suffix in ("", "_lower", "_upper")
+) + ("libname_gspphot", "parallax", "parallax_error", "ruwe", "phot_variable_flag", "non_single_star")
+FLAME_COLUMNS = tuple(
+    f"{name}_flame{suffix}" for name in ("lum", "radius", "mass", "age") for suffix in ("", "_lower", "_upper")
+) + ("evolstage_flame", "flags_flame")
+ASTRO_TEXT_COLUMNS = frozenset({"libname_gspphot", "phot_variable_flag", "flags_flame"})
+
+
+def gaia_astro_chunk_query(cfg: ReleaseConfig, order: int, pix: int) -> str:
+    """The base chunk's sources (same WHERE clause) with their GSP-Phot, FLAME and quality columns."""
+    lo, hi = source_id_range(order, pix)
+    columns = ["g.source_id", *(f"g.{c}" for c in GAIA_ASTRO_COLUMNS), *(f"ap.{c}" for c in FLAME_COLUMNS)]
+    return (
+        f"SELECT {', '.join(columns)} "
+        f"FROM {cfg.gaia_table} AS g LEFT OUTER JOIN {cfg.astro_table} AS ap ON ap.source_id = g.source_id "
+        f"WHERE g.source_id BETWEEN {lo} AND {hi} AND g.phot_g_mean_mag < {cfg.mag_limit}"
+    )
+
+
 def hipparcos_query(cfg: ReleaseConfig) -> str:
     return (
         "SELECT h.hip, h.ra, h.dec, h.plx, h.e_plx, h.pm_ra, h.pm_de, h.hp_mag, h.b_v, "
@@ -406,6 +487,111 @@ def fetch_gaia(cfg: ReleaseConfig, client: httpx.Client | None, cache: Path, off
     return merged, chunk_log
 
 
+def parse_gaia_astro_chunk(text: str) -> dict[str, np.ndarray]:
+    """Numbers as float64 with NaN where the archive has no value; flags as strings, empty when absent."""
+    reader = csv.reader(io.StringIO(text))
+    header = next(reader)
+    expected = ["source_id", *GAIA_ASTRO_COLUMNS, *FLAME_COLUMNS]
+    if header != expected:
+        raise ValueError(f"unexpected astrophysical chunk columns: {header}")
+    rows = list(reader)
+    out = {"source_id": np.array([int(r[0]) for r in rows], dtype=np.int64)}
+    for i, name in enumerate(expected[1:], start=1):
+        if name in ASTRO_TEXT_COLUMNS:
+            out[name] = np.array([r[i] for r in rows], dtype=str)
+        else:
+            out[name] = np.array([_float(r[i]) for r in rows], dtype=np.float64)
+    return out
+
+
+def fetch_gaia_astro(
+    cfg: ReleaseConfig,
+    client: httpx.Client | None,
+    cache: Path,
+    offline: bool,
+    chunks: list[tuple[int, int, int]],
+    *,
+    workers: int = FETCH_WORKERS,
+    keep_going: bool = False,
+) -> dict[str, np.ndarray] | None:
+    """GSP-Phot, FLAME and quality columns for the sources of every base chunk, sorted by source_id.
+
+    With `keep_going`, a chunk the archive fails to deliver is reported and skipped so the others
+    still reach the cache; the result is then None and a rerun fetches only what is missing.
+    """
+
+    def load(chunk: tuple[int, int, int]) -> tuple[tuple[int, int, int], dict[str, np.ndarray], int]:
+        order, pix, expected = chunk
+        path = cache / "gaia-ap" / f"o{order}-p{pix}.csv.gz"
+        text = cached_text(path, lambda: tap_csv(client, cfg.tap_sync, gaia_astro_chunk_query(cfg, order, pix)), offline=offline)
+        parsed = parse_gaia_astro_chunk(text)
+        got = len(parsed["source_id"])
+        if got != expected:
+            path.unlink(missing_ok=True)
+            raise TapError(f"astrophysical chunk o{order}-p{pix}: expected {expected} rows, archive returned {got}")
+        return chunk, parsed, path.stat().st_size
+
+    started = time.time()
+    results: dict[tuple[int, int, int], dict[str, np.ndarray]] = {}
+    failures: list[str] = []
+    cached_bytes = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(load, chunk): chunk for chunk in chunks}
+        for i, future in enumerate(as_completed(futures), start=1):
+            chunk = futures[future]
+            try:
+                _, parsed, size = future.result()
+            except (TapError, httpx.HTTPError) as exc:
+                if not keep_going:
+                    raise
+                failures.append(f"o{chunk[0]}-p{chunk[1]}: {type(exc).__name__}: {str(exc)[:160]}")
+                continue
+            results[chunk] = parsed
+            cached_bytes += size
+            if i % 10 == 0 or i == len(chunks):
+                print(
+                    f"[bake]   astrophysical {i}/{len(chunks)} chunks done, {len(results)} ready, {cached_bytes / 1e6:.1f} MB "
+                    f"cached ({time.time() - started:.0f}s)",
+                    flush=True,
+                )
+    if failures:
+        for line in failures:
+            print(f"[bake]   astrophysical chunk {line}", flush=True)
+        print(f"[bake]   {len(failures)} of {len(chunks)} astrophysical chunks failed; rerun to fetch them", flush=True)
+        return None
+    # Chunk order, then source_id order: the result does not depend on which chunk finished first
+    merged = {key: np.concatenate([results[c][key] for c in chunks]) for key in results[chunks[0]]}
+    order = np.argsort(merged["source_id"], kind="stable")
+    merged = {k: v[order] for k, v in merged.items()}
+    if len(np.unique(merged["source_id"])) != len(merged["source_id"]):
+        raise TapError("duplicate Gaia source_id across astrophysical chunks")
+    return merged
+
+
+def fetch_archive(cfg: ReleaseConfig, cache_root: Path, workers: int = FETCH_WORKERS) -> int:
+    """Fill the archive cache (base chunks, then GSP-Phot and FLAME chunks) without baking.
+
+    Chunks already cached are read, not fetched, so a rerun after a failure resumes.
+    """
+    started = time.time()
+    cache = cache_root / cfg.release_id
+    cache.mkdir(parents=True, exist_ok=True)
+    with httpx.Client(headers={"User-Agent": USER_AGENT}) as client:
+        gaia, _ = fetch_gaia(cfg, client, cache, offline=False)
+        chunks = plan_chunks(cfg, client, cache, offline=False)
+        astro = fetch_gaia_astro(cfg, client, cache, offline=False, chunks=chunks, workers=workers, keep_going=True)
+    if astro is None:
+        return 1
+    if not np.array_equal(astro["source_id"], gaia["source_id"]):
+        raise TapError("astrophysical chunks do not hold exactly the base chunks' sources")
+    present = {
+        name: int(np.count_nonzero(np.isfinite(astro[name])))
+        for name in ("teff_gspphot", "azero_gspphot", "ag_gspphot", "parallax_error", "ruwe", "lum_flame", "radius_flame", "mass_flame", "age_flame")
+    }
+    print(f"[fetch] {len(astro['source_id']):,} sources with values present: {present} ({time.time() - started:.0f}s)")
+    return 0
+
+
 def parse_hipparcos(text: str) -> dict[str, np.ndarray]:
     rows = list(csv.DictReader(io.StringIO(text)))
     out = {
@@ -489,9 +675,36 @@ class StarTable:
     pm_dec: np.ndarray
     rv: np.ndarray
     named: np.ndarray  # bool
+    # ASTRO_TABLE_COLUMNS keys: Gaia DR3 values for Gaia entries, NaN for Hipparcos entries
+    astro: dict[str, np.ndarray]
 
 
-def build_star_table(cfg: ReleaseConfig, gaia: dict[str, np.ndarray], hip: dict[str, np.ndarray], named_keys: set[tuple[bool, int]]) -> tuple[StarTable, list[ct.BrightMergeDecision], dict]:
+# Star table astro field -> archive column, for the values the astro tiles carry
+ASTRO_TABLE_COLUMNS = {
+    "teff": "teff_gspphot",
+    "teff_lower": "teff_gspphot_lower",
+    "teff_upper": "teff_gspphot_upper",
+    "lum": "lum_flame",
+    "lum_lower": "lum_flame_lower",
+    "lum_upper": "lum_flame_upper",
+    "a0": "azero_gspphot",
+    "a0_lower": "azero_gspphot_lower",
+    "a0_upper": "azero_gspphot_upper",
+    "ag": "ag_gspphot",
+    "ruwe": "ruwe",
+    "parallax_error": "parallax_error",
+}
+
+
+def build_star_table(
+    cfg: ReleaseConfig,
+    gaia: dict[str, np.ndarray],
+    hip: dict[str, np.ndarray],
+    named_keys: set[tuple[bool, int]],
+    astro: dict[str, np.ndarray],
+) -> tuple[StarTable, list[ct.BrightMergeDecision], dict]:
+    if not np.array_equal(astro["source_id"], gaia["source_id"]):
+        raise ValueError("astrophysical rows do not line up with the Gaia rows")
     g_mag = gaia["phot_g_mean_mag"]
     bright = np.flatnonzero(g_mag < cfg.duplicate_mag_limit)
     hip_ra, hip_dec = ct.propagate_linear(hip["ra"], hip["dec"], hip["pm_ra"], hip["pm_de"], cfg.epoch - cfg.hipparcos_epoch)
@@ -550,6 +763,8 @@ def build_star_table(cfg: ReleaseConfig, gaia: dict[str, np.ndarray], hip: dict[
         pm_dec=np.concatenate([gaia["pmdec"][keep], h["pm_de"]]),
         rv=np.concatenate([gaia["radial_velocity"][keep], np.full(n_h, np.nan)]),
         named=named,
+        # Hipparcos entries get no Gaia astrophysics: missing, never borrowed from a neighbour
+        astro={field: np.concatenate([astro[column][keep], np.full(n_h, np.nan)]) for field, column in ASTRO_TABLE_COLUMNS.items()},
     )
     summary = {
         "gaiaSources": n_g,
@@ -559,6 +774,11 @@ def build_star_table(cfg: ReleaseConfig, gaia: dict[str, np.ndarray], hip: dict[
         "withRadialVelocity": int(np.isfinite(table.rv).sum()),
         "withProperMotion": int(np.isfinite(table.pm_ra).sum()),
         "withColor": int(np.isfinite(table.color).sum()),
+        "withTemperature": int(np.isfinite(table.astro["teff"]).sum()),
+        "withLuminosity": int(np.isfinite(table.astro["lum"]).sum()),
+        "withExtinction": int(np.isfinite(table.astro["a0"]).sum()),
+        "withRuwe": int(np.isfinite(table.astro["ruwe"]).sum()),
+        "withParallaxError": int(np.isfinite(table.astro["parallax_error"]).sum()),
     }
     return table, decisions, summary
 
@@ -589,6 +809,21 @@ def write_tiles(cfg: ReleaseConfig, table: StarTable, out: Path) -> tuple[list[d
     id_hi = (table.ident >> 32).astype(np.uint32)
     id_lo = (table.ident & 0xFFFFFFFF).astype(np.uint32)
     true_vec = ct.radec_to_vec(table.ra, table.dec)
+    a = table.astro
+    astro_codes = {
+        "teff": ct.encode_teff(a["teff"]),
+        "teff_lower": ct.encode_teff(a["teff_lower"]),
+        "teff_upper": ct.encode_teff(a["teff_upper"]),
+        "log_lum": ct.encode_luminosity(a["lum"]),
+        "log_lum_lower": ct.encode_luminosity(a["lum_lower"]),
+        "log_lum_upper": ct.encode_luminosity(a["lum_upper"]),
+        "a0": ct.encode_extinction(a["a0"]),
+        "a0_lower": ct.encode_extinction(a["a0_lower"]),
+        "a0_upper": ct.encode_extinction(a["a0_upper"]),
+        "ag": ct.encode_extinction(a["ag"]),
+        "ruwe_f16": ct.encode_f16(a["ruwe"]),
+        "parallax_error_f16": ct.encode_f16(a["parallax_error"]),
+    }
 
     layer_reports: list[dict] = []
     locations: dict[tuple[bool, int], tuple[int, int, int]] = {}
@@ -605,7 +840,7 @@ def write_tiles(cfg: ReleaseConfig, table: StarTable, out: Path) -> tuple[list[d
         pos_v = ct.quantize_unit(v, spec.position_bits)
         layer_dir = out / f"L{spec.layer}"
         layer_dir.mkdir(parents=True, exist_ok=True)
-        core_sizes, detail_sizes, max_err = [], [], 0.0
+        core_sizes, detail_sizes, astro_sizes, max_err = [], [], [], 0.0
         for p in np.flatnonzero(counts):
             a, b = starts[p], starts[p + 1]
             s = sel[a:b]
@@ -643,10 +878,19 @@ def write_tiles(cfg: ReleaseConfig, table: StarTable, out: Path) -> tuple[list[d
             ids = (dcols["idHi"].astype(np.int64) << 32) | dcols["idLo"].astype(np.int64)
             if not np.array_equal(ids, table.ident[s]):
                 raise AssertionError(f"tile L{spec.layer}/{p} failed its identifier read-back check")
+            astro = ct.encode_astro_tile(
+                layer=spec.layer, order=spec.order, pix=int(p), **{name: codes[s] for name, codes in astro_codes.items()}
+            )
+            _, acols = ct.decode_astro_tile(astro)
+            for column, name in (("teff", "teff"), ("logLum", "log_lum"), ("a0", "a0"), ("parallaxError", "parallax_error_f16")):
+                if not np.array_equal(acols[column], astro_codes[name][s]):
+                    raise AssertionError(f"tile L{spec.layer}/{p} failed its astro read-back check on {column}")
             (layer_dir / f"{p}.core.bin").write_bytes(core)
             (layer_dir / f"{p}.detail.bin").write_bytes(detail)
+            (layer_dir / f"{p}.astro.bin").write_bytes(astro)
             core_sizes.append(len(core))
             detail_sizes.append(len(detail))
+            astro_sizes.append(len(astro))
             for k in np.flatnonzero(table.named[s]):
                 star = s[k]
                 locations[(bool(table.catalog_hipparcos[star]), int(table.ident[star]))] = (spec.layer, int(p), int(k))
@@ -661,8 +905,10 @@ def write_tiles(cfg: ReleaseConfig, table: StarTable, out: Path) -> tuple[list[d
                 "nonEmptyTiles": int(np.count_nonzero(counts)),
                 "coreBytes": int(sum(core_sizes)),
                 "detailBytes": int(sum(detail_sizes)),
+                "astroBytes": int(sum(astro_sizes)),
                 "coreTileBytes": _size_stats(core_sizes),
                 "detailTileBytes": _size_stats(detail_sizes),
+                "astroTileBytes": _size_stats(astro_sizes),
                 "maxPositionErrorArcsec": round(max_err, 4),
                 "tileStarCounts": [int(c) for c in counts],
             }
@@ -670,7 +916,7 @@ def write_tiles(cfg: ReleaseConfig, table: StarTable, out: Path) -> tuple[list[d
         print(
             f"[bake] L{spec.layer} order {spec.order}: {len(sel):,} stars in {np.count_nonzero(counts)} tiles, "
             f"core {sum(core_sizes) / 1e6:.2f} MB, detail {sum(detail_sizes) / 1e6:.2f} MB, "
-            f"max position error {max_err:.3f} arcsec"
+            f"astro {sum(astro_sizes) / 1e6:.2f} MB, max position error {max_err:.3f} arcsec"
         )
     return layer_reports, locations
 
@@ -728,9 +974,10 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
     started = time.time()
     cache = cache_root / cfg.release_id
     cache.mkdir(parents=True, exist_ok=True)
-    client = None if offline else httpx.Client(headers={"User-Agent": "albedian-catalog-bake/1"})
+    client = None if offline else httpx.Client(headers={"User-Agent": USER_AGENT})
     try:
         gaia, chunk_log = fetch_gaia(cfg, client, cache, offline)
+        astro = fetch_gaia_astro(cfg, client, cache, offline, plan_chunks(cfg, client, cache, offline))
         hip_text = cached_text(cache / "hipparcos-bright.csv.gz", lambda: tap_csv(client, cfg.tap_sync, hipparcos_query(cfg)), offline=offline)
         hip = parse_hipparcos(hip_text)
         names_path = cache / "IAU-CSN.txt.gz"
@@ -761,7 +1008,7 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
 
     hip_to_gaia = {int(r["hip"]): int(r["source_id"]) for r in csv.DictReader(io.StringIO(bn_text))}
     # First pass decides the merge, second pass marks named stars (names depend on the merge)
-    table, decisions, summary = build_star_table(cfg, gaia, hip, set())
+    table, decisions, summary = build_star_table(cfg, gaia, hip, set(), astro)
     # Hipparcos stars with no best-neighbour row whose Gaia counterpart the merge found
     for decision in decisions:
         if decision.action == "keep_gaia" and decision.hip is not None and decision.gaia_source_id is not None:
@@ -769,7 +1016,7 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
     used_hip = set(table.ident[table.catalog_hipparcos].tolist())
     gaia_kept = set(table.ident[~table.catalog_hipparcos].tolist())
     resolved, name_stats = resolve_names(names, used_hip, hip_to_gaia, gaia_kept)
-    table, decisions, summary = build_star_table(cfg, gaia, hip, set(resolved))
+    table, decisions, summary = build_star_table(cfg, gaia, hip, set(resolved), astro)
 
     final = out_root / cfg.release_id
     staging = Path(tempfile.mkdtemp(prefix=f".{cfg.release_id}-", dir=out_root))
@@ -823,13 +1070,14 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
 
         manifest = {
             "format": MANIFEST_FORMAT,
-            "formatVersion": ct.TILE_FORMAT_VERSION,
+            "formatVersion": MANIFEST_FORMAT_VERSION,
             "releaseId": cfg.release_id,
             "title": cfg.title,
             "evidenceKind": "catalog-derived",
             "disclosure": (
                 "Catalog data from Gaia DR3 and Hipparcos 2007 with Bailer-Jones (2021) distance estimates. "
-                "Positions, brightness and distances come from these catalogs, not from your recording."
+                "Positions, brightness, distances, temperatures, luminosities and extinction come from these "
+                "catalogs, not from your recording."
             ),
             "frame": "ICRS",
             "epochJulianYear": cfg.epoch,
@@ -846,7 +1094,7 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
                 "ordering": "nested",
                 "positionEncoding": "healpix-face-subpixel",
                 "tilePath": "L{layer}/{pix}.{kind}.bin",
-                "kinds": ["core", "detail"],
+                "kinds": ["core", "detail", "astro"],
             },
             "layers": layer_reports,
             "encoding": {
@@ -871,8 +1119,47 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
                     "upperLog10Span": ct.BOUND_UPPER_LOG10_SPAN,
                     "decode": "fraction = 10^(log10FractionMin + (code - 1) / 254 * span); lower = median * (1 - fraction), upper = median * (1 + fraction)",
                 },
+                "astro": {
+                    "kind": ct.KIND_ASTRO,
+                    "bytesPerStar": ct.ASTRO_STRIDE,
+                    "columns": [
+                        "teff:u16",
+                        "teffLower:u16",
+                        "teffUpper:u16",
+                        "logLum:i16",
+                        "logLumLower:i16",
+                        "logLumUpper:i16",
+                        "a0:u16",
+                        "a0Lower:u16",
+                        "a0Upper:u16",
+                        "ag:u16",
+                        "ruwe:f16",
+                        "parallaxError:f16",
+                    ],
+                    "teff": {"unit": "K", "missing": ct.TEFF_MISSING, "decode": "code kelvin"},
+                    "logLum": {"scale": ct.LOG_LUM_SCALE, "missing": ct.LOG_LUM_MISSING, "decode": "10^(code / 1000) solar luminosities"},
+                    "extinction": {"scale": ct.EXTINCTION_SCALE, "missing": ct.EXTINCTION_MISSING, "decode": "code / 1000 mag"},
+                    "fields": {
+                        "teff": "teff_gspphot; teffLower and teffUpper are its 16th and 84th percentiles",
+                        "logLum": "lum_flame; logLumLower and logLumUpper are its 16th and 84th percentiles",
+                        "a0": "azero_gspphot, monochromatic extinction A0 at 547.7 nm, with its percentiles",
+                        "ag": "ag_gspphot, extinction in the Gaia G band",
+                        "ruwe": "ruwe",
+                        "parallaxError": "parallax_error, mas",
+                    },
+                    "missing": "Gaia DR3 gives no value; never filled. Hipparcos entries carry none.",
+                },
                 "float16": "IEEE 754 binary16; NaN marks a missing value",
-                "units": {"pmRa": "mas/yr (includes cos dec)", "pmDec": "mas/yr", "radialVelocity": "km/s", "distance": "pc"},
+                "units": {
+                    "pmRa": "mas/yr (includes cos dec)",
+                    "pmDec": "mas/yr",
+                    "radialVelocity": "km/s",
+                    "distance": "pc",
+                    "teff": "K",
+                    "luminosity": "Lsun",
+                    "extinction": "mag",
+                    "parallaxError": "mas",
+                },
                 "flags": {
                     "distanceKindMask": ct.FLAG_DIST_KIND_MASK,
                     "distanceKinds": {
@@ -895,6 +1182,13 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
                     "BETWEEN {} AND {}".format(*source_id_range(0, 0)), "BETWEEN {lo} AND {hi}"
                 ),
                 "gaiaChunks": len(chunk_log),
+                "gaiaAstroQueryTemplate": gaia_astro_chunk_query(cfg, 0, 0).replace(
+                    "BETWEEN {} AND {}".format(*source_id_range(0, 0)), "BETWEEN {lo} AND {hi}"
+                ),
+                "gaiaAstro": (
+                    f"every source of the Gaia selection, left join {cfg.astro_table} on source_id, in the same chunks "
+                    "as gaiaQueryTemplate; the cache keeps more columns than the astro tiles encode"
+                ),
                 "hipparcosQuery": hipparcos_query(cfg),
                 "brightStars": {
                     "rule": (
@@ -943,10 +1237,11 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
 
     total_core = sum(layer["coreBytes"] for layer in layer_reports)
     total_detail = sum(layer["detailBytes"] for layer in layer_reports)
+    total_astro = sum(layer["astroBytes"] for layer in layer_reports)
     shown = final.relative_to(ROOT_DIR) if final.is_relative_to(ROOT_DIR) else final
     print(
-        f"[bake] wrote {shown}: {len(table.ident):,} stars, {len(name_rows)} names, "
-        f"core {total_core / 1e6:.1f} MB + detail {total_detail / 1e6:.1f} MB in {time.time() - started:.0f}s"
+        f"[bake] wrote {shown}: {len(table.ident):,} stars, {len(name_rows)} names, core {total_core / 1e6:.1f} MB "
+        f"+ detail {total_detail / 1e6:.1f} MB + astro {total_astro / 1e6:.1f} MB in {time.time() - started:.0f}s"
     )
     return final
 
@@ -977,8 +1272,12 @@ def main() -> int:
     parser.add_argument("--cache", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--offline", action="store_true", help="bake from cached archive responses only")
     parser.add_argument("--verify", action="store_true", help="rebake from the cache and compare with committed checksums")
+    parser.add_argument("--fetch-only", action="store_true", help="fill the archive cache and stop before baking")
+    parser.add_argument("--workers", type=int, default=FETCH_WORKERS, help="concurrent archive queries for --fetch-only")
     args = parser.parse_args()
     cfg = RELEASES[args.release]
+    if args.fetch_only:
+        return fetch_archive(cfg, args.cache, args.workers)
     args.out.mkdir(parents=True, exist_ok=True)
     if args.verify:
         return verify(cfg, args.out, args.cache)

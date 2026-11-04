@@ -1,19 +1,21 @@
 import {
+  CATALOG_STAR_TILE_ASTRO_ENCODING as ASTRO,
   CATALOG_STAR_TILE_ENCODING_V1 as ENC,
-  CATALOG_STAR_TILE_FORMAT_VERSION,
+  CATALOG_STAR_TILE_HEADER_VERSION,
   type CatalogStarCatalogId,
   type CatalogStarDistanceKind,
 } from '@albedian/contracts';
 import { faceXyToVec, nestToFaceIxIy, type Vec3 } from './healpix.js';
 
 /**
- * Decoder for catalog star tiles (format version 1), the browser half of the codec in
- * `services/science/catalog_tiles.py`. Values decoded here are catalog data, never
- * measurements from a user's recording.
+ * Decoder for catalog star tiles (tile header version 1: core, detail and astro kinds), the
+ * browser half of the codec in `services/science/catalog_tiles.py`. Values decoded here are
+ * catalog data, never measurements from a user's recording.
  */
 
 export const TILE_KIND_CORE = 1;
 export const TILE_KIND_DETAIL = 2;
+export const TILE_KIND_ASTRO = ASTRO.kind;
 
 const LITTLE_ENDIAN = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 
@@ -71,8 +73,8 @@ export function readTileHeader(buffer: ArrayBuffer): CatalogStarTileHeader {
   }
   const view = new DataView(buffer);
   const version = view.getUint16(4, true);
-  if (version !== CATALOG_STAR_TILE_FORMAT_VERSION) {
-    throw new Error(`unsupported catalog star tile format version ${version}`);
+  if (version !== CATALOG_STAR_TILE_HEADER_VERSION) {
+    throw new Error(`unsupported catalog star tile header version ${version}`);
   }
   return {
     kind: view.getUint8(6),
@@ -272,6 +274,83 @@ export function decodeDetailTile(
     radialVelocityHalf: take16(),
     distanceLowerCode: take8(),
     distanceUpperCode: take8(),
+    byteLength: buffer.byteLength,
+  };
+}
+
+/**
+ * Gaia DR3 astrophysics and astrometric quality for the stars of one tile, index-aligned with
+ * its core tile: GSP-Phot effective temperature and extinction (A0 at 547.7 nm, and AG), FLAME
+ * luminosity, each with its 16th and 84th percentiles, RUWE and the parallax standard error.
+ * NaN where Gaia DR3 gives no value (and for every Hipparcos entry); nothing is filled in.
+ */
+export interface CatalogStarAstroTile {
+  layer: number;
+  order: number;
+  pix: number;
+  count: number;
+  teffK: Float32Array;
+  teffLowerK: Float32Array;
+  teffUpperK: Float32Array;
+  luminositySolar: Float32Array;
+  luminosityLowerSolar: Float32Array;
+  luminosityUpperSolar: Float32Array;
+  a0Mag: Float32Array;
+  a0LowerMag: Float32Array;
+  a0UpperMag: Float32Array;
+  agMag: Float32Array;
+  ruwe: Float32Array;
+  parallaxErrorMas: Float32Array;
+  byteLength: number;
+}
+
+export function decodeTeffK(code: number): number {
+  return code === ASTRO.teffMissing ? Number.NaN : code;
+}
+
+export function decodeLuminositySolar(code: number): number {
+  return code === ASTRO.logLumMissing ? Number.NaN : 10 ** (code / ASTRO.logLumScale);
+}
+
+export function decodeExtinctionMag(code: number): number {
+  return code === ASTRO.extinctionMissing ? Number.NaN : code / ASTRO.extinctionScale;
+}
+
+export function decodeAstroTile(
+  buffer: ArrayBuffer,
+  expected?: { layer: number; order: number; pix: number }
+): CatalogStarAstroTile {
+  const header = readTileHeader(buffer);
+  expectTile(header, TILE_KIND_ASTRO, expected);
+  const n = header.count;
+  if (buffer.byteLength !== ENC.headerBytes + n * ASTRO.bytesPerStar) {
+    throw new Error('astro tile length does not match its header');
+  }
+  let offset = ENC.headerBytes;
+  const column = <T extends Uint16Array | Int16Array>(View: new (b: ArrayBuffer, o: number, n: number) => T, decode: (code: number) => number) => {
+    const codes = new View(buffer, offset, n);
+    offset += 2 * n;
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = decode(codes[i] ?? 0);
+    return out;
+  };
+  return {
+    layer: header.layer,
+    order: header.order,
+    pix: header.pix,
+    count: n,
+    teffK: column(Uint16Array, decodeTeffK),
+    teffLowerK: column(Uint16Array, decodeTeffK),
+    teffUpperK: column(Uint16Array, decodeTeffK),
+    luminositySolar: column(Int16Array, decodeLuminositySolar),
+    luminosityLowerSolar: column(Int16Array, decodeLuminositySolar),
+    luminosityUpperSolar: column(Int16Array, decodeLuminositySolar),
+    a0Mag: column(Uint16Array, decodeExtinctionMag),
+    a0LowerMag: column(Uint16Array, decodeExtinctionMag),
+    a0UpperMag: column(Uint16Array, decodeExtinctionMag),
+    agMag: column(Uint16Array, decodeExtinctionMag),
+    ruwe: column(Uint16Array, halfToFloat),
+    parallaxErrorMas: column(Uint16Array, halfToFloat),
     byteLength: buffer.byteLength,
   };
 }

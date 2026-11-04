@@ -14,7 +14,19 @@
       "radialVelocityKmS": 44.03256,
       "distanceMedianPc": 667.9206,
       "distanceLowerPc": 656.99884,
-      "distanceUpperPc": 678.82135
+      "distanceUpperPc": 678.82135,
+      "teffK": 4631.998,
+      "teffLowerK": 4626.547,
+      "teffUpperK": 4636.2188,
+      "luminositySolar": 49.509373,
+      "luminosityLowerSolar": 47.806786,
+      "luminosityUpperSolar": 51.30432,
+      "a0Mag": 0.1159,
+      "a0LowerMag": 0.1089,
+      "a0UpperMag": 0.1213,
+      "agMag": 0.09,
+      "ruwe": 1.0765792,
+      "parallaxErrorMas": 0.027890556
     },
     {
       "catalogId": "33264522507136",
@@ -27,7 +39,19 @@
       "radialVelocityKmS": 17.182444,
       "distanceMedianPc": 696.59296,
       "distanceLowerPc": 689.55566,
-      "distanceUpperPc": 703.09735
+      "distanceUpperPc": 703.09735,
+      "teffK": null,
+      "teffLowerK": null,
+      "teffUpperK": null,
+      "luminositySolar": null,
+      "luminosityLowerSolar": null,
+      "luminosityUpperSolar": null,
+      "a0Mag": null,
+      "a0LowerMag": null,
+      "a0UpperMag": null,
+      "agMag": null,
+      "ruwe": 1.0022594,
+      "parallaxErrorMas": 0.015528413
     }
   ]
 }
