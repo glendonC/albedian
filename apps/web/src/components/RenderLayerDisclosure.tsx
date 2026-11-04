@@ -1,6 +1,7 @@
 import React, { useId, useState } from 'react';
 import type { RenderLayerSet } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
+import { creditsFor } from './layerCredits.js';
 
 export interface RenderLayerDisclosureProps {
   layers: RenderLayerSet;
@@ -8,7 +9,8 @@ export interface RenderLayerDisclosureProps {
 
 /**
  * What the renderer is drawing and what kind of evidence each layer is (AGENTS.md section 1):
- * always visible as one line, expandable to every layer's evidence class and disclosure.
+ * always visible as one line, expandable to every layer's evidence class and disclosure. The
+ * credits of the drawn data and imagery show under it without a click.
  */
 export const RenderLayerDisclosure: React.FC<RenderLayerDisclosureProps> = ({ layers }) => {
   const [open, setOpen] = useState(false);
@@ -16,6 +18,7 @@ export const RenderLayerDisclosure: React.FC<RenderLayerDisclosureProps> = ({ la
   if (layers.length === 0) return null;
   const allSimulated = layers.every((layer) => layer.evidenceClass === 'simulated');
   const summary = `${allSimulated ? 'Modeled scene' : 'Mixed evidence'} · ${layers.length} layers`;
+  const credits = creditsFor(layers);
 
   return (
     <aside className="alb-layer-disclosure" data-hud-interactive="true" aria-label="What this view shows">
@@ -28,6 +31,7 @@ export const RenderLayerDisclosure: React.FC<RenderLayerDisclosureProps> = ({ la
       >
         {summary}
       </button>
+      {credits.length > 0 && <p className="alb-layer-credits">{credits.join(' · ')}</p>}
       {open && (
         <ul id={listId} className="alb-layer-disclosure-list">
           {layers.map((layer) => {
