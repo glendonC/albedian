@@ -536,7 +536,7 @@ def solve_and_verify_field(
                     source_detection=det, catalog_star=st,
                     pixel_residual_px=res_px, angular_residual_arcsec=ang_res_arcsec,
                     verified_by_holdout=not is_train,
-                    limitations=("Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth.",),
+                    limitations=(f"Distance is {st.distance_source}, not measured from this image.",),
                     source_sha256=source_sha256,
                 )
             )

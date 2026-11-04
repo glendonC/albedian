@@ -263,7 +263,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Rigel",
-        "subtitle": "Beta Orionis · B8 Ia · 264.0 pc [240.0–292.0 pc]",
+        "subtitle": "Beta Orionis · B8 Ia · 264.6 pc [242.7–290.7 pc]",
         "skyPosition": {
           "raDeg": 78.634467,
           "decDeg": -8.201638,
@@ -280,9 +280,9 @@
           "catalogReferenceId": "star-rigel",
           "angularResidualArcsec": 13.050233353953237,
           "pixelResidualPx": 0.0585524099203686,
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [240.0, 292.0] pc",
+          "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -299,7 +299,7 @@
         "catalogRef": {
           "id": "star-rigel",
           "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "releaseVersion": "Hipparcos 2007",
           "catalogSourceId": "HIP 24436",
           "commonName": "Rigel",
           "bayerDesignation": "Beta Orionis",
@@ -314,26 +314,26 @@
           "properMotionRaMasYr": 1.31,
           "properMotionDecMasYr": 0.5,
           "radialVelocityKmS": 17.8,
-          "parallaxMas": 3.78,
-          "parallaxErrorMas": 0.34,
           "bailerJonesDistancePc": {
-            "lower": 240.0,
-            "median": 264.0,
-            "upper": 292.0,
+            "lower": 242.71844660194174,
+            "median": 264.55026455026456,
+            "upper": 290.69767441860466,
             "method": "geometric_parallax"
           },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 3.78,
+          "parallaxErrorMas": 0.34
         },
         "inferredDistancePc": {
-          "lower": 240.0,
-          "median": 264.0,
-          "upper": 292.0,
+          "lower": 242.71844660194174,
+          "median": 264.55026455026456,
+          "upper": 290.69767441860466,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          51.49373665075689,
-          256.17573235865893,
-          -37.6615086825694
+          51.60106686984617,
+          256.70968851076134,
+          -37.740007898999316
         ]
       },
       {
@@ -341,7 +341,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Betelgeuse",
-        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 168.0 pc [145.0–197.0 pc]",
+        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 152.7 pc [135.5–174.8 pc]",
         "skyPosition": {
           "raDeg": 88.792939,
           "decDeg": 7.407064,
@@ -358,9 +358,9 @@
           "catalogReferenceId": "star-betelgeuse",
           "angularResidualArcsec": 29.15969756247523,
           "pixelResidualPx": 0.1308306540215864,
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [145.0, 197.0] pc",
+          "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
           ],
           "verifiedByIndependentHoldout": true
         },
@@ -377,7 +377,7 @@
         "catalogRef": {
           "id": "star-betelgeuse",
           "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "releaseVersion": "Hipparcos 2007",
           "catalogSourceId": "HIP 27989",
           "commonName": "Betelgeuse",
           "bayerDesignation": "Alpha Orionis",
@@ -392,26 +392,26 @@
           "properMotionRaMasYr": 27.54,
           "properMotionDecMasYr": 11.3,
           "radialVelocityKmS": 21.91,
-          "parallaxMas": 5.95,
-          "parallaxErrorMas": 0.85,
           "bailerJonesDistancePc": {
-            "lower": 145.0,
-            "median": 168.0,
-            "upper": 197.0,
+            "lower": 135.50135501355012,
+            "median": 152.67175572519085,
+            "upper": 174.82517482517483,
             "method": "geometric_parallax"
           },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 6.55,
+          "parallaxErrorMas": 0.83
         },
         "inferredDistancePc": {
-          "lower": 145.0,
-          "median": 168.0,
-          "upper": 197.0,
+          "lower": 135.50135501355012,
+          "median": 152.67175572519085,
+          "upper": 174.82517482517483,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          3.5094937105371993,
-          166.56111735528515,
-          21.65820027736903
+          3.189289086275172,
+          151.36415608441035,
+          19.68211584639134
         ]
       },
       {
@@ -436,9 +436,9 @@
           "catalogReferenceId": "star-aldebaran",
           "angularResidualArcsec": 5.4693991636297925,
           "pixelResidualPx": 0.024539523023162053,
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [20.1, 20.8] pc",
+          "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -455,7 +455,7 @@
         "catalogRef": {
           "id": "star-aldebaran",
           "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "releaseVersion": "Hipparcos 2007",
           "catalogSourceId": "HIP 21421",
           "commonName": "Aldebaran",
           "bayerDesignation": "Alpha Tauri",
@@ -470,26 +470,26 @@
           "properMotionRaMasYr": 63.45,
           "properMotionDecMasYr": -188.94,
           "radialVelocityKmS": 54.26,
-          "parallaxMas": 48.94,
-          "parallaxErrorMas": 0.77,
           "bailerJonesDistancePc": {
-            "lower": 20.1,
-            "median": 20.4,
-            "upper": 20.8,
+            "lower": 20.11667672500503,
+            "median": 20.43318348998774,
+            "upper": 20.759809009757113,
             "method": "geometric_parallax"
           },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 48.94,
+          "parallaxErrorMas": 0.77
         },
         "inferredDistancePc": {
-          "lower": 20.1,
-          "median": 20.4,
-          "upper": 20.8,
+          "lower": 20.11667672500503,
+          "median": 20.43318348998774,
+          "upper": 20.759809009757113,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          7.015633696854124,
-          18.257454601630958,
-          5.79708851933016
+          7.027045618939282,
+          18.287152938002276,
+          5.8065183050575735
         ]
       },
       {
@@ -633,7 +633,7 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Dabih (Beta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 101.2 pc · Alt +34.5° Az 221.0° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.5° Az 221.0° · Inside Camera FOV",
         "skyPosition": {
           "raDeg": 305.252822,
           "decDeg": -14.78148,
@@ -648,7 +648,7 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-dabih",
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [98.0, 104.5] pc",
+          "distanceUncertaintyNote": "Distance interval [90.3, 112.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
             "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
           ],
@@ -656,9 +656,9 @@
         },
         "catalogRef": {
           "id": "star-dabih",
-          "provider": "Gaia DR3",
-          "releaseVersion": "DR3-2022",
-          "catalogSourceId": "Gaia DR3 6876037282198810112",
+          "provider": "Hipparcos",
+          "releaseVersion": "Hipparcos 2007",
+          "catalogSourceId": "HIP 100345",
           "commonName": "Dabih",
           "bayerDesignation": "Beta Capricorni",
           "constellation": "Capricornus",
@@ -672,26 +672,26 @@
           "properMotionRaMasYr": 48.36,
           "properMotionDecMasYr": 14.02,
           "radialVelocityKmS": -18.9,
-          "parallaxMas": 9.88,
-          "parallaxErrorMas": 0.31,
           "bailerJonesDistancePc": {
-            "lower": 98.0,
-            "median": 101.2,
-            "upper": 104.5,
-            "method": "photogeometric_bailer_jones_edr3"
+            "lower": 90.33423667570008,
+            "median": 100.20040080160321,
+            "upper": 112.48593925759279,
+            "method": "geometric_parallax"
           },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 9.98,
+          "parallaxErrorMas": 1.09
         },
         "inferredDistancePc": {
-          "lower": 98.0,
-          "median": 101.2,
-          "upper": 104.5,
-          "method": "photogeometric_bailer_jones_edr3"
+          "lower": 90.33423667570008,
+          "median": 100.20040080160321,
+          "upper": 112.48593925759279,
+          "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          56.47809917167081,
-          -79.90631138957208,
-          -25.819483226193
+          55.920238868716496,
+          -79.11703980052206,
+          -25.564452250541596
         ]
       },
       {
@@ -699,7 +699,7 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Algedi (Alpha2 Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 32.4 pc · Alt +35.9° Az 223.4° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +35.9° Az 223.4° · Inside Camera FOV",
         "skyPosition": {
           "raDeg": 304.513571,
           "decDeg": -12.544849,
@@ -714,7 +714,7 @@
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-algedi",
-          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [32.2, 32.7] pc",
+          "distanceUncertaintyNote": "Distance interval [33.2, 33.6] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
           "limitations": [
             "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
           ],
@@ -722,9 +722,9 @@
         },
         "catalogRef": {
           "id": "star-algedi",
-          "provider": "Hipparcos",
-          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
-          "catalogSourceId": "HIP 100064",
+          "provider": "Gaia DR3",
+          "releaseVersion": "Gaia DR3",
+          "catalogSourceId": "Gaia DR3 6880093650314169984",
           "commonName": "Algedi",
           "bayerDesignation": "Alpha2 Capricorni",
           "constellation": "Capricornus",
@@ -738,26 +738,24 @@
           "properMotionRaMasYr": 62.61,
           "properMotionDecMasYr": 2.66,
           "radialVelocityKmS": 0.2,
-          "parallaxMas": 30.82,
-          "parallaxErrorMas": 0.19,
           "bailerJonesDistancePc": {
-            "lower": 32.2,
-            "median": 32.4,
-            "upper": 32.7,
+            "lower": 33.15436,
+            "median": 33.364403,
+            "upper": 33.55109,
             "method": "photogeometric_bailer_jones_edr3"
           },
-          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+          "citation": "Catalog id: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric."
         },
         "inferredDistancePc": {
-          "lower": 32.2,
-          "median": 32.4,
-          "upper": 32.7,
+          "lower": 33.15436,
+          "median": 33.364403,
+          "upper": 33.55109,
           "method": "photogeometric_bailer_jones_edr3"
         },
         "cartesianParsecICRS": [
-          17.919615186543417,
-          -26.059976383528163,
-          -7.037401683587278
+          18.453001934838113,
+          -26.835665254028278,
+          -7.246873637163101
         ]
       }
     ],

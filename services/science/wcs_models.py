@@ -318,8 +318,8 @@ class CelestialFindingRecord:
                 else None
             ),
             "distanceUncertaintyNote": (
-                f"Bailer-Jones 16th-84th percentile [{self.catalog_star.lower_pc:.1f}, "
-                f"{self.catalog_star.upper_pc:.1f}] pc"
+                f"Distance interval [{self.catalog_star.lower_pc:.1f}, {self.catalog_star.upper_pc:.1f}] pc: "
+                f"{self.catalog_star.distance_source}"
                 if self.catalog_star
                 else None
             ),
