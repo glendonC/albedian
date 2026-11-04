@@ -1,17 +1,20 @@
 /**
  * Renderer-neutral port of `buildAnisotropicLocalBubbleSplatMesh` in
- * `apps/web/src/spatial/volumetricSplatsAndLut.ts`.
+ * `apps/web/src/spatial/volumetricSplatsAndLut.ts` (which reads rows with `parseSplatRows`).
  *
  * The app's loader writes straight into a Spark `PackedSplats` (WebGL2 only). This port
- * applies the same per-splat transforms to plain typed arrays so any WebGPU splat path
+ * applies the same per-splat rules to plain typed arrays so any WebGPU splat path
  * (three's `GaussianSplat` addon or `@sparkjsdev/radix`) can consume the identical splat set.
- * Keep the constants in lockstep with the app loader; `localBubble.test.ts` pins them.
+ * Keep the constants in lockstep with the app loader; `spike.test.ts` pins them.
  *
  * Provenance of `/models/lb_splats.json` (14,281 rows, 14-tuples):
- * - x, y, z: Local Bubble shell geometry, O'Neill et al. 2024 (Harvard CfA).
- * - r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity: procedurally baked styling from
- *   `scripts/bake_bruneton_lut_and_splats.py` (k-NN PCA orientation, artistic palette).
- *   They are presentation values, not measurements.
+ * - x, y, z: Local Bubble surface geometry, O'Neill et al. 2024 (Harvard CfA).
+ * - sx, sy, sz, qx, qy, qz, qw: footprint and orientation from the local k-NN PCA frame, and
+ *   r, g, b, opacity: one uniform presentation colour and opacity, all baked by
+ *   `scripts/bake_bruneton_lut_and_splats.py`. They are presentation values, not measurements.
+ *
+ * The spike's measurements predate the loader fix and used the 2,811 splats the app then drew;
+ * see section 12 of docs/architecture/RENDERER_WEBGPU_SPIKE.md.
  */
 
 export interface SplatArrays {
@@ -31,18 +34,13 @@ export interface SplatArrays {
 
 /** Constants copied from the app loader. */
 export const LOCAL_BUBBLE_LOADER_CONSTANTS = {
+  rowLength: 14,
   positionScale: 1.24,
-  jitterAmplitude: 0.28,
-  innerCavityRadius: 4.55,
-  strideThreshold: 6000,
-  cavityRuleMinRows: 64,
   minScale: 0.01,
-  minOpacity: 0.003,
-  maxOpacity: 0.045,
 } as const;
 
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, v));
+function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
 }
 
 function emptyArrays(capacity: number): SplatArrays {
@@ -69,88 +67,54 @@ function trim(arrays: SplatArrays): SplatArrays {
 }
 
 /**
- * Mirrors the app loader exactly: stride 2 above 6,000 rows, deterministic position jitter,
- * 1.24x position scale, removal of splats inside the cylindrical inner cavity
- * (xy distance < 4.55), opacity cavity fade and clamp to [0.003, 0.045].
+ * Mirrors the app loader exactly: every complete row at its own position times 1.24,
+ * footprints floored at 0.01, quaternions normalized, colour and opacity clamped to [0, 1].
+ * A row with a missing or non-finite value is skipped rather than filled in.
  */
 export function parseLocalBubbleSplats(raw: unknown): SplatArrays {
-  if (!Array.isArray(raw) || raw.length === 0) return emptyArrays(0);
-
+  const rows: unknown[] = Array.isArray(raw) ? raw : [];
   const C = LOCAL_BUBBLE_LOADER_CONSTANTS;
-  const stride = raw.length > C.strideThreshold ? 2 : 1;
-  const enforceInnerCavity = raw.length > C.cavityRuleMinRows;
-  const out = emptyArrays(Math.ceil(raw.length / stride));
+  const out = emptyArrays(rows.length);
 
-  for (let i = 0; i < raw.length; i += stride) {
-    const pt = raw[i] as unknown;
-    if (!Array.isArray(pt) || pt.length < 6) continue;
-    const p = pt as number[];
-
-    const jx = (Math.sin(i * 12.9898) - 0.5) * C.jitterAmplitude;
-    const jy = (Math.cos(i * 78.233) - 0.5) * C.jitterAmplitude;
-    const jz = (Math.sin(i * 37.719) - 0.5) * C.jitterAmplitude;
-    const x = p[0]! * C.positionScale + jx;
-    const y = p[1]! * C.positionScale + jy;
-    const z = p[2]! * C.positionScale + jz;
-
-    const xyDist = Math.hypot(x, y);
-    if (enforceInnerCavity && xyDist < C.innerCavityRadius) continue;
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length < C.rowLength) continue;
+    const p = row.slice(0, C.rowLength) as number[];
+    if (!p.every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
 
     const k = out.count;
-    out.centers[k * 3] = x;
-    out.centers[k * 3 + 1] = y;
-    out.centers[k * 3 + 2] = z;
+    out.centers[k * 3] = p[0]! * C.positionScale;
+    out.centers[k * 3 + 1] = p[1]! * C.positionScale;
+    out.centers[k * 3 + 2] = p[2]! * C.positionScale;
+    out.colors[k * 3] = clamp01(p[3]!);
+    out.colors[k * 3 + 1] = clamp01(p[4]!);
+    out.colors[k * 3 + 2] = clamp01(p[5]!);
+    out.scales[k * 3] = Math.max(C.minScale, p[6]!);
+    out.scales[k * 3 + 1] = Math.max(C.minScale, p[7]!);
+    out.scales[k * 3 + 2] = Math.max(C.minScale, p[8]!);
 
-    if (p.length >= 14) {
-      out.colors[k * 3] = clamp(p[3]!, 0, 1);
-      out.colors[k * 3 + 1] = clamp(p[4]!, 0, 1);
-      out.colors[k * 3 + 2] = clamp(p[5]!, 0, 1);
-      out.scales[k * 3] = Math.max(C.minScale, p[6]!);
-      out.scales[k * 3 + 1] = Math.max(C.minScale, p[7]!);
-      out.scales[k * 3 + 2] = Math.max(C.minScale, p[8]!);
-
-      let qx = p[9]!;
-      let qy = p[10]!;
-      let qz = p[11]!;
-      let qw = p[12]!;
-      const lenSq = qx * qx + qy * qy + qz * qz + qw * qw;
-      if (lenSq > 1e-6) {
-        const inv = 1 / Math.sqrt(lenSq);
-        qx *= inv;
-        qy *= inv;
-        qz *= inv;
-        qw *= inv;
-      } else {
-        qx = 0;
-        qy = 0;
-        qz = 0;
-        qw = 1;
-      }
-      out.quaternions[k * 4] = qx;
-      out.quaternions[k * 4 + 1] = qy;
-      out.quaternions[k * 4 + 2] = qz;
-      out.quaternions[k * 4 + 3] = qw;
-
-      const cavityFade = enforceInnerCavity
-        ? Math.min(1.0, Math.max(0.25, (xyDist - C.innerCavityRadius) * 0.55))
-        : 1.0;
-      out.opacities[k] = clamp(p[13]! * cavityFade, C.minOpacity, C.maxOpacity);
+    let qx = p[9]!;
+    let qy = p[10]!;
+    let qz = p[11]!;
+    let qw = p[12]!;
+    const lenSq = qx * qx + qy * qy + qz * qz + qw * qw;
+    if (lenSq > 1e-6) {
+      const inv = 1 / Math.sqrt(lenSq);
+      qx *= inv;
+      qy *= inv;
+      qz *= inv;
+      qw *= inv;
     } else {
-      // Same fallback branch as the app loader for short rows.
-      const s = 0.095 + (i % 5) * 0.022;
-      out.scales[k * 3] = s * 1.5;
-      out.scales[k * 3 + 1] = s * 1.1;
-      out.scales[k * 3 + 2] = s * 0.65;
-      out.quaternions[k * 4 + 3] = 1;
-      const warmMix = (i % 9) / 9.0;
-      out.colors[k * 3] = 0.78 + 0.18 * warmMix;
-      out.colors[k * 3 + 1] = 0.54 + 0.14 * warmMix;
-      out.colors[k * 3 + 2] = 0.36 + 0.12 * (1.0 - warmMix);
-      out.opacities[k] = Math.min(
-        0.016,
-        Math.max(0.004, Math.max(0.1, xyDist - C.innerCavityRadius) * 0.0035)
-      );
+      qx = 0;
+      qy = 0;
+      qz = 0;
+      qw = 1;
     }
+    out.quaternions[k * 4] = qx;
+    out.quaternions[k * 4 + 1] = qy;
+    out.quaternions[k * 4 + 2] = qz;
+    out.quaternions[k * 4 + 3] = qw;
+
+    out.opacities[k] = clamp01(p[13]!);
     out.count += 1;
   }
 

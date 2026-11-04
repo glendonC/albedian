@@ -16,9 +16,8 @@ Offline Physical Asset Baker for Albedian Spatial Observatory (Track 2):
    - `apps/web/public/models/nasa_nebula_splats.json` (19,297 splats, Multi-Wavelength Nebula)
    Each splat is enriched to a 14-tuple rounded to 4 decimal places:
      [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity]
-   with local 3D k-NN PCA covariance + astrophysical shock-front / filament orientation
-   quaternions, multi-scale anisotropic scales, Beer-Lambert dust extinction vs. H-alpha /
-   [O III] / Planckian dust rim emission colors, and volumetric opacity.
+   Positions come from the source models; orientation and footprint from the local 3D k-NN
+   PCA frame. Colours and opacities are presentation values, not measured emission.
 """
 
 from __future__ import annotations
@@ -327,44 +326,50 @@ def compute_local_pca_frame(xyz: np.ndarray, k: int = 16) -> tuple[np.ndarray, n
     return mean_spacing, evals, evecs
 
 
+# The Local Bubble model gives the shape of the bubble's surface but no dust density or emission
+# point by point, so every splat gets one presentation colour (the average of the palette this
+# replaced) and an opacity Spark's 8-bit encoding stores as its smallest step, 1/255.
+LOCAL_BUBBLE_RGB = (0.87, 0.61, 0.43)
+LOCAL_BUBBLE_OPACITY = 0.0039
+
+
 def enrich_local_bubble_splats(lb_path: Path) -> int:
     """
-    Enriches `lb_splats.json` (14,281 splats — Harvard CfA O'Neill et al. 2024 Local Bubble Chimney)
-    to 14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
+    Rebuilds the attributes of `lb_splats.json` (14,281 splats) from its positions alone, as
+    14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
+
+    The positions are the O'Neill et al. (2024) Local Bubble surface: every other vertex of
+    `local_bubble_oneill2024.glb`, y up, at about 2.2x. Each splat lies in the surface, oriented
+    by the local k-NN PCA frame and sized by the local sample spacing so the splats tile it;
+    colour and opacity are the uniform presentation values above.
     """
     raw = json.loads(lb_path.read_text(encoding="utf-8"))
-    arr = np.array(raw, dtype=np.float64)
-    xyz = arr[:, :3]
+    xyz = np.array(raw, dtype=np.float64)[:, :3]
     n = xyz.shape[0]
 
     mean_spacing, evals, evecs = compute_local_pca_frame(xyz, k=16)
 
-    # Local density normalized to [0, 1] from inverse spacing
+    # Sample density normalized to [0, 1]; denser samples get smaller footprints
     inv_spacing = 1.0 / np.maximum(0.02, mean_spacing)
     p5, p95 = np.percentile(inv_spacing, [5.0, 95.0])
     density_norm = np.clip((inv_spacing - p5) / max(1e-6, p95 - p5), 0.0, 1.0)
 
-    # Radial & cylindrical coordinates in scaled Local Bubble cavity space
     x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
-    xy_dist_scaled = np.hypot(x * 1.24, y * 1.24)
     r_3d = np.maximum(1e-4, np.linalg.norm(xyz, axis=1))
     radial_unit = xyz / r_3d[:, None]
 
-    # Build orthonormal frame aligned with tangential shell wisps (u_x = filament tangent,
-    # u_y = sheet intermediate, u_z = outward shock-compressed shell normal)
-    t_pca = evecs[:, :, 2]  # Major eigenvector (filament tangent)
-    n_pca = evecs[:, :, 0]  # Minor eigenvector (shell normal)
-
-    # Orient normal outward from the Local Bubble cavity center
+    # Frame per splat: u_z is the surface normal (the minor PCA axis turned outward, blended toward
+    # radial to steady noisy normals), u_x the major PCA axis projected into the surface
+    t_pca = evecs[:, :, 2]
+    n_pca = evecs[:, :, 0]
     dot_nr = np.sum(n_pca * radial_unit, axis=1, keepdims=True)
     n_out = np.where(dot_nr >= 0.0, n_pca, -n_pca)
     u_z = 0.65 * n_out + 0.35 * radial_unit
     u_z /= np.maximum(1e-8, np.linalg.norm(u_z, axis=1, keepdims=True))
 
-    # Project filament tangent onto the shock-shell tangent plane orthogonal to u_z
     u_x = t_pca - np.sum(t_pca * u_z, axis=1, keepdims=True) * u_z
     ux_norm = np.linalg.norm(u_x, axis=1, keepdims=True)
-    # Fallback tangential swirl direction if t_pca was parallel to u_z
+    # Fallback tangent if the major axis was parallel to u_z
     swirl = np.stack([-y, x, np.zeros_like(z)], axis=1)
     swirl /= np.maximum(1e-8, np.linalg.norm(swirl, axis=1, keepdims=True))
     u_x = np.where(ux_norm > 1e-5, u_x / np.maximum(1e-8, ux_norm), swirl)
@@ -374,53 +379,15 @@ def enrich_local_bubble_splats(lb_path: Path) -> int:
     rot = np.stack([u_x, u_y, u_z], axis=2)  # Columns are basis vectors (N, 3, 3)
     quats = rotmat_to_quat_batch(rot)
 
-    # Multi-scale anisotropic covariance scales (sx, sy, sz):
-    # Elongated along tangential wisps (sx), intermediate sheet width (sy), thin across shock front (sz)
+    # Footprints: elongated along the major axis by the local anisotropy, thin across the surface
     aniso = np.clip(np.sqrt(evals[:, 2] / np.maximum(1e-5, evals[:, 0])), 1.25, 3.20)
-    idx_mod = (np.arange(n, dtype=np.float64) % 7.0) / 6.0
-    base_scale = 0.095 + 0.045 * (1.0 - 0.55 * density_norm) + 0.025 * idx_mod
+    base_scale = 0.095 + 0.045 * (1.0 - 0.55 * density_norm)
     sx = np.clip(base_scale * (1.35 + 0.28 * (aniso - 1.25)), 0.105, 0.245)
-    sy = np.clip(base_scale * (0.95 + 0.15 * idx_mod), 0.075, 0.165)
+    sy = np.clip(base_scale, 0.075, 0.165)
     sz = np.clip(base_scale * (0.48 + 0.12 * (1.0 - density_norm)), 0.042, 0.092)
 
-    # Physical emission / extinction colors (r, g, b):
-    # - Inner cavity shock rim (xy_dist_scaled ~ 4.5..5.6): warm Planckian gold-amber + H-alpha rose rim
-    # - Mid-shell magnetic filaments: bronze-ochre silicate & PAH thermal dust
-    # - High-density self-shielded dust lanes: Beer-Lambert dark umber extinction
-    # - High-latitude chimney plumes (|z| > 4.2): subtle FUV / [O III] scattered starlight tint
-    rim_factor = np.exp(-np.maximum(0.0, xy_dist_scaled - 4.55) * 0.52)
-    chimney_factor = np.clip((np.abs(z) - 3.2) / 4.5, 0.0, 1.0)
-    filament_phase = 0.5 + 0.5 * np.sin(x * 1.35 + y * 0.95 - z * 1.15)
-
-    # Base warm Planckian dust & H-alpha shock rim
-    r_col = 0.76 + 0.18 * rim_factor + 0.06 * filament_phase - 0.12 * chimney_factor
-    g_col = 0.50 + 0.14 * rim_factor + 0.08 * (1.0 - filament_phase) + 0.08 * chimney_factor
-    b_col = 0.34 + 0.08 * rim_factor + 0.10 * (1.0 - filament_phase) + 0.28 * chimney_factor
-
-    # Apply wavelength-dependent Beer-Lambert self-shielded dust extinction in dense cold knots
-    tau_dust = np.maximum(0.0, density_norm - 0.42) * (1.0 - 0.55 * rim_factor) * 0.95
-    r_col *= np.exp(-tau_dust * 0.55)
-    g_col *= np.exp(-tau_dust * 0.82)
-    b_col *= np.exp(-tau_dust * 1.05)
-
-    rgb = np.stack(
-        [
-            np.clip(r_col, 0.24, 0.98),
-            np.clip(g_col, 0.18, 0.88),
-            np.clip(b_col, 0.16, 0.86),
-        ],
-        axis=1,
-    )
-
-    # Volumetric opacity:
-    # Smoothly ramps outside the central stellar cavity (xy_dist_scaled >= 4.55) and scales with local density
-    cavity_ramp = np.clip((xy_dist_scaled - 4.45) / 2.6, 0.08, 1.0)
-    outer_taper = np.exp(-np.maximum(0.0, r_3d - 7.5) * 0.28)
-    opacity = np.clip(
-        (0.0055 + 0.0125 * (0.45 * cavity_ramp + 0.55 * density_norm)) * outer_taper,
-        0.0040,
-        0.0220,
-    )
+    rgb = np.tile(np.array(LOCAL_BUBBLE_RGB), (n, 1))
+    opacity = np.full(n, LOCAL_BUBBLE_OPACITY)
 
     enriched = np.column_stack([xyz, rgb, sx, sy, sz, quats, opacity])
     rounded = np.round(enriched, 4).tolist()
@@ -430,8 +397,10 @@ def enrich_local_bubble_splats(lb_path: Path) -> int:
 
 def enrich_nebula_splats(neb_path: Path) -> int:
     """
-    Enriches `nasa_nebula_splats.json` (19,297 splats — Multi-Wavelength Volumetric Nebula)
-    to 14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
+    Enriches `nasa_nebula_splats.json` (19,297 splats, positions matching the vertices of
+    `nasa_pillars_3d.glb`) to 14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
+    The colours and opacities are a presentation palette laid out by radius and density; the
+    emission lines named below are what the palette imitates, not measurements.
     """
     raw = json.loads(neb_path.read_text(encoding="utf-8"))
     arr = np.array(raw, dtype=np.float64)
@@ -484,7 +453,7 @@ def enrich_nebula_splats(neb_path: Path) -> int:
     sy = np.clip(base_s * (0.95 + 0.18 * idx_mod), 0.014, 0.038)
     sz = np.clip(base_s * (0.62 + 0.15 * (1.0 - density_norm)), 0.010, 0.026)
 
-    # Physical 3D photoionization stratification + Beer-Lambert self-shielded dark dust lanes:
+    # Presentation palette by radius, imitating photoionization zones and dark dust lanes:
     # Inner zone (r_3d ~ 2.6..3.8): [O III] 500.7nm doubly-ionized teal-cyan & H-beta core
     # Mid zone (r_3d ~ 3.8..4.9): Photo-dissociation shock front (golden-amber PAH + coral H-alpha rim)
     # Outer zone (r_3d ~ 4.9..6.5): H-alpha 656.3nm + [N II] crimson-magenta filaments & dark dust lanes
