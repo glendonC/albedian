@@ -70,7 +70,7 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
     }
   );
 
-  it('PBT-SKY-1: no observed finding of a solution without a verified WCS carries sky coordinates', () => {
+  it('PBT-SKY-1: without a verified WCS no detection carries sky coordinates or a catalog match', () => {
     const findingSpecArb = fc.record({
       evidenceClass: fc.constantFrom<EvidenceClass>('observed', 'catalog_matched', 'predicted', 'simulated'),
       sky: fc.option(
@@ -93,18 +93,20 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
     fc.assert(
       fc.property(solutionSpecArb, (spec) => {
         const verified = spec.wcs && spec.passed;
-        // Model-based oracle: catalog, predicted and simulated positions are required; an observed
-        // detection is on the sky exactly when a verified WCS puts it there, and otherwise in pixels
+        // Model-based oracle: catalog, predicted and simulated positions are required, and a catalog
+        // match needs a verified WCS; an observed detection is on the sky exactly when a verified WCS
+        // puts it there, and otherwise in pixels
         const obeysContract = spec.findings.every((f) =>
           f.evidenceClass === 'observed'
             ? (f.sky !== undefined) === verified && (f.sky !== undefined || f.detection)
-            : f.sky !== undefined
+            : f.sky !== undefined && (f.evidenceClass !== 'catalog_matched' || verified)
         );
         const parsed = ObservationSolutionSchema.safeParse(
           solution({ ...spec, findings: spec.findings.map((f, i) => finding(`f${i}`, f.evidenceClass, f)) })
         );
         expect(parsed.success).toBe(obeysContract);
         if (parsed.success && !hasVerifiedWcs(parsed.data)) {
+          expect(parsed.data.findings.some((f) => f.evidenceClass === 'catalog_matched')).toBe(false);
           const observed = parsed.data.findings.filter((f) => f.evidenceClass === 'observed');
           expect(observed.every((f) => f.skyPosition === undefined && f.sourceDetection !== undefined)).toBe(true);
           if (observed.length > 0) acceptedUnverifiedWithDetections += 1;
@@ -118,9 +120,13 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
   it('treats a published but unverified WCS as no registration', () => {
     const placed = finding('obs', 'observed', { sky: SKY, detection: true });
     const pixelOnly = finding('obs', 'observed', { detection: true });
+    const matched = finding('cat', 'catalog_matched', { sky: SKY, detection: true });
     expect(ObservationSolutionSchema.safeParse(solution({ wcs: true, passed: false, findings: [placed] })).success).toBe(false);
     expect(ObservationSolutionSchema.safeParse(solution({ wcs: true, passed: false, findings: [pixelOnly] })).success).toBe(true);
     expect(ObservationSolutionSchema.safeParse(solution({ wcs: true, passed: true, findings: [pixelOnly] })).success).toBe(false);
+    expect(ObservationSolutionSchema.safeParse(solution({ wcs: true, passed: false, findings: [matched] })).success).toBe(false);
+    expect(ObservationSolutionSchema.safeParse(solution({ wcs: false, passed: true, findings: [matched] })).success).toBe(false);
+    expect(ObservationSolutionSchema.safeParse(solution({ wcs: true, passed: true, findings: [matched] })).success).toBe(true);
   });
 });
 
