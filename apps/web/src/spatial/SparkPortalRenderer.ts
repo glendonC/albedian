@@ -292,7 +292,9 @@ export class SparkPortalRenderer {
   private showcaseMode = false;
   private onRegimeChange?: (regime: SpatialScaleRegime) => void;
   private rafId = 0;
-  private clock = new THREE.Clock();
+  // Timer replaces the Clock deprecated in r183; connected to the document so a hidden tab
+  // does not come back with one huge time step
+  private timer = new THREE.Timer();
 
   constructor(
     container: HTMLElement,
@@ -2268,9 +2270,11 @@ export class SparkPortalRenderer {
 
   private startLoop(): void {
     if (typeof window === 'undefined' || !this.renderer) return;
-    const tick = () => {
+    this.timer.connect(document);
+    const tick = (timestamp: number) => {
       if (!this.renderer) return;
-      const elapsed = this.clock.getElapsedTime();
+      this.timer.update(timestamp);
+      const elapsed = this.timer.getElapsed();
 
       this.skyDomeUniforms.uTime.value = elapsed;
       this.earthUniforms.uTime.value = elapsed;
@@ -2893,6 +2897,7 @@ export class SparkPortalRenderer {
     if (typeof window !== 'undefined' && this.rafId) {
       window.cancelAnimationFrame(this.rafId);
     }
+    this.timer.dispose();
     this.captureHorizonSplatMesh?.dispose();
     this.planetaryTerrainSplatMesh?.dispose();
     this.catalogStars?.dispose();
