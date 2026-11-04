@@ -50,3 +50,6 @@ docs/internal/
 
 # Claude Code session worktrees: full repo copies the desktop app manages, never committed
 .claude/worktrees/
+
+# Look-dev source data (NASA downloads) and renders, reproducible from scripts/lookdev
+data/lookdev/
