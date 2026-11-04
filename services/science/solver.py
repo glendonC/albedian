@@ -1,11 +1,13 @@
-"""Deterministic astrometric geometric plate solver with independent held-out WCS verification,
+"""Deterministic astrometric geometric plate solver with held-out WCS verification,
 and public re-exports for point-source extraction, video calibration stacking, and horizon solving.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import itertools
 import math
+from typing import Sequence
 
 import numpy as np
 from scipy import optimize
@@ -37,6 +39,112 @@ from services.science.wcs_models import (
     VideoStackCalibrationResult,
     WCSModel,
 )
+
+# The held-out gate, with the thresholds of `evaluateWCSVerificationGate` in packages/evidence. Under a WCS
+# fitted on training stars only, each detection pairs with its nearest unused catalog star within
+# ASSOCIATION_RADIUS_PX; a pair inside the per-star inlier gate (1.8 to 3 px, from the spread of all residuals)
+# is an inlier. The fit is calibrated when at least MIN_HELD_OUT_INLIERS held-out detections are inliers and
+# the residuals of every held-out pair, inlier or not, have a median of at most MAX_HELD_OUT_MEDIAN_RESIDUAL_PX
+# and a 95th percentile of at most MAX_HELD_OUT_P95_RESIDUAL_PX.
+ASSOCIATION_RADIUS_PX = 8.0
+INLIER_GATE_MIN_PX = 1.8
+INLIER_GATE_MAX_PX = 3.0
+MIN_HELD_OUT_INLIERS = 6
+MAX_HELD_OUT_MEDIAN_RESIDUAL_PX = 3.0
+MAX_HELD_OUT_P95_RESIDUAL_PX = 6.0
+
+
+@dataclass(frozen=True)
+class HeldOutVerification:
+    """Held-out verification of a WCS fitted on training stars only.
+
+    `associations` holds (detection, catalog star, residual px, trained the fit) for every detection that
+    pairs with a catalog star within `ASSOCIATION_RADIUS_PX`. The held-out residual statistics cover every
+    held-out pair, not only the inliers, so a fit that misses held-out stars shows it in its median and p95.
+    The held-out detections still take part in choosing which catalog pattern the field matches; the
+    least-squares fit sees only the training stars.
+    """
+
+    associations: tuple[tuple[SourceDetection, CatalogStar, float, bool], ...]
+    inlier_gate_px: float
+
+    @property
+    def held_out_residuals_px(self) -> tuple[float, ...]:
+        return tuple(res_px for _, _, res_px, is_train in self.associations if not is_train)
+
+    @property
+    def held_out_inliers(self) -> int:
+        return sum(res_px <= self.inlier_gate_px for res_px in self.held_out_residuals_px)
+
+    @property
+    def median_residual_px(self) -> float | None:
+        residuals = self.held_out_residuals_px
+        return float(np.median(residuals)) if residuals else None
+
+    @property
+    def p95_residual_px(self) -> float | None:
+        residuals = self.held_out_residuals_px
+        return float(np.percentile(residuals, 95.0)) if residuals else None
+
+    @property
+    def inliers(self) -> dict[int, tuple[CatalogStar, float, bool]]:
+        """Pairs inside the inlier gate, keyed by detection identity: (star, residual px, trained the fit)."""
+        return {
+            id(det): (star, res_px, is_train)
+            for det, star, res_px, is_train in self.associations
+            if res_px <= self.inlier_gate_px
+        }
+
+    @property
+    def passed(self) -> bool:
+        median, p95 = self.median_residual_px, self.p95_residual_px
+        return (
+            self.held_out_inliers >= MIN_HELD_OUT_INLIERS
+            and median is not None
+            and median <= MAX_HELD_OUT_MEDIAN_RESIDUAL_PX
+            and p95 is not None
+            and p95 <= MAX_HELD_OUT_P95_RESIDUAL_PX
+        )
+
+
+def verify_held_out(
+    wcs: WCSModel,
+    detections: Sequence[SourceDetection],
+    catalog: Sequence[CatalogStar],
+    training_detections: Sequence[SourceDetection],
+) -> HeldOutVerification:
+    """Pair every detection with a catalog star under `wcs`, which was fitted on `training_detections` (the
+    same objects as in `detections`) and nothing else, and measure the held-out gate."""
+    train_ids = {id(det) for det in training_detections}
+    associations: list[tuple[SourceDetection, CatalogStar, float, bool]] = []
+    used_catalog_ids: set[str] = set()
+    for det in detections:
+        if det.is_hot_pixel_impulse:
+            continue
+        best_st: CatalogStar | None = None
+        best_res = float("inf")
+        for st in catalog:
+            if st.id in used_catalog_ids:
+                continue
+            px, py = wcs.world_to_pixel(st.ra_deg, st.dec_deg)
+            if math.isnan(px):
+                continue
+            res_px = math.hypot(px - det.x_px, py - det.y_px)
+            if res_px < best_res:
+                best_res = res_px
+                best_st = st
+        if best_st is not None and best_res <= ASSOCIATION_RADIUS_PX:
+            associations.append((det, best_st, best_res, id(det) in train_ids))
+            used_catalog_ids.add(best_st.id)
+
+    raw_residuals = np.array([res_px for _, _, res_px, _ in associations], dtype=np.float64)
+    if raw_residuals.size > 0:
+        med_r = float(np.median(raw_residuals))
+        mad_r = float(np.median(np.abs(raw_residuals - med_r)))
+        gate_px = min(INLIER_GATE_MAX_PX, max(INLIER_GATE_MIN_PX, med_r + 3.0 * max(0.35, 1.4826 * mad_r)))
+    else:
+        gate_px = INLIER_GATE_MAX_PX
+    return HeldOutVerification(associations=tuple(associations), inlier_gate_px=gate_px)
 
 
 def _estimate_initial_wcs_from_triplet(
@@ -277,7 +385,7 @@ def solve_and_verify_field(
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-primary",
 ) -> ObservationSolution:
-    """Blind / hint-assisted geometric plate solver with independent held-out WCS verification."""
+    """Blind / hint-assisted geometric plate solver with held-out WCS verification (`verify_held_out`)."""
     catalog = list(catalog_stars) if catalog_stars is not None else get_catalog_stars()
     if hint_ra_deg is not None and hint_dec_deg is not None:
         filtered = [
@@ -390,56 +498,21 @@ def solve_and_verify_field(
         reverse=True,
     )
     train_subset = sorted_consensus[: min(4, len(sorted_consensus))]
-    train_det_ids = {id(d) for d, _ in train_subset}
     refined_wcs = _refine_wcs_least_squares(best_initial_wcs, train_subset)
 
-    candidate_eval: list[tuple[SourceDetection, CatalogStar, float, bool]] = []
-    used_catalog_ids: set[str] = set()
-
-    for det in detections:
-        if det.is_hot_pixel_impulse:
-            continue
-        best_st: CatalogStar | None = None
-        best_res = float("inf")
-        for st in catalog:
-            if st.id in used_catalog_ids:
-                continue
-            px, py = refined_wcs.world_to_pixel(st.ra_deg, st.dec_deg)
-            if math.isnan(px):
-                continue
-            res_px = math.hypot(px - det.x_px, py - det.y_px)
-            if res_px < best_res:
-                best_res = res_px
-                best_st = st
-        if best_st is not None and best_res <= 8.0:
-            candidate_eval.append((det, best_st, best_res, id(det) in train_det_ids))
-            used_catalog_ids.add(best_st.id)
-
-    raw_residuals = np.array([r for _, _, r, _ in candidate_eval], dtype=np.float64)
-    if raw_residuals.size > 0:
-        med_r = float(np.median(raw_residuals))
-        mad_r = float(np.median(np.abs(raw_residuals - med_r)))
-        gate_px = min(3.0, max(1.8, med_r + 3.0 * max(0.35, 1.4826 * mad_r)))
+    verification = verify_held_out(refined_wcs, detections, catalog, [d for d, _ in train_subset])
+    verified_matches = verification.inliers
+    held_out_inliers = verification.held_out_inliers
+    if verification.median_residual_px is not None and verification.p95_residual_px is not None:
+        median_residual_px = verification.median_residual_px
+        p95_residual_px = verification.p95_residual_px
     else:
-        gate_px = 3.0
-
-    verified_matches: dict[int, tuple[CatalogStar, float, bool]] = {}
-    holdout_residuals: list[float] = []
-    for det, st, res_px, is_train in candidate_eval:
-        if res_px <= gate_px and not det.is_hot_pixel_impulse:
-            verified_matches[id(det)] = (st, res_px, is_train)
-            if not is_train:
-                holdout_residuals.append(res_px)
-
-    held_out_inliers = len(holdout_residuals)
-    if held_out_inliers > 0:
-        median_residual_px = float(np.median(holdout_residuals))
-        p95_residual_px = float(np.percentile(holdout_residuals, 95.0))
-    else:
+        # No held-out star paired with a catalog star, so there is no residual: 999 px is a placeholder that
+        # the contract still requires, not a measurement
         median_residual_px, p95_residual_px = 999.0, 999.0
 
     median_residual_arcsec = median_residual_px * refined_wcs.scale_deg_per_px * 3600.0
-    passed_verification = (held_out_inliers >= 6) and (median_residual_px <= 3.0)
+    passed_verification = verification.passed
     status = "calibrated" if passed_verification else ("ambiguous" if len(verified_matches) >= 4 else "unresolved")
 
     findings_list: list[CelestialFindingRecord] = []
@@ -508,7 +581,7 @@ def solve_and_verify_field(
         quality=SolutionQuality(
             detected_candidate_count=len(detections),
             matched_inlier_count=len(verified_matches) if passed_verification else 0,
-            held_out_inliers=held_out_inliers if passed_verification else 0,
+            held_out_inliers=held_out_inliers,
             median_residual_px=median_residual_px, p95_residual_px=p95_residual_px,
             median_residual_arcsec=median_residual_arcsec,
             passed_independent_verification=passed_verification,
@@ -518,11 +591,11 @@ def solve_and_verify_field(
 
 
 __all__ = [
-    "CelestialFindingRecord", "ObservationSolution", "SolutionQuality",
+    "CelestialFindingRecord", "HeldOutVerification", "ObservationSolution", "SolutionQuality",
     "SourceDetection", "VideoStackCalibrationResult", "WCSModel",
     "_build_gaussian_psf_kernel", "_estimate_background_and_noise",
     "_estimate_initial_wcs_from_triplet", "_estimate_subpixel_shift_phase_corr",
     "_extract_registration_signal", "_refine_wcs_least_squares", "_to_luma_2d",
     "detect_point_sources", "render_synthetic_starfield", "solve_and_verify_field",
-    "solve_horizon_and_beacon_pose", "stack_video_frames_for_calibration",
+    "solve_horizon_and_beacon_pose", "stack_video_frames_for_calibration", "verify_held_out",
 ]
