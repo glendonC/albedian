@@ -112,7 +112,15 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
           if (observed.length > 0) acceptedUnverifiedWithDetections += 1;
         }
       }),
-      { numRuns: 400 }
+      {
+        numRuns: 400,
+        // Random specs hit this case only about 1 in 120 runs, so seed it every time: an
+        // unverified solution holding a pixel-only observed detection, with and without a WCS
+        examples: [
+          [{ wcs: false, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true }] }],
+          [{ wcs: true, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true }] }],
+        ],
+      }
     );
     expect(acceptedUnverifiedWithDetections).toBeGreaterThan(0);
   });
