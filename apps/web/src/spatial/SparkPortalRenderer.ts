@@ -295,6 +295,8 @@ export class SparkPortalRenderer {
   // Timer replaces the Clock deprecated in r183; connected to the document so a hidden tab
   // does not come back with one huge time step
   private timer = new THREE.Timer();
+  // Scene clock held at a fixed time for matched snapshots across renderers; null runs the timer
+  private heldClockSec: number | null = null;
 
   constructor(
     container: HTMLElement,
@@ -2274,7 +2276,7 @@ export class SparkPortalRenderer {
     const tick = (timestamp: number) => {
       if (!this.renderer) return;
       this.timer.update(timestamp);
-      const elapsed = this.timer.getElapsed();
+      const elapsed = this.heldClockSec ?? this.timer.getElapsed();
 
       this.skyDomeUniforms.uTime.value = elapsed;
       this.earthUniforms.uTime.value = elapsed;
@@ -2283,7 +2285,8 @@ export class SparkPortalRenderer {
       this.planetarySkyUniforms.uTime.value = elapsed;
       this.cinemaOpticsUniforms.uTime.value = elapsed;
 
-      const rotMult = this.showcaseMode ? 3.2 : 1.0;
+      // A held clock also holds the per-frame spin, so the pose depends on the time alone
+      const rotMult = this.heldClockSec !== null ? 0 : this.showcaseMode ? 3.2 : 1.0;
       if (this.cislunarMoonMesh) {
         this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
       }
@@ -2804,6 +2807,14 @@ export class SparkPortalRenderer {
   public setSkyRestorationActive(active: boolean): void {
     const val = active ? 1.0 : 0.0;
     this.skyDomeUniforms.uRestoration.value = val;
+  }
+
+  /**
+   * Holds the scene clock at `seconds` (showcase motion evaluated there, no spin) or releases it
+   * with null. Used for matched snapshots of the same scene on both renderers.
+   */
+  public holdClock(seconds: number | null): void {
+    this.heldClockSec = seconds;
   }
 
   public setShowcaseMode(enabled: boolean): void {
