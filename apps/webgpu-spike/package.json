@@ -1,0 +1,22 @@
+{
+  "name": "@albedian/webgpu-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated WebGPURenderer + TSL renderer spike. Pins its own three so apps/web stays on its current three and Spark versions.",
+  "scripts": {
+    "dev": "vite --port 5191 --strictPort",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sparkjsdev/radix": "0.0.1",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.187.0",
+    "@webgpu/types": "0.1.74",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}
