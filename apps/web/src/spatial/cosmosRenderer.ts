@@ -22,8 +22,11 @@ export interface CosmosRenderer {
   zoomByWheel(deltaY: number): void;
   resize(width: number, height: number): void;
   dispose(): void;
-  /** Layers drawn now with their evidence class and disclosure; absent where not declared yet. */
-  getRenderLayers?(): RenderLayerSet;
+  /**
+   * Layers drawn now with their evidence class and disclosure; absent, or null for the current
+   * regime, where not declared yet.
+   */
+  getRenderLayers?(): RenderLayerSet | null;
 }
 
 /** Landing scenes each renderer can draw, in carousel order. */

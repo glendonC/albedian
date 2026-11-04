@@ -214,6 +214,8 @@ export const SpatialObservatoryViewport: React.FC<
     const onRegimeChange = (nextRegime: SpatialScaleRegime) => {
       setActiveRegime(nextRegime);
       observatoryAudio.setScaleRegime(nextRegime);
+      // What is drawn changes with the regime; before attach() the renderer is still being built
+      if (attached) setRenderLayers(attached.getRenderLayers?.() ?? null);
     };
     if (rendererChoice.kind === 'webgpu') {
       // Loaded on demand so the default WebGL path does not carry three's WebGPU build

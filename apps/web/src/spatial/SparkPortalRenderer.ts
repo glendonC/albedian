@@ -12,11 +12,13 @@ import {
   SparkXr,
   SplatMesh,
 } from '@sparkjsdev/spark';
+import type { RenderLayerSet } from '@albedian/contracts';
 import {
   CatalogStarField,
   DEFAULT_LIMITING_MAGNITUDE,
   type CatalogStarFieldStats,
 } from './catalogStars/index.js';
+import { webglRenderLayersFor } from './cislunarWebglLayers.js';
 import {
   createOriginCameraFrustumIndicator,
   updateOriginFrustumContinuity,
@@ -2805,6 +2807,11 @@ export class SparkPortalRenderer {
    */
   public holdClock(seconds: number | null): void {
     this.heldClockSec = seconds;
+  }
+
+  /** Layers drawn in the current regime with their evidence class and disclosure; null where not declared yet. */
+  public getRenderLayers(): RenderLayerSet | null {
+    return webglRenderLayersFor(this.activeRegime);
   }
 
   public setShowcaseMode(enabled: boolean): void {
