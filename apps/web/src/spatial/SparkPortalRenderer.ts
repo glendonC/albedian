@@ -511,10 +511,11 @@ export class SparkPortalRenderer {
     loadTex('/textures/nasa_starmap_4k.jpg', (t) => {
       this.skyDomeUniforms.uStarMapTex.value = t;
     });
-    loadTex('/textures/earth_day.jpg', (t) => {
+    // NASA Blue Marble (Nov 2004) and Black Marble 2016 lights; provenance in earth_texture_sources.json
+    loadTex('/textures/earth_day_bluemarble_2004-11_8k.jpg', (t) => {
       this.earthUniforms.uDayTex.value = t;
     });
-    loadTex('/textures/earth_lights.png', (t) => {
+    loadTex('/textures/earth_night_blackmarble_2016_8k.jpg', (t) => {
       this.earthUniforms.uNightTex.value = t;
     });
     loadTex(
@@ -987,33 +988,8 @@ export class SparkPortalRenderer {
 
         ${BRUNETON_ATMO_GLSL_CHUNK}
 
-        float hash21(vec2 p) {
-          p = fract(p * vec2(127.1, 311.7));
-          p += dot(p, p + 34.5);
-          return fract(p.x * p.y);
-        }
-
-        float noise2(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
-            mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x),
-            f.y
-          );
-        }
-
-        float fbmMicro(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
-            v += a * noise2(p);
-            p *= 2.12;
-            a *= 0.5;
-          }
-          return v;
-        }
+        // Brightness of Black Marble city light relative to the shader's other night-side terms
+        const float CITY_LIGHT_GAIN = 1.25;
 
         void main() {
           // Rotate local sampling coordinates so the Mediterranean / Sahara / Atlantic equatorial belt faces the camera
@@ -1026,20 +1002,19 @@ export class SparkPortalRenderer {
           );
           vec3 p = normalize(globeTilt * rawP);
           float u = atan(p.z, -p.x) / (2.0 * 3.14159265359) + 0.5;
-          float v = clamp(asin(clamp(p.y, -1.0, 1.0)) / 3.14159265359 + 0.5, 0.14, 0.86);
+          float v = asin(clamp(p.y, -1.0, 1.0)) / 3.14159265359 + 0.5;
           vec2 eqUv = vec2(u, v);
+          // atan wraps at the texture seam; wrapping the u derivative keeps full mip detail there
+          vec2 uvDx = dFdx(eqUv);
+          vec2 uvDy = dFdy(eqUv);
+          uvDx.x = fract(uvDx.x + 0.5) - 0.5;
+          uvDy.x = fract(uvDy.x + 0.5) - 0.5;
 
-          vec3 dayCol = pow(texture2D(uDayTex, eqUv).rgb, vec3(1.32));
-          vec3 nightLights = texture2D(uNightTex, eqUv).rgb;
-          float specMask = texture2D(uSpecTex, eqUv).r;
-          float baseClouds = texture2D(uCloudsTex, eqUv).r;
-          float cloudsShadow = texture2D(uCloudsTex, eqUv - vec2(0.0018, 0.0012)).r;
-
-          // High-frequency procedural cloud filaments & continental micro-albedo so close-up orbital limb is 4K crisp
-          float cloudDetail = fbmMicro(eqUv * vec2(320.0, 160.0));
-          float clouds = clamp(baseClouds * (0.72 + 0.52 * cloudDetail), 0.0, 1.0);
-          float landMicro = fbmMicro(eqUv * vec2(480.0, 240.0));
-          dayCol *= mix(0.86 + 0.28 * landMicro, 1.0, specMask);
+          vec3 dayCol = pow(textureGrad(uDayTex, eqUv, uvDx, uvDy).rgb, vec3(1.32));
+          vec3 nightLights = textureGrad(uNightTex, eqUv, uvDx, uvDy).rgb;
+          float specMask = textureGrad(uSpecTex, eqUv, uvDx, uvDy).r;
+          float clouds = textureGrad(uCloudsTex, eqUv, uvDx, uvDy).r;
+          float cloudsShadow = textureGrad(uCloudsTex, eqUv - vec2(0.0018, 0.0012), uvDx, uvDy).r;
 
           vec3 N = normalize(vNormal);
           vec3 L = normalize(uSunDir);
@@ -1062,11 +1037,8 @@ export class SparkPortalRenderer {
 
           vec3 twilightGlow = vec3(0.92, 0.36, 0.10) * twilightFactor * (0.20 + 0.32 * clouds);
 
-          // Razor-sharp pinpoint city micro-clusters on the nightside (eliminates blocky low-res PNG artifacts)
-          float macroCityMask = smoothstep(0.16, 0.72, dot(nightLights, vec3(0.333))) * (1.0 - specMask * 0.9);
-          float microStreets = smoothstep(0.56, 0.86, fbmMicro(eqUv * vec2(780.0, 390.0)));
-          float cityPinpoints = pow(hash21(floor(eqUv * vec2(1800.0, 900.0))), 8.0);
-          vec3 cityGlow = vec3(1.45, 0.95, 0.42) * macroCityMask * (0.35 * microStreets + 0.95 * cityPinpoints) * (1.0 - clouds * 0.72);
+          // NASA Black Marble 2016 city light (dim base layer removed at bake time), dimmed under cloud
+          vec3 cityGlow = nightLights * CITY_LIGHT_GAIN * (1.0 - clouds * 0.72);
 
           vec3 darkContinents = oceanTint * vec3(0.015, 0.034, 0.075) + vec3(0.005, 0.014, 0.032) * (1.0 - specMask * 0.5);
           vec3 nightEarth = darkContinents + cityGlow + vec3(0.012, 0.026, 0.055) * clouds;

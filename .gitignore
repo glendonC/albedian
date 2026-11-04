@@ -53,3 +53,6 @@ docs/internal/
 
 # Offline bake caches (archive responses for scripts/bake_catalog_star_tiles.py)
 .cache/
+
+# Look-dev source data (NASA downloads) and renders, reproducible from scripts/lookdev
+data/lookdev/
