@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verifies that all 14 core Albedian domain schemas are exported in @albedian/contracts
+ * Verifies that the core Albedian domain schemas are exported in @albedian/contracts
  * and validates all Kiro 1.4.62 workspace hooks (.kiro/hooks/*.kiro.hook).
  */
 import fs from 'node:fs';
@@ -22,6 +22,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'VoiceActionSchema',
   'NavigationHistorySchema',
   'ExportArtifactSchema',
+  'RenderLayerSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
