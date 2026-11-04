@@ -36,7 +36,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
 
 - **Science.**
   - The ephemeris uses Keplerian elements. It has no Sun, Mercury or Neptune, its Moon is geocentric (topocentric parallax is up to about 1 degree [inference]), and its magnitudes are fixed.
-  - Radiometry assumes a fixed natural sky and has no light-pollution data. Its target is fixed at 8.2 degrees from the Moon and magnitude 3, which was Deneb Algedi in the first test clip: a default in `services/api.py:239`, hardcoded in `services/media/discovery.py:439`.
+  - Radiometry assumes a fixed natural sky and has no light-pollution data. Its target is fixed at 8.2 degrees from the Moon and magnitude 3, which was Deneb Algedi in the first test clip: a default in `services/science/router.py:184`, hardcoded in `services/media/discovery.py:439`.
 - **Language.**
   - Commands go through regex parsers.
   - The optional Claude call is a raw HTTP request to an old, hardcoded model (`claude-3-5-haiku-latest`), and its output is not schema-checked.
@@ -47,7 +47,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
   - Only the cislunar scene has layer disclosures.
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
   - `derivePlanetaryWorldDescriptor` in `apps/web/src/spatial/SparkPortalRenderer.ts` invents planets for any star. Nothing calls it.
-- **Security.** CORS allows any origin with credentials (`services/api.py:47`). The client chooses the `uploads_dir`, `public_dir` and `artifacts_dir` it scans (`services/api.py:364`), and the responses include absolute file paths.
+- **Security.** CORS allows any origin with credentials (`services/api.py:48`). The client chooses the `uploads_dir`, `public_dir` and `artifacts_dir` it scans (`services/media/router.py:34`), and the responses include absolute file paths.
 
 ## 2. Decisions waiting on you
 
