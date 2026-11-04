@@ -25,7 +25,8 @@ class RestoreRequest(BaseModel):
     preserve_stars: bool = Field(default=True, alias="preserveStars")
     frames: list[list[list[float]]] | None = None
     image_luma: list[list[float]] | None = None
-    source_asset_id: str = Field(default="asset-demo-orion", alias="sourceAssetId")
+    # The recording the frames come from; the response hashes the frames it received itself
+    source_asset_id: str = Field(alias="sourceAssetId", min_length=1)
 
 
 _NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input for a missing observation."

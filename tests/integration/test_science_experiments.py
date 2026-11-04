@@ -16,6 +16,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -55,6 +56,17 @@ from services.science.solver import (
 # at nobody: the open North Atlantic, about 1,321 km from Flores in the Azores. PLATE_MOMENT has Orion high
 # on a moonless night; MOON_MOMENT has the Moon at 33 degrees altitude, azimuth 222 degrees (repo ephemeris).
 PLATE_MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+
+
+def _sources(frame: np.ndarray) -> dict[str, str]:
+    """The id and SHA-256 a recording would carry, here of the synthetic frame the test builds."""
+    digest = hashlib.sha256(np.ascontiguousarray(frame).tobytes()).hexdigest()
+    return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
+
+
+def _request_sources(frame: np.ndarray) -> dict[str, str]:
+    sources = _sources(frame)
+    return {"sourceAssetId": sources["source_asset_id"], "sourceSha256": sources["source_sha256"]}
 MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 
@@ -162,6 +174,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
         width=width,
         height=height,
         **PLATE_MOMENT,
+        **_sources(frame),
     )
     assert solution.status == "calibrated"
     assert solution.quality.passed_independent_verification is True
@@ -187,7 +200,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     black_frame = np.zeros((height, width), dtype=np.float64)
     black_dets = detect_point_sources(black_frame, snr_threshold=3.5)
     assert len(black_dets) == 0
-    black_sol = solve_and_verify_field(black_dets, width=width, height=height, **PLATE_MOMENT)
+    black_sol = solve_and_verify_field(black_dets, width=width, height=height, **PLATE_MOMENT, **_sources(black_frame))
     assert black_sol.status in ("predicted_only", "unresolved")
     assert black_sol.status != "calibrated"
     assert black_sol.held_out_inliers == 0
@@ -196,7 +209,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     rng = np.random.default_rng(999)
     noise_frame = rng.normal(loc=20.0, scale=3.0, size=(height, width))
     noise_dets = detect_point_sources(noise_frame, snr_threshold=3.5)
-    noise_sol = solve_and_verify_field(noise_dets, width=width, height=height, **PLATE_MOMENT)
+    noise_sol = solve_and_verify_field(noise_dets, width=width, height=height, **PLATE_MOMENT, **_sources(noise_frame))
     assert noise_sol.status in ("predicted_only", "unresolved")
     assert noise_sol.status != "calibrated"
     assert all(f.evidence_class != "catalog_matched" for f in noise_sol.findings)
@@ -253,7 +266,7 @@ def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     # Verify single frame detects < 4 stars and resolves to "unresolved"
     single_dets = detect_point_sources(frames[0], sky_mask=sky_mask, snr_threshold=4.8)
     assert len(single_dets) < 4
-    single_sol = solve_and_verify_field(single_dets, width=width, height=height, **PLATE_MOMENT)
+    single_sol = solve_and_verify_field(single_dets, width=width, height=height, **PLATE_MOMENT, **_sources(frames[0]))
     assert single_sol.status == "unresolved"
 
     # Align and stack the 10 frames
@@ -265,7 +278,9 @@ def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     )
     assert len(stacked_dets) >= 10
 
-    stacked_sol = solve_and_verify_field(stacked_dets, width=width, height=height, **PLATE_MOMENT)
+    stacked_sol = solve_and_verify_field(
+        stacked_dets, width=width, height=height, **PLATE_MOMENT, **_sources(stack_result.composite_luma)
+    )
     assert stacked_sol.status == "calibrated"
     assert stacked_sol.held_out_inliers >= 6
     assert stacked_sol.median_residual_px <= 2.0
@@ -310,7 +325,7 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
         corrupted[hy, hx] += 220.0
 
     detections = detect_point_sources(corrupted, snr_threshold=3.8)
-    solution = solve_and_verify_field(detections, width=width, height=height, **PLATE_MOMENT)
+    solution = solve_and_verify_field(detections, width=width, height=height, **PLATE_MOMENT, **_sources(corrupted))
 
     assert solution.status == "calibrated"
     assert solution.held_out_inliers >= 6
@@ -541,9 +556,9 @@ def test_fastapi_endpoints() -> None:
     assert h_data["catalogStarCount"] >= 16
 
     # 2. POST /api/science/solve (the test sends its own synthetic detections; the API invents none)
-    solve_moment = _as_request(PLATE_MOMENT)
-    assert client.post("/api/science/solve", json={"width": 960, "height": 540, **solve_moment}).status_code == 422
     synth_frame, _, _ = render_synthetic_starfield(width=960, height=540)
+    solve_moment = {**_as_request(PLATE_MOMENT), **_request_sources(synth_frame)}
+    assert client.post("/api/science/solve", json={"width": 960, "height": 540, **solve_moment}).status_code == 422
     synth_dets = [
         {
             "xPx": d.x_px,
@@ -587,12 +602,15 @@ def test_fastapi_endpoints() -> None:
 
     # 4. POST /api/media/restore (explicit synthetic frame; the API no longer makes one up)
     assert client.post(
-        "/api/media/restore", json={"profile": "star_protected", "preserveStars": True}
+        "/api/media/restore", json={"profile": "star_protected", "preserveStars": True, "sourceAssetId": "synthetic-restore"}
     ).status_code == 422
     restore_frame, _, _ = render_synthetic_starfield(width=320, height=180, read_noise_sigma=3.2, seed=101)
     r_restore = client.post(
         "/api/media/restore",
-        json={"profile": "star_protected", "preserveStars": True, "image_luma": restore_frame.tolist()},
+        json={
+            "profile": "star_protected", "preserveStars": True, "image_luma": restore_frame.tolist(),
+            "sourceAssetId": "synthetic-restore",
+        },
     )
     assert r_restore.status_code == 200
     m_data = r_restore.json()
@@ -668,13 +686,13 @@ def test_fastapi_endpoints() -> None:
     # 7. POST /api/science/solve-horizon. The test draws its own narrow portrait frame (Moon blob
     # above a foreground at 55% height) so the Moon's height above the horizon implies a lens
     # scale inside the solver's range; the API no longer plants a Moon in a blank frame.
-    horizon_moment = _as_request(MOON_MOMENT)
-    assert client.post(
-        "/api/science/solve-horizon", json={"width": 64, "height": 1792, **horizon_moment}
-    ).status_code == 422
     horizon_frame = np.zeros((1792, 64), dtype=np.float64)
     horizon_frame[int(1792 * 0.55) :, :] = 40.0
     horizon_frame[118:126, 28:36] = 240.0
+    horizon_moment = {**_as_request(MOON_MOMENT), **_request_sources(horizon_frame)}
+    assert client.post(
+        "/api/science/solve-horizon", json={"width": 64, "height": 1792, **horizon_moment}
+    ).status_code == 422
     r_horizon = client.post(
         "/api/science/solve-horizon",
         json={"width": 64, "height": 1792, "image_luma": horizon_frame.tolist(), **horizon_moment},
@@ -683,7 +701,8 @@ def test_fastapi_endpoints() -> None:
     h_sol = r_horizon.json()
     assert h_sol["status"] == "approximate"
     assert "wcs" in h_sol
-    assert h_sol["quality"]["medianResidualPx"] <= 3.0
+    # The pose's fit residual stays on the Moon it was fitted to: no star was held out, so no held-out residual
+    assert "medianResidualPx" not in h_sol["quality"]
     assert h_sol["quality"]["passedIndependentVerification"] is False
     assert len(h_sol["findings"]) >= 10
 
@@ -736,4 +755,5 @@ def test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames() ->
             "predicted_only",
         )
         assert len(item["ephemerides"]) >= 6
+        assert {e["evidence"]["sourceAssetSha256"] for e in item["ephemerides"]} == {item["sha256"]}
 

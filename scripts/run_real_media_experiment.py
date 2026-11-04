@@ -270,6 +270,7 @@ def main() -> int:
             obs_utc_iso=meta["creation_utc"],
             observer_lat=meta["lat_deg"],
             observer_lon=meta["lon_deg"],
+            source_asset_id=f"asset-{asset_hash[:12]}",
             source_sha256=asset_hash,
         )
         calibration_status = solution.status

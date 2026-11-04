@@ -17,6 +17,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -107,6 +108,7 @@ def test_catalog_matches_describe_each_distance_by_its_own_source() -> None:
     sol = solve_and_verify_field(
         detect_point_sources(frame, snr_threshold=4.0), 960, 540,
         obs_utc_iso="2001-01-01T00:00:00Z", observer_lat=12.5, observer_lon=45.25,
+        source_asset_id="synthetic-field-42", source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
     )
     matched = [f for f in sol.findings if f.evidence_class == "catalog_matched"]
     methods = {f.catalog_star.distance_method for f in matched if f.catalog_star is not None}

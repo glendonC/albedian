@@ -430,7 +430,7 @@ def discover_uploaded_media(
                 lon_deg=lon_deg,
                 observation_solution_id=solution_id,
             )
-            ephemerides = [b.to_contract_dict() for b in ephem_objs]
+            ephemerides = [b.to_contract_dict(source_sha256=sha256) for b in ephem_objs]
             moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
             moon_alt = float(moon_eph.alt_deg) if moon_eph is not None else -15.0
             radiometry_audit = compute_sensor_limiting_magnitude_audit(

@@ -236,7 +236,7 @@
       "/api/science/solve-horizon": {
         "post": {
           "summary": "Post Science Solve Horizon",
-          "description": "Calibrate camera pose from a detected celestial beacon (e.g. Moon) + horizon line + GPS/UTC.",
+          "description": "Fit a camera pose to a detected celestial beacon (the Moon) and the horizon, for the given time and place.",
           "operationId": "post_science_solve_horizon_api_science_solve_horizon_post",
           "requestBody": {
             "content": {
@@ -559,28 +559,43 @@
             },
             "sourceAssetId": {
               "type": "string",
-              "title": "Sourceassetid",
-              "default": "asset-demo-orion"
+              "minLength": 1,
+              "title": "Sourceassetid"
             }
           },
           "additionalProperties": true,
           "type": "object",
+          "required": [
+            "sourceAssetId"
+          ],
           "title": "RestoreRequest",
           "description": "Request payload for `POST /api/media/restore`."
         },
         "SolveRequest": {
           "properties": {
             "width": {
-              "type": "integer",
-              "exclusiveMinimum": 0.0,
-              "title": "Width",
-              "default": 960
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Width"
             },
             "height": {
-              "type": "integer",
-              "exclusiveMinimum": 0.0,
-              "title": "Height",
-              "default": 540
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "exclusiveMinimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Height"
             },
             "detections": {
               "anyOf": [
@@ -650,8 +665,12 @@
             },
             "sourceAssetId": {
               "type": "string",
-              "title": "Sourceassetid",
-              "default": "asset-demo-orion"
+              "minLength": 1,
+              "title": "Sourceassetid"
+            },
+            "sourceSha256": {
+              "type": "string",
+              "title": "Sourcesha256"
             }
           },
           "additionalProperties": true,
@@ -659,7 +678,9 @@
           "required": [
             "observedAtUTC",
             "latDeg",
-            "lonDeg"
+            "lonDeg",
+            "sourceAssetId",
+            "sourceSha256"
           ],
           "title": "SolveRequest",
           "description": "Request payload for `POST /api/science/solve`."
@@ -888,7 +909,38 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": "Send detections or image_luma; the API does not substitute synthetic input for a missing observation."
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceAssetId"
+            ],
+            "msg": "Field required",
+            "input": {
+              "width": 960,
+              "height": 540,
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0
+            }
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceSha256"
+            ],
+            "msg": "Field required",
+            "input": {
+              "width": 960,
+              "height": 540,
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0
+            }
+          }
+        ]
       }
     },
     "solve with an unmeasured detection": {
@@ -898,7 +950,44 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": "Each detection needs a measured `yPx`."
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceAssetId"
+            ],
+            "msg": "Field required",
+            "input": {
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0,
+              "detections": [
+                {
+                  "xPx": 12.5
+                }
+              ]
+            }
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceSha256"
+            ],
+            "msg": "Field required",
+            "input": {
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0,
+              "detections": [
+                {
+                  "xPx": 12.5
+                }
+              ]
+            }
+          }
+        ]
       }
     },
     "horizon solve without image": {
@@ -908,7 +997,34 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": "Send image_luma; the API does not substitute synthetic input for a missing observation."
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceAssetId"
+            ],
+            "msg": "Field required",
+            "input": {
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0
+            }
+          },
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceSha256"
+            ],
+            "msg": "Field required",
+            "input": {
+              "observedAtUTC": "2000-01-01T12:00:00Z",
+              "latDeg": 0.0,
+              "lonDeg": 0.0
+            }
+          }
+        ]
       }
     },
     "restore without frames or image": {
@@ -918,7 +1034,17 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": "Send frames or image_luma; the API does not substitute synthetic input for a missing observation."
+        "detail": [
+          {
+            "type": "missing",
+            "loc": [
+              "body",
+              "sourceAssetId"
+            ],
+            "msg": "Field required",
+            "input": {}
+          }
+        ]
       }
     },
     "unknown path": {

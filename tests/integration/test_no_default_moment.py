@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 
@@ -67,11 +68,19 @@ def test_voice_context_without_location_does_not_borrow_one() -> None:
     assert re.search(r"Lat -?\d", explanation) is None
 
 
+def _sources(frame: np.ndarray) -> dict[str, str]:
+    """The id and SHA-256 a recording would carry, here of the synthetic frame the test builds."""
+    digest = hashlib.sha256(np.ascontiguousarray(frame).tobytes()).hexdigest()
+    return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
+
+
 def test_horizon_solver_without_moon_assumes_no_pointing() -> None:
-    sol = solve_horizon_and_beacon_pose(_night_frame(1792, 1344, moon=False), **MOMENT)
+    frame = _night_frame(1792, 1344, moon=False)
+    sol = solve_horizon_and_beacon_pose(frame, **MOMENT, **_sources(frame))
     assert sol.status == "predicted_only"
     assert sol.wcs is None
-    assert sol.quality.median_residual_px == 999.0
+    # Nothing was held out, so no held-out residual is reported, not a stand-in number
+    assert sol.quality.median_residual_px is None
     assert sol.findings
     assert all(f.evidence_class == "predicted" for f in sol.findings)
     assert all(f.source_detection is None for f in sol.findings)
@@ -80,7 +89,8 @@ def test_horizon_solver_without_moon_assumes_no_pointing() -> None:
 
 def test_horizon_solver_rejects_a_pose_that_misses_its_constraints() -> None:
     # 307 px between Moon and horizon at 33 degrees needs about 0.107 deg/px, outside the lens range
-    sol = solve_horizon_and_beacon_pose(_night_frame(780, 1440, moon=True), **MOMENT)
+    frame = _night_frame(780, 1440, moon=True)
+    sol = solve_horizon_and_beacon_pose(frame, **MOMENT, **_sources(frame))
     assert sol.status == "predicted_only"
     assert sol.wcs is None
     assert "do not fit one camera pose" in sol.warnings[0]
@@ -89,10 +99,12 @@ def test_horizon_solver_rejects_a_pose_that_misses_its_constraints() -> None:
 
 
 def test_horizon_solver_reports_measured_fit_residuals() -> None:
-    sol = solve_horizon_and_beacon_pose(_night_frame(1792, 1344, moon=True), **MOMENT)
+    frame = _night_frame(1792, 1344, moon=True)
+    sol = solve_horizon_and_beacon_pose(frame, **MOMENT, **_sources(frame))
     assert sol.status == "approximate"
     assert sol.wcs is not None
-    assert sol.quality.median_residual_px <= MAX_POSE_FIT_RESIDUAL_PX
+    # The fit residual belongs to the Moon it was fitted to; no star was held out, so the solution reports none
+    assert sol.quality.median_residual_px is None and sol.quality.p95_residual_px is None
     assert sol.quality.passed_independent_verification is False
     moon = next(f for f in sol.findings if f.evidence_class == "observed")
     assert moon.pixel_residual_px is not None and moon.pixel_residual_px <= MAX_POSE_FIT_RESIDUAL_PX
@@ -118,6 +130,7 @@ def test_plate_solver_without_wcs_invents_no_sky_positions() -> None:
     sol = solve_and_verify_field(
         detections, width=960, height=540,
         obs_utc_iso=MOMENT["obs_utc_iso"], observer_lat=MOMENT["observer_lat"], observer_lon=MOMENT["observer_lon"],
+        source_asset_id="synthetic-detections", source_sha256=hashlib.sha256(repr(detections).encode()).hexdigest(),
     )
     assert sol.status != "calibrated"
     assert sol.wcs is None

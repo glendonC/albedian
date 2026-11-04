@@ -38,6 +38,7 @@ from services.science.wcs_models import (
     SourceDetection,
     VideoStackCalibrationResult,
     WCSModel,
+    require_source_sha256,
 )
 
 # The held-out gate, with the thresholds of `evaluateWCSVerificationGate` in packages/evidence. Under a WCS
@@ -356,9 +357,9 @@ def _build_unresolved_solution(
             detected_candidate_count=len(detections),
             matched_inlier_count=0,
             held_out_inliers=0,
-            median_residual_px=999.0,
-            p95_residual_px=999.0,
-            median_residual_arcsec=9999.0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
             passed_independent_verification=False,
         ),
         findings=[
@@ -380,12 +381,17 @@ def solve_and_verify_field(
     catalog_stars: list[CatalogStar] | None = None,
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
-    source_asset_id: str = "asset-0",
-    source_sha256: str = "0" * 64,
+    source_asset_id: str,
+    source_sha256: str,
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-primary",
 ) -> ObservationSolution:
-    """Blind / hint-assisted geometric plate solver with held-out WCS verification (`verify_held_out`)."""
+    """Blind / hint-assisted geometric plate solver with held-out WCS verification (`verify_held_out`).
+
+    `source_asset_id` and `source_sha256` name the recording the detections were measured in; there is no
+    default, because the solver cannot know them.
+    """
+    require_source_sha256(source_sha256)
     catalog = list(catalog_stars) if catalog_stars is not None else get_catalog_stars()
     if hint_ra_deg is not None and hint_dec_deg is not None:
         filtered = [
@@ -503,15 +509,12 @@ def solve_and_verify_field(
     verification = verify_held_out(refined_wcs, detections, catalog, [d for d, _ in train_subset])
     verified_matches = verification.inliers
     held_out_inliers = verification.held_out_inliers
-    if verification.median_residual_px is not None and verification.p95_residual_px is not None:
-        median_residual_px = verification.median_residual_px
-        p95_residual_px = verification.p95_residual_px
-    else:
-        # No held-out star paired with a catalog star, so there is no residual: 999 px is a placeholder that
-        # the contract still requires, not a measurement
-        median_residual_px, p95_residual_px = 999.0, 999.0
-
-    median_residual_arcsec = median_residual_px * refined_wcs.scale_deg_per_px * 3600.0
+    # None when no held-out star paired with a catalog star: there is no residual to report
+    median_residual_px = verification.median_residual_px
+    p95_residual_px = verification.p95_residual_px
+    median_residual_arcsec = (
+        median_residual_px * refined_wcs.scale_deg_per_px * 3600.0 if median_residual_px is not None else None
+    )
     passed_verification = verification.passed
     status = "calibrated" if passed_verification else ("ambiguous" if len(verified_matches) >= 4 else "unresolved")
 

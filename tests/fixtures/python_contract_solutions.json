@@ -1,8 +1,8 @@
 {
   "plate_too_few_sources": {
     "id": "sol-primary",
-    "sourceAssetId": "asset-0",
-    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceAssetId": "synthetic-5f0d2bc2d670",
+    "sourceSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -20,9 +20,6 @@
       "detectedCandidateCount": 4,
       "matchedInlierCount": 0,
       "heldOutInliers": 0,
-      "medianResidualPx": 999.0,
-      "p95ResidualPx": 999.0,
-      "medianResidualArcsec": 9999.0,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -36,7 +33,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -64,7 +61,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -92,7 +89,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -117,8 +114,8 @@
   },
   "plate_wcs_failed_verification": {
     "id": "sol-primary",
-    "sourceAssetId": "asset-0",
-    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceAssetId": "synthetic-cb053efa8778",
+    "sourceSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -136,9 +133,6 @@
       "detectedCandidateCount": 8,
       "matchedInlierCount": 0,
       "heldOutInliers": 0,
-      "medianResidualPx": 999.0,
-      "p95ResidualPx": 999.0,
-      "medianResidualArcsec": 140878.0276080343,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -152,7 +146,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -180,7 +174,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -208,7 +202,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -233,8 +227,8 @@
   },
   "plate_calibrated": {
     "id": "sol-primary",
-    "sourceAssetId": "asset-0",
-    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceAssetId": "synthetic-f1cb8683c732",
+    "sourceSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "calibrated",
@@ -252,10 +246,10 @@
       "detectedCandidateCount": 12,
       "matchedInlierCount": 11,
       "heldOutInliers": 7,
+      "passedIndependentVerification": true,
       "medianResidualPx": 0.11587721002381521,
       "p95ResidualPx": 0.17208332897344245,
-      "medianResidualArcsec": 25.82685551751783,
-      "passedIndependentVerification": true
+      "medianResidualArcsec": 25.82685551751783
     },
     "findings": [
       {
@@ -275,7 +269,7 @@
           "id": "ev-finding-star-rigel",
           "evidenceClass": "catalog_matched",
           "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-rigel",
           "angularResidualArcsec": 13.050233353953237,
@@ -353,7 +347,7 @@
           "id": "ev-finding-star-betelgeuse",
           "evidenceClass": "catalog_matched",
           "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-betelgeuse",
           "angularResidualArcsec": 29.15969756247523,
@@ -431,7 +425,7 @@
           "id": "ev-finding-star-aldebaran",
           "evidenceClass": "catalog_matched",
           "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-aldebaran",
           "angularResidualArcsec": 5.4693991636297925,
@@ -507,7 +501,7 @@
           "id": "ev-finding-obs-12",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
@@ -546,8 +540,8 @@
   },
   "horizon_approximate": {
     "id": "sol-horizon-beacon",
-    "sourceAssetId": "asset-0",
-    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceAssetId": "synthetic-d46cb7a0ae83",
+    "sourceSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "approximate",
@@ -565,9 +559,6 @@
       "detectedCandidateCount": 1,
       "matchedInlierCount": 1,
       "heldOutInliers": 0,
-      "medianResidualPx": 7.389644451905042e-13,
-      "p95ResidualPx": 1.085709300241433e-12,
-      "medianResidualArcsec": 1.1269821117391844e-10,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -581,7 +572,7 @@
           "id": "ev-finding-observed-moon",
           "evidenceClass": "observed",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "angularResidualArcsec": 2.1163953576740562e-10,
           "pixelResidualPx": 1.3877247074257982e-12,
@@ -593,7 +584,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-d46cb7a0ae83",
           "frameTimeSec": 0.0,
           "xPx": 933.5,
           "yPx": 121.5,
@@ -620,7 +611,7 @@
           "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image.",
@@ -646,7 +637,7 @@
           "id": "ev-finding-predicted-star-dabih",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-dabih",
           "distanceUncertaintyNote": "Distance interval [90.3, 112.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
@@ -712,7 +703,7 @@
           "id": "ev-finding-predicted-star-algedi",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-algedi",
           "distanceUncertaintyNote": "Distance interval [33.2, 33.6] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
@@ -780,8 +771,8 @@
   },
   "horizon_predicted_only": {
     "id": "sol-horizon-beacon",
-    "sourceAssetId": "asset-0",
-    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "sourceAssetId": "synthetic-3fe2c526c11d",
+    "sourceSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "predicted_only",
@@ -799,9 +790,6 @@
       "detectedCandidateCount": 0,
       "matchedInlierCount": 0,
       "heldOutInliers": 0,
-      "medianResidualPx": 999.0,
-      "p95ResidualPx": 999.0,
-      "medianResidualArcsec": 9999.0,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -822,7 +810,7 @@
           "id": "ev-finding-predicted-uranus",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image."
@@ -847,7 +835,7 @@
           "id": "ev-finding-predicted-saturn",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image."
@@ -872,7 +860,7 @@
           "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
-          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image.",

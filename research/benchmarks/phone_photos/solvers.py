@@ -16,6 +16,7 @@ Adapters:
 
 from __future__ import annotations
 
+import hashlib
 import math
 import signal
 import time
@@ -87,10 +88,12 @@ def _today(catalog: str) -> Callable[[SolverInput], SolverOutcome]:
         luma = _luma(inp.rgb)
         detections = detect_point_sources(luma)
         h, w = luma.shape
+        sha = hashlib.sha256(np.ascontiguousarray(inp.rgb).tobytes()).hexdigest()
         solution = solve_and_verify_field(
             detections, w, h,
             obs_utc_iso=inp.metadata["utc"], observer_lat=inp.metadata["latDeg"], observer_lon=inp.metadata["lonDeg"],
             catalog_stars=get_all_sky_catalog_stars() if catalog == "all-sky" else None,
+            source_asset_id=f"frame-{sha[:12]}", source_sha256=sha,
         )
         claimed = solution.has_verified_wcs
         matches = [
@@ -106,7 +109,7 @@ def _today(catalog: str) -> Callable[[SolverInput], SolverOutcome]:
             matches=matches,
             detections=len(detections),
             held_out_inliers=solution.quality.held_out_inliers,
-            self_median_residual_px=median if median < 900.0 else None,
+            self_median_residual_px=median,
             elapsed_s=time.perf_counter() - start,
         )
 
@@ -117,8 +120,10 @@ def _horizon_moon(inp: SolverInput) -> SolverOutcome:
     from services.science.solver import solve_horizon_and_beacon_pose
 
     start = time.perf_counter()
+    sha = hashlib.sha256(np.ascontiguousarray(inp.rgb).tobytes()).hexdigest()
     solution = solve_horizon_and_beacon_pose(
-        _luma(inp.rgb), obs_utc_iso=inp.metadata["utc"], observer_lat=inp.metadata["latDeg"], observer_lon=inp.metadata["lonDeg"]
+        _luma(inp.rgb), obs_utc_iso=inp.metadata["utc"], observer_lat=inp.metadata["latDeg"], observer_lon=inp.metadata["lonDeg"],
+        source_asset_id=f"frame-{sha[:12]}", source_sha256=sha,
     )
     median = solution.quality.median_residual_px
     return SolverOutcome(
@@ -128,7 +133,7 @@ def _horizon_moon(inp: SolverInput) -> SolverOutcome:
         matches=[],
         detections=solution.quality.detected_candidate_count,
         held_out_inliers=solution.quality.held_out_inliers,
-        self_median_residual_px=median if median < 900.0 else None,
+        self_median_residual_px=median,
         elapsed_s=time.perf_counter() - start,
     )
 

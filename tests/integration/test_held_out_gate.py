@@ -10,6 +10,7 @@ Covers:
 - A fit that predicts six held-out stars exactly and misses eight by 5 px fails on its median alone
 - A fit that misses six of fourteen held-out stars by 7 px fails on its 95th percentile alone
 - The same fit with its misses at 5 px calibrates, and reports the misses in its residuals
+- A fit with nothing held out (four stars and two detections far from every star) reports no residual
 - PBT: `verify_held_out` reports the residual of every held-out pair, leaves the training stars out,
   counts the inliers inside the inlier gate, and passes exactly when all three conditions hold
 - Real clips (owner media): the decoded frames reach the gate only on chance triangle matches, do not
@@ -19,6 +20,7 @@ Covers:
 from __future__ import annotations
 
 import math
+import hashlib
 from pathlib import Path
 
 from hypothesis import example, given, settings, strategies as st
@@ -72,8 +74,16 @@ def _miss(names: tuple[str, ...], distance_px: float) -> dict[str, tuple[float, 
     return {name: (distance_px, 2.0 * math.pi * k / len(names) + 0.3) for k, name in enumerate(names)}
 
 
+def _sources(data: object) -> dict[str, str]:
+    """The id and SHA-256 a recording would carry, here of the synthetic input the test builds."""
+    raw = np.ascontiguousarray(data).tobytes() if isinstance(data, np.ndarray) else repr(data).encode()
+    digest = hashlib.sha256(raw).hexdigest()
+    return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
+
+
 def test_a_fit_that_misses_most_held_out_stars_fails_on_its_median() -> None:
-    sol = solve_and_verify_field(_field(_miss(OUTLYING, 5.0)), WIDTH, HEIGHT, **MOMENT)
+    detections = _field(_miss(OUTLYING, 5.0))
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
     # Six held-out Orion stars sit inside the inlier gate and the p95 is 5 px, so only the median decides
     assert sol.quality.median_residual_px == pytest.approx(5.0, abs=0.01)
     assert sol.quality.p95_residual_px == pytest.approx(5.0, abs=0.01)
@@ -85,7 +95,8 @@ def test_a_fit_that_misses_most_held_out_stars_fails_on_its_median() -> None:
 
 
 def test_a_fit_with_a_few_far_held_out_misses_fails_on_its_p95() -> None:
-    sol = solve_and_verify_field(_field(_miss(OUTLYING[:6], 7.0)), WIDTH, HEIGHT, **MOMENT)
+    detections = _field(_miss(OUTLYING[:6], 7.0))
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
     # Eight held-out inliers and a median of 0 px, so only the 95th percentile decides
     assert sol.quality.p95_residual_px == pytest.approx(7.0, abs=0.01)
     assert sol.quality.median_residual_px == pytest.approx(0.0, abs=0.01)
@@ -96,7 +107,8 @@ def test_a_fit_with_a_few_far_held_out_misses_fails_on_its_p95() -> None:
 
 def test_the_same_fit_calibrates_when_its_misses_stay_within_bounds() -> None:
     misses = OUTLYING[:6]
-    sol = solve_and_verify_field(_field(_miss(misses, 5.0)), WIDTH, HEIGHT, **MOMENT)
+    detections = _field(_miss(misses, 5.0))
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
     # The six misses are measured and reported, not dropped from the statistics
     assert sol.quality.p95_residual_px == pytest.approx(5.0, abs=0.01)
     assert sol.quality.median_residual_px == pytest.approx(0.0, abs=0.01)
@@ -104,6 +116,21 @@ def test_the_same_fit_calibrates_when_its_misses_stay_within_bounds() -> None:
     assert sol.status == "calibrated"
     matched = {f.common_name for f in sol.findings if f.evidence_class == "catalog_matched"}
     assert len(matched) == 12 and matched.isdisjoint(misses)
+
+
+def test_a_fit_with_nothing_held_out_reports_no_residual() -> None:
+    # Four stars to fit and two detections at least 260 px from every pinned star, so nothing is held out
+    full = _field({})
+    detections = [full[NAMES.index(name)] for name in ("Betelgeuse", "Rigel", "Bellatrix", "Procyon")] + [
+        SourceDetection(x_px=x, y_px=y, flux=900.0, snr=9.0, fwhm_px=2.6, centroid_uncertainty_px=0.1)
+        for x, y in ((60.0, 60.0), (1860.0, 1020.0))
+    ]
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
+    assert "WCS solution did not pass independent held-out calibration gate." in sol.warnings
+    assert sol.quality.held_out_inliers == 0 and sol.status != "calibrated"
+    quality = sol.quality
+    assert (quality.median_residual_px, quality.p95_residual_px, quality.median_residual_arcsec) == (None, None, None)
+    assert not {"medianResidualPx", "p95ResidualPx", "medianResidualArcsec"} & sol.to_contract_dict()["quality"].keys()
 
 
 @pytest.mark.owner_media("data/artifacts")
@@ -115,7 +142,10 @@ def test_real_clip_frames_do_not_calibrate_and_report_their_held_out_residuals()
         rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float64)
         luma = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
         height, width = luma.shape
-        sol = solve_and_verify_field(detect_point_sources(luma), width, height, **MOMENT)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        sol = solve_and_verify_field(
+            detect_point_sources(luma), width, height, **MOMENT, source_asset_id=f"frame-{digest[:12]}", source_sha256=digest
+        )
         assert sol.status != "calibrated" and sol.wcs is None
         assert sol.quality.held_out_inliers < 6
         # Thousands of detections let the triangle search settle on a chance alignment whose held-out pairs

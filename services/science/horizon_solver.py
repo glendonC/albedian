@@ -22,6 +22,7 @@ from services.science.wcs_models import (
     SolutionQuality,
     SourceDetection,
     WCSModel,
+    require_source_sha256,
 )
 
 
@@ -39,8 +40,9 @@ def solve_horizon_and_beacon_pose(
     obs_utc_iso: str,
     observer_lat: float,
     observer_lon: float,
-    source_asset_id: str = "asset-0",
-    source_sha256: str = "0000000000000000000000000000000000000000000000000000000000000000",
+    *,
+    source_asset_id: str,
+    source_sha256: str,
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-horizon-beacon",
 ) -> ObservationSolution:
@@ -50,7 +52,10 @@ def solve_horizon_and_beacon_pose(
     and scale. Without either, or when one pose cannot reproduce both, camera pointing is unknown
     and the result is `predicted_only`: the sky predicted for the given time and place, with no WCS and no
     pixel positions.
+
+    `source_asset_id` and `source_sha256` name the recording `image` comes from; there is no default.
     """
+    require_source_sha256(source_sha256)
     luma = _to_luma_2d(image)
     h, w = luma.shape
 
@@ -299,14 +304,15 @@ def solve_horizon_and_beacon_pose(
 
     moment = f"{observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}"
     if wcs is not None and fit_residuals_px is not None and beacon_detection is not None and horizon_y is not None:
-        median_px = float(np.median(fit_residuals_px))
+        # No star was held out, so there is no held-out residual; the pose's own fit residual stays on the
+        # observed Moon finding it was fitted to
         quality = SolutionQuality(
             detected_candidate_count=1,
             matched_inlier_count=1,
             held_out_inliers=0,
-            median_residual_px=median_px,
-            p95_residual_px=float(np.percentile(fit_residuals_px, 95.0)),
-            median_residual_arcsec=median_px * wcs.scale_deg_per_px * 3600.0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
             passed_independent_verification=False,
         )
         status = "approximate"
@@ -327,9 +333,9 @@ def solve_horizon_and_beacon_pose(
             detected_candidate_count=1 if beacon_detection is not None else 0,
             matched_inlier_count=0,
             held_out_inliers=0,
-            median_residual_px=999.0,
-            p95_residual_px=999.0,
-            median_residual_arcsec=9999.0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
             passed_independent_verification=False,
         )
         status = "predicted_only"

@@ -6,12 +6,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import math
+import re
 
 import numpy as np
 
 from services.science.catalog import CatalogStar, bailer_jones_cartesian_pc
 
 EVIDENCE_CLASSES = ("observed", "catalog_matched", "predicted", "simulated")
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def require_source_sha256(sha256: str) -> str:
+    """The source asset's SHA-256 as 64 lowercase hex digits. The all-zero string is refused: it is a placeholder
+    for a hash nobody computed, not a hash."""
+    if not _SHA256_HEX.fullmatch(sha256):
+        raise ValueError("source_sha256 must be the source asset's SHA-256 as 64 lowercase hex digits.")
+    if set(sha256) == {"0"}:
+        raise ValueError("source_sha256 of 64 zeros is a placeholder, not a hash: pass the source asset's SHA-256.")
+    return sha256
 
 
 @dataclass(frozen=True)
@@ -259,7 +271,8 @@ class CelestialFindingRecord:
     angular_residual_arcsec: float | None = None
     verified_by_holdout: bool = False
     limitations: tuple[str, ...] = ("Measured from sensor observation.",)
-    source_sha256: str = "0" * 64
+    # The SHA-256 of the recording this finding belongs to: required, since no record can know it by default
+    source_sha256: str = field(kw_only=True)
 
     def __post_init__(self) -> None:
         if self.evidence_class not in EVIDENCE_CLASSES:

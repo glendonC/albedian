@@ -3,7 +3,7 @@
 The planets come from the approximate Keplerian elements of Standish and Williams (1992), as JPL's Solar System
 Dynamics group publishes them for 1800 to 2050 ("Approximate Positions of the Planets"), seen from the Earth-Moon
 barycentre and without light-time correction. The Moon comes from Meeus (1998) chapter 47 cut to its 6 largest
-longitude, 4 latitude and 5 distance terms, seen from the Earth's centre. No JPL Horizons request and no DE440
+longitude, 4 latitude and 4 distance terms, seen from the Earth's centre. No JPL Horizons request and no DE440
 file is involved; magnitudes are not computed. Every finding is `predicted`: computed from time and place, never
 measured in an image.
 """
@@ -23,6 +23,7 @@ from services.science.catalog import (
     ra_dec_to_unit_vector,
     unit_vector_to_ra_dec,
 )
+from services.science.wcs_models import require_source_sha256
 
 AU_PER_PARSEC = 206264.80624709636
 AU_KM = 149597870.7
@@ -34,7 +35,7 @@ PLANET_METHOD = (
     "Standish and Williams (1992) approximate Keplerian elements (JPL Solar System Dynamics, valid 1800 to 2050), "
     "seen from the Earth-Moon barycentre without light-time correction"
 )
-MOON_METHOD = "Meeus (1998) chapter 47, its 6 largest longitude, 4 latitude and 5 distance terms, geocentric"
+MOON_METHOD = "Meeus (1998) chapter 47, its 6 largest longitude, 4 latitude and 4 distance terms, geocentric"
 # Nominal heliocentric errors of those elements for 1800 to 2050, as published with them: longitude (arcsec),
 # latitude (arcsec), distance (1000 km). "Earth" is the Earth-Moon barycentre row.
 PUBLISHED_ERRORS_1800_2050: dict[str, tuple[float, float, float]] = {
@@ -204,9 +205,14 @@ class EphemerisFinding:
     method: str
     limitations: tuple[str, ...]
 
-    def to_contract_dict(self, source_sha256: str = "0" * 64) -> dict:
+    def to_contract_dict(self, *, source_sha256: str | None) -> dict:
         """Format as @albedian/contracts CelestialFinding dictionary. No catalog reference: no catalog
-        stands behind a position computed from a model."""
+        stands behind a position computed from a model.
+
+        `source_sha256` is the SHA-256 of the recording the prediction was made for, or None when it was made
+        for a time and place alone; there is no default, and None leaves the key out rather than invent one.
+        """
+        evidence_source = {} if source_sha256 is None else {"sourceAssetSha256": require_source_sha256(source_sha256)}
         return {
             "id": self.id,
             "observationSolutionId": self.observation_solution_id,
@@ -235,7 +241,7 @@ class EphemerisFinding:
                 "id": f"ev-ephem-{self.name.lower()}",
                 "evidenceClass": "predicted",
                 "verificationMethod": self.method,
-                "sourceAssetSha256": source_sha256,
+                **evidence_source,
                 "distanceUncertaintyNote": (
                     f"Geocentric distance {self.distance_au:.6f} AU, between {self.distance_lower_au:.6f} and "
                     f"{self.distance_upper_au:.6f} AU from the model's error bounds"

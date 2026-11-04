@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -37,6 +38,15 @@ WIDTH, HEIGHT = 960, 540
 MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 CONTRACT_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_contract_solutions.json"
+# The SHA-256 the hand-built records below cite: of the words, since they belong to no recording
+RECORD_SHA = hashlib.sha256(b"hand-built test record").hexdigest()
+
+
+def _sources(data: object) -> dict[str, str]:
+    """The id and SHA-256 a recording would carry, here of the synthetic input the test builds."""
+    raw = np.ascontiguousarray(data).tobytes() if isinstance(data, np.ndarray) else repr(data).encode()
+    digest = hashlib.sha256(raw).hexdigest()
+    return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"
 
 
@@ -81,7 +91,7 @@ def test_pbt_arbitrary_detections_get_no_sky_position_without_verified_wcs(
 ) -> None:
     hint_ra, hint_dec = hint if hint is not None else (None, None)
     sol = solve_and_verify_field(
-        detections, WIDTH, HEIGHT, hint_ra_deg=hint_ra, hint_dec_deg=hint_dec, **MOMENT
+        detections, WIDTH, HEIGHT, hint_ra_deg=hint_ra, hint_dec_deg=hint_dec, **MOMENT, **_sources(detections)
     )
     _assert_sky_positions_follow_verified_wcs(sol, detections)
 
@@ -100,7 +110,7 @@ def test_pbt_synthetic_starfields_place_detections_only_through_a_verified_wcs(
         width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=flux_scale, seed=seed
     )
     detections = detect_point_sources(frame, snr_threshold=4.0)
-    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT)
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(frame))
     _assert_sky_positions_follow_verified_wcs(sol, detections)
 
 
@@ -154,6 +164,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
                 if with_detection
                 else None
             ),
+            source_sha256=RECORD_SHA,
         )
 
     if not valid:
@@ -185,28 +196,28 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
     det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
     pixel_only = CelestialFindingRecord(
         id="finding-obs-1", observation_solution_id="sol-1", evidence_class="observed",
-        title="Observed Point Source #1", subtitle="Measured", source_detection=det,
+        title="Observed Point Source #1", subtitle="Measured", source_detection=det, source_sha256=RECORD_SHA,
     )
     placed = CelestialFindingRecord(
         id="finding-obs-2", observation_solution_id="sol-1", evidence_class="observed",
         title="Observed Point Source #2", subtitle="Measured", source_detection=det,
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0, source_sha256=RECORD_SHA,
     )
     matched = CelestialFindingRecord(
         id="finding-star-x", observation_solution_id="sol-1", evidence_class="catalog_matched",
         title="Matched star", subtitle="Catalog", source_detection=det,
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0, source_sha256=RECORD_SHA,
     )
     wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
 
     def solution(wcs_model: WCSModel | None, passed: bool, finding: CelestialFindingRecord) -> ObservationSolution:
         quality = SolutionQuality(
             detected_candidate_count=1, matched_inlier_count=0, held_out_inliers=0,
-            median_residual_px=999.0, p95_residual_px=999.0, median_residual_arcsec=9999.0,
+            median_residual_px=None, p95_residual_px=None, median_residual_arcsec=None,
             passed_independent_verification=passed,
         )
         return ObservationSolution(
-            id="sol-1", source_asset_id="asset-0", source_sha256="0" * 64, frame_time_sec=0.0, revision=1,
+            id="sol-1", source_asset_id="hand-built", source_sha256=RECORD_SHA, frame_time_sec=0.0, revision=1,
             status="calibrated" if passed else "unresolved", observed_at_utc=MOMENT["obs_utc_iso"],
             observer_lat=MOMENT["observer_lat"], observer_lon=MOMENT["observer_lon"],
             wcs=wcs_model, quality=quality, findings=[finding],
@@ -250,12 +261,17 @@ def build_contract_samples() -> dict[str, dict]:
                      (880.1, 444.4), (530.0, 60.0), (66.0, 333.0), (640.0, 255.0)]
     ]
     frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
+    moon_frame, no_moon_frame = _night_frame(1792, 1344, moon=True), _night_frame(1792, 1344, moon=False)
     samples = {
-        "plate_too_few_sources": solve_and_verify_field(too_few, WIDTH, HEIGHT, **MOMENT),
-        "plate_wcs_failed_verification": solve_and_verify_field(unverified, WIDTH, HEIGHT, **MOON_MOMENT),
-        "plate_calibrated": solve_and_verify_field(detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT),
-        "horizon_approximate": solve_horizon_and_beacon_pose(_night_frame(1792, 1344, moon=True), **MOON_MOMENT),
-        "horizon_predicted_only": solve_horizon_and_beacon_pose(_night_frame(1792, 1344, moon=False), **MOON_MOMENT),
+        "plate_too_few_sources": solve_and_verify_field(too_few, WIDTH, HEIGHT, **MOMENT, **_sources(too_few)),
+        "plate_wcs_failed_verification": solve_and_verify_field(
+            unverified, WIDTH, HEIGHT, **MOON_MOMENT, **_sources(unverified)
+        ),
+        "plate_calibrated": solve_and_verify_field(
+            detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT, **_sources(frame)
+        ),
+        "horizon_approximate": solve_horizon_and_beacon_pose(moon_frame, **MOON_MOMENT, **_sources(moon_frame)),
+        "horizon_predicted_only": solve_horizon_and_beacon_pose(no_moon_frame, **MOON_MOMENT, **_sources(no_moon_frame)),
     }
     out: dict[str, dict] = {}
     for name, sol in samples.items():

@@ -2,7 +2,7 @@
 
 The planets come from the approximate Keplerian elements of Standish and Williams (1992) that JPL's Solar System
 Dynamics group publishes for 1800 to 2050, with nominal heliocentric errors per planet; the Moon from Meeus
-(1998) chapter 47 cut to its 6 largest longitude, 4 latitude and 5 distance terms, seen from the Earth's centre.
+(1998) chapter 47 cut to its 6 largest longitude, 4 latitude and 4 distance terms, seen from the Earth's centre.
 No JPL Horizons request and no DE440 file stands behind either, so no output may say so, and no fixed
 magnitude may pass for the one at the moment.
 
@@ -20,6 +20,7 @@ Covers:
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import math
 
@@ -61,7 +62,7 @@ def _sep_arcsec(u, v) -> float:
 
 def test_no_output_names_horizons_or_de440_or_states_a_magnitude() -> None:
     items = ephemeris.compute_solar_system_ephemerides("2030-11-01T22:32:00Z", 30.0, -40.0, bodies=(*PLANETS, "Moon"))
-    payloads = [item.to_contract_dict() for item in items]
+    payloads = [item.to_contract_dict(source_sha256=None) for item in items]
     text = json.dumps(payloads)
     assert "Horizons" not in text and "DE440" not in text and "JPL-" not in text
     assert all("catalogRef" not in p and "apparentMagnitude" not in json.dumps(p) for p in payloads)
@@ -100,7 +101,7 @@ def test_pbt_planet_uncertainty_covers_the_published_error_and_the_omitted_light
     assert item.uncertainty_arcsec >= published_arcsec + light_time_arcsec - 1e-9
     assert item.distance_lower_au <= item.distance_au - dist * 1000.0 / AU_KM
     assert item.distance_upper_au >= item.distance_au + dist * 1000.0 / AU_KM
-    payload = item.to_contract_dict()
+    payload = item.to_contract_dict(source_sha256=None)
     assert payload["skyPosition"]["uncertaintyArcsec"] == item.uncertainty_arcsec
     assert "Standish and Williams (1992)" in payload["evidence"]["verificationMethod"]
 
@@ -114,8 +115,10 @@ def test_pbt_moon_bounds_cover_its_error_and_it_says_it_is_geocentric(when: date
     reference = sc.moon_geocentric_icrs_km(jd_utc + am.tt_minus_utc_seconds(jd_utc) / 86400.0)
     assert _sep_arcsec(np.array(ra_dec_to_unit_vector(moon.ra_deg, moon.dec_deg)), reference) <= moon.uncertainty_arcsec
     assert moon.distance_lower_au * AU_KM <= float(np.linalg.norm(reference)) <= moon.distance_upper_au * AU_KM
-    payload = moon.to_contract_dict()
+    payload = moon.to_contract_dict(source_sha256=None)
     assert "Meeus (1998) chapter 47" in payload["evidence"]["verificationMethod"]
+    # _compute_moon_geocentric_icrs keeps 6 periodic longitude, 4 latitude and 4 distance terms
+    assert "6 largest longitude, 4 latitude and 4 distance terms" in payload["evidence"]["verificationMethod"]
     shift = math.degrees(math.asin(6378.137 / (moon.distance_au * AU_KM))) * math.cos(math.radians(moon.alt_deg)) * 3600
     geocentric = [text for text in payload["evidence"]["limitations"] if "geocentric" in text.lower()]
     assert geocentric and f"{shift:,.0f} arcsec" in geocentric[0]
@@ -129,7 +132,10 @@ def _night_frame(height: int, width: int) -> np.ndarray:
 
 
 def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date() -> None:
-    sol = solve_horizon_and_beacon_pose(_night_frame(1792, 1344), **MOON_MOMENT)
+    frame = _night_frame(1792, 1344)
+    sol = solve_horizon_and_beacon_pose(
+        frame, **MOON_MOMENT, source_asset_id="synthetic-night", source_sha256=hashlib.sha256(frame.tobytes()).hexdigest()
+    )
     assert sol.status == "approximate"
     assert not any("QuickTime" in limitation for f in sol.findings for limitation in f.limitations)
     assert any("geocentric" in warning.lower() for warning in sol.warnings)

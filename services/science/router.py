@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
@@ -32,6 +32,7 @@ from services.science.solver import (
     solve_and_verify_field,
     solve_horizon_and_beacon_pose,
 )
+from services.science.wcs_models import require_source_sha256
 
 router = APIRouter()
 
@@ -41,8 +42,9 @@ class SolveRequest(BaseModel):
 
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
-    width: int = Field(default=960, gt=0)
-    height: int = Field(default=540, gt=0)
+    # The image's size: taken from image_luma's own shape, and required with detections
+    width: int | None = Field(default=None, gt=0)
+    height: int | None = Field(default=None, gt=0)
     detections: list[dict[str, Any]] | None = None
     image_luma: list[list[float]] | None = None
     hint_ra_deg: float | None = Field(default=None, alias="hintRaDeg")
@@ -50,7 +52,14 @@ class SolveRequest(BaseModel):
     obs_utc_iso: str = Field(alias="observedAtUTC")
     observer_lat: float = Field(alias="latDeg")
     observer_lon: float = Field(alias="lonDeg")
-    source_asset_id: str = Field(default="asset-demo-orion", alias="sourceAssetId")
+    # The recording the input comes from, and its SHA-256: the client hashed the file, the server never sees it
+    source_asset_id: str = Field(alias="sourceAssetId", min_length=1)
+    source_sha256: str = Field(alias="sourceSha256")
+
+    @field_validator("source_sha256")
+    @classmethod
+    def _real_sha256(cls, value: str) -> str:
+        return require_source_sha256(value)
 
 
 class EphemerisRequest(BaseModel):
@@ -133,7 +142,8 @@ def get_science_sky_context(
     )
     ephem_out: list[dict[str, Any]] = []
     for item in ephem_items:
-        d = item.to_contract_dict()
+        # A prediction for a time and place: no recording stands behind it, so it names none
+        d = item.to_contract_dict(source_sha256=None)
         d["name"] = item.name
         d["raDeg"] = float(item.ra_deg)
         d["decDeg"] = float(item.dec_deg)
@@ -217,6 +227,11 @@ def get_science_radiometry_audit(
 def post_science_solve(req: SolveRequest) -> dict[str, Any]:
     """Run point-source extraction, geometric quad plate solving, and held-out WCS verification."""
     if req.detections is not None:
+        if req.width is None or req.height is None:
+            raise HTTPException(
+                status_code=422, detail="Send width and height: the size of the image the detections were measured in."
+            )
+        width, height = req.width, req.height
         parsed_dets: list[SourceDetection] = []
         for d in req.detections:
             parsed_dets.append(
@@ -238,31 +253,41 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
             )
     elif req.image_luma is not None:
         arr = np.asarray(req.image_luma, dtype=np.float64)
+        height, width = int(arr.shape[0]), int(arr.shape[1])
+        if (req.width is not None and req.width != width) or (req.height is not None and req.height != height):
+            raise HTTPException(
+                status_code=422,
+                detail=f"width and height disagree with image_luma, which is {width} x {height} px.",
+            )
         parsed_dets = detect_point_sources(arr, asset_id=req.source_asset_id)
     else:
         raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="detections or image_luma"))
 
     solution = solve_and_verify_field(
         detections=parsed_dets,
-        width=req.width,
-        height=req.height,
+        width=width,
+        height=height,
         hint_ra_deg=req.hint_ra_deg,
         hint_dec_deg=req.hint_dec_deg,
         obs_utc_iso=req.obs_utc_iso,
         observer_lat=req.observer_lat,
         observer_lon=req.observer_lon,
         source_asset_id=req.source_asset_id,
+        source_sha256=req.source_sha256,
     )
     payload = solution.to_contract_dict()
     payload["held_out_inliers"] = solution.held_out_inliers
-    payload["median_residual_px"] = solution.median_residual_px
-    payload["p95_residual_px"] = solution.p95_residual_px
+    # Residuals the solution did not measure stay out, as in the contract's quality block
+    if solution.median_residual_px is not None:
+        payload["median_residual_px"] = solution.median_residual_px
+    if solution.p95_residual_px is not None:
+        payload["p95_residual_px"] = solution.p95_residual_px
     return payload
 
 
 @router.post("/api/science/solve-horizon")
 def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
-    """Calibrate camera pose from a detected celestial beacon (e.g. Moon) + horizon line + GPS/UTC."""
+    """Fit a camera pose to a detected celestial beacon (the Moon) and the horizon, for the given time and place."""
     if req.image_luma is None:
         raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="image_luma"))
     arr = np.asarray(req.image_luma, dtype=np.float64)
@@ -273,6 +298,7 @@ def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
         observer_lat=req.observer_lat,
         observer_lon=req.observer_lon,
         source_asset_id=req.source_asset_id,
+        source_sha256=req.source_sha256,
     )
     return solution.to_contract_dict()
 
@@ -292,7 +318,8 @@ def post_science_ephemeris(req: EphemerisRequest) -> dict[str, Any]:
 
     findings_dicts = []
     for item in ephem:
-        d = item.to_contract_dict()
+        # A prediction for a time and place: no recording stands behind it, so it names none
+        d = item.to_contract_dict(source_sha256=None)
         d["evidence_class"] = "predicted"
         d["name"] = item.name
         findings_dicts.append(d)
