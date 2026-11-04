@@ -2,6 +2,7 @@
 
 Date: 2026-11-03. Spike code: [`apps/webgpu-spike/`](../../apps/webgpu-spike/) (isolated workspace package, its own `three`).
 Machine: Apple M5 Max (40-core GPU, Metal 4), macOS 26.7, Node 24.15.0, pnpm 10.7.1.
+Sections 9, 10 and 12 were brought up to date with `main` after the spike; the measurements are as taken (see the data note in section 4).
 
 Every claim carries one label:
 
@@ -59,6 +60,7 @@ Measured numbers are pipelined medians at 3840x2160 in headless Chrome 156 on We
 - **Camera:** one full orbit of the Local Bubble per 240 frames (radius 22, elevation wave), 60 warm-up frames per configuration. The scaling fixtures orbit their own bounds center at 0.15 of their bounding radius.
 - **GPU timestamps** were recorded but are not used: with Chrome's default quantization they come in 65.5 microsecond steps, and even unquantized their per-pass sums disagree with wall clock by up to 10x on this Metal adapter.
 - **Noise:** an earlier run of the same configuration measured the full-resolution volume at 6.67 ms (4K) against 4.33 ms in the final run; fill-bound configurations varied by up to about 50% between runs, light ones by up to about 25%.
+- **Local Bubble data:** the 2,811 splats the app's loader kept at the time, with the bake's earlier colours and opacities. Both have since changed (section 12): a re-run on `main` draws all 14,281 splats, so the Local Bubble rows below would need re-measuring.
 
 ### Local Bubble scene, WebGPU, pipelined median ms [measured]
 
@@ -132,7 +134,7 @@ Fill-bound work (the volume) runs at nearly the same speed on both backends; Web
 | View-dependent artifacts | Affine (EWA) projection distorts footprints near the camera and at wide FOV; three clips centers outside 1.4x the clip box and caps footprints at 1024 px [verified]. | Resolution limited (voxel size) and stepping noise; the start jitter is a fixed per-pixel pattern that slides with the camera until temporal accumulation is added [inference]. |
 | Physical model | Sorted alpha compositing of projected Gaussians, an approximation of the volume integral; projected opacity is view independent although a real column is not [verified] | Emission-absorption radiative transfer, exact per step; densities can come straight from a 3D dust map in extinction per unit length [proposed] |
 | Chromatic extinction of stars behind dust | No: alpha is one scalar, so attenuation is grey. It would need a per-channel transmittance target or dual-source blending, which none of the three splat renderers provides [verified for three and radix source; inference for Spark]. | Yes, measured above. Because one extinction law applies everywhere, tau at one channel reconstructs all three exactly, so the half-res pass stores only `vec4(L_rgb, tau)` [measured]. |
-| Precision | 8-bit opacity: three 1/255, Spark 1/255, radix 1/128; the Local Bubble's 0.003 to 0.045 lands on about 11 code values in the current app, and 0.003 rounds to 0 in radix [verified]. The spike stores opacity x16 or x32 and divides in the shader [measured]. | Half-float density, no quantization issue at this range [verified]. |
+| Precision | 8-bit opacity: three 1/255, Spark 1/255, radix 1/128; the Local Bubble's 0.003 to 0.045 landed on about 11 code values in the app at the time, and 0.003 rounds to 0 in radix [verified]. The bake now writes one opacity, 0.0039, which also rounds to 0 at radix's 1/128 unless stored scaled [inference]. The spike stores opacity x16 or x32 and divides in the shader [measured]. | Half-float density, no quantization issue at this range [verified]. |
 | Memory | 32 bytes per splat in radix (`extSplats`), about 52 bytes plus sort buffers in three's addon; well under 1 MB for 2,811 splats [verified] | 64 MB for this grid; 0.05 units would be 512 MB, so finer data needs sparse bricks [inference] |
 
 **Answer to the reddening question:** yes. Background stars are dimmed and reddened per ray by the integrated column with CCM89 (R_V = 3.1, A/A_V = 0.887, 1.001, 1.234 at 612, 549 and 465 nm), in the same full-screen pass that integrates the dust emission, for the cost already in the volume numbers. [measured]
@@ -176,22 +178,22 @@ Because TSL compiles to both backends, compute-only features can degrade on WebG
 
 ## 9. Custom shader audit: `SparkPortalRenderer.ts`
 
-The file defines 11 `ShaderMaterial`s and 1 `ShaderPass` (12 GLSL programs). At runtime that is 16 `ShaderMaterial` instances (the starfield helper runs 5 times, the particle helper twice) plus the internal materials of `UnrealBloomPass` and `OutputPass`, which is where "about 20" comes from. [verified]
+Brought up to date with `main` after the spike, where the Gaia DR3 and Hipparcos star tiles (`catalogStars/`) replaced the procedural starfield helper and the Earth shader lost its procedural detail. `SparkPortalRenderer.ts` defines 10 `ShaderMaterial`s and 1 `ShaderPass`, and `catalogStars/CatalogStarField.ts` 1 more `ShaderMaterial` (12 GLSL programs). At runtime that is 12 `ShaderMaterial` instances (the particle helper runs twice; one catalog star material serves every tile and all 5 sky mounts) plus the internal materials of `UnrealBloomPass` and `OutputPass`. Line numbers are `SparkPortalRenderer.ts` unless stated. [verified]
 
 | # | Program (line) | Instances | What it does | Verdict | Days |
 |---|---|---|---|---|---|
-| 1 | `skyMat`, all-sky dome (574) | 1 | ESO Milky Way and NASA star map on a back-side sphere, spectral band remaps, monocle mask with a hard-coded 1600x1000 viewport | Direct port to a background node; replace the hard-coded size with the viewport | 0.5 |
-| 2 | Optical starfield points (729) | 5 | `gl_PointSize` Gaussian core, halo and spikes; 62 named stars plus a hash-generated fill; named stars folded into one hemisphere | Rewrite as the spike's analytic-PSF sprites fed by catalog rows; drop the hash fill | 1.5 |
-| 3 | Curl "plasma" particles (817) | 2 | Vertex-displaced `gl_PointSize` points with sin/cos noise, labeled GPGPU and MHD although it is neither | Drop (or rewrite as sprites with a Modeled label) | 0 to 1 |
-| 4 | Moon (896) | 1 | LRO albedo, LOLA-derived bump, micro-relief noise, Lommel-Seeliger, opposition surge, earthshine | Direct port (TSL node material with a custom lighting function) | 1 |
-| 5 | Earth (1078) | 1 | Day, night, clouds, specular, fbm detail, Bruneton LUT limb, inline tone mapping | Direct port; remove the inline tone mapping | 1.5 |
-| 6 | Earth atmosphere shell (1212) | 1 | Additive back-side limb glow from the Bruneton LUT | Direct port | 0.5 |
-| 7 | Betelgeuse photosphere (1293) | 1 | 6-octave fbm and ridged convection, limb darkening | Direct port (pure math) | 0.75 |
-| 8 | Corona plane (1416) | 1 | Additive fbm rays on a fixed plane | Direct port (billboard it) | 0.25 |
-| 9 | Plasma ring (1491) | 1 | Additive noise filaments on a ring | Direct port | 0.25 |
-| 10 | Nebula plane / black hole (1602) | 1 | Orion and Lagoon image plane, or a 120-step Schwarzschild null-geodesic integrator with disk crossing, Doppler and redshift, inline tone mapping | Split: image plane is a direct port; the geodesic integrator is a rewrite as a TSL full-screen pass at adaptive resolution | 2 |
-| 11 | Planetary world dome (1844) | 1 | 96-step ray-marched terrain with 8-octave analytic-derivative noise, water with Fresnel, four palettes, Saturn rings, Earth disc, Bruneton sky | Rewrite as a TSL full-screen pass at reduced resolution with temporal upsampling | 3.5 |
-| 12 | Cinema optics `ShaderPass` (416) | post | Chromatic aberration, 8-tap anamorphic streak, vignette | Direct port to a TSL post node (r187 has chromatic aberration; the anamorphic streak stays custom) | 0.5 |
+| 1 | `skyMat`, all-sky dome (578) | 1 | ESO Milky Way and NASA star map on a back-side sphere, spectral band remaps, monocle mask with a hard-coded 1600x1000 viewport | Direct port to a background node; replace the hard-coded size with the viewport | 0.5 |
+| 2 | Catalog star points (`CatalogStarField.ts`, 59) | 1 | Gaia DR3 (to G 12) and Hipparcos 2007 tiles streamed per HEALPix cell for the view and limiting magnitude; `gl_PointSize` core and halo sized by catalog flux, spikes brighter than magnitude 1, tint from the catalog colour index | Rewrite as the spike's analytic-PSF sprites fed by the same tiles (WebGPU points are 1 px) | 1.5 |
+| 3 | Curl "plasma" particles (706) | 2 | Vertex-displaced `gl_PointSize` points with sin/cos noise, labeled GPGPU and MHD although it is neither | Drop (or rewrite as sprites with a Modeled label) | 0 to 1 |
+| 4 | Moon (785) | 1 | LRO albedo, LOLA-derived bump, micro-relief noise, Lommel-Seeliger, opposition surge, earthshine | Direct port (TSL node material with a custom lighting function) | 1 |
+| 5 | Earth (963) | 1 | Day (Blue Marble 2004), night lights (Black Marble 2016), clouds and their shadows, specular, Bruneton LUT limb, inline tone mapping | Direct port; remove the inline tone mapping | 1.5 |
+| 6 | Earth atmosphere shell (1068) | 1 | Additive back-side limb glow from the Bruneton LUT | Direct port | 0.5 |
+| 7 | Betelgeuse photosphere (1149) | 1 | 6-octave fbm and ridged convection, limb darkening | Direct port (pure math) | 0.75 |
+| 8 | Corona plane (1272) | 1 | Additive fbm rays on a fixed plane | Direct port (billboard it) | 0.25 |
+| 9 | Plasma ring (1347) | 1 | Additive noise filaments on a ring | Direct port | 0.25 |
+| 10 | Nebula plane / black hole (1458) | 1 | Orion and Lagoon image plane, or a 120-step Schwarzschild null-geodesic integrator with disk crossing, Doppler and redshift, inline tone mapping | Split: image plane is a direct port; the geodesic integrator is a rewrite as a TSL full-screen pass at adaptive resolution | 2 |
+| 11 | Planetary world dome (1700) | 1 | 96-step ray-marched terrain with 8-octave analytic-derivative noise, water with Fresnel, four palettes, Saturn rings, Earth disc, Bruneton sky | Rewrite as a TSL full-screen pass at reduced resolution with temporal upsampling | 3.5 |
+| 12 | Cinema optics `ShaderPass` (418) | post | Chromatic aberration, 8-tap anamorphic streak, vignette | Direct port to a TSL post node (r187 has chromatic aberration; the anamorphic streak stays custom) | 0.5 |
 | | Shared `BRUNETON_ATMO_GLSL_CHUNK` | | LUT lookup with analytic fallback (used by 5, 6, 11) | Port once as a TSL `Fn` | 0.5 |
 | | `EffectComposer` + `UnrealBloomPass` + `OutputPass` | | ACES and Unreal bloom | Replace with the spike's `RenderPipeline` chain | 0.5 |
 | | Spark `SparkRenderer`, 3 `SplatMesh` builders, `SparkControls`, `SparkXr` | | Local Bubble, nebula and terrain-mist splats; controls; WebXR | Local Bubble and nebula become volumes; the 1,800 hash-generated terrain-mist splats are dropped or become volume fog; controls and XR move to three | 2.5 |
@@ -204,7 +206,7 @@ Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula
 2. **Contracts first.** The architecture owner adds a render-layer contract in `packages/contracts` (layer kind, `EvidenceClass`, disclosure string) so stars, dust and capture-site layers carry their evidence class into the UI. [proposed]
 3. **Renderer host.** A `WebGPURenderer` host in `apps/web/src/spatial` with `forceWebGL` fallback, `setAnimationLoop`, resize and DPR handling, readback-based screenshots, and explicit node-frame advancing for offscreen work. [proposed]
 4. **Post chain.** Replace `EffectComposer` with the spike's [`post.ts`](../../apps/webgpu-spike/src/render/post.ts): HalfFloat pass, dust volume, bloom, cinema optics node, AgX, FXAA by default (SMAA as a quality option). Review the ACES-to-AgX look. [proposed]
-5. **Stars.** Replace the five starfield materials with analytic-PSF sprites fed by `allSkyStarfield.ts` data (coordinate with its owner), then Gaia subsets with compute culling; remove the hash-generated fill. [proposed]
+5. **Stars.** Replace the catalog star material in `catalogStars/CatalogStarField.ts` with analytic-PSF sprites fed by the same Gaia DR3 and Hipparcos tiles, then add compute culling for deeper tiles. [proposed]
 6. **Direct ports.** Sky dome, Earth, atmosphere, Moon, photosphere, corona, ring, Bruneton chunk, cinema node. [proposed]
 7. **Dust and nebulae.** Local Bubble and nebula as density volumes (voxelized splats for parity first, then the published dust map), half-res march, CCM89 reddening of everything behind them. [proposed]
 8. **Ray-marched set pieces.** Planetary world and black-hole integrator as TSL full-screen passes with adaptive resolution. [proposed]
@@ -226,8 +228,8 @@ Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula
 
 ## 12. Findings outside the spike's scope
 
-- The app's Local Bubble loader renders 2,811 of the 14,281 rows (stride 2, then the cylindrical cavity rule) and adds a deterministic jitter of `(sin(...) - 0.5) * 0.28`, which ranges from -0.42 to +0.14 and shifts the whole cloud by about -0.14 units per axis on average. [verified]
-- The Local Bubble opacities quantize to about 11 levels in Spark's 8-bit opacity. [verified]
+- Fixed on `main` after the spike: the app's Local Bubble loader drew 2,811 of the 14,281 rows and added a deterministic jitter of `(sin(...) - 0.5) * 0.28`, which ranges from -0.42 to +0.14 and shifted the whole cloud by about -0.14 units per axis on average. Stride 2 dropped half the rows, then a cylinder of radius 4.55 around the splat group's z axis, which runs through the star, removed 63% of the rest of the shell. The loader now draws every row at its own position, and the nebula loader no longer drops every other row either. [verified]
+- Also fixed: the bake gave the Local Bubble colours named after emission lines (H-alpha, [O III]) and an opacity ramp, both shaped around that cylinder, although the model carries no density or emission per point. It now keeps the k-NN PCA orientation and footprints and writes one presentation colour and one opacity, 0.0039, which Spark's 8-bit encoding stores as its smallest step, 1/255. The spike's port (`apps/webgpu-spike/src/data/localBubble.ts`) follows the fixed loader; check out `b257439` to reproduce the measured setup. [verified]
 - The landing showcase logs `THREE.Clock` deprecation warnings on three 0.187. [measured]
 
 ## 13. Reproducing
