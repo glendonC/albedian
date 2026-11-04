@@ -10,7 +10,8 @@ Covers:
 - EXP-04 (`test_exp04_astronomy_aware_point_protection_vs_conventional_denoise`)
 - EXP-08 (`test_exp08_proper_motion_and_historical_epoch_1026ce`)
 - EXP-10 (`test_exp10_video_restoration_and_ffmpeg_audio_preserving_export`)
-- FastAPI service endpoints (`test_fastapi_endpoints`)
+- FastAPI service endpoints (`test_fastapi_endpoints`), and media discovery over the owner's clips
+  (`test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames`, marked owner_media)
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ import subprocess
 from fastapi.testclient import TestClient
 from hypothesis import given, settings, strategies as st
 import numpy as np
+import pytest
 
 from services.api import app
 from services.media.runtime import MediaExperimentRuntime, compute_file_sha256
@@ -711,7 +713,11 @@ def test_fastapi_endpoints() -> None:
         assert expected_target_substr in vc_data["proposedAction"]["findingId"]
         assert len(vc_data.get("scientificExplanation", "")) > 20
 
-    # 9. GET /api/media/discover (Dynamic Media Discovery without hardcoded filenames)
+
+@pytest.mark.owner_media
+def test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames() -> None:
+    """GET /api/media/discover over the owner's clips in data/uploads, which are not in git."""
+    client = TestClient(app)
     r_disc = client.get("/api/media/discover")
     assert r_disc.status_code == 200
     disc_data = r_disc.json()

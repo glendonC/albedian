@@ -1,0 +1,65 @@
+# The six gates from AGENTS.md, on every pull request and on every push to main.
+# Each action is pinned to the commit its release tag pointed to, with the tag in a comment.
+name: Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gates-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  node:
+    name: Node ${{ matrix.node }} (typecheck, test, verify, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the floor in package.json engines; 24 is the version the project is developed on
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Installs the pnpm version that packageManager in package.json names
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm verify:contracts
+      - run: pnpm verify:docs
+      - run: pnpm build
+
+  python:
+    name: Python ${{ matrix.python }} (pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.12 is the floor in pyproject.toml requires-python; 3.14 is the version the project is developed on
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.12.5"
+          python-version: ${{ matrix.python }}
+      # EXP-10 synthesizes and probes a clip with ffmpeg and ffprobe, which the runner image does not include
+      - run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      - run: uv sync --frozen
+      # data/uploads is not in git: tests marked owner_media skip with their reason printed, any other skip fails
+      - run: uv run --frozen pytest -rs --no-unexpected-skips

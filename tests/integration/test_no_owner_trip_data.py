@@ -281,6 +281,48 @@ def test_owner_media_marker_skips_with_its_reason_only_where_a_folder_is_absent(
     assert "needs the owner's media in data/artifacts, which is not in git" in run.stdout
 
 
+def test_no_unexpected_skips_fails_every_skip_outside_the_owner_media_marker(tmp_path: Path) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "conftest.py").write_text((REPO_ROOT / "tests" / "conftest.py").read_text())
+    (tmp_path / "tests" / "test_kinds.py").write_text(
+        "import pytest\n\n"
+        "@pytest.mark.owner_media('data/artifacts')\n"
+        "def test_owner_media_absent():\n    pass\n\n"
+        "def test_skips_itself():\n    pytest.skip('not ready')\n\n"
+        "@pytest.mark.skipif(True, reason='switched off')\n"
+        "def test_skipif():\n    pass\n\n"
+        "@pytest.mark.xfail(reason='a known gap')\n"
+        "def test_xfail():\n    assert False\n"
+    )
+    (tmp_path / "tests" / "test_module_skip.py").write_text(
+        "import pytest\n\npytest.skip('the whole module', allow_module_level=True)\n"
+    )
+
+    def run(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "pytest", "-rs", "-p", "no:cacheprovider", *arguments],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    relaxed = run("tests")
+    assert relaxed.returncode == 0, relaxed.stdout[-2000:]
+    assert "4 skipped, 1 xfailed" in relaxed.stdout
+
+    # A skip in the test body fails; a skipif fires during setup, so pytest reports it as an error
+    strict = run("--no-unexpected-skips", "tests/test_kinds.py")
+    assert strict.returncode == 1, strict.stdout[-2000:]
+    assert "1 failed, 1 skipped, 1 xfailed, 1 error" in strict.stdout
+    assert strict.stdout.count("only tests marked owner_media may skip") >= 2
+
+    strict_module = run("--no-unexpected-skips", "tests/test_module_skip.py")
+    assert strict_module.returncode != 0, strict_module.stdout[-2000:]
+    assert "1 error" in strict_module.stdout
+    assert "skipped at collection" in strict_module.stdout
+
+
 @pytest.mark.owner_media
 def test_no_tracked_file_holds_a_capture_place_or_time_from_the_owners_clips() -> None:
     if shutil.which("ffprobe") is None:

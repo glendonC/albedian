@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 import numpy as np
+import pytest
 from scipy import ndimage
 
 from services.api import app
@@ -145,6 +146,10 @@ def test_frontier_optical_flow_beacon_lock_and_silhouette_flow() -> None:
         assert abs(float(step["duPx"]) - du_true) <= 0.65
         assert abs(float(step["dvPx"]) - dv_true) <= 0.65
 
+
+@pytest.mark.owner_media
+def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_deep_sky() -> None:
+    """GET /api/media/discover over the owner's clips in data/uploads, which are not in git."""
     client = TestClient(app)
     resp = client.get("/api/media/discover")
     assert resp.status_code == 200
