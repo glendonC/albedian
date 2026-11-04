@@ -13,10 +13,10 @@ import {
   SplatMesh,
 } from '@sparkjsdev/spark';
 import {
-  ALL_SKY_CONSTELLATION_EDGES,
-  NAMED_ALL_SKY_STARS_3D,
-  bpRpToStarColorHex,
-} from './allSkyStarfield.js';
+  CatalogStarField,
+  DEFAULT_LIMITING_MAGNITUDE,
+  type CatalogStarFieldStats,
+} from './catalogStars/index.js';
 import {
   createOriginCameraFrustumIndicator,
   updateOriginFrustumContinuity,
@@ -263,6 +263,8 @@ export class SparkPortalRenderer {
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
   private planetaryRingMesh: THREE.Mesh | null = null;
   private originFrustumGroup: THREE.Group | null = null;
+  // Gaia DR3 / Hipparcos 2007 catalog stars shared by every regime's sky sphere
+  private catalogStars: CatalogStarField | null = null;
 
   // Unknown until a capture or the user supplies a location
   private observerLatDeg: number | null = null;
@@ -466,6 +468,7 @@ export class SparkPortalRenderer {
         canvas: this.renderer.domElement,
       });
 
+      this.catalogStars = new CatalogStarField();
       this.loadAstronomicalTextures();
       this.buildGlobalPhotorealisticSkyDome();
       this.buildEarthCaptureWorld();
@@ -652,128 +655,13 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * Helper: Creates a razor-sharp optical Point-Spread Function (PSF) Starfield
+   * Adds a sky sphere of catalog stars (Gaia DR3 to G 12, bright end from Hipparcos 2007) at
+   * `radius`. Stars stream by view and limiting magnitude; with no catalog the sky stays empty.
    */
-  private createOpticalStarfieldPoints(
-    radiusScale: number,
-    includeDeepFieldCount: number
-  ): THREE.Points {
-    const count = Math.min(includeDeepFieldCount, 1400);
-    const totalCount = NAMED_ALL_SKY_STARS_3D.length + count;
-    const positions = new Float32Array(totalCount * 3);
-    const colors = new Float32Array(totalCount * 3);
-    const sizes = new Float32Array(totalCount);
-    const spikeFlags = new Float32Array(totalCount);
-
-    const tmpColor = new THREE.Color();
-
-    NAMED_ALL_SKY_STARS_3D.forEach((star, idx) => {
-      const [px, py, pz] = star.cartesianParsec;
-      const norm = Math.hypot(px, py, pz) || 1;
-      positions[idx * 3] = (px / norm) * radiusScale;
-      positions[idx * 3 + 1] = Math.abs(py / norm) * radiusScale * 0.75 + 2.0;
-      positions[idx * 3 + 2] = -Math.abs(pz / norm) * radiusScale - 12.0;
-
-      tmpColor.set(star.colorHex || bpRpToStarColorHex(star.bpRp));
-      colors[idx * 3] = tmpColor.r;
-      colors[idx * 3 + 1] = tmpColor.g;
-      colors[idx * 3 + 2] = tmpColor.b;
-
-      const magFactor = Math.max(0.15, (5.5 - star.mag) / 5.5);
-      sizes[idx] = star.name ? 14.0 + magFactor * 22.0 : 4.0 + magFactor * 7.0;
-      spikeFlags[idx] = star.name && star.mag < 1.8 ? 1.0 : 0.0;
-    });
-
-    const baseIdx = NAMED_ALL_SKY_STARS_3D.length;
-    for (let i = 0; i < count; i++) {
-      const k = baseIdx + i;
-      const h1 = Math.sin(i * 12.9898) * 43758.5453;
-      const r1 = h1 - Math.floor(h1);
-      const h2 = Math.sin(i * 78.233) * 43758.5453;
-      const r2 = h2 - Math.floor(h2);
-      const h3 = Math.sin(i * 41.17) * 43758.5453;
-      const r3 = h3 - Math.floor(h3);
-
-      const theta = r1 * Math.PI * 2;
-      const phi = Math.acos(1 - 2 * r2);
-      const r = radiusScale * (0.68 + 0.62 * r3);
-
-      positions[k * 3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[k * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[k * 3 + 2] = -Math.abs(r * Math.cos(phi)) - 8.0;
-
-      if (r3 > 0.82) {
-        tmpColor.setRGB(0.66, 0.82, 1.0);
-      } else if (r3 > 0.45) {
-        tmpColor.setRGB(0.94, 0.96, 1.0);
-      } else if (r3 > 0.18) {
-        tmpColor.setRGB(1.0, 0.88, 0.70);
-      } else {
-        tmpColor.setRGB(1.0, 0.64, 0.42);
-      }
-
-      colors[k * 3] = tmpColor.r;
-      colors[k * 3 + 1] = tmpColor.g;
-      colors[k * 3 + 2] = tmpColor.b;
-
-      sizes[k] = 1.8 + Math.pow(r1, 5.0) * 9.5;
-      spikeFlags[k] = r1 > 0.992 ? 1.0 : 0.0;
+  private addCatalogStarMount(group: THREE.Group, radius: number): void {
+    if (this.catalogStars) {
+      group.add(this.catalogStars.createMount(radius));
     }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    geo.setAttribute('aSpike', new THREE.BufferAttribute(spikeFlags, 1));
-
-    const mat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      vertexColors: true,
-      vertexShader: /* glsl */ `
-        attribute float aSize;
-        attribute float aSpike;
-        varying vec3 vColor;
-        varying float vSpike;
-        void main() {
-          vColor = color;
-          vSpike = aSpike;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = clamp(aSize * (34.0 / max(1.0, -mvPosition.z)), 1.2, 38.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        varying vec3 vColor;
-        varying float vSpike;
-        void main() {
-          vec2 uv = gl_PointCoord * 2.0 - 1.0;
-          float d = length(uv);
-          if (d > 1.0) discard;
-
-          float core = exp(-d * d * 48.0);
-          float halo = exp(-d * 7.5) * 0.26;
-
-          float spikes = 0.0;
-          if (vSpike > 0.5) {
-            float sx = exp(-abs(uv.y) * 42.0) * exp(-abs(uv.x) * 3.8);
-            float sy = exp(-abs(uv.x) * 42.0) * exp(-abs(uv.y) * 3.8);
-            vec2 rot1 = vec2(uv.x * 0.5 - uv.y * 0.866, uv.x * 0.866 + uv.y * 0.5);
-            vec2 rot2 = vec2(uv.x * 0.5 + uv.y * 0.866, -uv.x * 0.866 + uv.y * 0.5);
-            float s6 = (exp(-abs(rot1.y) * 52.0) * exp(-abs(rot1.x) * 4.5) +
-                        exp(-abs(rot2.y) * 52.0) * exp(-abs(rot2.x) * 4.5)) * 0.35;
-            spikes = (sx + sy) * 0.65 + s6;
-          }
-
-          float intensity = core + halo + spikes;
-          vec3 col = mix(vColor, vec3(1.0), core * 0.85) * intensity;
-          gl_FragColor = vec4(col, clamp(intensity, 0.0, 1.0));
-        }
-      `,
-    });
-
-    return new THREE.Points(geo, mat);
   }
 
   /**
@@ -1017,14 +905,10 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 0: Night Sky (62 hand-entered named stars plus a procedural, hash-generated fill; not Gaia data)
+   * REGIME 0: Night Sky. Catalog stars at their catalog directions; catalog data, not the user's recording.
    */
   private buildEarthCaptureWorld(): void {
-    const group = this.regimeGroups.earth_capture;
-
-    // Named bright stars plus procedural fill points, drawn with Airy-disk & diffraction spikes
-    const stars = this.createOpticalStarfieldPoints(58.0, 2800);
-    group.add(stars);
+    this.addCatalogStarMount(this.regimeGroups.earth_capture, 58.0);
   }
 
   /**
@@ -1069,7 +953,7 @@ export class SparkPortalRenderer {
   private buildCislunarWorld(): void {
     const group = this.regimeGroups.cislunar;
 
-    group.add(this.createOpticalStarfieldPoints(85.0, 2600));
+    this.addCatalogStarMount(group, 85.0);
 
     const earthRadius = 13.5;
     const earthCenter = new THREE.Vector3(-11.8, -16.8, -28.0);
@@ -1285,7 +1169,7 @@ export class SparkPortalRenderer {
   private buildSolarNeighborhoodWorld(): void {
     const group = this.regimeGroups.solar_neighborhood;
 
-    group.add(this.createOpticalStarfieldPoints(56.0, 2600));
+    this.addCatalogStarMount(group, 56.0);
 
     const starRadius = 2.62;
     const starCenter = new THREE.Vector3(-0.35, 0.12, -9.2);
@@ -1593,7 +1477,7 @@ export class SparkPortalRenderer {
   private buildDeepSkyWorld(): void {
     const group = this.regimeGroups.deep_sky;
 
-    group.add(this.createOpticalStarfieldPoints(38.0, 2600));
+    this.addCatalogStarMount(group, 38.0);
 
     const nebulaCenter = new THREE.Vector3(0, 0.3, -13.5);
     group.add(this.createGPGPUCurlPlasmaParticles(nebulaCenter, 3.8, 12.8, 2200));
@@ -1836,8 +1720,8 @@ export class SparkPortalRenderer {
   private buildPlanetarySurfaceWorld(): void {
     const group = this.regimeGroups.planetary_surface;
 
-    // 1. Crisp Zenith Starfield visible through the upper planetary atmosphere
-    group.add(this.createOpticalStarfieldPoints(72.0, 2200));
+    // 1. Catalog stars visible through the upper planetary atmosphere
+    this.addCatalogStarMount(group, 72.0);
 
     // 2. Full-Viewport 360° GPU Ray-Marched Planetary World & Relativistic Sky Sphere
     const worldGeo = new THREE.SphereGeometry(85, 128, 96);
@@ -2497,6 +2381,7 @@ export class SparkPortalRenderer {
         this.originFrustumGroup.visible = false;
       }
 
+      this.catalogStars?.update(this.camera, this.renderer.getPixelRatio());
       this.sparkXr?.updateControllers(this.camera);
       if (this.composer) {
         this.composer.render();
@@ -2607,6 +2492,47 @@ export class SparkPortalRenderer {
 
   public getFovDeg(): number {
     return Math.round(this.targetFov);
+  }
+
+  /** Limiting magnitude of the catalog star field, the axis of the Unveil gesture. */
+  public setLimitingMagnitude(mag: number): void {
+    this.catalogStars?.setLimitingMagnitude(mag);
+  }
+
+  public getLimitingMagnitude(): number {
+    return this.catalogStars?.getLimitingMagnitude() ?? DEFAULT_LIMITING_MAGNITUDE;
+  }
+
+  /** Catalog star field: manifest (sources, citations, disclosure), names and star records. */
+  public getCatalogStarField(): CatalogStarField | null {
+    return this.catalogStars;
+  }
+
+  public getCatalogStarStats(): CatalogStarFieldStats | null {
+    return this.catalogStars?.getStats() ?? null;
+  }
+
+  /**
+   * Screen position of a catalog direction (ICRS RA/Dec at the catalog epoch), matching where
+   * the catalog star field draws it. Used to anchor labels to catalog stars.
+   */
+  public projectCatalogPositionToScreen(
+    raDeg: number,
+    decDeg: number,
+    viewportWidth: number,
+    viewportHeight: number
+  ): { x: number; y: number; visible: boolean } {
+    if (!this.catalogStars) return { x: -999, y: -999, visible: false };
+    this.camera.updateMatrixWorld();
+    const dir = this.catalogStars.sceneDirection(raDeg, decDeg);
+    const camPos = this.camera.getWorldPosition(new THREE.Vector3());
+    const worldPos = camPos.addScaledVector(dir, 100);
+    const camSpace = worldPos.clone().applyMatrix4(this.camera.matrixWorldInverse);
+    if (camSpace.z >= 0) return { x: -999, y: -999, visible: false };
+    const ndc = worldPos.project(this.camera);
+    const x = (ndc.x * 0.5 + 0.5) * viewportWidth;
+    const y = (-ndc.y * 0.5 + 0.5) * viewportHeight;
+    return { x, y, visible: x >= 0 && x <= viewportWidth && y >= 0 && y <= viewportHeight };
   }
 
   public nudgeMovement(dx: number, dy: number, dz: number): void {
@@ -2997,6 +2923,7 @@ export class SparkPortalRenderer {
     }
     this.captureHorizonSplatMesh?.dispose();
     this.planetaryTerrainSplatMesh?.dispose();
+    this.catalogStars?.dispose();
     this.sparkRenderer?.dispose();
     this.composer?.dispose();
     if (this.renderer) {

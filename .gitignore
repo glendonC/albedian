@@ -50,3 +50,6 @@ docs/internal/
 
 # Claude Code session worktrees: full repo copies the desktop app manages, never committed
 .claude/worktrees/
+
+# Offline bake caches (archive responses for scripts/bake_catalog_star_tiles.py)
+.cache/

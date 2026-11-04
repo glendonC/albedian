@@ -47,6 +47,7 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
 /
   apps/
     web/                    # React + TypeScript + WebGL/Three.js + Web Audio observational shell
+      public/catalog/stars/ # Gaia DR3 + Hipparcos 2007 catalog star tiles (docs/science/CATALOG_STAR_TILES.md)
   services/
     media/                  # Python Media Experiment Runtime (FFmpeg DAG, probe, audio remux)
     science/                # Python astrometry, WCS solver/verifier, pinned bright-star catalog & analytical ephemerides
