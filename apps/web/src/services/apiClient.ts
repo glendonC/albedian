@@ -220,12 +220,12 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
     };
   }
 
-  // Distances are never assumed: findings without one keep no 3D position
+  // Distances and sky positions are never assumed: findings without both keep no 3D position
   const findings: CelestialFinding[] = item.solution.findings.map((f) => ({
     ...f,
     cartesianParsecICRS:
       f.cartesianParsecICRS ??
-      (f.inferredDistancePc
+      (f.inferredDistancePc && f.skyPosition
         ? toCartesian(f.skyPosition.raDeg, f.skyPosition.decDeg, f.inferredDistancePc.median)
         : undefined),
   }));

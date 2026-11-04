@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EvidenceClassSchema, SolutionStatusSchema } from './primitives.js';
+import { EvidenceClass, EvidenceClassSchema, SolutionStatusSchema } from './primitives.js';
 
 /**
  * Astronomical Domain Entities: CatalogReference, ScientificEvidence,
@@ -65,32 +65,63 @@ export const SourceDetectionSchema = z.object({
 });
 export type SourceDetection = z.infer<typeof SourceDetectionSchema>;
 
-export const CelestialFindingSchema = z.object({
-  id: z.string().min(1),
-  observationSolutionId: z.string().min(1),
-  evidenceClass: EvidenceClassSchema,
-  title: z.string().min(1),
-  subtitle: z.string().min(1),
-  sourceDetection: SourceDetectionSchema.optional(),
-  catalogRef: CatalogReferenceSchema.optional(),
-  skyPosition: z.object({
-    raDeg: z.number().min(0).max(360),
-    decDeg: z.number().min(-90).max(90),
-    uncertaintyArcsec: z.number().nonnegative(),
-    altDeg: z.number().min(-90).max(90).optional(),
-    azDeg: z.number().min(0).max(360).optional(),
-  }),
-  inferredDistancePc: z
-    .object({
-      lower: z.number().positive(),
-      median: z.number().positive(),
-      upper: z.number().positive(),
-      method: z.string().min(1),
-    })
-    .optional(),
-  cartesianParsecICRS: z.tuple([z.number(), z.number(), z.number()]).optional(),
-  evidence: ScientificEvidenceSchema,
+export const SkyPositionSchema = z.object({
+  raDeg: z.number().min(0).max(360),
+  decDeg: z.number().min(-90).max(90),
+  uncertaintyArcsec: z.number().nonnegative(),
+  altDeg: z.number().min(-90).max(90).optional(),
+  azDeg: z.number().min(0).max(360).optional(),
 });
+export type SkyPosition = z.infer<typeof SkyPositionSchema>;
+
+function celestialFindingVariant<C extends EvidenceClass, P extends z.ZodTypeAny>(
+  evidenceClass: C,
+  skyPosition: P
+) {
+  return z.object({
+    id: z.string().min(1),
+    observationSolutionId: z.string().min(1),
+    evidenceClass: z.literal(evidenceClass),
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    sourceDetection: SourceDetectionSchema.optional(),
+    catalogRef: CatalogReferenceSchema.optional(),
+    skyPosition,
+    inferredDistancePc: z
+      .object({
+        lower: z.number().positive(),
+        median: z.number().positive(),
+        upper: z.number().positive(),
+        method: z.string().min(1),
+      })
+      .optional(),
+    cartesianParsecICRS: z.tuple([z.number(), z.number(), z.number()]).optional(),
+    evidence: ScientificEvidenceSchema,
+  });
+}
+
+/**
+ * `catalog_matched`, `predicted` and `simulated` findings always carry a sky position.
+ * An `observed` finding is a pixel measurement: it carries one only when a verified WCS
+ * maps its pixels to the sky (checked by `ObservationSolutionSchema`), and without one it
+ * carries the `sourceDetection` that locates it in the frame.
+ */
+export const CelestialFindingSchema = z
+  .discriminatedUnion('evidenceClass', [
+    celestialFindingVariant('observed', SkyPositionSchema.optional()),
+    celestialFindingVariant('catalog_matched', SkyPositionSchema),
+    celestialFindingVariant('predicted', SkyPositionSchema),
+    celestialFindingVariant('simulated', SkyPositionSchema),
+  ])
+  .superRefine((finding, ctx) => {
+    if (finding.evidenceClass === 'observed' && !finding.skyPosition && !finding.sourceDetection) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sourceDetection'],
+        message: 'An observed finding without a sky position needs the source detection that locates it in pixels.',
+      });
+    }
+  });
 export type CelestialFinding = z.infer<typeof CelestialFindingSchema>;
 
 export const WCSCalibrationModelSchema = z.object({
@@ -109,37 +140,65 @@ export const WCSCalibrationModelSchema = z.object({
 });
 export type WCSCalibrationModel = z.infer<typeof WCSCalibrationModelSchema>;
 
-export const ObservationSolutionSchema = z.object({
-  id: z.string().min(1),
-  sourceAssetId: z.string().min(1),
-  sourceSha256: z.string().min(16),
-  frameTimeSec: z.number().nonnegative(),
-  revision: z.number().int().positive(),
-  status: SolutionStatusSchema,
-  observedAtUTC: z.string().datetime(),
-  observerLocation: z
-    .object({
-      latDeg: z.number().min(-90).max(90),
-      lonDeg: z.number().min(-180).max(180),
-      placeName: z.string().optional(),
-    })
-    .optional(),
-  solver: z.object({
-    name: z.string().min(1),
-    version: z.string().min(1),
-    catalogRelease: z.string().min(1),
-  }),
-  wcs: WCSCalibrationModelSchema.optional(),
-  quality: z.object({
-    detectedCandidateCount: z.number().int().nonnegative(),
-    matchedInlierCount: z.number().int().nonnegative(),
-    heldOutInliers: z.number().int().nonnegative(),
-    medianResidualPx: z.number().nonnegative(),
-    p95ResidualPx: z.number().nonnegative(),
-    medianResidualArcsec: z.number().nonnegative(),
-    passedIndependentVerification: z.boolean(),
-  }),
-  findings: z.array(CelestialFindingSchema),
-  warnings: z.array(z.string()),
-});
+/**
+ * Whether a solution's WCS passed independent held-out verification, the only way pixels
+ * in its source frame are placed on the sky.
+ */
+export function hasVerifiedWcs(solution: {
+  wcs?: WCSCalibrationModel;
+  quality: { passedIndependentVerification: boolean };
+}): boolean {
+  return solution.wcs !== undefined && solution.quality.passedIndependentVerification;
+}
+
+export const ObservationSolutionSchema = z
+  .object({
+    id: z.string().min(1),
+    sourceAssetId: z.string().min(1),
+    sourceSha256: z.string().min(16),
+    frameTimeSec: z.number().nonnegative(),
+    revision: z.number().int().positive(),
+    status: SolutionStatusSchema,
+    observedAtUTC: z.string().datetime(),
+    observerLocation: z
+      .object({
+        latDeg: z.number().min(-90).max(90),
+        lonDeg: z.number().min(-180).max(180),
+        placeName: z.string().optional(),
+      })
+      .optional(),
+    solver: z.object({
+      name: z.string().min(1),
+      version: z.string().min(1),
+      catalogRelease: z.string().min(1),
+    }),
+    wcs: WCSCalibrationModelSchema.optional(),
+    quality: z.object({
+      detectedCandidateCount: z.number().int().nonnegative(),
+      matchedInlierCount: z.number().int().nonnegative(),
+      heldOutInliers: z.number().int().nonnegative(),
+      medianResidualPx: z.number().nonnegative(),
+      p95ResidualPx: z.number().nonnegative(),
+      medianResidualArcsec: z.number().nonnegative(),
+      passedIndependentVerification: z.boolean(),
+    }),
+    findings: z.array(CelestialFindingSchema),
+    warnings: z.array(z.string()),
+  })
+  .superRefine((solution, ctx) => {
+    // An observed finding has a sky position exactly when the solution's verified WCS gives it one
+    const verified = hasVerifiedWcs(solution);
+    solution.findings.forEach((finding, index) => {
+      if (finding.evidenceClass !== 'observed' || (finding.skyPosition !== undefined) === verified) {
+        return;
+      }
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['findings', index, 'skyPosition'],
+        message: verified
+          ? 'An observed finding in a solution with a verified WCS needs the sky position that WCS gives it.'
+          : 'An observed finding has no sky position without a verified WCS.',
+      });
+    });
+  });
 export type ObservationSolution = z.infer<typeof ObservationSolutionSchema>;

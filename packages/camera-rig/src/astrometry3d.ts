@@ -72,14 +72,23 @@ export function propagateCatalogPositionToYear(
   return { raDeg, decDeg, cartesianParsec };
 }
 
-function resolveFindingParsecPosition(finding: CelestialFinding): Vec3 | null {
+/**
+ * A finding's ICRS position in parsecs, or `null` when it has no 3D position: no
+ * Cartesian coordinates and no sky direction with a positive distance estimate.
+ */
+export function resolveFindingParsecPosition(finding: CelestialFinding): Vec3 | null {
   if (finding.cartesianParsecICRS) {
     return finding.cartesianParsecICRS;
   }
   const distancePc =
     finding.inferredDistancePc?.median ??
     finding.catalogRef?.bailerJonesDistancePc?.median;
-  if (distancePc !== undefined && Number.isFinite(distancePc) && distancePc > 0) {
+  if (
+    finding.skyPosition &&
+    distancePc !== undefined &&
+    Number.isFinite(distancePc) &&
+    distancePc > 0
+  ) {
     const u = raDecToUnitVector(
       finding.skyPosition.raDeg,
       finding.skyPosition.decDeg
@@ -89,36 +98,41 @@ function resolveFindingParsecPosition(finding: CelestialFinding): Vec3 | null {
   return null;
 }
 
+function resolveSightlineDirection(
+  targetFinding: CelestialFinding,
+  observerOriginParsec: Vec3
+): Vec3 | null {
+  const targetPos = resolveFindingParsecPosition(targetFinding);
+  if (targetPos) {
+    const rx = targetPos[0] - observerOriginParsec[0];
+    const ry = targetPos[1] - observerOriginParsec[1];
+    const rz = targetPos[2] - observerOriginParsec[2];
+    const rNorm = Math.hypot(rx, ry, rz);
+    if (rNorm > 1e-12) {
+      return [rx / rNorm, ry / rNorm, rz / rNorm];
+    }
+  }
+  return targetFinding.skyPosition
+    ? raDecToUnitVector(targetFinding.skyPosition.raDeg, targetFinding.skyPosition.decDeg)
+    : null;
+}
+
 /**
  * Queries all catalog-backed findings with 3D distance estimates that lie within
  * `halfAngleDeg` (default 18°) of the sightline ray from `observerOriginParsec`
  * through `targetFinding`, sorted by `distanceFromObserverPc` ascending ("What's behind it?").
+ * Returns `null` when the target has no direction to look along, as for a detection
+ * with a pixel position only: an unknown sightline is not an empty one.
  */
 export function querySightlineCone(
   findings: CelestialFinding[],
   observerOriginParsec: Vec3,
   targetFinding: CelestialFinding,
   halfAngleDeg = 18
-): SightlineConeItem[] {
-  const targetPos = resolveFindingParsecPosition(targetFinding);
-  let rayDir: Vec3;
-  if (targetPos) {
-    const rx = targetPos[0] - observerOriginParsec[0];
-    const ry = targetPos[1] - observerOriginParsec[1];
-    const rz = targetPos[2] - observerOriginParsec[2];
-    const rNorm = Math.hypot(rx, ry, rz);
-    rayDir =
-      rNorm > 1e-12
-        ? [rx / rNorm, ry / rNorm, rz / rNorm]
-        : raDecToUnitVector(
-            targetFinding.skyPosition.raDeg,
-            targetFinding.skyPosition.decDeg
-          );
-  } else {
-    rayDir = raDecToUnitVector(
-      targetFinding.skyPosition.raDeg,
-      targetFinding.skyPosition.decDeg
-    );
+): SightlineConeItem[] | null {
+  const rayDir = resolveSightlineDirection(targetFinding, observerOriginParsec);
+  if (!rayDir) {
+    return null;
   }
 
   const results: SightlineConeItem[] = [];

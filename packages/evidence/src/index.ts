@@ -506,30 +506,39 @@ export function buildFindingEvidenceRecords(
         ? 'reconstructed'
         : 'propagated';
 
-  const wcsRecord: EvidenceRecord = {
-    id: `${finding.id}:wcs:${solution.id}`,
-    kind: wcsKind,
-    title: `WCS Sky Registration (${solution.solver.name} ${solution.solver.version})`,
-    sourceIdentifier: `${solution.id}@rev${solution.revision}`,
-    license: 'Albedian Deterministic Astrometry Pipeline',
-    observationTimeUtc: solution.observedAtUTC,
-    modelEpochUtc: solution.observedAtUTC,
-    coordinateFrame: solution.wcs
-      ? `ICRS / J2000 ${solution.wcs.projection} Tangent Projection`
-      : 'Topocentric Horizon / Uncalibrated Frame',
-    coordinateSpace: 'astronomical',
-    units: {
-      raDeg: 'deg',
-      decDeg: 'deg',
-      residualPx: 'px',
-      residualArcsec: 'arcsec',
-    },
-    uncertaintyDescription: `Held-out median residual ±${solution.quality.medianResidualPx.toFixed(2)} px (±${solution.quality.medianResidualArcsec.toFixed(1)} arcsec), p95 ±${solution.quality.p95ResidualPx.toFixed(2)} px across ${solution.quality.heldOutInliers} held-out inliers${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
-    processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
-    coverageDescription: solution.wcs
-      ? `FOV ${solution.wcs.fovHorizontalDeg.toFixed(1)}°×${solution.wcs.fovVerticalDeg.toFixed(1)}° centered at RA ${solution.wcs.crvalRaDeg.toFixed(4)}°, Dec ${solution.wcs.crvalDecDeg.toFixed(4)}° (${solution.wcs.scaleDegPerPx.toFixed(4)}°/px)`
-      : `Sky position RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° (±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec)`,
-  };
+  const sky = finding.skyPosition;
+  const registrationCoverage = solution.wcs
+    ? `FOV ${solution.wcs.fovHorizontalDeg.toFixed(1)}°×${solution.wcs.fovVerticalDeg.toFixed(1)}° centered at RA ${solution.wcs.crvalRaDeg.toFixed(4)}°, Dec ${solution.wcs.crvalDecDeg.toFixed(4)}° (${solution.wcs.scaleDegPerPx.toFixed(4)}°/px)`
+    : sky
+      ? `Sky position RA ${sky.raDeg.toFixed(4)}°, Dec ${sky.decDeg.toFixed(4)}° (±${sky.uncertaintyArcsec.toFixed(1)} arcsec)`
+      : undefined;
+
+  // A detection with neither a WCS nor a sky position was never registered, so no record claims it was
+  const records: EvidenceRecord[] = [captureRecord];
+  if (registrationCoverage) {
+    records.push({
+      id: `${finding.id}:wcs:${solution.id}`,
+      kind: wcsKind,
+      title: `WCS Sky Registration (${solution.solver.name} ${solution.solver.version})`,
+      sourceIdentifier: `${solution.id}@rev${solution.revision}`,
+      license: 'Albedian Deterministic Astrometry Pipeline',
+      observationTimeUtc: solution.observedAtUTC,
+      modelEpochUtc: solution.observedAtUTC,
+      coordinateFrame: solution.wcs
+        ? `ICRS / J2000 ${solution.wcs.projection} Tangent Projection`
+        : 'Topocentric Horizon / Uncalibrated Frame',
+      coordinateSpace: 'astronomical',
+      units: {
+        raDeg: 'deg',
+        decDeg: 'deg',
+        residualPx: 'px',
+        residualArcsec: 'arcsec',
+      },
+      uncertaintyDescription: `Held-out median residual ±${solution.quality.medianResidualPx.toFixed(2)} px (±${solution.quality.medianResidualArcsec.toFixed(1)} arcsec), p95 ±${solution.quality.p95ResidualPx.toFixed(2)} px across ${solution.quality.heldOutInliers} held-out inliers${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
+      processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
+      coverageDescription: registrationCoverage,
+    });
+  }
 
   const cat = finding.catalogRef;
   if (cat) {
@@ -568,56 +577,62 @@ export function buildFindingEvidenceRecords(
       uncertaintyDescription: dist
         ? `Bailer-Jones distance ${dist.median.toFixed(1)} pc (68% CI: ${dist.lower.toFixed(1)}–${dist.upper.toFixed(1)} pc via ${dist.method})${cat.parallaxMas !== undefined && cat.parallaxErrorMas !== undefined ? `; parallax ${cat.parallaxMas.toFixed(2)} ± ${cat.parallaxErrorMas.toFixed(2)} mas` : ''}`
         : finding.evidence.distanceUncertaintyNote ??
-          `Angular uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec`,
+          (sky
+            ? `Angular uncertainty ±${sky.uncertaintyArcsec.toFixed(1)} arcsec`
+            : 'No sky position, so no angular uncertainty'),
       processingDescription: `Citation: ${cat.citation}`,
       coverageDescription: `${cat.constellation} (${cat.objectType}, m=${cat.apparentMagnitude.toFixed(2)})`,
     };
 
-    return [captureRecord, wcsRecord, catalogRecord];
+    return [...records, catalogRecord];
   }
 
-  const uncatalogedOrModelRecord: EvidenceRecord =
-    finding.evidenceClass === 'observed'
-      ? {
-          id: `${finding.id}:catalog:uncataloged`,
-          kind: 'captured',
-          title: `Uncataloged Sensor Locus (${finding.title})`,
-          sourceIdentifier: `uncataloged:${finding.id}`,
-          license: 'Observer First-Party Telemetry',
-          observationTimeUtc: solution.observedAtUTC,
-          modelEpochUtc: solution.observedAtUTC,
-          coordinateFrame: 'ICRS J2000 (WCS Back-Projected)',
-          coordinateSpace: 'astronomical',
-          units: {
-            raDeg: 'deg',
-            decDeg: 'deg',
-            uncertaintyArcsec: 'arcsec',
-          },
-          uncertaintyDescription: `Positional uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec; no static reference entry in ${solution.solver.catalogRelease} within match radius.`,
-          processingDescription:
-            'Differential photometry candidate (Observed ≠ Static Catalog Baseline)',
-          coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° outside bright-star baseline threshold`,
-        }
-      : {
-          id: `${finding.id}:model:${solution.id}`,
-          kind: deriveEvidenceKind(finding, solution.status),
-          title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
-          sourceIdentifier: `${solution.solver.catalogRelease}:${finding.id}`,
-          license: 'NASA JPL / IAU SOFA Ephemeris',
-          observationTimeUtc: solution.observedAtUTC,
-          modelEpochUtc: solution.observedAtUTC,
-          coordinateFrame: 'Topocentric / ICRS J2000',
-          coordinateSpace: 'astronomical',
-          units: {
-            raDeg: 'deg',
-            decDeg: 'deg',
-            uncertaintyArcsec: 'arcsec',
-          },
-          uncertaintyDescription: `Model uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec`,
-          processingDescription: finding.evidence.verificationMethod,
-          coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}°`,
-        };
+  if (finding.evidenceClass === 'observed') {
+    // Only a detection placed on the sky was compared with the catalog
+    if (finding.skyPosition) {
+      records.push({
+        id: `${finding.id}:catalog:uncataloged`,
+        kind: 'captured',
+        title: `Uncataloged Sensor Locus (${finding.title})`,
+        sourceIdentifier: `uncataloged:${finding.id}`,
+        license: 'Observer First-Party Telemetry',
+        observationTimeUtc: solution.observedAtUTC,
+        modelEpochUtc: solution.observedAtUTC,
+        coordinateFrame: 'ICRS J2000 (WCS Back-Projected)',
+        coordinateSpace: 'astronomical',
+        units: {
+          raDeg: 'deg',
+          decDeg: 'deg',
+          uncertaintyArcsec: 'arcsec',
+        },
+        uncertaintyDescription: `Positional uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec; no static reference entry in ${solution.solver.catalogRelease} within match radius.`,
+        processingDescription:
+          'Differential photometry candidate (Observed ≠ Static Catalog Baseline)',
+        coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° outside bright-star baseline threshold`,
+      });
+    }
+  } else {
+    records.push({
+      id: `${finding.id}:model:${solution.id}`,
+      kind: deriveEvidenceKind(finding, solution.status),
+      title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
+      sourceIdentifier: `${solution.solver.catalogRelease}:${finding.id}`,
+      license: 'NASA JPL / IAU SOFA Ephemeris',
+      observationTimeUtc: solution.observedAtUTC,
+      modelEpochUtc: solution.observedAtUTC,
+      coordinateFrame: 'Topocentric / ICRS J2000',
+      coordinateSpace: 'astronomical',
+      units: {
+        raDeg: 'deg',
+        decDeg: 'deg',
+        uncertaintyArcsec: 'arcsec',
+      },
+      uncertaintyDescription: `Model uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec`,
+      processingDescription: finding.evidence.verificationMethod,
+      coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}°`,
+    });
+  }
 
-  return [captureRecord, wcsRecord, uncatalogedOrModelRecord];
+  return records;
 }
 
