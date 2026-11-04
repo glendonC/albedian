@@ -338,8 +338,8 @@ def enrich_local_bubble_splats(lb_path: Path) -> int:
     Rebuilds the attributes of `lb_splats.json` (14,281 splats) from its positions alone, as
     14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
 
-    The positions are the O'Neill et al. (2024) Local Bubble surface: every other vertex of
-    `local_bubble_oneill2024.glb`, y up, at about 2.2x. Each splat lies in the surface, oriented
+    The positions are every other vertex of `local_bubble_oneill2024.glb`, a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024),
+    y up, at about 2.2x. Each splat lies in the surface, oriented
     by the local k-NN PCA frame and sized by the local sample spacing so the splats tile it;
     colour and opacity are the uniform presentation values above.
     """

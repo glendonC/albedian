@@ -18,6 +18,12 @@ describe('ESO nebula images', () => {
     expect(fs.readdirSync(textures).filter((f) => /lagoon|orion/i.test(f))).toEqual([]);
   });
 
+  it('load Lupus 3 for the black hole only; scene 03 never sampled it', () => {
+    // uDustTex was assigned eso1804a but bound to no material and declared in no shader
+    expect(renderer).not.toMatch(/uDustTex/);
+    expect(renderer.match(/eso1804a\.jpg/g)).toHaveLength(1);
+  });
+
   it('are loaded by those names', () => {
     expect(renderer).toContain("'/textures/eso1804a.jpg'");
     expect(renderer).toContain("'/textures/eso1006a.jpg'");

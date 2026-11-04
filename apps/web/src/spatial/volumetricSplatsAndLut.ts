@@ -68,9 +68,9 @@ function splatMeshFromRows(rows: SplatRows): SplatMesh {
 
 /**
  * Builds the Local Bubble splat mesh from `lb_splats.json`, one splat per row at the row's own
- * position. The positions trace to the O'Neill et al. (2024) Local Bubble surface in
- * `local_bubble_oneill2024.glb`; colour, footprint, orientation and opacity are presentation
- * values from the bake, since the model has no dust density or emission per point.
+ * position. The positions are vertices of `local_bubble_oneill2024.glb`, a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024); colour,
+ * footprint, orientation and opacity are presentation values from the bake, since the mesh has no
+ * dust density or emission per point.
  */
 export function buildAnisotropicLocalBubbleSplatMesh(raw: unknown): SplatMesh {
   return splatMeshFromRows(parseSplatRows(raw, LOCAL_BUBBLE_POSITION_SCALE, 0.01));

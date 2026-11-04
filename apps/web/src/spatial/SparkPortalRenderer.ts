@@ -226,7 +226,6 @@ export class SparkPortalRenderer {
     uIsBlackHole: { value: number };
   };
   private localBubbleUniforms: {
-    uDustTex: { value: THREE.Texture | null };
     uTime: { value: number };
     uWarpFactor: { value: number };
     uCoolColor: { value: THREE.Vector3 };
@@ -356,7 +355,6 @@ export class SparkPortalRenderer {
       uIsBlackHole: { value: 0.0 },
     };
     this.localBubbleUniforms = {
-      uDustTex: { value: null },
       uTime: { value: 0.0 },
       uWarpFactor: { value: 0.0 },
       uCoolColor: { value: new THREE.Vector3(0.28, 0.03, 0.005) },
@@ -571,10 +569,9 @@ export class SparkPortalRenderer {
     loadTex('/textures/eso1006a.jpg', (t) => {
       this.nebulaUniforms.uOrionVistaTex.value = t;
     });
-    // ESO eso1804a, the Lupus 3 star formation region (ESO/R. Colombari)
+    // ESO eso1804a, the Lupus 3 star formation region (ESO/R. Colombari), behind the black hole
     loadTex('/textures/eso1804a.jpg', (t) => {
       this.nebulaUniforms.uLupus3Tex.value = t;
-      this.localBubbleUniforms.uDustTex.value = t;
     });
     this.textureLoader.load(
       BRUNETON_ATMO_LUT_URL,
@@ -1115,8 +1112,10 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 2: Stellar & Planetary System Closeup + Real @sparkjsdev/spark 3D Gaussian Splat Local Bubble Chimney (`lb_splats.json`)
-   * Zero polygon wireframes: the O'Neill et al. (2024) Harvard CfA Local Bubble Chimney is rendered as 14,281 soft 3D Gaussian Splats.
+   * REGIME 2: solar neighbourhood (landing scene 03): a modelled star with a corona glow and a ring
+   * drawn from noise, decorative particles, and 14,281 Spark splats (`lb_splats.json`) on
+   * a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), all placed around the camera for composition, not at
+   * their sizes or distances; see SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS in webglRenderLayers.ts.
    */
   private buildSolarNeighborhoodWorld(): void {
     const group = this.regimeGroups.solar_neighborhood;
@@ -1402,7 +1401,7 @@ export class SparkPortalRenderer {
       )
     );
 
-    // 6. H6 Surrounding Cavity: Real @sparkjsdev/spark SplatMesh from Harvard CfA O'Neill et al. (2024) Local Bubble Chimney (`lb_splats.json`)
+    // Spark splats (`lb_splats.json`) on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024)
     const cavityGroup = new THREE.Group();
     cavityGroup.position.set(0.0, 0.0, -9.8);
     group.add(cavityGroup);
