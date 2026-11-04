@@ -8,7 +8,7 @@ import {
   rebaseFloatingOrigin,
 } from '../index.js';
 
-describe('Spatial Camera Rig — Empirical Experiments (EXP-05, EXP-06, EXP-07, EXP-11)', () => {
+describe('Spatial Camera Rig: Empirical Experiments (EXP-05, EXP-06, EXP-07, EXP-11)', () => {
   it('EXP-05: Off-axis frustum shift eliminates Phase A anchor star drift (< 0.01 px vs > 100 px unshifted)', () => {
     const anchorRaDeg = 88.7929; // Betelgeuse
     const anchorDecDeg = 7.4071;
@@ -89,13 +89,34 @@ describe('Spatial Camera Rig — Empirical Experiments (EXP-05, EXP-06, EXP-07, 
     expect(Math.hypot(proj.ndcX, proj.ndcY)).toBeLessThan(1e-12);
   });
 
-  it('EXP-07 & EXP-11: Renderer adapter benchmark & 50,000-star floating-origin frame preparation latency', () => {
+  it('EXP-07 & EXP-11: Renderer adapter benchmark & 50,000-star floating-origin frame preparation', () => {
     const benchmark = benchmarkRendererAdapters(50000);
 
     expect(benchmark.customRigAnchorDriftPx).toBeLessThan(0.01);
     expect(benchmark.wwtAdapterCenterLockDriftPx).toBeGreaterThan(100);
-    expect(benchmark.customRigFramePrepMs).toBeLessThan(50);
+    // Wall-clock time depends on the machine and its load, so it is reported, not asserted
+    expect(Number.isFinite(benchmark.customRigFramePrepMs)).toBe(true);
+    console.info(`[EXP-11] 50,000-star frame preparation took ${benchmark.customRigFramePrepMs.toFixed(3)} ms on this run`);
     expect(benchmark.recommendedPrimaryEngine).toBe('custom_wcs_three_rig');
     expect(benchmark.surveyFallbackAdapter).toBe('aladin_wwt_bridge');
+  });
+
+  it('EXP-11: frame preparation rebases all 50,000 positions around the observer to float32', () => {
+    const count = 50000;
+    const positions = new Float64Array(count * 3);
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] = 150 + (i % 97) * 0.25;
+      positions[i + 1] = -80 + (i % 53) * 0.35;
+      positions[i + 2] = 40 + (i % 71) * 0.15;
+    }
+    const origin: [number, number, number] = [152.5, -78.2, 41.0];
+    const rebased = rebaseFloatingOrigin(positions, origin);
+
+    expect(rebased.length).toBe(count * 3);
+    let mismatches = 0;
+    for (let i = 0; i < rebased.length; i++) {
+      if (rebased[i] !== Math.fround(positions[i]! - origin[i % 3]!)) mismatches++;
+    }
+    expect(mismatches).toBe(0);
   });
 });

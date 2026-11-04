@@ -17,12 +17,28 @@ import { diffImages } from '../bench/stability';
 
 const LB_PATH = path.resolve(__dirname, '../../../web/public/models/lb_splats.json');
 
+/** Riemann sum of f over the grid of spacing h covering [-extent, extent] squared. */
 function integrate2d(f: (x: number, y: number) => number, extent: number, h: number): number {
+  const n = Math.round(extent / h);
   let sum = 0;
-  for (let x = -extent; x <= extent; x += h) {
-    for (let y = -extent; y <= extent; y += h) sum += f(x, y) * h * h;
+  for (let i = -n; i <= n; i++) {
+    for (let j = -n; j <= n; j++) sum += f(i * h, j * h);
   }
-  return sum;
+  return sum * h * h;
+}
+
+/**
+ * The same grid sum for an f that is even in x and y and symmetric under swapping them (every
+ * PSF term here is), taken over one octant with each point weighted by its copies: one eighth
+ * of the evaluations, so the PSF normalization runs well inside the test timeout under load.
+ */
+function integrateSymmetric2d(f: (x: number, y: number) => number, extent: number, h: number): number {
+  const n = Math.round(extent / h);
+  let sum = 0;
+  for (let i = 0; i <= n; i++) {
+    for (let j = 0; j <= i; j++) sum += (i === 0 ? 1 : j === 0 || j === i ? 4 : 8) * f(i * h, j * h);
+  }
+  return sum * h * h;
 }
 
 describe('webgpu spike: Local Bubble loader port', () => {
@@ -117,11 +133,16 @@ describe('webgpu spike: analytic PSF', () => {
     expect(Math.abs(besselJ1(AIRY_FIRST_ZERO))).toBeLessThan(1e-6);
   });
 
+  it('sums the full grid from one octant for a function with the PSF symmetries', () => {
+    const psf = (x: number, y: number) => psfNormalized(x, y, DEFAULT_PSF);
+    expect(integrateSymmetric2d(psf, 6, 0.1)).toBeCloseTo(integrate2d(psf, 6, 0.1), 12);
+  });
+
   it('normalizes the Airy core and the full PSF to unit energy', () => {
-    const airy = integrate2d((x, y) => airyNormalized(Math.hypot(x, y), 1.6), 40, 0.05);
+    const airy = integrateSymmetric2d((x, y) => airyNormalized(Math.hypot(x, y), 1.6), 40, 0.05);
     expect(airy).toBeGreaterThan(0.98);
     expect(airy).toBeLessThan(1.001);
-    const total = integrate2d((x, y) => psfNormalized(x, y, DEFAULT_PSF), 120, 0.1);
+    const total = integrateSymmetric2d((x, y) => psfNormalized(x, y, DEFAULT_PSF), 120, 0.1);
     expect(total).toBeGreaterThan(0.98);
     expect(total).toBeLessThan(1.01);
   });
