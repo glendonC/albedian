@@ -82,10 +82,10 @@ describe('@albedian/contracts: render layers', () => {
       sourceAssetId: fc.constant(''),
       observationSolutionId: fc.constant(''),
     };
-    // Valid fields, then on a coin flip one field replaced by a malformed value; the evidence
+    // Valid fields, then on a coin flip (freq 2) one field replaced by a malformed value; the evidence
     // rules are left to chance so well-formed layers that still break a rule come up too
     const layerArb = fc
-      .tuple(validFields, fc.option(fc.constantFrom(...Object.keys(faults)), { nil: undefined }))
+      .tuple(validFields, fc.option(fc.constantFrom(...Object.keys(faults)), { nil: undefined, freq: 2 }))
       .chain(([layer, faultField]) =>
         faultField === undefined
           ? fc.constant<Record<string, unknown>>(layer)
