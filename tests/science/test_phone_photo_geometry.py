@@ -135,6 +135,14 @@ def test_rays_behind_a_rectilinear_camera_are_not_projected() -> None:
 @example(k1=0.0, k2=0.0, k3=0.0, p1=0.0, p2=0.0, radius_fraction=0.0, phi=0.0)
 @example(k1=-0.3, k2=0.0, k3=0.0, p1=0.002, p2=-0.002, radius_fraction=0.95, phi=0.7)
 @example(k1=0.0, k2=0.0, k3=5e-324, p1=0.0, p2=0.0, radius_fraction=0.0, phi=0.0)  # a denormal once overflowed np.roots
+# Strong pincushion that folds back: Newton once started beyond the fold and found the second root
+@example(k1=0.25, k2=0.0, k3=-0.015625, p1=0.0, p2=0.0, radius_fraction=0.875, phi=0.0)
+@example(k1=0.25, k2=-0.0625, k3=0.0, p1=0.0, p2=0.0, radius_fraction=0.875, phi=0.0)
+# A dense sweep found these against a draft of the fix whose bracketed Newton oscillated
+@example(k1=0.025, k2=0.075, k3=-0.01, p1=0.002, p2=-0.002, radius_fraction=0.925, phi=math.pi / 6)
+@example(k1=0.025, k2=0.075, k3=-0.01, p1=0.0, p2=0.0, radius_fraction=0.925, phi=math.pi / 6)
+# Never folds radially, but its slope drops below what the tangential terms bend: not one-to-one there
+@example(k1=-0.15, k2=-0.0125, k3=0.005, p1=0.002, p2=-0.002, radius_fraction=0.95, phi=math.pi / 6)
 def test_brown_conrady_round_trips_inside_its_valid_radius(
     k1: float, k2: float, k3: float, p1: float, p2: float, radius_fraction: float, phi: float
 ) -> None:
@@ -147,6 +155,63 @@ def test_brown_conrady_round_trips_inside_its_valid_radius(
     assert float(np.hypot(xu - x, yu - y)[0]) < 1e-10
 
 
+def test_brown_conrady_round_trips_over_a_dense_grid_of_lenses() -> None:
+    # Random draws rarely land on strong pincushion that folds back; this grid always covers it
+    worst = 0.0
+    for k1 in np.linspace(-0.3, 0.3, 7):
+        for k2 in np.linspace(-0.1, 0.1, 7):
+            for k3 in np.linspace(-0.02, 0.02, 5):
+                for p1, p2 in ((0.0, 0.0), (0.002, -0.002)):
+                    model = gm.BrownConrady(k1=float(k1), k2=float(k2), k3=float(k3), p1=p1, p2=p2)
+                    r = np.repeat(np.linspace(0.0, 0.95, 20) * min(model.max_valid_radius(), 1.8), 12)
+                    phi = np.tile(np.linspace(0.0, 2 * math.pi, 12, endpoint=False), 20)
+                    x, y = r * np.cos(phi), r * np.sin(phi)
+                    xu, yu = model.undistort(*model.distort(x, y))
+                    worst = max(worst, float(np.max(np.hypot(xu - x, yu - y))))
+    assert worst < 1e-10
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    k1=st.floats(-0.3, 0.3),
+    k2=st.floats(-0.1, 0.1),
+    k3=st.floats(-0.02, 0.02),
+    p1=st.floats(-0.002, 0.002),
+    p2=st.floats(-0.002, 0.002),
+    reach_fraction=st.floats(0.0, 1.0),
+    phi=st.floats(0.0, 2 * math.pi),
+)
+@example(k1=0.25, k2=0.0, k3=-0.015625, p1=0.0, p2=0.0, reach_fraction=0.95, phi=0.0)
+@example(k1=0.25, k2=-0.0625, k3=0.0, p1=0.0, p2=0.0, reach_fraction=1.0, phi=0.0)
+def test_brown_conrady_undistort_never_lands_beyond_the_fold(
+    k1: float, k2: float, k3: float, p1: float, p2: float, reach_fraction: float, phi: float
+) -> None:
+    # Any distorted point up to what a valid ray reaches must come back inside the fold radius
+    # (a lens that never folds has no such bound; its answer must still be finite)
+    model = gm.BrownConrady(k1=k1, k2=k2, k3=k3, p1=p1, p2=p2)
+    limit = model.max_valid_radius()
+    rd = reach_fraction * model.distorted_radius(min(limit, 3.0))
+    xu, yu = model.undistort(np.array([rd * math.cos(phi)]), np.array([rd * math.sin(phi)]))
+    radius = float(np.hypot(xu, yu)[0])
+    assert math.isfinite(radius)
+    assert radius <= limit * (1.0 + 1e-9) + 1e-9
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    k1=st.floats(-0.08, 0.08),
+    k2=st.floats(-0.02, 0.02),
+    k3=st.floats(-0.005, 0.005),
+    k4=st.floats(-0.001, 0.001),
+    reach_fraction=st.floats(0.0, 1.0),
+)
+def test_kannala_brandt_inverse_never_lands_beyond_the_fold(k1: float, k2: float, k3: float, k4: float, reach_fraction: float) -> None:
+    model = gm.KannalaBrandt(k1=k1, k2=k2, k3=k3, k4=k4)
+    limit = min(model.max_valid_theta(), math.radians(100.0))
+    theta = model.theta_from_distorted(np.array([reach_fraction * float(model.distorted_theta(np.array(limit)))]))
+    assert float(theta[0]) <= limit * (1.0 + 1e-9)
+
+
 @settings(max_examples=200, deadline=None)
 @given(
     k1=st.floats(-0.08, 0.08),
@@ -157,10 +222,24 @@ def test_brown_conrady_round_trips_inside_its_valid_radius(
 )
 @example(k1=0.0, k2=0.0, k3=0.0, k4=0.0, theta_fraction=0.95)
 @example(k1=0.0, k2=0.0, k3=0.0, k4=2.225073858507e-311, theta_fraction=0.0)  # a denormal once overflowed np.roots
+# Found by a dense sweep: Newton started where the slope nearly vanished and diverged by 4.4 rad
+@example(k1=0.08, k2=0.02, k3=0.0, k4=-0.001, theta_fraction=0.945)
 def test_kannala_brandt_round_trips_inside_its_valid_angle(k1: float, k2: float, k3: float, k4: float, theta_fraction: float) -> None:
     model = gm.KannalaBrandt(k1=k1, k2=k2, k3=k3, k4=k4)
     theta = np.array([theta_fraction * min(model.max_valid_theta(), math.radians(100.0))])
     assert float(np.abs(model.theta_from_distorted(model.distorted_theta(theta)) - theta)[0]) < 1e-12
+
+
+def test_kannala_brandt_round_trips_over_a_dense_grid_of_lenses() -> None:
+    worst = 0.0
+    for k1 in np.linspace(-0.08, 0.08, 9):
+        for k2 in np.linspace(-0.02, 0.02, 5):
+            for k3 in np.linspace(-0.005, 0.005, 5):
+                for k4 in np.linspace(-0.001, 0.001, 5):
+                    model = gm.KannalaBrandt(k1=float(k1), k2=float(k2), k3=float(k3), k4=float(k4))
+                    theta = np.linspace(0.0, 0.95, 60) * min(model.max_valid_theta(), math.radians(100.0))
+                    worst = max(worst, float(np.max(np.abs(model.theta_from_distorted(model.distorted_theta(theta)) - theta))))
+    assert worst < 1e-12
 
 
 def test_corner_displacement_measures_distance_from_a_rectilinear_image() -> None:

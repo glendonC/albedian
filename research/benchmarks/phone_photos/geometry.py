@@ -91,13 +91,47 @@ class BrownConrady:
         yd = y * radial + self.p1 * (r2 + 2.0 * y * y) + 2.0 * self.p2 * x * y
         return xd, yd
 
+    def _radial_inverse(self, rd: np.ndarray) -> np.ndarray:
+        """The radius in [0, max_valid_radius] whose radial image is `rd`.
+
+        The radial image r (1 + k1 r^2 + k2 r^4 + k3 r^6) increases strictly up to the fold, so a
+        dense table of it inverts by interpolation to a start within a part in a million; Newton
+        steps, kept inside [0, fold], then finish. The root is always the one inside the fold,
+        never a second preimage beyond it, and a radius no valid ray reaches comes back as the
+        fold radius itself. (Newton from a far start can oscillate across the bracket for a
+        strong pincushion lens and stop on neither root.)
+        """
+        limit = self.max_valid_radius()
+        if math.isfinite(limit):
+            top = limit
+        else:
+            target = float(np.max(rd, initial=1.0))
+            top = 1.0
+            while top * float(self._radial(np.array(top * top))) < target and top < 1e6:
+                top *= 2.0
+        grid = np.linspace(0.0, top, 4097)
+        r = np.interp(rd, grid * self._radial(grid * grid), grid)
+        for _ in range(6):
+            s = r * r
+            f = r * self._radial(s) - rd
+            slope = 1.0 + s * (3.0 * self.k1 + s * (5.0 * self.k2 + s * 7.0 * self.k3))
+            step = np.divide(f, slope, out=np.zeros_like(f), where=slope > 1e-12)
+            r = np.clip(r - step, 0.0, top)
+        return r
+
     def undistort(self, xd: np.ndarray, yd: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Invert `distort` by Newton iteration on both coordinates."""
+        """Invert `distort`: the radial inverse inside the fold, then Newton on both coordinates
+        for the tangential terms, never leaving the fold radius."""
         xd = np.asarray(xd, dtype=np.float64)
         yd = np.asarray(yd, dtype=np.float64)
-        radial0 = self._radial(xd * xd + yd * yd)
-        safe = np.where(np.abs(radial0) > 0.2, radial0, 1.0)
-        x, y = xd / safe, yd / safe
+        rd = np.hypot(xd, yd)
+        r = self._radial_inverse(rd)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            scale = np.where(rd > 0.0, r / np.where(rd > 0.0, rd, 1.0), 1.0)
+        x, y = xd * scale, yd * scale
+        if self.p1 == 0.0 and self.p2 == 0.0:
+            return x, y
+        limit = self.max_valid_radius()
         for _ in range(60):
             r2 = x * x + y * y
             radial = self._radial(r2)
@@ -108,16 +142,52 @@ class BrownConrady:
             b = slope * x * y + 2.0 * self.p1 * x + 2.0 * self.p2 * y
             d = radial + slope * y * y + 6.0 * self.p1 * y + 2.0 * self.p2 * x
             det = a * d - b * b
-            step_x = (d * fx - b * fy) / det
-            step_y = (a * fy - b * fx) / det
+            with np.errstate(divide="ignore", invalid="ignore"):
+                step_x = np.where(det != 0.0, (d * fx - b * fy) / det, 0.0)
+                step_y = np.where(det != 0.0, (a * fy - b * fx) / det, 0.0)
             x, y = x - step_x, y - step_y
+            if math.isfinite(limit):
+                # A step past the fold is pulled back onto it; the root lies inside
+                radius = np.hypot(x, y)
+                pull = np.divide(limit, radius, out=np.ones_like(radius), where=radius > limit)
+                x, y = x * pull, y * pull
             if np.all(np.abs(step_x) + np.abs(step_y) < 1e-15):
                 break
         return x, y
 
+    @cached_property
+    def _valid_radius(self) -> float:
+        fold = math.sqrt(_smallest_positive_root([7.0 * self.k3, 5.0 * self.k2, 3.0 * self.k1, 1.0]))
+        tangential = 6.0 * (abs(self.p1) + abs(self.p2))
+        if tangential == 0.0:
+            return fold
+        # With tangential terms the map stays one-to-one while the radial Jacobian's smaller
+        # singular value, min(slope, r_d / r), exceeds the tangential Jacobian's norm, which is at
+        # most 6 (|p1| + |p2|) r. Scan for the first radius where that margin closes.
+        top = min(fold, 50.0)
+        r = np.linspace(0.0, top, 20001)[1:]
+        s = r * r
+        slope = 1.0 + s * (3.0 * self.k1 + s * (5.0 * self.k2 + s * 7.0 * self.k3))
+        margin = np.minimum(slope, self._radial(s)) - tangential * r
+        closed = np.flatnonzero(margin <= 0.0)
+        if closed.size == 0:
+            return fold if math.isfinite(fold) and fold <= 50.0 else math.inf
+        lo, hi = (0.0 if closed[0] == 0 else float(r[closed[0] - 1])), float(r[closed[0]])
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            s_mid = mid * mid
+            slope_mid = 1.0 + s_mid * (3.0 * self.k1 + s_mid * (5.0 * self.k2 + s_mid * 7.0 * self.k3))
+            ok = min(slope_mid, float(self._radial(np.array(s_mid)))) - tangential * mid > 0.0
+            lo, hi = (mid, hi) if ok else (lo, mid)
+        return lo
+
     def max_valid_radius(self) -> float:
-        """Normalized radius where the radial mapping r (1 + k1 r^2 + ...) stops increasing."""
-        return math.sqrt(_smallest_positive_root([7.0 * self.k3, 5.0 * self.k2, 3.0 * self.k1, 1.0]))
+        """Normalized radius up to which the model is one-to-one.
+
+        Without tangential terms, where the radial mapping r (1 + k1 r^2 + ...) stops increasing;
+        with them, where the radial Jacobian no longer outweighs the tangential one.
+        """
+        return self._valid_radius
 
     def distorted_radius(self, radius: float) -> float:
         return radius * float(self._radial(np.array(radius * radius)))
@@ -142,20 +212,28 @@ class KannalaBrandt:
         return 1.0 + t2 * (3.0 * self.k1 + t2 * (5.0 * self.k2 + t2 * (7.0 * self.k3 + t2 * 9.0 * self.k4)))
 
     def theta_from_distorted(self, theta_d: np.ndarray) -> np.ndarray:
-        """Invert `distorted_theta` by Newton iteration."""
+        """Invert `distorted_theta` inside the fold: interpolate a dense table of the strictly
+        increasing mapping, then finish with Newton steps kept inside [0, fold]. (Newton from the
+        distorted angle itself can start where the slope nearly vanishes and diverge.)"""
         theta_d = np.asarray(theta_d, dtype=np.float64)
-        theta = theta_d.copy()
-        for _ in range(60):
-            step = (self.distorted_theta(theta) - theta_d) / self._slope(theta)
-            theta = theta - step
-            if np.all(np.abs(step) < 1e-15):
-                break
+        top = self.max_valid_theta()
+        grid = np.linspace(0.0, top, 4097)
+        theta = np.interp(theta_d, self.distorted_theta(grid), grid)
+        for _ in range(6):
+            f = self.distorted_theta(theta) - theta_d
+            slope = self._slope(theta)
+            step = np.divide(f, slope, out=np.zeros_like(f), where=slope > 1e-12)
+            theta = np.clip(theta - step, 0.0, top)
         return theta
+
+    @cached_property
+    def _valid_theta(self) -> float:
+        root = _smallest_positive_root([9.0 * self.k4, 7.0 * self.k3, 5.0 * self.k2, 3.0 * self.k1, 1.0])
+        return min(math.sqrt(root), math.pi)
 
     def max_valid_theta(self) -> float:
         """Angle off the axis (radians, at most pi) where the mapping stops increasing."""
-        root = _smallest_positive_root([9.0 * self.k4, 7.0 * self.k3, 5.0 * self.k2, 3.0 * self.k1, 1.0])
-        return min(math.sqrt(root), math.pi)
+        return self._valid_theta
 
 
 Distortion = Union[BrownConrady, KannalaBrandt]
