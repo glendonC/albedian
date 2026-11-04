@@ -6,7 +6,7 @@ Every `CelestialFinding` in Albedian carries one of four mutually exclusive evid
 
 | Class | Requirement | Visual Marker Grammar | Forbidden Claim |
 |---|---|---|---|
-| `observed` | Point or streak extracted from immutable `SourceAsset` pixels with `snr >= 3.5` | Solid center dot (`#D1E9EF`) with hairline tick at measured `(xPx, yPx)` | Naming the star from pixel brightness alone without verified WCS |
+| `observed` | Point or streak extracted from immutable `SourceAsset` pixels with `snr >= 3.5` | Solid center dot (`#D1E9EF`) with hairline tick at measured `(xPx, yPx)` | Naming the star from pixel brightness alone, or giving it a sky position, without verified WCS |
 | `catalog_matched` | `observed` detection linked to a pinned catalog entry via verified WCS (`heldOutInliers >= 6`, `medianResidualPx <= 3.0`) | Concentric precision ring (`#81C5CC`) around observed centroid + elbow-connected label | Claiming zero distance uncertainty or phone-measured depth |
 | `predicted` | Computed from observer UTC timestamp, GPS coordinates, and ephemeris/catalog | Dashed open circle (`#D9AE75`) + `Predicted` badge | Rendering as synthetic camera pixels or claiming sensor detection |
 | `simulated` | 3D catalog-geometry rendering, alternate viewpoint, or non-observation epoch (`simulationEpoch != observationUTC`) | Bracketed reticle (`#ABB0D6`) + `Catalog Geometry` / `Modeled Sky` banner | Presenting artistic star surfaces or unmarked non-Euclidean warps |

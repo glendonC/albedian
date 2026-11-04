@@ -98,6 +98,11 @@ def test_horizon_solver_reports_measured_fit_residuals() -> None:
     assert moon.source_detection.fwhm_px == pytest.approx(2.355 * math.sqrt(63.0 / 12.0), abs=0.05)
     # Predicted objects carry no detection record: nothing was measured where they project
     assert all(f.source_detection is None for f in sol.findings if f.evidence_class == "predicted")
+    # The pose is not independently verified, so the detection has no sky position of its own;
+    # the predicted Moon carries the ephemeris position
+    assert not moon.has_sky_position
+    predicted_moon = next(f for f in sol.findings if f.id == "finding-predicted-moon")
+    assert predicted_moon.evidence_class == "predicted" and predicted_moon.has_sky_position
 
 
 def test_plate_solver_without_wcs_invents_no_sky_positions() -> None:
@@ -112,9 +117,12 @@ def test_plate_solver_without_wcs_invents_no_sky_positions() -> None:
         obs_utc_iso=MOMENT["obs_utc_iso"], observer_lat=MOMENT["observer_lat"], observer_lon=MOMENT["observer_lon"],
     )
     assert sol.status != "calibrated"
-    assert sol.findings == []
+    assert sol.wcs is None
     assert sol.quality.detected_candidate_count == len(detections)
-    assert any("counted, not listed" in w for w in sol.warnings)
+    # Every detection is listed at its measured pixels, and none is given a sky position
+    assert [f.source_detection for f in sol.findings] == detections
+    assert all(f.evidence_class == "observed" and not f.has_sky_position for f in sol.findings)
+    assert all("skyPosition" not in f for f in sol.to_contract_dict()["findings"])
 
 
 def test_uncalibrated_estimates_say_so() -> None:

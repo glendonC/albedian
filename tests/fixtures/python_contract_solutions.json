@@ -1,0 +1,889 @@
+{
+  "plate_too_few_sources": {
+    "id": "sol-primary",
+    "sourceAssetId": "asset-0",
+    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "unresolved",
+    "observedAtUTC": "2026-10-19T22:14:00Z",
+    "observerLocation": {
+      "latDeg": 31.149,
+      "lonDeg": -3.972
+    },
+    "solver": {
+      "name": "AlbedianGeometricQuadSolver",
+      "version": "1.0.0",
+      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+    },
+    "quality": {
+      "detectedCandidateCount": 4,
+      "matchedInlierCount": 0,
+      "heldOutInliers": 0,
+      "medianResidualPx": 999.0,
+      "p95ResidualPx": 999.0,
+      "medianResidualArcsec": 9999.0,
+      "passedIndependentVerification": false
+    },
+    "findings": [
+      {
+        "id": "finding-obs-1",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #1",
+        "subtitle": "Measured at (120.0, 80.0) px · SNR 18.0",
+        "evidence": {
+          "id": "ev-finding-obs-1",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: too few point sources for a verified WCS to place it on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 120.0,
+          "yPx": 80.0,
+          "flux": 4200.0,
+          "snr": 18.0,
+          "fwhmPx": 2.4,
+          "centroidUncertaintyPx": 0.12
+        }
+      },
+      {
+        "id": "finding-obs-2",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #2",
+        "subtitle": "Measured at (480.5, 260.2) px · SNR 18.0",
+        "evidence": {
+          "id": "ev-finding-obs-2",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: too few point sources for a verified WCS to place it on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 480.5,
+          "yPx": 260.25,
+          "flux": 4200.0,
+          "snr": 18.0,
+          "fwhmPx": 2.4,
+          "centroidUncertaintyPx": 0.12
+        }
+      },
+      {
+        "id": "finding-obs-3",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #3",
+        "subtitle": "Measured at (800.0, 410.0) px · SNR 18.0",
+        "evidence": {
+          "id": "ev-finding-obs-3",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: too few point sources for a verified WCS to place it on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 800.0,
+          "yPx": 410.0,
+          "flux": 4200.0,
+          "snr": 18.0,
+          "fwhmPx": 2.4,
+          "centroidUncertaintyPx": 0.12
+        }
+      }
+    ],
+    "warnings": [
+      "Insufficient point sources (4 detected) for independent WCS calibration."
+    ]
+  },
+  "plate_wcs_failed_verification": {
+    "id": "sol-primary",
+    "sourceAssetId": "asset-0",
+    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "unresolved",
+    "observedAtUTC": "2026-10-20T22:21:02Z",
+    "observerLocation": {
+      "latDeg": 31.2021,
+      "lonDeg": -3.9458
+    },
+    "solver": {
+      "name": "AlbedianGeometricQuadSolver",
+      "version": "1.0.0",
+      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+    },
+    "quality": {
+      "detectedCandidateCount": 8,
+      "matchedInlierCount": 0,
+      "heldOutInliers": 0,
+      "medianResidualPx": 999.0,
+      "p95ResidualPx": 999.0,
+      "medianResidualArcsec": 140878.0276080343,
+      "passedIndependentVerification": false
+    },
+    "findings": [
+      {
+        "id": "finding-obs-1",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #1",
+        "subtitle": "Measured at (101.0, 87.0) px · SNR 25.0",
+        "evidence": {
+          "id": "ev-finding-obs-1",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 101.0,
+          "yPx": 87.0,
+          "flux": 5000.0,
+          "snr": 25.0,
+          "fwhmPx": 2.5,
+          "centroidUncertaintyPx": 0.1
+        }
+      },
+      {
+        "id": "finding-obs-2",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #2",
+        "subtitle": "Measured at (412.5, 300.2) px · SNR 25.0",
+        "evidence": {
+          "id": "ev-finding-obs-2",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 412.5,
+          "yPx": 300.2,
+          "flux": 5000.0,
+          "snr": 25.0,
+          "fwhmPx": 2.5,
+          "centroidUncertaintyPx": 0.1
+        }
+      },
+      {
+        "id": "finding-obs-3",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #3",
+        "subtitle": "Measured at (733.0, 120.4) px · SNR 25.0",
+        "evidence": {
+          "id": "ev-finding-obs-3",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 733.0,
+          "yPx": 120.4,
+          "flux": 5000.0,
+          "snr": 25.0,
+          "fwhmPx": 2.5,
+          "centroidUncertaintyPx": 0.1
+        }
+      }
+    ],
+    "warnings": [
+      "WCS solution did not pass independent held-out calibration gate."
+    ]
+  },
+  "plate_calibrated": {
+    "id": "sol-primary",
+    "sourceAssetId": "asset-0",
+    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "calibrated",
+    "observedAtUTC": "2026-10-19T22:14:00Z",
+    "observerLocation": {
+      "latDeg": 31.149,
+      "lonDeg": -3.972
+    },
+    "solver": {
+      "name": "AlbedianGeometricQuadSolver",
+      "version": "1.0.0",
+      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+    },
+    "quality": {
+      "detectedCandidateCount": 12,
+      "matchedInlierCount": 11,
+      "heldOutInliers": 7,
+      "medianResidualPx": 0.11587721002381521,
+      "p95ResidualPx": 0.17208332897344245,
+      "medianResidualArcsec": 25.82685551751783,
+      "passedIndependentVerification": true
+    },
+    "findings": [
+      {
+        "id": "finding-star-rigel",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Rigel",
+        "subtitle": "Beta Orionis · B8 Ia · 264.0 pc [240.0–292.0 pc]",
+        "skyPosition": {
+          "raDeg": 78.634467,
+          "decDeg": -8.201638,
+          "uncertaintyArcsec": 13.050233353953237,
+          "altDeg": 3.610026601055327,
+          "azDeg": 101.83847303316479
+        },
+        "evidence": {
+          "id": "ev-finding-star-rigel",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-rigel",
+          "angularResidualArcsec": 13.050233353953237,
+          "pixelResidualPx": 0.0585524099203686,
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [240.0, 292.0] pc",
+          "limitations": [
+            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 586.3999745804418,
+          "yPx": 496.192205050709,
+          "flux": 1559.5250955064007,
+          "snr": 217.83736321927773,
+          "fwhmPx": 2.4316650204469092,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-rigel",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 24436",
+          "commonName": "Rigel",
+          "bayerDesignation": "Beta Orionis",
+          "constellation": "Orion",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 78.634467,
+          "decDeg": -8.201638,
+          "apparentMagnitude": 0.13,
+          "colorIndexBpRp": -0.03,
+          "spectralType": "B8 Ia",
+          "properMotionRaMasYr": 1.31,
+          "properMotionDecMasYr": 0.5,
+          "radialVelocityKmS": 17.8,
+          "parallaxMas": 3.78,
+          "parallaxErrorMas": 0.34,
+          "bailerJonesDistancePc": {
+            "lower": 240.0,
+            "median": 264.0,
+            "upper": 292.0,
+            "method": "geometric_parallax"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 240.0,
+          "median": 264.0,
+          "upper": 292.0,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          51.49373665075689,
+          256.17573235865893,
+          -37.6615086825694
+        ]
+      },
+      {
+        "id": "finding-star-betelgeuse",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Betelgeuse",
+        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 168.0 pc [145.0–197.0 pc]",
+        "skyPosition": {
+          "raDeg": 88.792939,
+          "decDeg": 7.407064,
+          "uncertaintyArcsec": 29.15969756247523,
+          "altDeg": 3.085955028552037,
+          "azDeg": 83.20774885276106
+        },
+        "evidence": {
+          "id": "ev-finding-star-betelgeuse",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-betelgeuse",
+          "angularResidualArcsec": 29.15969756247523,
+          "pixelResidualPx": 0.1308306540215864,
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [145.0, 197.0] pc",
+          "limitations": [
+            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+          ],
+          "verifiedByIndependentHoldout": true
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 401.63469878954527,
+          "yPx": 252.99501063221894,
+          "flux": 1426.2537312688178,
+          "snr": 202.35930030190187,
+          "fwhmPx": 2.431692600529923,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-betelgeuse",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 27989",
+          "commonName": "Betelgeuse",
+          "bayerDesignation": "Alpha Orionis",
+          "constellation": "Orion",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 88.792939,
+          "decDeg": 7.407064,
+          "apparentMagnitude": 0.42,
+          "colorIndexBpRp": 2.05,
+          "spectralType": "M1-M2 Ia-ab",
+          "properMotionRaMasYr": 27.54,
+          "properMotionDecMasYr": 11.3,
+          "radialVelocityKmS": 21.91,
+          "parallaxMas": 5.95,
+          "parallaxErrorMas": 0.85,
+          "bailerJonesDistancePc": {
+            "lower": 145.0,
+            "median": 168.0,
+            "upper": 197.0,
+            "method": "geometric_parallax"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 145.0,
+          "median": 168.0,
+          "upper": 197.0,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          3.5094937105371993,
+          166.56111735528515,
+          21.65820027736903
+        ]
+      },
+      {
+        "id": "finding-star-aldebaran",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Aldebaran",
+        "subtitle": "Alpha Tauri · K5+ III · 20.4 pc [20.1–20.8 pc]",
+        "skyPosition": {
+          "raDeg": 68.980163,
+          "decDeg": 16.509302,
+          "uncertaintyArcsec": 5.4693991636297925,
+          "altDeg": 24.41808165809806,
+          "azDeg": 84.8214040397246
+        },
+        "evidence": {
+          "id": "ev-finding-star-aldebaran",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-aldebaran",
+          "angularResidualArcsec": 5.4693991636297925,
+          "pixelResidualPx": 0.024539523023162053,
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [20.1, 20.8] pc",
+          "limitations": [
+            "Distance interval derived from Bailer-Jones photogeometric/parallax prior, not single-image depth."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 705.8147634399265,
+          "yPx": 71.73707307698696,
+          "flux": 1228.0515118801814,
+          "snr": 175.55144716468962,
+          "fwhmPx": 2.440765196865329,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-aldebaran",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 21421",
+          "commonName": "Aldebaran",
+          "bayerDesignation": "Alpha Tauri",
+          "constellation": "Taurus",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 68.980163,
+          "decDeg": 16.509302,
+          "apparentMagnitude": 0.86,
+          "colorIndexBpRp": 1.54,
+          "spectralType": "K5+ III",
+          "properMotionRaMasYr": 63.45,
+          "properMotionDecMasYr": -188.94,
+          "radialVelocityKmS": 54.26,
+          "parallaxMas": 48.94,
+          "parallaxErrorMas": 0.77,
+          "bailerJonesDistancePc": {
+            "lower": 20.1,
+            "median": 20.4,
+            "upper": 20.8,
+            "method": "geometric_parallax"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 20.1,
+          "median": 20.4,
+          "upper": 20.8,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          7.015633696854124,
+          18.257454601630958,
+          5.79708851933016
+        ]
+      },
+      {
+        "id": "finding-obs-12",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #12",
+        "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+        "skyPosition": {
+          "raDeg": 75.46722171042907,
+          "decDeg": 15.738000097027232,
+          "uncertaintyArcsec": 98.24327365094196
+        },
+        "evidence": {
+          "id": "ev-finding-obs-12",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 602.084011134508,
+          "yPx": 98.81346119185388,
+          "flux": 21.201707755833688,
+          "snr": 5.533123386517967,
+          "fwhmPx": 2.3531466262708625,
+          "centroidUncertaintyPx": 0.4252835987725396
+        }
+      }
+    ],
+    "warnings": [
+      "1 sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
+    ],
+    "wcs": {
+      "projection": "TAN",
+      "crvalRaDeg": 84.00062398801474,
+      "crvalDecDeg": 6.000266124716505,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.06191145378085482,
+      "rotationDeg": 4.49792204944997,
+      "radialDistortionK1": -0.07383922135184579,
+      "radialDistortionK2": 0.23999999999998664,
+      "parity": -1,
+      "fovHorizontalDeg": 54.82866626746391,
+      "fovVerticalDeg": 32.52929988358449
+    }
+  },
+  "horizon_approximate": {
+    "id": "sol-horizon-beacon",
+    "sourceAssetId": "asset-0",
+    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "approximate",
+    "observedAtUTC": "2026-10-20T22:21:02Z",
+    "observerLocation": {
+      "latDeg": 31.2021,
+      "lonDeg": -3.9458
+    },
+    "solver": {
+      "name": "AlbedianGeometricQuadSolver",
+      "version": "1.0.0",
+      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+    },
+    "quality": {
+      "detectedCandidateCount": 1,
+      "matchedInlierCount": 1,
+      "heldOutInliers": 0,
+      "medianResidualPx": 5.684341886080801e-13,
+      "p95ResidualPx": 8.753886504564433e-13,
+      "medianResidualArcsec": 8.652718871966924e-11,
+      "passedIndependentVerification": false
+    },
+    "findings": [
+      {
+        "id": "finding-observed-moon",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "observed",
+        "title": "Moon (Observed Sensor Beacon + Ephemeris Lock)",
+        "subtitle": "Measured at (933.5, 121.5) px · pose fit residual 0.00 px",
+        "evidence": {
+          "id": "ev-finding-observed-moon",
+          "evidenceClass": "observed",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "angularResidualArcsec": 1.5478454070330674e-10,
+          "pixelResidualPx": 1.016845989170083e-12,
+          "limitations": [
+            "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
+            "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
+            "The light centroid of a partly lit or saturated Moon is offset from the disk center; that bias is not modeled."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "asset-0",
+          "frameTimeSec": 0.0,
+          "xPx": 933.5,
+          "yPx": 121.5,
+          "flux": 15360.0,
+          "snr": 1882648.2535130244,
+          "fwhmPx": 5.395982880810501,
+          "centroidUncertaintyPx": 1.217055731575122e-06
+        }
+      },
+      {
+        "id": "finding-predicted-moon",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Moon (Predicted Ephemeris)",
+        "subtitle": "Predicted Moon · 0.003 AU · Alt +32.9° · Inside Camera FOV",
+        "skyPosition": {
+          "raDeg": 325.0790195412517,
+          "decDeg": -14.463305370455188,
+          "uncertaintyArcsec": 18.0,
+          "altDeg": 32.94754177145702,
+          "azDeg": 222.22581347760072
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-moon",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "limitations": [
+            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+          ],
+          "verifiedByIndependentHoldout": false
+        }
+      },
+      {
+        "id": "finding-predicted-star-fomalhaut",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Fomalhaut (Alpha Piscis Austrini)",
+        "subtitle": "Predicted Star (Piscis Austrinus) · 7.7 pc · Alt +27.2° Az 195.9° · Inside Camera FOV",
+        "skyPosition": {
+          "raDeg": 344.412693,
+          "decDeg": -29.622237,
+          "uncertaintyArcsec": 45.0,
+          "altDeg": 27.235369601828264,
+          "azDeg": 195.91460543917114
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-star-fomalhaut",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "catalogReferenceId": "star-fomalhaut",
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [7.7, 7.7] pc",
+          "limitations": [
+            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "catalogRef": {
+          "id": "star-fomalhaut",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 113368",
+          "commonName": "Fomalhaut",
+          "bayerDesignation": "Alpha Piscis Austrini",
+          "constellation": "Piscis Austrinus",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 344.412693,
+          "decDeg": -29.622237,
+          "apparentMagnitude": 1.16,
+          "colorIndexBpRp": 0.09,
+          "spectralType": "A3 V",
+          "properMotionRaMasYr": 328.95,
+          "properMotionDecMasYr": -164.67,
+          "radialVelocityKmS": 6.5,
+          "parallaxMas": 129.81,
+          "parallaxErrorMas": 0.47,
+          "bailerJonesDistancePc": {
+            "lower": 7.67,
+            "median": 7.7,
+            "upper": 7.73,
+            "method": "geometric_parallax"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 7.67,
+          "median": 7.7,
+          "upper": 7.73,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          6.447456645835053,
+          -1.7986226546450026,
+          -3.805950518106506
+        ]
+      },
+      {
+        "id": "finding-predicted-star-deneb-algedi",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Deneb Algedi (Delta Capricorni)",
+        "subtitle": "Predicted Star (Capricornus) · 11.9 pc · Alt +32.5° Az 219.5° · Inside Camera FOV",
+        "skyPosition": {
+          "raDeg": 326.760184,
+          "decDeg": -16.127289,
+          "uncertaintyArcsec": 45.0,
+          "altDeg": 32.53298083188913,
+          "azDeg": 219.50780435114487
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-star-deneb-algedi",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "catalogReferenceId": "star-deneb-algedi",
+          "distanceUncertaintyNote": "Bailer-Jones 16th-84th percentile [11.7, 12.1] pc",
+          "limitations": [
+            "Predicted from Gaia DR3 / Hipparcos catalog + GPS/UTC horizon pose; not claimed as recovered sensor pixels."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "catalogRef": {
+          "id": "star-deneb-algedi",
+          "provider": "Hipparcos",
+          "releaseVersion": "HIP2 / Gaia DR3 Crossmatch",
+          "catalogSourceId": "HIP 107556",
+          "commonName": "Deneb Algedi",
+          "bayerDesignation": "Delta Capricorni",
+          "constellation": "Capricornus",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 326.760184,
+          "decDeg": -16.127289,
+          "apparentMagnitude": 2.85,
+          "colorIndexBpRp": 0.38,
+          "spectralType": "A7 IIIp",
+          "properMotionRaMasYr": 261.71,
+          "properMotionDecMasYr": -296.68,
+          "radialVelocityKmS": -6.3,
+          "parallaxMas": 84.27,
+          "parallaxErrorMas": 0.69,
+          "bailerJonesDistancePc": {
+            "lower": 11.7,
+            "median": 11.9,
+            "upper": 12.1,
+            "method": "geometric_parallax"
+          },
+          "citation": "Gaia Collaboration (2023) Gaia DR3; Hipparcos (ESA 1997); Bailer-Jones et al. (2021) AJ 161, 147."
+        },
+        "inferredDistancePc": {
+          "lower": 11.7,
+          "median": 11.9,
+          "upper": 12.1,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          9.561285450480625,
+          -6.266223734187989,
+          -3.3054894717010805
+        ]
+      }
+    ],
+    "warnings": [
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (GPS 31.2021°, -3.9458° @ 2026-10-20T22:21:02Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
+    ],
+    "wcs": {
+      "projection": "TAN",
+      "crvalRaDeg": 314.97299813329414,
+      "crvalDecDeg": -44.35163002537942,
+      "crpixX": 672.0,
+      "crpixY": 896.0,
+      "scaleDegPerPx": 0.04228340005157541,
+      "rotationDeg": -37.86038497529181,
+      "radialDistortionK1": 0.0,
+      "radialDistortionK2": 0.0,
+      "parity": -1,
+      "fovHorizontalDeg": 52.755982082598706,
+      "fovVerticalDeg": 66.94807855322435
+    }
+  },
+  "horizon_predicted_only": {
+    "id": "sol-horizon-beacon",
+    "sourceAssetId": "asset-0",
+    "sourceSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "predicted_only",
+    "observedAtUTC": "2026-10-20T22:21:02Z",
+    "observerLocation": {
+      "latDeg": 31.2021,
+      "lonDeg": -3.9458
+    },
+    "solver": {
+      "name": "AlbedianGeometricQuadSolver",
+      "version": "1.0.0",
+      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+    },
+    "quality": {
+      "detectedCandidateCount": 0,
+      "matchedInlierCount": 0,
+      "heldOutInliers": 0,
+      "medianResidualPx": 999.0,
+      "p95ResidualPx": 999.0,
+      "medianResidualArcsec": 9999.0,
+      "passedIndependentVerification": false
+    },
+    "findings": [
+      {
+        "id": "finding-predicted-uranus",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Uranus (Predicted Ephemeris)",
+        "subtitle": "Predicted Planet · 18.633 AU · Alt +34.0° · Above Horizon",
+        "skyPosition": {
+          "raDeg": 62.73971384969124,
+          "decDeg": 20.918468731392927,
+          "uncertaintyArcsec": 12.0,
+          "altDeg": 34.026434252658234,
+          "azDeg": 84.56478558156093
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-uranus",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "limitations": [
+            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+          ],
+          "verifiedByIndependentHoldout": false
+        }
+      },
+      {
+        "id": "finding-predicted-saturn",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Saturn (Predicted Ephemeris)",
+        "subtitle": "Predicted Planet · 8.475 AU · Alt +58.9° · Above Horizon",
+        "skyPosition": {
+          "raDeg": 10.017139926001914,
+          "decDeg": 1.371823238653201,
+          "uncertaintyArcsec": 12.0,
+          "altDeg": 58.89505071363237,
+          "azDeg": 161.74250058988343
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-saturn",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "limitations": [
+            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+          ],
+          "verifiedByIndependentHoldout": false
+        }
+      },
+      {
+        "id": "finding-predicted-moon",
+        "observationSolutionId": "sol-horizon-beacon",
+        "evidenceClass": "predicted",
+        "title": "Moon (Predicted Ephemeris)",
+        "subtitle": "Predicted Moon · 0.003 AU · Alt +32.9° · Above Horizon",
+        "skyPosition": {
+          "raDeg": 325.0790195412517,
+          "decDeg": -14.463305370455188,
+          "uncertaintyArcsec": 18.0,
+          "altDeg": 32.94754177145702,
+          "azDeg": 222.22581347760072
+        },
+        "evidence": {
+          "id": "ev-finding-predicted-moon",
+          "evidenceClass": "predicted",
+          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "wcsSolutionId": "sol-horizon-beacon",
+          "limitations": [
+            "Computed from ephemeris + embedded QuickTime GPS & UTC timestamp."
+          ],
+          "verifiedByIndependentHoldout": false
+        }
+      }
+    ],
+    "warnings": [
+      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from GPS 31.2021°, -3.9458° @ 2026-10-20T22:21:02Z, not placed in the frame."
+    ]
+  }
+}

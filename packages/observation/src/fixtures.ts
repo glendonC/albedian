@@ -402,6 +402,22 @@ export function createUnresolvedObservationSession(): ObservationSession {
     },
   ];
 
+  // The two detections stay listed at their pixels; without a verified WCS they have no sky position
+  const observedFindings: CelestialFinding[] = [
+    {
+      id: 'finding_obs_overcast_1', observationSolutionId: solutionId, evidenceClass: 'observed',
+      title: 'Field Source #1', subtitle: 'Observed Point Detection · SNR 4.1',
+      sourceDetection: { assetId, frameTimeSec: 1.5, xPx: 612.4, yPx: 214.9, flux: 268.0, snr: 4.1, fwhmPx: 3.0, centroidUncertaintyPx: 0.61 },
+      evidence: { id: 'ev_obs_overcast_1', evidenceClass: 'observed', verificationMethod: 'Direct source pixel aperture photometry (SNR 4.1 >= 3.5 threshold)', sourceAssetSha256: sourceSha256, limitations: ['Pixel position only: 2 detections are too few for a verified WCS to place it on the sky.'], verifiedByIndependentHoldout: false },
+    },
+    {
+      id: 'finding_obs_overcast_2', observationSolutionId: solutionId, evidenceClass: 'observed',
+      title: 'Field Source #2', subtitle: 'Observed Point Detection · SNR 3.7',
+      sourceDetection: { assetId, frameTimeSec: 1.5, xPx: 1288.0, yPx: 341.6, flux: 197.5, snr: 3.7, fwhmPx: 3.3, centroidUncertaintyPx: 0.74 },
+      evidence: { id: 'ev_obs_overcast_2', evidenceClass: 'observed', verificationMethod: 'Direct source pixel aperture photometry (SNR 3.7 >= 3.5 threshold)', sourceAssetSha256: sourceSha256, limitations: ['Pixel position only: 2 detections are too few for a verified WCS to place it on the sky.'], verifiedByIndependentHoldout: false },
+    },
+  ];
+
   const initialSpatialView: SpatialViewState = {
     mode: 'source_2d', transitionPhase: 'at_source', transitionProgress: 0,
     observerOriginParsec: [0, 0, 0], cameraQuaternion: [0, 0, 0, 1], fovVerticalDeg: 40,
@@ -428,7 +444,7 @@ export function createUnresolvedObservationSession(): ObservationSession {
       observedAtUTC: capturedAtUTC, observerLocation: { latDeg: 37.7749, lonDeg: -122.4194, placeName: 'San Francisco, CA' },
       solver: { name: 'albedian-wcs-quad-geometric', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Bright Subset + JPL DE440' },
       quality: { detectedCandidateCount: 2, matchedInlierCount: 2, heldOutInliers: 2, medianResidualPx: 8.4, p95ResidualPx: 14.2, medianResidualArcsec: 1058.4, passedIndependentVerification: false },
-      findings: predictedFindings,
+      findings: [...predictedFindings, ...observedFindings],
       warnings: ['Insufficient star detections (2 found, >= 6 held-out inliers required) for verified WCS registration. Showing predicted sky separately from source pixels.'],
     },
     selectedFindingId: null, focusedFindingId: null, spatialView: initialSpatialView,

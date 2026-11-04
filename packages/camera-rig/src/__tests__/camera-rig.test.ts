@@ -17,6 +17,7 @@ import {
   querySightlineCone,
   raDecToUnitVector,
   rebaseFloatingOrigin,
+  resolveFindingParsecPosition,
   slerpQuaternion,
   unitVectorToRaDec,
   worldToPixelWCS,
@@ -343,7 +344,7 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
       [0, 0, 0],
       target,
       18
-    );
+    ) ?? [];
 
     expect(cone.map((c) => c.finding.id)).toEqual([
       'Bellatrix',
@@ -356,5 +357,31 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
     expect(cone[1]!.distanceFromObserverPc).toBeLessThan(
       cone[2]!.distanceFromObserverPc
     );
+  });
+});
+
+describe('@albedian/camera-rig: detections without a sky position', () => {
+  const evidence = (id: string, evidenceClass: 'observed' | 'catalog_matched') => ({
+    id: `ev-${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: '0123456789abcdef0123456789abcdef',
+    limitations: ['Generated for camera rig tests.'], verifiedByIndependentHoldout: evidenceClass === 'catalog_matched',
+  });
+  const pixelOnly: CelestialFinding = {
+    id: 'finding-obs-1', observationSolutionId: 'sol-1', evidenceClass: 'observed', title: 'Observed Point Source #1',
+    subtitle: 'Measured at (412.5, 300.2) px',
+    sourceDetection: { assetId: 'src-1', frameTimeSec: 0, xPx: 412.5, yPx: 300.2, flux: 5000, snr: 25, fwhmPx: 2.5, centroidUncertaintyPx: 0.1 },
+    evidence: evidence('finding-obs-1', 'observed'),
+  };
+  const bellatrix: CelestialFinding = {
+    id: 'Bellatrix', observationSolutionId: 'sol-1', evidenceClass: 'catalog_matched', title: 'Bellatrix', subtitle: 'Star',
+    skyPosition: { raDeg: 81.28, decDeg: 6.35, uncertaintyArcsec: 1.2 },
+    inferredDistancePc: { lower: 69.3, median: 77, upper: 84.7, method: 'photogeometric_bailer_jones_edr3' },
+    evidence: evidence('Bellatrix', 'catalog_matched'),
+  };
+
+  it('gives a pixel-only detection no 3D position and no sightline, and leaves it out of other cones', () => {
+    expect(resolveFindingParsecPosition(pixelOnly)).toBeNull();
+    expect(resolveFindingParsecPosition({ ...pixelOnly, inferredDistancePc: bellatrix.inferredDistancePc })).toBeNull();
+    expect(querySightlineCone([pixelOnly, bellatrix], [0, 0, 0], pixelOnly)).toBeNull();
+    expect(querySightlineCone([pixelOnly, bellatrix], [0, 0, 0], bellatrix)?.map((c) => c.finding.id)).toEqual(['Bellatrix']);
   });
 });
