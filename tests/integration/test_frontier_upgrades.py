@@ -1,10 +1,9 @@
-"""Integration and property tests for Frontier Upgrades 1 & 2 and Deep Scientific & AI Engines:
+"""Integration and property tests for Frontier Upgrades 1 & 2 and Deep Scientific Engines:
 - `services/media/silhouette.py`: `compute_2d_sky_silhouette_mask` & `deband_shadow_macroblocks`
 - `services/science/optical_flow.py`: `compute_video_pose_trajectory` (`beacon_lock` & `silhouette_flow`)
 - `services/science/radiometry.py`: Krisciunas & Schaefer (1991) lunar sky brightness & limiting mag audit
 - `services/science/deep_sky.py`: `DEEP_SKY_CATALOG`, `compute_stellar_astrophysics`, `compute_3d_nearest_neighbors`
 - `services/science/coherent_stack.py`: `subtract_lunar_scattering_veil`, `integrate_wcs_coherent_star_trajectories`
-- `services/science/vision_calibrator.py`: `classify_night_scene_sources`
 """
 
 from __future__ import annotations
@@ -35,7 +34,6 @@ from services.science.radiometry import (
     compute_sensor_limiting_magnitude_audit,
 )
 from services.science.solver import render_synthetic_starfield
-from services.science.vision_calibrator import classify_night_scene_sources
 
 
 def test_frontier_2d_sky_silhouette_mask_traces_protruding_structures() -> None:
@@ -162,10 +160,10 @@ def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_dee
         assert "deepSkyObjects" in item
 
 
-def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> None:
+def test_deep_engines_radiometry_astrophysics_and_coherent_stack() -> None:
     """Verify Krisciunas & Schaefer (1991) lunar radiometry, Stefan-Boltzmann stellar
-    astrophysics, 3D nearest neighbors, lunar veil subtraction, WCS-coherent trajectory
-    stacking, and night-scene source classification.
+    astrophysics, 3D nearest neighbors, lunar veil subtraction, and WCS-coherent trajectory
+    stacking.
     """
     # 1. Radiometry (`services/science/radiometry.py`)
     # A synthetic moment and place that point at nobody (the open North Atlantic, about 1,321 km from
@@ -279,20 +277,7 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
     assert len(detected) >= 3
     assert all(r["coherentSnr"] >= 3.0 for r in detected)
 
-    # 4. Night-Scene Source Classifier (`services/science/vision_calibrator.py`)
-    scene_img = np.full((180, 240), 0.03, dtype=np.float64)
-    # Compact upper-sky celestial beacon at (y=32, x=190)
-    scene_img += 0.75 * np.exp(-((xx - 190.0) ** 2 + (yy - 32.0) ** 2) / (2.0 * 2.0**2))
-    # Extended ground light below the horizon at (y=135, x=90)
-    scene_img += 0.85 * np.exp(-((xx - 90.0) ** 2 + (yy - 135.0) ** 2) / (2.0 * 9.0**2))
-
-    cls_res = classify_night_scene_sources(scene_img, horizon_y=105.0)
-    assert len(cls_res["celestialBeacons"]) >= 1
-    assert len(cls_res["artificialGroundLights"]) >= 1
-    assert cls_res["celestialBeacons"][0]["yPx"] < 50.0
-    assert cls_res["artificialGroundLights"][0]["yPx"] > 100.0
-
-    # 5. FastAPI endpoint GET /api/science/radiometry-audit
+    # 4. FastAPI endpoint GET /api/science/radiometry-audit
     client = TestClient(app)
     assert client.get("/api/science/radiometry-audit").status_code == 422
     r_rad = client.get(

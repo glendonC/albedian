@@ -1,5 +1,5 @@
 """Albedian Scientific Astrometry, Plate Solving, Catalog, Ephemeris, Radiometry,
-Deep-Sky Astrophysics, Coherent Trajectory Photometry, and Vision Scene Classifier Package.
+Deep-Sky Astrophysics, and Coherent Trajectory Photometry Package.
 """
 
 from services.science.catalog import (
@@ -58,7 +58,6 @@ from services.science.solver import (
     solve_horizon_and_beacon_pose,
     stack_video_frames_for_calibration,
 )
-from services.science.vision_calibrator import classify_night_scene_sources
 
 __all__ = [
     "ALL_SKY_CATALOG_STARS",
@@ -81,7 +80,6 @@ __all__ = [
     "altaz_to_icrs",
     "angular_separation_deg",
     "bailer_jones_cartesian_pc",
-    "classify_night_scene_sources",
     "compute_3d_nearest_neighbors",
     "compute_krisciunas_schaefer_sky_brightness",
     "compute_light_travel_time_description",
