@@ -1,0 +1,185 @@
+"""The solvers the benchmark runs, behind one interface: what an upload gives and what a solver claims.
+
+A solver receives the decoded upload (8-bit RGB, as a JPEG decoder returns it) and the metadata a
+phone writes (time, place, camera). It returns whether it claims a verified solution, the WCS it
+claims, and the catalog matches behind the claim. The scorer judges the claim against the truth.
+
+Adapters:
+
+- `today-api`: today's solver exactly as `POST /api/science/solve` runs it on `image_luma`:
+  Rec. 709 luma of the decoded pixels, `detect_point_sources` with its defaults, then
+  `solve_and_verify_field` on the default 18-star Orion and Taurus catalog.
+- `today-allsky`: the same on the 71-star all-sky list, to separate catalog coverage from the
+  algorithm.
+- `horizon-moon`: today's horizon and Moon pose solver, which never claims held-out verification.
+"""
+
+from __future__ import annotations
+
+import math
+import signal
+import time
+from dataclasses import dataclass, field
+from typing import Callable, Protocol
+
+import numpy as np
+
+from research.benchmarks.phone_photos.geometry import CameraTruth
+
+
+class WcsLike(Protocol):
+    def world_to_pixel(self, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]: ...
+
+
+class TruthWcs:
+    """The ground truth seen as a WCS: what a perfect solver would claim."""
+
+    def __init__(self, camera_truth: CameraTruth) -> None:
+        self.camera_truth = camera_truth
+
+    def world_to_pixel(self, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return self.camera_truth.icrs_to_pixel(np.atleast_1d(ra_deg), np.atleast_1d(dec_deg))
+
+
+class _ScalarWcs:
+    """Vectorizes a WCS whose `world_to_pixel` takes one direction at a time."""
+
+    def __init__(self, wcs) -> None:
+        self.wcs = wcs
+
+    def world_to_pixel(self, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        pairs = [self.wcs.world_to_pixel(float(r), float(d)) for r, d in zip(np.atleast_1d(ra_deg), np.atleast_1d(dec_deg))]
+        out = np.array(pairs, dtype=np.float64).reshape(-1, 2)
+        return out[:, 0], out[:, 1]
+
+
+@dataclass
+class SolverInput:
+    rgb: np.ndarray
+    metadata: dict
+
+
+@dataclass
+class SolverOutcome:
+    status: str
+    claimed: bool
+    wcs: WcsLike | None
+    matches: list[tuple[float, float, float, float]]  # (detection x, detection y, catalog RA, catalog Dec)
+    detections: int
+    held_out_inliers: int
+    self_median_residual_px: float | None
+    elapsed_s: float
+    error: str | None = None
+    extra: dict = field(default_factory=dict)
+
+
+def _luma(rgb: np.ndarray) -> np.ndarray:
+    pixels = np.asarray(rgb, dtype=np.float64) / 255.0
+    return 0.2126 * pixels[..., 0] + 0.7152 * pixels[..., 1] + 0.0722 * pixels[..., 2]
+
+
+def _today(catalog: str) -> Callable[[SolverInput], SolverOutcome]:
+    def run(inp: SolverInput) -> SolverOutcome:
+        from services.science.catalog import get_all_sky_catalog_stars
+        from services.science.solver import detect_point_sources, solve_and_verify_field
+
+        start = time.perf_counter()
+        luma = _luma(inp.rgb)
+        detections = detect_point_sources(luma)
+        h, w = luma.shape
+        solution = solve_and_verify_field(
+            detections, w, h,
+            obs_utc_iso=inp.metadata["utc"], observer_lat=inp.metadata["latDeg"], observer_lon=inp.metadata["lonDeg"],
+            catalog_stars=get_all_sky_catalog_stars() if catalog == "all-sky" else None,
+        )
+        claimed = solution.has_verified_wcs
+        matches = [
+            (f.source_detection.x_px, f.source_detection.y_px, f.catalog_star.ra_deg, f.catalog_star.dec_deg)
+            for f in solution.findings
+            if f.evidence_class == "catalog_matched" and f.source_detection is not None and f.catalog_star is not None
+        ]
+        median = solution.quality.median_residual_px
+        return SolverOutcome(
+            status=solution.status,
+            claimed=claimed,
+            wcs=_ScalarWcs(solution.wcs) if solution.wcs is not None else None,
+            matches=matches,
+            detections=len(detections),
+            held_out_inliers=solution.quality.held_out_inliers,
+            self_median_residual_px=median if median < 900.0 else None,
+            elapsed_s=time.perf_counter() - start,
+        )
+
+    return run
+
+
+def _horizon_moon(inp: SolverInput) -> SolverOutcome:
+    from services.science.solver import solve_horizon_and_beacon_pose
+
+    start = time.perf_counter()
+    solution = solve_horizon_and_beacon_pose(
+        _luma(inp.rgb), obs_utc_iso=inp.metadata["utc"], observer_lat=inp.metadata["latDeg"], observer_lon=inp.metadata["lonDeg"]
+    )
+    median = solution.quality.median_residual_px
+    return SolverOutcome(
+        status=solution.status,
+        claimed=solution.has_verified_wcs,
+        wcs=_ScalarWcs(solution.wcs) if solution.wcs is not None else None,
+        matches=[],
+        detections=solution.quality.detected_candidate_count,
+        held_out_inliers=solution.quality.held_out_inliers,
+        self_median_residual_px=median if median < 900.0 else None,
+        elapsed_s=time.perf_counter() - start,
+    )
+
+
+SOLVERS: dict[str, Callable[[SolverInput], SolverOutcome]] = {
+    "today-api": _today("pinned"),
+    "today-allsky": _today("all-sky"),
+    "horizon-moon": _horizon_moon,
+}
+
+
+class SolveTimeout(Exception):
+    pass
+
+
+def _alarm(_signum, _frame) -> None:
+    raise SolveTimeout()
+
+
+def run_solver(name: str, inp: SolverInput, timeout_s: float) -> SolverOutcome:
+    """Run a solver under a wall-clock limit (main thread only); a timeout or a crash is an outcome."""
+    start = time.perf_counter()
+    previous = signal.signal(signal.SIGALRM, _alarm)
+    signal.setitimer(signal.ITIMER_REAL, timeout_s)
+    try:
+        return SOLVERS[name](inp)
+    except SolveTimeout:
+        return SolverOutcome("timeout", False, None, [], 0, 0, None, time.perf_counter() - start, error=f"over {timeout_s:g} s")
+    except Exception as exc:  # the benchmark records crashes rather than stopping
+        return SolverOutcome("error", False, None, [], 0, 0, None, time.perf_counter() - start, error=f"{type(exc).__name__}: {exc}"[:300])
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0.0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def field_errors_px(camera_truth: CameraTruth, wcs: WcsLike, sky_mask: np.ndarray | None, grid: int = 24) -> np.ndarray:
+    """Pixel distance between where the truth and a claimed WCS put the sky seen at a grid of pixels."""
+    k = camera_truth.camera.intrinsics
+    xs = np.linspace(0.0, k.width - 1.0, grid)
+    ys = np.linspace(0.0, k.height - 1.0, max(2, int(round(grid * k.height / k.width))))
+    gx, gy = np.meshgrid(xs, ys)
+    gx, gy = gx.ravel(), gy.ravel()
+    if sky_mask is not None:
+        on_sky = sky_mask[np.round(gy).astype(int), np.round(gx).astype(int)]
+        if np.count_nonzero(on_sky) >= 8:
+            gx, gy = gx[on_sky], gy[on_sky]
+    ra, dec = camera_truth.pixel_to_icrs(gx, gy)
+    good = np.isfinite(ra)
+    if not np.any(good):
+        return np.array([math.inf])
+    with np.errstate(invalid="ignore"):
+        px, py = wcs.world_to_pixel(ra[good], dec[good])
+    distance = np.hypot(np.asarray(px) - gx[good], np.asarray(py) - gy[good])
+    return np.where(np.isfinite(distance), distance, math.inf)
