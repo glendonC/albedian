@@ -20,7 +20,7 @@ Labels, as AGENTS.md section 3 asks:
 - **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with 61 tests ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). Its data inputs are not connected to the app yet. [tested]
 - **Backend.** Nine FastAPI endpoints. They include a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision ephemeris and a moonlight model. All are tested on synthetic data only. [tested]
 - **Look-dev.** A Blender 5.2 pipeline renders real moments from NASA Blue Marble, Black Marble and LRO data (`scripts/lookdev/`). [tested]
-- **Gates.** `pnpm typecheck`, `pnpm test` (262 tests), `uv run pytest` (163 tests), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`. There is no CI yet. [tested]
+- **Gates.** `pnpm typecheck`, `pnpm test` (286 tests), `uv run pytest` (206 tests), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`, and CI runs all six on every push and pull request (`.github/workflows/gates.yml`: Node 22 and 24, Python 3.12 and 3.14; a skip outside the owner-media marker fails the run). [tested]
 
 ### The gap that matters most
 
@@ -200,7 +200,7 @@ Owner: `spatial`, with `media`. [proposed]
 
 Owner: `verification`, with each area's owner.
 
-- **CI.** Run the six gates on every pull request. PR #1 ran no checks because the repo has no CI.
+- **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
 - **Security.** Fix the CORS and scan-directory issues from section 1 before any deployment.
 - **Docs drift.**
   - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
@@ -208,7 +208,6 @@ Owner: `verification`, with each area's owner.
   - EXP-07 and EXP-11 in `research/experiments/EXPERIMENT_REGISTRY.md` are marked verified, but they do not test what they claim.
   - AUDIO_ENGINE.md still says the volume slider is unconnected, and it names the wrong radiometry endpoint.
 - **Fabrication remnants.**
-  - A test fixture cites "JPL Horizons DE440" with the hash of an empty string, and the package's public entry point exports it (`packages/observation/src/fixtures.ts`, `index.ts`).
   - `services/science/vision_calibrator.py` is described as a Claude Vision check but sends no image, and nothing calls it.
 - **Data outside git.** `data/uploads` (205 MB), `data/artifacts`, `data/lookdev` (289 MB) and several gitignored splats exist only on this machine.
 
