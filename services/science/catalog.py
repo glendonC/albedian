@@ -100,6 +100,39 @@ def _iso_to_julian_date(obs_utc_iso: str) -> float:
     return unix_sec / 86400.0 + 2440587.5
 
 
+ARCSEC_RAD = math.pi / (180.0 * 3600.0)
+
+
+def _rot_y(angle: float) -> np.ndarray:
+    c, s = math.cos(angle), math.sin(angle)
+    return np.array([[c, 0.0, -s], [0.0, 1.0, 0.0], [s, 0.0, c]])
+
+
+def _rot_z(angle: float) -> np.ndarray:
+    c, s = math.cos(angle), math.sin(angle)
+    return np.array([[c, s, 0.0], [-s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+def precession_matrix_iau1976(jd: float) -> np.ndarray:
+    """IAU 1976 precession (Lieske et al. 1977, A&A 58, 1): the matrix taking J2000 mean equatorial vectors to
+    the mean equator and equinox of date `jd` (ERFA's eraPmat76; axes rotated, as ERFA does).
+
+    The date is meant in TT; passing a UTC Julian date, as this module does, shifts it by about 69 s, which
+    moves the result by under 0.001 arcsec.
+    """
+    t = (jd - 2451545.0) / 36525.0
+    zeta = (2306.2181 + (0.30188 + 0.017998 * t) * t) * t * ARCSEC_RAD
+    z = (2306.2181 + (1.09468 + 0.018203 * t) * t) * t * ARCSEC_RAD
+    theta = (2004.3109 + (-0.42665 - 0.041833 * t) * t) * t * ARCSEC_RAD
+    return _rot_z(-z) @ _rot_y(theta) @ _rot_z(-zeta)
+
+
+def mean_obliquity_iau1980_deg(jd: float) -> float:
+    """Mean obliquity of the ecliptic of date in degrees (Meeus 22.2; ERFA's eraObl80)."""
+    t = (jd - 2451545.0) / 36525.0
+    return (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t) / 3600.0
+
+
 def icrs_to_altaz(
     ra_deg: float,
     dec_deg: float,
@@ -107,8 +140,18 @@ def icrs_to_altaz(
     lon_deg: float,
     obs_utc_iso: str,
 ) -> tuple[float, float]:
-    """Convert ICRS (ra_deg, dec_deg) to topocentric horizontal (alt_deg, az_deg)."""
+    """Convert ICRS (ra_deg, dec_deg) to geometric horizontal (alt_deg, az_deg) at the observer and moment.
+
+    The direction is precessed (IAU 1976) to the mean equator and equinox of date and turned to the horizon
+    with mean sidereal time. Left out: nutation and annual aberration (together at most 37 arcsec against
+    ERFA-checked transforms over 2017 to 2050, tests/integration/test_sky_transforms.py), UT1 - UTC (under
+    0.9 s of rotation, at most 14 arcsec) and refraction: the altitude is airless, not what a camera sees
+    near the horizon.
+    """
     jd = _iso_to_julian_date(obs_utc_iso)
+    ra_deg, dec_deg = unit_vector_to_ra_dec(
+        precession_matrix_iau1976(jd) @ np.asarray(ra_dec_to_unit_vector(ra_deg, dec_deg))
+    )
     t_ut1 = (jd - 2451545.0) / 36525.0
     gmst_deg = (
         280.46061837
@@ -144,7 +187,8 @@ def altaz_to_icrs(
     lon_deg: float,
     obs_utc_iso: str,
 ) -> tuple[float, float]:
-    """Convert topocentric horizontal (alt_deg, az_deg) to ICRS (ra_deg, dec_deg)."""
+    """Convert geometric horizontal (alt_deg, az_deg) to ICRS (ra_deg, dec_deg): the inverse of `icrs_to_altaz`,
+    with the same omissions."""
     jd = _iso_to_julian_date(obs_utc_iso)
     t_ut1 = (jd - 2451545.0) / 36525.0
     gmst_deg = (
@@ -170,9 +214,12 @@ def altaz_to_icrs(
         lat_rad
     ) * math.cos(az_rad)
     ha_deg = math.degrees(math.atan2(y, x)) % 360.0
-    ra_deg = (lst_deg - ha_deg) % 360.0
-    dec_deg = math.degrees(dec_rad)
-    return (ra_deg, dec_deg)
+    ra_of_date_deg = (lst_deg - ha_deg) % 360.0
+    dec_of_date_deg = math.degrees(dec_rad)
+    # Back from the mean equator and equinox of date to ICRS: the transpose of the precession matrix
+    return unit_vector_to_ra_dec(
+        precession_matrix_iau1976(jd).T @ np.asarray(ra_dec_to_unit_vector(ra_of_date_deg, dec_of_date_deg))
+    )
 
 
 def bailer_jones_cartesian_pc(star: CatalogStar) -> tuple[float, float, float]:

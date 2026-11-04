@@ -10,9 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 
+import numpy as np
+
 from services.science.catalog import (
     _iso_to_julian_date,
     icrs_to_altaz,
+    mean_obliquity_iau1980_deg,
+    precession_matrix_iau1976,
     ra_dec_to_unit_vector,
     unit_vector_to_ra_dec,
 )
@@ -294,7 +298,11 @@ def _ecliptic_to_equatorial_icrs(
 
 
 def _compute_moon_geocentric_icrs(t_centuries: float) -> tuple[float, float, float]:
-    """Compute geocentric ICRS (ra_deg, dec_deg, distance_au) for the Moon (Meeus Ch. 47 low-precision)."""
+    """Compute geocentric ICRS (ra_deg, dec_deg, distance_au) for the Moon (Meeus Ch. 47 low-precision).
+
+    Meeus's series give ecliptic coordinates on the mean equinox of date; they are turned to the mean equator
+    of date with the obliquity of date and then precessed back to J2000 (ICRS) like every other direction here.
+    """
     l_prime = (218.3164477 + 481267.88123421 * t_centuries) % 360.0
     d_elong = (297.8501921 + 445267.1114034 * t_centuries) % 360.0
     m_sun = (357.5291092 + 35999.0502909 * t_centuries) % 360.0
@@ -332,11 +340,19 @@ def _compute_moon_geocentric_icrs(t_centuries: float) -> tuple[float, float, flo
 
     lon_rad = math.radians(lon_ecl_deg)
     lat_rad = math.radians(lat_ecl_deg)
-    x_ecl = dist_au * math.cos(lat_rad) * math.cos(lon_rad)
-    y_ecl = dist_au * math.cos(lat_rad) * math.sin(lon_rad)
-    z_ecl = dist_au * math.sin(lat_rad)
-    x_eq, y_eq, z_eq = _ecliptic_to_equatorial_icrs(x_ecl, y_ecl, z_ecl)
-    ra_deg, dec_deg = unit_vector_to_ra_dec((x_eq, y_eq, z_eq))
+    jd = 2451545.0 + 36525.0 * t_centuries
+    eps_rad = math.radians(mean_obliquity_iau1980_deg(jd))
+    ecl = np.array(
+        [math.cos(lat_rad) * math.cos(lon_rad), math.cos(lat_rad) * math.sin(lon_rad), math.sin(lat_rad)]
+    )
+    equator_of_date = np.array(
+        [
+            ecl[0],
+            math.cos(eps_rad) * ecl[1] - math.sin(eps_rad) * ecl[2],
+            math.sin(eps_rad) * ecl[1] + math.cos(eps_rad) * ecl[2],
+        ]
+    )
+    ra_deg, dec_deg = unit_vector_to_ra_dec(precession_matrix_iau1976(jd).T @ equator_of_date)
     return (ra_deg, dec_deg, dist_au)
 
 

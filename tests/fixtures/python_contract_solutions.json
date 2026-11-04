@@ -268,8 +268,8 @@
           "raDeg": 78.634467,
           "decDeg": -8.201638,
           "uncertaintyArcsec": 13.050233353953237,
-          "altDeg": 50.05598438155836,
-          "azDeg": 198.91617832124177
+          "altDeg": 50.187050622512594,
+          "azDeg": 198.39552420678905
         },
         "evidence": {
           "id": "ev-finding-star-rigel",
@@ -346,8 +346,8 @@
           "raDeg": 88.792939,
           "decDeg": 7.407064,
           "uncertaintyArcsec": 29.15969756247523,
-          "altDeg": 67.33064968946184,
-          "azDeg": 185.10244227693028
+          "altDeg": 67.36166165396949,
+          "azDeg": 184.0598941154039
         },
         "evidence": {
           "id": "ev-finding-star-betelgeuse",
@@ -424,8 +424,8 @@
           "raDeg": 68.980163,
           "decDeg": 16.509302,
           "uncertaintyArcsec": 5.4693991636297925,
-          "altDeg": 65.93201522109007,
-          "azDeg": 240.78950511067978
+          "altDeg": 66.2934467955525,
+          "azDeg": 240.27495488457862
         },
         "evidence": {
           "id": "ev-finding-star-aldebaran",
@@ -565,9 +565,9 @@
       "detectedCandidateCount": 1,
       "matchedInlierCount": 1,
       "heldOutInliers": 0,
-      "medianResidualPx": 2.2737367544323206e-13,
-      "p95ResidualPx": 6.309619493549688e-13,
-      "medianResidualArcsec": 3.467341633394956e-11,
+      "medianResidualPx": 7.389644451905042e-13,
+      "p95ResidualPx": 1.085709300241433e-12,
+      "medianResidualArcsec": 1.1269821117391844e-10,
       "passedIndependentVerification": false
     },
     "findings": [
@@ -583,8 +583,8 @@
           "verificationMethod": "Local Matched-Filter Centroid Extraction",
           "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
           "wcsSolutionId": "sol-horizon-beacon",
-          "angularResidualArcsec": 1.0545507883678933e-10,
-          "pixelResidualPx": 6.915300366811402e-13,
+          "angularResidualArcsec": 2.1163953576740562e-10,
+          "pixelResidualPx": 1.3877247074257982e-12,
           "limitations": [
             "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
             "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
@@ -610,11 +610,11 @@
         "title": "Moon (Predicted Ephemeris)",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 303.644940191076,
-          "decDeg": -15.523417194143088,
+          "raDeg": 303.2093064286311,
+          "decDeg": -15.614643052079906,
           "uncertaintyArcsec": 18.0,
-          "altDeg": 32.9964329839963,
-          "azDeg": 221.98228357323
+          "altDeg": 32.99874297206753,
+          "azDeg": 221.98524298792546
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -633,13 +633,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Dabih (Beta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.5° Az 221.0° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.8° Az 220.7° · Inside Camera FOV",
         "skyPosition": {
           "raDeg": 305.252822,
           "decDeg": -14.78148,
           "uncertaintyArcsec": 45.0,
-          "altDeg": 34.515684397799035,
-          "azDeg": 221.01180332911827
+          "altDeg": 34.841015143254026,
+          "azDeg": 220.67104070396687
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -699,13 +699,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Algedi (Alpha2 Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +35.9° Az 223.4° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +36.2° Az 223.0° · Inside Camera FOV",
         "skyPosition": {
           "raDeg": 304.513571,
           "decDeg": -12.544849,
           "uncertaintyArcsec": 45.0,
-          "altDeg": 35.87783523027936,
-          "azDeg": 223.35407214183368
+          "altDeg": 36.20824804805008,
+          "azDeg": 223.0183875269599
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -764,17 +764,17 @@
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 292.96476305814286,
-      "crvalDecDeg": -45.345526660732965,
+      "crvalRaDeg": 292.4073180725688,
+      "crvalDecDeg": -45.41027183556745,
       "crpixX": 672.0,
       "crpixY": 896.0,
-      "scaleDegPerPx": 0.04235980492655092,
-      "rotationDeg": -38.85250730874973,
+      "scaleDegPerPx": 0.04236341662060802,
+      "rotationDeg": -39.079431808632,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
-      "fovHorizontalDeg": 52.838370750707725,
-      "fovVerticalDeg": 67.04329102619182
+      "fovHorizontalDeg": 52.842263845763064,
+      "fovVerticalDeg": 67.04778917238262
     }
   },
   "horizon_predicted_only": {
@@ -809,13 +809,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 18.424 AU · Alt +1.9° · Above Horizon",
+        "subtitle": "Predicted Planet · 18.424 AU · Alt +1.5° · Above Horizon",
         "skyPosition": {
           "raDeg": 81.24564475180148,
           "decDeg": 23.2782684956807,
           "uncertaintyArcsec": 12.0,
-          "altDeg": 1.8516026578268319,
-          "azDeg": 64.02950504808973
+          "altDeg": 1.5010050031862963,
+          "azDeg": 63.77908581171432
         },
         "evidence": {
           "id": "ev-finding-predicted-uranus",
@@ -834,13 +834,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Saturn (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 8.192 AU · Alt +12.6° · Above Horizon",
+        "subtitle": "Predicted Planet · 8.192 AU · Alt +12.3° · Above Horizon",
         "skyPosition": {
           "raDeg": 65.59186555566932,
           "decDeg": 19.420393989022187,
           "uncertaintyArcsec": 12.0,
-          "altDeg": 12.615956875030017,
-          "azDeg": 74.6798983493424
+          "altDeg": 12.272688461188292,
+          "azDeg": 74.41387150088843
         },
         "evidence": {
           "id": "ev-finding-predicted-saturn",
@@ -861,11 +861,11 @@
         "title": "Moon (Predicted Ephemeris)",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Above Horizon",
         "skyPosition": {
-          "raDeg": 303.644940191076,
-          "decDeg": -15.523417194143088,
+          "raDeg": 303.2093064286311,
+          "decDeg": -15.614643052079906,
           "uncertaintyArcsec": 18.0,
-          "altDeg": 32.9964329839963,
-          "azDeg": 221.98228357323
+          "altDeg": 32.99874297206753,
+          "azDeg": 221.98524298792546
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
