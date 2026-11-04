@@ -225,7 +225,7 @@ def get_science_radiometry_audit(
 
 @router.post("/api/science/solve")
 def post_science_solve(req: SolveRequest) -> dict[str, Any]:
-    """Run point-source extraction, geometric quad plate solving, and held-out WCS verification."""
+    """Run point-source extraction, triangle-matching plate solving, and held-out WCS verification."""
     if req.detections is not None:
         if req.width is None or req.height is None:
             raise HTTPException(

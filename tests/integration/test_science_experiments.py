@@ -754,6 +754,8 @@ def test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames() ->
             "approximate",
             "predicted_only",
         )
+        # Discovery fits the horizon and the Moon; it never runs the plate solver, so it never names it
+        assert item["observationSolution"]["solver"]["name"] == "AlbedianHorizonMoonPose"
         assert len(item["ephemerides"]) >= 6
         assert {e["evidence"]["sourceAssetSha256"] for e in item["ephemerides"]} == {item["sha256"]}
 

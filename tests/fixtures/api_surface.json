@@ -195,7 +195,7 @@
       "/api/science/solve": {
         "post": {
           "summary": "Post Science Solve",
-          "description": "Run point-source extraction, geometric quad plate solving, and held-out WCS verification.",
+          "description": "Run point-source extraction, triangle-matching plate solving, and held-out WCS verification.",
           "operationId": "post_science_solve_api_science_solve_post",
           "requestBody": {
             "content": {

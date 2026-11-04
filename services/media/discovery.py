@@ -446,7 +446,13 @@ def discover_uploaded_media(
             ]
             coherent_audit = (
                 integrate_wcs_coherent_star_trajectories(
-                    frames=[luma], wcs=solution.wcs, pose_trajectory=pose_trajectory, max_stars=6
+                    frames=[luma],
+                    wcs=solution.wcs,
+                    pose_trajectory=pose_trajectory,
+                    # The horizon pose is never held-out verified, and this frame is a 480 px decode, upsampled
+                    wcs_verified=solution.has_verified_wcs,
+                    original_pixels=False,
+                    max_stars=6,
                 )
                 if solution.wcs is not None
                 else []

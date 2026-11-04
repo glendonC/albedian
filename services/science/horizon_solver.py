@@ -20,6 +20,7 @@ from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
     SolutionQuality,
+    SolverIdentity,
     SourceDetection,
     WCSModel,
     require_source_sha256,
@@ -261,7 +262,8 @@ def solve_horizon_and_beacon_pose(
         "is unknown, so not placed in the frame."
     )
     year = 2000.0 + (_iso_to_julian_date(obs_utc_iso) - 2451545.0) / 365.25
-    for catalog_star in get_all_sky_catalog_stars():
+    sky_stars = get_all_sky_catalog_stars()
+    for catalog_star in sky_stars:
         star = propagate_star_epoch(catalog_star, year)
         alt, az = icrs_to_altaz(
             star.ra_deg, star.dec_deg, observer_lat, observer_lon, obs_utc_iso
@@ -362,6 +364,15 @@ def solve_horizon_and_beacon_pose(
         observer_lon=observer_lon,
         wcs=wcs,
         quality=quality,
+        solver=SolverIdentity(
+            name="AlbedianHorizonMoonPose",
+            version="1.0.0",
+            catalog_release=(
+                f"{len(sky_stars)} pinned bright stars "
+                f"({' and '.join(sorted({star.release_version for star in sky_stars}))} rows) and the "
+                "low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
+            ),
+        ),
         findings=findings,
         warnings=warnings,
     )

@@ -26,6 +26,15 @@ def require_source_sha256(sha256: str) -> str:
     return sha256
 
 
+# What each class of finding rests on, as its evidence record names it
+VERIFICATION_METHODS = {
+    "observed": "Measured in the image's pixels",
+    "catalog_matched": "Triangle-matched WCS with held-out residual verification",
+    "predicted": "Predicted for the given time and place; not measured in the image",
+    "simulated": "Simulated; not measured in the image",
+}
+
+
 @dataclass(frozen=True)
 class SourceDetection:
     """Point source measured directly from original sensor pixels (`observed` class)."""
@@ -321,11 +330,7 @@ class CelestialFindingRecord:
         evidence: dict = {
             "id": f"ev-{self.id}",
             "evidenceClass": self.evidence_class,
-            "verificationMethod": (
-                "Geometric Quad WCS + Held-Out Residual Verification"
-                if self.evidence_class == "catalog_matched"
-                else "Local Matched-Filter Centroid Extraction"
-            ),
+            "verificationMethod": VERIFICATION_METHODS[self.evidence_class],
             "sourceAssetSha256": self.source_sha256,
             "wcsSolutionId": self.observation_solution_id,
             "catalogReferenceId": self.catalog_star.id if self.catalog_star else None,
@@ -366,6 +371,18 @@ class CelestialFindingRecord:
 
 
 @dataclass(frozen=True)
+class SolverIdentity:
+    """Which solver produced a solution, and against which catalog or model."""
+
+    name: str
+    version: str
+    catalog_release: str
+
+    def to_contract_dict(self) -> dict:
+        return {"name": self.name, "version": self.version, "catalogRelease": self.catalog_release}
+
+
+@dataclass(frozen=True)
 class ObservationSolution:
     """Authoritative WCS calibration and epistemic finding record."""
 
@@ -380,6 +397,7 @@ class ObservationSolution:
     observer_lon: float
     wcs: WCSModel | None
     quality: SolutionQuality
+    solver: SolverIdentity
     findings: list[CelestialFindingRecord] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -438,11 +456,7 @@ class ObservationSolution:
                 "latDeg": float(self.observer_lat),
                 "lonDeg": float(self.observer_lon),
             },
-            "solver": {
-                "name": "AlbedianGeometricQuadSolver",
-                "version": "1.0.0",
-                "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset",
-            },
+            "solver": self.solver.to_contract_dict(),
             "quality": self.quality.to_contract_dict(),
             "findings": [f.to_contract_dict() for f in self.findings],
             "warnings": list(self.warnings),

@@ -12,9 +12,9 @@
       "lonDeg": -40.0
     },
     "solver": {
-      "name": "AlbedianGeometricQuadSolver",
+      "name": "AlbedianTriangleSolver",
       "version": "1.0.0",
-      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+      "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
     },
     "quality": {
       "detectedCandidateCount": 4,
@@ -32,7 +32,7 @@
         "evidence": {
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -60,7 +60,7 @@
         "evidence": {
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -88,7 +88,7 @@
         "evidence": {
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -125,9 +125,9 @@
       "lonDeg": -40.0
     },
     "solver": {
-      "name": "AlbedianGeometricQuadSolver",
+      "name": "AlbedianTriangleSolver",
       "version": "1.0.0",
-      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+      "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
     },
     "quality": {
       "detectedCandidateCount": 8,
@@ -145,7 +145,7 @@
         "evidence": {
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -173,7 +173,7 @@
         "evidence": {
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -201,7 +201,7 @@
         "evidence": {
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -238,9 +238,9 @@
       "lonDeg": -40.0
     },
     "solver": {
-      "name": "AlbedianGeometricQuadSolver",
+      "name": "AlbedianTriangleSolver",
       "version": "1.0.0",
-      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+      "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
     },
     "quality": {
       "detectedCandidateCount": 12,
@@ -268,7 +268,7 @@
         "evidence": {
           "id": "ev-finding-star-rigel",
           "evidenceClass": "catalog_matched",
-          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
           "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-rigel",
@@ -346,7 +346,7 @@
         "evidence": {
           "id": "ev-finding-star-betelgeuse",
           "evidenceClass": "catalog_matched",
-          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
           "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-betelgeuse",
@@ -424,7 +424,7 @@
         "evidence": {
           "id": "ev-finding-star-aldebaran",
           "evidenceClass": "catalog_matched",
-          "verificationMethod": "Geometric Quad WCS + Held-Out Residual Verification",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
           "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "catalogReferenceId": "star-aldebaran",
@@ -500,7 +500,7 @@
         "evidence": {
           "id": "ev-finding-obs-12",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "f1cb8683c732f1d08ebe8ccd464d3da3d96d4d31eaea968b128be47948cafd0f",
           "wcsSolutionId": "sol-primary",
           "limitations": [
@@ -551,9 +551,9 @@
       "lonDeg": -40.0
     },
     "solver": {
-      "name": "AlbedianGeometricQuadSolver",
+      "name": "AlbedianHorizonMoonPose",
       "version": "1.0.0",
-      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
     },
     "quality": {
       "detectedCandidateCount": 1,
@@ -571,7 +571,7 @@
         "evidence": {
           "id": "ev-finding-observed-moon",
           "evidenceClass": "observed",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "angularResidualArcsec": 2.1163953576740562e-10,
@@ -610,7 +610,7 @@
         "evidence": {
           "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
@@ -636,7 +636,7 @@
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-dabih",
@@ -702,7 +702,7 @@
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "catalogReferenceId": "star-algedi",
@@ -782,9 +782,9 @@
       "lonDeg": -40.0
     },
     "solver": {
-      "name": "AlbedianGeometricQuadSolver",
+      "name": "AlbedianHorizonMoonPose",
       "version": "1.0.0",
-      "catalogRelease": "Gaia DR3 / Hipparcos Pinned Bright Subset"
+      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
     },
     "quality": {
       "detectedCandidateCount": 0,
@@ -809,7 +809,7 @@
         "evidence": {
           "id": "ev-finding-predicted-uranus",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
@@ -834,7 +834,7 @@
         "evidence": {
           "id": "ev-finding-predicted-saturn",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
@@ -859,7 +859,7 @@
         "evidence": {
           "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
-          "verificationMethod": "Local Matched-Filter Centroid Extraction",
+          "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [

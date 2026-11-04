@@ -35,11 +35,22 @@ from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
     SolutionQuality,
+    SolverIdentity,
     SourceDetection,
     VideoStackCalibrationResult,
     WCSModel,
     require_source_sha256,
 )
+
+
+def triangle_solver_identity(catalog: Sequence[CatalogStar]) -> SolverIdentity:
+    """The plate solver's name, and the catalog it matched against, counted from the stars it was given."""
+    releases = " and ".join(sorted({star.release_version for star in catalog}))
+    return SolverIdentity(
+        name="AlbedianTriangleSolver",
+        version="1.0.0",
+        catalog_release=f"{len(catalog)} pinned bright stars ({releases} rows)",
+    )
 
 # The held-out gate, with the thresholds of `evaluateWCSVerificationGate` in packages/evidence. Under a WCS
 # fitted on training stars only, each detection pairs with its nearest unused catalog star within
@@ -339,6 +350,7 @@ def _build_unresolved_solution(
     observer_lon: float,
     warning_msg: str,
     limitation: str,
+    solver: SolverIdentity,
 ) -> ObservationSolution:
     """Construct an honest `unresolved` ObservationSolution: every detection is an `observed`
     finding at its measured pixel position, with no sky position because there is no WCS."""
@@ -353,6 +365,7 @@ def _build_unresolved_solution(
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         wcs=None,
+        solver=solver,
         quality=SolutionQuality(
             detected_candidate_count=len(detections),
             matched_inlier_count=0,
@@ -411,6 +424,7 @@ def solve_and_verify_field(
             obs_utc_iso, observer_lat, observer_lon,
             f"Insufficient point sources ({len(detections)} detected) for independent WCS calibration.",
             "Pixel position only: too few point sources for a verified WCS to place it on the sky.",
+            triangle_solver_identity(catalog),
         )
 
     cat_pool = sorted(catalog, key=lambda s: s.mag)[:18]
@@ -493,8 +507,9 @@ def solve_and_verify_field(
         return _build_unresolved_solution(
             detections, solution_id, source_asset_id, source_sha256, frame_time_sec,
             obs_utc_iso, observer_lat, observer_lon,
-            "Geometric quad pattern matching failed to find a consistent WCS solution.",
+            "Triangle pattern matching found no consistent WCS solution.",
             "Pixel position only: no catalog pattern matched, so no WCS places it on the sky.",
+            triangle_solver_identity(catalog),
         )
 
     cx0, cy0 = width / 2.0, height / 2.0
@@ -581,6 +596,7 @@ def solve_and_verify_field(
         frame_time_sec=frame_time_sec, revision=1, status=status,
         observed_at_utc=obs_utc_iso, observer_lat=observer_lat, observer_lon=observer_lon,
         wcs=refined_wcs if passed_verification else None,
+        solver=triangle_solver_identity(catalog),
         quality=SolutionQuality(
             detected_candidate_count=len(detections),
             matched_inlier_count=len(verified_matches) if passed_verification else 0,

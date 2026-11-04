@@ -269,8 +269,10 @@ def test_deep_engines_radiometry_astrophysics_coherent_stack_and_vision() -> Non
         {"frameIndex": idx, "timeSec": float(idx), "duPx": du, "dvPx": dv, "drollDeg": 0.0}
         for idx, (du, dv) in enumerate(shifts)
     ]
+    # The render's own WCS is exact by construction, standing in for a held-out-verified fit, and the frames are
+    # the render's original pixels
     coherent_results = integrate_wcs_coherent_star_trajectories(
-        synth_frames, wcs=wcs_model, pose_trajectory=pose_traj, max_stars=6
+        synth_frames, wcs=wcs_model, pose_trajectory=pose_traj, wcs_verified=True, original_pixels=True, max_stars=6
     )
     assert len(coherent_results) >= 4
     detected = [r for r in coherent_results if r["status"] == "coherent_signal_detected"]

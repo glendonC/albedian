@@ -114,15 +114,22 @@ def integrate_wcs_coherent_star_trajectories(
     frames: Sequence[np.ndarray],
     wcs: WCSModel,
     pose_trajectory: Sequence[dict[str, Any]],
+    *,
+    wcs_verified: bool,
+    original_pixels: bool,
     max_stars: int = 8,
     catalog_stars: Sequence[CatalogStar] | None = None,
 ) -> list[dict[str, Any]]:
-    """Closed-loop astronomy-guided signal recovery along WCS + camera pose trajectories.
+    """Aperture photometry where `wcs` and the per-frame pose offsets put bright catalog stars.
 
-    Projects bright in-FOV catalog stars through `wcs` and per-frame `(duPx, dvPx)` across
-    `frames`, integrates `3x3` PSF aperture flux minus `[5, 9] px` local sky annulus across
-    all frames, and compares against 8 off-target control trajectories offset by `(±14, ±14) px`
-    to report honest `coherentSnr`, `controlNoiseSigma`, and `status`.
+    Projects bright in-FOV catalog stars through `wcs` and per-frame `(duPx, dvPx)` across `frames`, sums a
+    3x3 aperture minus a [5, 9] px sky annulus over the frames, and compares the sum with 8 control apertures
+    offset by about 14 to 16 px, giving `coherentSnr` and `controlNoiseSigma`.
+
+    The measurement is of whatever lies where the WCS predicts the star. A record says the star was `observed`
+    only when the WCS passed held-out verification (`wcs_verified`) and `frames` are the recording's own pixels
+    (`original_pixels`); otherwise the star's position is only predicted, and a lamp, an aircraft or a hot pixel
+    at that spot would read the same, so the record stays `predicted` and says so.
     """
     if len(frames) == 0:
         return []
@@ -198,11 +205,12 @@ def integrate_wcs_coherent_star_trajectories(
             ctrl_sigma = 1e-3
 
         coherent_snr = (coherent_signal - (float(np.median(control_means)) if control_means else 0.0)) / ctrl_sigma
-        status = (
-            "coherent_signal_detected"
-            if coherent_snr >= 3.0
-            else "sub_threshold_upper_limit"
-        )
+        signal = coherent_snr >= 3.0
+        confirmed = wcs_verified and original_pixels
+        if confirmed:
+            status = "coherent_signal_detected" if signal else "sub_threshold_upper_limit"
+        else:
+            status = "signal_at_predicted_position" if signal else "no_signal_at_predicted_position"
 
         results.append(
             {
@@ -215,7 +223,19 @@ def integrate_wcs_coherent_star_trajectories(
                 "coherentSnr": round(float(coherent_snr), 2),
                 "controlNoiseSigma": round(float(ctrl_sigma), 6),
                 "status": status,
-                "evidenceClass": "observed" if status == "coherent_signal_detected" else "predicted",
+                "wcsVerified": bool(wcs_verified),
+                "originalPixels": bool(original_pixels),
+                "evidenceClass": "observed" if confirmed and signal else "predicted",
+                **(
+                    {}
+                    if confirmed
+                    else {
+                        "limitation": (
+                            "Measured where an unverified pose or processed pixels put the star; anything bright "
+                            "there (a lamp, an aircraft, a hot pixel) reads the same, so the star is not observed."
+                        )
+                    }
+                ),
             }
         )
 

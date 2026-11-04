@@ -30,7 +30,7 @@ from services.science.solver import (
     render_synthetic_starfield,
     solve_and_verify_field,
 )
-from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SolutionQuality
+from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SolutionQuality, SolverIdentity
 
 WIDTH, HEIGHT = 960, 540
 # Synthetic moments at a place that points at nobody (the open North Atlantic, about 1,321 km from Flores in
@@ -221,6 +221,7 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
             status="calibrated" if passed else "unresolved", observed_at_utc=MOMENT["obs_utc_iso"],
             observer_lat=MOMENT["observer_lat"], observer_lon=MOMENT["observer_lon"],
             wcs=wcs_model, quality=quality, findings=[finding],
+            solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
         )
 
     assert not solution(None, False, pixel_only).has_verified_wcs
