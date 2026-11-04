@@ -1,0 +1,141 @@
+{
+  "format": "albedian.landing-moment",
+  "version": 1,
+  "utc": "2025-03-07T11:00:00Z",
+  "tdbMinusUtcSeconds": 69.185455,
+  "frame": "ICRF, geocentric, geometric (no light time or aberration), km",
+  "moonKm": [
+    22655.23858537649,
+    331107.4985249937,
+    181483.2046773176
+  ],
+  "sunKm": [
+    144526583.4201148,
+    -31159966.6581595,
+    -13507834.13819248
+  ],
+  "moonFromGalacticAnticentreDeg": 0.3853,
+  "window": {
+    "fromUtc": "2025-03-06 11:00",
+    "toUtc": "2025-03-08 11:00",
+    "stepHours": 1,
+    "moonFromGalacticAnticentreDeg": [
+      13.9759,
+      13.3996,
+      12.8239,
+      12.2487,
+      11.674,
+      11.0999,
+      10.5263,
+      9.9533,
+      9.3809,
+      8.809,
+      8.2377,
+      7.6669,
+      7.0968,
+      6.5272,
+      5.9582,
+      5.3898,
+      4.8222,
+      4.2552,
+      3.689,
+      3.1238,
+      2.5598,
+      1.9977,
+      1.439,
+      0.8891,
+      0.3853,
+      0.3781,
+      0.8788,
+      1.4264,
+      1.982,
+      2.54,
+      3.0989,
+      3.658,
+      4.217,
+      4.7758,
+      5.3343,
+      5.8924,
+      6.4502,
+      7.0076,
+      7.5645,
+      8.121,
+      8.677,
+      9.2326,
+      9.7878,
+      10.3425,
+      10.8967,
+      11.4505,
+      12.0038,
+      12.5567,
+      13.1091
+    ]
+  },
+  "checks": {
+    "moonSeenFromEarthCentre": {
+      "subObserverLonDeg": 5.791561,
+      "subObserverLatDeg": -6.810874,
+      "subSolarLonDeg": 85.874036,
+      "subSolarLatDeg": -0.292473,
+      "northPoleAngleDeg": 358.6126,
+      "northPoleRaDeg": 270.20487,
+      "northPoleDecDeg": 68.09139,
+      "rangeAu": 0.00252876779358,
+      "phaseAngleDeg": 80.117,
+      "tdbMinusUtSeconds": 69.185455,
+      "galacticLonDeg": 180.079806,
+      "galacticLatDeg": -0.37709,
+      "bodyFrame": "MOON_ME",
+      "latitudes": "planetocentric, sphere"
+    },
+    "earthSeenFromMoonCentre": {
+      "subObserverLonDeg": 116.072691,
+      "subObserverLatDeg": 28.845818,
+      "subSolarLonDeg": 17.740033,
+      "subSolarLatDeg": -5.119864,
+      "northPoleAngleDeg": 358.6126,
+      "northPoleRaDeg": 0.91514,
+      "northPoleDecDeg": 89.85965,
+      "rangeAu": 0.00252827268208,
+      "phaseAngleDeg": 99.7391,
+      "tdbMinusUtSeconds": 69.185455,
+      "galacticLonDeg": 0.079806,
+      "galacticLatDeg": 0.37709,
+      "bodyFrame": "ITRF93 (high precision)",
+      "latitudes": "geodetic on the target ellipsoid",
+      "radiiKm": [
+        6378.137,
+        6378.137,
+        6356.752
+      ]
+    }
+  },
+  "horizons": {
+    "service": "NASA/JPL Horizons API",
+    "version": "1.2",
+    "ephemeris": "DE441",
+    "userAgent": "Albedian/0.1 (research prototype)",
+    "queries": [
+      {
+        "what": "Moon vectors, the moment +-24 h",
+        "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27500%40399%27&START_TIME=%272025-03-06+11%3A00%27&STOP_TIME=%272025-03-08+11%3A00%27&STEP_SIZE=%271+h%27&TIME_TYPE=%27UT%27&REF_PLANE=%27FRAME%27&REF_SYSTEM=%27ICRF%27&VEC_TABLE=%272%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&CSV_FORMAT=%27YES%27",
+        "retrievedUtc": "2026-11-04T23:03:35Z"
+      },
+      {
+        "what": "Sun vector at the moment",
+        "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%2710%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27VECTORS%27&CENTER=%27500%40399%27&START_TIME=%272025-03-07+11%3A00%27&STOP_TIME=%272025-03-07+11%3A01%27&STEP_SIZE=%271+m%27&TIME_TYPE=%27UT%27&REF_PLANE=%27FRAME%27&REF_SYSTEM=%27ICRF%27&VEC_TABLE=%272%27&VEC_CORR=%27NONE%27&OUT_UNITS=%27KM-S%27&CSV_FORMAT=%27YES%27",
+        "retrievedUtc": "2026-11-04T23:03:36Z"
+      },
+      {
+        "what": "Moon seen from the Earth's centre",
+        "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27301%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27500%40399%27&TLIST=%272025-03-07+11%3A00%27&TIME_TYPE=%27UT%27&QUANTITIES=%2714%2C15%2C17%2C20%2C24%2C30%2C32%2C33%27&ANG_FORMAT=%27DEG%27&CSV_FORMAT=%27YES%27&EXTRA_PREC=%27YES%27",
+        "retrievedUtc": "2026-11-04T23:03:38Z"
+      },
+      {
+        "what": "Earth seen from the Moon's centre",
+        "url": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=%27399%27&OBJ_DATA=%27NO%27&MAKE_EPHEM=%27YES%27&EPHEM_TYPE=%27OBSERVER%27&CENTER=%27500%40301%27&TLIST=%272025-03-07+11%3A00%27&TIME_TYPE=%27UT%27&QUANTITIES=%2714%2C15%2C17%2C20%2C24%2C30%2C32%2C33%27&ANG_FORMAT=%27DEG%27&CSV_FORMAT=%27YES%27&EXTRA_PREC=%27YES%27",
+        "retrievedUtc": "2026-11-04T23:03:39Z"
+      }
+    ]
+  }
+}
