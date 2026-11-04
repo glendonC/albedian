@@ -1,0 +1,226 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "eso0932a",
+      "title": "The Milky Way panorama",
+      "url": "https://www.eso.org/public/images/eso0932a/",
+      "version": "Large JPEG, 6000x3000",
+      "license": {
+        "spdx": "CC-BY-4.0",
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated."
+      },
+      "credit": "ESO/S. Brunier",
+      "note": "Released 2009-09-14 as the first image of ESO's GigaGalaxy Zoom project."
+    },
+    {
+      "id": "eso1006a",
+      "title": "VISTA's infrared view of the Orion Nebula",
+      "url": "https://www.eso.org/public/images/eso1006a/",
+      "version": "Screen-size JPEG",
+      "license": {
+        "spdx": "CC-BY-4.0",
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated."
+      },
+      "credit": "ESO/J. Emerson/VISTA",
+      "acknowledgement": "Cambridge Astronomical Survey Unit",
+      "note": "Released 2010-02-10. A near-infrared image from ESO's VISTA telescope."
+    },
+    {
+      "id": "eso1804a",
+      "title": "Star formation region Lupus 3",
+      "url": "https://www.eso.org/public/images/eso1804a/",
+      "version": "Screen-size JPEG",
+      "license": {
+        "spdx": "CC-BY-4.0",
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated."
+      },
+      "credit": "ESO/R. Colombari",
+      "note": "Released 2018-01-31."
+    },
+    {
+      "id": "nasa-svs-4720",
+      "title": "CGI Moon Kit",
+      "url": "https://svs.gsfc.nasa.gov/4720/",
+      "version": "Released 2019-09-06; page updated 2026-01-09",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA's Scientific Visualization Studio",
+      "note": "Colour from the Lunar Reconnaissance Orbiter Camera's WAC mosaic and elevation from its laser altimeter, LOLA. The page says the maps are optimized for aesthetics, not science, and states no licence, so NASA's media guidelines apply."
+    },
+    {
+      "id": "nasa-bmng-2004-11-topo-bathy",
+      "title": "Blue Marble: Next Generation, November 2004, with topography and bathymetry",
+      "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/",
+      "version": "November 2004, 21600x10800 JPEG",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA Earth Observatory",
+      "acknowledgement": "Blue Marble: Next Generation was produced by Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center).",
+      "sha256": "dbe2977b539562c4555b7df1fbc5b3313cdc4a0685fd8d5fe63dca2e1486ea21",
+      "note": "Input file https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/november/world.topo.bathy.200411.3x21600x10800.jpg, linked from that page (checked 2026-11-04). NASA asks anyone republishing Blue Marble: Next Generation to credit NASA Earth Observatory. A cloud-free surface composite for November 2004, not current conditions."
+    },
+    {
+      "id": "nasa-black-marble-2016",
+      "title": "Earth at Night: Black Marble 2016 color map",
+      "url": "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/",
+      "version": "2016 Color, 3 km (13500x6750) JPEG",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA Earth Observatory",
+      "sha256": "230aac448ae68c358be433dd518888cccb3a85ccf66f7b44326441c324ad6725",
+      "note": "Input file https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_3km.jpg, linked from that page (checked 2026-11-04). Night lights seen in 2016 by VIIRS on Suomi NPP, composited from the best cloud-free nights. The earlier record credited Joshua Stevens, using Suomi NPP VIIRS data from Miguel Roman (NASA GSFC); the current page shows no image credit line."
+    },
+    {
+      "id": "gaia-dr3",
+      "title": "Gaia Data Release 3",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "DR3",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA/Gaia/DPAC",
+      "citation": "Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1",
+      "doi": "10.1051/0004-6361/202243940",
+      "acknowledgement": "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.",
+      "note": "Read through the catalog star tiles in catalog/stars/gaia-dr3, which carry their own record."
+    },
+    {
+      "id": "hipparcos-2007",
+      "title": "Hipparcos, the New Reduction of the Raw Data",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "2007 new reduction",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA Hipparcos",
+      "citation": "van Leeuwen, F. 2007, A&A 474, 653",
+      "doi": "10.1051/0004-6361:20078357",
+      "note": "Read through the catalog star tiles in catalog/stars/gaia-dr3, which carry their own record."
+    }
+  ],
+  "files": [
+    {
+      "path": "earth_day_bluemarble_2004-11_8k.jpg",
+      "sha256": "c50eefebb0355549bb9a6cf5085730e842af56faaaec54457b0b2ff6ea0bdc90",
+      "sources": [
+        "nasa-bmng-2004-11-topo-bathy"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/bake_earth_textures.py",
+        "command": "uv run python scripts/lookdev/bake_earth_textures.py"
+      },
+      "note": "A Lanczos resample of the input to 8192x4096, JPEG quality 90. The input is kept in data/lookdev/sources, outside git, and pinned by its SHA-256 in the source. Rebaked byte for byte on 2026-11-04 with this repository's locked dependencies."
+    },
+    {
+      "path": "earth_night_blackmarble_2016_8k.jpg",
+      "sha256": "b1fd4623e2cbb28ca4bfaa8012adeaaf92c46acaf073c21ae5504bde5f6066be",
+      "sources": [
+        "nasa-black-marble-2016"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/bake_earth_textures.py",
+        "command": "uv run python scripts/lookdev/bake_earth_textures.py"
+      },
+      "note": "A Lanczos resample of the input to 8192x4096, with the dim base layer NASA blended in removed by a luminance smoothstep from 0.10 to 0.55, JPEG quality 92. Relative brightness follows NASA's stretched visualization, not calibrated radiance. The input is kept in data/lookdev/sources, outside git, and pinned by its SHA-256 in the source. Rebaked byte for byte on 2026-11-04 with this repository's locked dependencies."
+    },
+    {
+      "path": "eso_milkyway_panorama.jpg",
+      "sha256": "60400c92c54b7c1bd12299c69e83b16e5b6256e7dabacc478c021758ecd28179",
+      "sources": [
+        "eso0932a"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "Byte-identical to https://cdn.eso.org/images/large/eso0932a.jpg as downloaded on 2026-11-04; ESO does not distribute the 800-megapixel original. A mosaic of almost 300 fields, each shot four times over 2008 and 2009, stitched by Frederic Tapissier. Plate carree, 360 by 180 degrees, with the galactic plane horizontal; its axes sit 3.78 degrees from galactic, so the renderers sample it through eso0932a_registration.json. The pixels are unchanged; the shader grades the image for display (black level 0.042, power 1.52 and a warm tint). It shows Venus at RA 23h19m, Dec -3.9 and Jupiter at RA 19h30m, Dec -21.9, where they stood when their fields were shot; the repository's ephemeris puts Venus within 0.06 degrees of that point on 2009-01-22 and Jupiter within 0.04 degrees on 2008-06-09 (tests/integration/test_sky_registration.py), dates of agreement rather than capture dates from ESO. Both planets stay in the image, unretouched, and the sky layer's disclosure names them."
+    },
+    {
+      "path": "eso0932a_registration.json",
+      "sha256": "11c98ed4452e265129b4a5f39c3198f545998c5bfb635fb8c84fc43c4f0611af",
+      "sources": [
+        "eso0932a",
+        "gaia-dr3",
+        "hipparcos-2007"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/register_sky_panorama.py",
+        "command": "uv run python scripts/register_sky_panorama.py"
+      },
+      "note": "The panorama's registration to the catalog stars (docs/science/SKY_PANORAMA_REGISTRATION.md): a rotation from galactic plus a vertical offset, then a smoothed table of the remaining offsets, fitted to 5,021 isolated stars to magnitude 6 from the core tiles of layers 0 and 1, which it pins by one SHA-256, and checked on held-out stars. The panorama's pixels are not changed. `--verify` refits and compares byte for byte on the machine that made the file; tests/integration/test_sky_registration.py allows for platform rounding."
+    },
+    {
+      "path": "eso1006a.jpg",
+      "sha256": "a03f0f7892cfa04c22fa0d12fda99e4a861272d8f471d62663e23dd638210448",
+      "sources": [
+        "eso1006a"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "Byte-identical to https://cdn.eso.org/images/screen/eso1006a.jpg as downloaded on 2026-11-04. A near-infrared view, so its colours are not visible light. Formerly eso_orion_nebula.jpg."
+    },
+    {
+      "path": "eso1804a.jpg",
+      "sha256": "6c6a82dabde929f26ee352ff8807547ba34ebf9dbe4879c8db33b258dac41dca",
+      "sources": [
+        "eso1804a"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "Byte-identical to https://cdn.eso.org/images/screen/eso1804a.jpg as downloaded on 2026-11-04. Formerly eso_lagoon_nebula.jpg, although it shows Lupus 3, not the Lagoon Nebula."
+    },
+    {
+      "path": "lro_moon_2k.jpg",
+      "sha256": "b246064f217f8d479df78c49c7c8595a8f5fbda008a72fd539978d2e121e0109",
+      "sources": [
+        "nasa-svs-4720"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "Byte-identical to the kit's lroc_color_poles_1k.jpg as downloaded on 2026-11-04: the 2019 colour map at 1024x512, although the file name says 2k."
+    },
+    {
+      "path": "lro_moon_disp.jpg",
+      "sha256": "6d93f887e7d8bedfe35ab89ba785e5e3ca12381bd092a5e6abe2c707dda8bb98",
+      "sources": [
+        "nasa-svs-4720"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "Byte-identical to the kit's ldem_3_8bit.jpg as downloaded on 2026-11-04: an 8-bit LOLA elevation map at 1024x512, for which the page gives no height scale."
+    }
+  ],
+  "fileSets": []
+}

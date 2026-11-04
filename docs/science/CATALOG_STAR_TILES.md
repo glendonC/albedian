@@ -52,6 +52,8 @@ IAU products are released under Creative Commons Attribution.
   3,062,317 (count queries on 2026-11-04). A value Gaia DR3 lacks stays missing and is never
   filled; the 226 Hipparcos entries carry none. GSP-Phot and FLAME values are model fits to
   BP/RP spectra, photometry and parallax; their papers above describe their reach and limits.
+  61 FLAME luminosities lie below their own 16th percentile, as in the archive, where their
+  `lum_flame_lower` is floored at 0.01 Lsun.
 
 ## Format
 

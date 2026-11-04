@@ -17,7 +17,8 @@
     "test:all": "pnpm test && pnpm test:python",
     "typecheck": "pnpm -r typecheck",
     "verify:contracts": "node scripts/verify-contracts.mjs",
-    "verify:docs": "node scripts/verify-docs.mjs"
+    "verify:docs": "node scripts/verify-docs.mjs",
+    "verify:provenance": "uv run python scripts/verify_provenance.py"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",

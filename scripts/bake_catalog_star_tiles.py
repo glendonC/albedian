@@ -49,6 +49,11 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from services.contracts.provenance import (  # noqa: E402
+    ASSET_PROVENANCE_RECORD_FILENAME,
+    AssetProvenanceRecord,
+    dumps_record,
+)
 from services.science import catalog_tiles as ct  # noqa: E402
 
 DEFAULT_OUT_DIR = ROOT_DIR / "apps" / "web" / "public" / "catalog" / "stars"
@@ -970,6 +975,104 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# Provenance record (docs/architecture/ASSET_PROVENANCE.md). The bake replaces the whole release
+# folder, so it writes the folder's record itself: one file set, SHA256SUMS, naming every source.
+ESA_ARCHIVE_LICENCE = {
+    "spdx": "CC-BY-NC-3.0-IGO",
+    "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+    "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+    "conditions": (
+        "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use "
+        "needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+    ),
+}
+IAU_CSN_TERMS = {
+    "spdx": "LicenseRef-IAU-Creative-Commons-Attribution",
+    "name": "Creative Commons Attribution, as the IAU states it, with no version given",
+    "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+    "conditions": (
+        "The file's header says all IAU-produced products are released under Creative Commons Attribution, "
+        "free to use as long as the source is mentioned, and asks users to cite the official IAU version."
+    ),
+}
+# Per manifest source id: the edition, the credit line to display, and the licence
+RECORD_TERMS = {
+    "gaia-dr3": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
+    "gaia-dr3-astrophysical-parameters": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
+    "bailer-jones-2021": ("EDR3 distances (2021)", "Bailer-Jones et al. 2021", ESA_ARCHIVE_LICENCE),
+    "hipparcos-2007": ("2007 new reduction", "ESA Hipparcos", ESA_ARCHIVE_LICENCE),
+    "gaia-dr3-hipparcos2-best-neighbour": ("DR3", "ESA/Gaia/DPAC", ESA_ARCHIVE_LICENCE),
+    "iau-csn": (None, "IAU Working Group on Star Names (WGSN)", IAU_CSN_TERMS),
+}
+
+
+def provenance_record(cfg: ReleaseConfig, checksums_sha256: str, *, names_updated: str) -> AssetProvenanceRecord:
+    """The release folder's record: SHA256SUMS pinned by its SHA-256, and every manifest source."""
+    sources = []
+    for source in cfg.sources:
+        version, credit, licence = RECORD_TERMS[source["id"]]
+        note = " ".join(
+            part
+            for part in (
+                f"Table {source['table']}." if "table" in source else None,
+                (
+                    f"Mission citation: {source['missionCitation']} (doi:{source['missionDoi']})."
+                    if "missionCitation" in source
+                    else None
+                ),
+                source.get("note"),
+            )
+            if part
+        )
+        entry = {
+            "id": source["id"],
+            "title": source["title"],
+            "url": source.get("archive") or source["url"],
+            "version": version or f"Last updated {names_updated}",
+            "license": licence,
+            "credit": credit,
+            "citation": source.get("citation"),
+            "doi": source.get("doi"),
+            "acknowledgement": source.get("acknowledgement"),
+            "note": note or None,
+        }
+        sources.append({key: value for key, value in entry.items() if value is not None})
+    return AssetProvenanceRecord.model_validate(
+        {
+            "format": "albedian.asset-provenance",
+            "formatVersion": 1,
+            "sources": sources,
+            "files": [],
+            "fileSets": [
+                {
+                    "checksums": "SHA256SUMS",
+                    "sha256": checksums_sha256,
+                    "sources": [source["id"] for source in cfg.sources],
+                    "producedBy": {
+                        "method": "script",
+                        "script": "scripts/bake_catalog_star_tiles.py",
+                        "command": f"uv run python scripts/bake_catalog_star_tiles.py --release {cfg.release_id}",
+                    },
+                    "note": (
+                        "Every file of the release except this record. The values are catalog values "
+                        "(evidenceKind catalog-derived in manifest.json), never observed."
+                    ),
+                }
+            ],
+        }
+    )
+
+
+def write_checksums_and_record(cfg: ReleaseConfig, folder: Path, *, names_updated: str) -> None:
+    """Write SHA256SUMS over every file in the folder, then the record that pins it."""
+    skip = {folder / "SHA256SUMS", folder / ASSET_PROVENANCE_RECORD_FILENAME}
+    files = sorted(p for p in folder.rglob("*") if p.is_file() and p not in skip)
+    sums = "".join(f"{sha256_file(p)}  {p.relative_to(folder).as_posix()}\n" for p in files)
+    (folder / "SHA256SUMS").write_text(sums, encoding="utf-8")
+    record = provenance_record(cfg, sha256_file(folder / "SHA256SUMS"), names_updated=names_updated)
+    (folder / ASSET_PROVENANCE_RECORD_FILENAME).write_text(dumps_record(record), encoding="utf-8")
+
+
 def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) -> Path:
     started = time.time()
     cache = cache_root / cfg.release_id
@@ -1223,10 +1326,7 @@ def bake(cfg: ReleaseConfig, out_root: Path, cache_root: Path, offline: bool) ->
             },
         }
         (staging / "manifest.json").write_text(dumps_manifest(manifest), encoding="utf-8")
-
-        files = sorted(p for p in staging.rglob("*") if p.is_file())
-        sums = "".join(f"{sha256_file(p)}  {p.relative_to(staging).as_posix()}\n" for p in files)
-        (staging / "SHA256SUMS").write_text(sums, encoding="utf-8")
+        write_checksums_and_record(cfg, staging, names_updated=names_updated)
 
         if final.exists():
             shutil.rmtree(final)
@@ -1251,13 +1351,24 @@ def verify(cfg: ReleaseConfig, out_root: Path, cache_root: Path) -> int:
     if not committed.exists():
         print(f"[verify] no committed checksums at {committed}")
         return 1
+    committed_record = committed.parent / ASSET_PROVENANCE_RECORD_FILENAME
     with tempfile.TemporaryDirectory(prefix="albedian-star-verify-") as tmp:
         rebuilt = bake(cfg, Path(tmp), cache_root, offline=True)
         expected = committed.read_text(encoding="utf-8")
         actual = (rebuilt / "SHA256SUMS").read_text(encoding="utf-8")
-    if expected == actual:
-        print(f"[verify] rebake from cache matches {committed.relative_to(ROOT_DIR)} ({len(expected.splitlines())} files)")
+        record_matches = committed_record.exists() and committed_record.read_bytes() == (
+            rebuilt / ASSET_PROVENANCE_RECORD_FILENAME
+        ).read_bytes()
+    if not record_matches:
+        print(f"[verify] {committed_record.name} is missing or differs from the rebake's record")
+    if expected == actual and record_matches:
+        print(
+            f"[verify] rebake from cache matches {committed.relative_to(ROOT_DIR)} ({len(expected.splitlines())} files) "
+            f"and {committed_record.name}"
+        )
         return 0
+    if expected == actual:
+        return 1
     exp, act = set(expected.splitlines()), set(actual.splitlines())
     for line in sorted(exp ^ act)[:20]:
         print(("[verify] missing  " if line in exp else "[verify] new      ") + line)

@@ -1,0 +1,124 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "gaia-dr3",
+      "title": "Gaia Data Release 3",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "DR3",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA/Gaia/DPAC",
+      "citation": "Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1",
+      "doi": "10.1051/0004-6361/202243940",
+      "acknowledgement": "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.",
+      "note": "Table gaiadr3.gaia_source. Mission citation: Gaia Collaboration, Prusti, T., et al. 2016, A&A 595, A1 (doi:10.1051/0004-6361/201629272). Temperature and extinction are GSP-Phot results (Andrae et al., doi:10.1051/0004-6361/202243462): teff_gspphot and azero_gspphot (A0 at 547.7 nm) with their 16th and 84th percentiles, and ag_gspphot (extinction in G)."
+    },
+    {
+      "id": "gaia-dr3-astrophysical-parameters",
+      "title": "Gaia DR3 astrophysical parameters: FLAME luminosity",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "DR3",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA/Gaia/DPAC",
+      "citation": "Creevey, O. L., et al., Gaia Data Release 3: Astrophysical parameters inference system (Apsis) I, methods and content overview; Fouesneau, M., et al., Gaia Data Release 3: Apsis II, stellar parameters",
+      "doi": "10.1051/0004-6361/202243688",
+      "acknowledgement": "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.",
+      "note": "Table gaiadr3.astrophysical_parameters. FLAME luminosity from the G magnitude, the GSP-Phot extinction in G and the parallax or distance, with its 16th and 84th percentiles. Apsis II: doi:10.1051/0004-6361/202243919."
+    },
+    {
+      "id": "bailer-jones-2021",
+      "title": "Estimating Distances from Parallaxes. V. Geometric and Photogeometric Distances to 1.47 Billion Stars in Gaia Early Data Release 3",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "EDR3 distances (2021)",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "Bailer-Jones et al. 2021",
+      "citation": "Bailer-Jones, C. A. L., Rybizki, J., Fouesneau, M., Demleitner, M., & Andrae, R. 2021, AJ 161, 147",
+      "doi": "10.3847/1538-3881/abd806",
+      "note": "Table external.gaiaedr3_distance. Photogeometric median and 16th/84th percentile bounds are used when present, geometric otherwise. Gaia DR3 astrometry is identical to EDR3, so source_id joins directly."
+    },
+    {
+      "id": "hipparcos-2007",
+      "title": "Hipparcos, the New Reduction of the Raw Data",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "2007 new reduction",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA Hipparcos",
+      "citation": "van Leeuwen, F. 2007, A&A 474, 653",
+      "doi": "10.1051/0004-6361:20078357",
+      "note": "Table public.hipparcos_newreduction. Used for stars Gaia DR3 handles poorly. Positions propagated from J1991.25 to J2016.0 with Hipparcos proper motions; distance is 1000/parallax with bounds from parallax plus or minus its formal error; magnitude is Hp and colour is B-V."
+    },
+    {
+      "id": "gaia-dr3-hipparcos2-best-neighbour",
+      "title": "Gaia DR3 to Hipparcos-2 best-neighbour crossmatch",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "DR3",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA/Gaia/DPAC",
+      "citation": "Marrese, P. M., Marinoni, S., Fabrizio, M., & Altavilla, G. 2019, A&A 621, A144",
+      "doi": "10.1051/0004-6361/201834142",
+      "note": "Table gaiadr3.hipparcos2_best_neighbour."
+    },
+    {
+      "id": "iau-csn",
+      "title": "IAU Catalog of Star Names (IAU-CSN)",
+      "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+      "version": "Last updated 2022-04-04",
+      "license": {
+        "spdx": "LicenseRef-IAU-Creative-Commons-Attribution",
+        "name": "Creative Commons Attribution, as the IAU states it, with no version given",
+        "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+        "conditions": "The file's header says all IAU-produced products are released under Creative Commons Attribution, free to use as long as the source is mentioned, and asks users to cite the official IAU version."
+      },
+      "credit": "IAU Working Group on Star Names (WGSN)",
+      "citation": "IAU Working Group on Star Names, IAU Catalog of Star Names",
+      "note": "Names attach to catalog stars by HIP number, through the Gaia best-neighbour crossmatch for Gaia sources."
+    }
+  ],
+  "files": [],
+  "fileSets": [
+    {
+      "checksums": "SHA256SUMS",
+      "sha256": "67d41bd3ffb4604ed11637799ef9d7433fb7d4663da8491a1a0cd0167f58fc12",
+      "sources": [
+        "gaia-dr3",
+        "gaia-dr3-astrophysical-parameters",
+        "bailer-jones-2021",
+        "hipparcos-2007",
+        "gaia-dr3-hipparcos2-best-neighbour",
+        "iau-csn"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_catalog_star_tiles.py",
+        "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3"
+      },
+      "note": "Every file of the release except this record. The values are catalog values (evidenceKind catalog-derived in manifest.json), never observed."
+    }
+  ]
+}

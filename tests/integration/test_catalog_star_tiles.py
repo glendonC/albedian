@@ -22,6 +22,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from services.contracts.provenance import AssetProvenanceRecord, dumps_record
 from services.science import catalog_tiles as ct
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -599,7 +600,8 @@ def test_baked_release_checksums_and_counts():
         digest, rel = line.split("  ", 1)
         listed.add(rel)
         assert hashlib.sha256((RELEASE_DIR / rel).read_bytes()).hexdigest() == digest, rel
-    on_disk = {p.relative_to(RELEASE_DIR).as_posix() for p in RELEASE_DIR.rglob("*") if p.is_file()} - {"SHA256SUMS"}
+    on_disk = {p.relative_to(RELEASE_DIR).as_posix() for p in RELEASE_DIR.rglob("*") if p.is_file()}
+    on_disk -= {"SHA256SUMS", "PROVENANCE.json"}
     assert on_disk == listed
 
     manifest = json.loads((RELEASE_DIR / "manifest.json").read_text())
@@ -616,6 +618,57 @@ def test_baked_release_checksums_and_counts():
                 assert (h.count, h.layer, h.order, h.pix) == (n, layer["layer"], layer["order"], pix)
         total += sum(counts)
     assert total == manifest["counts"]["stars"]
+
+
+def test_release_checksums_leave_out_the_record_and_the_record_pins_them(tmp_path):
+    bake = _load_bake_script()
+    cfg = bake.RELEASES["gaia-dr3"]
+    (tmp_path / "L0").mkdir()
+    (tmp_path / "L0" / "0.core.bin").write_bytes(b"core tile")
+    (tmp_path / "manifest.json").write_text("{}\n")
+    bake.write_checksums_and_record(cfg, tmp_path, names_updated="2022-04-04")
+
+    sums = (tmp_path / "SHA256SUMS").read_text(encoding="utf-8")
+    assert [line.split("  ", 1)[1] for line in sums.splitlines()] == ["L0/0.core.bin", "manifest.json"]
+    record = AssetProvenanceRecord.model_validate_json((tmp_path / "PROVENANCE.json").read_text(encoding="utf-8"))
+    (file_set,) = record.file_sets
+    assert record.files == ()
+    assert file_set.checksums == "SHA256SUMS"
+    assert file_set.sha256 == hashlib.sha256(sums.encode("utf-8")).hexdigest()
+    assert file_set.produced_by.method == "script"
+    assert file_set.produced_by.script == "scripts/bake_catalog_star_tiles.py"
+    assert [s.id for s in record.sources] == [s["id"] for s in cfg.sources]
+    assert set(file_set.sources) == {s["id"] for s in cfg.sources}
+
+    # Writing again over an existing release lists neither the record nor the list itself
+    first = {name: (tmp_path / name).read_bytes() for name in ("SHA256SUMS", "PROVENANCE.json")}
+    bake.write_checksums_and_record(cfg, tmp_path, names_updated="2022-04-04")
+    assert {name: (tmp_path / name).read_bytes() for name in first} == first
+
+
+def test_release_record_credits_and_licences():
+    bake = _load_bake_script()
+    record = bake.provenance_record(bake.RELEASES["gaia-dr3"], "0" * 64, names_updated="2022-04-04")
+    by_id = {s.id: s for s in record.sources}
+    for gaia in ("gaia-dr3", "gaia-dr3-astrophysical-parameters", "gaia-dr3-hipparcos2-best-neighbour"):
+        assert by_id[gaia].credit == "ESA/Gaia/DPAC"
+    for archive in ("gaia-dr3", "gaia-dr3-astrophysical-parameters", "bailer-jones-2021", "hipparcos-2007", "gaia-dr3-hipparcos2-best-neighbour"):
+        assert by_id[archive].license.spdx == "CC-BY-NC-3.0-IGO"
+        assert "prior authorisation" in by_id[archive].license.conditions
+    assert by_id["hipparcos-2007"].citation == "van Leeuwen, F. 2007, A&A 474, 653"
+    assert by_id["iau-csn"].license.spdx.startswith("LicenseRef-")
+    assert by_id["iau-csn"].version == "Last updated 2022-04-04"
+
+
+@needs_release
+def test_baked_release_record_is_what_the_bake_writes():
+    bake = _load_bake_script()
+    manifest = json.loads((RELEASE_DIR / "manifest.json").read_text())
+    checksums = hashlib.sha256((RELEASE_DIR / "SHA256SUMS").read_bytes()).hexdigest()
+    expected = dumps_record(
+        bake.provenance_record(bake.RELEASES["gaia-dr3"], checksums, names_updated=manifest["selection"]["names"]["sourceUpdated"])
+    )
+    assert (RELEASE_DIR / "PROVENANCE.json").read_text(encoding="utf-8") == expected
 
 
 @needs_release
