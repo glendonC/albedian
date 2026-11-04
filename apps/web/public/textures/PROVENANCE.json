@@ -122,6 +122,49 @@
       "citation": "van Leeuwen, F. 2007, A&A 474, 653",
       "doi": "10.1051/0004-6361:20078357",
       "note": "Read through the catalog star tiles in catalog/stars/gaia-dr3, which carry their own record."
+    },
+    {
+      "id": "natural-earth-10m-ocean",
+      "title": "Natural Earth 1:10m physical vectors: ocean",
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_ocean.zip",
+      "version": "Version 5.1.1",
+      "license": {
+        "spdx": "LicenseRef-Natural-Earth-Public-Domain",
+        "name": "Natural Earth terms of use: public domain",
+        "url": "https://www.naturalearthdata.com/about/terms-of-use/",
+        "conditions": "The terms of use say all Natural Earth raster and vector data are in the public domain, with credit optional ('Made with Natural Earth'). They add that some European river and lake data from the EC Joint Research Centre are licensed to Natural Earth for the sole purpose of creating a world base map; a planet texture is a world base map."
+      },
+      "credit": "Made with Natural Earth",
+      "sha256": "db626fcd5d50b096b156c78a2cc95011b39f32a61b4e47d147e3f7a77b8b2719"
+    },
+    {
+      "id": "natural-earth-10m-lakes",
+      "title": "Natural Earth 1:10m physical vectors: lakes and reservoirs",
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip",
+      "version": "Version 5.0.0",
+      "license": {
+        "spdx": "LicenseRef-Natural-Earth-Public-Domain",
+        "name": "Natural Earth terms of use: public domain",
+        "url": "https://www.naturalearthdata.com/about/terms-of-use/",
+        "conditions": "The terms of use say all Natural Earth raster and vector data are in the public domain, with credit optional ('Made with Natural Earth'). They add that some European river and lake data from the EC Joint Research Centre are licensed to Natural Earth for the sole purpose of creating a world base map; a planet texture is a world base map."
+      },
+      "credit": "Made with Natural Earth",
+      "sha256": "0803a06f9c3cb4671d89b68c48b142aad9366ba40f665245e12a913fbc61722a"
+    },
+    {
+      "id": "nasa-blue-marble-2002-clouds",
+      "title": "The Blue Marble (2002): cloud layer, 2048x1024",
+      "url": "https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution/",
+      "version": "cloud_combined_2048.jpg",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA Goddard Space Flight Center Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation).",
+      "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+      "note": "Download https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg, linked from that page (checked 2026-11-04). The page says the cloud image is a composite of two days of visible-light imagery and a third day of thermal infrared over the poles; it does not date those days. The Blue Marble's other MODIS layers are from June to September 2001, so the clouds are most likely from 2001 too [inference]. Cloud cover of a few days, not today's weather."
     }
   ],
   "files": [
@@ -220,6 +263,31 @@
         "method": "downloaded-as-is"
       },
       "note": "Byte-identical to the kit's ldem_3_8bit.jpg as downloaded on 2026-11-04: an 8-bit LOLA elevation map at 1024x512, for which the page gives no height scale."
+    },
+    {
+      "path": "earth_water_natural_earth_4k.png",
+      "sha256": "bd03e918afe32341f4f4de141a07120bc8527112a9a07c2bec53fc9050a6416d",
+      "sources": [
+        "natural-earth-10m-ocean",
+        "natural-earth-10m-lakes"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_earth_maps.py",
+        "command": "uv run python scripts/bake_earth_maps.py"
+      },
+      "note": "Water cover, 4096x2048, equirectangular from longitude -180 and latitude 90: 255 is water (ocean, lakes and reservoirs), 0 is land, and a coast pixel holds the fraction of its area under water, measured on four lines per pixel row. Land below sea level stays land."
+    },
+    {
+      "path": "earth_clouds_bluemarble2002_2k.jpg",
+      "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+      "sources": [
+        "nasa-blue-marble-2002-clouds"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's cloud_combined_2048.jpg, byte for byte."
     }
   ],
   "fileSets": []

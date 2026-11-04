@@ -72,12 +72,13 @@ next bake deletes it.
   files of the release; the record names its six sources (Gaia DR3 and its astrophysical
   parameters, Bailer-Jones et al. 2021 distances, Hipparcos 2007, the Gaia to Hipparcos
   crossmatch and the IAU Catalog of Star Names), each with its credit and licence.
-- **`textures/PROVENANCE.json`**, kept by hand, covers eight files: the ESO panorama (eso0932a)
-  and the two ESO nebula images (eso1006a, eso1804a), downloaded as is and byte-identical to
-  ESO's downloads; the two SVS 4720 Moon maps, likewise; the Earth day and night maps, which
-  `scripts/lookdev/bake_earth_textures.py` makes from pinned NASA inputs; and the panorama's
-  registration, which `scripts/register_sky_panorama.py` fits. A script that changes one of
-  these files must update its entry, or the check fails.
+- **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the two ESO nebula
+  images (eso1006a, eso1804a), downloaded as is and byte-identical to ESO's downloads; the two
+  SVS 4720 Moon maps, likewise; the Earth day and night maps, which
+  `scripts/lookdev/bake_earth_textures.py` makes from pinned NASA inputs; the panorama's
+  registration, which `scripts/register_sky_panorama.py` fits; and the Natural Earth water mask
+  and NASA cloud layer, whose entries `scripts/bake_earth_maps.py` rewrites on every bake. A
+  script that changes one of these files must update its entry, or the check fails.
 
 NASA states its terms as media guidelines rather than a licence, so NASA sources carry
 `LicenseRef-NASA-Media-Guidelines` with the guidelines' URL. The IAU's star names file says
