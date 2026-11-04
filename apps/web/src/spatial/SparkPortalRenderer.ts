@@ -18,7 +18,7 @@ import {
   DEFAULT_LIMITING_MAGNITUDE,
   type CatalogStarFieldStats,
 } from './catalogStars/index.js';
-import { webglRenderLayersFor } from './cislunarWebglLayers.js';
+import { webglRenderLayersFor } from './webglRenderLayers.js';
 import {
   createOriginCameraFrustumIndicator,
   updateOriginFrustumContinuity,
@@ -675,9 +675,10 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * GPGPU-Driven 3D Curl-Noise Magnetohydrodynamic (MHD) Plasma & Coronal Ejection Stream.
+   * Decorative particles: points on a shell around `center`, moved by sin and cos noise in the
+   * vertex shader. Not a simulation of gas or plasma; disclosed as decorative where declared.
    */
-  private createGPGPUCurlPlasmaParticles(
+  private createDecorativeParticles(
     center: THREE.Vector3,
     innerRadius: number,
     outerRadius: number,
@@ -1423,7 +1424,7 @@ export class SparkPortalRenderer {
     group.add(plasmaRing);
 
     group.add(
-      this.createGPGPUCurlPlasmaParticles(
+      this.createDecorativeParticles(
         starCenter,
         starRadius * 1.16,
         starRadius * 3.15,
@@ -1450,8 +1451,12 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 3: Deep-Sky Relativistic Black Hole (James, von Tunzelmann, Franklin, & Thorne 2015 DNGR)
-   * & Multi-Wavelength Volumetric Nebula (`@sparkjsdev/spark` SplatMesh from `nasa_nebula_splats.json`)
+   * REGIME 3: deep sky. For Sagittarius A*, a hand-tuned black hole composition (an approximate
+   * Schwarzschild ray march around a hand-set disk, over ESO's Lupus 3 photograph); see
+   * BLACK_HOLE_WEBGL_RENDER_LAYERS in webglRenderLayers.ts for its disclosure. For other deep-sky
+   * targets: ESO's VISTA near-infrared Orion Nebula image (eso1006a) blended with the Lupus 3
+   * photograph (eso1804a, in eso_lagoon_nebula.jpg) on a plane, and Spark splats from
+   * `nasa_nebula_splats.json` (provenance not recorded).
    */
   private buildDeepSkyWorld(): void {
     const group = this.regimeGroups.deep_sky;
@@ -1459,7 +1464,7 @@ export class SparkPortalRenderer {
     this.addCatalogStarMount(group, 38.0);
 
     const nebulaCenter = new THREE.Vector3(0, 0.3, -13.5);
-    group.add(this.createGPGPUCurlPlasmaParticles(nebulaCenter, 3.8, 12.8, 2200));
+    group.add(this.createDecorativeParticles(nebulaCenter, 3.8, 12.8, 2200));
 
     const volGeo = new THREE.PlaneGeometry(31, 19.5);
     const volMat = new THREE.ShaderMaterial({
@@ -1516,7 +1521,7 @@ export class SparkPortalRenderer {
           vec2 p = (vUv * 2.0 - 1.0) * vec2(1.58, 1.0);
 
           if (uIsBlackHole > 0.5) {
-            // Kip Thorne / Oliver James et al. (2015) Relativistic Kerr/Schwarzschild Geodesic Ray-Marcher (Gargantua / Sgr A*)
+            // Approximate Schwarzschild ray march (non-rotating hole, 120 steps); not a model of Sgr A*
             vec3 ro = vec3(0.0, 0.0, 15.5);
             vec3 rd = normalize(vec3(p * 0.62, -1.0));
 
@@ -1559,7 +1564,8 @@ export class SparkPortalRenderer {
               if (r > 28.0) break;
 
               float dt = clamp(0.042 * r, 0.022, 0.26);
-              // Relativistic null geodesic acceleration: d^2x/dlambda^2 = -1.5 * rs * h^2 * x / r^5
+              // Schwarzschild photon bending, d^2x/dlambda^2 = -1.5 * rs * h^2 * x / r^5; renormalizing the
+              // direction each step makes the bending approximate
               vec3 accel = -1.5 * rs * h2 * pos / pow(r, 5.0);
               vec3 nextVel = normalize(vel + accel * dt);
               vec3 nextPos = pos + 0.5 * (vel + nextVel) * dt;
@@ -1569,7 +1575,7 @@ export class SparkPortalRenderer {
                 float frac = abs(pos.y) / max(0.0001, abs(pos.y - nextPos.y));
                 vec3 hit = mix(pos, nextPos, clamp(frac, 0.0, 1.0));
                 float diskR = length(hit.xz);
-                // Relativistic accretion disk from ISCO (2.65 r_s) out to 9.2 r_s
+                // Hand-set disk from 2.62 r_s to 9.2 r_s (a non-rotating hole's innermost stable orbit is 3 r_s)
                 if (diskR > 2.62 * rs && diskR < 9.2 * rs) {
                   float rNorm = (diskR - 2.62 * rs) / (6.58 * rs);
                   float radialEnv = smoothstep(0.0, 0.08, rNorm) * exp(-rNorm * 3.4);
@@ -1578,12 +1584,12 @@ export class SparkPortalRenderer {
                   float omega = 1.65 / pow(diskR, 1.25);
                   float spiralPhase = phi + uTime * omega + 11.0 / (diskR + 0.25);
 
-                  // Magneto-rotational instability (MRI) fine concentric rings & spiral filaments
+                  // Noise rings and spiral streaks for texture, not a simulation
                   float rings = 0.52 + 0.48 * sin(diskR * 32.0 + fbmDisk(vec2(diskR * 3.8, phi * 2.0)) * 5.5);
                   float streaks = fbmDisk(vec2(diskR * 5.5, spiralPhase * 2.0));
                   float density = radialEnv * mix(rings, streaks, 0.52);
 
-                  // Relativistic Keplerian Doppler beaming D = 1 / (gamma * (1 - beta * cos(theta)))
+                  // Doppler factor D = 1 / (gamma * (1 - beta * cos(theta))) at Keplerian speed, used to shift the hand-picked colours
                   vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
                   float beta = clamp(sqrt(0.5 * rs / diskR), 0.0, 0.58);
                   float gamma = inversesqrt(1.0 - beta * beta);
@@ -1592,7 +1598,7 @@ export class SparkPortalRenderer {
                   float gravRedshift = sqrt(max(0.12, 1.0 - rs / diskR));
                   float shift = clamp(doppler * gravRedshift, 0.48, 1.85);
 
-                  // Blackbody thermal gradient shifted by relativistic Doppler factor
+                  // Three hand-picked colours blended by the shift, not a blackbody spectrum
                   vec3 coldRed = vec3(0.88, 0.18, 0.03);
                   vec3 warmGold = vec3(1.42, 0.82, 0.30);
                   vec3 hotWhiteBlue = vec3(1.75, 1.60, 1.42);
@@ -1609,16 +1615,18 @@ export class SparkPortalRenderer {
               vel = nextVel;
             }
 
-            // Photon sphere relativistic ring at b_crit = sqrt(27)/2 * rs (~2.598 rs impact parameter, r_photon = 1.5 rs)
+            // A hand-set glow where a ray passes near the photon sphere (r = 1.5 r_s), not computed emission
             float photonRing = exp(-pow((minR - 1.52 * rs) / 0.065, 2.0)) * (captured ? 0.35 : 1.55);
             accumDisk += vec3(1.65, 1.22, 0.72) * photonRing;
 
-            // Gravitationally lensed Einstein ring starlight for uncaptured rays
+            // Rays that escape sample ESO's Lupus 3 photograph (eso1804a) by their final direction; Lupus 3
+            // is a nearby cloud, so this backdrop is not what lies behind Sgr A*
             if (!captured) {
               vec2 lensedUv = vec2(atan(vel.z, vel.x) / 6.28318 + 0.5, asin(clamp(vel.y, -1.0, 1.0)) / 3.14159 + 0.5);
               vec3 bgNeb = texture2D(uLagoonTex, lensedUv).rgb;
-              float einsteinAmplification = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
-              accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * einsteinAmplification;
+              // Hand-set brightening near the photon sphere, not a magnification from the geodesics
+              float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
+              accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;
             }
 
             // Anamorphic horizontal cinema flare across the bright approaching wing
@@ -2811,7 +2819,7 @@ export class SparkPortalRenderer {
 
   /** Layers drawn in the current regime with their evidence class and disclosure; null where not declared yet. */
   public getRenderLayers(): RenderLayerSet | null {
-    return webglRenderLayersFor(this.activeRegime);
+    return webglRenderLayersFor({ regime: this.activeRegime, blackHole: this.nebulaUniforms.uIsBlackHole.value > 0.5 });
   }
 
   public setShowcaseMode(enabled: boolean): void {

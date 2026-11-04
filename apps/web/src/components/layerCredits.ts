@@ -11,12 +11,16 @@ import type { RenderLayerSet } from '@albedian/contracts';
  * - ESA/Gaia/DPAC and ESA Hipparcos: the catalog stars (Gaia DR3 and Hipparcos 2007).
  * - NASA Earth Observatory: Blue Marble and Black Marble (earth_texture_sources.json).
  * - NASA's Scientific Visualization Studio: the CGI Moon Kit maps (SVS 4720) the Moon draws.
+ * - ESO/R. Colombari: ESO's credit for eso1804a, the Lupus 3 photograph behind the black hole.
  */
 export const LAYER_CREDITS: Readonly<Record<string, readonly string[]>> = {
   'cislunar.sky': ['ESO/S. Brunier'],
   'cislunar.catalog-stars': ['ESA/Gaia/DPAC', 'ESA Hipparcos'],
   'cislunar.earth': ['NASA Earth Observatory'],
   'cislunar.moon': ["NASA's Scientific Visualization Studio"],
+  'deep-sky.sky': ['ESO/S. Brunier'],
+  'deep-sky.catalog-stars': ['ESA/Gaia/DPAC', 'ESA Hipparcos'],
+  'deep-sky.black-hole': ['ESO/R. Colombari'],
 };
 
 /** The credits of the layers drawn, each once, in draw order. */
