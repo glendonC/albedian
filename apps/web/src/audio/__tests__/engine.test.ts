@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ObservatoryAudioEngine } from '../ObservatoryAudioEngine';
-import { MASTER_BUS_SETTINGS, compressorMakeupGainDb } from '../engine/MasterBus';
+import { MASTER_BUS_SETTINGS, MasterBus, compressorMakeupGainDb } from '../engine/MasterBus';
 import type { AudioSourceInput } from '../voicePlanning';
 
 /**
@@ -188,6 +188,16 @@ describe('ObservatoryAudioEngine lifecycle', () => {
     const engine = new ObservatoryAudioEngine({ contextFactory: () => null, impulseResponseUrl: null });
     expect(engine.toggle()).toBe(false);
     expect(engine.getEnabled()).toBe(false);
+  });
+
+  it('applies a volume set before the gesture once the master bus exists', () => {
+    const setVolume = vi.spyOn(MasterBus.prototype, 'setVolume');
+    const { engine } = makeEngine();
+    engine.setMasterVolume(0.3);
+    expect(setVolume).not.toHaveBeenCalled();
+    engine.toggle();
+    expect(setVolume).toHaveBeenCalledWith(0.3);
+    setVolume.mockRestore();
   });
 
   it('plays data that arrived before the gesture as soon as audio is enabled', () => {

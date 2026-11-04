@@ -106,6 +106,8 @@ export class SpatialAudioEngine {
   private sources: readonly AudioSourceInput[] = [];
   private skyBrightnessMagArcsec2: number | null = null;
   private unveil = 0;
+  /** The user's volume, kept until the master bus exists; null leaves the bus default. */
+  private masterVolume: number | null = null;
   private orientation: Quat = IDENTITY_QUAT;
   private outcomes: readonly PlanOutcome[] = [];
   private selected: readonly VoicePlan[] = [];
@@ -190,6 +192,8 @@ export class SpatialAudioEngine {
   }
 
   setMasterVolume(linear: number): void {
+    if (!isFiniteNumber(linear)) return;
+    this.masterVolume = linear;
     this.master?.setVolume(linear);
   }
 
@@ -322,6 +326,7 @@ export class SpatialAudioEngine {
     const uiBus = ctx.createGain();
     uiBus.connect(master.input);
     this.master = master;
+    if (this.masterVolume !== null) master.setVolume(this.masterVolume);
     this.reverb = reverb;
     this.uiBus = uiBus;
     this.pool = new VoicePool(ctx, this.capacity, voicesBus, reverb.input);

@@ -164,6 +164,11 @@ export const SpatialObservatoryViewport: React.FC<
     rendererRef.current?.setObserverCoordinates(observerLat, observerLon);
   }, [observerLat, observerLon]);
 
+  // The header slider is the engine's master volume; the engine keeps it until audio starts
+  useEffect(() => {
+    observatoryAudio.setMasterVolume(volumeLevel);
+  }, [volumeLevel]);
+
   // Landing Page Non-Interactive 3D Background Scene Carousel
   useEffect(() => {
     const renderer = rendererRef.current;
