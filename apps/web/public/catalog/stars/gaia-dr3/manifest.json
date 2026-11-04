@@ -1,0 +1,376 @@
+{
+  "format": "albedian.catalog-star-tiles",
+  "formatVersion": 1,
+  "releaseId": "gaia-dr3",
+  "title": "Gaia DR3 stars to G 12 with Bailer-Jones (2021) distances; bright end from Hipparcos 2007",
+  "evidenceKind": "catalog-derived",
+  "disclosure": "Catalog data from Gaia DR3 and Hipparcos 2007 with Bailer-Jones (2021) distance estimates. Positions, brightness and distances come from these catalogs, not from your recording.",
+  "frame": "ICRS",
+  "epochJulianYear": 2016.0,
+  "magnitudeLimit": 12.0,
+  "magnitudeBands": {
+    "G": "Gaia G (Gaia DR3 sources)",
+    "Hp": "Hipparcos Hp (Hipparcos 2007 entries)"
+  },
+  "counts": {
+    "stars": 3087892,
+    "gaiaSources": 3087666,
+    "hipparcosStars": 226,
+    "gaiaDropped": 155,
+    "withDistance": 3062431,
+    "withRadialVelocity": 2901181,
+    "withProperMotion": 3062434,
+    "withColor": 3084054,
+    "namedStars": 410,
+    "names": 410
+  },
+  "tiling": {
+    "scheme": "healpix",
+    "ordering": "nested",
+    "positionEncoding": "healpix-face-subpixel",
+    "tilePath": "L{layer}/{pix}.{kind}.bin",
+    "kinds": [
+      "core",
+      "detail"
+    ]
+  },
+  "layers": [
+    {
+      "layer": 0,
+      "magMin": null,
+      "magMax": 6.5,
+      "order": 0,
+      "positionBits": 32,
+      "stars": 12192,
+      "nonEmptyTiles": 12,
+      "coreBytes": 183264,
+      "detailBytes": 195456,
+      "coreTileBytes": {
+        "min": 10307,
+        "median": 14747,
+        "max": 21857
+      },
+      "detailTileBytes": {
+        "min": 10992,
+        "median": 15728,
+        "max": 23312
+      },
+      "maxPositionErrorArcsec": 0.0,
+      "tileStarCounts": [1117,830,772,1302,783,1278,685,1026,711,1455,1297,936]
+    },
+    {
+      "layer": 1,
+      "magMin": 6.5,
+      "magMax": 8.0,
+      "order": 1,
+      "positionBits": 32,
+      "stars": 50602,
+      "nonEmptyTiles": 48,
+      "coreBytes": 760566,
+      "detailBytes": 811168,
+      "coreTileBytes": {
+        "min": 8177,
+        "median": 13779,
+        "max": 26837
+      },
+      "detailTileBytes": {
+        "min": 8720,
+        "median": 14696,
+        "max": 28624
+      },
+      "maxPositionErrorArcsec": 0.0,
+      "tileStarCounts": [818,1201,1314,1353,841,628,1054,808,608,792,543,753,1453,1471,1787,1425,570,653,757,758,1293,1594,1013,1427,790,617,710,583,1406,1242,763,1242,830,833,589,662,1585,1602,1769,1275,1650,1573,1347,852,930,734,1201,903]
+    },
+    {
+      "layer": 2,
+      "magMin": 8.0,
+      "magMax": 9.5,
+      "order": 2,
+      "positionBits": 32,
+      "stars": 231524,
+      "nonEmptyTiles": 192,
+      "coreBytes": 3479004,
+      "detailBytes": 3710528,
+      "coreTileBytes": {
+        "min": 6602,
+        "median": 14552,
+        "max": 48962
+      },
+      "detailTileBytes": {
+        "min": 7040,
+        "median": 15520,
+        "max": 52224
+      },
+      "maxPositionErrorArcsec": 0.0,
+      "tileStarCounts": [590,882,722,965,915,1795,1413,1336,960,1567,1443,2156,1858,1281,1765,1215,981,657,1130,777,566,533,650,551,1242,922,1474,1187,728,720,934,913,618,659,525,530,780,1006,690,839,489,536,485,541,661,858,655,835,1414,1268,2322,2177,1317,1566,2222,2551,2663,2864,1599,1590,2084,1757,1336,1143,577,495,630,578,567,622,588,687,709,661,921,851,638,751,859,977,1362,2218,1038,1458,2469,1499,2482,1817,907,1470,721,882,1933,2083,1243,1875,953,700,764,603,651,639,521,518,775,564,749,580,550,446,518,438,2787,2234,1220,1088,1574,1449,1478,2078,742,976,726,955,1671,1790,1118,1387,914,896,765,698,881,966,685,786,628,570,556,540,618,652,545,562,1312,2549,1429,2500,3262,1501,1977,1161,1496,2672,1473,2608,1798,1101,2136,1180,1558,2444,2651,2511,2565,2588,1865,1409,2488,1641,1350,970,1138,962,797,730,982,855,1291,917,699,619,795,681,1581,1204,2127,1497,905,812,1180,1077]
+    },
+    {
+      "layer": 3,
+      "magMin": 9.5,
+      "magMax": 10.5,
+      "order": 3,
+      "positionBits": 16,
+      "stars": 484765,
+      "nonEmptyTiles": 768,
+      "coreBytes": 5356991,
+      "detailBytes": 7780816,
+      "coreTileBytes": {
+        "min": 2045,
+        "median": 5301,
+        "max": 32537
+      },
+      "detailTileBytes": {
+        "min": 2960,
+        "median": 7696,
+        "max": 47312
+      },
+      "maxPositionErrorArcsec": 0.4094,
+      "tileStarCounts": [280,231,312,306,334,379,382,519,279,351,296,345,357,393,471,597,334,514,504,498,1026,1013,1063,860,603,726,862,869,718,694,680,653,317,462,427,563,540,829,762,1006,556,696,663,976,913,1172,1238,1430,926,630,1246,939,727,617,698,652,1351,719,788,839,632,595,623,520,446,373,494,387,294,268,296,277,630,482,637,507,368,260,388,309,235,237,275,264,196,250,258,265,302,291,301,307,262,206,282,273,646,512,802,605,437,389,459,366,827,673,854,719,529,468,708,553,320,291,352,340,287,302,330,307,449,383,529,503,404,407,484,482,285,297,272,276,347,324,263,293,221,236,243,228,230,262,214,265,359,404,301,350,463,546,411,479,298,317,291,328,336,429,399,440,204,216,190,201,234,250,219,234,216,205,209,215,222,239,227,238,256,285,251,289,370,432,346,387,230,295,279,282,323,452,375,427,703,603,888,798,565,582,747,723,1353,1256,1568,1344,1035,1012,1381,1628,579,602,787,827,606,717,884,1089,1017,1077,1430,1710,1403,1395,1828,1321,1168,1939,1380,1690,1804,1283,1611,1408,991,1019,674,640,1029,989,645,618,1352,1190,1183,857,1069,753,907,774,895,711,580,566,547,624,575,541,220,246,257,251,245,228,226,230,273,227,302,270,220,238,250,244,227,216,213,210,242,282,292,279,236,250,245,262,282,285,253,285,303,297,304,318,260,256,313,274,413,362,505,493,362,375,457,472,264,250,314,291,300,312,352,396,332,375,443,408,389,472,455,533,606,748,538,656,1149,1522,885,1078,463,607,430,483,726,859,548,749,1533,1247,1583,1436,839,550,1016,677,1350,1536,996,1453,1050,755,1233,809,362,476,336,421,630,740,534,747,322,318,273,297,410,548,304,320,801,1300,794,1092,1202,999,1211,1112,608,989,507,518,1197,981,1049,941,557,461,457,369,338,343,333,286,431,353,381,299,276,266,288,244,302,281,271,256,291,302,227,270,245,244,280,239,244,246,213,218,380,305,369,295,264,270,251,231,398,345,409,324,296,281,278,239,228,230,261,211,206,200,195,192,223,210,247,215,207,183,205,191,2193,1755,1489,1671,1273,1295,1833,1324,749,934,553,653,1006,661,425,426,1040,791,1279,873,777,693,886,1000,1039,958,534,842,1228,1404,914,1248,407,341,441,378,345,640,461,590,335,383,306,341,460,492,401,405,1011,1317,749,843,1155,1055,1005,1144,549,663,465,490,693,831,604,663,507,443,426,380,454,550,367,373,362,317,329,305,291,314,261,261,444,502,392,391,471,505,384,460,324,311,259,305,356,412,326,323,305,254,306,213,243,256,233,221,263,231,249,225,215,242,190,222,273,250,244,280,289,362,249,287,220,222,225,219,280,275,248,277,573,651,528,860,1021,1397,1313,2371,568,875,625,879,1340,1827,1071,1331,2955,1661,2128,1182,1054,714,865,581,1292,1111,1233,955,753,523,597,514,654,849,602,915,1324,1381,1341,1565,685,893,608,806,1241,1795,1406,1815,1151,848,1384,744,626,451,614,473,1557,974,1574,1077,642,477,749,511,653,839,835,1389,1022,1250,1775,1980,1155,1787,1793,2239,1588,1868,1400,1344,1367,1517,2158,1732,1723,1885,1500,1409,1387,905,1149,752,755,1227,788,483,2003,1280,1376,1051,1095,1041,799,713,1000,716,663,532,590,563,410,366,780,580,583,473,552,480,470,482,430,386,336,334,413,361,311,303,488,384,517,510,412,362,415,380,579,523,736,604,457,427,542,455,321,313,324,324,259,272,282,262,387,314,383,353,307,266,303,297,855,726,993,796,616,547,626,589,1289,933,1574,1360,712,613,1043,946,479,397,507,430,390,330,393,352,582,585,710,629,536,416,638,579]
+    },
+    {
+      "layer": 4,
+      "magMin": 10.5,
+      "magMax": 11.25,
+      "order": 3,
+      "positionBits": 16,
+      "stars": 792074,
+      "nonEmptyTiles": 768,
+      "coreBytes": 8737390,
+      "detailBytes": 12697760,
+      "coreTileBytes": {
+        "min": 2771,
+        "median": 7946,
+        "max": 57639
+      },
+      "detailTileBytes": {
+        "min": 4016,
+        "median": 11544,
+        "max": 83824
+      },
+      "maxPositionErrorArcsec": 0.4155,
+      "tileStarCounts": [418,358,389,402,471,571,533,791,415,435,457,527,529,617,644,921,514,760,832,902,1796,1647,1800,1480,923,1189,1377,1395,1256,1189,1203,899,484,608,670,784,878,1382,1148,1630,821,1081,1115,1596,1465,1916,2148,2295,1465,1072,2119,1463,1285,998,994,1036,2271,1270,1298,1306,995,973,947,822,655,516,759,622,435,373,497,412,847,695,911,737,524,445,578,494,330,311,354,330,304,325,326,294,382,356,389,450,386,363,362,378,1063,851,1258,879,658,536,718,563,1235,1017,1332,1069,799,703,970,905,438,458,545,476,371,425,426,475,656,657,818,785,528,585,782,664,459,449,350,396,495,500,397,388,317,355,286,337,341,378,318,376,495,616,484,565,719,768,599,715,433,461,405,442,531,675,517,659,293,302,300,322,330,325,320,341,289,317,282,333,306,360,328,377,376,428,368,422,539,644,513,710,377,449,403,448,506,681,562,615,1005,924,1498,1392,775,801,1172,1114,2381,2036,2940,2272,1743,1694,2292,2764,832,936,1165,1205,902,1138,1344,1744,1645,1873,2460,3060,2397,2400,3362,2133,2136,3402,2394,2994,3003,2067,2817,2298,1608,1709,1065,1071,1684,1610,994,944,2275,1937,2088,1421,1862,1268,1446,1240,1523,1093,977,808,785,934,853,724,360,356,390,321,315,293,330,345,361,355,411,400,372,330,387,340,342,340,317,349,382,384,380,366,340,332,365,400,385,395,367,401,455,419,522,460,391,411,477,456,629,549,793,671,489,512,671,649,427,360,394,434,411,490,486,565,499,522,652,580,553,632,675,818,856,1232,783,1070,1853,2591,1491,1741,702,875,598,743,1051,1305,797,1074,2899,2012,2571,2392,1264,868,1580,1011,2412,2735,1740,2319,1828,1174,2110,1385,497,658,513,636,896,1112,869,1057,458,461,434,456,596,823,478,522,1240,2242,1275,1940,2145,1596,1963,1807,958,1643,760,904,1972,1600,1675,1594,856,671,714,592,516,449,490,401,627,530,542,485,387,374,422,369,432,437,407,400,400,416,352,368,362,334,303,306,377,353,306,299,556,451,522,428,389,359,365,344,553,438,583,459,384,354,402,372,333,336,306,303,290,272,249,307,333,267,361,289,284,317,269,282,4148,3653,2790,3432,2408,2502,3480,2684,1498,1717,996,1174,1809,1235,724,704,1826,1386,2477,1770,1182,1109,1642,1683,2064,2002,921,1374,2318,2516,1658,2247,617,624,620,657,615,1062,795,944,483,608,462,529,730,819,558,689,1733,2202,1191,1431,2008,1799,1633,1899,899,1115,668,781,1145,1323,890,1011,715,629,639,615,712,753,545,545,683,445,484,456,472,427,404,390,686,696,501,534,702,776,555,677,471,477,409,409,515,574,491,518,465,420,434,350,334,382,391,352,393,352,377,339,326,345,328,311,369,425,394,358,411,490,339,442,347,342,307,349,358,447,373,422,943,1049,855,1539,1981,2723,2326,4358,918,1387,984,1420,2319,3303,1894,2126,5237,3002,3846,2135,1826,1125,1373,879,2456,1836,1974,1448,1092,843,1094,750,984,1383,919,1381,2283,2160,2031,2699,1051,1317,978,1318,2000,2974,2233,3091,1954,1319,2445,1211,958,739,878,720,2753,1477,2771,1745,929,719,1132,782,1037,1394,1401,2365,1737,2135,3345,3786,2165,3416,3224,4247,2764,3106,2424,2412,2558,2775,4537,3208,3260,3549,2675,2582,2608,1606,2208,1277,1342,2254,1383,794,3603,2297,2509,1797,1895,1559,1383,1090,1696,1087,1049,876,980,813,685,619,1335,949,907,766,893,799,747,712,654,627,557,477,625,562,490,498,725,615,805,749,646,518,648,581,994,820,1203,912,673,581,798,696,463,433,496,445,393,358,411,394,571,514,575,543,431,446,477,483,1472,1094,1798,1316,900,774,1070,917,2194,1661,3012,2409,1149,1060,1905,1610,657,610,779,655,529,482,645,568,899,870,1176,1016,782,638,969,910]
+    },
+    {
+      "layer": 5,
+      "magMin": 11.25,
+      "magMax": 12.0,
+      "order": 3,
+      "positionBits": 16,
+      "stars": 1516735,
+      "nonEmptyTiles": 768,
+      "coreBytes": 16708661,
+      "detailBytes": 24292336,
+      "coreTileBytes": {
+        "min": 5081,
+        "median": 13991,
+        "max": 114245
+      },
+      "detailTileBytes": {
+        "min": 7376,
+        "median": 20336,
+        "max": 166160
+      },
+      "maxPositionErrorArcsec": 0.4103,
+      "tileStarCounts": [715,593,670,726,802,941,916,1340,744,769,819,918,920,1047,1081,1677,980,1516,1534,1594,3425,3294,3597,2903,1626,2274,2613,2741,2523,2131,2320,1698,891,1119,1157,1447,1559,2438,2058,3069,1344,1847,1914,2920,2796,3671,4077,4394,2806,2047,4089,2727,2224,1869,1857,1875,4232,2364,2501,2560,1732,1776,1678,1502,1087,834,1302,940,722,578,757,642,1514,1124,1719,1245,890,762,983,788,571,532,637,570,515,535,536,536,655,618,700,643,543,569,639,641,1921,1392,2270,1744,1073,896,1216,1034,2347,1833,2552,2024,1407,1248,1816,1574,799,734,915,839,782,707,798,794,1100,1015,1428,1342,986,960,1304,1100,689,761,647,631,804,846,692,718,593,636,510,547,637,623,581,635,949,1067,761,939,1264,1368,990,1264,725,866,658,722,917,1126,890,1111,490,527,487,505,532,574,517,524,530,498,515,533,563,594,590,609,616,688,644,700,869,1115,837,1056,654,725,692,802,875,1050,923,1092,1801,1658,2796,2539,1497,1478,2180,2160,4750,4176,6254,4643,3323,3436,4664,5522,1576,1518,2167,2260,1660,2071,2497,3249,3198,3696,5024,6345,4688,4741,6706,3995,4573,6935,4906,6096,5771,3727,5958,4479,2996,3220,1923,1838,3165,2756,1752,1734,4543,3927,3943,2505,3366,2399,2730,2319,2766,1974,1677,1537,1400,1612,1392,1418,620,584,630,628,554,579,632,558,667,598,670,699,639,580,692,643,534,626,591,592,698,720,634,674,591,650,624,662,648,675,672,723,727,827,889,817,721,733,710,755,1118,952,1371,1180,799,855,1167,1142,683,665,763,836,760,803,868,1015,837,902,1115,1067,979,1175,1240,1480,1556,2151,1379,1877,3601,4890,2579,3358,1245,1607,1081,1277,1827,2452,1422,1940,5755,3863,4877,4603,2406,1654,2866,1903,4549,5328,3263,4340,3217,2144,4111,2541,906,1176,919,1066,1591,1688,1411,1842,801,784,729,714,1021,1476,777,900,2390,4286,2252,3635,4093,2971,3897,3386,1689,3065,1456,1723,3873,3062,3193,3212,1485,1207,1202,944,922,828,842,777,1064,856,957,754,730,676,697,657,778,765,710,646,671,694,621,609,610,614,555,511,571,606,477,575,836,751,913,778,631,597,691,603,978,769,1031,807,590,604,665,581,572,486,546,461,507,492,487,503,582,525,554,489,490,459,477,519,9282,8624,5441,7231,5523,5217,7888,6443,3320,3783,2160,2473,4072,2664,1569,1495,3709,2726,5667,3567,2228,2156,3462,3413,4968,4363,1842,2722,5201,5416,3391,4888,1199,1183,1145,1168,1249,2257,1515,1875,929,1104,838,959,1338,1375,1002,1100,3545,4568,2312,2708,4408,3695,3138,3904,1600,1969,1238,1360,2142,2480,1629,1856,1283,1204,1080,992,1201,1499,968,1008,1126,874,843,753,823,784,700,705,1257,1227,1009,977,1239,1317,1008,1160,827,880,707,765,896,1002,853,903,800,695,731,699,692,646,610,611,639,633,685,638,603,552,627,567,660,689,626,632,718,829,730,758,620,646,607,582,655,685,666,654,1674,1905,1453,2688,3939,6103,4719,8898,1630,2604,1672,2553,4902,6927,3750,4053,10383,6135,7840,3964,3445,2192,2518,1662,5198,3421,3814,2854,2117,1374,1876,1247,1636,2486,1712,2605,4182,4184,4002,5334,1772,2594,1732,2487,3741,6042,4345,6103,3855,2449,4710,2368,1677,1244,1718,1182,5498,2905,5794,3372,1820,1270,2083,1459,2010,2640,2792,5032,3394,4169,6818,8505,4637,7692,7616,8833,6005,6521,5347,4985,5086,6007,9800,6932,7089,7820,5321,5343,5533,3366,4472,2719,2967,5027,2834,1604,7894,4704,4981,3558,3917,3141,2675,2046,3241,2179,2001,1514,1738,1471,1268,1037,2525,1848,1637,1389,1792,1613,1375,1244,1221,1129,963,831,1027,1056,832,832,1278,1039,1472,1308,1049,952,1185,1019,1907,1533,2319,1707,1271,1107,1453,1268,819,802,859,809,708,663,779,695,987,896,1097,904,805,688,884,826,2661,2074,3311,2481,1734,1431,1896,1493,4564,3011,6456,5365,2181,1930,3950,3139,1216,1014,1431,1214,938,896,1168,994,1635,1630,2276,1960,1306,1242,1797,1609]
+    }
+  ],
+  "encoding": {
+    "byteOrder": "little-endian",
+    "magic": "ALBS",
+    "headerBytes": 32,
+    "core": [
+      "posU",
+      "posV",
+      "mag:u16",
+      "color:i16",
+      "distance:u16",
+      "flags:u8"
+    ],
+    "detail": [
+      "idHi:u32",
+      "idLo:u32",
+      "pmRa:f16",
+      "pmDec:f16",
+      "radialVelocity:f16",
+      "distanceLower:u8",
+      "distanceUpper:u8"
+    ],
+    "position": "HEALPix face coordinate inside the tile pixel, (code + 0.5) / 2^positionBits",
+    "magnitude": {
+      "offset": 2.0,
+      "scale": 1000.0,
+      "decode": "code / 1000 - 2"
+    },
+    "color": {
+      "scale": 1000.0,
+      "missing": -32768,
+      "decode": "code / 1000"
+    },
+    "distance": {
+      "log10Min": -1.0,
+      "log10Step": 0.0001,
+      "missing": 0,
+      "decode": "10^(log10Min + (code - 1) * log10Step) parsec"
+    },
+    "distanceBounds": {
+      "missing": 0,
+      "log10FractionMin": -5.0,
+      "lowerLog10Span": 5.0,
+      "upperLog10Span": 7.0,
+      "decode": "fraction = 10^(log10FractionMin + (code - 1) / 254 * span); lower = median * (1 - fraction), upper = median * (1 + fraction)"
+    },
+    "float16": "IEEE 754 binary16; NaN marks a missing value",
+    "units": {
+      "pmRa": "mas/yr (includes cos dec)",
+      "pmDec": "mas/yr",
+      "radialVelocity": "km/s",
+      "distance": "pc"
+    },
+    "flags": {
+      "distanceKindMask": 3,
+      "distanceKinds": {
+        "0": "none",
+        "1": "bailer-jones-2021-photogeometric",
+        "2": "bailer-jones-2021-geometric",
+        "3": "hipparcos-2007-parallax-inverse"
+      },
+      "magnitudeBandHp": 4,
+      "colorBMinusV": 8,
+      "catalogHipparcos": 16,
+      "named": 32
+    },
+    "tileOrder": "brightest first, ties by catalog then identifier"
+  },
+  "sources": [
+    {
+      "id": "gaia-dr3",
+      "title": "Gaia Data Release 3",
+      "provider": "ESA Gaia mission, Gaia DPAC",
+      "table": "gaiadr3.gaia_source",
+      "archive": "https://gea.esac.esa.int/archive/",
+      "citation": "Gaia Collaboration, Vallenari, A., et al. 2023, A&A 674, A1",
+      "doi": "10.1051/0004-6361/202243940",
+      "missionCitation": "Gaia Collaboration, Prusti, T., et al. 2016, A&A 595, A1",
+      "missionDoi": "10.1051/0004-6361/201629272",
+      "acknowledgement": "This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.",
+      "license": "Data hosted in the ESA Space Science Archives are distributed under the CC BY-NC 3.0 IGO licence. Commercial use needs prior authorisation from ESA (data.licences@esa.int).",
+      "licenseUrl": "https://www.cosmos.esa.int/web/gaia-users/license",
+      "fields": [
+        "source_id",
+        "ra",
+        "dec",
+        "phot_g_mean_mag",
+        "bp_rp",
+        "pmra",
+        "pmdec",
+        "radial_velocity"
+      ]
+    },
+    {
+      "id": "bailer-jones-2021",
+      "title": "Estimating Distances from Parallaxes. V. Geometric and Photogeometric Distances to 1.47 Billion Stars in Gaia Early Data Release 3",
+      "provider": "Bailer-Jones et al., retrieved from the ESA Gaia Archive",
+      "table": "external.gaiaedr3_distance",
+      "archive": "https://gea.esac.esa.int/archive/",
+      "citation": "Bailer-Jones, C. A. L., Rybizki, J., Fouesneau, M., Demleitner, M., & Andrae, R. 2021, AJ 161, 147",
+      "doi": "10.3847/1538-3881/abd806",
+      "license": "Retrieved from the ESA Gaia Archive; Data hosted in the ESA Space Science Archives are distributed under the CC BY-NC 3.0 IGO licence. Commercial use needs prior authorisation from ESA (data.licences@esa.int).",
+      "licenseUrl": "https://www.cosmos.esa.int/web/esdc/terms-and-conditions",
+      "fields": [
+        "r_med_photogeo",
+        "r_lo_photogeo",
+        "r_hi_photogeo",
+        "r_med_geo",
+        "r_lo_geo",
+        "r_hi_geo"
+      ],
+      "note": "Photogeometric median and 16th/84th percentile bounds are used when present, geometric otherwise. Gaia DR3 astrometry is identical to EDR3, so source_id joins directly."
+    },
+    {
+      "id": "hipparcos-2007",
+      "title": "Hipparcos, the New Reduction of the Raw Data",
+      "provider": "ESA Hipparcos mission, retrieved from the ESA Gaia Archive",
+      "table": "public.hipparcos_newreduction",
+      "archive": "https://gea.esac.esa.int/archive/",
+      "citation": "van Leeuwen, F. 2007, A&A 474, 653",
+      "doi": "10.1051/0004-6361:20078357",
+      "license": "Data hosted in the ESA Space Science Archives are distributed under the CC BY-NC 3.0 IGO licence. Commercial use needs prior authorisation from ESA (data.licences@esa.int).",
+      "licenseUrl": "https://www.cosmos.esa.int/web/esdc/terms-and-conditions",
+      "fields": [
+        "hip",
+        "ra",
+        "dec",
+        "plx",
+        "e_plx",
+        "pm_ra",
+        "pm_de",
+        "hp_mag",
+        "b_v"
+      ],
+      "note": "Used for stars Gaia DR3 handles poorly. Positions propagated from J1991.25 to J2016.0 with Hipparcos proper motions; distance is 1000/parallax with bounds from parallax plus or minus its formal error; magnitude is Hp and colour is B-V."
+    },
+    {
+      "id": "gaia-dr3-hipparcos2-best-neighbour",
+      "title": "Gaia DR3 to Hipparcos-2 best-neighbour crossmatch",
+      "provider": "Gaia DPAC",
+      "table": "gaiadr3.hipparcos2_best_neighbour",
+      "archive": "https://gea.esac.esa.int/archive/",
+      "citation": "Marrese, P. M., Marinoni, S., Fabrizio, M., & Altavilla, G. 2019, A&A 621, A144",
+      "doi": "10.1051/0004-6361/201834142",
+      "license": "Data hosted in the ESA Space Science Archives are distributed under the CC BY-NC 3.0 IGO licence. Commercial use needs prior authorisation from ESA (data.licences@esa.int).",
+      "licenseUrl": "https://www.cosmos.esa.int/web/esdc/terms-and-conditions",
+      "fields": [
+        "source_id",
+        "original_ext_source_id"
+      ]
+    },
+    {
+      "id": "iau-csn",
+      "title": "IAU Catalog of Star Names (IAU-CSN)",
+      "provider": "IAU Division C Working Group on Star Names (WGSN)",
+      "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+      "officialUrl": "https://www.iau.org/public/themes/naming_stars/",
+      "citation": "IAU Working Group on Star Names, IAU Catalog of Star Names",
+      "license": "IAU products are released under Creative Commons Attribution; cite the IAU.",
+      "note": "Names attach to catalog stars by HIP number, through the Gaia best-neighbour crossmatch for Gaia sources."
+    }
+  ],
+  "selection": {
+    "gaia": "gaiadr3.gaia_source with phot_g_mean_mag < 12.0, left join external.gaiaedr3_distance on source_id; no other quality cuts",
+    "gaiaQueryTemplate": "SELECT g.source_id, g.ra, g.dec, g.phot_g_mean_mag, g.bp_rp, g.pmra, g.pmdec, g.radial_velocity, d.r_med_photogeo, d.r_lo_photogeo, d.r_hi_photogeo, d.r_med_geo, d.r_lo_geo, d.r_hi_geo FROM gaiadr3.gaia_source AS g LEFT OUTER JOIN external.gaiaedr3_distance AS d ON d.source_id = g.source_id WHERE g.source_id BETWEEN {lo} AND {hi} AND g.phot_g_mean_mag < 12.0",
+    "gaiaChunks": 207,
+    "hipparcosQuery": "SELECT h.hip, h.ra, h.dec, h.plx, h.e_plx, h.pm_ra, h.pm_de, h.hp_mag, h.b_v, x.source_id AS gaia_source_id, g.phot_g_mean_mag AS gaia_g FROM public.hipparcos_newreduction AS h LEFT OUTER JOIN gaiadr3.hipparcos2_best_neighbour AS x ON x.original_ext_source_id = h.hip LEFT OUTER JOIN gaiadr3.gaia_source AS g ON g.source_id = x.source_id WHERE h.hp_mag < 6.0 ORDER BY h.hip",
+    "brightStars": {
+      "rule": "A Hipparcos star replaces Gaia when it has no Gaia DR3 best neighbour (and no unsaturated Gaia source within 10 arcsec agrees within 1 mag, or sits within 2 arcsec no more than 1 mag fainter), when its best neighbour is brighter than G 3 or outside the G < 12 subset, or when a Gaia source brighter than G 3 within 10 arcsec matches the Hipparcos magnitude better than the best neighbour (the crossmatch picked a companion). Gaia sources within 2 arcsec of a Hipparcos-supplied star, or within 10 arcsec and agreeing within 1.5 mag or brighter than G 3, are removed as duplicates; fainter companions stay. Remaining Gaia sources brighter than G 3 are removed.",
+      "hipparcosMagnitudeLimit": 6.0,
+      "gaiaPoorBrighterThan": 3.0,
+      "duplicateRadiusArcsec": 10.0,
+      "sameStarRadiusArcsec": 2.0,
+      "duplicateSearchMagnitudeLimit": 7.5,
+      "hipparcosEpoch": 1991.25,
+      "log": "bright-star-merge.json"
+    },
+    "names": {
+      "names": 451,
+      "resolved": 410,
+      "noHip": 40,
+      "notInCatalogSubset": 1,
+      "sourceUpdated": "2022-04-04"
+    },
+    "healpixCheck": {
+      "order12Agreement": 0.996786,
+      "order6Agreement": 0.999953,
+      "order3Agreement": 0.999993
+    }
+  },
+  "files": {
+    "names": "names.json",
+    "brightStarMerge": "bright-star-merge.json",
+    "checksums": "SHA256SUMS"
+  },
+  "bake": {
+    "script": "scripts/bake_catalog_star_tiles.py",
+    "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3",
+    "verify": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3 --verify"
+  }
+}
