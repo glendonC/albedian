@@ -1,0 +1,28 @@
+aachen-nikolauskapelle-s1-r12-stereo.wav
+
+Derived from a measured room impulse response of the St. Nicholas Chapel
+(Nikolauskapelle), Aachen Cathedral, by Martin Zerwas and Selin Kayku:
+"Room acoustic measurement and decay analysis data of the St. Nicholas Chapel,
+Aachen Cathedral", version 1.2 (2026-10-12), Zenodo,
+https://doi.org/10.5281/zenodo.23312556 (record 23312556; the dataset's
+LICENSE.txt cites DOI 10.5281/zenodo.20428705).
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0),
+https://creativecommons.org/licenses/by/4.0/
+
+Original member: impulse_responses.zip / Nikolauskapelle_Source1_BRIR/S1-Do_R12.wav
+(4-channel B-format, FuMa W X Y Z with W scaled by 1/sqrt(2), 48 kHz, 32-bit float,
+10.0 s; dodecahedron source S1 and receiver R12, both in the main hall, 9.24 m apart;
+zip CRC-32 125ad33e; SHA-256 b0df0cf359e3242b5c2c3c7215bb793e175b33391b59172c9c7c28d7c386f0e7).
+
+Changes made for Albedian (2026-11-03):
+1. Trimmed to start 30.12 ms into the original, 3.0 ms after the direct-sound onset
+   (27.12 ms), which removes the direct sound; the engine supplies its own dry path.
+   Trimmed to end at 4.2 s of the original timeline, where the decay meets the
+   measured noise floor (about 64 dB below the strongest 100 ms window).
+2. Decoded B-format to stereo as two coincident virtual cardioids at +90 and -90
+   degrees: L = 0.70710678 W + 0.5 Y, R = 0.70710678 W - 0.5 Y.
+3. Second-order 40 Hz high-pass; 3 ms half-sine fade-in; 0.8 s half-sine fade-out.
+4. Gain +3.7 dB so the peak sits at -1 dBFS; 16-bit PCM with triangular dither.
+Result: 48 kHz stereo, 4.17 s, 800660 bytes,
+SHA-256 1c7225910fc89c91f63f0073ee16a63084d9ca0e6938a526dfcc3b809601a59a.
