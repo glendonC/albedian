@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGPU Renderer Spike</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel-bg: rgba(6, 8, 14, 0.78);
+        --panel-border: rgba(150, 170, 210, 0.22);
+        --text: #d8deea;
+        --muted: #8d97ab;
+        --accent: #8fb4ff;
+        --warn: #ffb36b;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: var(--text);
+        font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+        overflow: hidden;
+      }
+      #stage {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #stage canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+      .panel {
+        position: fixed;
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        max-width: min(460px, calc(100vw - 32px));
+        backdrop-filter: blur(6px);
+      }
+      #hud {
+        top: 12px;
+        left: 12px;
+      }
+      #controls {
+        bottom: 12px;
+        left: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        align-items: center;
+      }
+      #provenance {
+        top: 12px;
+        right: 12px;
+        color: var(--muted);
+      }
+      h1 {
+        font-size: 12px;
+        margin: 0 0 6px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .label {
+        color: var(--warn);
+        font-weight: 600;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+      }
+      select,
+      button,
+      input {
+        font: inherit;
+        color: var(--text);
+        background: #111723;
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        padding: 3px 6px;
+      }
+      button {
+        cursor: pointer;
+      }
+      @media (max-width: 720px) {
+        #provenance {
+          top: auto;
+          bottom: 120px;
+          left: 12px;
+          right: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="hud" class="panel">
+      <h1>Albedian WebGPU renderer spike</h1>
+      <pre id="hud-text">Starting...</pre>
+    </div>
+    <div id="provenance" class="panel">
+      <div><span class="label">Stars: SYNTHETIC PERF FIXTURE</span> (seeded pseudo-random positions, magnitudes and temperatures; not a star catalog). Color: blackbody chromaticity (Planck, CIE 1931) from the fixture temperature. Flux: 10^(-0.4 m) from the fixture magnitude. PSF: analytic Airy core, glare halo and spikes. Disclosure: Modeled Sky.</div>
+      <div style="margin-top: 6px"><span class="label">Local Bubble splats</span>: positions from O'Neill et al. 2024 via <code>lb_splats.json</code>, through a port of the app loader. Color, scale, orientation and opacity are procedurally baked presentation values. Disclosure: Catalog Geometry · Distance Estimates.</div>
+      <div style="margin-top: 6px"><span class="label">Dust volume</span>: the same splats voxelized into a stand-in density (not calibrated extinction), ray marched with emission-absorption and CCM89 reddening of the stars behind it. Extinction above x1 is an illustration, not data.</div>
+    </div>
+    <div id="controls" class="panel">
+      <label>splats <select id="splat-path"><option value="three">three GaussianSplat</option><option value="radix">radix 0.0.1</option><option value="none">none</option><option value="three-valley">scale fixture 500k (three)</option><option value="radix-valley">scale fixture 500k (radix)</option><option value="three-snow">scale fixture 982k (three)</option><option value="radix-snow">scale fixture 982k (radix)</option></select></label>
+      <label>dust volume <select id="dust"><option value="off">off</option><option value="skip">ray march (skip)</option><option value="noskip">ray march (no skip)</option><option value="skip-half">ray march (skip, half res)</option></select></label>
+      <label>extinction <select id="extinction"><option value="1">x1 (splat opacity)</option><option value="4">x4</option><option value="8">x8</option><option value="16">x16</option></select></label>
+      <label>AA <select id="aa"><option>fxaa</option><option>smaa</option><option>traa</option><option>msaa4</option><option>none</option></select></label>
+      <label><input type="checkbox" id="bloom" checked /> bloom</label>
+      <label><input type="checkbox" id="stars" checked /> stars</label>
+      <label><input type="checkbox" id="orbit" checked /> orbit</label>
+      <label>res <select id="res"><option value="window">window</option><option value="1920x1080">1920x1080</option><option value="2560x1440">2560x1440</option><option value="3440x1440">3440x1440</option><option value="3840x2160">3840x2160</option></select></label>
+      <button id="bench">Run benchmark suite</button>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

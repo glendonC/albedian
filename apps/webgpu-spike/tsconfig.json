@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["vite/client", "node", "@webgpu/types"],
+    // @sparkjsdev/radix 0.0.1 imports "three" without declaring @types/three, so under pnpm its
+    // declarations would bind to the hoisted @types/three 0.180 used by apps/web. Pin every
+    // "three" specifier, including the ones inside radix's .d.ts files, to this package's 0.187 types.
+    "paths": {
+      "three": ["./node_modules/@types/three/build/three.module.d.ts"],
+      "three/webgpu": ["./node_modules/@types/three/build/three.webgpu.d.ts"],
+      "three/tsl": ["./node_modules/@types/three/build/three.tsl.d.ts"],
+      "three/addons/*": ["./node_modules/@types/three/examples/jsm/*"],
+      "three/examples/jsm/*": ["./node_modules/@types/three/examples/jsm/*"],
+      "three/src/*": ["./node_modules/@types/three/src/*"]
+    }
+  },
+  "include": ["src/**/*", "vite.config.ts"]
+}
