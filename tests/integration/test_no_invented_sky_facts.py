@@ -78,6 +78,11 @@ def test_a_gaia_star_carries_its_tile_row_and_a_derived_radius() -> None:
     radius = astro["radiusSolar"]
     assert radius["derived"] is True and "Stefan-Boltzmann" in radius["method"]
     assert radius["value"] == pytest.approx(math.sqrt(lum[0]) * (5772.0 / teff[0]) ** 2)
+    # The span's ends pair the percentiles the way they bound the radius: the lowest luminosity with the highest
+    # temperature for the lower end, and the reverse for the upper
+    assert radius["lower"] == pytest.approx(math.sqrt(lum[1]) * (5772.0 / teff[2]) ** 2)
+    assert radius["upper"] == pytest.approx(math.sqrt(lum[2]) * (5772.0 / teff[1]) ** 2)
+    assert radius["lower"] <= radius["value"] <= radius["upper"]
     assert any("Andrae" in c for c in astro["citations"]) and any("Creevey" in c for c in astro["citations"])
 
 
