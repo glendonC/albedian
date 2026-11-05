@@ -71,6 +71,19 @@ describe('the listening session items', () => {
     expect([...testUnits].sort()).toEqual(['V mag/arcsec^2', 'arcsec', 'mag']);
   });
 
+  it("says in so many words that a test value is not a measurement", () => {
+    expect(TEST_VALUE_LABEL).toBe('test value, not a measurement');
+  });
+
+  it('plays the Crab and Vela at their ATNF spin frequencies, exactly', () => {
+    // ATNF Pulsar Catalogue v2.6.1 F0, as AUDIO_ENGINE.md 4.6 cites: J0534+2200 and J0835-4510
+    const spin = (name: string) =>
+      voices.find((voice) => voice.kind === 'pulsar' && voice.pulsar.startsWith(name)) as Extract<Voice, { kind: 'pulsar' }>;
+    expect(spin('Crab').spinFrequencyHz).toMatchObject({ value: 29.946923, unit: 'Hz', kind: 'published', label: 'F0' });
+    expect(spin('Vela').spinFrequencyHz).toMatchObject({ value: 11.1946499395, unit: 'Hz', kind: 'published', label: 'F0' });
+    for (const name of ['Crab', 'Vela']) expect(spin(name).spinFrequencyHz.reference).toContain('ATNF Pulsar Catalogue v2.6.1');
+  });
+
   it('plays only catalog stars that Gaia DR3 gives a temperature, a luminosity and a distance', () => {
     const stars = new Set(voices.flatMap((voice) => (voice.kind === 'star' ? [voice.star] : [])));
     expect(stars.size).toBeGreaterThan(10);
