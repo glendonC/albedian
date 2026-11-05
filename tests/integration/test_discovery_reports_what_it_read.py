@@ -132,7 +132,10 @@ def test_a_recorded_creationdate_is_the_capture_moment(tmp_path: Path, monkeypat
 @pytest.mark.owner_media("data/uploads")
 def test_real_clips_report_what_ffprobe_reads() -> None:
     items = TestClient(app).get("/api/media/discover").json()["items"]
-    assert len(items) >= 3
+    # Each check below is a flag with a fixed message: a failing assert on an item or the list would print the
+    # clips' names, places and capture times
+    count = len(items)
+    assert count >= 3, "fewer than three real clips were discovered"
     for item in items:
         path = ROOT / "data" / "uploads" / item["relativePath"]
         stream = json.loads(subprocess.run(
@@ -142,7 +145,8 @@ def test_real_clips_report_what_ffprobe_reads() -> None:
         ).stdout)["streams"][0]
         assert (item["width"], item["height"]) == (stream["width"], stream["height"])
         assert item["fps"] == pytest.approx(float(Fraction(stream["r_frame_rate"])), abs=0.001)
-        assert "decodeError" not in item
+        decoded = "decodeError" not in item
+        assert decoded, "a real clip failed to decode"
         tags = json.loads(subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format_tags", "-of", "json", str(path)],
             check=True, stdout=subprocess.PIPE,

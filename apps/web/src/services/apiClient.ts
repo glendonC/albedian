@@ -238,8 +238,9 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
       observerLocation: placed ? { latDeg: item.latDeg!, lonDeg: item.lonDeg! } : undefined,
       cameraMetadata: item.cameraModel !== null ? { model: item.cameraModel } : undefined,
       metadataSources: {
+        // Only the recorded time: discovery never takes the file's own creation_time as a capture moment
         capturedAtUTC: item.capturedAtUTC
-          ? { container: 'quicktime', tags: ['com.apple.quicktime.creationdate', 'creation_time'] }
+          ? { container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] }
           : undefined,
         observerLocation: placed
           ? { container: 'quicktime', tags: ['com.apple.quicktime.location.ISO6709', 'location'] }
