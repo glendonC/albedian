@@ -20,7 +20,7 @@ from hypothesis import strategies as st
 from research.benchmarks.phone_photos import astrometry as am
 from research.benchmarks.phone_photos import geometry as gm
 
-MOMENT = am.ObservationFrame(utc=datetime(2026, 3, 15, 22, 0, tzinfo=timezone.utc), lat_deg=30.0, lon_deg=-5.0)
+MOMENT = am.ObservationFrame(utc=datetime(2026, 3, 15, 22, 0, tzinfo=timezone.utc), lat_deg=45.0, lon_deg=10.0)
 
 
 def _camera(distortion: gm.Distortion, fov_deg: float = 84.0, width: int = 1200, height: int = 900) -> gm.Camera:
