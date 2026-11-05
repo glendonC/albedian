@@ -31,6 +31,7 @@ from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from services.ingest.router import router as ingest_router
 from services.media.router import DEFAULT_MEDIA_FOLDERS, MediaFolders
 from services.media.router import router as media_router
 from services.science.catalog import (
@@ -201,7 +202,7 @@ def create_app(
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(hosts), www_redirect=False)
 
-    for domain_router in (health_router, science_router, media_router, voice_router):
+    for domain_router in (health_router, science_router, media_router, voice_router, ingest_router):
         app.include_router(domain_router)
     return app
 

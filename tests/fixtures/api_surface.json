@@ -417,6 +417,187 @@
             }
           }
         }
+      },
+      "/api/ingest": {
+        "post": {
+          "summary": "Ingest Upload",
+          "description": "Store an upload on this machine and read its facts and hints; refused uploads leave nothing behind.",
+          "operationId": "ingest_upload_api_ingest_post",
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            }
+          },
+          "requestBody": {
+            "required": true,
+            "description": "The file itself, with its type as Content-Type",
+            "content": {
+              "image/heic": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/heif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/pjpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/tif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/tiff": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/quicktime": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/x-m4v": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "parameters": [
+            {
+              "name": "X-Albedian-Filename",
+              "in": "header",
+              "required": false,
+              "description": "The file's name, percent-encoded; used only as the local title",
+              "schema": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      },
+      "/api/ingest/{sha256}": {
+        "get": {
+          "summary": "Get Ingest Receipt",
+          "description": "The receipt of a stored file.",
+          "operationId": "get_ingest_receipt_api_ingest__sha256__get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "The file's SHA-256, 64 lowercase hex characters",
+                "title": "Sha256"
+              },
+              "description": "The file's SHA-256, 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Receipt Api Ingest  Sha256  Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/ingest/{sha256}/original": {
+        "get": {
+          "summary": "Get Ingest Original",
+          "description": "The stored bytes, exactly as uploaded.",
+          "operationId": "get_ingest_original_api_ingest__sha256__original_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "The file's SHA-256, 64 lowercase hex characters",
+                "title": "Sha256"
+              },
+              "description": "The file's SHA-256, 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "components": {
@@ -838,6 +1019,33 @@
       ],
       "name": "post_voice_command",
       "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest",
+      "methods": [
+        "POST"
+      ],
+      "name": "ingest_upload",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_receipt",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/original",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_original",
+      "responseModel": null,
       "includeInSchema": true
     }
   ],
