@@ -231,7 +231,6 @@ export class SparkPortalRenderer {
     uCoolColor: { value: THREE.Vector3 };
     uWarmColor: { value: THREE.Vector3 };
     uHotColor: { value: THREE.Vector3 };
-    uCoronaOuter: { value: THREE.Vector3 };
   };
   private planetarySkyUniforms: {
     uTime: { value: number };
@@ -254,7 +253,7 @@ export class SparkPortalRenderer {
   private cislunarEarthMesh: THREE.Mesh | null = null;
   private betelgeuseMesh: THREE.Mesh | null = null;
   private localBubbleCavityGroup: THREE.Group | null = null;
-  /** The black hole's plane and its decorative particles, drawn only in the black hole view. */
+  /** The black hole's plane, drawn only in the black hole view. */
   private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
   private captureHorizonSplatMesh: SplatMesh | null = null;
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
@@ -359,7 +358,6 @@ export class SparkPortalRenderer {
       uCoolColor: { value: new THREE.Vector3(0.28, 0.03, 0.005) },
       uWarmColor: { value: new THREE.Vector3(0.92, 0.24, 0.03) },
       uHotColor: { value: new THREE.Vector3(1.38, 0.78, 0.28) },
-      uCoronaOuter: { value: new THREE.Vector3(0.68, 0.11, 0.015) },
     };
     this.planetarySkyUniforms = {
       uTime: { value: 0.0 },
@@ -670,118 +668,6 @@ export class SparkPortalRenderer {
       group.add(mount);
       this.catalogStarMounts.push(mount);
     }
-  }
-
-  /**
-   * Decorative particles: points on a shell around `center`, moved by sin and cos noise in the
-   * vertex shader. Not a simulation of gas or plasma; disclosed as decorative where declared.
-   */
-  private createDecorativeParticles(
-    center: THREE.Vector3,
-    innerRadius: number,
-    outerRadius: number,
-    particleCount = 14000
-  ): THREE.Points {
-    const positions = new Float32Array(particleCount * 3);
-    const seeds = new Float32Array(particleCount * 4);
-
-    for (let i = 0; i < particleCount; i++) {
-      const h1 = Math.sin(i * 19.19) * 43758.5453;
-      const u = h1 - Math.floor(h1);
-      const h2 = Math.sin(i * 73.73) * 43758.5453;
-      const v = h2 - Math.floor(h2);
-      const h3 = Math.sin(i * 37.37) * 43758.5453;
-      const w = h3 - Math.floor(h3);
-
-      const theta = u * Math.PI * 2.0;
-      const phi = Math.acos(2.0 * v - 1.0);
-      const r = innerRadius + Math.pow(w, 1.65) * (outerRadius - innerRadius);
-
-      positions[i * 3] = center.x + r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = center.y + r * Math.sin(phi) * Math.sin(theta) * 0.72;
-      positions[i * 3 + 2] = center.z + r * Math.cos(phi);
-
-      seeds[i * 4] = u;
-      seeds[i * 4 + 1] = v;
-      seeds[i * 4 + 2] = w;
-      seeds[i * 4 + 3] = r;
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 4));
-
-    const mat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: this.localBubbleUniforms.uTime,
-        uWarmColor: this.localBubbleUniforms.uWarmColor,
-        uHotColor: this.localBubbleUniforms.uHotColor,
-        uCoronaOuter: this.localBubbleUniforms.uCoronaOuter,
-        uCenter: { value: center.clone() },
-      },
-      vertexShader: /* glsl */ `
-        attribute vec4 aSeed;
-        uniform float uTime;
-        uniform vec3 uCenter;
-        varying float vEnergy;
-        varying float vRadialNorm;
-
-        vec3 curlFlow(vec3 p, float t) {
-          vec3 q = p * 0.55 + vec3(t * 0.14, -t * 0.11, t * 0.09);
-          vec3 n1 = sin(q * 2.1 + cos(q.yzx * 1.7));
-          vec3 n2 = cos(q.zxy * 3.3 - sin(q * 2.4 + t * 0.3));
-          return cross(n1, n2);
-        }
-
-        void main() {
-          vec3 rel = position - uCenter;
-          float r = length(rel);
-          float angle = uTime * (0.18 / max(1.2, r * 0.35)) + aSeed.x * 6.28318;
-
-          float cs = cos(angle * 0.25);
-          float sn = sin(angle * 0.25);
-          vec3 rotated = vec3(
-            rel.x * cs - rel.z * sn,
-            rel.y,
-            rel.x * sn + rel.z * cs
-          );
-
-          vec3 curl = curlFlow(rotated, uTime);
-          vec3 displaced = uCenter + rotated + curl * (0.38 + aSeed.z * 0.55);
-
-          vEnergy = clamp(0.35 + 0.65 * sin(uTime * 1.6 + aSeed.y * 12.0) + length(curl) * 0.35, 0.0, 1.4);
-          vRadialNorm = clamp((r - 2.6) / 6.0, 0.0, 1.0);
-
-          vec4 mvPos = modelViewMatrix * vec4(displaced, 1.0);
-          gl_Position = projectionMatrix * mvPos;
-          gl_PointSize = clamp((1.1 + aSeed.x * 2.1) * (12.0 / max(2.0, -mvPos.z)), 0.9, 3.8);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uWarmColor;
-        uniform vec3 uHotColor;
-        uniform vec3 uCoronaOuter;
-        varying float vEnergy;
-        varying float vRadialNorm;
-
-        void main() {
-          vec2 uv = gl_PointCoord * 2.0 - 1.0;
-          float d = length(uv);
-          if (d > 1.0) discard;
-
-          float glow = exp(-d * d * 16.0) * (1.0 - vRadialNorm * 0.72);
-          vec3 col = mix(uHotColor, uWarmColor, smoothstep(0.0, 0.55, vRadialNorm));
-          col = mix(col, uCoronaOuter, smoothstep(0.45, 1.0, vRadialNorm));
-          float alpha = clamp(glow * vEnergy * 0.24, 0.0, 0.45);
-          gl_FragColor = vec4(col * glow * vEnergy * 0.52, alpha);
-        }
-      `,
-    });
-
-    return new THREE.Points(geo, mat);
   }
 
   /**
@@ -1259,17 +1145,13 @@ export class SparkPortalRenderer {
   /**
    * REGIME 3: deep sky: the registered sky and the catalog stars and, for Sagittarius A*, a
    * hand-tuned black hole composition (an approximate Schwarzschild ray march around a hand-set
-   * disk, over ESO's Lupus 3 photograph) with decorative particles around it; see
-   * webglRenderLayers.ts for the disclosures. The plane and the particles are hidden otherwise.
+   * disk, over ESO's Lupus 3 photograph); see webglRenderLayers.ts for the disclosures. The plane
+   * is hidden otherwise.
    */
   private buildDeepSkyWorld(): void {
     const group = this.regimeGroups.deep_sky;
 
     this.addCatalogStarMount(group, 38.0);
-
-    const nebulaCenter = new THREE.Vector3(0, 0.3, -13.5);
-    const particles = this.createDecorativeParticles(nebulaCenter, 3.8, 12.8, 2200);
-    group.add(particles);
 
     const volGeo = new THREE.PlaneGeometry(31, 19.5);
     const volMat = new THREE.ShaderMaterial({
@@ -1455,7 +1337,7 @@ export class SparkPortalRenderer {
     blackHoleMesh.position.set(0, 0.3, -15.8);
     group.add(blackHoleMesh);
 
-    this.deepSkyBlackHoleMeshes = [blackHoleMesh, particles];
+    this.deepSkyBlackHoleMeshes = [blackHoleMesh];
     this.showDeepSkyBlackHole(this.nebulaUniforms.uIsBlackHole.value > 0.5);
   }
 
@@ -2461,14 +2343,12 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uCoolColor.value.set(0.08, 0.38, 0.52);
       this.localBubbleUniforms.uWarmColor.value.set(0.24, 0.72, 0.88);
       this.localBubbleUniforms.uHotColor.value.set(0.58, 0.92, 1.0);
-      this.localBubbleUniforms.uCoronaOuter.value.set(0.08, 0.35, 0.58);
       return;
     }
     if (lower.includes('saturn') || lower.includes('jupiter') || objectType === 'planet') {
       this.localBubbleUniforms.uCoolColor.value.set(0.42, 0.28, 0.12);
       this.localBubbleUniforms.uWarmColor.value.set(0.88, 0.68, 0.36);
       this.localBubbleUniforms.uHotColor.value.set(1.18, 0.96, 0.64);
-      this.localBubbleUniforms.uCoronaOuter.value.set(0.45, 0.32, 0.12);
       return;
     }
     const colorIdx = bpRp ?? (lower.includes('betelgeuse') || lower.includes('aldebaran') ? 1.85 : 0.1);
@@ -2476,17 +2356,14 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uCoolColor.value.set(0.28, 0.03, 0.005);
       this.localBubbleUniforms.uWarmColor.value.set(0.92, 0.24, 0.03);
       this.localBubbleUniforms.uHotColor.value.set(1.38, 0.78, 0.28);
-      this.localBubbleUniforms.uCoronaOuter.value.set(0.68, 0.11, 0.015);
     } else if (colorIdx < -0.02) {
       this.localBubbleUniforms.uCoolColor.value.set(0.14, 0.28, 0.68);
       this.localBubbleUniforms.uWarmColor.value.set(0.48, 0.72, 1.25);
       this.localBubbleUniforms.uHotColor.value.set(0.95, 1.15, 1.55);
-      this.localBubbleUniforms.uCoronaOuter.value.set(0.18, 0.42, 0.95);
     } else {
       this.localBubbleUniforms.uCoolColor.value.set(0.32, 0.42, 0.65);
       this.localBubbleUniforms.uWarmColor.value.set(0.82, 0.92, 1.18);
       this.localBubbleUniforms.uHotColor.value.set(1.32, 1.38, 1.52);
-      this.localBubbleUniforms.uCoronaOuter.value.set(0.28, 0.48, 0.88);
     }
   }
 

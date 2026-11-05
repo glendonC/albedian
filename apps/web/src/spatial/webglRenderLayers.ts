@@ -87,16 +87,6 @@ export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
   WEBGL_CAMERA_OPTICS,
 ]);
 
-/** Decorative particles around the black hole, drawn only in its view. */
-const DEEP_SKY_PARTICLES: RenderLayer = {
-  id: 'deep-sky.particles',
-  kind: 'procedural',
-  title: 'Particles',
-  evidenceClass: 'simulated',
-  disclosure: 'Decorative particles moved by noise; not a simulation of gas or plasma.',
-  sources: [],
-};
-
 /**
  * The deep-sky regime when it shows Sagittarius A* (landing scene 02). The black hole is a
  * hand-tuned composition, not a model of Sgr A*: rays bent by an approximate Schwarzschild march
@@ -116,7 +106,6 @@ export const BLACK_HOLE_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSche
       "A modelled black hole, not Sgr A*'s data: approximate Schwarzschild light bending around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not what lies behind Sgr A*.",
     sources: ['ESO/R. Colombari, Star formation region Lupus 3 (eso1804a), CC BY 4.0 (file eso1804a.jpg)'],
   },
-  DEEP_SKY_PARTICLES,
   WEBGL_CAMERA_OPTICS,
 ]);
 

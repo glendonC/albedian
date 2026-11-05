@@ -53,8 +53,13 @@ describe('WebGL renderer: black hole view (landing scene 02)', () => {
       'sky_background',
       'catalog_stars',
       'procedural',
-      'procedural',
       'camera_optics',
+    ]);
+    expect(BLACK_HOLE_WEBGL_RENDER_LAYERS.map((l) => l.id)).toEqual([
+      'deep-sky.sky',
+      'deep-sky.catalog-stars',
+      'deep-sky.black-hole',
+      'post.camera-optics',
     ]);
     expect(BLACK_HOLE_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
   });
@@ -66,7 +71,8 @@ describe('WebGL renderer: black hole view (landing scene 02)', () => {
     expect(hole?.disclosure).toMatch(/not what lies behind Sgr A\*/);
     // ESO's credit line for eso1804a, worded as ESO requires
     expect(hole?.sources.join(' ')).toMatch(/ESO\/R\. Colombari, Star formation region Lupus 3 \(eso1804a\)/);
-    expect(blackHoleLayer('deep-sky.particles')?.disclosure).toMatch(/[Dd]ecorative/);
+    // The decorative particles around it depicted nothing measured or modelled, so they are gone
+    expect(blackHoleLayer('deep-sky.particles')).toBeUndefined();
   });
 
   it('draws the same sky panorama, stars and optics as the cislunar view', () => {
@@ -134,6 +140,13 @@ describe('WebGL renderer: scene 03 draws no invented structure', () => {
     expect(start).toBeGreaterThan(0);
     expect(body).not.toMatch(/RingGeometry|coronaMesh|plasmaRing|createDecorativeParticles/);
     expect(renderer).not.toMatch(/uCoronaInner/);
+  });
+
+  it('draws no decorative particles in any view, and keeps no colour only they read', () => {
+    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
+    expect(renderer).not.toMatch(/createDecorativeParticles|DecorativeParticles/);
+    // uCoronaOuter tinted only the particles' outer shell; the star's rim mixes uWarmColor and uHotColor
+    expect(renderer).not.toMatch(/uCoronaOuter/);
   });
 });
 

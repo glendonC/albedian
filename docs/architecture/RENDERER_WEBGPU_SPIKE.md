@@ -185,13 +185,13 @@ Brought up to date with `main` after the spike, where the Gaia DR3 and Hipparcos
 |---|---|---|---|---|---|
 | 1 | `skyMat`, all-sky dome (578) | 1 | ESO Milky Way panorama on a back-side sphere; at the audit also a NASA star map, spectral band remaps and a monocle mask with a hard-coded 1600x1000 viewport, all removed since | Direct port to a background node | 0.5 |
 | 2 | Catalog star points (`CatalogStarField.ts`, 59) | 1 | Gaia DR3 (to G 12) and Hipparcos 2007 tiles streamed per HEALPix cell for the view and limiting magnitude; `gl_PointSize` core and halo sized by catalog flux, spikes brighter than magnitude 1, tint from the catalog colour index | Rewrite as the spike's analytic-PSF sprites fed by the same tiles (WebGPU points are 1 px) | 1.5 |
-| 3 | Curl "plasma" particles (706) | 2 | Vertex-displaced `gl_PointSize` points with sin/cos noise, labeled GPGPU and MHD although it is neither | Drop (or rewrite as sprites with a Modeled label) | 0 to 1 |
+| 3 | Curl "plasma" particles (706) | 2 | Vertex-displaced `gl_PointSize` points with sin/cos noise, labeled GPGPU and MHD although it is neither; both deleted since (scene 03's in render-5m, the black hole's in render-5p), since they depicted nothing measured or modelled | Drop (or rewrite as sprites with a Modeled label) | 0 to 1 |
 | 4 | Moon (785) | 1 | LRO albedo, LOLA-derived bump, micro-relief noise, Lommel-Seeliger, opposition surge, earthshine | Direct port (TSL node material with a custom lighting function) | 1 |
 | 5 | Earth (963) | 1 | Day (Blue Marble 2004), night lights (Black Marble 2016), clouds and their shadows, specular, Bruneton LUT limb, inline tone mapping | Direct port; remove the inline tone mapping | 1.5 |
 | 6 | Earth atmosphere shell (1068) | 1 | Additive back-side limb glow from the Bruneton LUT | Direct port | 0.5 |
 | 7 | Betelgeuse photosphere (1149) | 1 | 6-octave fbm and ridged convection, limb darkening | Direct port (pure math) | 0.75 |
-| 8 | Corona plane (1272) | 1 | Additive fbm rays on a fixed plane | Direct port (billboard it) | 0.25 |
-| 9 | Plasma ring (1347) | 1 | Additive noise filaments on a ring | Direct port | 0.25 |
+| 8 | Corona plane (1272) | 1 | Additive fbm rays on a fixed plane; deleted since (render-5m), since it depicted nothing measured | Direct port (billboard it) | 0.25 |
+| 9 | Plasma ring (1347) | 1 | Additive noise filaments on a ring; deleted since (render-5m), since it depicted nothing measured | Direct port | 0.25 |
 | 10 | Nebula plane / black hole (1458) | 1 | Orion and Lagoon image plane (deleted since, with the Orion view and its nebula splats), or a 120-step Schwarzschild null-geodesic integrator with disk crossing, Doppler and redshift, inline tone mapping | Split: image plane is a direct port; the geodesic integrator is a rewrite as a TSL full-screen pass at adaptive resolution | 2 |
 | 11 | Planetary world dome (1700) | 1 | 96-step ray-marched terrain with 8-octave analytic-derivative noise, water with Fresnel, four palettes, Saturn rings, Earth disc, Bruneton sky | Rewrite as a TSL full-screen pass at reduced resolution with temporal upsampling | 3.5 |
 | 12 | Cinema optics `ShaderPass` (418) | post | Chromatic aberration, 8-tap anamorphic streak, vignette | Direct port to a TSL post node (r187 has chromatic aberration; the anamorphic streak stays custom) | 0.5 |
