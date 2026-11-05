@@ -60,6 +60,7 @@ flowchart LR
 | `voicePlanning.ts` | Input types, `planVoice`, `selectVoices`, identity pitches, listener geometry (pure). |
 | `skySources.ts` | The catalog stars on screen as `AudioSourceInput`s from core and astro tiles, and the camera's orientation in ICRS (pure). |
 | `SkyAudioFeed.ts` | Follows the camera pose each frame while audio is on, with its own tile loader; the `skyAudio` singleton (section 8). |
+| `audioCredits.ts` | The credit lines for Omnitone, its SADIE filters and the chapel response, and the URL of `assets/THIRD_PARTY_NOTICES.txt` (section 7). |
 | `dsp.ts` | Seeded noise, diffuse-field encodings, soft-clip curve, Schroeder phases, PeriodicWave coefficients, pulse-train series, IR energy normalization (pure). |
 | `engine/SpatialAudioEngine.ts` | Composition root and lifecycle; `getSnapshot()` reports what sounds and why. |
 | `engine/VoicePool.ts` | Bounded pool of HRTF voices realizing plans. |
@@ -284,7 +285,19 @@ ffmpeg -i stereo.wav -af "volume=3.699dB,aresample=dither_method=triangular" -c:
 **Omnitone 2.0.0** (npm `omnitone`, Apache-2.0, copyright Google). Its bundled HRIRs are derived
 from the Google/SADIE binaural filters, copyright 2017 University of York, also Apache-2.0; the
 notice is `src/resources/NOTICE` in the Omnitone repository. Shipping the built app redistributes
-both, so release notices must carry the Apache-2.0 attribution and that NOTICE text.
+both, so the app must carry the Apache-2.0 text and that NOTICE. The npm package ships no NOTICE
+file (only `LICENSE`, `README.md` and `build/`), and the bundled chunk keeps Google's licence
+headers but no word of SADIE or York (tested on a local build, 2026-11-04).
+
+**Where the notices ship.** `apps/web/src/audio/assets/THIRD_PARTY_NOTICES.txt` holds the
+Apache License 2.0 exactly as the package's `LICENSE` carries it, Omnitone's NOTICE quoted
+exactly (fetched once from the v2.0.0 tag on 2026-11-04, 747 bytes, SHA-256
+`2a35afd9c4c6d2fc9271a25ccc3c1442e0cf61c3284265722f158b78f33808a8`), and the impulse
+response's `ATTRIBUTION.txt` with its CC BY 4.0 licence. `audioCredits.ts` gives one credit line
+per work, worded as each source asks, and the notices file's URL, which the build emits as an
+asset once the app imports the module, as it does the impulse response. Showing the lines beside
+the canvas while audio is on, with a Notices link, is the viewport's part (render lane). A test
+checks that each embedded text matches its source byte for byte.
 
 ## 8. Integration with the viewport and renderer
 
