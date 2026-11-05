@@ -41,6 +41,11 @@ export interface SpatialAudioEngineOptions {
   readonly capacity?: number;
   readonly fetchImpl?: typeof fetch;
   readonly loadOmnitone?: OmnitoneLoader;
+  /**
+   * Highest harmonic of a star tone, Hz (default 16 kHz). Only the listening session lowers it, to
+   * hear what the high harmonics add; the app keeps the default.
+   */
+  readonly harmonicCeilingHz?: number;
 }
 
 export type SilentOutcome = Extract<PlanOutcome, { status: 'silent' }>;
@@ -89,6 +94,7 @@ export class SpatialAudioEngine {
   private readonly capacity: number;
   private readonly fetchImpl: typeof fetch | undefined;
   private readonly loadOmnitone: OmnitoneLoader;
+  private readonly harmonicCeilingHz: number | undefined;
   private bedPreference: BedPreference;
 
   private ctx: AudioContext | null = null;
@@ -121,6 +127,7 @@ export class SpatialAudioEngine {
     this.capacity = Math.max(1, Math.floor(options.capacity ?? DEFAULT_VOICE_CAPACITY));
     this.fetchImpl = options.fetchImpl;
     this.loadOmnitone = options.loadOmnitone ?? loadOmnitoneModule;
+    this.harmonicCeilingHz = options.harmonicCeilingHz;
     this.bedPreference = options.bedPreference ?? 'auto';
   }
 
@@ -330,7 +337,7 @@ export class SpatialAudioEngine {
     if (this.masterVolume !== null) master.setVolume(this.masterVolume);
     this.reverb = reverb;
     this.uiBus = uiBus;
-    this.pool = new VoicePool(ctx, this.capacity, voicesBus, reverb.input);
+    this.pool = new VoicePool(ctx, this.capacity, voicesBus, reverb.input, this.harmonicCeilingHz);
     if (this.impulseResponseUrl) void reverb.load(this.impulseResponseUrl, this.fetchImpl ?? fetch);
     void this.loadBed();
   }

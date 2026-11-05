@@ -162,6 +162,9 @@ listening).
 - 3.8322 = 4 zeta(5) / zeta(4) is the power-weighted mean of B_nu in units of kT/h, so the
   spectral centroid is proportional to Teff (Wien displacement): the Sun's voice sits at 1 kHz.
   Measured in the browser: 3000 K 521 Hz, 5772 K 1002 Hz, 13000 K 2252 Hz, 25000 K 4326 Hz.
+- Harmonics stop at 16 kHz (below 0.45 of the sample rate). The engine's `harmonicCeilingHz`
+  option lowers that ceiling only for the listening session's diagnostic clip (section 10,
+  item 0); the app keeps the default.
 - Basis: the Planck curve is Verified external physics; the scale factor (Sun at 1 kHz) is
   Proposed design. That the centroid rises strictly with Teff for discrete harmonics follows from
   the curve's monotone likelihood ratio and is property-tested.
@@ -386,6 +389,24 @@ extinction on findings is a contracts decision, escalated rather than made here.
 
 ## 10. What needs a human ear
 
+The listening session (`apps/web/spike/listening/`) turns these items into short clips for the
+owner. `items.ts` holds each question and what each clip plays: catalog stars named by their IAU
+names, whose values are read from the tiles at render time; published values with their
+citations (the pulsars); and, for the channels the app has no data for yet (skyglow, uncertainty,
+dust), test values labelled "test value, not a measurement". `render.mjs` renders every clip
+through the real engine on an `OfflineAudioContext` in headless Chrome (muted, with a throwaway
+profile), encodes AAC copies with ffmpeg and builds the session page in `.cache/listening/page/`,
+which is published as a claude.ai Artifact that keeps the owner's yes, no and note per item in its
+database. With the web app running on a port:
+
+```sh
+node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cache/listening
+```
+
+0. First listen (asked first): the owner heard the landing's voices unprompted, on a laptop, and
+   asked whether a static-like sound came from the app (2026-11-04). The clips compare the landing
+   as the app plays it with the same voices dry, the loudest voice alone, and the voices with
+   harmonics cut above 4 kHz.
 1. Balance between bed, voices and UI detents; every absolute level is an engineering default.
 2. Distance: whether +/-15 dB of DRR, the stellar window (1 to 2,000 pc) and the regime windows
    read as "near" and "far" rather than "dry" and "wet"; whether the 3 kHz far cutoff fights the

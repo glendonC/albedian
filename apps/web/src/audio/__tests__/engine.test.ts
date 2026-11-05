@@ -305,6 +305,27 @@ describe('ObservatoryAudioEngine data rules', () => {
     expect(pulsarCues.size).toBeGreaterThan(1);
   });
 
+  it('caps star harmonics at a given ceiling for listening tests, and keeps 16 kHz by default', () => {
+    // At the fake's 8 kHz the Nyquist guard (0.45 of the rate) would cap every tone first
+    const context48k = () => Object.assign(new FakeAudioContext(), { sampleRate: 48000 }) as unknown as AudioContext;
+    const hotVoice = (harmonicCeilingHz?: number) => {
+      const engine = new ObservatoryAudioEngine({
+        contextFactory: context48k,
+        impulseResponseUrl: null,
+        bedPreference: 'stereo-diffuse',
+        ...(harmonicCeilingHz === undefined ? {} : { harmonicCeilingHz }),
+      });
+      engine.toggle();
+      engine.setSources([star('hot', { teffK: 25000 })]);
+      return engine.getSnapshot().voices[0]!;
+    };
+    const open = hotVoice();
+    // A 25,000 K voice centres near 4.3 kHz with harmonics up to 16 kHz (section 4.3)
+    expect(open.centroidHz).toBeGreaterThan(4000);
+    expect(hotVoice(16000).centroidHz).toBe(open.centroidHz);
+    expect(hotVoice(4000).centroidHz).toBeLessThan(4000);
+  });
+
   it('ignores regimes it does not know, including inherited object keys', () => {
     const { engine } = makeEngine();
     engine.setScaleRegime('solar_neighborhood');

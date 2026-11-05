@@ -8,7 +8,8 @@ import { beatingFifthHz, dbToGain, harmonicCentroidHz, planckHarmonicAmplitudes 
 import { IDENTITY_PITCHES_HZ, type Vec3, type VoicePlan } from '../voicePlanning.js';
 import { glideParam, setParamNow } from './createAudioContext.js';
 
-const HARMONIC_CEILING_HZ = 16000;
+/** Highest harmonic a star tone carries by default; listening tests may lower it (VoicePool option). */
+export const DEFAULT_HARMONIC_CEILING_HZ = 16000;
 const MAX_HARMONICS = 256;
 const PARAM_TIME_CONSTANT_SEC = 0.06;
 const POSITION_TIME_CONSTANT_SEC = 0.03;
@@ -307,7 +308,7 @@ class VoiceSlot {
 
   private retuneStar(star: StarGenerator, teffK: number, now: number, immediate: boolean): void {
     const pitch = this.pitchHz;
-    const ceiling = Math.min(HARMONIC_CEILING_HZ, this.ctx.sampleRate * 0.45);
+    const ceiling = Math.min(this.shared.harmonicCeilingHz, this.ctx.sampleRate * 0.45);
     const count = Math.max(1, Math.min(MAX_HARMONICS, Math.floor(ceiling / pitch)));
     const amplitudes = planckHarmonicAmplitudes(teffK, pitch, count);
     if (!amplitudes) return;
@@ -327,6 +328,7 @@ interface SharedResources {
   readonly pulseWave: PeriodicWave;
   readonly pulseDc: number;
   readonly uncertaintyWave: PeriodicWave;
+  readonly harmonicCeilingHz: number;
 }
 
 /**
@@ -341,7 +343,8 @@ export class VoicePool {
     private readonly ctx: BaseAudioContext,
     readonly capacity: number,
     output: AudioNode,
-    reverbInput: AudioNode
+    reverbInput: AudioNode,
+    harmonicCeilingHz: number = DEFAULT_HARMONIC_CEILING_HZ
   ) {
     const noiseData = whiteNoise(Math.round(PULSAR_NOISE_SECONDS * ctx.sampleRate), 0x9e3779b9, PULSAR_NOISE_RMS);
     const noise = ctx.createBuffer(1, noiseData.length, ctx.sampleRate);
@@ -355,6 +358,8 @@ export class VoicePool {
       pulseWave: ctx.createPeriodicWave(pulse.real, pulse.imag, { disableNormalization: true }),
       pulseDc: series.dc,
       uncertaintyWave: ctx.createPeriodicWave(uncertainty.real, uncertainty.imag, { disableNormalization: true }),
+      harmonicCeilingHz:
+        Number.isFinite(harmonicCeilingHz) && harmonicCeilingHz > 0 ? harmonicCeilingHz : DEFAULT_HARMONIC_CEILING_HZ,
     };
     this.slots = Array.from({ length: Math.max(0, capacity) }, (_, index) => new VoiceSlot(ctx, index, output, reverbInput, shared));
   }
