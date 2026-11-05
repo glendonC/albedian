@@ -351,10 +351,10 @@ export function getEpistemicBadgeDescriptor(evidenceClass: EvidenceClass): {
       };
     case 'simulated':
       return {
-        label: 'Simulated (Catalog Geometry)',
+        label: 'Simulated',
         shortCode: 'SIM',
         markerShape: 'bracket_reticle',
-        disclosure: 'Catalog Geometry · Distance Estimates & Modeled Epoch.',
+        disclosure: 'Drawn or computed by the app; not measured in the source recording.',
       };
   }
 }

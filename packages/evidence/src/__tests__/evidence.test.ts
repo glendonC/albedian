@@ -201,6 +201,17 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
     );
   });
 
+  it('titles the SIM badge Simulated alone, since most simulated layers, a modelled black hole or star among them, carry no catalog geometry', () => {
+    expect(getEpistemicBadgeDescriptor('simulated').label).toBe('Simulated');
+  });
+
+  it('gives the simulated class a disclosure true of every simulated layer and finding, claiming no catalog geometry, distance or epoch', () => {
+    const { disclosure } = getEpistemicBadgeDescriptor('simulated');
+    expect(disclosure).toBe('Drawn or computed by the app; not measured in the source recording.');
+    // Nothing propagates star positions to another epoch, and most simulated layers have no catalog geometry or distance
+    expect(disclosure).not.toMatch(/catalog|distance|epoch/i);
+  });
+
   it('promotes an observed finding to catalog_matched and computes 3D ICRS parsec coordinates when proof is valid', () => {
     const baseFinding: CelestialFinding = {
       id: 'find_01',
