@@ -268,8 +268,11 @@ def build_contract_samples() -> dict[str, dict]:
         "plate_wcs_failed_verification": solve_and_verify_field(
             unverified, WIDTH, HEIGHT, **MOON_MOMENT, **_sources(unverified)
         ),
+        # The starfield's float bytes differ by platform (trigonometry, exp and noise), so its hash is of
+        # the call that makes it, which is the same everywhere.
         "plate_calibrated": solve_and_verify_field(
-            detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT, **_sources(frame)
+            detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT,
+            **_sources(("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42)),
         ),
         "horizon_approximate": solve_horizon_and_beacon_pose(moon_frame, **MOON_MOMENT, **_sources(moon_frame)),
         "horizon_predicted_only": solve_horizon_and_beacon_pose(no_moon_frame, **MOON_MOMENT, **_sources(no_moon_frame)),
@@ -284,6 +287,17 @@ def build_contract_samples() -> dict[str, dict]:
         payload["findings"] = kept
         out[name] = payload
     return json.loads(json.dumps(out))
+
+
+def _differences(actual: Any, stored: Any, path: str = "") -> list[str]:
+    """The paths where `_matches` fails, so a failure on another platform names its field."""
+    if isinstance(actual, dict) and isinstance(stored, dict):
+        if actual.keys() != stored.keys():
+            return [f"{path or '.'}: keys {sorted(actual)} != {sorted(stored)}"]
+        return [d for k in actual for d in _differences(actual[k], stored[k], f"{path}.{k}")]
+    if isinstance(actual, list) and isinstance(stored, list) and len(actual) == len(stored):
+        return [d for i, (a, s) in enumerate(zip(actual, stored)) for d in _differences(a, s, f"{path}[{i}]")]
+    return [] if _matches(actual, stored) else [f"{path}: {actual!r} != {stored!r}"]
 
 
 def _matches(actual: Any, stored: Any) -> bool:
@@ -309,7 +323,8 @@ def test_python_contract_fixture_is_current() -> None:
     stored = json.loads(CONTRACT_FIXTURE.read_text(encoding="utf-8"))
     assert _matches(samples, stored), (
         f"{CONTRACT_FIXTURE.name} no longer matches the Python contract output; regenerate it with "
-        f"{UPDATE_FIXTURE_ENV}=1 uv run pytest tests/integration/test_unregistered_detections.py"
+        f"{UPDATE_FIXTURE_ENV}=1 uv run pytest tests/integration/test_unregistered_detections.py. "
+        f"Differences: {_differences(samples, stored)[:10]}"
     )
     # The fixture holds detections listed without a sky position, so the TypeScript side parses that shape
     unplaced = [
