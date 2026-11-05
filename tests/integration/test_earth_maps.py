@@ -1,4 +1,5 @@
-"""Earth maps (data-5): a water mask from Natural Earth and NASA's Blue Marble cloud layer.
+"""Earth maps (data-5): a Natural Earth water mask, NASA's Blue Marble cloud layer and an ETOPO
+2022 height map.
 
 `scripts/bake_earth_maps.py` reads public downloads kept in the shared `.cache/earth-maps/`, not in
 git, and writes textures to `apps/web/public/textures/` with their provenance entries. The
@@ -23,6 +24,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ".cache/earth-maps"
 OCEAN_REL, LAKES_REL, CLOUDS_REL = f"{CACHE}/ne_10m_ocean.zip", f"{CACHE}/ne_10m_lakes.zip", f"{CACHE}/cloud_combined_2048.jpg"
+ETOPO_REL = f"{CACHE}/ETOPO_2022_v1_60s_N90W180_surface.tif"
+DAY_REL = f"{CACHE}/world.200411.3x21600x10800.jpg"
 TEXTURES = ROOT / "apps" / "web" / "public" / "textures"
 
 
@@ -201,3 +204,134 @@ def test_record_entries_cite_the_bake_and_the_sources():
     assert sources["natural-earth-10m-ocean"].license.spdx.startswith("LicenseRef-")
     assert "world base map" in sources["natural-earth-10m-lakes"].license.conditions
     assert "2001" in sources["nasa-blue-marble-2002-clouds"].note
+
+
+# =============================================================================================
+# Relief: ETOPO 2022 heights packed into an RGB8 PNG (R high byte, G low byte, B zero)
+# =============================================================================================
+
+
+def test_heights_round_trip_to_the_metre_through_two_bytes():
+    heights = np.array([[-11_000.0, -10_361.2, -0.4, 0.6], [8_848.9, 54_535.0, 1234.5, 1235.5]])
+    rgb = bake.encode_heights(heights)
+    assert rgb.dtype == np.uint8 and rgb.shape == (2, 4, 3)
+    assert not rgb[..., 2].any()
+    np.testing.assert_array_equal(bake.decode_heights(rgb), np.round(heights))
+
+
+@pytest.mark.parametrize("bad", [-11_000.6, 54_535.6, float("nan"), float("inf")])
+def test_heights_the_encoding_cannot_hold_are_refused(bad):
+    with pytest.raises(ValueError, match="between -11000 and 54535 m"):
+        bake.encode_heights(np.array([[0.0, bad]]))
+
+
+def test_etopo_reader_refuses_a_grid_it_does_not_expect(tmp_path: Path):
+    path = tmp_path / "small.tif"
+    Image.fromarray(np.zeros((5, 10), dtype=np.float32)).save(path)
+    with pytest.raises(ValueError, match="expected a 21600x10800 float grid"):
+        bake.read_etopo(path)
+
+
+def test_committed_height_map_is_rgb_with_an_empty_blue_channel():
+    image = Image.open(TEXTURES / bake.HEIGHT_NAME)
+    assert image.mode == "RGB" and image.size == (4096, 2048)
+    assert not np.asarray(image)[..., 2].any()
+
+
+needs_etopo = pytest.mark.local_dataset(ETOPO_REL)
+
+
+@pytest.fixture(scope="module")
+def etopo_heights():
+    return bake.area_mean_heights(bake.read_etopo(ROOT / ETOPO_REL), 4096, 2048)
+
+
+@needs_etopo
+def test_committed_height_map_is_the_rounded_area_mean(etopo_heights):
+    committed = bake.decode_heights(np.asarray(Image.open(TEXTURES / bake.HEIGHT_NAME)))
+    np.testing.assert_array_equal(committed, np.round(etopo_heights))
+
+
+@needs_etopo
+@pytest.mark.parametrize(
+    "place,lat,lon,low,high",
+    [
+        ("Everest", 27.9881, 86.9250, 6_000, 8_849),
+        ("Challenger Deep", 11.3733, 142.5917, -10_935, -9_500),
+        ("Death Valley, below sea level", 36.25, -116.82, -86, 0),
+    ],
+)
+def test_real_heights_at_known_places(etopo_heights, place, lat, lon, low, high):
+    height, width = etopo_heights.shape
+    value = etopo_heights[int((90 - lat) / 180 * height), int((lon + 180) / 360 * width)]
+    assert low <= value < high, place
+
+
+@needs_etopo
+def test_area_means_keep_the_grids_mean_height(etopo_heights):
+    def weighted_mean(grid):
+        rows = grid.shape[0]
+        weights = np.cos(np.radians(90 - (np.arange(rows) + 0.5) * 180 / rows))[:, None]
+        return float((grid * weights).sum() / (weights.sum() * grid.shape[1]))
+
+    full = np.asarray(bake.read_etopo(ROOT / ETOPO_REL), dtype=np.float64)
+    assert weighted_mean(etopo_heights) == pytest.approx(weighted_mean(full), abs=5.0)
+
+
+@needs_etopo
+def test_etopo_download_matches_its_pinned_checksum():
+    digest = hashlib.sha256((ROOT / ETOPO_REL).read_bytes()).hexdigest()
+    assert digest == bake.INPUTS["etopo"].sha256
+
+
+def test_height_map_record_cites_etopo_under_cc0():
+    from services.contracts.provenance import AssetProvenanceRecord
+
+    record = AssetProvenanceRecord.model_validate_json((TEXTURES / "PROVENANCE.json").read_text(encoding="utf-8"))
+    entry = next(entry for entry in record.files if entry.path == bake.HEIGHT_NAME)
+    source = next(source for source in record.sources if source.id == "noaa-etopo-2022-60s")
+    assert entry.sources == ("noaa-etopo-2022-60s",)
+    assert entry.produced_by.method == "script" and entry.produced_by.script == "scripts/bake_earth_maps.py"
+    assert "R * 256 + G - 11000" in entry.note and "floor" in entry.note
+    assert source.license.spdx == "CC0-1.0" and "Not to be used for navigation" in source.license.conditions
+    assert source.doi == "10.25921/fd45-gt74"
+    assert "ETOPO 2022 15 Arc-Second Global Relief Model" in source.citation
+    assert "doi:10.25921/fd45-gt74" in source.citation
+
+
+# =============================================================================================
+# Day map: NASA's Blue Marble Next Generation base map, which has no baked relief shading
+# =============================================================================================
+
+
+def test_committed_day_map_is_8k_rgb():
+    image = Image.open(TEXTURES / bake.DAY_NAME)
+    assert image.mode == "RGB" and image.size == (8192, 4096)
+
+
+@pytest.mark.local_dataset(DAY_REL)
+def test_committed_day_map_is_the_base_map_resampled():
+    rebuilt = np.asarray(Image.open(io.BytesIO(bake.resample_day_map(ROOT / DAY_REL))), dtype=np.int16)
+    committed = np.asarray(Image.open(TEXTURES / bake.DAY_NAME), dtype=np.int16)
+    # JPEG decoders may differ by a level here and there between platforms, never by more on average
+    assert np.abs(rebuilt - committed).mean() < 0.5
+
+
+@pytest.mark.local_dataset(DAY_REL)
+def test_base_day_map_download_matches_its_pinned_checksum():
+    assert hashlib.sha256((ROOT / DAY_REL).read_bytes()).hexdigest() == bake.INPUTS["day"].sha256
+
+
+def test_day_map_record_cites_the_unshaded_base_map():
+    from services.contracts.provenance import AssetProvenanceRecord
+
+    record = AssetProvenanceRecord.model_validate_json((TEXTURES / "PROVENANCE.json").read_text(encoding="utf-8"))
+    entry = next(entry for entry in record.files if entry.path == bake.DAY_NAME)
+    source = next(source for source in record.sources if source.id == "nasa-bmng-2004-11-base")
+    assert entry.sources == ("nasa-bmng-2004-11-base",)
+    assert entry.produced_by.method == "script" and entry.produced_by.script == "scripts/bake_earth_maps.py"
+    assert source.credit == "NASA Earth Observatory"
+    assert source.license.spdx == "LicenseRef-NASA-Media-Guidelines"
+    assert "shading" in source.note and source.sha256 == bake.INPUTS["day"].sha256
+    assert "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/" in source.note
+    assert "please credit NASA Earth Observatory" in source.note

@@ -3,16 +3,25 @@
 
 Inputs, downloaded into the shared `.cache/earth-maps/` (not in git) and pinned by SHA-256 below:
 - Natural Earth 1:10m ocean and lakes, public domain (`ne_10m_ocean.zip`, `ne_10m_lakes.zip`);
-- NASA's Blue Marble (2002) cloud layer, `cloud_combined_2048.jpg`, under NASA's media guidelines.
+- NASA's Blue Marble (2002) cloud layer, `cloud_combined_2048.jpg`, under NASA's media guidelines;
+- NOAA ETOPO 2022 60 arc-second surface elevation, CC0 (`ETOPO_2022_v1_60s_N90W180_surface.tif`);
+- NASA's Blue Marble Next Generation base map for November 2004 (`world.200411.3x21600x10800.jpg`),
+  which, unlike the topography versions, has no relief shading baked in.
 
 Outputs in `apps/web/public/textures/`, each with its entry in that folder's `PROVENANCE.json`:
 - `earth_water_natural_earth_4k.png`: 4096x2048 equirectangular water cover, 8-bit, 255 for water
   and 0 for land. A coast pixel holds the fraction of its area under water, measured over four
   sub-rows with exact spans across each; nothing is blurred or invented.
 - `earth_clouds_bluemarble2002_2k.jpg`: NASA's file, byte for byte.
+- `earth_height_etopo2022_4k.png`: 4096x2048 equirectangular heights, the mean over each pixel's
+  ETOPO cells in metres above the EGM2008 geoid. Each pixel stores round(height + 11000) as
+  R * 256 + G, with B = 0 and no alpha, so a browser decodes it losslessly as data.
+- `earth_day_bluemarble_2004-11_base_8k.jpg`: the base map at 8192x4096 (Lanczos, JPEG quality 90,
+  as for the shaded day map), so relief is lit once, from the height map.
 
 The shapefiles are read straight from the zip archives with the standard library and filled with
-numpy, so the bake needs no GIS software. Usage, from the repository root:
+numpy, and Pillow reads the GeoTIFF, so the bake needs no GIS software. Usage, from the repository
+root:
     uv run python scripts/bake_earth_maps.py
 """
 
@@ -41,8 +50,15 @@ DEFAULT_CACHE = ROOT_DIR / ".cache" / "earth-maps"
 TEXTURES = ROOT_DIR / "apps" / "web" / "public" / "textures"
 WATER_NAME = "earth_water_natural_earth_4k.png"
 CLOUDS_NAME = "earth_clouds_bluemarble2002_2k.jpg"
+HEIGHT_NAME = "earth_height_etopo2022_4k.png"
+DAY_NAME = "earth_day_bluemarble_2004-11_base_8k.jpg"
+DAY_SIZE = (8192, 4096)
 WATER_SIZE = (4096, 2048)
+HEIGHT_SIZE = (4096, 2048)
 SUBROWS = 4
+# Heights are stored as metres above EGM2008 plus this offset, rounded to the metre, in 16 bits
+HEIGHT_OFFSET_M = 11_000
+HEIGHT_RANGE_M = (-HEIGHT_OFFSET_M, 65_535 - HEIGHT_OFFSET_M)
 
 
 @dataclass(frozen=True)
@@ -67,6 +83,16 @@ INPUTS = {
         "cloud_combined_2048.jpg",
         "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg",
         "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+    ),
+    "etopo": Input(
+        "ETOPO_2022_v1_60s_N90W180_surface.tif",
+        "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif",
+        "9d27d4b8ea8e76977e2988bca667d7c8fa68b927355feffcddd6b4875a7fd08e",
+    ),
+    "day": Input(
+        "world.200411.3x21600x10800.jpg",
+        "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/november/world.200411.3x21600x10800.jpg",
+        "1959bbe72897d3e9526c440dae3ec04cfdbdc4080c8ff0b14632925ae31167b1",
     ),
 }
 
@@ -168,6 +194,52 @@ def coverage_to_mask(cover: np.ndarray) -> np.ndarray:
 
 
 # =============================================================================================
+# Relief: ETOPO 2022 heights
+# =============================================================================================
+
+
+def read_etopo(path: Path) -> Image.Image:
+    """The ETOPO 2022 GeoTIFF as a Pillow float image, after checking its grid is the one assumed."""
+    Image.MAX_IMAGE_PIXELS = None
+    image = Image.open(path)
+    tags = image.tag_v2
+    if image.mode != "F" or image.size != (21600, 10800):
+        raise ValueError(f"{path.name}: expected a 21600x10800 float grid, got {image.mode} {image.size}")
+    if tuple(tags.get(33922, ()))[3:5] != (-180.0, 90.0) or tuple(tags.get(33550, ()))[:2] != (1 / 60, 1 / 60):
+        raise ValueError(f"{path.name}: expected cells of 1/60 degree from longitude -180 and latitude 90")
+    return image
+
+
+def area_mean_heights(etopo: Image.Image, width: int, height: int) -> np.ndarray:
+    """Mean height over each output pixel's cells (Pillow's box filter on the float grid)."""
+    return np.asarray(etopo.resize((width, height), Image.Resampling.BOX), dtype=np.float64)
+
+
+def encode_heights(heights: np.ndarray) -> np.ndarray:
+    """Metres to an RGB8 image: R and G hold round(height + offset); B stays 0."""
+    code = np.round(np.asarray(heights, dtype=np.float64) + HEIGHT_OFFSET_M)
+    if not np.all(np.isfinite(code)) or code.min() < 0 or code.max() > 65_535:
+        raise ValueError(f"heights must be finite and between {HEIGHT_RANGE_M[0]} and {HEIGHT_RANGE_M[1]} m")
+    code = code.astype(np.uint16)
+    rgb = np.zeros((*code.shape, 3), dtype=np.uint8)
+    rgb[..., 0] = code >> 8
+    rgb[..., 1] = code & 0xFF
+    return rgb
+
+
+def decode_heights(rgb: np.ndarray) -> np.ndarray:
+    return rgb[..., 0].astype(np.int32) * 256 + rgb[..., 1].astype(np.int32) - HEIGHT_OFFSET_M
+
+
+def resample_day_map(path: Path) -> bytes:
+    """The base day map as an 8192x4096 JPEG: Lanczos, quality 90, as for the shaded day map."""
+    Image.MAX_IMAGE_PIXELS = None
+    buffer = io.BytesIO()
+    Image.open(path).convert("RGB").resize(DAY_SIZE, Image.Resampling.LANCZOS).save(buffer, format="JPEG", quality=90, optimize=True)
+    return buffer.getvalue()
+
+
+# =============================================================================================
 # Provenance entries in textures/PROVENANCE.json
 # =============================================================================================
 
@@ -237,6 +309,52 @@ def record_sources(cache: Path) -> list[dict]:
                 "Cloud cover of a few days, not today's weather."
             ),
         },
+        {
+            "id": "noaa-etopo-2022-60s",
+            "title": "ETOPO 2022 Global Relief Model, 60 arc-second surface elevation",
+            "url": INPUTS["etopo"].url,
+            "version": "ETOPO 2022 v1, 60 arc-second surface grid",
+            "license": {
+                "spdx": "CC0-1.0",
+                "name": "Creative Commons Zero v1.0 Universal",
+                "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                "conditions": "NOAA's metadata record gives this licence and adds: Not to be used for navigation.",
+            },
+            "credit": "NOAA National Centers for Environmental Information",
+            "citation": (
+                "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global "
+                "Relief Model. NOAA National Centers for Environmental Information. doi:10.25921/fd45-gt74"
+            ),
+            "doi": "10.25921/fd45-gt74",
+            "sha256": INPUTS["etopo"].sha256,
+            "note": (
+                "Metres above the EGM2008 geoid (the GeoTIFF's vertical datum, 'WGS 84 + EGM2008 height'), on "
+                "cells of 1/60 degree from longitude -180 and latitude 90, with no missing values. The surface "
+                "grid gives the ice surface where there is ice and includes lake and sea floors: Lake Baikal's "
+                "cells lie hundreds of metres below sea level."
+            ),
+        },
+        {
+            "id": "nasa-bmng-2004-11-base",
+            "title": "Blue Marble: Next Generation, November 2004, base map",
+            "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
+            "version": "November 2004, 21600x10800 JPEG",
+            "license": NASA_GUIDELINES,
+            "credit": "NASA Earth Observatory",
+            "acknowledgement": (
+                "Blue Marble: Next Generation was produced by Reto St\u00f6ckli, NASA Earth Observatory "
+                "(NASA Goddard Space Flight Center)."
+            ),
+            "sha256": INPUTS["day"].sha256,
+            "note": (
+                f"Input file {INPUTS['day'].url}, linked from that page (checked 2026-11-04). The topography "
+                "versions' pages say they include shading for topography (and bathymetry); the base map's "
+                "page names no shading. NASA's Blue Marble: Next Generation page, "
+                "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/, says: 'Anyone "
+                "using or republishing Blue Marble: Next Generation please credit NASA Earth Observatory.' A "
+                "cloud-free surface composite for November 2004, not current conditions."
+            ),
+        },
     ]
 
 
@@ -263,6 +381,38 @@ def record_files() -> list[dict]:
             "sources": ["nasa-blue-marble-2002-clouds"],
             "producedBy": {"method": "downloaded-as-is"},
             "note": "NASA's cloud_combined_2048.jpg, byte for byte.",
+        },
+        {
+            "path": HEIGHT_NAME,
+            "sha256": hashlib.sha256((TEXTURES / HEIGHT_NAME).read_bytes()).hexdigest(),
+            "sources": ["noaa-etopo-2022-60s"],
+            "producedBy": {
+                "method": "script",
+                "script": "scripts/bake_earth_maps.py",
+                "command": "uv run python scripts/bake_earth_maps.py",
+            },
+            "note": (
+                "Heights, 4096x2048, equirectangular from longitude -180 and latitude 90: the mean over each "
+                "pixel's ETOPO cells, in metres above EGM2008. Each pixel stores round(height + 11000) in R and G; "
+                "decode as R * 256 + G - 11000. B is always 0 and there is no alpha, so load it as data, without "
+                "colour conversion. Lake and sea floors are included: where earth_water_natural_earth_4k.png marks "
+                "water, the height is the floor, not the water surface."
+            ),
+        },
+        {
+            "path": DAY_NAME,
+            "sha256": hashlib.sha256((TEXTURES / DAY_NAME).read_bytes()).hexdigest(),
+            "sources": ["nasa-bmng-2004-11-base"],
+            "producedBy": {
+                "method": "script",
+                "script": "scripts/bake_earth_maps.py",
+                "command": "uv run python scripts/bake_earth_maps.py",
+            },
+            "note": (
+                "A Lanczos resample of the base map to 8192x4096, JPEG quality 90, as for "
+                "earth_day_bluemarble_2004-11_8k.jpg, whose source has relief shading baked in. With "
+                "earth_height_etopo2022_4k.png, relief is lit once, by the renderer."
+            ),
         },
     ]
 
@@ -300,12 +450,18 @@ def main() -> int:
 
     cover = water_cover(args.cache / INPUTS["ocean"].filename, args.cache / INPUTS["lakes"].filename, *WATER_SIZE)
     buffer = io.BytesIO()
-    Image.fromarray(coverage_to_mask(cover), mode="L").save(buffer, format="PNG", optimize=True)
+    Image.fromarray(coverage_to_mask(cover)).save(buffer, format="PNG", optimize=True)
     (TEXTURES / WATER_NAME).write_bytes(buffer.getvalue())
     (TEXTURES / CLOUDS_NAME).write_bytes((args.cache / INPUTS["clouds"].filename).read_bytes())
 
+    heights = area_mean_heights(read_etopo(args.cache / INPUTS["etopo"].filename), *HEIGHT_SIZE)
+    buffer = io.BytesIO()
+    Image.fromarray(encode_heights(heights)).save(buffer, format="PNG", optimize=True)
+    (TEXTURES / HEIGHT_NAME).write_bytes(buffer.getvalue())
+    (TEXTURES / DAY_NAME).write_bytes(resample_day_map(args.cache / INPUTS["day"].filename))
+
     update_record(TEXTURES / "PROVENANCE.json", record_sources(args.cache), record_files())
-    for name in (WATER_NAME, CLOUDS_NAME):
+    for name in (WATER_NAME, CLOUDS_NAME, HEIGHT_NAME, DAY_NAME):
         print(f"[earth-maps] {name}: {(TEXTURES / name).stat().st_size / 1e6:.2f} MB")
     return 0
 

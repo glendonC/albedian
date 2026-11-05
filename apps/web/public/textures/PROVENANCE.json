@@ -165,6 +165,39 @@
       "credit": "NASA Goddard Space Flight Center Image by Reto Stöckli (land surface, shallow water, clouds). Enhancements by Robert Simmon (ocean color, compositing, 3D globes, animation).",
       "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
       "note": "Download https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg, linked from that page (checked 2026-11-04). The page says the cloud image is a composite of two days of visible-light imagery and a third day of thermal infrared over the poles; it does not date those days. The Blue Marble's other MODIS layers are from June to September 2001, so the clouds are most likely from 2001 too [inference]. Cloud cover of a few days, not today's weather."
+    },
+    {
+      "id": "noaa-etopo-2022-60s",
+      "title": "ETOPO 2022 Global Relief Model, 60 arc-second surface elevation",
+      "url": "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif",
+      "version": "ETOPO 2022 v1, 60 arc-second surface grid",
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons Zero v1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "conditions": "NOAA's metadata record gives this licence and adds: Not to be used for navigation."
+      },
+      "credit": "NOAA National Centers for Environmental Information",
+      "citation": "NOAA National Centers for Environmental Information. 2022: ETOPO 2022 15 Arc-Second Global Relief Model. NOAA National Centers for Environmental Information. doi:10.25921/fd45-gt74",
+      "doi": "10.25921/fd45-gt74",
+      "sha256": "9d27d4b8ea8e76977e2988bca667d7c8fa68b927355feffcddd6b4875a7fd08e",
+      "note": "Metres above the EGM2008 geoid (the GeoTIFF's vertical datum, 'WGS 84 + EGM2008 height'), on cells of 1/60 degree from longitude -180 and latitude 90, with no missing values. The surface grid gives the ice surface where there is ice and includes lake and sea floors: Lake Baikal's cells lie hundreds of metres below sea level."
+    },
+    {
+      "id": "nasa-bmng-2004-11-base",
+      "title": "Blue Marble: Next Generation, November 2004, base map",
+      "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
+      "version": "November 2004, 21600x10800 JPEG",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA Earth Observatory",
+      "acknowledgement": "Blue Marble: Next Generation was produced by Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center).",
+      "sha256": "1959bbe72897d3e9526c440dae3ec04cfdbdc4080c8ff0b14632925ae31167b1",
+      "note": "Input file https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/november/world.200411.3x21600x10800.jpg, linked from that page (checked 2026-11-04). The topography versions' pages say they include shading for topography (and bathymetry); the base map's page names no shading. NASA's Blue Marble: Next Generation page, https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/, says: 'Anyone using or republishing Blue Marble: Next Generation please credit NASA Earth Observatory.' A cloud-free surface composite for November 2004, not current conditions."
     }
   ],
   "files": [
@@ -288,6 +321,32 @@
         "method": "downloaded-as-is"
       },
       "note": "NASA's cloud_combined_2048.jpg, byte for byte."
+    },
+    {
+      "path": "earth_height_etopo2022_4k.png",
+      "sha256": "0479af50104e8e6a72285957dff1f18da43acf0113fba0d453fbe66115015607",
+      "sources": [
+        "noaa-etopo-2022-60s"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_earth_maps.py",
+        "command": "uv run python scripts/bake_earth_maps.py"
+      },
+      "note": "Heights, 4096x2048, equirectangular from longitude -180 and latitude 90: the mean over each pixel's ETOPO cells, in metres above EGM2008. Each pixel stores round(height + 11000) in R and G; decode as R * 256 + G - 11000. B is always 0 and there is no alpha, so load it as data, without colour conversion. Lake and sea floors are included: where earth_water_natural_earth_4k.png marks water, the height is the floor, not the water surface."
+    },
+    {
+      "path": "earth_day_bluemarble_2004-11_base_8k.jpg",
+      "sha256": "b53b659d4593b123a8fd75463a69abda92dd09cffd260366ad10534db6a37a74",
+      "sources": [
+        "nasa-bmng-2004-11-base"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_earth_maps.py",
+        "command": "uv run python scripts/bake_earth_maps.py"
+      },
+      "note": "A Lanczos resample of the base map to 8192x4096, JPEG quality 90, as for earth_day_bluemarble_2004-11_8k.jpg, whose source has relief shading baked in. With earth_height_etopo2022_4k.png, relief is lit once, by the renderer."
     }
   ],
   "fileSets": []

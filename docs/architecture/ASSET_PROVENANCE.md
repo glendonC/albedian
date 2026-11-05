@@ -76,9 +76,10 @@ next bake deletes it.
   images (eso1006a, eso1804a), downloaded as is and byte-identical to ESO's downloads; the two
   SVS 4720 Moon maps, likewise; the Earth day and night maps, which
   `scripts/lookdev/bake_earth_textures.py` makes from pinned NASA inputs; the panorama's
-  registration, which `scripts/register_sky_panorama.py` fits; and the Natural Earth water mask
-  and NASA cloud layer, whose entries `scripts/bake_earth_maps.py` rewrites on every bake. A
-  script that changes one of these files must update its entry, or the check fails.
+  registration, which `scripts/register_sky_panorama.py` fits; and the Natural Earth water mask,
+  NASA cloud layer, ETOPO 2022 height map and unshaded Blue Marble day map, whose entries
+  `scripts/bake_earth_maps.py` rewrites on every bake. A script that changes one of these files
+  must update its entry, or the check fails.
 
 NASA states its terms as media guidelines rather than a licence, so NASA sources carry
 `LicenseRef-NASA-Media-Guidelines` with the guidelines' URL. The IAU's star names file says
