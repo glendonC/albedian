@@ -36,7 +36,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      # The last reporter fails the run when any test is skipped or left as todo. Naming reporters turns off the
+      # github-actions reporter Vitest adds on its own in CI, so it is named again.
+      - run: pnpm test --reporter=default --reporter=github-actions --reporter=./scripts/vitest-no-unexpected-skips.mjs
       - run: pnpm verify:contracts
       - run: pnpm verify:docs
       - run: pnpm build
@@ -61,5 +63,7 @@ jobs:
       # EXP-10 synthesizes and probes a clip with ffmpeg and ffprobe, which the runner image does not include
       - run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: uv sync --frozen
-      # data/uploads is not in git: tests marked owner_media skip with their reason printed, any other skip fails
+      # data/uploads and .cache are not in git: tests marked owner_media or local_dataset skip with their marker's own
+      # reason printed. Any other skip, an xfail that stops a test, and a collected test left out fail the run
+      # (tests/conftest.py).
       - run: uv run --frozen pytest -rs --no-unexpected-skips
