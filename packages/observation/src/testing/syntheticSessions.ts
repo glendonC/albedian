@@ -26,6 +26,12 @@ import { computeCartesianParsecICRS } from '../checkpoints.js';
  */
 
 const SYNTHETIC_PLACE = { latDeg: 30.0, lonDeg: -40.0, placeName: 'Synthetic place, open North Atlantic' };
+// Test data names its source as synthetic: every capture time and place a SourceAsset carries has one
+const SYNTHETIC_METADATA_SOURCE = { container: 'synthetic', tags: ['test-fixture'] } as const;
+const SYNTHETIC_METADATA_SOURCES = {
+  capturedAtUTC: { ...SYNTHETIC_METADATA_SOURCE, tags: [...SYNTHETIC_METADATA_SOURCE.tags] },
+  observerLocation: { ...SYNTHETIC_METADATA_SOURCE, tags: [...SYNTHETIC_METADATA_SOURCE.tags] },
+};
 
 type StarRow = [
   id: string,
@@ -214,6 +220,7 @@ export function createSyntheticCalibratedSession(): ObservationSession {
     audioStreams: [{ index: 0, codec: 'aac', sampleRateHz: 48000, channels: 2, startPtsMs: 0, durationMs: 12000, sha256: '59b13889a6d1fee939a00b80131383714a1bb70e43f609dcadb9035f116b53f4' }],
     capturedAtUTC,
     observerLocation: { ...SYNTHETIC_PLACE, elevationM: 0, uncertaintyMeters: 15 },
+    metadataSources: SYNTHETIC_METADATA_SOURCES,
     privacyClass: 'public_sample', immutable: true,
   };
 
@@ -349,6 +356,7 @@ export function createSyntheticUnresolvedSession(): ObservationSession {
     audioStreams: [{ index: 0, codec: 'aac', sampleRateHz: 48000, channels: 2, startPtsMs: 0, durationMs: 6000, sha256: '19ac6254f7734374b3b0704c2409b10e5e6a3467a1a343cff654f1d2b54e076c' }],
     capturedAtUTC,
     observerLocation: { ...SYNTHETIC_PLACE, elevationM: 0, uncertaintyMeters: 25 },
+    metadataSources: SYNTHETIC_METADATA_SOURCES,
     privacyClass: 'public_sample', immutable: true,
   };
 

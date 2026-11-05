@@ -24,6 +24,12 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'ExportArtifactSchema',
   'RenderLayerSchema',
   'AssetProvenanceRecordSchema',
+  'MetadataSourceSchema',
+  'CaptureTimeHintSchema',
+  'MetadataHintsSchema',
+  'IngestReceiptSchema',
+  'JobStageProgressSchema',
+  'SolveJobSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([

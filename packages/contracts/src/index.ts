@@ -8,3 +8,4 @@ export * from './spatial-and-voice.js';
 export * from './star-catalog.js';
 export * from './render-layer.js';
 export * from './provenance.js';
+export * from './ingest.js';

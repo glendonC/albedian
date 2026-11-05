@@ -269,7 +269,7 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
       id: 'asset_01',
       title: 'High-Altitude Night Field Recording',
       mediaKind: 'video',
-      sha256: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      sha256: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
       uri: '/data/uploads/night_field.mp4',
       width: 1920,
       height: 1080,
@@ -464,7 +464,7 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
 
 describe('@albedian/evidence: detections without a sky position', () => {
   const sourceAsset: SourceAsset = {
-    id: 'asset_02', title: 'Hazy Field Recording', mediaKind: 'image', sha256: 'b1c2d3e4f5a60718293a4b5c6d7e8f90',
+    id: 'asset_02', title: 'Hazy Field Recording', mediaKind: 'image', sha256: 'b1c2d3e4f5a60718293a4b5c6d7e8f90b1c2d3e4f5a60718293a4b5c6d7e8f90',
     uri: '/data/uploads/hazy_field.jpg', width: 960, height: 540, durationMs: 0, fpsNumerator: 1, fpsDenominator: 1,
     videoCodec: 'none', audioStreams: [], privacyClass: 'private', immutable: true,
   };

@@ -17,42 +17,93 @@ export const AudioStreamDescriptorSchema = z.object({
 });
 export type AudioStreamDescriptor = z.infer<typeof AudioStreamDescriptorSchema>;
 
-export const SourceAssetSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  mediaKind: z.enum(['image', 'video']),
-  sha256: z.string().min(16),
-  uri: z.string().min(1),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-  durationMs: z.number().nonnegative(),
-  fpsNumerator: z.number().int().positive(),
-  fpsDenominator: z.number().int().positive(),
-  videoCodec: z.string().min(1),
-  audioStreams: z.array(AudioStreamDescriptorSchema),
-  capturedAtUTC: z.string().datetime().optional(),
-  observerLocation: z
-    .object({
-      latDeg: z.number().min(-90).max(90),
-      lonDeg: z.number().min(-180).max(180),
-      elevationM: z.number().optional(),
-      placeName: z.string().optional(),
-      uncertaintyMeters: z.number().nonnegative().optional(),
-    })
-    .optional(),
-  cameraMetadata: z
-    .object({
-      make: z.string().optional(),
-      model: z.string().optional(),
-      focalLengthMm: z.number().positive().optional(),
-      estimatedFovDeg: z.number().positive().max(175).optional(),
-      exposureTimeSec: z.number().positive().optional(),
-      iso: z.number().positive().optional(),
-    })
-    .optional(),
-  privacyClass: z.enum(['private', 'consented_demo', 'public_sample']),
-  immutable: z.literal(true),
-});
+/** A SHA-256 digest as 64 lowercase hex characters: the identity of every source file. */
+export const SHA256_HEX_PATTERN = '^[0-9a-f]{64}$';
+
+/**
+ * Where a piece of capture metadata came from: the container that held it and the tags read for it,
+ * in the order the reader tried them. `synthetic` marks test data, never a real file.
+ */
+export const METADATA_CONTAINERS = ['exif', 'quicktime', 'xmp', 'user', 'synthetic'] as const;
+export const METADATA_TAG_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$';
+export const MetadataSourceSchema = z
+  .object({
+    container: z.enum(METADATA_CONTAINERS),
+    tags: z.array(z.string().regex(new RegExp(METADATA_TAG_PATTERN))).min(1).max(8),
+  })
+  .strict();
+export type MetadataSource = z.infer<typeof MetadataSourceSchema>;
+
+/** A MIME type as a browser or ffprobe reports it, for example `image/jpeg` or `video/quicktime`. */
+export const MIME_TYPE_PATTERN = '^[a-z]+/[a-z0-9.+-]+$';
+
+/** Capture metadata a SourceAsset may carry; each one present needs its entry in `metadataSources`. */
+export const SOURCE_ASSET_METADATA_FIELDS = ['capturedAtUTC', 'observerLocation', 'cameraMetadata'] as const;
+
+export const SourceAssetSchema = z
+  .object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    mediaKind: z.enum(['image', 'video']),
+    sha256: z.string().regex(new RegExp(SHA256_HEX_PATTERN)),
+    uri: z.string().min(1),
+    byteSize: z.number().int().positive().optional(),
+    mimeType: z.string().regex(new RegExp(MIME_TYPE_PATTERN)).optional(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    durationMs: z.number().nonnegative(),
+    fpsNumerator: z.number().int().positive(),
+    fpsDenominator: z.number().int().positive(),
+    videoCodec: z.string().min(1),
+    audioStreams: z.array(AudioStreamDescriptorSchema),
+    capturedAtUTC: z.string().datetime().optional(),
+    observerLocation: z
+      .object({
+        latDeg: z.number().min(-90).max(90),
+        lonDeg: z.number().min(-180).max(180),
+        elevationM: z.number().optional(),
+        placeName: z.string().optional(),
+        uncertaintyMeters: z.number().nonnegative().optional(),
+      })
+      .optional(),
+    cameraMetadata: z
+      .object({
+        make: z.string().optional(),
+        model: z.string().optional(),
+        lensModel: z.string().optional(),
+        focalLengthMm: z.number().positive().optional(),
+        focalLength35mmMm: z.number().positive().optional(),
+        estimatedFovDeg: z.number().positive().max(175).optional(),
+        exposureTimeSec: z.number().positive().optional(),
+        fNumber: z.number().positive().optional(),
+        iso: z.number().positive().optional(),
+      })
+      .optional(),
+    metadataSources: z
+      .object({
+        capturedAtUTC: MetadataSourceSchema.optional(),
+        observerLocation: MetadataSourceSchema.optional(),
+        cameraMetadata: MetadataSourceSchema.optional(),
+      })
+      .strict()
+      .optional(),
+    privacyClass: z.enum(['private', 'consented_demo', 'public_sample']),
+    immutable: z.literal(true),
+  })
+  .superRefine((asset, ctx) => {
+    // Recorded where it came from, or not recorded at all: no capture metadata without its source
+    for (const field of SOURCE_ASSET_METADATA_FIELDS) {
+      const present = asset[field] !== undefined;
+      const sourced = asset.metadataSources?.[field] !== undefined;
+      if (present !== sourced) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['metadataSources', field],
+          message: present ? `${field} needs the metadata source it came from` : `a source for ${field}, which is absent`,
+        });
+      }
+    }
+  });
 export type SourceAsset = z.infer<typeof SourceAssetSchema>;
 
 export const ProcessingOperationKindSchema = z.enum([

@@ -30,7 +30,7 @@ export interface DiscoveredMediaItem {
   capturedAtUTC: string | null;
   latDeg: number | null;
   lonDeg: number | null;
-  cameraModel: string;
+  cameraModel: string | null;
   urls: MediaAssetUrls;
   solution?: ObservationSession['observationSolution'];
 }
@@ -120,7 +120,7 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
         capturedAtUTC: raw.capturedAtUTC ?? null,
         latDeg: raw.observerLocation?.latDeg ?? null,
         lonDeg: raw.observerLocation?.lonDeg ?? null,
-        cameraModel: raw.cameraModel ?? 'Unknown camera',
+        cameraModel: raw.cameraModel ?? null,
         urls: {
           origUrl,
           v1Url,
@@ -185,6 +185,8 @@ export async function postVoiceIntentToBackend(
  * Media stays `importing` because audio stream descriptors are not probed yet.
  */
 export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): ObservationSession {
+  // Discovery reads QuickTime tags, trying each pair in this order (services/media/discovery.py)
+  const placed = item.latDeg !== null && item.lonDeg !== null;
   const session = createSessionForSourceAsset(
     {
       id: `src_${item.id}`,
@@ -200,11 +202,18 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
       videoCodec: item.videoCodec,
       audioStreams: [],
       capturedAtUTC: item.capturedAtUTC ?? undefined,
-      observerLocation:
-        item.latDeg !== null && item.lonDeg !== null
-          ? { latDeg: item.latDeg, lonDeg: item.lonDeg }
+      observerLocation: placed ? { latDeg: item.latDeg!, lonDeg: item.lonDeg! } : undefined,
+      cameraMetadata: item.cameraModel !== null ? { model: item.cameraModel } : undefined,
+      metadataSources: {
+        capturedAtUTC: item.capturedAtUTC
+          ? { container: 'quicktime', tags: ['com.apple.quicktime.creationdate', 'creation_time'] }
           : undefined,
-      cameraMetadata: { model: item.cameraModel },
+        observerLocation: placed
+          ? { container: 'quicktime', tags: ['com.apple.quicktime.location.ISO6709', 'location'] }
+          : undefined,
+        cameraMetadata:
+          item.cameraModel !== null ? { container: 'quicktime', tags: ['com.apple.quicktime.model', 'model'] } : undefined,
+      },
       privacyClass: 'private',
       immutable: true,
     },

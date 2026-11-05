@@ -135,7 +135,15 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
 
     // A synthetic capture time; the place is the public Lake Tekapo dark-sky reserve
     const located = createSessionForSourceAsset(
-      { ...asset, capturedAtUTC: '2030-11-01T22:32:00Z', observerLocation: { latDeg: -43.99, lonDeg: 170.46 } },
+      {
+        ...asset,
+        capturedAtUTC: '2030-11-01T22:32:00Z',
+        observerLocation: { latDeg: -43.99, lonDeg: 170.46 },
+        metadataSources: {
+          capturedAtUTC: { container: 'synthetic', tags: ['test-fixture'] },
+          observerLocation: { container: 'synthetic', tags: ['test-fixture'] },
+        },
+      },
       'ready',
       createdAtISO
     );
