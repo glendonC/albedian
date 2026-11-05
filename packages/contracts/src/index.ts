@@ -9,3 +9,4 @@ export * from './star-catalog.js';
 export * from './render-layer.js';
 export * from './provenance.js';
 export * from './ingest.js';
+export * from './voice-command.js';

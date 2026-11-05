@@ -30,6 +30,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'IngestReceiptSchema',
   'JobStageProgressSchema',
   'SolveJobSchema',
+  'VoiceCommandResponseSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
@@ -96,5 +97,5 @@ for (const file of hookFiles) {
 }
 
 console.log(
-  `[verify:contracts] OK — Verified ${REQUIRED_ENTITY_SCHEMAS.length} domain entity schemas and ${hookFiles.length} Kiro 1.4.62 hooks.`
+  `[verify:contracts] OK: verified ${REQUIRED_ENTITY_SCHEMAS.length} domain entity schemas and ${hookFiles.length} Kiro 1.4.62 hooks.`
 );

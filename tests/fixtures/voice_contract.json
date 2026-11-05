@@ -1,0 +1,1824 @@
+{
+  "enums": {
+    "replyStatuses": [
+      "proposed",
+      "needs_input",
+      "rejected"
+    ],
+    "rejectionReasons": [
+      "stale_revision",
+      "unresolved_sky",
+      "ambiguous_target",
+      "no_distance_estimate",
+      "invalid_epoch",
+      "missing_source",
+      "unsafe_synthetic_edit",
+      "no_grounded_answer",
+      "not_connected",
+      "invalid_action"
+    ],
+    "actionTypes": [
+      "media.restore",
+      "media.compare",
+      "media.seek",
+      "sky.show",
+      "finding.select",
+      "finding.describe",
+      "space.enter",
+      "space.viewpoint",
+      "space.epoch",
+      "history.back",
+      "navigation.cancel",
+      "ui.overlay",
+      "source.return",
+      "space.regime",
+      "scene.show",
+      "audio.set",
+      "question.ask"
+    ],
+    "findingActionTypes": [
+      "finding.select",
+      "finding.describe",
+      "space.enter"
+    ]
+  },
+  "limits": {
+    "questionMaxUtf16": 500,
+    "epochIsoMinUtf16": 4,
+    "epochMinYearCE": -10000,
+    "epochMaxYearCE": 12000,
+    "fractionMin": 0.05,
+    "fractionMax": 1.0
+  },
+  "valid": {
+    "AlbedianAction": [
+      {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "star_protected",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": false,
+          "protectStars": true
+        }
+      },
+      {
+        "type": "media.compare",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "variantAId": "var-sample-a",
+        "variantBId": "var-sample-b",
+        "preserveTime": true
+      },
+      {
+        "type": "media.seek",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceTimeSec": 0,
+        "preserveAudioSync": true
+      },
+      {
+        "type": "sky.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "measured"
+      },
+      {
+        "type": "sky.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "predicted",
+        "observationSolutionId": "sol-sample"
+      },
+      {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      },
+      {
+        "type": "finding.describe",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-predicted-saturn",
+        "fields": [
+          "distance",
+          "type",
+          "motion",
+          "evidence",
+          "behind_sightline"
+        ]
+      },
+      {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "measured_or_estimated"
+      },
+      {
+        "type": "space.viewpoint",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "targetFindingId": "finding-star-vega",
+        "units": "pc",
+        "offsetParsec": [
+          0.5,
+          -1.25,
+          2
+        ],
+        "trajectory": "orbit"
+      },
+      {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": 1500
+      },
+      {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "-10000-01-01T00:00:00Z",
+        "yearCE": -10000
+      },
+      {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "12000-01-01T00:00:00Z",
+        "yearCE": 12000.0
+      },
+      {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "\ud83d\udd2d\ud83d\udd2d",
+        "yearCE": 1
+      },
+      {
+        "type": "history.back",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "checkpoint"
+      },
+      {
+        "type": "history.back",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "partial",
+        "fraction": 0.05
+      },
+      {
+        "type": "history.back",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "partial",
+        "fraction": 1.0
+      },
+      {
+        "type": "navigation.cancel",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3
+      },
+      {
+        "type": "navigation.cancel",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "transitionId": ""
+      },
+      {
+        "type": "ui.overlay",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "overlay": "constellationLines",
+        "enabled": false
+      },
+      {
+        "type": "source.return",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "restoreAudio": true
+      },
+      {
+        "type": "source.return",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "checkpointId": "cp-sample",
+        "restoreAudio": true
+      },
+      {
+        "type": "space.regime",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "regime": "deep_sky"
+      },
+      {
+        "type": "scene.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "scene": "saturn_horizon"
+      },
+      {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "muted": true
+      },
+      {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "gain": 0
+      },
+      {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "muted": false,
+        "gain": 1
+      },
+      {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "how old is that light?"
+      },
+      {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "findingId": "finding-obs-1"
+      },
+      {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d"
+      },
+      {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "\u001c"
+      }
+    ],
+    "VoiceCommandResponse": [
+      {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "space.enter",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega",
+          "distancePolicy": "measured_or_estimated"
+        },
+        "visualStatus": "Checked space.enter; not applied",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5",
+          "servedBy": "claude-opus-5-5"
+        },
+        "scientificExplanation": "A made-up description of a catalog star."
+      },
+      {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega"
+        },
+        "visualStatus": "Checked finding.select; not applied",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5",
+          "servedBy": "claude-opus-4-8"
+        }
+      },
+      {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "sky.show",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "mode": "measured"
+        },
+        "visualStatus": "Checked sky.show; not applied",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "navigation.cancel",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3
+        },
+        "visualStatus": "Checked navigation.cancel; not applied"
+      },
+      {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": "Finding-obs-1"
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required."
+      },
+      {
+        "status": "needs_input",
+        "actionId": "req-sample-2",
+        "question": "Which one?",
+        "choices": []
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism."
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "unresolved_sky",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5",
+          "servedBy": "claude-opus-5-5"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "no_distance_estimate",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5",
+          "servedBy": "claude-opus-4-8"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_epoch",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "missing_source"
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "unsafe_synthetic_edit",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Albedian never adds synthetic stars to a restoration."
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "not_connected"
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              "type"
+            ],
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5",
+          "servedBy": "claude-opus-5-5"
+        },
+        "issues": [
+          {
+            "path": [
+              "fields"
+            ],
+            "message": "List should have at least 1 item after validation, not 0"
+          }
+        ]
+      }
+    ]
+  },
+  "invalid": [
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "star_protected",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": true,
+          "protectStars": true
+        }
+      },
+      "reason": "a restoration never allows a synthetic sky"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "star_protected",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": 0,
+          "protectStars": true
+        }
+      },
+      "reason": "0 is not false"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "dramatic",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": false,
+          "protectStars": true
+        }
+      },
+      "reason": "an unknown profile"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.compare",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "variantAId": "var-sample-a",
+        "variantBId": "var-sample-b",
+        "preserveTime": 1
+      },
+      "reason": "1 is not true"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.seek",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceTimeSec": -0.5,
+        "preserveAudioSync": true
+      },
+      "reason": "a negative time"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "sky.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "imagined"
+      },
+      "reason": "an unknown sky mode"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "sky.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "measured",
+        "observationSolutionId": null
+      },
+      "reason": "an optional field is absent, never null"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": ""
+      },
+      "reason": "an empty finding id"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.describe",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-predicted-saturn",
+        "fields": []
+      },
+      "reason": "nothing to describe"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.describe",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-predicted-saturn",
+        "fields": [
+          "colour"
+        ]
+      },
+      "reason": "an unknown field to describe"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.enter",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "distancePolicy": "guessed"
+      },
+      "reason": "an unknown distance policy"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.viewpoint",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "targetFindingId": "finding-star-vega",
+        "units": "pc",
+        "offsetParsec": [
+          1,
+          2
+        ],
+        "trajectory": "orbit"
+      },
+      "reason": "an offset with two components"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.viewpoint",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "targetFindingId": "finding-star-vega",
+        "units": "pc",
+        "offsetParsec": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "trajectory": "orbit"
+      },
+      "reason": "an offset with four components"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.viewpoint",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "targetFindingId": "finding-star-vega",
+        "units": "ly",
+        "offsetParsec": [
+          0.5,
+          -1.25,
+          2
+        ],
+        "trajectory": "orbit"
+      },
+      "reason": "an offset not in parsecs"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": 12001
+      },
+      "reason": "a year after the range"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": -10001
+      },
+      "reason": "a year before the range"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": 1500.5
+      },
+      "reason": "a fractional year"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": true
+      },
+      "reason": "a boolean is not a year"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": "1500"
+      },
+      "reason": "a year as text"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z"
+      },
+      "reason": "no year"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "\ud83d\udd2d",
+        "yearCE": 1500
+      },
+      "reason": "two UTF-16 code units are fewer than four"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "150",
+        "yearCE": 1500
+      },
+      "reason": "three characters are fewer than four"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "history.back",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "partial",
+        "fraction": 0.04
+      },
+      "reason": "a fraction below the range"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "history.back",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "mode": "partial",
+        "fraction": 1.01
+      },
+      "reason": "a fraction above the range"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "navigation.cancel",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "transitionId": null
+      },
+      "reason": "a null transition id"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "ui.overlay",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "overlay": "auroraMap",
+        "enabled": false
+      },
+      "reason": "an unknown overlay"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "ui.overlay",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "overlay": "constellationLines",
+        "enabled": "yes"
+      },
+      "reason": "enabled as text"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "source.return",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "restoreAudio": false
+      },
+      "reason": "a return that drops the audio"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.regime",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "regime": "planetary_surface"
+      },
+      "reason": "a regime voice has no path into"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "scene.show",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "scene": "deep_sky"
+      },
+      "reason": "a regime is not a scene"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3
+      },
+      "reason": "audio.set that sets nothing"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "gain": 1.5
+      },
+      "reason": "a gain above 1"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "gain": -0.1
+      },
+      "reason": "a negative gain"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "audio.set",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "muted": "true"
+      },
+      "reason": "muted as text"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": ""
+      },
+      "reason": "an empty question"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": " \t\u3000\ufeff\u2028"
+      },
+      "reason": "a question of JavaScript spaces only"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83d\udd2d"
+      },
+      "reason": "500 characters but 501 UTF-16 code units"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "501 characters"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "question.ask",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "question": "how old is that light?",
+        "findingId": ""
+      },
+      "reason": "an empty finding id on a question"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "an empty request id"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": -1,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "a negative revision"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 2.5,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "a fractional revision"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": false,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "a boolean revision"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.delete",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "an unknown action type"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "no action type"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      },
+      "reason": "no request id"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "request_id": "req-sample-1",
+        "expected_view_revision": 3,
+        "finding_id": "finding-star-vega"
+      },
+      "reason": "snake_case names are not the contract's"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "newStateVersion": 4
+      },
+      "reason": "the backend applies nothing, so it has no state version"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "settledStateVersion": 4
+      },
+      "reason": "nor a settled one"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "completed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "newStateVersion": 4
+      },
+      "reason": "the backend never reports completed"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "canceled",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "settledStateVersion": 4
+      },
+      "reason": "the backend never reports canceled"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "sky.show",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "mode": "measured"
+        },
+        "visualStatus": "Checked sky.show; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "The sky, described."
+      },
+      "reason": "only a finding action is described"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-other",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "a proposed reply names its action by requestId"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": []
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "a proposed action is a valid action"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "a proposed reply carries its action"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": null,
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "an interpretation is absent, never null"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "model",
+          "requestedModel": "claude-opus-5-5"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "a model interpretation names both models"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "guess"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "an unknown parser"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "spokenFeedback": "Done."
+      },
+      "reason": "an unknown key on a strict reply"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "an empty status line"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": ""
+      },
+      "reason": "an empty description"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet."
+      },
+      "reason": "no status"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "not_wired",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism."
+      },
+      "reason": "an unknown reason"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism."
+      },
+      "reason": "a refusal lists its next actions, even none"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism."
+      },
+      "reason": "a refusal says why"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism.",
+        "newStateVersion": 4
+      },
+      "reason": "a refusal has no state version either"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism.",
+        "proposedAction": {
+          "type": "source.return",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 2,
+          "restoreAudio": true
+        }
+      },
+      "reason": "a refusal carries no action"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": "Finding-obs-1"
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega"
+        }
+      },
+      "reason": "a question carries no action"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action"
+      },
+      "reason": "an invalid_action refusal lists its issues"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Action expected viewRevision 2, but current session is at revision 3.",
+        "nextActions": [
+          "Refresh context and retry command"
+        ],
+        "reason": "stale_revision",
+        "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism.",
+        "issues": [
+          {
+            "path": [
+              "type"
+            ],
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      "reason": "only an invalid_action refusal lists issues"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": []
+      },
+      "reason": "an invalid_action refusal lists at least one issue"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              "type"
+            ],
+            "message": ""
+          }
+        ]
+      },
+      "reason": "an issue says what was wrong"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": "type",
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      "reason": "a path is a list"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              -1
+            ],
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      "reason": "a negative index"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              1.5
+            ],
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      "reason": "a fractional index"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              true
+            ],
+            "message": "Not one of the contract's action types"
+          }
+        ]
+      },
+      "reason": "a boolean in a path"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "A made-up explanation.",
+        "nextActions": [],
+        "reason": "invalid_action",
+        "issues": [
+          {
+            "path": [
+              "type"
+            ],
+            "message": "Not one of the contract's action types",
+            "input": "media.delete"
+          }
+        ]
+      },
+      "reason": "an issue never carries the value"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required."
+      },
+      "reason": "a question offers its choices, even none"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": ""
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required."
+      },
+      "reason": "an empty choice label"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": "Finding-obs-1"
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required."
+      },
+      "reason": "an empty question"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": "Finding-obs-1"
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
+        "visualStatus": "Waiting"
+      },
+      "reason": "an unknown key on a strict question"
+    }
+  ],
+  "stripped": [
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega",
+        "colour": "blue",
+        "note": null
+      },
+      "parsed": {
+        "type": "finding.select",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "findingId": "finding-star-vega"
+      }
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "star_protected",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": false,
+          "protectStars": true,
+          "brightness": 2
+        }
+      },
+      "parsed": {
+        "type": "media.restore",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "sourceAssetId": "src_sample",
+        "profile": "star_protected",
+        "constraints": {
+          "preservePeople": true,
+          "allowSyntheticSky": false,
+          "protectStars": true
+        }
+      }
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega",
+          "extra": true
+        },
+        "visualStatus": "Checked finding.select; not applied",
+        "interpretation": {
+          "parser": "rules",
+          "confidence": 0.9
+        }
+      },
+      "parsed": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega"
+        },
+        "visualStatus": "Checked finding.select; not applied",
+        "interpretation": {
+          "parser": "rules"
+        }
+      }
+    }
+  ]
+}

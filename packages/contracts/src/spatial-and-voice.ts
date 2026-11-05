@@ -279,6 +279,42 @@ export const ActionInterpretationSchema = z.discriminatedUnion('parser', [
 ]);
 export type ActionInterpretation = z.infer<typeof ActionInterpretationSchema>;
 
+/** The outcome that asks the user to choose. The voice reply (voice-command.ts) reuses it. */
+export const NeedsInputOutcomeSchema = z.object({
+  status: z.literal('needs_input'),
+  actionId: z.string().min(1),
+  interpretation: ActionInterpretationSchema.optional(),
+  question: z.string().min(1),
+  choices: z.array(
+    z.object({
+      id: z.string().min(1),
+      label: z.string().min(1),
+    })
+  ),
+});
+
+/** The outcome that refuses an action, and why. The voice reply (voice-command.ts) reuses it. */
+export const RejectedOutcomeSchema = z.object({
+  status: z.literal('rejected'),
+  actionId: z.string().min(1),
+  interpretation: ActionInterpretationSchema.optional(),
+  reason: z.enum([
+    'stale_revision',
+    'unresolved_sky',
+    'ambiguous_target',
+    'no_distance_estimate',
+    'invalid_epoch',
+    'missing_source',
+    'unsafe_synthetic_edit',
+    'no_grounded_answer',
+    'not_connected',
+    // The action does not match AlbedianActionSchema
+    'invalid_action',
+  ]),
+  explanation: z.string().min(1),
+  nextActions: z.array(z.string()),
+});
+
 export const ActionOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('completed'),
@@ -288,36 +324,8 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
     spokenFeedback: z.string().optional(),
     visualStatus: z.string().min(1),
   }),
-  z.object({
-    status: z.literal('needs_input'),
-    actionId: z.string().min(1),
-    interpretation: ActionInterpretationSchema.optional(),
-    question: z.string().min(1),
-    choices: z.array(
-      z.object({
-        id: z.string().min(1),
-        label: z.string().min(1),
-      })
-    ),
-  }),
-  z.object({
-    status: z.literal('rejected'),
-    actionId: z.string().min(1),
-    interpretation: ActionInterpretationSchema.optional(),
-    reason: z.enum([
-      'stale_revision',
-      'unresolved_sky',
-      'ambiguous_target',
-      'no_distance_estimate',
-      'invalid_epoch',
-      'missing_source',
-      'unsafe_synthetic_edit',
-      'no_grounded_answer',
-      'not_connected',
-    ]),
-    explanation: z.string().min(1),
-    nextActions: z.array(z.string()),
-  }),
+  NeedsInputOutcomeSchema,
+  RejectedOutcomeSchema,
   z.object({
     status: z.literal('canceled'),
     actionId: z.string().min(1),
