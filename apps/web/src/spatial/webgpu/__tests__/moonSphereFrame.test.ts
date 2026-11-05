@@ -39,7 +39,7 @@ describe('Moon sphere frame against the map layout', () => {
   });
 
   it("points the material's east and north where u and v grow", () => {
-    for (let row = 2; row < 31; row++) {
+    for (let row = 2; row <= 30; row++) {
       for (let column = 0; column < columns - 1; column++) {
         const p = point(at(row, column));
         const { east, north } = frame(p.clone().normalize());
