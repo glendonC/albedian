@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from services.media.discovery import discover_uploaded_media
+from services.media.discovery import discover_uploaded_media_report
 from services.media.runtime import MediaExperimentRuntime
 
 router = APIRouter()
@@ -42,7 +42,7 @@ def get_media_discover(
     probe QuickTime/container metadata via `ffprobe`, compute content SHA-256,
     link rendered variants, and return each item's `ObservationSolution` and ephemerides.
     """
-    items = discover_uploaded_media(
+    items, skipped = discover_uploaded_media_report(
         uploads_dir=uploads_dir,
         public_dir=public_dir,
         artifacts_dir=artifacts_dir,
@@ -51,6 +51,8 @@ def get_media_discover(
         "uploadsDir": uploads_dir,
         "count": len(items),
         "items": [item.to_contract_dict() for item in items],
+        # Files left out, each with the reason: nothing is listed with a size, rate or duration it does not have
+        "skipped": skipped,
     }
 
 

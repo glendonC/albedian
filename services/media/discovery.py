@@ -46,8 +46,9 @@ class DiscoveredMediaItem:
     mime_type: str
     width: int
     height: int
-    duration_sec: float
-    fps: float
+    # As ffprobe reports them: None when it gives none (a still has no frame rate)
+    duration_sec: float | None
+    fps: float | None
     video_codec: str
     has_audio: bool
     audio_codec: str | None
@@ -66,9 +67,11 @@ class DiscoveredMediaItem:
     radiometry_audit: dict[str, Any] = field(default_factory=dict)
     deep_sky_objects: list[dict[str, Any]] = field(default_factory=list)
     coherent_star_audit: list[dict[str, Any]] = field(default_factory=list)
+    # ffmpeg's reason when no frame could be decoded: the item then has no pose, trajectory or coherent audit
+    decode_error: str | None = None
 
     def to_contract_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "id": self.id,
             "filename": self.filename,
             "relativePath": self.relative_path,
@@ -77,8 +80,6 @@ class DiscoveredMediaItem:
             "mimeType": self.mime_type,
             "width": int(self.width),
             "height": int(self.height),
-            "durationSec": float(self.duration_sec),
-            "fps": float(self.fps),
             "videoCodec": self.video_codec,
             "hasAudio": bool(self.has_audio),
             "audioCodec": self.audio_codec,
@@ -112,6 +113,13 @@ class DiscoveredMediaItem:
             "deepSkyObjects": list(self.deep_sky_objects),
             "coherentStarAudit": list(self.coherent_star_audit),
         }
+        if self.duration_sec is not None:
+            payload["durationSec"] = float(self.duration_sec)
+        if self.fps is not None:
+            payload["fps"] = float(self.fps)
+        if self.decode_error is not None:
+            payload["decodeError"] = self.decode_error
+        return payload
 
 
 def parse_iso6709_location(
@@ -171,11 +179,17 @@ def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
         return {}
 
 
+class FrameDecodeError(RuntimeError):
+    """ffmpeg could not decode a frame of the file; the message is ffmpeg's own."""
+
+
 def _extract_representative_luma(
     file_path: Path, width: int, height: int
 ) -> tuple[np.ndarray, list[dict[str, Any]]]:
     """Decode up to 8 representative frames (1 fps), select the frame with the strongest
     upper-sky signal as a 2D float64 luminance array in [0, 1], and compute 1 fps pose trajectory.
+
+    Raises FrameDecodeError when ffmpeg decodes no frame: nothing stands in for the pixels.
     """
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
@@ -233,9 +247,9 @@ def _extract_representative_luma(
             for step in raw_traj
         ]
         return rep_luma, scaled_traj
-    return (
-        np.full((height, width), 0.03, dtype=np.float64),
-        [{"frameIndex": 0, "timeSec": 0.0, "duPx": 0.0, "dvPx": 0.0, "drollDeg": 0.0, "trackingMode": "silhouette_flow"}],
+    lines = proc.stderr.decode("utf-8", errors="replace").strip().splitlines()
+    raise FrameDecodeError(
+        lines[0] if lines else f"ffmpeg returned {len(proc.stdout)} bytes, less than one {scale_w} x {scale_h} frame"
     )
 
 
@@ -295,15 +309,27 @@ def discover_uploaded_media(
     public_dir: str | Path = "apps/web/public",
     artifacts_dir: str | Path = "data/artifacts",
 ) -> list[DiscoveredMediaItem]:
+    """The items `discover_uploaded_media_report` finds; files it could not read are left out."""
+    return discover_uploaded_media_report(uploads_dir, public_dir, artifacts_dir)[0]
+
+
+def discover_uploaded_media_report(
+    uploads_dir: str | Path = "data/uploads",
+    public_dir: str | Path = "apps/web/public",
+    artifacts_dir: str | Path = "data/artifacts",
+) -> tuple[list[DiscoveredMediaItem], list[dict[str, str]]]:
     """Recursively scan `uploads_dir` for all image/video files, deduplicate by content
     SHA-256, probe metadata via `ffprobe`, link rendered variants, and compute sky solutions.
+
+    Returns the items and the files skipped, each with the reason: a file ffprobe cannot read, or that has no
+    picture size, is never listed with a size, rate or duration it does not have.
     """
     up_root = Path(uploads_dir)
     pub_root = Path(public_dir)
     art_root = Path(artifacts_dir)
 
     if not up_root.exists():
-        return []
+        return [], []
 
     files_by_sha: dict[str, list[Path]] = {}
     for file_path in sorted(up_root.rglob("*")):
@@ -315,6 +341,7 @@ def discover_uploaded_media(
         files_by_sha.setdefault(digest, []).append(file_path)
 
     discovered_items: list[DiscoveredMediaItem] = []
+    skipped: list[dict[str, str]] = []
 
     for sha256, paths in files_by_sha.items():
         # Prefer human-readable kebab-case filenames without spaces/underscores as primary
@@ -336,6 +363,9 @@ def discover_uploaded_media(
             continue
 
         probe = _probe_media_metadata(primary)
+        if not probe:
+            skipped.append({"filename": primary.name, "reason": "ffprobe could not read the file"})
+            continue
         streams = probe.get("streams", [])
         fmt = probe.get("format", {})
         tags = fmt.get("tags", {}) or {}
@@ -349,22 +379,22 @@ def discover_uploaded_media(
             None,
         )
 
-        width = int(video_stream.get("width") or 1920)
-        height = int(video_stream.get("height") or 1080)
-        duration_sec = float(
-            fmt.get("duration") or video_stream.get("duration") or 0.0
-        )
+        if not video_stream.get("width") or not video_stream.get("height"):
+            skipped.append({"filename": primary.name, "reason": "ffprobe reported no picture size"})
+            continue
+        width = int(video_stream["width"])
+        height = int(video_stream["height"])
         video_codec = str(video_stream.get("codec_name") or "unknown")
-
-        r_frame_rate = str(video_stream.get("r_frame_rate") or "30/1")
-        if "/" in r_frame_rate:
-            num_s, den_s = r_frame_rate.split("/", 1)
-            fps = float(num_s) / max(float(den_s), 1.0)
-        else:
-            fps = float(r_frame_rate or 30.0)
 
         ext = primary.suffix.lower()
         is_image = ext in {".png", ".jpg", ".jpeg"}
+        # Only what ffprobe reports: a still spans no time and has no frame rate (ffprobe's image default is not one)
+        raw_duration = fmt.get("duration") or video_stream.get("duration")
+        duration_sec: float | None = 0.0 if is_image else (float(raw_duration) if raw_duration not in (None, "N/A") else None)
+        fps: float | None = None
+        num_s, _, den_s = str(video_stream.get("r_frame_rate") or "").partition("/")
+        if not is_image and num_s and float(num_s) > 0.0 and float(den_s or 1.0) > 0.0:
+            fps = float(num_s) / float(den_s or 1.0)
         media_type = "image" if is_image else "video"
         mime_type = (
             f"image/{'jpeg' if ext in {'.jpg', '.jpeg'} else 'png'}"
@@ -403,9 +433,15 @@ def discover_uploaded_media(
             if cand_png.exists():
                 frame_source_path = cand_png
 
-        luma, pose_trajectory = _extract_representative_luma(
-            frame_source_path, width=width, height=height
-        )
+        decode_error: str | None = None
+        luma: np.ndarray | None
+        try:
+            luma, pose_trajectory = _extract_representative_luma(
+                frame_source_path, width=width, height=height
+            )
+        except FrameDecodeError as exc:
+            # No frame: no pose, trajectory or coherent audit; the predictions for the moment need no pixels
+            luma, pose_trajectory, decode_error = None, [], str(exc)
         # The sky solution, ephemerides and radiometry all need the real capture time and place;
         # a file without them gets none rather than a borrowed moment
         solution: ObservationSolution | None = None
@@ -414,21 +450,22 @@ def discover_uploaded_media(
         deep_sky_objects: list[dict[str, Any]] = []
         coherent_audit: list[dict[str, Any]] = []
         if lat_deg is not None and lon_deg is not None and captured_at_utc is not None:
-            solution = solve_horizon_and_beacon_pose(
-                image=luma,
-                obs_utc_iso=captured_at_utc,
-                observer_lat=lat_deg,
-                observer_lon=lon_deg,
-                source_asset_id=asset_id,
-                source_sha256=sha256,
-                frame_time_sec=0.0,
-                solution_id=solution_id,
-            )
+            if luma is not None:
+                solution = solve_horizon_and_beacon_pose(
+                    image=luma,
+                    obs_utc_iso=captured_at_utc,
+                    observer_lat=lat_deg,
+                    observer_lon=lon_deg,
+                    source_asset_id=asset_id,
+                    source_sha256=sha256,
+                    frame_time_sec=0.0,
+                    solution_id=solution_id,
+                )
             ephem_objs = compute_solar_system_ephemerides(
                 obs_utc_iso=captured_at_utc,
                 lat_deg=lat_deg,
                 lon_deg=lon_deg,
-                observation_solution_id=solution_id,
+                **({"observation_solution_id": solution_id} if solution is not None else {}),
             )
             ephemerides = [b.to_contract_dict(source_sha256=sha256) for b in ephem_objs]
             moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
@@ -454,7 +491,7 @@ def discover_uploaded_media(
                     original_pixels=False,
                     max_stars=6,
                 )
-                if solution.wcs is not None
+                if solution is not None and solution.wcs is not None
                 else []
             )
 
@@ -474,7 +511,7 @@ def discover_uploaded_media(
             width=width,
             height=height,
             duration_sec=duration_sec,
-            fps=round(fps, 3),
+            fps=round(fps, 3) if fps is not None else None,
             video_codec=video_codec,
             has_audio=audio_stream is not None,
             audio_codec=audio_stream.get("codec_name") if audio_stream else None,
@@ -493,9 +530,10 @@ def discover_uploaded_media(
             radiometry_audit=radiometry_audit,
             deep_sky_objects=deep_sky_objects,
             coherent_star_audit=coherent_audit,
+            decode_error=decode_error,
         )
         _DISCOVERY_CACHE[cache_key] = {"item": item}
         discovered_items.append(item)
 
     discovered_items.sort(key=lambda item: (item.captured_at_utc or "", item.filename))
-    return discovered_items
+    return discovered_items, skipped
