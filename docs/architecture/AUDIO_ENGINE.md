@@ -1,10 +1,12 @@
 # Albedian Spatial Audio Engine
 
 Status: **Locally implemented and tested capability** (November 2026). Pure mappings are covered by
-property tests; the Web Audio graph was exercised in Chrome 152 on macOS. Since 2026-11-04 the
-catalog stars on screen drive the voices, with Gaia DR3 temperatures and luminosities, and the
-camera turns the listener (section 8). Nothing here has been judged by a human ear yet; section 10
-lists what needs one.
+property tests; the Web Audio graph was exercised in Chrome 152 on macOS. The sky feed turns the
+camera's pose into voices for the catalog stars on screen, with Gaia DR3 temperatures and
+luminosities, and turns the listener with the camera (section 8), but the app does not call it yet:
+the viewport's calls belong to the render lane and have not landed (2026-11-05), so enabling audio
+in the app plays only the detent. The owner heard the listening session's clips (section 10) on
+2026-11-05 and asked for music, with the data inside it.
 
 Code: [`apps/web/src/audio/`](../../apps/web/src/audio/). Listening harness:
 [`apps/web/spike/audio/`](../../apps/web/spike/audio/) (run `pnpm dev`, open `/spike/audio/`).
@@ -309,12 +311,14 @@ checks that each embedded text matches its source byte for byte.
 
 ## 8. Integration with the viewport and renderer
 
-**The catalog stars on screen drive the voices** (since 2026-11-04). While audio is on, the viewport
-calls `skyAudio.follow(pose)` each animation frame with the renderer's `getCameraSkyPose()`, and
-`skyAudio.setEvidenceClass()` with the evidence class of the drawn `catalog_stars` layer. Those
-hookups belong to the render lane (`SpatialObservatoryViewport.tsx`, `cosmosRenderer.ts` and both
-renderers). A renderer that reports no pose leaves the sky silent; enabling audio then plays only
-the detent.
+**The catalog stars on screen drive the voices once the viewport passes the camera's pose.**
+`SkyAudioFeed` (since 2026-11-04) turns each pose into sources and the listener's orientation. The
+hookups that feed it belong to the render lane (`SpatialObservatoryViewport.tsx`,
+`cosmosRenderer.ts` and both renderers) and are not in the app yet (2026-11-05): each renderer's
+`getCameraSkyPose()`, and the viewport's calls, `skyAudio.follow(pose)` each animation frame while
+audio is on and `skyAudio.setEvidenceClass()` with the evidence class of the drawn `catalog_stars`
+layer. Until they land, and with any renderer that reports no pose, the sky is silent and enabling
+audio plays only the detent.
 
 - **One frame, ICRS.** The pose carries two world quaternions: the camera's, and the catalog star
   sphere's (ICRS axes into world axes). The listener orientation is the camera's turn in ICRS,
@@ -479,21 +483,21 @@ percent of samples.
 
 **Share of energy above 4 kHz, percent**
 
-| Voice | Teff (K) | Level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
+| Voice | Teff (K) | Planned level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Chord (all 8 voices) |  |  |  | 0.55 | 1.1 | < 0.01 | < 0.01 |
-| Gaia DR3 2498783458525988992 | 18,232 | -25.8 | 330 | 6.0 | 12 | < 0.01 | < 0.01 |
-| Gaia DR3 2556759229189045632 | 4,621 | -28.1 | 124 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
-| Alpherg | 5,338 | -28.3 | 275 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
-| Gaia DR3 5144262654621921536 | 4,890 | -28.6 | 367 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
-| Skat | 8,265 | -29.1 | 440 | 0.064 | 0.12 | < 0.01 | < 0.01 |
-| Gaia DR3 2727778332925786624 | 5,221 | -29.2 | 110 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
-| Gaia DR3 2562091860584132096 | 4,554 | -29.5 | 248 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
-| Gaia DR3 2492286341237939328 | 4,833 | -29.7 | 183 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Chord (all 8 voices) |  |  |  | 0.55 | 1.1 | 0.000015 | 0.000068 |
+| Gaia DR3 2498783458525988992 | 18,232 | -25.8 | 330 | 6.0 | 12 | 0.00014 | 0.00069 |
+| Gaia DR3 2556759229189045632 | 4,621 | -28.1 | 124 | 0.00023 | 0.00072 | 0.00012 | 0.00043 |
+| Alpherg | 5,338 | -28.3 | 275 | 0.00079 | 0.0037 | 0.00013 | 0.00061 |
+| Gaia DR3 5144262654621921536 | 4,890 | -28.6 | 367 | 0.00025 | 0.0010 | 0.00022 | 0.00086 |
+| Skat | 8,265 | -29.1 | 440 | 0.064 | 0.12 | 0.00020 | 0.00041 |
+| Gaia DR3 2727778332925786624 | 5,221 | -29.2 | 110 | 0.0044 | 0.0036 | 0.00053 | 0.00091 |
+| Gaia DR3 2562091860584132096 | 4,554 | -29.5 | 248 | 0.00018 | 0.00078 | 0.00015 | 0.00063 |
+| Gaia DR3 2492286341237939328 | 4,833 | -29.7 | 183 | 0.00055 | 0.0013 | 0.00021 | 0.00077 |
 
 **Spectral flatness, in units of 10^-6**
 
-| Voice | Teff (K) | Level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
+| Voice | Teff (K) | Planned level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Chord (all 8 voices) |  |  |  | 5.4 | 16 | 2.1 | 7.5 |
 | Gaia DR3 2498783458525988992 | 18,232 | -25.8 | 330 | 9.9 | 36 | 4.1 | 18 |
@@ -506,15 +510,25 @@ percent of samples.
 | Gaia DR3 2492286341237939328 | 4,833 | -29.7 | 183 | 7.0 | 22 | 6.7 | 22 |
 
 Clip A is the chord with the reverb at 16 kHz, B the chord dry, C the 18,232 K star alone with the
-reverb, and D the chord with the reverb at 4 kHz. "< 0.01" marks shares at or near the 16-bit
-noise floor; a white floor at that level alone gives 0.0001 to 0.0006 percent.
+reverb, and D the chord with the reverb at 4 kHz. The planned level is the engine's planned voice
+level (`levelDb` of the voice's plan, section 4.2), not a measured level. Values are given to two
+significant digits from `measurements.json`.
+
+At the 4 kHz ceiling no harmonic lies above 4 kHz, so those two columns show what the method reads
+there without partials: 0.000015 to 0.00091 percent (the dithered 16-bit floor and the analysis
+window's leakage; inference). At 16 kHz, four of the six stars of 4,554 to 5,338 K read within 3
+times of their own 4 kHz values. Alpherg (0.00079 and 0.0037 percent) and the 5,221 K star (0.0044
+and 0.0036 percent) read 4 to 8 times above theirs: a little of their own upper harmonics. Section
+4.3's harmonic powers put 0.0054 and 0.0037 percent of those two tones above 4 kHz before the
+distance low-pass (computed from the formula). All six stay below 0.01 percent.
 
 What the numbers show (tested):
 
 - **The opening was the only noise.** With `glideParam`'s old cancel restored for one uncommitted
   run (a positive control), every one of the 36 renders opened with power above 12 kHz 53.9 to
   55.1 dB over its steady level. With the fix it is -0.8 to 0.0 dB. The steady measures did not
-  change (largest relative difference 8e-5), so the fix changed only the opening.
+  change beyond Chrome's run-to-run variation (about 1e-4, relative), so the fix changed only the
+  opening.
 - **The steady landing is tonal.** Flatness is at most 3.6e-5 for the chord or any voice, in every
   condition, where white noise measures above 0.9 by the same method (`spectrum.test.ts`). For a
   tonal sound, flatness mostly measures how far the floor lies below the partials: the dry renders
@@ -525,8 +539,9 @@ What the numbers show (tested):
 - **Little energy lies above 4 kHz, almost all of it from one star.** The chord puts 0.55 percent
   there with the reverb and 1.1 percent dry. The 18,232 K star (Gaia DR3 2498783458525988992, the
   loudest voice and clip C) puts 6.0 and 12 percent of its own energy there, and Skat (8,265 K)
-  0.064 and 0.12 percent. The six stars of 4,554 to 5,338 K stay below 0.01 percent, at or near
-  the floor. At the 4 kHz ceiling, only the floor is left above 4 kHz.
+  0.064 and 0.12 percent. The six stars of 4,554 to 5,338 K stay below 0.01 percent: four within
+  3 times of the floor, and Alpherg and the 5,221 K star a little above it, from their own upper
+  harmonics. At the 4 kHz ceiling, only the floor is left above 4 kHz.
 - **The reverb carries most of the level.** The chord's steady level is -29.9 and -30.1 dBFS (left,
   right) with the reverb and -35.9 and -37.0 dBFS dry, and the reverb halves the share above
   4 kHz.
