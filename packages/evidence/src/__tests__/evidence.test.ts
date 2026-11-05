@@ -196,7 +196,9 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
     expect(formatted.canEnter3DSpace).toBe(true);
     expect(formatted.parsecText).toBe('264.5 pc (198.0 to 342.0 pc)');
     expect(formatted.lightYearText).toBe('863 ly (646 to 1115 ly)');
-    expect(formatted.uncertaintyText).toContain('photogeometric_bailer_jones_edr3');
+    expect(formatted.uncertaintyText).toBe(
+      '±72.0 pc: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) photogeometric distance'
+    );
   });
 
   it('promotes an observed finding to catalog_matched and computes 3D ICRS parsec coordinates when proof is valid', () => {
@@ -617,6 +619,14 @@ describe('@albedian/evidence: licence and source strings', () => {
     const consentedRecording: SourceAsset = { ...sourceAsset, privacyClass: 'consented_demo' };
     expect(buildFindingEvidenceRecords(privateRecording, solution, predicted())[0]?.license).toBe('Observer First-Party Recording');
     expect(buildFindingEvidenceRecords(consentedRecording, solution, predicted())[0]?.license).toBe('Observer First-Party Recording');
+  });
+
+  it("describes a distance's spread by the method that gave its bounds, with no percentage for an unknown method", () => {
+    const spread = (method: string) =>
+      formatDistanceWithUncertainty({ lower: 240.0, median: 264.5, upper: 290.0, method }).uncertaintyText;
+    expect(spread('geometric_parallax')).toBe('±25.0 pc: half the range from the parallax error');
+    expect(spread('ephemeris_au')).toBe("±25.0 pc: half the range of the model's error bounds");
+    expect(spread('stellar_model')).toBe('±25.0 pc: half the range of the bounds as given, method stellar_model');
   });
 
   it('names the models behind a prediction that has no catalog record', () => {

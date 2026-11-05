@@ -264,6 +264,22 @@ export function promoteFindingToCatalogMatched(
 
 export const PARSEC_TO_LIGHT_YEAR = 3.261563777;
 
+/** A distance's half-width in words, named for the method that gave its bounds; any other method gets no
+ * percentage, only the bounds as given. */
+function describeDistanceSpread(halfSpanPc: number, method: string): string {
+  const spread = `±${halfSpanPc.toFixed(1)} pc`;
+  switch (method) {
+    case 'photogeometric_bailer_jones_edr3':
+      return `${spread}: half the 16th to 84th percentile range of the Bailer-Jones et al. (2021) photogeometric distance`;
+    case 'geometric_parallax':
+      return `${spread}: half the range from the parallax error`;
+    case 'ephemeris_au':
+      return `${spread}: half the range of the model's error bounds`;
+    default:
+      return `${spread}: half the range of the bounds as given, method ${method}`;
+  }
+}
+
 export function formatDistanceWithUncertainty(
   distancePc?: {
     lower: number;
@@ -300,7 +316,7 @@ export function formatDistanceWithUncertainty(
   return {
     parsecText: `${distancePc.median.toFixed(1)} pc (${distancePc.lower.toFixed(1)} to ${distancePc.upper.toFixed(1)} pc)`,
     lightYearText: `${lyMedian.toFixed(0)} ly (${lyLower.toFixed(0)} to ${lyUpper.toFixed(0)} ly)`,
-    uncertaintyText: `±${halfSpanPc.toFixed(1)} pc (68% CI · ${distancePc.method})`,
+    uncertaintyText: describeDistanceSpread(halfSpanPc, distancePc.method),
     canEnter3DSpace: true,
   };
 }

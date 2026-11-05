@@ -28,6 +28,7 @@ from services.contracts import (
     validate_render_layer_set,
 )
 from services.contracts import render_layer as rl
+from services.science.ephemeris import MOON_METHOD
 from services.science.wcs_models import EVIDENCE_CLASSES as FINDING_EVIDENCE_CLASSES
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "render_layer_contract.json"
@@ -68,7 +69,7 @@ def build_render_layer_samples() -> dict[str, Any]:
                 title="Moon",
                 evidenceClass="predicted",
                 disclosure="Ephemeris position for the recording time and place; not recovered from camera pixels.",
-                sources=["JPL DE440"],
+                sources=["Meeus (1998) chapter 47"],
             ),
             _layer(
                 id="capture.original",
@@ -149,6 +150,15 @@ def test_render_layer_fixture_is_current() -> None:
         f"{FIXTURE.name} no longer matches the Python render-layer contract; regenerate it with "
         f"{UPDATE_FIXTURE_ENV}=1 uv run pytest tests/integration/test_render_layer_contract.py"
     )
+
+
+def test_the_sample_moon_layer_names_the_model_the_ephemeris_uses() -> None:
+    # The predicted Moon is Meeus (1998) chapter 47 (services/science/ephemeris.py); nothing uses DE440
+    samples = build_render_layer_samples()
+    moon = next(layer for layer in samples["valid"] if layer["id"] == "sky.moon")
+    assert moon["sources"] == ["Meeus (1998) chapter 47"]
+    assert MOON_METHOD.startswith(moon["sources"][0])
+    assert "DE440" not in json.dumps(samples)
 
 
 def test_render_layer_evidence_classes_match_the_finding_contract() -> None:

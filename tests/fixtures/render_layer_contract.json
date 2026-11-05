@@ -56,7 +56,7 @@
       "evidenceClass": "predicted",
       "disclosure": "Ephemeris position for the recording time and place; not recovered from camera pixels.",
       "sources": [
-        "JPL DE440"
+        "Meeus (1998) chapter 47"
       ]
     },
     {
