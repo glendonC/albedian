@@ -20,14 +20,14 @@ Labels, as AGENTS.md section 3 asks:
 - **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with 61 tests ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). Its data inputs are not connected to the app yet. [tested]
 - **Backend.** Nine FastAPI endpoints. They include a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision ephemeris and a moonlight model. All are tested on synthetic data only. [tested]
 - **Look-dev.** A Blender 5.2 pipeline renders real moments from NASA Blue Marble, Black Marble and LRO data (`scripts/lookdev/`). [tested]
-- **Gates.** `pnpm typecheck`, `pnpm test` (286 tests), `uv run pytest` (206 tests), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`, and CI runs all six on every push and pull request (`.github/workflows/gates.yml`: Node 22 and 24, Python 3.12 and 3.14; a skip outside the owner-media marker fails the run). [tested]
+- **Gates.** `pnpm typecheck`, `pnpm test` (320 tests), `uv run pytest` (327 tests, and 3 that skip without the local dust dataset), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`, and CI runs all six on every push and pull request (`.github/workflows/gates.yml`: Node 22 and 24, Python 3.12 and 3.14; a skip outside the owner-media and local-dataset markers fails the run). [tested]
 
 ### The gap that matters most
 
 The first promise of the product, upload a night photo and learn where and when it was taken, does not work on a real photo yet:
 
 - The browser hashes an uploaded file but never sends it to the backend, and the banner says "Not yet decoded or calibrated" (`apps/web/src/App.tsx:206`).
-- The plate solver matches against 18 pinned Orion and Taurus stars (`services/science/catalog.py`). It failed on all three real clips in `data/artifacts/`.
+- The plate solver matches against 18 pinned Orion and Taurus stars (`services/science/catalog.py`). It failed on all three real clips in `data/artifacts/`. On the simulated phone-photo benchmark it solved 0 of 210 frames, and once it certified a wrong sky, about 70 degrees off, that passed the held-out gate ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated]
 - The horizon and Moon solver returns `approximate` or `predicted_only`, never `calibrated`. It looks for the horizon only between 38% and 72% of the frame height (`services/science/horizon_solver.py:52`).
 
 The real sky behind the glow, the reveal, the travel and the explanations all depend on a verified solution, so Track 1 comes first.
@@ -41,7 +41,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
   - Commands go through regex parsers.
   - The backend returns template text instead of executing actions (`services/voice/intent.py`).
   - There is no knowledge base, retrieval or citation system.
-- **Data.** The star tiles stop at G 12 and carry no temperature, luminosity, extinction or parallax error, and their positions stay at epoch J2016.0. Most textures, all models and all splats have no recorded provenance (section 6).
+- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. Since 2026-11-04 they carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Most textures, all models and all splats have no recorded provenance (section 6).
 - **Rendering.**
   - Only the cislunar scene has layer disclosures.
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
@@ -75,14 +75,14 @@ Each track lists its owners from AGENTS.md section 2, its milestones in order, a
 
 Owners: `science` and `media`, with `experience` for the upload UI.
 
-- **M1, upload path.** Send the browser upload to the backend as an immutable, content-addressed `SourceAsset`. Extract EXIF time, GPS and lens data as hints, recording where each came from. Run the solve as a job whose progress comes from real denominators. Missing metadata stays missing. [proposed]
+- **M1, upload path.** Send the browser upload to the backend as an immutable, content-addressed `SourceAsset`. Extract EXIF time, GPS and lens data as hints, recording where each came from. Run the solve as a job whose progress comes from real denominators. Missing metadata stays missing. [proposed] The contracts landed on 2026-11-04 (`packages/contracts/src/ingest.ts` and its Pydantic mirror): a `SourceAsset` with a full SHA-256, metadata hints that name the tags they came from, and solve jobs with state rules. [tested] Next come the store and its routes, then the solve job. [proposed]
 - **M2, a solver for phone photos.** [proposed, from the research below]
   1. **Detect.** Mask the sky and detect stars on the original pixels only, with SEP (LGPL) or cedar-detect (source-available under FSL-1.1-MIT) [verified]. For the mask, SAM 2.1 runs on Apple Silicon through Apple's Apache-2.0 Core ML conversions [verified], but it is untested on night skies.
   2. **Hint-assisted solve.** When EXIF gives the time and place, solve for attitude only, as `ascal` does for all-sky cameras. `ascal` is MIT-licensed (2026) and reaches a median residual of 0.42 px across 23 systems [verified].
   3. **Blind solve.** Without hints, use cedar-solve (Apache-2.0) with a custom 35 to 85 degree database and a distortion search range. Fall back to astrometry.net indexes 4112 to 4119 (11 MB) on a central crop. astrometry.net is GPL v3, so run it as a separate process [inference].
   4. **Lens model.** Fit a full lens model (Brown-Conrady or Kannala-Brandt) against catalog stars from the existing G 12 tiles, which replace the 18-star catalog.
   5. **Accept.** Keep a solution only if it passes the existing held-out gate and two independent paths agree.
-- **M3, golden corpus and benchmark.** Start now, because weather, the Moon and the season limit how fast real data arrives. [proposed] The benchmark's ground-truth camera and astrometry landed on 2026-11-04 in `research/benchmarks/phone_photos/`, tested against ERFA and Meeus; the renderer, scorer and baseline follow. [tested] The corpus has four parts:
+- **M3, golden corpus and benchmark.** Start now, because weather, the Moon and the season limit how fast real data arrives. [proposed] The benchmark's ground-truth camera and astrometry landed on 2026-11-04 in `research/benchmarks/phone_photos/`, tested against ERFA and Meeus. The renderer, frame suite, scorer, solver adapters, a run on real clips and the baseline of today's solver followed the same day: it solved 0 of 210 simulated frames and once certified a wrong sky, so M2's acceptance test must weigh each match against its chance of coincidence ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated] The corpus has four parts:
   - Synthetic Gaia fields rendered through phone fields of view, lens distortion, light-pollution gradients and foregrounds.
   - Real phone frames in RAW and JPEG, with ground truth from a co-mounted narrow-field camera.
   - Hard negatives (cloud, aircraft, the Moon, screens), scored on producing zero false solves.
@@ -169,7 +169,7 @@ The WebGPU migration continues from [RENDERER_WEBGPU_SPIKE.md](architecture/REND
 - **Real atmosphere.** Replace the hand-tuned lookup with Bruneton 2017's precomputation (BSD-3; the bake takes about 250 ms on a GPU [verified]) or with `@takram/three-atmosphere/webgpu` (MIT, work in progress, needs three 0.182 or later [verified]). [proposed]
 - **The night sky, physically.** Model airglow, zodiacal light and integrated starlight, which the GAMBONS model covers [verified], plus artificial sky brightness from Track 1 M5. [proposed]
 - **Dust from data.** Render the Track 2 M4 volume with CCM89 reddening of everything behind it, which the spike already measured. [proposed]
-- **Sky dome registration.** Landed on 2026-11-04: the ESO panorama is registered to the catalog stars in both renderers, and the plotted star map, the synthesized `halpha` and `jwst_ir` bands and the red boost are removed ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)). [tested] Next: draw the catalog stars at infinity, so they stop shifting against the dome, and show each photograph's credit without a click. [proposed]
+- **Sky dome registration.** Landed on 2026-11-04: the ESO panorama is registered to the catalog stars in both renderers, and the plotted star map, the synthesized `halpha` and `jwst_ir` bands and the red boost are removed ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)). [tested] Since then, the credits of the drawn imagery and catalogs show beside the canvas without a click, the catalog stars are drawn at infinity so they no longer shift against the dome, and the registration pins only the 60 core tiles its fit reads. [tested]
 - **Textures.** `lro_moon_2k.jpg` is only 1024x512. It is being replaced by the 8k colour map and the LOLA relief of NASA SVS's CGI Moon Kit (svs.gsfc.nasa.gov/4720), with recorded provenance. [proposed] The plotted star map is gone from the app; the Blender look-dev sky still uses the NASA SVS Deep Star Maps and moves to the registered panorama. [proposed]
 - **Honest set pieces.** Delete `derivePlanetaryWorldDescriptor`, and act on decision 4. [proposed]
 - **Switching the default.** Switch after Safari and Windows runs, per-regime snapshot tests and frame-time budgets in CI. [proposed]
@@ -201,7 +201,7 @@ Owner: `spatial`, with `media`. [proposed]
 Owner: `verification`, with each area's owner.
 
 - **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
-- **Security.** Fix the CORS and scan-directory issues from section 1 before any deployment.
+- **Security.** Fix the CORS and scan-directory issues from section 1 before any deployment. CORS goes first, before the upload store lands, because the store accepts writes. [proposed]
 - **Docs drift.**
   - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
   - AGENTS.md cites `docs/adr/`, `docs/internal/integration-ledger.md` and `apps/web/src/voice/`, none of which exist.
