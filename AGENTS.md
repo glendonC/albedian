@@ -1,6 +1,6 @@
 # Albedian Agent Organization & Coordination Contract
 
-**Product:** Albedian — *See (Beyond) the Night Sky.*  
+**Product:** Albedian: *See (Beyond) the Night Sky.*  
 **Architecture:** Observation-Centered Modular Monolith with Explicit Domain Contracts  
 
 ---
@@ -23,12 +23,12 @@
 
 | Agent Identifier | Responsibility Domain | Owned Directories | Primary Contracts & Deliverables |
 |---|---|---|---|
-| `architecture` | System boundaries, ADRs, cross-service schemas, integration verification | `packages/contracts/`, `packages/observation/`, `packages/evidence/`, `docs/architecture/`, `docs/adr/` | TypeScript/Zod & Python Pydantic domain schemas, state machines, invariants |
+| `architecture` | System boundaries, ADRs, cross-service schemas, integration verification | `packages/contracts/`, `packages/observation/`, `packages/evidence/`, `docs/architecture/` | TypeScript/Zod & Python Pydantic domain schemas, state machines, invariants |
 | `science` | Astrometry, source extraction (`DAOStarFinder`/SEP/matched filter), blind & hint-assisted WCS solver, held-out verification, Gaia DR3 subset, ephemerides, Bailer-Jones distance priors | `services/science/`, `docs/science/`, `research/experiments/` | `ObservationSolution`, `CelestialFinding`, `CatalogReference`, `ScientificEvidence`, deterministic astrometry & ephemeris workers |
 | `media` | Content-addressed ingestion, FFmpeg/OpenCV pipelines, exposure/tone/temporal denoise DAG, region masks, audio-preserving remux export | `services/media/` | `MediaExperimentRuntime`, `ProcessingGraph`, `ProcessingAttempt`, `MediaVariant`, `ExportArtifact` |
 | `spatial` | Camera rig, WCS pixel↔world projection, off-axis anchor lock, quaternion SLERP, log-tan-half-FOV interpolation, floating-origin 3D starfield, WWT vs Three.js adapter benchmark | `packages/camera-rig/`, `apps/web/src/spatial/` | `ObservationCamera`, `SourceProjection`, `AngularSkyCamera`, `SpatialViewCamera`, `AnchorConstraint`, signature transition |
 | `experience` | Observational instrument UI shell, design tokens, synchronized A/B wipe player, Web Audio bus, progressive disclosure inspectors, reduced-motion & keyboard accessibility | `packages/design-system/`, `apps/web/src/` | Media-first Reveal/Explore shell, markers by `EvidenceClass`, contextual inspectors |
-| `voice` | Speech transport abstraction, deictic context binding (`that one`, `there`, `back`), revision-checked action validator, interruption & barge-in | `services/voice/`, `apps/web/src/voice/` | `ActionContext`, `AlbedianAction` dispatcher, `ActionOutcome` validator |
+| `voice` | Speech transport abstraction, deictic context binding (`that one`, `there`, `back`), revision-checked action validator, interruption & barge-in | `services/voice/` | `ActionContext`, `AlbedianAction` dispatcher, `ActionOutcome` validator |
 | `verification` | Property-based tests (`fast-check` & `hypothesis`), golden fixtures, contract parity, E2E verification, Kiro hooks | `tests/`, `scripts/`, `.kiro/hooks/` | 7 PBT suites, deterministic astronomical & media fixtures, CI verification scripts |
 
 ---
@@ -37,5 +37,5 @@
 
 1. **Contracts First:** No parallel implementation begins on a cross-boundary feature until its types and runtime validators exist in `packages/contracts/`.
 2. **Scoped File Ownership:** Subagents must only modify files within their assigned ownership scope. Cross-cutting contract changes must be escalated to the Principal Orchestrator.
-3. **Verification Gate Before Merge:** Every work package must pass `pnpm typecheck`, `pnpm test`, and `uv run pytest` before integration is marked complete in `docs/internal/integration-ledger.md`.
+3. **Verification Gate Before Merge:** Every work package must pass the six gates that CI runs (`pnpm typecheck`, `pnpm test`, `uv run pytest`, `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build`) before the Principal Orchestrator integrates it.
 4. **Honest Reporting:** Distinguish **Verified external capability**, **Engineering inference**, **Proposed design**, **Unresolved technical question**, and **Locally implemented and tested capability** in all reports and documentation.
