@@ -5,11 +5,16 @@ import fc from 'fast-check';
 import {
   CAPTURE_TIME_MARKS,
   CaptureTimeHintSchema,
+  composeDisplayOrientations,
+  type DisplayOrientation,
+  EXIF_ORIENTATIONS,
   INGEST_PATTERNS,
   IngestReceiptSchema,
+  invertDisplayOrientation,
   JOB_STAGES,
   JOB_STATES,
   METADATA_CONTAINERS,
+  OrientationHintSchema,
   PROGRESS_UNITS,
   SolveJobSchema,
   SourceAssetSchema,
@@ -25,13 +30,14 @@ const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED)
  */
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/ingest_contract.json');
 
-type SchemaName = 'SourceAsset' | 'IngestReceipt' | 'CaptureTimeHint' | 'SolveJob';
+type SchemaName = 'SourceAsset' | 'IngestReceipt' | 'CaptureTimeHint' | 'OrientationHint' | 'SolveJob';
 
 interface IngestFixture {
   patterns: Record<string, string>;
   enums: Record<string, string[]>;
   valid: Record<SchemaName, unknown[]>;
   invalid: { schema: SchemaName; sample: unknown; reason: string }[];
+  orientations: { exif: Record<string, DisplayOrientation> };
 }
 
 const fixture = JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as IngestFixture;
@@ -39,8 +45,22 @@ const SCHEMAS = {
   SourceAsset: SourceAssetSchema,
   IngestReceipt: IngestReceiptSchema,
   CaptureTimeHint: CaptureTimeHintSchema,
+  OrientationHint: OrientationHintSchema,
   SolveJob: SolveJobSchema,
 };
+
+const FORMS: DisplayOrientation[] = [false, true].flatMap((mirrored) =>
+  [0, 1, 2, 3].map((quarterTurnsClockwise) => ({ quarterTurnsClockwise, mirrored }))
+);
+type Grid = number[][];
+const mirror = (grid: Grid): Grid => grid.map((row) => [...row].reverse());
+// A quarter turn clockwise: each new row is an old column, read from the bottom up
+const turnClockwise = (grid: Grid): Grid => grid[0]!.map((_, column) => grid.map((row) => row[column]!).reverse());
+function show(form: DisplayOrientation, grid: Grid): Grid {
+  let out = form.mirrored ? mirror(grid) : grid;
+  for (let turn = 0; turn < form.quarterTurnsClockwise; turn += 1) out = turnClockwise(out);
+  return out;
+}
 
 describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', () => {
   it('shares its patterns and enums with the Pydantic mirror', () => {
@@ -74,14 +94,46 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
 
   it('keeps a capture time with no zone local, never a guessed UTC', () => {
     const zoneless = {
-      localDateTime: '2031-05-02T21:14:09',
+      localDateTime: '2031-05-02T05:42:18',
       utcOffsetMinutes: null,
       utc: null,
       marks: 'recorded',
       source: { container: 'exif', tags: ['DateTimeOriginal'] },
     };
     expect(CaptureTimeHintSchema.safeParse(zoneless).success).toBe(true);
-    expect(CaptureTimeHintSchema.safeParse({ ...zoneless, utc: '2031-05-02T21:14:09Z' }).success).toBe(false);
+    expect(CaptureTimeHintSchema.safeParse({ ...zoneless, utc: '2031-05-02T05:42:18Z' }).success).toBe(false);
+  });
+
+  it('shares the EXIF orientation table with the Pydantic mirror, eight values to the eight forms', () => {
+    const values = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+    for (const value of values) {
+      expect(EXIF_ORIENTATIONS[value]).toEqual(fixture.orientations.exif[String(value)]);
+    }
+    const forms = values.map((value) => JSON.stringify(EXIF_ORIENTATIONS[value])).sort();
+    expect(forms).toEqual(FORMS.map((form) => JSON.stringify(form)).sort());
+    // EXIF 6 turns a landscape-stored portrait upright: the left column becomes the top row
+    expect(show(EXIF_ORIENTATIONS[6], [[1, 2, 3], [4, 5, 6]])).toEqual([[4, 1], [5, 2], [6, 3]]);
+  });
+
+  it('PBT: orientations compose and invert as the pixels they move', () => {
+    const grid = fc
+      .tuple(fc.integer({ min: 2, max: 4 }), fc.integer({ min: 2, max: 5 }))
+      .chain(([height, width]) =>
+        fc.array(fc.array(fc.integer({ min: 0, max: 255 }), { minLength: width, maxLength: width }), {
+          minLength: height,
+          maxLength: height,
+        })
+      );
+    fc.assert(
+      fc.property(fc.constantFrom(...FORMS), fc.constantFrom(...FORMS), grid, (first, then, pixels) => {
+        expect(show(composeDisplayOrientations(first, then), pixels)).toEqual(show(then, show(first, pixels)));
+        const undo = invertDisplayOrientation(first);
+        expect(show(undo, show(first, pixels))).toEqual(pixels);
+        expect(show(first, show(undo, pixels))).toEqual(pixels);
+        expect(composeDisplayOrientations(first, undo)).toEqual({ quarterTurnsClockwise: 0, mirrored: false });
+      }),
+      { seed: SEED, numRuns: 200, examples: [[FORMS[1]!, FORMS[4]!, [[1, 2, 3], [4, 5, 6]]]] }
+    );
   });
 
   it('holds a time known only in UTC, and never makes a file time the asset capture time', () => {

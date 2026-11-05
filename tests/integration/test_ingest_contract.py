@@ -14,9 +14,13 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import io
+
+import numpy as np
 import pytest
 from hypothesis import example, given, settings
 from hypothesis import strategies as st
+from PIL import Image, ImageOps
 from pydantic import ValidationError
 
 from services.contracts import ingest
@@ -28,8 +32,51 @@ MODELS = {
     "SourceAsset": ingest.SourceAsset,
     "IngestReceipt": ingest.IngestReceipt,
     "CaptureTimeHint": ingest.CaptureTimeHint,
+    "OrientationHint": ingest.OrientationHint,
     "SolveJob": ingest.SolveJob,
 }
+FORMS = [{"quarterTurnsClockwise": q, "mirrored": m} for m in (False, True) for q in range(4)]
+
+
+def show(form: dict, pixels: np.ndarray) -> np.ndarray:
+    """The canonical form applied to stored pixels: mirror left to right if asked, then turn clockwise."""
+    mirrored = np.fliplr(pixels) if form["mirrored"] else pixels
+    return np.rot90(mirrored, k=-form["quarterTurnsClockwise"])
+
+
+@pytest.mark.parametrize("value", range(1, 9))
+def test_exif_orientations_show_pixels_as_pillows_exif_transpose_does(value: int) -> None:
+    stored = np.arange(6, dtype=np.uint8).reshape(2, 3) * 40
+    image = Image.fromarray(stored, "L")
+    exif = image.getexif()
+    exif[0x0112] = value
+    out = io.BytesIO()
+    image.save(out, "PNG", exif=exif)
+    shown = np.asarray(ImageOps.exif_transpose(Image.open(io.BytesIO(out.getvalue()))))
+    assert np.array_equal(show(ingest.EXIF_ORIENTATIONS[value], stored), shown)
+
+
+def test_the_eight_exif_values_are_the_eight_forms() -> None:
+    forms = [ingest.EXIF_ORIENTATIONS[value] for value in range(1, 9)]
+    assert sorted(map(str, forms)) == sorted(map(str, FORMS))
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    first=st.sampled_from(FORMS),
+    then=st.sampled_from(FORMS),
+    pixels=st.integers(2, 4).flatmap(lambda h: st.integers(2, 5).flatmap(
+        lambda w: st.lists(st.integers(0, 255), min_size=h * w, max_size=h * w).map(lambda v: np.array(v, dtype=np.uint8).reshape(h, w)))),
+)
+@example(first=FORMS[1], then=FORMS[4], pixels=np.arange(6, dtype=np.uint8).reshape(2, 3))
+@example(first=FORMS[7], then=FORMS[7], pixels=np.arange(12, dtype=np.uint8).reshape(3, 4))
+def test_pbt_ingest_4_orientations_compose_and_invert_as_the_pixels_they_move(first: dict, then: dict, pixels: np.ndarray) -> None:
+    composed = ingest.compose_display_orientations(first, then)
+    assert np.array_equal(show(composed, pixels), show(then, show(first, pixels)))
+    undo = ingest.invert_display_orientation(first)
+    assert np.array_equal(show(undo, show(first, pixels)), pixels)
+    assert np.array_equal(show(first, show(undo, pixels)), pixels)
+    assert ingest.compose_display_orientations(first, undo) == {"quarterTurnsClockwise": 0, "mirrored": False}
 
 
 def test_ingest_fixture_is_current() -> None:
@@ -60,11 +107,11 @@ def test_missing_metadata_stays_missing() -> None:
     parsed = ingest.IngestReceipt.model_validate(bare)
     assert parsed.hints.capture_time is None and parsed.source_asset.captured_at_utc is None
     # A zoneless local time is recorded as such; it never becomes a guessed UTC
-    zoneless = {"localDateTime": "2031-05-02T21:14:09", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
+    zoneless = {"localDateTime": "2031-05-02T05:42:18", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
                 "source": {"container": "exif", "tags": ["DateTimeOriginal"]}}
     assert ingest.CaptureTimeHint.model_validate(zoneless).utc is None
     with pytest.raises(ValidationError):
-        ingest.CaptureTimeHint.model_validate({**zoneless, "utc": "2031-05-02T21:14:09Z"})
+        ingest.CaptureTimeHint.model_validate({**zoneless, "utc": "2031-05-02T05:42:18Z"})
     # A time held only in UTC has no local time, and a file's own time stays a hint
     file_time = {"localDateTime": None, "utcOffsetMinutes": None, "utc": "2031-05-02T19:31:40Z", "marks": "file_written",
                  "source": {"container": "quicktime", "tags": ["creation_time"]}}

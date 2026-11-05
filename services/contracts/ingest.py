@@ -43,7 +43,34 @@ INGEST_PATTERNS = {
     "utcInstant": UTC_INSTANT_PATTERN,
     "jobId": JOB_ID_PATTERN,
 }
-METADATA_CONTAINERS = ("exif", "quicktime", "xmp", "user", "synthetic")
+METADATA_CONTAINERS = ("exif", "quicktime", "heif", "xmp", "user", "synthetic")
+# How to show stored pixels: mirror left to right if `mirrored`, then turn clockwise by `quarterTurnsClockwise`
+# quarter turns. EXIF Orientation 1 to 8 in that form, one to one (EXIF 2.3, tag 0x0112).
+EXIF_ORIENTATIONS = {
+    1: {"quarterTurnsClockwise": 0, "mirrored": False},
+    2: {"quarterTurnsClockwise": 0, "mirrored": True},
+    3: {"quarterTurnsClockwise": 2, "mirrored": False},
+    4: {"quarterTurnsClockwise": 2, "mirrored": True},
+    5: {"quarterTurnsClockwise": 3, "mirrored": True},
+    6: {"quarterTurnsClockwise": 1, "mirrored": False},
+    7: {"quarterTurnsClockwise": 1, "mirrored": True},
+    8: {"quarterTurnsClockwise": 3, "mirrored": False},
+}
+
+
+def compose_display_orientations(first: dict, then: dict) -> dict:
+    """`first`, then `then`; a mirror reverses the sense of the turns that came before it."""
+    carried = -first["quarterTurnsClockwise"] if then["mirrored"] else first["quarterTurnsClockwise"]
+    return {
+        "quarterTurnsClockwise": (then["quarterTurnsClockwise"] + carried) % 4,
+        "mirrored": first["mirrored"] != then["mirrored"],
+    }
+
+
+def invert_display_orientation(orientation: dict) -> dict:
+    """The orientation that undoes `orientation`, in either order."""
+    turns = orientation["quarterTurnsClockwise"] if orientation["mirrored"] else -orientation["quarterTurnsClockwise"]
+    return {"quarterTurnsClockwise": turns % 4, "mirrored": orientation["mirrored"]}
 # What a capture time marks: when the picture or clip was recorded, or the file's own time (QuickTime
 # creation_time), which may be when the file was written or exported. Only a recorded time becomes the
 # asset's capturedAtUTC.
@@ -104,7 +131,7 @@ class _Loose(_Model):
 
 
 class MetadataSource(_Model):
-    container: Literal["exif", "quicktime", "xmp", "user", "synthetic"]
+    container: Literal["exif", "quicktime", "heif", "xmp", "user", "synthetic"]
     tags: Annotated[list[Annotated[str, StringConstraints(pattern=METADATA_TAG_PATTERN)]], Field(min_length=1, max_length=8)]
 
 
@@ -138,10 +165,18 @@ class CameraMetadata(_Loose):
     iso: Optional[Annotated[float, Field(gt=0)]] = None
 
 
+class DisplayOrientation(_Model):
+    """How to show stored pixels: mirror left to right if `mirrored`, then turn clockwise by quarter turns."""
+
+    quarter_turns_clockwise: Annotated[int, Field(ge=0, le=3)]
+    mirrored: bool
+
+
 class MetadataSources(_Model):
     captured_at_utc: Optional[MetadataSource] = Field(default=None, alias="capturedAtUTC")
     observer_location: Optional[MetadataSource] = None
     camera_metadata: Optional[MetadataSource] = None
+    display_orientation: Optional[MetadataSource] = None
 
 
 class SourceAsset(_Loose):
@@ -162,6 +197,8 @@ class SourceAsset(_Loose):
     captured_at_utc: Optional[Annotated[str, StringConstraints(pattern=ZOD_DATETIME_PATTERN)]] = Field(default=None, alias="capturedAtUTC")
     observer_location: Optional[ObserverLocation] = None
     camera_metadata: Optional[CameraMetadata] = None
+    # Absent when the file does not say; a file that says "as stored" gives 0 turns, not mirrored
+    display_orientation: Optional[DisplayOrientation] = None
     metadata_sources: Optional[MetadataSources] = None
     privacy_class: Literal["private", "consented_demo", "public_sample"]
     immutable: Literal[True]
@@ -176,7 +213,7 @@ class SourceAsset(_Loose):
     @model_validator(mode="after")
     def _metadata_has_sources(self) -> "SourceAsset":
         sources = self.metadata_sources
-        for field in ("captured_at_utc", "observer_location", "camera_metadata"):
+        for field in ("captured_at_utc", "observer_location", "camera_metadata", "display_orientation"):
             present = getattr(self, field) is not None
             sourced = sources is not None and getattr(sources, field) is not None
             if present != sourced:
@@ -237,10 +274,19 @@ class CameraHint(_Model):
         return self
 
 
+class OrientationHint(_Model):
+    """How to show the stored pixels, as the file says, with where it says so."""
+
+    quarter_turns_clockwise: Annotated[int, Field(ge=0, le=3)]
+    mirrored: bool
+    source: MetadataSource
+
+
 class MetadataHints(_Model):
     capture_time: Optional[CaptureTimeHint] = None
     location: Optional[LocationHint] = None
     camera: Optional[CameraHint] = None
+    orientation: Optional[OrientationHint] = None
 
 
 class JobStageProgress(_Model):
@@ -326,6 +372,16 @@ class IngestReceipt(_Model):
                     raise ValueError(f"{field} must be the camera hint's")
             if sources.camera_metadata != hints.camera.source:
                 raise ValueError("the camera keeps its hint source")
+        orientation, hint_orientation = asset.display_orientation, hints.orientation
+        if (orientation is None) != (hint_orientation is None):
+            raise ValueError("displayOrientation must be the orientation hint, or absent")
+        if hint_orientation is not None:
+            if (orientation.quarter_turns_clockwise, orientation.mirrored) != (
+                hint_orientation.quarter_turns_clockwise, hint_orientation.mirrored
+            ):
+                raise ValueError("displayOrientation must be the orientation hint")
+            if sources.display_orientation != hint_orientation.source:
+                raise ValueError("the orientation keeps its hint source")
         return self
 
 
@@ -353,7 +409,7 @@ def build_ingest_samples() -> dict[str, Any]:
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {"latDeg": 46.5197, "lonDeg": 7.9861},
         "cameraMetadata": {"make": "Synthetic", "model": "Test Phone", "lensModel": "Main 24 mm", "focalLengthMm": 6.9,
                            "focalLength35mmMm": 24, "exposureTimeSec": 10, "fNumber": 1.78, "iso": 1600},
@@ -387,8 +443,21 @@ def build_ingest_samples() -> dict[str, Any]:
     clip_recorded = {**clip, "capturedAtUTC": "2031-05-02T19:30:00Z", "metadataSources": {"capturedAtUTC": apple_time}}
     clip_file_time = {**clip, "id": "src_7e6f5a4b3c2d1e0f", "title": "Clip with only a file time (synthetic)",
                       "sha256": "7e6f5a4b3c2d1e0f" * 4, "uri": "/api/ingest/assets/" + "7e6f5a4b3c2d1e0f" * 4}
+    exif_orientation = {"container": "exif", "tags": ["Orientation"]}
+    orientation_hints = [
+        {**EXIF_ORIENTATIONS[6], "source": exif_orientation},
+        {**EXIF_ORIENTATIONS[5], "source": exif_orientation},
+        # HEIF irot 1 is a quarter turn anticlockwise, so three clockwise
+        {"quarterTurnsClockwise": 3, "mirrored": False, "source": {"container": "heif", "tags": ["irot"]}},
+        # A clip's display matrix, from its track header
+        {"quarterTurnsClockwise": 1, "mirrored": False, "source": {"container": "quicktime", "tags": ["tkhd"]}},
+    ]
+    portrait_photo = {**photo, "id": "src_3c4d5e6f7a8b9c0d", "title": "Portrait photo (synthetic)",
+                      "sha256": "3c4d5e6f7a8b9c0d" * 4, "uri": "/api/ingest/assets/" + "3c4d5e6f7a8b9c0d" * 4,
+                      "displayOrientation": dict(EXIF_ORIENTATIONS[6]),
+                      "metadataSources": {**photo["metadataSources"], "displayOrientation": exif_orientation}}
     hints_full = {
-        "captureTime": {"localDateTime": "2031-05-02T21:14:09.120", "utcOffsetMinutes": 120, "utc": "2031-05-02T19:14:09.120Z",
+        "captureTime": {"localDateTime": "2031-05-02T05:42:18.120", "utcOffsetMinutes": 120, "utc": "2031-05-02T03:42:18.120Z",
                         "marks": "recorded", "source": exif_time},
         "location": {"latDeg": 46.5197, "lonDeg": 7.9861, "altitudeM": 3466, "source": exif_gps},
         "camera": {"make": "Synthetic", "model": "Test Phone", "lensModel": "Main 24 mm", "focalLengthMm": 6.9,
@@ -399,13 +468,14 @@ def build_ingest_samples() -> dict[str, Any]:
     receipts = [
         {"sourceAsset": photo, "hints": hints_full, "alreadyStored": False, "solveJobId": "job_5f2b0c9a7d31e448"},
         {"sourceAsset": zoneless_photo, "hints": {
-            "captureTime": {"localDateTime": "2031-05-02T21:14:09", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
+            "captureTime": {"localDateTime": "2031-05-02T05:42:18", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
                             "source": {"container": "exif", "tags": ["DateTimeOriginal"]}},
             "camera": hints_full["camera"]}, "alreadyStored": True},
         {"sourceAsset": clip, "hints": {}, "alreadyStored": False, "solveJobId": "job_0a1b2c3d4e5f6071"},
         {"sourceAsset": clip_recorded, "hints": {"captureTime": recorded_clip_time}, "alreadyStored": False},
         # The file time stays a hint: the asset has no capture time
         {"sourceAsset": clip_file_time, "hints": {"captureTime": file_written_time}, "alreadyStored": False},
+        {"sourceAsset": portrait_photo, "hints": {**hints_full, "orientation": orientation_hints[0]}, "alreadyStored": False},
     ]
     capture_times = [hints_full["captureTime"], receipts[1]["hints"]["captureTime"], recorded_clip_time, file_written_time]
     sha = clip["sha256"]
@@ -457,15 +527,15 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("SourceAsset", with_(photo, ["byteSize"], 0), "an empty file")
     bad("SourceAsset", with_(photo, ["width"], 0), "no width")
     bad("SourceAsset", with_(photo, ["immutable"], False), "a source asset is immutable")
-    bad("SourceAsset", with_(photo, ["capturedAtUTC"], "2031-02-30T19:14:09Z"), "not a calendar date")
+    bad("SourceAsset", with_(photo, ["capturedAtUTC"], "2031-02-30T03:42:18Z"), "not a calendar date")
     bad("SourceAsset", with_(photo, ["byteSize"], None), "null where the field may only be absent")
     bad("IngestReceipt", with_(receipts[0], ["sourceAsset", "privacyClass"], "public_sample"), "an uploaded asset is private")
-    bad("IngestReceipt", with_(receipts[0], ["sourceAsset", "capturedAtUTC"], "2031-05-02T19:14:10Z"), "the asset's time differs from its hint")
-    bad("IngestReceipt", with_(with_(receipts[1], ["sourceAsset", "capturedAtUTC"], "2031-05-02T21:14:09Z"),
+    bad("IngestReceipt", with_(receipts[0], ["sourceAsset", "capturedAtUTC"], "2031-05-02T03:42:19Z"), "the asset's time differs from its hint")
+    bad("IngestReceipt", with_(with_(receipts[1], ["sourceAsset", "capturedAtUTC"], "2031-05-02T05:42:18Z"),
                                ["sourceAsset", "metadataSources", "capturedAtUTC"], {"container": "exif", "tags": ["DateTimeOriginal"]}),
         "a zoneless capture time cannot become a UTC instant")
-    bad("IngestReceipt", with_(receipts[0], ["hints", "captureTime", "utc"], "2031-05-02T21:14:09.120Z"), "utc is not the local time minus the offset")
-    bad("IngestReceipt", with_(receipts[1], ["hints", "captureTime", "utc"], "2031-05-02T21:14:09Z"), "a UTC instant without the offset")
+    bad("IngestReceipt", with_(receipts[0], ["hints", "captureTime", "utc"], "2031-05-02T05:42:18.120Z"), "utc is not the local time minus the offset")
+    bad("IngestReceipt", with_(receipts[1], ["hints", "captureTime", "utc"], "2031-05-02T05:42:18Z"), "a UTC instant without the offset")
     bad("IngestReceipt", with_(receipts[0], ["hints", "captureTime", "utcOffsetMinutes"], 900), "an offset beyond 14 hours")
     bad("IngestReceipt", with_(receipts[0], ["hints", "location", "latDeg"], 46.52), "the asset's place differs from its hint")
     bad("IngestReceipt", with_(receipts[0], ["hints", "camera"], {"source": exif_camera}), "a camera hint with no values")
@@ -487,6 +557,16 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("CaptureTimeHint", {**file_written_time, "marks": "exported"}, "an unknown mark")
     bad("CaptureTimeHint", {k: v for k, v in file_written_time.items() if k != "localDateTime"},
         "an unknown local time is null, never absent")
+    bad("OrientationHint", {**orientation_hints[0], "quarterTurnsClockwise": 4}, "four quarter turns are written as none")
+    bad("OrientationHint", {**orientation_hints[0], "mirrored": 1}, "mirrored is true or false")
+    bad("OrientationHint", {k: v for k, v in orientation_hints[0].items() if k != "source"}, "an orientation with no source")
+    bad("OrientationHint", {**orientation_hints[0], "degrees": 90}, "an unknown orientation key")
+    bad("SourceAsset", with_(portrait_photo, ["metadataSources", "displayOrientation"], _DROP), "an orientation with no source")
+    bad("SourceAsset", with_(photo, ["metadataSources", "displayOrientation"], exif_orientation), "a source for an orientation that is absent")
+    bad("IngestReceipt", with_(receipts[5], ["hints", "orientation", "mirrored"], True), "the asset's orientation differs from its hint")
+    bad("IngestReceipt", with_(receipts[5], ["hints", "orientation"], _DROP), "an orientation the hints do not hold")
+    bad("IngestReceipt", with_(receipts[5], ["sourceAsset", "metadataSources", "displayOrientation"], {"container": "heif", "tags": ["irot"]}),
+        "the asset's orientation source differs from its hint's")
     bad("SolveJob", with_(jobs[0], ["startedAtUTC"], "2031-05-02T19:20:01Z"), "a queued job has not started")
     bad("SolveJob", with_(jobs[1], ["startedAtUTC"], _DROP), "a running job has a start time")
     bad("SolveJob", with_(jobs[2], ["solutionId"], _DROP), "a succeeded job names its solution")
@@ -512,8 +592,9 @@ def build_ingest_samples() -> dict[str, Any]:
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
         },
-        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time], "IngestReceipt": receipts,
-                  "CaptureTimeHint": capture_times, "SolveJob": jobs},
+        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo], "IngestReceipt": receipts,
+                  "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints, "SolveJob": jobs},
+        "orientations": {"exif": {str(value): form for value, form in EXIF_ORIENTATIONS.items()}},
         "invalid": invalid,
     }
 

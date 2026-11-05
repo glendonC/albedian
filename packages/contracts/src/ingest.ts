@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  DisplayOrientationSchema,
   METADATA_TAG_PATTERN,
   MIME_TYPE_PATTERN,
   MetadataSourceSchema,
@@ -122,11 +123,16 @@ export const CameraHintSchema = z
   });
 export type CameraHint = z.infer<typeof CameraHintSchema>;
 
+/** How to show the stored pixels, as the file says (EXIF Orientation, HEIF irot and imir, a clip's display matrix). */
+export const OrientationHintSchema = DisplayOrientationSchema.extend({ source: MetadataSourceSchema }).strict();
+export type OrientationHint = z.infer<typeof OrientationHintSchema>;
+
 export const MetadataHintsSchema = z
   .object({
     captureTime: CaptureTimeHintSchema.optional(),
     location: LocationHintSchema.optional(),
     camera: CameraHintSchema.optional(),
+    orientation: OrientationHintSchema.optional(),
   })
   .strict();
 export type MetadataHints = z.infer<typeof MetadataHintsSchema>;
@@ -243,6 +249,20 @@ export const IngestReceiptSchema = z
       }
       if (!sameSource(asset.metadataSources?.cameraMetadata, hints.camera.source)) {
         issue(['sourceAsset', 'metadataSources', 'cameraMetadata'], 'the camera keeps its hint source');
+      }
+    }
+    const orientation = asset.displayOrientation;
+    if ((orientation === undefined) !== (hints.orientation === undefined)) {
+      issue(['sourceAsset', 'displayOrientation'], 'displayOrientation must be the orientation hint, or absent');
+    } else if (orientation !== undefined && hints.orientation !== undefined) {
+      if (
+        orientation.quarterTurnsClockwise !== hints.orientation.quarterTurnsClockwise ||
+        orientation.mirrored !== hints.orientation.mirrored
+      ) {
+        issue(['sourceAsset', 'displayOrientation'], 'displayOrientation must be the orientation hint');
+      }
+      if (!sameSource(asset.metadataSources?.displayOrientation, hints.orientation.source)) {
+        issue(['sourceAsset', 'metadataSources', 'displayOrientation'], 'the orientation keeps its hint source');
       }
     }
   });

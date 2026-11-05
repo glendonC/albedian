@@ -11,6 +11,7 @@
     "metadataContainers": [
       "exif",
       "quicktime",
+      "heif",
       "xmp",
       "user",
       "synthetic"
@@ -57,7 +58,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -236,6 +237,81 @@
         ],
         "privacyClass": "private",
         "immutable": true
+      },
+      {
+        "id": "src_3c4d5e6f7a8b9c0d",
+        "title": "Portrait photo (synthetic)",
+        "mediaKind": "image",
+        "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "byteSize": 3184211,
+        "mimeType": "image/jpeg",
+        "width": 4032,
+        "height": 3024,
+        "durationMs": 0,
+        "fpsNumerator": 1,
+        "fpsDenominator": 1,
+        "videoCodec": "mjpeg",
+        "audioStreams": [],
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+        "observerLocation": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861
+        },
+        "cameraMetadata": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600
+        },
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          },
+          "observerLocation": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          },
+          "cameraMetadata": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          },
+          "displayOrientation": {
+            "container": "exif",
+            "tags": [
+              "Orientation"
+            ]
+          }
+        },
+        "privacyClass": "private",
+        "immutable": true,
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        }
       }
     ],
     "IngestReceipt": [
@@ -255,7 +331,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -307,9 +383,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -407,7 +483,7 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09",
+            "localDateTime": "2031-05-02T05:42:18",
             "utcOffsetMinutes": null,
             "utc": null,
             "marks": "recorded",
@@ -569,13 +645,154 @@
           }
         },
         "alreadyStored": false
+      },
+      {
+        "sourceAsset": {
+          "id": "src_3c4d5e6f7a8b9c0d",
+          "title": "Portrait photo (synthetic)",
+          "mediaKind": "image",
+          "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "fpsNumerator": 1,
+          "fpsDenominator": 1,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            },
+            "displayOrientation": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true,
+          "displayOrientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18.120",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18.120Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "orientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
       }
     ],
     "CaptureTimeHint": [
       {
-        "localDateTime": "2031-05-02T21:14:09.120",
+        "localDateTime": "2031-05-02T05:42:18.120",
         "utcOffsetMinutes": 120,
-        "utc": "2031-05-02T19:14:09.120Z",
+        "utc": "2031-05-02T03:42:18.120Z",
         "marks": "recorded",
         "source": {
           "container": "exif",
@@ -587,7 +804,7 @@
         }
       },
       {
-        "localDateTime": "2031-05-02T21:14:09",
+        "localDateTime": "2031-05-02T05:42:18",
         "utcOffsetMinutes": null,
         "utc": null,
         "marks": "recorded",
@@ -619,6 +836,48 @@
           "container": "quicktime",
           "tags": [
             "creation_time"
+          ]
+        }
+      }
+    ],
+    "OrientationHint": [
+      {
+        "quarterTurnsClockwise": 1,
+        "mirrored": false,
+        "source": {
+          "container": "exif",
+          "tags": [
+            "Orientation"
+          ]
+        }
+      },
+      {
+        "quarterTurnsClockwise": 3,
+        "mirrored": true,
+        "source": {
+          "container": "exif",
+          "tags": [
+            "Orientation"
+          ]
+        }
+      },
+      {
+        "quarterTurnsClockwise": 3,
+        "mirrored": false,
+        "source": {
+          "container": "heif",
+          "tags": [
+            "irot"
+          ]
+        }
+      },
+      {
+        "quarterTurnsClockwise": 1,
+        "mirrored": false,
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "tkhd"
           ]
         }
       }
@@ -713,6 +972,42 @@
       }
     ]
   },
+  "orientations": {
+    "exif": {
+      "1": {
+        "quarterTurnsClockwise": 0,
+        "mirrored": false
+      },
+      "2": {
+        "quarterTurnsClockwise": 0,
+        "mirrored": true
+      },
+      "3": {
+        "quarterTurnsClockwise": 2,
+        "mirrored": false
+      },
+      "4": {
+        "quarterTurnsClockwise": 2,
+        "mirrored": true
+      },
+      "5": {
+        "quarterTurnsClockwise": 3,
+        "mirrored": true
+      },
+      "6": {
+        "quarterTurnsClockwise": 1,
+        "mirrored": false
+      },
+      "7": {
+        "quarterTurnsClockwise": 1,
+        "mirrored": true
+      },
+      "8": {
+        "quarterTurnsClockwise": 3,
+        "mirrored": false
+      }
+    }
+  },
   "invalid": [
     {
       "schema": "SourceAsset",
@@ -731,7 +1026,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -800,7 +1095,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -869,7 +1164,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -970,7 +1265,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1030,7 +1325,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1099,7 +1394,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1159,7 +1454,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1221,7 +1516,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1298,7 +1593,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1367,7 +1662,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1436,7 +1731,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1505,7 +1800,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1574,7 +1869,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-02-30T19:14:09Z",
+        "capturedAtUTC": "2031-02-30T03:42:18Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1643,7 +1938,7 @@
         "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
-        "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
         "observerLocation": {
           "latDeg": 46.5197,
           "lonDeg": 7.9861
@@ -1713,7 +2008,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -1765,9 +2060,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -1839,7 +2134,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:10Z",
+          "capturedAtUTC": "2031-05-02T03:42:19Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -1891,9 +2186,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -1998,11 +2293,11 @@
               ]
             }
           },
-          "capturedAtUTC": "2031-05-02T21:14:09Z"
+          "capturedAtUTC": "2031-05-02T05:42:18Z"
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09",
+            "localDateTime": "2031-05-02T05:42:18",
             "utcOffsetMinutes": null,
             "utc": null,
             "marks": "recorded",
@@ -2059,7 +2354,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2111,9 +2406,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T21:14:09.120Z",
+            "utc": "2031-05-02T05:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2215,9 +2510,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09",
+            "localDateTime": "2031-05-02T05:42:18",
             "utcOffsetMinutes": null,
-            "utc": "2031-05-02T21:14:09Z",
+            "utc": "2031-05-02T05:42:18Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2272,7 +2567,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2324,9 +2619,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 900,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2398,7 +2693,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2450,9 +2745,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2524,7 +2819,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2576,9 +2871,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2642,7 +2937,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2694,9 +2989,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2768,7 +3063,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2817,9 +3112,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -2891,7 +3186,7 @@
           "fpsDenominator": 1,
           "videoCodec": "mjpeg",
           "audioStreams": [],
-          "capturedAtUTC": "2031-05-02T19:14:09.120Z",
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
           "observerLocation": {
             "latDeg": 46.5197,
             "lonDeg": 7.9861
@@ -2943,9 +3238,9 @@
         },
         "hints": {
           "captureTime": {
-            "localDateTime": "2031-05-02T21:14:09.120",
+            "localDateTime": "2031-05-02T05:42:18.120",
             "utcOffsetMinutes": 120,
-            "utc": "2031-05-02T19:14:09.120Z",
+            "utc": "2031-05-02T03:42:18.120Z",
             "marks": "recorded",
             "source": {
               "container": "exif",
@@ -3256,6 +3551,630 @@
         }
       },
       "reason": "an unknown local time is null, never absent"
+    },
+    {
+      "schema": "OrientationHint",
+      "sample": {
+        "quarterTurnsClockwise": 4,
+        "mirrored": false,
+        "source": {
+          "container": "exif",
+          "tags": [
+            "Orientation"
+          ]
+        }
+      },
+      "reason": "four quarter turns are written as none"
+    },
+    {
+      "schema": "OrientationHint",
+      "sample": {
+        "quarterTurnsClockwise": 1,
+        "mirrored": 1,
+        "source": {
+          "container": "exif",
+          "tags": [
+            "Orientation"
+          ]
+        }
+      },
+      "reason": "mirrored is true or false"
+    },
+    {
+      "schema": "OrientationHint",
+      "sample": {
+        "quarterTurnsClockwise": 1,
+        "mirrored": false
+      },
+      "reason": "an orientation with no source"
+    },
+    {
+      "schema": "OrientationHint",
+      "sample": {
+        "quarterTurnsClockwise": 1,
+        "mirrored": false,
+        "source": {
+          "container": "exif",
+          "tags": [
+            "Orientation"
+          ]
+        },
+        "degrees": 90
+      },
+      "reason": "an unknown orientation key"
+    },
+    {
+      "schema": "SourceAsset",
+      "sample": {
+        "id": "src_3c4d5e6f7a8b9c0d",
+        "title": "Portrait photo (synthetic)",
+        "mediaKind": "image",
+        "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "byteSize": 3184211,
+        "mimeType": "image/jpeg",
+        "width": 4032,
+        "height": 3024,
+        "durationMs": 0,
+        "fpsNumerator": 1,
+        "fpsDenominator": 1,
+        "videoCodec": "mjpeg",
+        "audioStreams": [],
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+        "observerLocation": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861
+        },
+        "cameraMetadata": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600
+        },
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          },
+          "observerLocation": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          },
+          "cameraMetadata": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        },
+        "privacyClass": "private",
+        "immutable": true,
+        "displayOrientation": {
+          "quarterTurnsClockwise": 1,
+          "mirrored": false
+        }
+      },
+      "reason": "an orientation with no source"
+    },
+    {
+      "schema": "SourceAsset",
+      "sample": {
+        "id": "src_5f2b0c9a7d31e448",
+        "title": "Field photo (synthetic)",
+        "mediaKind": "image",
+        "sha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "uri": "/api/ingest/assets/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "byteSize": 3184211,
+        "mimeType": "image/jpeg",
+        "width": 4032,
+        "height": 3024,
+        "durationMs": 0,
+        "fpsNumerator": 1,
+        "fpsDenominator": 1,
+        "videoCodec": "mjpeg",
+        "audioStreams": [],
+        "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+        "observerLocation": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861
+        },
+        "cameraMetadata": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600
+        },
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          },
+          "observerLocation": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          },
+          "cameraMetadata": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          },
+          "displayOrientation": {
+            "container": "exif",
+            "tags": [
+              "Orientation"
+            ]
+          }
+        },
+        "privacyClass": "private",
+        "immutable": true
+      },
+      "reason": "a source for an orientation that is absent"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_3c4d5e6f7a8b9c0d",
+          "title": "Portrait photo (synthetic)",
+          "mediaKind": "image",
+          "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "fpsNumerator": 1,
+          "fpsDenominator": 1,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            },
+            "displayOrientation": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true,
+          "displayOrientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18.120",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18.120Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "orientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": true,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "the asset's orientation differs from its hint"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_3c4d5e6f7a8b9c0d",
+          "title": "Portrait photo (synthetic)",
+          "mediaKind": "image",
+          "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "fpsNumerator": 1,
+          "fpsDenominator": 1,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            },
+            "displayOrientation": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true,
+          "displayOrientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18.120",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18.120Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "an orientation the hints do not hold"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_3c4d5e6f7a8b9c0d",
+          "title": "Portrait photo (synthetic)",
+          "mediaKind": "image",
+          "sha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "uri": "/api/ingest/assets/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "fpsNumerator": 1,
+          "fpsDenominator": 1,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18.120Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            },
+            "displayOrientation": {
+              "container": "heif",
+              "tags": [
+                "irot"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true,
+          "displayOrientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18.120",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18.120Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "SubSecTimeOriginal",
+                "OffsetTimeOriginal"
+              ]
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "orientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Orientation"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "the asset's orientation source differs from its hint's"
     },
     {
       "schema": "SolveJob",

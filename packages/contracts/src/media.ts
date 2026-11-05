@@ -22,9 +22,10 @@ export const SHA256_HEX_PATTERN = '^[0-9a-f]{64}$';
 
 /**
  * Where a piece of capture metadata came from: the container that held it and the tags read for it,
- * in the order the reader tried them. `synthetic` marks test data, never a real file.
+ * in the order the reader tried them. `heif` is a HEIF image's item properties (`irot`, `imir`), which
+ * are neither EXIF nor QuickTime. `synthetic` marks test data, never a real file.
  */
-export const METADATA_CONTAINERS = ['exif', 'quicktime', 'xmp', 'user', 'synthetic'] as const;
+export const METADATA_CONTAINERS = ['exif', 'quicktime', 'heif', 'xmp', 'user', 'synthetic'] as const;
 export const METADATA_TAG_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$';
 export const MetadataSourceSchema = z
   .object({
@@ -37,8 +38,52 @@ export type MetadataSource = z.infer<typeof MetadataSourceSchema>;
 /** A MIME type as a browser or ffprobe reports it, for example `image/jpeg` or `video/quicktime`. */
 export const MIME_TYPE_PATTERN = '^[a-z]+/[a-z0-9.+-]+$';
 
+/**
+ * How to show stored pixels as the camera meant them: mirror them left to right if `mirrored`, then
+ * turn them clockwise by `quarterTurnsClockwise` times 90 degrees. Pixels, detections and the WCS stay
+ * in stored coordinates; only display applies this. EXIF Orientation, HEIF `irot` and `imir`, and a
+ * clip's display matrix all convert to this one form.
+ */
+export const DisplayOrientationSchema = z
+  .object({
+    quarterTurnsClockwise: z.number().int().min(0).max(3),
+    mirrored: z.boolean(),
+  })
+  .strict();
+export type DisplayOrientation = z.infer<typeof DisplayOrientationSchema>;
+
+/** EXIF Orientation 1 to 8 in the canonical form, one to one (EXIF 2.3, tag 0x0112). */
+export const EXIF_ORIENTATIONS: Readonly<Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, DisplayOrientation>> = {
+  1: { quarterTurnsClockwise: 0, mirrored: false },
+  2: { quarterTurnsClockwise: 0, mirrored: true },
+  3: { quarterTurnsClockwise: 2, mirrored: false },
+  4: { quarterTurnsClockwise: 2, mirrored: true },
+  5: { quarterTurnsClockwise: 3, mirrored: true },
+  6: { quarterTurnsClockwise: 1, mirrored: false },
+  7: { quarterTurnsClockwise: 1, mirrored: true },
+  8: { quarterTurnsClockwise: 3, mirrored: false },
+};
+
+/**
+ * `first`, then `then`. A mirror reverses the sense of the turns that came before it, since mirroring
+ * after a clockwise turn equals mirroring first and then turning anticlockwise.
+ */
+export function composeDisplayOrientations(first: DisplayOrientation, then: DisplayOrientation): DisplayOrientation {
+  const carried = then.mirrored ? -first.quarterTurnsClockwise : first.quarterTurnsClockwise;
+  return {
+    quarterTurnsClockwise: (((then.quarterTurnsClockwise + carried) % 4) + 4) % 4,
+    mirrored: first.mirrored !== then.mirrored,
+  };
+}
+
+/** The orientation that undoes `orientation`: composed with it, in either order, it shows pixels as stored. */
+export function invertDisplayOrientation(orientation: DisplayOrientation): DisplayOrientation {
+  const turns = orientation.mirrored ? orientation.quarterTurnsClockwise : -orientation.quarterTurnsClockwise;
+  return { quarterTurnsClockwise: ((turns % 4) + 4) % 4, mirrored: orientation.mirrored };
+}
+
 /** Capture metadata a SourceAsset may carry; each one present needs its entry in `metadataSources`. */
-export const SOURCE_ASSET_METADATA_FIELDS = ['capturedAtUTC', 'observerLocation', 'cameraMetadata'] as const;
+export const SOURCE_ASSET_METADATA_FIELDS = ['capturedAtUTC', 'observerLocation', 'cameraMetadata', 'displayOrientation'] as const;
 
 export const SourceAssetSchema = z
   .object({
@@ -79,11 +124,14 @@ export const SourceAssetSchema = z
         iso: z.number().positive().optional(),
       })
       .optional(),
+    // Absent when the file does not say; a file that says "as stored" gives 0 turns, not mirrored
+    displayOrientation: DisplayOrientationSchema.optional(),
     metadataSources: z
       .object({
         capturedAtUTC: MetadataSourceSchema.optional(),
         observerLocation: MetadataSourceSchema.optional(),
         cameraMetadata: MetadataSourceSchema.optional(),
+        displayOrientation: MetadataSourceSchema.optional(),
       })
       .strict()
       .optional(),
