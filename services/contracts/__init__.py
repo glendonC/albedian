@@ -1,5 +1,19 @@
 """Python mirrors of the cross-service schemas in packages/contracts."""
 
+from services.contracts.eclipses import (
+    ECLIPSE_CATALOG_FORMAT,
+    ECLIPSE_CATALOG_FORMAT_VERSION,
+    LUNAR_ECLIPSE_COLUMNS,
+    SOLAR_ECLIPSE_COLUMNS,
+    LunarEclipseCatalog,
+    SolarEclipseCatalog,
+)
+from services.contracts.exoplanets import (
+    EXOPLANET_COLUMNS,
+    EXOPLANET_TABLE_FORMAT,
+    EXOPLANET_TABLE_FORMAT_VERSION,
+    ExoplanetTable,
+)
 from services.contracts.provenance import (
     ASSET_PROVENANCE_FORMAT,
     ASSET_PROVENANCE_FORMAT_VERSION,
@@ -23,11 +37,21 @@ __all__ = [
     "ASSET_PROVENANCE_FORMAT",
     "ASSET_PROVENANCE_FORMAT_VERSION",
     "ASSET_PROVENANCE_RECORD_FILENAME",
+    "ECLIPSE_CATALOG_FORMAT",
+    "ECLIPSE_CATALOG_FORMAT_VERSION",
     "EVIDENCE_CLASSES",
+    "EXOPLANET_COLUMNS",
+    "EXOPLANET_TABLE_FORMAT",
+    "EXOPLANET_TABLE_FORMAT_VERSION",
+    "LUNAR_ECLIPSE_COLUMNS",
     "RENDER_LAYER_KINDS",
+    "SOLAR_ECLIPSE_COLUMNS",
     "SPDX_LICENSE_IDS",
     "AssetProvenanceRecord",
+    "ExoplanetTable",
+    "LunarEclipseCatalog",
     "RenderLayer",
+    "SolarEclipseCatalog",
     "dumps_record",
     "parse_sha256sums",
     "sha256_file",

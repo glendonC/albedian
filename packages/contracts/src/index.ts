@@ -10,3 +10,5 @@ export * from './render-layer.js';
 export * from './provenance.js';
 export * from './ingest.js';
 export * from './voice-command.js';
+export * from './eclipses.js';
+export * from './exoplanets.js';

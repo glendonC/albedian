@@ -34,6 +34,9 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'SolveJobSchema',
   'VoiceCommandRequestSchema',
   'VoiceCommandResponseSchema',
+  'SolarEclipseCatalogSchema',
+  'LunarEclipseCatalogSchema',
+  'ExoplanetTableSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
