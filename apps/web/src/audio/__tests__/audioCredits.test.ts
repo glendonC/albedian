@@ -84,7 +84,7 @@ describe('audio credits and notices', () => {
     // The page names its value kinds, since some clips play labelled test values. The sentence must be
     // the page's own paragraph: commented-out markup or a sentence left in a comment does not count.
     const page =
-      'No sound reaches us from space. Each clip is made from the values it names, catalog, published or labelled test values, with stated design choices; none is a recording of space.';
+      'No sound reaches us from space. Each clip is made from the values it names (catalog, published or labelled test values) with stated design choices; none is a recording of space.';
     const lines = read('apps/web/spike/listening/render.mjs')
       .replace(/<!--[\s\S]*?-->/g, '')
       .replace(/\/\*[\s\S]*?\*\//g, '')

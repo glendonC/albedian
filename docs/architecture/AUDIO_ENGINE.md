@@ -555,7 +555,7 @@ listening session.
   it is a recording of space." It calls nothing data that is not: the detent click and the identity
   pitch carry none (4.8), and the chapel reverb is a recording of an earthly room. The listening
   page opens with its own sentence, which names its value kinds: "No sound reaches us from space.
-  Each clip is made from the values it names, catalog, published or labelled test values, with
+  Each clip is made from the values it names (catalog, published or labelled test values) with
   stated design choices; none is a recording of space." The viewport shows the app's sentence
   beside the Audio control while audio is on once the render lane's credits display (render-6g)
   lands. Listeners asked for "actual sound from space", and the same authors single out trust as

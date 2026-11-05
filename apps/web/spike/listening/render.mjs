@@ -469,7 +469,7 @@ function writePage() {
 <header class="intro">
   <h1>Albedian Listening Session</h1>
   <p class="lede">${items.length} items about how Albedian's sky sounds. Each clip was rendered by the app's own audio engine from the values it names. Listen, then answer yes or no, with a note if you like.</p>
-  <p class="lede">No sound reaches us from space. Each clip is made from the values it names, catalog, published or labelled test values, with stated design choices; none is a recording of space.</p>
+  <p class="lede">No sound reaches us from space. Each clip is made from the values it names (catalog, published or labelled test values) with stated design choices; none is a recording of space.</p>
   <div class="howto">
     <p>Use headphones: each voice is placed around your head. Every clip plays at the app's starting volume.</p>
     <p>Under each clip, the facts list what plays and where every value comes from.</p>
