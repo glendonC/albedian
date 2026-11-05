@@ -42,7 +42,7 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 2. `SourceAsset` — Immutable content-addressed original photograph or video (`sha256`, dimensions, codec, FPS, audio stream metadata).
 3. `MediaVariant` — Derivative media asset produced by a `ProcessingAttempt`, aligned to the canonical `SourceAsset` timeline.
 4. `ProcessingGraph` — Acyclic, typed DAG of deterministic and prior-assisted media operations (`tone_curve`, `spatial_denoise`, `temporal_stack`, `star_protect_merge`, `region_mask`).
-5. `ProcessingAttempt` — Versioned execution instance of a `ProcessingGraph` with real timing, memory, and quality evaluation metrics.
+5. `ProcessingAttempt`: versioned execution instance of a `ProcessingGraph`, with the wall time of the run (reported as `cpuMs`) and quality evaluation metrics. `gpuMs` and `peakMemoryBytes` are not measured: today they are a constant 0 and twice the output frame bytes [open].
 6. `ObservationSolution` — Versioned astrometric calibration record (`calibrated`, `predicted_only`, `unresolved`, `ambiguous`) with WCS parameters and held-out pixel residuals.
 7. `CelestialFinding` — A detected, catalog-matched, predicted, or simulated astronomical object with stable ID and `EvidenceClass`.
    An `observed` finding has a sky position only when its solution's WCS passed held-out verification; without one it is located by its pixel `sourceDetection` alone. A `catalog_matched` finding needs that verified WCS too.
@@ -60,7 +60,7 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 
 - **ADR-0001 — Observation-Centered Modular Monolith:** TypeScript monorepo (`pnpm` workspaces) + unified Python FastAPI scientific/media service (`services/api.py`) sharing strict Zod/Pydantic schemas (`packages/contracts`).
 - **ADR-0002 — Four Classes of Scientific Evidence (`EvidenceClass`):** Every finding and marker is typed as `observed`, `catalog_matched`, `predicted`, or `simulated` (`packages/evidence`).
-- **ADR-0003 — Hybrid 3D Spatial Engine (`@sparkjsdev/spark` + Custom WebGL2 Shaders):** Combines anisotropic 3D Gaussian Splats (`@sparkjsdev/spark`) for volumetric nebulae and the Local Bubble with analytical-derivative GPU ray-marching, pre-baked Bruneton atmospheric LUTs, and relativistic Schwarzschild geodesic shaders (`apps/web/src/spatial/SparkPortalRenderer.ts`).
+- **ADR-0003 Hybrid 3D Spatial Engine (`@sparkjsdev/spark` + Custom WebGL2 Shaders):** Combines anisotropic 3D Gaussian splats (`@sparkjsdev/spark`) on a Local Bubble mesh of unrecorded origin with analytical-derivative GPU ray-marching, a pre-baked Bruneton atmospheric lookup table, and an approximate Schwarzschild bending of light around a hand-set disk (`apps/web/src/spatial/SparkPortalRenderer.ts`).
 - **ADR-0004 — Context-Bound Voice Direct Manipulation:** Spoken and typed intents resolve deictic pronouns (`"that one"`, `"take me there"`, `"go back"`) against `ActionContext` and `expectedViewRevision`.
 
 ---
@@ -69,7 +69,8 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 
 - **Verification Gates:** All changes require passing `pnpm typecheck`, `pnpm test` (Vitest + `fast-check` property-based tests), and `uv run pytest` (Python + `hypothesis` property-based tests).
 - **Third-Party Astronomical Data & Licenses:**
-  - **ESA Gaia DR3 (`I/355/gaiadr3`) & Bailer-Jones et al. (`I/352`):** Credit: ESA/Gaia/DPAC (CC BY-SA 3.0 IGO).
-  - **CDS Hipparcos (`I/239`) & SIMBAD:** Credit: Centre de Données astronomiques de Strasbourg.
-  - **NASA LRO LOLA & JPL Horizons Ephemerides:** Public domain U.S. government scientific records.
+  - **ESA Gaia DR3 (`I/355/gaiadr3`) & Bailer-Jones et al. (`I/352`):** Credit: ESA/Gaia/DPAC (CC BY-NC 3.0 IGO, as [docs/science/CATALOG_STAR_TILES.md](../science/CATALOG_STAR_TILES.md) records).
+  - **ESA Hipparcos 2007 (van Leeuwen 2007, through the ESA archive):** Credit: ESA (CC BY-NC 3.0 IGO). SIMBAD is not queried.
+  - **NASA LRO LOLA and LROC, through the NASA SVS CGI Moon Kit:** NASA media, not subject to copyright in the United States.
+  - **Ephemerides:** the Standish and Williams (1992) approximate Keplerian elements (JPL Solar System Dynamics) for the planets and Meeus (1998) chapter 47 for the Moon. No finding uses JPL Horizons data; only the landing scene's baked Sun and Moon positions come from it, through `scripts/plan_landing_moment.py` (the NASA/JPL Horizons API, ephemeris DE441), recorded in `apps/web/src/spatial/webgpu/cislunar/landingMoment.json`. The terms for Horizons' answers and for DE440 and DE441 are [open].
   - **Precomputed Atmospheric Scattering Formulation:** Adapted from Eric Bruneton (2017/2020, BSD-3-Clause).

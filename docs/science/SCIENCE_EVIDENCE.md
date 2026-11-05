@@ -16,7 +16,7 @@ Every `CelestialFinding` in Albedian carries one of four mutually exclusive evid
 ## 2. Four Explicit Coordinate Systems
 
 1. **Image Pixel Coordinates:** $p = (u, v) \in [0, W) \times [0, H)$ at canonical frame timestamp $t_{\text{media}}$.
-2. **Undistorted Camera Ray:** Unit vector $\hat{r}_{\text{cam}}(u, v) \in S^2$ after inverting focal scale and radial/SIP polynomial lens distortion:
+2. **Undistorted Camera Ray:** Unit vector $\hat{r}_{\text{cam}}(u, v) \in S^2$ after inverting focal scale and radial polynomial lens distortion ($k_1$, $k_2$; the camera model has no SIP terms):
    $$x_n = \frac{u - c_x}{f}, \quad y_n = \frac{v - c_y}{f}, \quad r^2 = x_n^2 + y_n^2$$
    $$x_d = x_n(1 + k_1 r^2 + k_2 r^4), \quad y_d = y_n(1 + k_1 r^2 + k_2 r^4)$$
 3. **Celestial Direction (ICRS / J2000 / Epoch $T$):** Right ascension $\alpha$ and declination $\delta$ mapped via gnomonic (TAN) projection and tangent-plane CD matrix around reference point $(\alpha_0, \delta_0)$:

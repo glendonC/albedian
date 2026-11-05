@@ -36,8 +36,12 @@ pnpm test
 # Run Python scientific & media runtime tests (pytest + Hypothesis)
 pnpm test:python
 
-# Run full verification suite (TypeScript + Python + contract & docs checks)
+# Run the TypeScript and Python test suites together (package.json test:all)
 pnpm test:all
+
+# The contract and docs checks run on their own
+pnpm verify:contracts
+pnpm verify:docs
 ```
 
 ## Kiro Spec-Driven Workflow

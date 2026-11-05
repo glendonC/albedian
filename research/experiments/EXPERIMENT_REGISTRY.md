@@ -8,18 +8,28 @@ Each unresolved technical question identified in the foundational research is tr
 
 | ID | Title | Priority | Domain | Status | Reproduction Script / Test |
 |---|---|---|---|---|---|
-| **EXP-01** | Consumer Photo Plate Solving & Independent WCS Verification | P0 | Science | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp01` |
-| **EXP-02** | Low-Light Video Star Detection & Motion-Compensated Temporal Stacking | P0 | Science / Media | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp02` |
-| **EXP-03** | Catalog Alignment & False-Match Rejection Under Injected Artifacts | P0 | Science | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp03` |
+| **EXP-01** | Consumer Photo Plate Solving & Independent WCS Verification | P0 | Science | Synthetic only, narrower than stated | `uv run pytest tests/integration/test_science_experiments.py -k exp01` |
+| **EXP-02** | Low-Light Video Star Detection & Motion-Compensated Temporal Stacking | P0 | Science / Media | Synthetic only, narrower than stated | `uv run pytest tests/integration/test_science_experiments.py -k exp02` |
+| **EXP-03** | Catalog Alignment & False-Match Rejection Under Injected Artifacts | P0 | Science | Synthetic only, narrower than stated | `uv run pytest tests/integration/test_science_experiments.py -k exp03` |
 | **EXP-04** | Astronomy-Aware Point Protection vs. Conventional Restoration | P0 | Media / Science | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp04` |
-| **EXP-05** | Image-to-Sky Camera Reprojection & Anchor Screen-Space Stability (X1) | P0 | Spatial | Implemented & Verified | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-05` |
-| **EXP-06** | Image-to-3D Continuity, Floating-Origin Precision & Exact Checkpoint Return (X3) | P0 | Spatial | Implemented & Verified | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-06` |
-| **EXP-07** | Renderer Adapter Benchmark: WWT WebGL Adapter vs. Custom Three.js/WebGL Rig (X2) | P0 | Spatial | Implemented & Verified | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-07` |
+| **EXP-05** | Image-to-Sky Camera Reprojection & Anchor Screen-Space Stability (X1) | P0 | Spatial | Not tested: its check cannot fail | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-05` |
+| **EXP-06** | Image-to-3D Continuity, Floating-Origin Precision & Exact Checkpoint Return (X3) | P0 | Spatial | Partly tested: its drift check cannot fail | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-06` |
+| **EXP-07** | Renderer Adapter Benchmark: WWT WebGL Adapter vs. Custom Three.js/WebGL Rig (X2) | P0 | Spatial | Not measured: no renderer runs | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-07` |
 | **EXP-08** | Stellar Navigation Accuracy & Proper-Motion Epoch Propagation (X8) | P1 | Science / Spatial | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp08` |
 | **EXP-09** | Voice Deictic Context Resolution, Ambiguity Rejection & Barge-In Cancellation (X7) | P1 | Voice | Implemented & Verified | `pnpm vitest run packages/observation/src/__tests__/voice-experiments.test.ts` |
 | **EXP-10** | Video Restoration DAG Execution & Audio-Preserving Remux Export (E6) | P0 | Media | Implemented & Verified | `uv run pytest tests/integration/test_science_experiments.py -k exp10` |
-| **EXP-11** | Browser Frame Pacing & Memory Under 1k / 10k / 50k Star Catalog Workloads (X9) | P1 | Spatial / Perf | Implemented & Verified | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-11` |
-| **EXP-12** | Epistemic Boundary Comprehension: Observed vs. Catalog Matched vs. Predicted vs. Simulated (X5) | P1 | Experience | Implemented & Verified | `pnpm vitest run packages/evidence/src/__tests__/evidence.test.ts` |
+| **EXP-11** | Browser Frame Pacing & Memory Under 1k / 10k / 50k Star Catalog Workloads (X9) | P1 | Spatial / Perf | Partly measured: Node frame preparation only | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-11` |
+| **EXP-12** | Epistemic Boundary Comprehension: Observed vs. Catalog Matched vs. Predicted vs. Simulated (X5) | P1 | Experience | Not run: needs a study with testers | `pnpm vitest run packages/evidence/src/__tests__/evidence.test.ts` |
+
+### What each relabelled test checks today
+
+- **EXP-01:** the test renders the solver's own 18 stars at 960 x 540 through its own WCS, and the solver matches triplets, not quads; a calibration needs 4 training and 6 held-out matches, so 8 sources can never calibrate. Nothing is solved against Gaia DR3 or Hipparcos on a 1920 x 1080 consumer frame.
+- **EXP-02:** the frames get Gaussian read noise only (`services/science/detector.py`); there is no Poisson shot noise.
+- **EXP-03:** the test injects 12 single hot pixels; there are no streaks and no magnitude check.
+- **EXP-05 and EXP-06:** `anchorDriftPx` is float rounding for any camera (`packages/camera-rig/src/projection3d.ts`), so a drift check passes whatever the rig does.
+- **EXP-07:** no WWT adapter or renderer runs; the test compares two computed drift values, and the recommended engine is a fixed string. The ADR it cites does not exist.
+- **EXP-11:** the test times 50,000-star frame preparation in Node; it measures no browser frame pacing and no memory.
+- **EXP-12:** the comprehension study needs testers; the test checks only that four badge descriptors differ.
 
 ---
 
