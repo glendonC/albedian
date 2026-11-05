@@ -765,13 +765,18 @@ def test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames() ->
     assert r_disc.status_code == 200
     disc_data = r_disc.json()
     assert disc_data["count"] >= 3
-    assert len(disc_data["items"]) == disc_data["count"]
+    # Flags with fixed messages where a failing assert would print a clip's item, place or ephemerides
+    listed, count = len(disc_data["items"]), disc_data["count"]
+    assert listed == count, "the item list and the count disagree"
     for item in disc_data["items"]:
         assert len(item["sha256"]) == 64
         assert item["width"] > 0 and item["height"] > 0
-        assert "observerLocation" in item
-        assert -90.0 <= item["observerLocation"]["latDeg"] <= 90.0
-        assert -180.0 <= item["observerLocation"]["lonDeg"] <= 180.0
+        located = "observerLocation" in item
+        assert located, "a real clip has no observer location"
+        lat_ok = -90.0 <= item["observerLocation"]["latDeg"] <= 90.0
+        assert lat_ok, "a real clip's latitude is out of range"
+        lon_ok = -180.0 <= item["observerLocation"]["lonDeg"] <= 180.0
+        assert lon_ok, "a real clip's longitude is out of range"
         assert item["observationSolution"] is not None
         assert item["observationSolution"]["status"] in (
             "calibrated",
@@ -780,6 +785,7 @@ def test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames() ->
         )
         # Discovery fits the horizon and the Moon; it never runs the plate solver, so it never names it
         assert item["observationSolution"]["solver"]["name"] == "AlbedianHorizonMoonPose"
-        assert len(item["ephemerides"]) >= 6
+        predicted = len(item["ephemerides"])
+        assert predicted >= 6, "a real clip has fewer than six ephemerides"
         assert {e["evidence"]["sourceAssetSha256"] for e in item["ephemerides"]} == {item["sha256"]}
 

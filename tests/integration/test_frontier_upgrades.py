@@ -147,12 +147,16 @@ def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_dee
     resp = client.get("/api/media/discover")
     assert resp.status_code == 200
     items = resp.json()["items"]
-    assert len(items) >= 3
+    # Flags with fixed messages where a failing assert would print the clips' names, places or capture times
+    count = len(items)
+    assert count >= 3, "fewer than three real clips were discovered"
     for item in items:
-        assert "poseTrajectory" in item
+        has_trajectory = "poseTrajectory" in item
+        assert has_trajectory, "a real clip has no pose trajectory"
         assert len(item["poseTrajectory"]) >= 1
         assert item["predictedSkyBrightness"]["evidenceClass"] == "predicted"
-        assert "deepSkyObjects" not in item
+        lists_deep_sky = "deepSkyObjects" in item
+        assert not lists_deep_sky, "a real clip lists deep-sky objects"
 
 
 def test_deep_engines_sky_brightness_nearest_neighbors_and_coherent_stack() -> None:
