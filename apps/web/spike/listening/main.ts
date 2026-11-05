@@ -5,11 +5,13 @@
  *
  * `window.__albedianListening.render(clipId)` returns the clip as a 16-bit WAV (base64) and its
  * facts: every source with its values and where each value comes from, and the engine's snapshot
- * at each step. render.mjs drives this page in headless Chrome; the buttons render one clip here.
+ * at each step. `measureFirstListen()` measures item 0 per voice and summed (spectrum.ts).
+ * render.mjs drives this page in headless Chrome; the buttons render one clip here.
  */
 
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../../src/audio/engine/ConvolutionReverb';
 import { SpatialAudioEngine, type EngineSnapshot } from '../../src/audio/engine/SpatialAudioEngine';
+import { DEFAULT_HARMONIC_CEILING_HZ } from '../../src/audio/engine/VoicePool';
 import { mulberry32 } from '../../src/audio/dsp';
 import { DB_PER_MAGNITUDE, LOUDNESS, SUN_ABSOLUTE_BOLOMETRIC_MAG } from '../../src/audio/mappings';
 import { skySourcesInView, skyViewFromPose, type SkyCameraPose, type SkyTileData } from '../../src/audio/skySources';
@@ -28,6 +30,7 @@ import {
   type Step,
   type Voice,
 } from './items';
+import { AUDIBLE_BAND, onsetExcessDb, shareAbove, spectralFlatness, welchPowerSpectrum } from './spectrum';
 
 const SCENE_ICRS: Quat = [ICRS_TO_SCENE_QUATERNION.x, ICRS_TO_SCENE_QUATERNION.y, ICRS_TO_SCENE_QUATERNION.z, ICRS_TO_SCENE_QUATERNION.w];
 const LANDING_ASPECT = 16 / 9;
@@ -293,7 +296,8 @@ interface Resolved {
   readonly orientation: Quat;
 }
 
-async function resolveSounds(sounds: NonNullable<Step['sounds']>, incumbents: ReadonlySet<string>): Promise<Resolved> {
+/** `onlySourceId` keeps one source of a sky view, unchanged, for measuring a voice alone. */
+async function resolveSounds(sounds: NonNullable<Step['sounds']>, incumbents: ReadonlySet<string>, onlySourceId?: string): Promise<Resolved> {
   if (!Array.isArray(sounds)) {
     const sky = sounds as SkyStars;
     const view = skyViewFromPose(poseFor(sky))!;
@@ -301,6 +305,10 @@ async function resolveSounds(sounds: NonNullable<Step['sounds']>, incumbents: Re
     const result = skySourcesInView(tiles, view, { releaseId: (await loader()).manifest.releaseId, evidenceClass: 'simulated', incumbents });
     let inputs = result.sources;
     if (sky.loudestOnly) inputs = inputs.filter((s) => s.teffK != null && s.luminositySolar != null && s.distancePc != null).slice(0, 1);
+    if (onlySourceId !== undefined) {
+      inputs = inputs.filter((s) => s.id === onlySourceId);
+      if (inputs.length !== 1) throw new Error(`${onlySourceId} is not a source of this view`);
+    }
     const named = await namesById();
     const facts = inputs.map(
       (s): SourceFacts => ({
@@ -353,7 +361,28 @@ async function until(condition: () => boolean, timeoutMs: number): Promise<boole
   return true;
 }
 
-/** 16-bit PCM WAV with seeded triangular dither, so a render repeats byte for byte. */
+/** The 16-bit samples a WAV master holds: the render with seeded triangular dither, rounded. */
+function pcm16(buffer: AudioBuffer): Int16Array[] {
+  const channels = buffer.numberOfChannels;
+  const frames = buffer.length;
+  const data = Array.from({ length: channels }, (_, c) => buffer.getChannelData(c));
+  const out = Array.from({ length: channels }, () => new Int16Array(frames));
+  const random = mulberry32(0x5eed);
+  for (let i = 0; i < frames; i++) {
+    for (let c = 0; c < channels; c++) {
+      const dither = (random() - random()) / 32768;
+      const sample = Math.max(-1, Math.min(1, (data[c]![i] ?? 0) + dither));
+      out[c]![i] = Math.round(sample * 32767);
+    }
+  }
+  return out;
+}
+
+/**
+ * 16-bit PCM WAV of pcm16's samples. The dither repeats, but Chrome's render does not quite: two
+ * renders of clip A differed by one 16-bit step in 166 of 768,000 samples (2026-11-04), so two WAVs of a
+ * clip are not byte for byte the same.
+ */
 function encodeWav(buffer: AudioBuffer): Uint8Array {
   const channels = buffer.numberOfChannels;
   const frames = buffer.length;
@@ -375,14 +404,11 @@ function encodeWav(buffer: AudioBuffer): Uint8Array {
   view.setUint16(34, 16, true);
   write(36, 'data');
   view.setUint32(40, frames * channels * 2, true);
-  const data = Array.from({ length: channels }, (_, c) => buffer.getChannelData(c));
-  const random = mulberry32(0x5eed);
+  const samples = pcm16(buffer);
   let offset = 44;
   for (let i = 0; i < frames; i++) {
     for (let c = 0; c < channels; c++) {
-      const dither = (random() - random()) / 32768;
-      const sample = Math.max(-1, Math.min(1, (data[c]![i] ?? 0) + dither));
-      view.setInt16(offset, Math.round(sample * 32767), true);
+      view.setInt16(offset, samples[c]![i]!, true);
       offset += 2;
     }
   }
@@ -421,8 +447,13 @@ function findClip(clipId: string): { item: string; clip: Clip } {
   throw new Error(`no clip ${clipId}`);
 }
 
-export async function renderClip(clipId: string): Promise<{ wavBase64: string; facts: ClipFacts }> {
-  const { item, clip } = findClip(clipId);
+interface RenderOptions {
+  /** Keep only this source of the clip's sky views: one voice of a chord, measured alone. */
+  readonly onlySourceId?: string;
+}
+
+/** Renders a clip with the real engine on an OfflineAudioContext, each step applied on time. */
+async function renderOffline(item: string, clip: Clip, options: RenderOptions = {}): Promise<{ rendered: AudioBuffer; facts: ClipFacts }> {
   const ctx = new OfflineAudioContext({ numberOfChannels: 2, length: Math.ceil(clip.durationSec * SAMPLE_RATE), sampleRate: SAMPLE_RATE });
   const engine = new SpatialAudioEngine({
     contextFactory: () => ctx as unknown as AudioContext,
@@ -439,7 +470,7 @@ export async function renderClip(clipId: string): Promise<{ wavBase64: string; f
     const notes: string[] = [];
     let sourceFacts: StepFacts['sources'] = 'unchanged';
     if (step.sounds !== undefined) {
-      const resolved = await resolveSounds(step.sounds, incumbents);
+      const resolved = await resolveSounds(step.sounds, incumbents, options.onlySourceId);
       engine.setListenerOrientation(resolved.orientation);
       engine.setSources(resolved.inputs);
       incumbents = new Set(resolved.inputs.map((s) => s.id));
@@ -482,7 +513,7 @@ export async function renderClip(clipId: string): Promise<{ wavBase64: string; f
 
   // Every later step is applied when rendering reaches its time. Sky views and stars are resolved
   // first, so the offline clock never waits on a fetch.
-  for (const step of rest) if (step.sounds !== undefined) await resolveSounds(step.sounds, incumbents);
+  for (const step of rest) if (step.sounds !== undefined) await resolveSounds(step.sounds, incumbents, options.onlySourceId);
   for (const step of rest) {
     void ctx.suspend(step.atSec).then(async () => {
       await apply(step);
@@ -507,7 +538,152 @@ export async function renderClip(clipId: string): Promise<{ wavBase64: string; f
     renderedWith: navigator.userAgent,
   };
   // No dispose: an OfflineAudioContext has no close(); the finished context is simply dropped
+  return { rendered, facts };
+}
+
+export async function renderClip(clipId: string): Promise<{ wavBase64: string; facts: ClipFacts }> {
+  const { item, clip } = findClip(clipId);
+  const { rendered, facts } = await renderOffline(item, clip);
   return { wavBase64: toBase64(encodeWav(rendered)), facts };
+}
+
+// ---------------------------------------------------------------------------
+// Item 0, measured (AUDIO_ENGINE.md section 10)
+// ---------------------------------------------------------------------------
+
+/** How item 0's landing is measured; every number of section 10's table depends on these. */
+export const FIRST_LISTEN_METHOD = {
+  clip: 'first-listen-a',
+  samples: '16-bit, as the WAV masters hold them (the render with its seeded triangular dither)',
+  spectrum: 'Welch: periodic Hann segments of 4096 samples (85 ms, 11.7 Hz bins), half overlap, left and right power summed',
+  // The chapel response is 4.2 s long, so from 4.5 s on its tail no longer builds
+  steadyFromSec: 4.5,
+  band: AUDIBLE_BAND,
+  splitHz: 4000,
+  onset: { fromHz: 12000, onsetSec: 0.3 },
+  ceilingsHz: [DEFAULT_HARMONIC_CEILING_HZ, 4000],
+} as const;
+
+interface Measured {
+  /** Over the steady window and the audible band. */
+  readonly flatness: number | null;
+  readonly shareAbove4kHz: number | null;
+  /** Power above 12 kHz in the first 0.3 s against the steady window's, in dB. */
+  readonly onsetAbove12kHzDb: number | null;
+  /** Of the whole render, left and right. */
+  readonly peak: [number, number];
+  /** Over the steady window, left and right, in dBFS. */
+  readonly steadyRmsDb: [number, number];
+}
+
+export interface FirstListenVoice {
+  readonly id: string;
+  /** IAU name, where the release has one. */
+  readonly star: string | null;
+  /** Catalog designation (Gaia DR3 source_id), from the release's detail tile. */
+  readonly designation: string | null;
+  readonly teffK: number | null;
+  readonly luminositySolar: number | null;
+  readonly distancePc: number | null;
+  readonly levelDb: number;
+  readonly pitchHz: number | null;
+  /** The harmonic centroid the engine reports, at each harmonic ceiling (keys in Hz). */
+  readonly centroidHz: Record<string, number | null>;
+}
+
+export interface FirstListenRender extends Measured {
+  /** 'chord' for the landing as the app plays it, else the id of the one voice playing. */
+  readonly subject: string;
+  readonly reverb: boolean;
+  readonly harmonicCeilingHz: number;
+  readonly voices: number;
+}
+
+export interface FirstListenMeasurements {
+  readonly method: typeof FIRST_LISTEN_METHOD;
+  readonly voices: FirstListenVoice[];
+  readonly renders: FirstListenRender[];
+  readonly renderedWith: string;
+}
+
+/** The catalog designation of a sky source (`gaia-dr3:L0/4#51`), from its detail tile. */
+async function designationOf(sourceId: string): Promise<string | null> {
+  const match = /:L(\d+)\/(\d+)#(\d+)$/.exec(sourceId);
+  if (!match) return null;
+  const record = await (await loader()).getStarRecord(Number(match[1]), Number(match[2]), Number(match[3]));
+  return record.designation;
+}
+
+function measure(rendered: AudioBuffer): Measured {
+  const m = FIRST_LISTEN_METHOD;
+  const rate = rendered.sampleRate;
+  const channels = pcm16(rendered).map((c) => Float64Array.from(c, (v) => v / 32768));
+  const from = Math.round(m.steadyFromSec * rate);
+  const steady = welchPowerSpectrum(channels, rate, { startSample: from });
+  const rms = channels.slice(0, 2).map((c) => {
+    let sum = 0;
+    for (let i = from; i < c.length; i++) sum += c[i]! * c[i]!;
+    return sum > 0 ? 10 * Math.log10(sum / (c.length - from)) : Number.NEGATIVE_INFINITY;
+  });
+  return {
+    flatness: spectralFlatness(steady, m.band),
+    shareAbove4kHz: shareAbove(steady, m.splitHz, m.band),
+    onsetAbove12kHzDb: onsetExcessDb(channels, rate, { ...m.onset, steadyFromSec: m.steadyFromSec }),
+    peak: outputStats(rendered).peak,
+    steadyRmsDb: [rms[0]!, rms[1] ?? rms[0]!],
+  };
+}
+
+/**
+ * Renders item 0's landing (clip A) as the app plays it and each of its voiced stars alone, at the
+ * same pose, direction and level, with and without the chapel reverb, at the default and the 4 kHz
+ * harmonic ceilings, and measures every render: 36 renders, about 15 s in headless Chrome.
+ */
+export async function measureFirstListen(): Promise<FirstListenMeasurements> {
+  const { item, clip } = findClip(FIRST_LISTEN_METHOD.clip);
+  const voices = new Map<string, FirstListenVoice>();
+  const renders: FirstListenRender[] = [];
+  let voiced: string[] | null = null;
+  for (const harmonicCeilingHz of FIRST_LISTEN_METHOD.ceilingsHz) {
+    for (const reverb of [true, false]) {
+      const variant: Clip = { ...clip, reverb, harmonicCeilingHz };
+      const chord = await renderOffline(item, variant);
+      const step = chord.facts.steps[0]!;
+      const ids = step.snapshot.voices.map((v) => v.id);
+      if (voiced === null) voiced = ids;
+      if (ids.join() !== voiced.join()) throw new Error(`the chord voiced ${ids.join(', ')} here and ${voiced.join(', ')} before`);
+      const sources = step.sources === 'unchanged' ? [] : step.sources;
+      for (const v of step.snapshot.voices) {
+        const source = sources.find((s) => s.id === v.id);
+        const known = voices.get(v.id);
+        voices.set(v.id, {
+          id: v.id,
+          star: source?.star ?? null,
+          designation: known?.designation ?? (await designationOf(v.id)),
+          teffK: v.teffK,
+          luminositySolar: source?.luminositySolar ?? null,
+          distancePc: source?.distancePc ?? null,
+          levelDb: v.levelDb,
+          pitchHz: v.pitchHz,
+          centroidHz: { ...known?.centroidHz, [harmonicCeilingHz]: v.centroidHz },
+        });
+      }
+      const record = (subject: string, count: number, rendered: AudioBuffer) => {
+        const result: FirstListenRender = { subject, reverb, harmonicCeilingHz, voices: count, ...measure(rendered) };
+        renders.push(result);
+        console.info('[measure]', JSON.stringify(result));
+      };
+      record('chord', ids.length, chord.rendered);
+      for (const v of step.snapshot.voices) {
+        const alone = await renderOffline(item, variant, { onlySourceId: v.id });
+        const sounding = alone.facts.steps[0]!.snapshot.voices;
+        if (sounding.length !== 1 || sounding[0]!.id !== v.id) throw new Error(`${v.id} alone sounded ${sounding.map((s) => s.id).join(', ')}`);
+        if (Math.abs(sounding[0]!.levelDb - v.levelDb) > 1e-9) throw new Error(`${v.id} alone plays at ${sounding[0]!.levelDb} dBFS, in the chord at ${v.levelDb}`);
+        record(v.id, 1, alone.rendered);
+      }
+    }
+  }
+  return { method: FIRST_LISTEN_METHOD, voices: [...voices.values()], renders, renderedWith: navigator.userAgent };
 }
 
 declare global {
@@ -516,6 +692,7 @@ declare global {
       readonly items: typeof LISTENING_ITEMS;
       readonly clipIds: readonly string[];
       render(clipId: string): Promise<{ wavBase64: string; facts: ClipFacts }>;
+      measureFirstListen(): Promise<FirstListenMeasurements>;
     };
   }
 }
@@ -524,6 +701,7 @@ window.__albedianListening = {
   items: LISTENING_ITEMS,
   clipIds: LISTENING_ITEMS.flatMap((item) => item.clips.map((clip) => clip.id)),
   render: renderClip,
+  measureFirstListen,
 };
 
 // Manual use: one button per clip renders it and plays the result

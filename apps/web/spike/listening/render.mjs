@@ -13,8 +13,11 @@
  * and <out>/console.txt, then the listening page in <out>/page/ (index.html with the items and
  * facts written in, the clips, facts.json and notices.txt), for publishing as a claude.ai Artifact
  * that keeps the owner's answers in its database. `--page-only` rebuilds the page from the files
- * already in <out>. It uses only Node's built-ins, an installed Chrome and an installed ffmpeg.
- * CHROME_PATH and FFMPEG_PATH override the defaults.
+ * already in <out>. `--measure` instead measures item 0 per voice and summed (main.ts's
+ * measureFirstListen) into <out>/measurements.json, prints the table of AUDIO_ENGINE.md section 10
+ * and writes <out>/measure-console.txt; it encodes nothing and leaves the clips and the page alone.
+ * It uses only Node's built-ins, an installed Chrome and an installed ffmpeg. CHROME_PATH and
+ * FFMPEG_PATH override the defaults.
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -29,6 +32,7 @@ const { values: args } = parseArgs({
     out: { type: 'string', default: '.cache/listening' },
     clips: { type: 'string' },
     'page-only': { type: 'boolean', default: false },
+    measure: { type: 'boolean', default: false },
   },
 });
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -66,8 +70,8 @@ class DevTools {
   }
 }
 
-async function evaluate(devtools, sessionId, expression) {
-  const res = await devtools.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout: 180000 }, sessionId);
+async function evaluate(devtools, sessionId, expression, timeoutMs = 180000) {
+  const res = await devtools.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true, timeout: timeoutMs }, sessionId);
   if (res.exceptionDetails) throw new Error(`page: ${JSON.stringify(res.exceptionDetails).slice(0, 1600)}`);
   return res.result.value;
 }
@@ -84,8 +88,12 @@ function encodeAac(wav, m4a) {
 const out = path.resolve(args.out);
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../../..');
 
-async function renderAll() {
-  for (const dir of ['wav', 'clips']) fs.mkdirSync(path.join(out, dir), { recursive: true });
+/**
+ * Opens the listening harness in headless Chrome (audio muted, a throwaway profile deleted
+ * afterwards), hands `use` a function that evaluates an expression in the page, and writes the
+ * page's console to `consoleFile`.
+ */
+async function withListeningPage(consoleFile, use) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'albedian-listening-'));
   const chrome = spawn(
     CHROME,
@@ -131,14 +139,35 @@ async function renderAll() {
       `(async () => { for (let i = 0; i < 600 && !window.__albedianListening; i++) await new Promise((r) => setTimeout(r, 100)); return !!window.__albedianListening; })()`
     );
     if (!ready) throw new Error('the listening page never published window.__albedianListening');
+    const result = await use((expression, timeoutMs) => evaluate(devtools, sessionId, expression, timeoutMs));
+    await devtools.send('Target.closeTarget', { targetId });
+    ws.close();
+    return result;
+  } finally {
+    fs.writeFileSync(consoleFile, consoleLines.join('\n') + '\n');
+    chrome.kill('SIGTERM');
+    await sleep(500);
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
+}
 
-    const items = await evaluate(devtools, sessionId, 'JSON.parse(JSON.stringify(window.__albedianListening.items))');
-    const allIds = await evaluate(devtools, sessionId, '[...window.__albedianListening.clipIds]');
+/** The commit the renders come from, whether audio files differ from it, and the date (UTC). */
+function renderRecord() {
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim();
+  const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/listening'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim() !== '';
+  return { commit: head, uncommittedAudioChanges: dirty, renderedAt: new Date().toISOString().slice(0, 10) };
+}
+
+async function renderAll() {
+  for (const dir of ['wav', 'clips']) fs.mkdirSync(path.join(out, dir), { recursive: true });
+  await withListeningPage(path.join(out, 'console.txt'), async (run) => {
+    const items = await run('JSON.parse(JSON.stringify(window.__albedianListening.items))');
+    const allIds = await run('[...window.__albedianListening.clipIds]');
     const ids = args.clips ? args.clips.split(',') : allIds;
     const facts = [];
     for (const id of ids) {
       const started = Date.now();
-      const result = await evaluate(devtools, sessionId, `window.__albedianListening.render(${JSON.stringify(id)})`);
+      const result = await run(`window.__albedianListening.render(${JSON.stringify(id)})`);
       const wav = path.join(out, 'wav', `${id}.wav`);
       fs.writeFileSync(wav, Buffer.from(result.wavBase64, 'base64'));
       encodeAac(wav, path.join(out, 'clips', `${id}.m4a`));
@@ -146,19 +175,50 @@ async function renderAll() {
       const f = result.facts;
       console.log(`${id}: ${f.durationSec} s, reverb ${f.reverb.status}, bed ${f.bed.renderer}${f.bed.fallbackReason ? ` (${f.bed.fallbackReason})` : ''}, peak ${f.output.peak.map((p) => p.toFixed(3)).join('/')}, ${Date.now() - started} ms`);
     }
-    const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim();
-    const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/listening'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim() !== '';
-    const render = { commit: head, uncommittedAudioChanges: dirty, renderedAt: new Date().toISOString().slice(0, 10) };
-    fs.writeFileSync(path.join(out, 'facts.json'), JSON.stringify({ render, clips: facts }, null, 2) + '\n');
+    fs.writeFileSync(path.join(out, 'facts.json'), JSON.stringify({ render: renderRecord(), clips: facts }, null, 2) + '\n');
     fs.writeFileSync(path.join(out, 'items.json'), JSON.stringify(items, null, 2) + '\n');
-    await devtools.send('Target.closeTarget', { targetId });
-    ws.close();
-  } finally {
-    fs.writeFileSync(path.join(out, 'console.txt'), consoleLines.join('\n') + '\n');
-    chrome.kill('SIGTERM');
-    await sleep(500);
-    fs.rmSync(profile, { recursive: true, force: true });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Item 0, measured
+// ---------------------------------------------------------------------------
+
+const condition = (r) => `${r.reverb ? 'reverb' : 'dry'}, ${r.harmonicCeilingHz / 1000} kHz`;
+
+function printMeasurements({ voices, renders }) {
+  const conditions = [...new Set(renders.map(condition))];
+  const voice = (id) => voices.find((v) => v.id === id);
+  const label = (id) => (id === 'chord' ? `chord (${voices.length} voices)` : (voice(id)?.star ?? voice(id)?.designation ?? id));
+  const cell = (r) => `${r.flatness == null ? 'none' : r.flatness.toExponential(1)}  ${r.shareAbove4kHz == null ? 'none' : `${(100 * r.shareAbove4kHz).toPrecision(2)} %`}`;
+  console.log('flatness and share of energy above 4 kHz, steady window (from 4.5 s)');
+  console.log(['subject'.padEnd(28), 'Teff K'.padStart(7), 'dBFS'.padStart(7), '  ', ...conditions.map((c) => c.padEnd(20))].join(''));
+  for (const subject of ['chord', ...voices.map((v) => v.id)]) {
+    const v = voice(subject);
+    const cells = conditions.map((c) => renders.find((r) => r.subject === subject && condition(r) === c));
+    console.log(
+      [
+        label(subject).slice(0, 27).padEnd(28),
+        (v?.teffK == null ? '' : Math.round(v.teffK).toString()).padStart(7),
+        (v ? v.levelDb.toFixed(1) : '').padStart(7),
+        '  ',
+        ...cells.map((r) => (r ? cell(r) : '').padEnd(20)),
+      ].join('')
+    );
   }
+  const chords = renders.filter((r) => r.subject === 'chord');
+  console.log(`chord onset above 12 kHz against steady: ${chords.map((r) => `${condition(r)} ${r.onsetAbove12kHzDb == null ? 'none' : `${r.onsetAbove12kHzDb.toFixed(1)} dB`}`).join('; ')}`);
+  console.log(`chord steady RMS (left, right): ${chords.map((r) => `${condition(r)} ${r.steadyRmsDb.map((x) => x.toFixed(1)).join(', ')} dBFS`).join('; ')}`);
+}
+
+async function measureAll() {
+  fs.mkdirSync(out, { recursive: true });
+  const started = Date.now();
+  const measured = await withListeningPage(path.join(out, 'measure-console.txt'), (run) => run('window.__albedianListening.measureFirstListen()', 900000));
+  const file = path.join(out, 'measurements.json');
+  fs.writeFileSync(file, JSON.stringify({ render: renderRecord(), ...measured }, null, 2) + '\n');
+  printMeasurements(measured);
+  console.log(`measurements: ${file} (${measured.renders.length} renders, ${((Date.now() - started) / 1000).toFixed(0)} s)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -497,5 +557,9 @@ ${items.map((item) => itemBlock(item, factsById)).join('\n')}
   console.log(`page: ${path.join(page, 'index.html')} (${(Buffer.byteLength(html) / 1024).toFixed(0)} KB), ${factsById.size} clips (${(bytes / 1e6).toFixed(1)} MB)`);
 }
 
-if (!args['page-only']) await renderAll();
-writePage();
+if (args.measure) {
+  await measureAll();
+} else {
+  if (!args['page-only']) await renderAll();
+  writePage();
+}

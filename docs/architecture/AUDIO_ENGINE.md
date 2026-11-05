@@ -427,7 +427,7 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
    only what comes after its own start, and the same no-source render is silent. The burst, about
    12 dB above the star chord at the app's volume (inference from the bed's noise level and trim),
    and the voice clicks are the likeliest static the owner heard. The clips were rendered again
-   after the fix.
+   after the fix. Measured voice by voice after the fix: 10.1.
 1. Balance between bed, voices and UI detents; every absolute level is an engineering default.
 2. Distance: whether +/-15 dB of DRR, the stellar window (1 to 2,000 pc) and the regime windows
    read as "near" and "far" rather than "dry" and "wet"; whether the 3 kHz far cutoff fights the
@@ -451,6 +451,95 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
 12. HRTF: Chrome's generic built-in set (front/back confusion, no personalization); the voices
     (browser HRTF) and the bed (SADIE) use different HRIR sets.
 13. Transitions: attack and release constants, and pitch glides when a voice is reassigned.
+
+### 10.1 Item 0, measured
+
+Measured on 2026-11-04 (tested, `OfflineAudioContext` in headless Chrome 156, with the onset fix,
+d9fb667). `measureFirstListen()` in `main.ts` renders clip A's landing as the app plays it, and
+each of its eight voiced stars alone at the same pose, direction and level as in the chord (the
+level is checked on every render). Each is rendered with and without the chapel reverb, at the
+default harmonic ceiling (16 kHz) and at 4 kHz: 36 renders of 8 s. `spectrum.ts` measures each on
+the 16-bit samples a WAV master holds:
+
+- over the steady part, from 4.5 s on (the chapel response is 4.2 s long): spectral flatness over
+  20 Hz to 20 kHz, and the share of that band's energy above 4 kHz, from a Welch spectrum
+  (periodic Hann segments of 4,096 samples, 11.7 Hz bins, half overlap, left and right power
+  summed);
+- the onset check: the power above 12 kHz in the first 0.3 s against the steady part's.
+
+With the web app running on a port:
+
+```sh
+node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cache/listening --measure
+```
+
+It writes `.cache/listening/measurements.json` and prints the tables below. Repeated runs gave the
+same digits, although Chrome's offline render differs between runs by one 16-bit step in about 0.02
+percent of samples.
+
+**Share of energy above 4 kHz, percent**
+
+| Voice | Teff (K) | Level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Chord (all 8 voices) |  |  |  | 0.55 | 1.1 | < 0.01 | < 0.01 |
+| Gaia DR3 2498783458525988992 | 18,232 | -25.8 | 330 | 6.0 | 12 | < 0.01 | < 0.01 |
+| Gaia DR3 2556759229189045632 | 4,621 | -28.1 | 124 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Alpherg | 5,338 | -28.3 | 275 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Gaia DR3 5144262654621921536 | 4,890 | -28.6 | 367 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Skat | 8,265 | -29.1 | 440 | 0.064 | 0.12 | < 0.01 | < 0.01 |
+| Gaia DR3 2727778332925786624 | 5,221 | -29.2 | 110 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Gaia DR3 2562091860584132096 | 4,554 | -29.5 | 248 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+| Gaia DR3 2492286341237939328 | 4,833 | -29.7 | 183 | < 0.01 | < 0.01 | < 0.01 | < 0.01 |
+
+**Spectral flatness, in units of 10^-6**
+
+| Voice | Teff (K) | Level (dBFS) | Pitch (Hz) | reverb, 16 kHz | dry, 16 kHz | reverb, 4 kHz | dry, 4 kHz |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Chord (all 8 voices) |  |  |  | 5.4 | 16 | 2.1 | 7.5 |
+| Gaia DR3 2498783458525988992 | 18,232 | -25.8 | 330 | 9.9 | 36 | 4.1 | 18 |
+| Gaia DR3 2556759229189045632 | 4,621 | -28.1 | 124 | 6.2 | 18 | 5.9 | 17 |
+| Alpherg | 5,338 | -28.3 | 275 | 3.8 | 16 | 3.6 | 15 |
+| Gaia DR3 5144262654621921536 | 4,890 | -28.6 | 367 | 5.2 | 18 | 5.1 | 18 |
+| Skat | 8,265 | -29.1 | 440 | 5.5 | 10 | 4.7 | 9.0 |
+| Gaia DR3 2727778332925786624 | 5,221 | -29.2 | 110 | 12 | 19 | 11 | 18 |
+| Gaia DR3 2562091860584132096 | 4,554 | -29.5 | 248 | 4.3 | 15 | 4.2 | 15 |
+| Gaia DR3 2492286341237939328 | 4,833 | -29.7 | 183 | 7.0 | 22 | 6.7 | 22 |
+
+Clip A is the chord with the reverb at 16 kHz, B the chord dry, C the 18,232 K star alone with the
+reverb, and D the chord with the reverb at 4 kHz. "< 0.01" marks shares at or near the 16-bit
+noise floor; a white floor at that level alone gives 0.0001 to 0.0006 percent.
+
+What the numbers show (tested):
+
+- **The opening was the only noise.** With `glideParam`'s old cancel restored for one uncommitted
+  run (a positive control), every one of the 36 renders opened with power above 12 kHz 53.9 to
+  55.1 dB over its steady level. With the fix it is -0.8 to 0.0 dB. The steady measures did not
+  change (largest relative difference 8e-5), so the fix changed only the opening.
+- **The steady landing is tonal.** Flatness is at most 3.6e-5 for the chord or any voice, in every
+  condition, where white noise measures above 0.9 by the same method (`spectrum.test.ts`). For a
+  tonal sound, flatness mostly measures how far the floor lies below the partials: the dry renders
+  read about three times higher, mainly because they are about 6 dB quieter, which lifts the 16-bit
+  floor against the partials (inference). The preliminary 0.0016 for clip A held the burst's tail:
+  measured from 0.5 s as it was, the engine before the fix gives clip A 1.7e-3 and clip B 6.1e-3
+  (the preliminary 0.0016 and 0.0059), and the fixed engine 5.5e-6 and 1.6e-5.
+- **Little energy lies above 4 kHz, almost all of it from one star.** The chord puts 0.55 percent
+  there with the reverb and 1.1 percent dry. The 18,232 K star (Gaia DR3 2498783458525988992, the
+  loudest voice and clip C) puts 6.0 and 12 percent of its own energy there, and Skat (8,265 K)
+  0.064 and 0.12 percent. The six stars of 4,554 to 5,338 K stay below 0.01 percent, at or near
+  the floor. At the 4 kHz ceiling, only the floor is left above 4 kHz.
+- **The reverb carries most of the level.** The chord's steady level is -29.9 and -30.1 dBFS (left,
+  right) with the reverb and -35.9 and -37.0 dBFS dry, and the reverb halves the share above
+  4 kHz.
+
+What this says (inference): the opening burst is the likeliest static the owner heard, and it has
+been gone from the clips since the page's version 4. If clip A still reads as static, nothing in
+its steady spectrum is noise-like, so the cause lies in how it is heard rather than in a noise.
+Two candidates remain:
+
+- the one hot star's bright upper harmonics (D removes them; C plays that star alone);
+- the long sustained wash of eight voices in the chapel's tail (B removes it).
+
+Which of B, C and D the owner picks says which, and 12.4 (a) starts from that answer.
 
 ## 11. Limitations and open questions
 
