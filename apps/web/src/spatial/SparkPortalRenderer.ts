@@ -2481,54 +2481,6 @@ export class SparkPortalRenderer {
     }
   }
 
-  public flyToTargetIn3D(
-    id: string,
-    title: string,
-    bpRp?: number,
-    objectType?: string
-  ): SpatialScaleRegime {
-    const lowerId = id.toLowerCase();
-    const lowerTitle = title.toLowerCase();
-    this.setTargetAppearance(title, bpRp, objectType);
-    let targetRegime: SpatialScaleRegime = 'solar_neighborhood';
-    if (lowerTitle.includes('moon')) {
-      targetRegime = 'cislunar';
-    } else if (
-      lowerId.includes('m42') ||
-      lowerTitle.includes('nebula') ||
-      lowerTitle.includes('m42') ||
-      lowerTitle.includes('carina') ||
-      lowerTitle.includes('sagittarius') ||
-      lowerTitle.includes('sgr a') ||
-      lowerTitle.includes('black hole') ||
-      lowerTitle.includes('gargantua')
-    ) {
-      targetRegime = 'deep_sky';
-    } else {
-      targetRegime = 'solar_neighborhood';
-    }
-
-    const desc = derivePlanetaryWorldDescriptor(title, bpRp ?? 0.8);
-    this.rebuildPlanetaryTerrainSplats(desc.terrainPalette);
-
-    if (this.activeRegime === targetRegime) {
-      this.lookTarget.yaw = 0;
-      this.lookTarget.pitch = 0;
-      this.targetFov = 52;
-      return targetRegime;
-    }
-
-    this.flightState = {
-      active: true,
-      startPos: this.localFrame.position.clone(),
-      endPos: REGIME_CAMERA_ANCHORS[targetRegime].clone(),
-      progress: 0,
-      targetRegime,
-    };
-    this.syncRegimeVisibility();
-    return targetRegime;
-  }
-
   public stepThroughPortal(direction: 1 | -1 = 1): void {
     const curIdx = SCALE_REGIME_ORDER.indexOf(this.activeRegime);
     const nextIdx =

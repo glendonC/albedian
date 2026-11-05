@@ -15,10 +15,6 @@
       "reason": "Made in Blender (glTF generator Khronos glTF Blender I/O v5.2.41): an 8,383-vertex sphere whose radius follows lro_moon_disp.jpg (correlation 0.98 at its texture coordinates), with relief spanning 2.7% of the radius, about 2.4 times the Moon's real range. No source, licence or credit recorded for the mesh itself."
     },
     {
-      "path": "apps/web/public/models/nasa_pillars_3d.glb",
-      "reason": "No source, licence or credit recorded; the name suggests a NASA model, but its mesh is named CasA_2025."
-    },
-    {
       "path": "apps/web/public/splats/snow-street.spz",
       "reason": "Used only as a WebGPU spike scaling fixture. The same length as https://sparkjs.dev/assets/splats/snow-street.spz, but no licence is stated there or in Spark's documentation."
     },

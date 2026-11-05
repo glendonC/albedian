@@ -44,4 +44,11 @@ describe('deep-sky imagery', () => {
       expect(source.match(/orion_nebula|eso1006a|nasa_nebula_splats|NebulaSplat|uOrionVistaTex|ORION_/g), name).toBeNull();
     }
   });
+
+  it('has no flight to a nebula and no nebula model: flyToTargetIn3D and nasa_pillars_3d.glb are gone', () => {
+    // flyToTargetIn3D had no caller, and its M42, nebula and Carina branch led to a deep-sky
+    // regime that draws nothing for them; the model, which nothing loaded, had no provenance
+    expect(renderer).not.toMatch(/flyToTargetIn3D/);
+    expect(fs.existsSync(`${models}nasa_pillars_3d.glb`)).toBe(false);
+  });
 });

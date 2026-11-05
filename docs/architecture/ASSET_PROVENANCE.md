@@ -122,8 +122,8 @@ a record when the check arrived and are still here, and an entry fails when:
 The list started with 16 entries: six textures (the atmosphere lookup table, which a script
 makes from hand-set parameters with no outside data; three Earth maps that match three.js
 example textures or are unidentified; two files due for deletion), all seven files in
-`models/`, and the three tracked splats. Six unused ones were deleted since (two models, a
+`models/`, and the three tracked splats. Seven unused ones were deleted since (three models, a
 splat, two textures and the Orion view's nebula splat rows in `models/`), and left the baseline
-with them, so they can return only with a record. Ten remain.
+with them, so they can return only with a record. Nine remain.
 
 To close a gap, write the file's record and delete its entry in the same change.
