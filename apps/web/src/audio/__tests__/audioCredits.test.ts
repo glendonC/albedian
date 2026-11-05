@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { AUDIO_CREDITS, AUDIO_CREDIT_LINES, AUDIO_NOTICES_URL } from '../audioCredits';
+import { AUDIO_CREDITS, AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audioCredits';
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../engine/ConvolutionReverb';
 
 const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`, import.meta.url));
@@ -47,7 +47,7 @@ describe('audio credits and notices', () => {
     for (const part of ['Martin Zerwas', 'Selin Kayku', 'St. Nicholas Chapel', 'doi:10.5281/zenodo.23312556', 'CC BY 4.0', 'modified']) {
       expect(chapel!.line).toContain(part);
     }
-    for (const line of AUDIO_CREDIT_LINES) expect(line).not.toMatch(/—/);
+    for (const line of AUDIO_CREDIT_LINES) expect(line).not.toMatch(/\u2014/);
   });
 
   it('ships the Apache License 2.0 exactly as the omnitone package carries it', () => {
@@ -73,6 +73,23 @@ describe('audio credits and notices', () => {
   it('names Google as the holder of the Omnitone code, as its source headers do, and has no em dash', () => {
     expect(notices).toContain('Copyright 2016 Google Inc. All Rights Reserved.');
     expect(notices).toContain('Copyright 2017 Google Inc. All Rights Reserved.');
-    expect(notices).not.toMatch(/—/);
+    expect(notices).not.toMatch(/\u2014/);
+  });
+
+  it('says what the sound is beside the audio, and the listening page opens with its own version', () => {
+    // Not every sound is data: the reverb is a recorded room, the click and the identity pitch carry none
+    expect(AUDIO_DISCLOSURE).toBe(
+      'No sound reaches us from space. What you hear is made from data and stated design choices; none of it is a recording of space.'
+    );
+    // The page names its value kinds, since some clips play labelled test values. The sentence must be
+    // the page's own paragraph: commented-out markup or a sentence left in a comment does not count.
+    const page =
+      'No sound reaches us from space. Each clip is made from the values it names, catalog, published or labelled test values, with stated design choices; none is a recording of space.';
+    const lines = read('apps/web/spike/listening/render.mjs')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .map((line) => line.trim());
+    expect(lines).toContain(`<p class="lede">${page}</p>`);
   });
 });

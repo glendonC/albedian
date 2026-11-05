@@ -41,6 +41,16 @@ export const AUDIO_CREDITS: readonly AudioCredit[] = [
   },
 ];
 
+/**
+ * What the sound is, for the viewport to show beside the Audio control while audio is on. It states
+ * what reaches a listener and makes no claim about space itself, and it calls nothing data that is
+ * not: the reverb is a recording of an earthly room, and the detent click and the identity pitch
+ * carry no data (AUDIO_ENGINE.md 4.8 and 12.4 (d)). The listening page opens with its own sentence,
+ * which names the kinds of value its clips play.
+ */
+export const AUDIO_DISCLOSURE =
+  'No sound reaches us from space. What you hear is made from data and stated design choices; none of it is a recording of space.';
+
 /** The credit lines, in order, for the credits beside the canvas while audio is on. */
 export const AUDIO_CREDIT_LINES: readonly string[] = AUDIO_CREDITS.map((credit) => credit.line);
 

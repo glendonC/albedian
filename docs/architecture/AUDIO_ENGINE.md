@@ -370,7 +370,9 @@ brightest among them.
 | `spinFrequencyHz` | absent | The app has no pulsar catalog; an ATNF subset would be needed. |
 
 The header volume slider sets `setMasterVolume` (the viewport's volume effect); its 0 to 1 value
-is the master gain. For stars matched in a user's photo, carrying temperature, luminosity and
+is the master gain. Beside the Audio control, while audio is on, the viewport is to show
+`AUDIO_DISCLOSURE` (what the sound is) with the credits of `audioCredits.ts`; that display is the
+render lane's. For stars matched in a user's photo, carrying temperature, luminosity and
 extinction on findings is a contracts decision, escalated rather than made here.
 
 ## 9. Verification
@@ -548,11 +550,16 @@ listening session.
   received level.
 - **(c) Show what is sounding.** Mark the voiced stars on screen, as an animated plot's cursor does
   (Tucker Brown et al.), since listeners missed how the sounds relate to the image (Arcand et al.).
-- **(d) Say what the sound is.** Beside the Audio control, say that no sound reaches us from space
-  and what the sound is made of: data and stated design choices, none of it a recording of space.
-  Not every sound is data (the detent click and the identity pitch carry none, 4.8), and the chapel
-  reverb is a recording of an earthly room. Listeners asked for "actual sound from space", and the
-  same authors single out trust as the rating to improve (12.3).
+- **(d) Say what the sound is.** Built in part. `AUDIO_DISCLOSURE` in `audioCredits.ts` reads "No
+  sound reaches us from space. What you hear is made from data and stated design choices; none of
+  it is a recording of space." It calls nothing data that is not: the detent click and the identity
+  pitch carry none (4.8), and the chapel reverb is a recording of an earthly room. The listening
+  page opens with its own sentence, which names its value kinds: "No sound reaches us from space.
+  Each clip is made from the values it names, catalog, published or labelled test values, with
+  stated design choices; none is a recording of space." The viewport shows the app's sentence
+  beside the Audio control while audio is on once the render lane's credits display (render-6g)
+  lands. Listeners asked for "actual sound from space", and the same authors single out trust as
+  the rating to improve (12.3).
 - **(e) Keep fine distinctions on screen.** Sound alone carried strong signals and missed weak ones
   (Tucker Brown et al.); small differences of temperature, distance or residual need the
   inspector's numbers beside the sound.
