@@ -9,15 +9,19 @@ capture time in free text that the web app keeps in its session.
 Covers:
 - A horizon solve that fits a pose (approximate) and one that finds no beacon (predicted_only), for the trip guard's
   own synthetic place and moment: no free text holds either, read by the trip guard's own scanner
+- No free text holds the moment in two forms the trip guard does not read: its month and day in words with no
+  year, or its time of day alone
 - The structured fields still carry the place and the moment
 - owner_media: no discovered clip's solution holds the clip's own place or capture time in its free text (checked as
-  a flag, so a failure prints nothing of the clips)
+  a flag, so a failure prints nothing of the clips), nor the clip's month and day in words or its time of day
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 import hashlib
 from pathlib import Path
+import re
 
 import numpy as np
 import pytest
@@ -60,6 +64,22 @@ def _free_text(solution: ObservationSolution) -> list[str]:
     return [*solution.warnings, *(text for f in solution.findings for text in (f.title, f.subtitle, *f.limitations))]
 
 
+def _names_the_moment_in_words(text: str, moment: datetime, *, any_hour: bool = False) -> bool:
+    """Whether `text` holds the moment's month and day in words with no year ("November 1", "1st of Nov") or its
+    time of day alone ("22:32", "22h32", "10:32 pm"): forms the trip guard's scanner does not read.
+
+    With `any_hour`, a time of day with the moment's minute at any hour counts too, as written in a local time zone
+    (the clips' captures are read in UTC); only ":" and "h" separate it then, so a decimal number never counts."""
+    month = rf"(?:{moment.strftime('%B')}|{moment.strftime('%b')})\.?"
+    day = rf"0?{moment.day}(?:st|nd|rd|th)?"
+    in_words = rf"\b{month}\s+{day}(?!\d)|(?<!\d){day}\s+(?:of\s+)?{month}(?!\w)"
+    clock = rf"(?<!\d){moment.hour:02d}\s*[:h.]\s*{moment.minute:02d}(?!\d)"
+    twelve = rf"(?<!\d)0?{(moment.hour - 1) % 12 + 1}\s*[:.]\s*{moment.minute:02d}\s*[ap]\.?m\b"
+    local = rf"(?<!\d)\d{{1,2}}\s*[:h]\s*{moment.minute:02d}(?!\d)"
+    forms = (in_words, clock, twelve, local) if any_hour else (in_words, clock, twelve)
+    return any(re.search(form, text, re.IGNORECASE) for form in forms)
+
+
 def _holds_a_written_place_or_time(text: str, captures) -> bool:
     return any(
         (kind == "place" and closeness < WRITTEN_PLACE_M) or (kind == "time" and closeness < WRITTEN_TIME_H)
@@ -76,6 +96,8 @@ def test_a_horizon_solution_names_its_place_and_moment_only_in_its_fields(beacon
     # Each text on its own, so numbers from two texts never pair; any hit at all fails, near or not
     holding = [text for text in texts if scan_text(text, SYNTHETIC)]
     assert holding == []
+    worded = [text for text in texts if _names_the_moment_in_words(text, CAPTURE.time, any_hour=True)]
+    assert worded == []
     payload = solution.to_contract_dict()
     assert payload["observedAtUTC"] == MOMENT["obs_utc_iso"]
     assert payload["observerLocation"] == {"latDeg": MOMENT["observer_lat"], "lonDeg": MOMENT["observer_lon"]}
@@ -93,3 +115,11 @@ def test_no_discovered_solution_text_holds_its_clips_place_or_capture_time() -> 
     # Flags with fixed messages: a failure must not print a clip's text, place or time
     leaked = any(_holds_a_written_place_or_time(text, captures) for sol in solutions for text in _free_text(sol))
     assert not leaked, "a discovered solution's free text holds a clip's own place or capture time"
+    moments = [capture.time for capture in captures if capture.time is not None]
+    worded = any(
+        _names_the_moment_in_words(text, moment, any_hour=True)
+        for sol in solutions
+        for text in _free_text(sol)
+        for moment in moments
+    )
+    assert not worded, "a discovered solution's free text names a clip's capture day or time of day in words"
