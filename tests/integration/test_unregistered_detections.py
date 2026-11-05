@@ -171,7 +171,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
         with pytest.raises(ValueError):
             build()
         return
-    payload = build().to_contract_dict()
+    payload = build().to_contract_dict(source_asset_id="hand-built")
     assert ("skyPosition" in payload) == has_sky
     # Optional contract fields are left out when unknown; the TypeScript schemas reject null
     assert _none_paths(payload) == []

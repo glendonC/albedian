@@ -85,7 +85,8 @@ class RestorationBranchResult:
     def temporal_flicker_index(self) -> float:
         return self.metrics.temporal_flicker_index
 
-    def to_contract_dict(self, source_asset_id: str = "asset-0") -> dict:
+    def to_contract_dict(self, *, source_asset_id: str) -> dict:
+        """The ProcessingAttempt record, for the recording the caller names: the runtime cannot know it."""
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return {
             "id": self.attempt_id,
@@ -129,11 +130,16 @@ class ExportRemuxResult:
 
     def to_contract_dict(
         self,
-        session_id: str = "session-0",
-        source_asset_id: str = "asset-0",
-        variant_id: str = "variant-0",
-        graph_id: str = "graph-star-protected",
+        *,
+        session_id: str,
+        source_asset_id: str,
+        variant_id: str,
+        graph_id: str,
+        catalog_citations: Sequence[str],
     ) -> dict:
+        """The ExportArtifact record. The session, asset, variant and graph come from the caller, which knows
+        them, and so do the citations of the catalog content the export shows: none for a remux of restored
+        frames."""
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return {
             "id": self.id,
@@ -149,10 +155,7 @@ class ExportRemuxResult:
             "audioCodec": self.audio_codec,
             "audioSyncOffsetMs": float(self.audio_sync_offset_ms),
             "processingGraphId": graph_id,
-            "catalogCitations": [
-                "Gaia Collaboration (2023) Gaia DR3",
-                "Bailer-Jones et al. (2021) AJ 161, 147",
-            ],
+            "catalogCitations": list(catalog_citations),
             "epistemicSummary": {
                 "observedCount": 0,
                 "catalogMatchedCount": 0,

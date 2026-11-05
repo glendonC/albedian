@@ -116,7 +116,7 @@ def test_catalog_matches_describe_each_distance_by_its_own_source() -> None:
     for finding in matched:
         star = finding.catalog_star
         assert star is not None
-        payload = finding.to_contract_dict()
+        payload = finding.to_contract_dict(source_asset_id=sol.source_asset_id)
         texts = " ".join([*finding.limitations, payload["evidence"]["distanceUncertaintyNote"]])
         hipparcos = star.distance_method == "geometric_parallax"
         assert ("Hipparcos 2007" in texts and "1000/parallax" in texts) is hipparcos, star.common_name

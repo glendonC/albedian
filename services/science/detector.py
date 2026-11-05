@@ -82,7 +82,7 @@ def detect_point_sources(
     image_luma: np.ndarray,
     sky_mask: np.ndarray | None = None,
     snr_threshold: float = 3.5,
-    asset_id: str = "asset-0",
+    asset_id: str | None = None,
     frame_time_sec: float = 0.0,
 ) -> list[SourceDetection]:
     """Extract astronomical point sources above local sky background noise.
@@ -90,6 +90,9 @@ def detect_point_sources(
     Performs local background subtraction, MAD noise estimation, matched Gaussian PSF
     filtering, local peak extraction, anti-white-noise spatial coherence gating, and
     sub-pixel centroid + FWHM measurement.
+
+    Each detection carries `asset_id` when the caller names the recording it was measured in, and none
+    otherwise: a solution serializes it under its own recording's id.
     """
     luma = _to_luma_2d(image_luma)
     h, w = luma.shape

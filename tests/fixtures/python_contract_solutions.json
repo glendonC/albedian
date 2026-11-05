@@ -1,8 +1,8 @@
 {
   "plate_too_few_sources": {
     "id": "sol-primary",
-    "sourceAssetId": "synthetic-5f0d2bc2d670",
-    "sourceSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
+    "sourceAssetId": "synthetic-afcd5d8209f1",
+    "sourceSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -34,7 +34,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
+          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -42,7 +42,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-afcd5d8209f1",
           "frameTimeSec": 0.0,
           "xPx": 120.0,
           "yPx": 80.0,
@@ -62,7 +62,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
+          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -70,7 +70,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-afcd5d8209f1",
           "frameTimeSec": 0.0,
           "xPx": 480.5,
           "yPx": 260.25,
@@ -90,7 +90,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5f0d2bc2d6703b977b5367f89f59db0def0566a242e6057339966200ec3ab4e0",
+          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -98,7 +98,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-afcd5d8209f1",
           "frameTimeSec": 0.0,
           "xPx": 800.0,
           "yPx": 410.0,
@@ -115,8 +115,8 @@
   },
   "plate_wcs_failed_verification": {
     "id": "sol-primary",
-    "sourceAssetId": "synthetic-cb053efa8778",
-    "sourceSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
+    "sourceAssetId": "synthetic-5d274af6b6c6",
+    "sourceSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -148,7 +148,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
+          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -156,7 +156,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-5d274af6b6c6",
           "frameTimeSec": 0.0,
           "xPx": 101.0,
           "yPx": 87.0,
@@ -176,7 +176,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
+          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -184,7 +184,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-5d274af6b6c6",
           "frameTimeSec": 0.0,
           "xPx": 412.5,
           "yPx": 300.2,
@@ -204,7 +204,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "cb053efa87782dc09ed30d3b6f9a931c64c5ac41f96b717ae12836db03efa36b",
+          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -212,7 +212,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-5d274af6b6c6",
           "frameTimeSec": 0.0,
           "xPx": 733.0,
           "yPx": 120.4,
@@ -284,7 +284,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-9782da890647",
           "frameTimeSec": 0.0,
           "xPx": 586.3999745804418,
           "yPx": 496.192205050709,
@@ -362,7 +362,7 @@
           "verifiedByIndependentHoldout": true
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-9782da890647",
           "frameTimeSec": 0.0,
           "xPx": 401.63469878954527,
           "yPx": 252.99501063221894,
@@ -440,7 +440,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-9782da890647",
           "frameTimeSec": 0.0,
           "xPx": 705.8147634399265,
           "yPx": 71.73707307698696,
@@ -512,7 +512,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "asset-0",
+          "assetId": "synthetic-9782da890647",
           "frameTimeSec": 0.0,
           "xPx": 602.084011134508,
           "yPx": 98.81346119185388,

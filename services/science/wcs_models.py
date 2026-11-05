@@ -45,7 +45,8 @@ class SourceDetection:
     snr: float
     fwhm_px: float
     centroid_uncertainty_px: float
-    asset_id: str = "asset-0"
+    # The recording it was measured in, when the caller named it: no id is made up for it
+    asset_id: str | None = None
     frame_time_sec: float = 0.0
     peak_to_total_ratio: float = 0.25
 
@@ -70,9 +71,17 @@ class SourceDetection:
         """True if energy is concentrated in a single impulse pixel rather than an optical PSF."""
         return self.fwhm_px < 1.25 or self.peak_to_total_ratio > 0.68
 
-    def to_contract_dict(self) -> dict:
+    def to_contract_dict(self, *, asset_id: str | None = None) -> dict:
+        """The contract's SourceDetection under the recording it was measured in: its own `asset_id`, or else the
+        one given, its solution's. With neither, it is refused rather than given an id."""
+        recording = self.asset_id if self.asset_id is not None else asset_id
+        if recording is None:
+            raise ValueError(
+                f"The detection at ({self.x_px:.1f}, {self.y_px:.1f}) px names no recording and none was given: "
+                "it is serialized under the id of the recording it was measured in."
+            )
         return {
-            "assetId": self.asset_id,
+            "assetId": recording,
             "frameTimeSec": float(self.frame_time_sec),
             "xPx": float(self.x_px),
             "yPx": float(self.y_px),
@@ -320,7 +329,9 @@ class CelestialFindingRecord:
     def common_name(self) -> str | None:
         return self.catalog_star.common_name if self.catalog_star else None
 
-    def to_contract_dict(self) -> dict:
+    def to_contract_dict(self, *, source_asset_id: str | None = None) -> dict:
+        """The contract's CelestialFinding. `source_asset_id` is the recording of the solution it belongs to: a
+        detection that names no recording of its own was measured there and is serialized under it."""
         payload: dict = {
             "id": self.id,
             "observationSolutionId": self.observation_solution_id,
@@ -369,7 +380,7 @@ class CelestialFindingRecord:
         # The contract's optional evidence fields are left out when unknown, never sent as null
         payload["evidence"] = {key: value for key, value in evidence.items() if value is not None}
         if self.source_detection is not None:
-            payload["sourceDetection"] = self.source_detection.to_contract_dict()
+            payload["sourceDetection"] = self.source_detection.to_contract_dict(asset_id=source_asset_id)
         if self.catalog_star is not None:
             payload["catalogRef"] = self.catalog_star.to_catalog_reference_dict()
             payload["inferredDistancePc"] = {
@@ -421,6 +432,13 @@ class ObservationSolution:
         # sky position exactly when there is one, and a catalog match needs one
         verified = self.has_verified_wcs
         for finding in self.findings:
+            # A finding's detection was measured in this solution's recording: one that names another is refused
+            measured_in = finding.source_detection.asset_id if finding.source_detection is not None else None
+            if measured_in is not None and measured_in != self.source_asset_id:
+                raise ValueError(
+                    f"Finding {finding.id}'s detection was measured in {measured_in}, "
+                    f"not in this solution's recording {self.source_asset_id}."
+                )
             if finding.evidence_class == "catalog_matched" and not verified:
                 raise ValueError(
                     f"Catalog-matched finding {finding.id} needs a verified WCS: "
@@ -473,7 +491,7 @@ class ObservationSolution:
             },
             "solver": self.solver.to_contract_dict(),
             "quality": self.quality.to_contract_dict(),
-            "findings": [f.to_contract_dict() for f in self.findings],
+            "findings": [f.to_contract_dict(source_asset_id=self.source_asset_id) for f in self.findings],
             "warnings": list(self.warnings),
         }
         if self.wcs is not None:
