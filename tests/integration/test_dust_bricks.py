@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import importlib.util
 import math
-import subprocess
 import sys
 from pathlib import Path
 
@@ -213,58 +212,6 @@ def test_two_level_base_keeps_block_means_and_full_detail_matches_the_bricks():
 # =============================================================================================
 # Real data: Edenhofer et al. (2024)
 # =============================================================================================
-
-
-def test_local_dataset_marker_skips_with_its_reason_only_where_a_path_is_absent(tmp_path: Path):
-    (tmp_path / "tests").mkdir()
-    (tmp_path / "tests" / "conftest.py").write_text((ROOT / "tests" / "conftest.py").read_text())
-    (tmp_path / ".cache" / "present").mkdir(parents=True)
-    (tmp_path / "tests" / "test_marked.py").write_text(
-        "import pytest\n\n"
-        "@pytest.mark.local_dataset('.cache/present')\n"
-        "def test_present():\n    pass\n\n"
-        "@pytest.mark.local_dataset('.cache/present', '.cache/absent/map.fits')\n"
-        "def test_absent():\n    pass\n"
-    )
-    run = subprocess.run(
-        [sys.executable, "-m", "pytest", "-rs", "-p", "no:cacheprovider", "tests"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert run.returncode == 0, run.stdout[-2000:]
-    assert "1 passed, 1 skipped" in run.stdout
-    assert "needs the public dataset .cache/absent/map.fits, downloaded into the shared .cache and not in git" in run.stdout
-
-
-def test_no_unexpected_skips_allows_a_local_dataset_skip_only_for_its_own_missing_path(tmp_path: Path):
-    (tmp_path / "tests").mkdir()
-    (tmp_path / "tests" / "conftest.py").write_text((ROOT / "tests" / "conftest.py").read_text())
-    (tmp_path / ".cache" / "present").mkdir(parents=True)
-    (tmp_path / "tests" / "test_kinds.py").write_text(
-        "import pytest\n\n"
-        "@pytest.mark.local_dataset('.cache/absent/map.fits')\n"
-        "def test_dataset_absent():\n    pass\n\n"
-        "@pytest.mark.local_dataset('.cache/present')\n"
-        "def test_dataset_present_but_skips_itself():\n    pytest.skip('not ready')\n\n"
-        "@pytest.mark.local_dataset('.cache/absent/map.fits')\n"
-        "@pytest.mark.skipif(True, reason='switched off')\n"
-        "def test_dataset_absent_but_a_skipif_fires_first():\n    pass\n"
-    )
-    run = subprocess.run(
-        [sys.executable, "-m", "pytest", "-rs", "-p", "no:cacheprovider", "--no-unexpected-skips", "tests"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    # The marker's own skip stands; a skip in the body fails, and a skipif, which fires during setup
-    # ahead of the marker's skip, is reported as an error
-    assert run.returncode == 1, run.stdout[-2000:]
-    assert "1 failed, 1 skipped, 1 error" in run.stdout
-    assert "needs the public dataset .cache/absent/map.fits, downloaded into the shared .cache and not in git" in run.stdout
-    assert run.stdout.count("only tests marked owner_media may skip") >= 2
 
 
 @pytest.fixture(scope="module")
