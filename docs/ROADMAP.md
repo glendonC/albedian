@@ -201,7 +201,7 @@ Owner: `spatial`, with `media`. [proposed]
 Owner: `verification`, with each area's owner.
 
 - **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
-- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Before any public deployment: the build's guard against shipping the owner's ignored media (`apps/web/public/morocco/` is copied into `dist/` today) and a review of the hosted setup. [proposed]
+- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Before any public deployment: the build's guard against shipping the owner's ignored media (a gitignored folder of clip renders under `apps/web/public/` is copied into `dist/` today) and a review of the hosted setup. [proposed]
 - **Docs drift.**
   - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
   - AGENTS.md cites `docs/adr/`, `docs/internal/integration-ledger.md` and `apps/web/src/voice/`, none of which exist.
