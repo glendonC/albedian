@@ -1,6 +1,6 @@
 # Albedian Spatial Audio Engine
 
-Status: **Locally implemented and tested capability** (2026-11-03). Pure mappings are covered by
+Status: **Locally implemented and tested capability** (November 2026). Pure mappings are covered by
 property tests; the Web Audio graph was exercised in Chrome 152 on macOS. Nothing here has been
 judged by a human ear yet; section 10 lists what needs one.
 
@@ -73,7 +73,7 @@ Data set before `start()` is kept and plays at once when audio is enabled.
 
 | | Omnitone 2.0.0 | Resonance Audio Web SDK 1.0.0 | Plain Web Audio |
 |---|---|---|---|
-| Maintenance (checked 2026-11-03) | Active: 2.0.0 published 2026-09-30, repository pushed 2026-10-22 (CSP, bundler, promise-rejection and rotation fixes). | Repository archived (last push 2022-03-08); last npm publish 2017-11-08. Core `resonance-audio` repo also archived. | Browser API. |
+| Maintenance (checked November 2026) | Active: 2.0.0 published September 2026, repository pushed October 2026 (CSP, bundler, promise-rejection and rotation fixes). | Repository archived (last push March 2022); last npm publish November 2017. Core `resonance-audio` repo also archived. | Browser API. |
 | License | Apache-2.0; bundled Google/SADIE HRIRs Apache-2.0, (c) 2017 University of York. | Apache-2.0. | n/a |
 | Offers | First- and higher-order ambisonic decoding to binaural through measured HRIRs; sound-field rotation; no runtime dependencies. | Shoebox room model (early reflections and late reverb from room size and materials), ambisonic panning, an old Omnitone 1.x inside. | `PannerNode` (HRTF) per point source; no representation of a whole field. |
 | Types | None shipped (local shim). | None. | Built in. |
@@ -254,7 +254,7 @@ dither. Full record, checksums and the exact operations:
 [`ATTRIBUTION.txt`](../../apps/web/src/audio/assets/ATTRIBUTION.txt). The late-tail interchannel
 correlation is 0.52 to 0.55, as expected (0.5) for that cardioid pair in a diffuse field.
 
-Why not OpenAIR: on 2026-11-03 both `openair.hosted.york.ac.uk` and `openairlib.net` served an
+Why not OpenAIR: in November 2026 both `openair.hosted.york.ac.uk` and `openairlib.net` served an
 expired TLS certificate, and a binary asset was not downloaded over an unverified connection.
 The Zenodo record was fetched over verified HTTPS; only the one member was transferred, using HTTP
 range requests, and its CRC-32 was checked against the zip directory. The chapel is an earthly room:

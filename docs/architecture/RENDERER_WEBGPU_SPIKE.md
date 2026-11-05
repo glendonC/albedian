@@ -1,8 +1,8 @@
 # Renderer WebGPU Spike
 
-Date: 2026-11-03. Spike code: [`apps/webgpu-spike/`](../../apps/webgpu-spike/) (isolated workspace package, its own `three`).
+Date: November 2026. Spike code: [`apps/webgpu-spike/`](../../apps/webgpu-spike/) (isolated workspace package, its own `three`).
 Machine: Apple M5 Max (40-core GPU, Metal 4), macOS 26.7, Node 24.15.0, pnpm 10.7.1.
-Sections 9, 10 and 12 were brought up to date with `main` after the spike; the measurements are as taken (see the data note in section 4). Section 10 records milestone 1 of the migration (2026-11-04), with its own measurements.
+Sections 9, 10 and 12 were brought up to date with `main` after the spike; the measurements are as taken (see the data note in section 4). Section 10 records milestone 1 of the migration (November 2026), with its own measurements.
 
 Every claim carries one label:
 
@@ -23,11 +23,11 @@ Why not "wait": the WebGPU path is faster than the current stack needs, the TSL 
 
 | Item | Finding | Label |
 |---|---|---|
-| three | Latest `0.187.0` (npm, 2026-10-30). `0.186.0` published 2026-09-08, `0.186.1` 2026-09-24. | [verified] |
-| three native splats | r186 added "Gaussian Splat renderer / loader using TSL for WebGPU/WebGL + glTF import" (PR #33950, merged 2026-08-08), later renamed `GaussianSplatMesh` to `GaussianSplat` (#34306). Addon at `three/addons/objects/GaussianSplat.js`: GPU counting sort (4096 depth bins, re-sort after about 1.8 degrees of rotation, planar depth), CPU sort on the WebGL2 backend, SH up to degree 3, RGBA8 color, loaders for PLY, SPZ, SPLAT, KSPLAT and glTF `KHR_gaussian_splatting`, raycasting. No level of detail or streaming. | [verified] (release notes, installed source) |
+| three | Latest `0.187.0` (npm, October 2026). `0.186.0` published September 2026, `0.186.1` September 2026. | [verified] |
+| three native splats | r186 added "Gaussian Splat renderer / loader using TSL for WebGPU/WebGL + glTF import" (PR #33950, merged August 2026), later renamed `GaussianSplatMesh` to `GaussianSplat` (#34306). Addon at `three/addons/objects/GaussianSplat.js`: GPU counting sort (4096 depth bins, re-sort after about 1.8 degrees of rotation, planar depth), CPU sort on the WebGL2 backend, SH up to degree 3, RGBA8 color, loaders for PLY, SPZ, SPLAT, KSPLAT and glTF `KHR_gaussian_splatting`, raycasting. No level of detail or streaming. | [verified] (release notes, installed source) |
 | @types/three | `0.187.0` covers `GaussianSplat`, `GaussianSplatUtils` and every TSL display node used here. | [verified] |
-| @sparkjsdev/spark | Latest `2.4.0` (2026-10-20), peer `three >=0.180.0`. WebGL2 only: `RawShaderMaterial`/`ShaderMaterial` and `renderer.getContext()` WebGL extensions; no WebGPU in any 2.x release note. Level of detail via RAD paging since 2.0. Opacity stored as 8-bit unorm. | [verified] (npm, releases, installed dist) |
-| @sparkjsdev/radix | `0.0.1` (2026-10-29), "An advanced WebGPU 3D Gaussian Splatting renderer for THREE.js" (World Labs). Peer `three >=0.186.0`, developed on 0.186.0. WebGPU compute projection and radix sort every frame, WebGL2 fallback with worker sort, TSL shaders, HDR output, PLY/SPZ/RAD/RDX. Its own docs list level-of-detail selection, skinning and raycasting as not built in (edits only through example ports) and call it new. Its `dependencies` field lists 114 packages (http-server, eslint and similar tooling). | [verified] (npm, installed dist, project docs) |
+| @sparkjsdev/spark | Latest `2.4.0` (October 2026), peer `three >=0.180.0`. WebGL2 only: `RawShaderMaterial`/`ShaderMaterial` and `renderer.getContext()` WebGL extensions; no WebGPU in any 2.x release note. Level of detail via RAD paging since 2.0. Opacity stored as 8-bit unorm. | [verified] (npm, releases, installed dist) |
+| @sparkjsdev/radix | `0.0.1` (October 2026), "An advanced WebGPU 3D Gaussian Splatting renderer for THREE.js" (World Labs). Peer `three >=0.186.0`, developed on 0.186.0. WebGPU compute projection and radix sort every frame, WebGL2 fallback with worker sort, TSL shaders, HDR output, PLY/SPZ/RAD/RDX. Its own docs list level-of-detail selection, skinning and raycasting as not built in (edits only through example ports) and call it new. Its `dependencies` field lists 114 packages (http-server, eslint and similar tooling). | [verified] (npm, installed dist, project docs) |
 | radix on three 0.187 | Throws `A dispatch size cannot be passed to "renderer.compute()" for nodes created with "compute( count )"` (three #34813). A 10-line shim ([`radixCompat.ts`](../../apps/webgpu-spike/src/render/radixCompat.ts)) restores the r186 behavior. | [measured] |
 | Safari 26 | WebKit: WebGPU "is now shipping in Safari 26.0 for macOS, iOS, iPadOS, and visionOS". Safari 26.6.2 is installed here but was not benchmarked. | [verified], not measured |
 | Chrome | Chrome 156.0.8078.80 headless ran WebGPU on the Apple M5 Max adapter (`metal-3`). The Claude desktop Browser pane is Chromium 152 and also exposed WebGPU. | [measured] |
@@ -205,7 +205,7 @@ Totals: 8 direct ports, 2 rewrites (starfield, planetary world), 1 split (nebula
 
 ## 10. Migration plan
 
-Milestone 1 (steps 1 to 5, with the step 6 ports the cislunar scene needs) landed on 2026-11-04 on branch `claude/xenodochial-mclean-6796f5`. The WebGL2 and Spark renderer stays the default; `?renderer=webgpu` selects the new host, which draws the cislunar landing scene only. Everything after milestone 1 is still [proposed].
+Milestone 1 (steps 1 to 5, with the step 6 ports the cislunar scene needs) landed in November 2026 on branch `claude/xenodochial-mclean-6796f5`. The WebGL2 and Spark renderer stays the default; `?renderer=webgpu` selects the new host, which draws the cislunar landing scene only. Everything after milestone 1 is still [proposed].
 
 1. **Bump three in place. Landed.** `apps/web` pins three 0.187.0 and @types/three 0.187.0 exactly, on the WebGLRenderer and Spark 2.4; `THREE.Clock` became `THREE.Timer`, connected to the Page Visibility API. Typecheck, tests and the landing render pass, and the console no longer shows the `Clock` deprecation warning. [verified, measured]
 2. **Contracts first. Landed.** `RenderLayerSchema` in [`packages/contracts/src/render-layer.ts`](../../packages/contracts/src/render-layer.ts), mirrored by [`services/contracts/render_layer.py`](../../services/contracts/render_layer.py) (Pydantic). A layer carries `kind`, `evidenceClass`, a one-line `disclosure`, `sources`, and `sourceAssetId` / `observationSolutionId`. The rules hold on both sides: an `observed` or `catalog_matched` layer must name its SourceAsset, a `catalog_matched` layer must name the observation solution with the verified WCS, and `procedural` and `camera_optics` layers must be `simulated`. Unknown fields and explicit nulls are rejected on both sides. The Python side writes `tests/fixtures/render_layer_contract.json`; the Zod tests parse it and compare enums and limits. PBT-LAYER-1 runs on both sides, and removing the always-simulated rule fails both halves (mutation check). `pnpm verify:contracts` now requires the schema. [verified]
