@@ -1,4 +1,4 @@
-"""What an upload is: its kind, pixel size, duration, frame rate, codec and audio streams.
+"""What an upload is: its kind, pixel size, duration, frame rate, codec, audio streams and a clip's display matrix.
 
 Only what the file says, read on this machine: a still's size from its own header (Pillow for JPEG, PNG
 and TIFF, the `ispe` box for HEIC), and a clip's facts from ffprobe. Nothing is assumed: a file whose
@@ -9,6 +9,7 @@ still spans no time and has no frame rate: its facts give a duration of 0 and no
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import warnings
 from dataclasses import dataclass, field
@@ -46,6 +47,9 @@ class MediaFacts:
     audio_streams: tuple[dict[str, Any], ...] = ()
     # A clip's container tags as ffprobe reports them, for the metadata hints
     format_tags: dict[str, str] = field(default_factory=dict)
+    # A clip's display matrix, its nine integers as ffprobe reports them; None when it reports none (as for the
+    # identity) or prints one that does not read as three rows of three integers
+    display_matrix: tuple[int, ...] | None = None
 
 
 def probe_media(path: Path, file_type: FileType) -> MediaFacts:
@@ -147,7 +151,28 @@ def _probe_clip(path: Path) -> MediaFacts:
         raise ProbeError("ffprobe reported no video codec")
     audio = tuple(_audio_stream(path, s) for s in streams if s.get("codec_type") == "audio")
     tags = {str(k): str(v) for k, v in (fmt.get("tags") or {}).items()}
-    return MediaFacts("video", width, height, round(duration * 1000, 3), rate.numerator, rate.denominator, codec, audio, tags)
+    return MediaFacts("video", width, height, round(duration * 1000, 3), rate.numerator, rate.denominator, codec, audio, tags,
+                      _display_matrix(stream))
+
+
+# One row of ffprobe's display matrix text: its index in hex, then three integers
+DISPLAY_MATRIX_ROW = re.compile(r"([0-9a-f]{8}):\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)")
+
+
+def _display_matrix(stream: dict[str, Any]) -> tuple[int, ...] | None:
+    """The stream's one display matrix, read strictly from ffprobe's side data; None when it has none or any doubt."""
+    matrices = [entry for entry in stream.get("side_data_list") or []
+                if isinstance(entry, dict) and entry.get("side_data_type") == "Display Matrix"]
+    if len(matrices) != 1 or not isinstance(matrices[0].get("displaymatrix"), str):
+        return None
+    rows = [line.strip() for line in matrices[0]["displaymatrix"].splitlines() if line.strip()]
+    values: list[int] = []
+    for index, line in enumerate(rows):
+        match = DISPLAY_MATRIX_ROW.fullmatch(line)
+        if match is None or int(match.group(1), 16) != index:
+            return None
+        values += [int(match.group(column)) for column in (2, 3, 4)]
+    return tuple(values) if len(rows) == 3 else None
 
 
 def _audio_stream(path: Path, stream: dict[str, Any]) -> dict[str, Any]:

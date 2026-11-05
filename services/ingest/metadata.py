@@ -7,9 +7,13 @@ clip, Apple's `com.apple.quicktime.creationdate` (when the clip was recorded) wi
 file was written or exported rather than recorded.
 
 Stills: EXIF through Pillow (JPEG, PNG, TIFF), and for HEIC through `read_heif`, a small reader of the
-ISO base media boxes that finds the primary image's size and its EXIF item. The reader works on slices
-of the bytes it is given, bounds every count, offset and length by the input, and refuses anything else
-with `HeifError` and its reason.
+ISO base media boxes that finds the primary image's size, its rotation and mirror, and its EXIF item. The
+reader works on slices of the bytes it is given, bounds every count, offset and length by the input, and
+refuses anything else with `HeifError` and its reason.
+
+Display orientation, in the canonical form of `DisplayOrientation` (mirror left to right, then turn
+clockwise): EXIF Orientation 1 to 8, a HEIF's `irot` and `imir`, or a clip's display matrix when it is a
+right-angle turn with or without a mirror. Anything else gives no orientation; nothing is rounded to one.
 """
 
 from __future__ import annotations
@@ -18,11 +22,11 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from PIL import Image
 
-from services.contracts.ingest import UTC_OFFSET_LIMIT_MINUTES, format_utc
+from services.contracts.ingest import EXIF_ORIENTATIONS, UTC_OFFSET_LIMIT_MINUTES, compose_display_orientations, format_utc
 
 # ---------------------------------------------------------------------------------------------
 # HEIF (ISO base media) reader
@@ -46,6 +50,23 @@ class HeifInfo:
     height: int
     # The EXIF block from its TIFF header on, or None when the file has no EXIF item
     exif: Optional[bytes]
+    # The primary item's irot and imir as an orientation hint with its source, or None when it has neither
+    orientation: Optional[dict] = None
+
+
+# HEIF's transformative properties, as libavif's include/avif/avif.h states ISO/IEC 23008-12: `irot` turns the image
+# anticlockwise by its angle times 90 degrees (2017, 6.5.10); `imir` exchanges the top and bottom parts (axis 0) or
+# the left and right parts (axis 1) (2022, 6.5.12). A reader applies them in the order the item lists them.
+IMIR_FORMS = {0: {"quarterTurnsClockwise": 2, "mirrored": True}, 1: {"quarterTurnsClockwise": 0, "mirrored": True}}
+
+
+def _transform_form(kind: bytes, body: memoryview) -> dict:
+    """An irot or imir property in the canonical form; only its low bits carry the value."""
+    if len(body) < 1:
+        raise HeifError(f"{kind.decode('latin-1')} ends early")
+    if kind == b"irot":
+        return {"quarterTurnsClockwise": (4 - (body[0] & 3)) % 4, "mirrored": False}
+    return dict(IMIR_FORMS[body[0] & 1])
 
 
 class _Cursor:
@@ -141,7 +162,7 @@ def read_heif(data: bytes) -> HeifInfo:
     if primary not in items:
         raise HeifError("the primary item is not listed")
     locations = _item_locations(_one(meta, b"iloc", "meta"))
-    width, height = _primary_size(_one(meta, b"iprp", "meta"), primary, budget)
+    width, height, orientation = _primary_properties(_one(meta, b"iprp", "meta"), primary, budget)
 
     exif_ids = sorted(item for item, kind in items.items() if kind == b"Exif")
     exif = None
@@ -156,7 +177,7 @@ def read_heif(data: bytes) -> HeifInfo:
         exif = payload[start:]
         if not exif.startswith(TIFF_HEADERS):
             raise HeifError("the EXIF item has no TIFF header where it says")
-    return HeifInfo(width, height, exif)
+    return HeifInfo(width, height, exif, orientation)
 
 
 def _item_types(iinf: memoryview, budget: list[int]) -> dict[int, bytes]:
@@ -213,7 +234,8 @@ def _item_locations(iloc: memoryview) -> dict[int, tuple[int, list[tuple[int, in
     return locations
 
 
-def _primary_size(iprp: memoryview, primary: int, budget: list[int]) -> tuple[int, int]:
+def _primary_properties(iprp: memoryview, primary: int, budget: list[int]) -> tuple[int, int, Optional[dict]]:
+    """The primary item's size (its first ispe) and its irot and imir, composed in the order the item lists them."""
     parts = _children(iprp, 2, budget)
     properties = _children(_one(parts, b"ipco", "iprp"), 3, budget)
     ipma_version, ipma_flags, ipma = _full_box(_one(parts, b"ipma", "iprp"), "ipma")
@@ -230,18 +252,28 @@ def _primary_size(iprp: memoryview, primary: int, budget: list[int]) -> tuple[in
             index = value & (0x7FFF if ipma_flags & 1 else 0x7F)
             if item == primary and index:
                 associated.append(index)
+    size: Optional[tuple[int, int]] = None
+    form = {"quarterTurnsClockwise": 0, "mirrored": False}
+    tags: list[str] = []
     for index in associated:
         if index > len(properties):
             raise HeifError("a property association points past the property list")
         kind, body = properties[index - 1]
-        if kind == b"ispe":
+        if kind == b"ispe" and size is None:
             _, _, ispe = _full_box(body, "ispe")
             reader = _Cursor(ispe, "ispe")
             width, height = reader.uint(4), reader.uint(4)
             if width <= 0 or height <= 0:
                 raise HeifError("the primary image has no size")
-            return width, height
-    raise HeifError("the primary image has no ispe size")
+            size = (width, height)
+        elif kind in (b"irot", b"imir"):
+            form = compose_display_orientations(form, _transform_form(kind, body))
+            if kind.decode("latin-1") not in tags:
+                tags.append(kind.decode("latin-1"))
+    if size is None:
+        raise HeifError("the primary image has no ispe size")
+    orientation = {**form, "source": {"container": "heif", "tags": tags}} if tags else None
+    return size[0], size[1], orientation
 
 
 def _item_bytes(view: memoryview, idat: Optional[memoryview], location: Optional[tuple[int, list[tuple[int, int]]]]) -> bytes:
@@ -431,8 +463,19 @@ def _camera_hint(container: str, readers: list[tuple[str, str, Any]]) -> Optiona
     return hint
 
 
+ORIENTATION_TAG = 0x0112
+
+
+def _exif_orientation(ifd0: Any) -> Optional[dict]:
+    """EXIF Orientation 1 to 8 in the canonical form (1 states the pixels are shown as stored); any other value is dropped."""
+    value = ifd0.get(ORIENTATION_TAG)
+    if type(value) is not int or value not in EXIF_ORIENTATIONS:
+        return None
+    return {**EXIF_ORIENTATIONS[value], "source": {"container": "exif", "tags": ["Orientation"]}}
+
+
 def exif_hints(exif: Image.Exif) -> dict:
-    """Capture time, place and camera from an EXIF block; each absent when the block lacks it."""
+    """Capture time, place, camera and display orientation from an EXIF block; each absent when the block lacks it."""
     hints: dict[str, Any] = {}
     exif_ifd = exif.get_ifd(EXIF_IFD)
     time = _exif_time(exif_ifd)
@@ -444,6 +487,9 @@ def exif_hints(exif: Image.Exif) -> dict:
     camera = _exif_camera(exif, exif_ifd)
     if camera is not None:
         hints["camera"] = camera
+    orientation = _exif_orientation(exif)
+    if orientation is not None:
+        hints["orientation"] = orientation
     return hints
 
 
@@ -526,6 +572,38 @@ def _quicktime_camera(tags: dict[str, str]) -> Optional[dict]:
         ("focalLength35mmMm", focal_tag, _number(tags.get(focal_tag))),
     ]
     return _camera_hint("quicktime", readers)
+
+
+# A clip's display matrix as FFmpeg's libavutil/display.h lays it out, (a, b, u, c, d, v, x, y, w): it maps a stored
+# point (p, q) to p' = a p + c q + x and q' = b p + d q + y, with a, b, c, d, x and y in 16.16 fixed point and u, v
+# and w in 2.30. Only a right-angle turn, with or without a mirror, has a canonical form.
+FIXED_ONE = 1 << 16
+FIXED_W = 1 << 30
+DISPLAY_FORMS = [{"quarterTurnsClockwise": q, "mirrored": m} for m in (False, True) for q in range(4)]
+
+
+def _linear_map(form: dict) -> tuple[int, int, int, int]:
+    """(a, b, c, d) of the display matrix that shows stored pixels in `form`, with p to the right and q down."""
+    a, b, c, d = (-1, 0, 0, 1) if form["mirrored"] else (1, 0, 0, 1)
+    for _ in range(form["quarterTurnsClockwise"]):
+        # A clockwise quarter turn after (p', q') = (a p + c q, b p + d q) gives (-q', p')
+        a, b, c, d = -b, a, -d, c
+    return a, b, c, d
+
+
+def display_matrix_hint(matrix: Optional[Sequence[int]]) -> Optional[dict]:
+    """A clip's display matrix (its track header's, as ffprobe reports it) in the canonical form when it is a
+    right-angle turn with or without a mirror; any other matrix (an odd angle, a scale, a projection) gives none."""
+    if matrix is None or len(matrix) != 9:
+        return None
+    a, b, u, c, d, v, _x, _y, w = matrix
+    if (u, v, w) != (0, 0, FIXED_W) or any(value not in (-FIXED_ONE, 0, FIXED_ONE) for value in (a, b, c, d)):
+        return None
+    linear = (a // FIXED_ONE, b // FIXED_ONE, c // FIXED_ONE, d // FIXED_ONE)
+    for form in DISPLAY_FORMS:
+        if _linear_map(form) == linear:
+            return {**form, "source": {"container": "quicktime", "tags": ["tkhd"]}}
+    return None
 
 
 def quicktime_hints(format_tags: dict[str, str]) -> dict:

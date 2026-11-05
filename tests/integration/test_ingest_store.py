@@ -31,9 +31,12 @@ ROOT = Path(__file__).resolve().parents[2]
 HEIC = ROOT / "tests" / "fixtures" / "ingest" / "synthetic-exif.heic"
 
 
-def jpeg_bytes(shade: int = 30, size: tuple[int, int] = (64, 48)) -> bytes:
+def jpeg_bytes(shade: int = 30, size: tuple[int, int] = (64, 48), orientation: int | None = None) -> bytes:
     out = io.BytesIO()
-    Image.new("RGB", size, (shade, shade, shade)).save(out, "JPEG")
+    exif = Image.Exif()
+    if orientation is not None:
+        exif[0x0112] = orientation
+    Image.new("RGB", size, (shade, shade, shade)).save(out, "JPEG", exif=exif)
     return out.getvalue()
 
 
@@ -99,6 +102,21 @@ def test_an_upload_is_stored_once_under_its_hash_and_read_only(client: TestClien
     assert files_under(store.root) == sorted(
         f"{h[:2]}/{h}/{name}" for h in (sha, other.json()["sourceAsset"]["sha256"]) for name in ("original.jpg", "record.json")
     )
+
+
+def test_an_uploaded_photo_carries_the_orientation_its_exif_states(client: TestClient) -> None:
+    # EXIF Orientation 6: the stored pixels are shown a quarter turn clockwise
+    response = upload(client, jpeg_bytes(orientation=6))
+    assert response.status_code == 201, response.text
+    receipt = response.json()
+    IngestReceipt.model_validate(receipt)
+    source = {"container": "exif", "tags": ["Orientation"]}
+    assert receipt["hints"]["orientation"] == {"quarterTurnsClockwise": 1, "mirrored": False, "source": source}
+    assert receipt["sourceAsset"]["displayOrientation"] == {"quarterTurnsClockwise": 1, "mirrored": False}
+    assert receipt["sourceAsset"]["metadataSources"]["displayOrientation"] == source
+    # A photo whose EXIF says nothing of it has no orientation
+    plain = upload(client, jpeg_bytes(shade=31)).json()
+    assert "orientation" not in plain["hints"] and "displayOrientation" not in plain["sourceAsset"]
 
 
 @pytest.mark.parametrize(

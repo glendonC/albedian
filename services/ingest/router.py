@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
 
 from services.contracts.ingest import IngestReceipt
-from services.ingest.metadata import HeifError, exif_hints, quicktime_hints, read_heif
+from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
 from services.ingest.store import DECLARABLE, IngestStore, Received, Refused
 
@@ -45,23 +45,43 @@ def _title(header: Optional[str], sha256: str) -> str:
     return name or f"Upload {sha256[:12]}"
 
 
+# What reading an EXIF block can raise: such a block gives no hints, since the file itself was readable
+EXIF_FAILURES = (HeifError, OSError, SyntaxError, ValueError, KeyError, TypeError, IndexError, ZeroDivisionError)
+
+
 def _hints(received: Received, facts: MediaFacts) -> dict[str, Any]:
     if received.file_type.media_kind == "video":
-        return quicktime_hints(facts.format_tags)
-    try:
-        if received.file_type.family == "heif":
-            exif_block = read_heif(received.partial.read_bytes()).exif
-            if exif_block is None:
-                return {}
-            exif = Image.Exif()
-            exif.load(b"Exif\x00\x00" + exif_block)
-        else:
+        hints = quicktime_hints(facts.format_tags)
+        orientation = display_matrix_hint(facts.display_matrix)
+        if orientation is not None:
+            hints["orientation"] = orientation
+        return hints
+    if received.file_type.family != "heif":
+        try:
             with Image.open(received.partial) as image:
-                exif = image.getexif()
-        return exif_hints(exif)
-    except (HeifError, OSError, SyntaxError, ValueError, KeyError, TypeError, IndexError, ZeroDivisionError):
-        # An EXIF block that cannot be read gives no hints; the file itself was readable
+                return exif_hints(image.getexif())
+        except EXIF_FAILURES:
+            return {}
+    try:
+        info = read_heif(received.partial.read_bytes())
+    except HeifError:
         return {}
+    hints = {}
+    if info.exif is not None:
+        try:
+            exif = Image.Exif()
+            exif.load(b"Exif\x00\x00" + info.exif)
+            hints = exif_hints(exif)
+        except EXIF_FAILURES:
+            hints = {}
+    # A HEIF's irot and imir decide when its primary item has either; its EXIF Orientation counts only when it has
+    # neither. libavif's include/avif/avif.h and libheif's heif_properties.h say nothing of a HEIF's EXIF Orientation.
+    # PhotoPrism's developer guide (docs.photoprism.app/developer-guide/media/heif/) says libheif applies irot and imir
+    # when decoding, that the HEIF specification treats EXIF Orientation as informational on top of them, and that
+    # some older Apple HEICs store their orientation only in EXIF.
+    if info.orientation is not None:
+        hints["orientation"] = info.orientation
+    return hints
 
 
 def _asset(received: Received, title: str, facts: MediaFacts, hints: dict[str, Any]) -> dict[str, Any]:
@@ -103,6 +123,11 @@ def _asset(received: Received, title: str, facts: MediaFacts, hints: dict[str, A
     if camera is not None:
         asset["cameraMetadata"] = {key: value for key, value in camera.items() if key != "source"}
         sources["cameraMetadata"] = camera["source"]
+    # How to show the stored pixels; the pixels, detections and any WCS stay in stored coordinates
+    orientation = hints.get("orientation")
+    if orientation is not None:
+        asset["displayOrientation"] = {key: orientation[key] for key in ("quarterTurnsClockwise", "mirrored")}
+        sources["displayOrientation"] = orientation["source"]
     if sources:
         asset["metadataSources"] = sources
     return asset
