@@ -1,4 +1,5 @@
-#!/usr/bin/env node
+// No #! line: the Vite configs import this file, and Vite's config bundler inlines it after code of its own, where
+// a #! line is a syntax error. Run it with node.
 /**
  * The public folder check, which the web build runs first (apps/web/package.json). Vite copies every file under
  * apps/web/public into apps/web/dist, dotfiles included, whether git tracks it or not, so a file git does not track
@@ -86,6 +87,75 @@ export function publicTrackedCheck(root, publicDir = PUBLIC_DIR) {
     untracked,
     links: links.length,
     message: failures.map((failure) => `[verify:public] FAIL: ${failure}`).join('\n'),
+  };
+}
+
+/** The name of the Vite plugin below, which every Vite config in the repository lists. */
+export const PLUGIN_NAME = 'albedian:verify-public-tracked';
+
+/**
+ * An error for a refusal whose stack is its message alone: Vite prints a build error's stack (vite 6.4.5, cli.js and
+ * enhanceRollupError), and a stack trace would print this machine's absolute paths into the build log.
+ */
+function refusal(message) {
+  const error = new Error(message);
+  error.stack = `${error.name}: ${message}\n`;
+  return error;
+}
+
+/** The git checkout that holds a folder, and the folder's POSIX path in it, or null where git names none. */
+function checkoutOf(folder) {
+  try {
+    const root = execFileSync('git', ['-C', folder, 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const relative = path.relative(root, fs.realpathSync(folder));
+    if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+    return { root, folder: relative.split(path.sep).join('/') || '.' };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The same check as a Vite plugin, listed in every Vite config in the repository, so that no way of starting a
+ * build skips it: pnpm build, vite build typed by hand, or Vite's own API. It checks the public folder the resolved
+ * config really copies, when the build starts; in a build, Vite copies that folder only after the bundle is built
+ * (vite 6.4.5, prepareOutDir), so a refusal here comes before any file is copied.
+ * - A watch build (vite build --watch) copies the folder again at the start of each rebuild, ahead of every plugin
+ *   hook, so the plugin refuses watch builds.
+ * - A build that copies no public folder (publicDir false, copyPublicDir false, or no such folder) passes.
+ */
+export function verifyPublicTracked() {
+  let config;
+  return {
+    name: PLUGIN_NAME,
+    apply: 'build',
+    configResolved(resolved) {
+      config = resolved;
+      if (config.build.watch) {
+        throw refusal(
+          '[verify:public] FAIL: a watch build copies the public folder again before each rebuild, ahead of this check, so the check refuses watch builds.'
+        );
+      }
+    },
+    buildStart() {
+      const { publicDir, build } = config;
+      if (!publicDir || !build.copyPublicDir || !fs.existsSync(publicDir)) {
+        config.logger.info('[verify:public] OK: this build copies no public folder.');
+        return;
+      }
+      const checkout = checkoutOf(publicDir);
+      if (!checkout) {
+        throw refusal(
+          '[verify:public] FAIL: git could not list the files it tracks here, so the build cannot tell which files in its public folder it would ship.'
+        );
+      }
+      const { ok, message } = publicTrackedCheck(checkout.root, checkout.folder);
+      if (!ok) throw refusal(message);
+      config.logger.info(message);
+    },
   };
 }
 

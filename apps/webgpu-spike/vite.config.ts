@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
+import { verifyPublicTracked } from '../../scripts/verify-public-tracked.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -46,7 +47,8 @@ export default defineConfig({
   root: here,
   // Reuse the app's public assets so /models/lb_splats.json is the exact file the app loads.
   publicDir: path.resolve(here, '../web/public'),
-  plugins: [benchResultSink()],
+  // verifyPublicTracked refuses a build while that folder holds a file git does not track or a link
+  plugins: [verifyPublicTracked(), benchResultSink()],
   resolve: {
     dedupe: ['three'],
   },

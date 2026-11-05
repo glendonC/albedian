@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { verifyPublicTracked } from '../../scripts/verify-public-tracked.mjs';
 
 export default defineConfig({
-  plugins: [react()],
+  // verifyPublicTracked refuses a build while the public folder holds a file git does not track or a link
+  plugins: [verifyPublicTracked(), react()],
   resolve: {
     dedupe: ['three'],
   },
