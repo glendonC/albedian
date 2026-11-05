@@ -77,9 +77,13 @@ def _sha256(path: Path) -> str:
 
 
 def _metadata(tags: dict) -> dict:
-    """Time and place from the file's own tags; whatever is missing stays missing."""
+    """Time and place from the file's own tags; whatever is missing stays missing.
+
+    The capture moment is only the recorded `com.apple.quicktime.creationdate`: QuickTime's `creation_time` may be
+    when the file was written or exported, so a clip that holds only that has no moment.
+    """
     out: dict = {"utc": None, "latDeg": None, "lonDeg": None}
-    created = tags.get("com.apple.quicktime.creationdate") or tags.get("creation_time")
+    created = tags.get("com.apple.quicktime.creationdate")
     if created:
         out["utc"] = datetime.fromisoformat(created.replace("Z", "+00:00")).isoformat()
     match = re.match(r"^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)", tags.get("com.apple.quicktime.location.ISO6709", ""))

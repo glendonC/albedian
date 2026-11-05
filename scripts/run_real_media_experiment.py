@@ -74,10 +74,8 @@ def probe_video_metadata(video_path: Path) -> dict[str, Any]:
     tags = info.get("format", {}).get("tags", {}) or {}
     loc_raw = tags.get("com.apple.quicktime.location.ISO6709", "")
     coords = parse_iso6709(loc_raw) if loc_raw else None
-    creation_utc = (
-        tags.get("com.apple.quicktime.creationdate")
-        or tags.get("creation_time")
-    )
+    # Only the recorded creationdate is a capture moment: creation_time may be when the file was written or exported
+    creation_utc = tags.get("com.apple.quicktime.creationdate")
     model = tags.get("com.apple.quicktime.model", "Consumer Camera")
     duration_sec = float(info.get("format", {}).get("duration", 5.0))
     return {
