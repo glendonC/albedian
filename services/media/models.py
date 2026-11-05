@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
@@ -147,7 +148,10 @@ class ExportRemuxResult:
             "sourceAssetId": source_asset_id,
             "sourceSha256": self.source_sha256,
             "exportedVariantId": variant_id,
-            "outputUri": f"file://{Path(self.output_path).resolve()}",
+            # By content, never by local path: a path names the account folder (the owner's name) and the folders
+            # above the file. RFC 6920's named-information URI of the SHA-256 measured from the written file
+            "outputUri": "ni:///sha-256;"
+            + base64.urlsafe_b64encode(bytes.fromhex(self.output_sha256)).decode("ascii").rstrip("="),
             "outputSha256": self.output_sha256,
             "containerFormat": "mp4",
             "videoCodec": self.video_codec,
