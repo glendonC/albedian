@@ -613,6 +613,13 @@ describe('@albedian/evidence: licence and source strings', () => {
     );
   });
 
+  it("names a private or a consented recording as the observer's own", () => {
+    const privateRecording: SourceAsset = { ...sourceAsset, privacyClass: 'private' };
+    const consentedRecording: SourceAsset = { ...sourceAsset, privacyClass: 'consented_demo' };
+    expect(buildFindingEvidenceRecords(privateRecording, solution, predicted())[0]?.license).toBe('Observer First-Party Recording');
+    expect(buildFindingEvidenceRecords(consentedRecording, solution, predicted())[0]?.license).toBe('Observer First-Party Recording');
+  });
+
   it('names the models behind a prediction that has no catalog record', () => {
     expect(lastRecord(predicted())?.license).toBe(
       'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request'
