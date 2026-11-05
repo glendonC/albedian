@@ -6,7 +6,10 @@ Covers:
 - A video whose frames ffmpeg cannot decode carries the decode error and no solution, trajectory or coherent
   audit, never a uniform frame and a silhouette_flow step, while the predictions for its moment and place stay
 - A still image reports no frame rate (ffprobe's default for an image is not one)
-- Real clips (owner media): each item's size and frame rate are the ones ffprobe reads, and none failed to decode
+- A file whose only time is QuickTime's creation_time, the file's own time, has no capture moment: no ephemerides,
+  pose or sky prediction, and discovery reports no file time; with a recorded creationdate, that is the moment
+- Real clips (owner media): each item's size and frame rate are the ones ffprobe reads, none failed to decode, and
+  each capture moment is the clip's recorded creationdate
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import pytest
 from services.api import app, create_app
 from services.media.router import MediaFolders
 from services.media import discovery
+from services.media.discovery import normalize_creation_utc
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,7 +76,10 @@ def test_a_video_whose_frames_cannot_be_decoded_gets_no_solve(tmp_path: Path, mo
     # What ffprobe would report for a clip taken at a synthetic moment and place that point at nobody
     probe = {
         "streams": [{"codec_type": "video", "width": 640, "height": 360, "codec_name": "hevc", "r_frame_rate": "30/1"}],
-        "format": {"duration": "2.0", "tags": {"location": "+30.0000-040.0000/", "creation_time": "2030-11-01T22:32:00Z"}},
+        "format": {
+            "duration": "2.0",
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"},
+        },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     item = _discover(tmp_path)["items"][0]
@@ -91,6 +98,37 @@ def test_a_still_reports_no_frame_rate(tmp_path: Path) -> None:
     assert "fps" not in item
 
 
+def _still_probed_with(tmp_path: Path, monkeypatch, tags: dict[str, str]) -> dict:
+    """Discover one still behind a probe that gives `tags` at a synthetic place that points at nobody."""
+    (tmp_path / "uploads").mkdir()
+    Image.fromarray(np.zeros((90, 160), dtype=np.uint8)).save(tmp_path / "uploads" / "synthetic-still.png")
+    probe = {
+        "streams": [{"codec_type": "video", "width": 160, "height": 90, "codec_name": "png"}],
+        "format": {"tags": {"location": "+30.0000-040.0000/", **tags}},
+    }
+    monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
+    return _discover(tmp_path)["items"][0]
+
+
+def test_a_file_time_alone_is_no_capture_moment(tmp_path: Path, monkeypatch) -> None:
+    # QuickTime's creation_time is the file's own time, which may be when it was written or exported
+    item = _still_probed_with(tmp_path, monkeypatch, {"creation_time": "2030-11-01T22:32:00Z"})
+    assert item["capturedAtUTC"] is None
+    assert (item["ephemerides"], item["observationSolution"], item["predictedSkyBrightness"]) == ([], None, {})
+    # Nor is the file's time reported as anything else: the upload path carries it as a labelled file_written hint
+    assert "2030-11-01" not in json.dumps(item)
+
+
+def test_a_recorded_creationdate_is_the_capture_moment(tmp_path: Path, monkeypatch) -> None:
+    item = _still_probed_with(
+        tmp_path, monkeypatch,
+        {"com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z", "creation_time": "2031-01-01T00:00:00Z"},
+    )
+    assert item["capturedAtUTC"] == "2030-11-01T22:32:00Z"
+    assert len(item["ephemerides"]) >= 6 and item["predictedSkyBrightness"]["target"] == "zenith"
+    assert "2031-01-01" not in json.dumps(item)
+
+
 @pytest.mark.owner_media("data/uploads")
 def test_real_clips_report_what_ffprobe_reads() -> None:
     items = TestClient(app).get("/api/media/discover").json()["items"]
@@ -105,3 +143,11 @@ def test_real_clips_report_what_ffprobe_reads() -> None:
         assert (item["width"], item["height"]) == (stream["width"], stream["height"])
         assert item["fps"] == pytest.approx(float(Fraction(stream["r_frame_rate"])), abs=0.001)
         assert "decodeError" not in item
+        tags = json.loads(subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format_tags", "-of", "json", str(path)],
+            check=True, stdout=subprocess.PIPE,
+        ).stdout)["format"].get("tags", {})
+        # Compared as a bool, so a failure never prints the owner's capture time
+        recorded = normalize_creation_utc(tags.get("com.apple.quicktime.creationdate"))
+        is_recorded_moment = recorded is not None and item["capturedAtUTC"] == recorded
+        assert is_recorded_moment, "the capture moment is not the clip's recorded creationdate"

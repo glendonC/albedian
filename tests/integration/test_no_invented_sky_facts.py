@@ -130,7 +130,9 @@ def test_discovery_predicts_the_zenith_sky_and_lists_no_deep_sky_objects(tmp_pat
     # A still's probe with tags placing it at the synthetic moment and place above
     probe = {
         "streams": [{"codec_type": "video", "width": 160, "height": 90, "codec_name": "png"}],
-        "format": {"tags": {"location": "+30.0000-040.0000/", "creation_time": MOMENT["obs_utc_iso"]}},
+        "format": {
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": MOMENT["obs_utc_iso"]},
+        },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     item = discovery.discover_uploaded_media(tmp_path / "uploads", tmp_path / "public", tmp_path / "artifacts")[0]

@@ -411,11 +411,10 @@ def discover_uploaded_media_report(
         location = parse_iso6709_location(raw_iso6709)
         lat_deg, lon_deg, elev_m = location if location is not None else (None, None, None)
 
-        raw_creation = (
-            tags.get("com.apple.quicktime.creationdate")
-            or tags.get("creation_time")
-        )
-        captured_at_utc = normalize_creation_utc(raw_creation)
+        # The moment the clip was recorded is QuickTime's com.apple.quicktime.creationdate. Its creation_time is the
+        # file's own time, which may be when the file was written or exported: no capture moment, so a file with
+        # only that gets no ephemerides, pose or sky prediction, and discovery reports no file time
+        captured_at_utc = normalize_creation_utc(tags.get("com.apple.quicktime.creationdate"))
         camera_model = (
             tags.get("com.apple.quicktime.model")
             or tags.get("model")

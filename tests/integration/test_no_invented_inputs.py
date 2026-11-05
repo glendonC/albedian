@@ -113,7 +113,9 @@ def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatc
     # The tags ffprobe would return for a clip taken at a synthetic moment and place that point at nobody
     probe = {
         "streams": [{"codec_type": "video", "width": 640, "height": 360, "codec_name": "png"}],
-        "format": {"tags": {"location": "+30.0000-040.0000/", "creation_time": "2030-11-01T22:32:00Z"}},
+        "format": {
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"},
+        },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     monkeypatch.setattr(

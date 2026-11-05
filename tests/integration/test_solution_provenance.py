@@ -96,7 +96,9 @@ def test_discovery_never_calls_a_star_observed_through_the_horizon_pose(tmp_path
     # The tags ffprobe would return for a clip taken at the synthetic moment and place above
     probe = {
         "streams": [{"codec_type": "video", "width": width, "height": height, "codec_name": "png"}],
-        "format": {"tags": {"location": "+30.0000-040.0000/", "creation_time": MOON_MOMENT["obs_utc_iso"]}},
+        "format": {
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": MOON_MOMENT["obs_utc_iso"]},
+        },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     monkeypatch.setattr(discovery, "_extract_representative_luma", lambda path, width, height: (frame, []))

@@ -107,7 +107,7 @@ def test_discovery_gives_a_clip_from_outside_the_range_no_ephemerides(tmp_path, 
     Image.fromarray(np.zeros((90, 160), dtype=np.uint8)).save(tmp_path / "uploads" / "synthetic-2051.png")
     probe = {
         "streams": [{"codec_type": "video", "width": 160, "height": 90, "codec_name": "png"}],
-        "format": {"tags": {"location": "+30.0000-040.0000/", "creation_time": AFTER}},
+        "format": {"tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": AFTER}},
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     item = discovery.discover_uploaded_media(tmp_path / "uploads", tmp_path / "public", tmp_path / "artifacts")[0]
