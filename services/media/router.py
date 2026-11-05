@@ -2,16 +2,43 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Request
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from services.media.discovery import discover_uploaded_media_report
 from services.media.runtime import MediaExperimentRuntime
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+@dataclass(frozen=True)
+class MediaFolders:
+    """The folders discover scans: the uploads, the web app's public folder and the experiment artifacts."""
+
+    uploads: Path
+    public: Path
+    artifacts: Path
+
+
+# Resolved from the repository, so the API scans the same folders whatever its working directory
+DEFAULT_MEDIA_FOLDERS = MediaFolders(
+    uploads=REPO_ROOT / "data" / "uploads",
+    public=REPO_ROOT / "apps" / "web" / "public",
+    artifacts=REPO_ROOT / "data" / "artifacts",
+)
+
 router = APIRouter()
+
+
+def media_folders(request: Request) -> MediaFolders:
+    """The folders the app was built with (services/api.py create_app); never folders a request names."""
+    return request.app.state.media_folders
+
 
 _media_runtime = MediaExperimentRuntime()
 
@@ -33,22 +60,17 @@ _NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input f
 
 
 @router.get("/api/media/discover")
-def get_media_discover(
-    uploads_dir: str = Query(default="data/uploads"),
-    public_dir: str = Query(default="apps/web/public"),
-    artifacts_dir: str = Query(default="data/artifacts"),
-) -> dict[str, Any]:
-    """Dynamically discover all uploaded image/video assets in `data/uploads/`,
-    probe QuickTime/container metadata via `ffprobe`, compute content SHA-256,
-    link rendered variants, and return each item's `ObservationSolution` and ephemerides.
+def get_media_discover(folders: MediaFolders = Depends(media_folders)) -> dict[str, Any]:
+    """Discover the image and video files in the app's uploads folder: probe their container metadata with
+    `ffprobe`, hash their content, link rendered variants, and return each item's `ObservationSolution` and
+    ephemerides. Every path in the answer is relative to its folder.
     """
     items, skipped = discover_uploaded_media_report(
-        uploads_dir=uploads_dir,
-        public_dir=public_dir,
-        artifacts_dir=artifacts_dir,
+        uploads_dir=folders.uploads,
+        public_dir=folders.public,
+        artifacts_dir=folders.artifacts,
     )
     return {
-        "uploadsDir": uploads_dir,
         "count": len(items),
         "items": [item.to_contract_dict() for item in items],
         # Files left out, each with the reason: nothing is listed with a size, rate or duration it does not have

@@ -3,25 +3,35 @@
 Each domain serves its routes from a router in its own package: `services/science/router.py`,
 `services/media/router.py` and `services/voice/router.py`. Serve with `uvicorn services.api:app`.
 
-The API answers browser pages only from the web app's own origins: those in `ALBEDIAN_CORS_ORIGINS`
+The API answers only a Host that names this machine: those in `ALBEDIAN_TRUSTED_HOSTS` (comma-separated
+host names), or by default localhost, 127.0.0.1 and [::1], on any port. A page that rebinds its own name to
+this machine still sends that name as the Host, and gets 400.
+
+It answers browser pages only from the web app's own origins: those in `ALBEDIAN_CORS_ORIGINS`
 (comma-separated, exact), or by default the Vite dev server at http://localhost:5173 and
 http://127.0.0.1:5173. A preflight from any other origin is refused, and a POST, PUT, PATCH or DELETE that
 carries any other Origin is answered 403 before a route runs. A request with no Origin header passes.
+
+Discover scans only the folders the app is built with (`create_app(media_folders=...)`, by default
+data/uploads, apps/web/public and data/artifacts in this repository), and returns paths relative to them.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 import os
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from services.media.router import DEFAULT_MEDIA_FOLDERS, MediaFolders
 from services.media.router import router as media_router
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
@@ -36,6 +46,41 @@ CORS_ORIGINS_ENV = "ALBEDIAN_CORS_ORIGINS"
 DEFAULT_CORS_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 DEFAULT_PORTS = {"http": 80, "https": 443}
+TRUSTED_HOSTS_ENV = "ALBEDIAN_TRUSTED_HOSTS"
+# This machine's names: a page that rebinds its own name to 127.0.0.1 still sends that name as the Host
+DEFAULT_TRUSTED_HOSTS = ("localhost", "127.0.0.1", "[::1]")
+HOST_NAME = re.compile(r"\[[0-9a-f:.]+\]|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*")
+
+
+def _checked_host(host: str) -> str:
+    """Return the host name if a Host header could carry it exactly so; otherwise raise ValueError naming the setting."""
+
+    def refuse(why: str) -> ValueError:
+        return ValueError(f"{TRUSTED_HOSTS_ENV}: {host!r} {why}; list host names such as localhost or 127.0.0.1")
+
+    if not host:
+        raise refuse("is an empty entry")
+    if "*" in host:
+        raise refuse("is a wildcard, which this API does not accept")
+    if "/" in host:
+        raise refuse("has a scheme or a path, which a host name never carries")
+    if host != host.lower():
+        raise refuse("has capitals; write it in lowercase")
+    if ":" in host.rsplit("]", 1)[-1]:
+        raise refuse("has a port; a host name matches on every port")
+    if not HOST_NAME.fullmatch(host):
+        raise refuse("is not a host name")
+    return host
+
+
+def allowed_hosts(configured: Sequence[str] | None = None) -> tuple[str, ...]:
+    """The Host names the API answers: those given, else ALBEDIAN_TRUSTED_HOSTS, else this machine's names."""
+    if configured is None:
+        value = os.environ.get(TRUSTED_HOSTS_ENV)
+        if value is None:
+            return DEFAULT_TRUSTED_HOSTS
+        configured = value.split(",")
+    return tuple(_checked_host(entry.strip()) for entry in configured)
 
 
 def _checked_origin(origin: str) -> str:
@@ -123,20 +168,29 @@ def get_health() -> dict[str, Any]:
     }
 
 
-def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
-    """Build the API: CORS first, then the foreign-origin guard, then the health, science, media and voice routes.
+def create_app(
+    cors_origins: Sequence[str] | None = None,
+    trusted_hosts: Sequence[str] | None = None,
+    media_folders: MediaFolders | None = None,
+) -> FastAPI:
+    """Build the API: the Host check first, then CORS, then the foreign-origin guard, then the health, science,
+    media and voice routes.
 
-    `cors_origins` replaces ALBEDIAN_CORS_ORIGINS and the default; a wildcard or a malformed origin raises
-    ValueError.
+    `cors_origins` replaces ALBEDIAN_CORS_ORIGINS and `trusted_hosts` replaces ALBEDIAN_TRUSTED_HOSTS, each over
+    its default; a wildcard or a malformed entry raises ValueError. `media_folders` replaces the folders discover
+    scans.
     """
     origins = allowed_origins(cors_origins)
+    hosts = allowed_hosts(trusted_hosts)
     app = FastAPI(
         title="Albedian Observation & Media Runtime API",
         version="0.2.0",
         description="Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",
     )
 
-    # add_middleware puts each new layer outside the last, so CORS sees a request first
+    app.state.media_folders = media_folders or DEFAULT_MEDIA_FOLDERS
+
+    # add_middleware puts each new layer outside the last, so the Host check sees a request first, then CORS
     app.add_middleware(ForeignOriginGuard, origins=origins)
     app.add_middleware(
         CORSMiddleware,
@@ -145,6 +199,7 @@ def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
     )
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(hosts), www_redirect=False)
 
     for domain_router in (health_router, science_router, media_router, voice_router):
         app.include_router(domain_router)

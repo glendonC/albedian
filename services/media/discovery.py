@@ -298,7 +298,7 @@ def _discover_matching_variants(
             ):
                 report_file = art_dir / "experiment_report.json"
                 if report_file.exists():
-                    artifact_report_path = str(report_file)
+                    artifact_report_path = report_file.relative_to(artifacts_dir).as_posix()
                     break
 
     return variants, artifact_report_path
@@ -495,10 +495,8 @@ def discover_uploaded_media_report(
                 else []
             )
 
-        try:
-            rel_path = primary.relative_to(Path.cwd()).as_posix()
-        except ValueError:
-            rel_path = str(primary)
+        # Relative to the uploads folder, so no answer carries an absolute path
+        rel_path = primary.relative_to(up_root).as_posix()
 
         item = DiscoveredMediaItem(
             id=asset_id,

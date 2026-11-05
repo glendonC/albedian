@@ -318,59 +318,17 @@
       "/api/media/discover": {
         "get": {
           "summary": "Get Media Discover",
-          "description": "Dynamically discover all uploaded image/video assets in `data/uploads/`,\nprobe QuickTime/container metadata via `ffprobe`, compute content SHA-256,\nlink rendered variants, and return each item's `ObservationSolution` and ephemerides.",
+          "description": "Discover the image and video files in the app's uploads folder: probe their container metadata with\n`ffprobe`, hash their content, link rendered variants, and return each item's `ObservationSolution` and\nephemerides. Every path in the answer is relative to its folder.",
           "operationId": "get_media_discover_api_media_discover_get",
-          "parameters": [
-            {
-              "name": "uploads_dir",
-              "in": "query",
-              "required": false,
-              "schema": {
-                "type": "string",
-                "default": "data/uploads",
-                "title": "Uploads Dir"
-              }
-            },
-            {
-              "name": "public_dir",
-              "in": "query",
-              "required": false,
-              "schema": {
-                "type": "string",
-                "default": "apps/web/public",
-                "title": "Public Dir"
-              }
-            },
-            {
-              "name": "artifacts_dir",
-              "in": "query",
-              "required": false,
-              "schema": {
-                "type": "string",
-                "default": "data/artifacts",
-                "title": "Artifacts Dir"
-              }
-            }
-          ],
           "responses": {
             "200": {
               "description": "Successful Response",
               "content": {
                 "application/json": {
                   "schema": {
-                    "type": "object",
                     "additionalProperties": true,
+                    "type": "object",
                     "title": "Response Get Media Discover Api Media Discover Get"
-                  }
-                }
-              }
-            },
-            "422": {
-              "description": "Validation Error",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
                   }
                 }
               }
@@ -885,6 +843,18 @@
   ],
   "middleware": [
     {
+      "class": "starlette.middleware.trustedhost.TrustedHostMiddleware",
+      "args": [],
+      "kwargs": {
+        "allowed_hosts": [
+          "localhost",
+          "127.0.0.1",
+          "[::1]"
+        ],
+        "www_redirect": false
+      }
+    },
+    {
       "class": "starlette.middleware.cors.CORSMiddleware",
       "args": [],
       "kwargs": {
@@ -1095,7 +1065,7 @@
       "request": "GET /api/health/",
       "status": 307,
       "headers": {
-        "location": "http://testserver/api/health",
+        "location": "http://localhost/api/health",
         "vary": "Origin"
       },
       "body": ""
@@ -1141,6 +1111,12 @@
       "body": {
         "detail": "Origin https://evil.example is not allowed to send POST requests to this API. Add it to ALBEDIAN_CORS_ORIGINS when you start the API."
       }
+    },
+    "a Host that does not name this machine": {
+      "request": "GET /api/health",
+      "status": 400,
+      "headers": {},
+      "body": "Invalid host header"
     }
   }
 }

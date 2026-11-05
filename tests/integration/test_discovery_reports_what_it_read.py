@@ -21,19 +21,17 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from services.api import app
+from services.api import app, create_app
+from services.media.router import MediaFolders
 from services.media import discovery
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def _discover(tmp_path: Path) -> dict:
-    params = {
-        "uploads_dir": str(tmp_path / "uploads"),
-        "public_dir": str(tmp_path / "public"),
-        "artifacts_dir": str(tmp_path / "artifacts"),
-    }
-    response = TestClient(app).get("/api/media/discover", params=params)
+    # The scan folders are the app's; a request cannot name them (platform-6b)
+    folders = MediaFolders(uploads=tmp_path / "uploads", public=tmp_path / "public", artifacts=tmp_path / "artifacts")
+    response = TestClient(create_app(media_folders=folders)).get("/api/media/discover")
     assert response.status_code == 200
     return response.json()
 
@@ -98,7 +96,7 @@ def test_real_clips_report_what_ffprobe_reads() -> None:
     items = TestClient(app).get("/api/media/discover").json()["items"]
     assert len(items) >= 3
     for item in items:
-        path = ROOT / item["relativePath"]
+        path = ROOT / "data" / "uploads" / item["relativePath"]
         stream = json.loads(subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate",
              "-of", "json", str(path)],

@@ -20,11 +20,15 @@ with its reason printed, wherever a path it names is absent.
   `-k`, `-m` or a hook that drops items would do.
 It cannot see a file that `testpaths`, `norecursedirs` or `python_files` keep out of collection, nor a
 test that returns early.
+
+The test run sets `ALBEDIAN_TRUSTED_HOSTS` to this machine's names plus `testserver`, TestClient's default
+host, before any test imports `services.api`; the API's own default never includes `testserver`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Generator
+import os
 from pathlib import Path
 
 import pytest
@@ -35,6 +39,9 @@ STRICT = "--no-unexpected-skips"
 # The "Skipped: <reason>" text of each skip a marker added to an item for its own missing folder or path
 MARKER_SKIPS = pytest.StashKey[set[str]]()
 REMOVED_SHOWN = 10
+# TestClient sends Host: testserver, so the test run adds it to the API's own default hosts (services/api.py)
+TRUSTED_HOSTS_ENV = "ALBEDIAN_TRUSTED_HOSTS"
+TEST_RUN_HOSTS = ("localhost", "127.0.0.1", "[::1]", "testserver")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -47,6 +54,8 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_configure(config: pytest.Config) -> None:
+    # Before any test module imports services.api, whose app reads the hosts when it is built
+    os.environ[TRUSTED_HOSTS_ENV] = ",".join(TEST_RUN_HOSTS)
     config.addinivalue_line(
         "markers",
         "owner_media(*folders): needs the owner's media, which is not in git (data/uploads unless folders "

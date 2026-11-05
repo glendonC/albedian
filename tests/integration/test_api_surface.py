@@ -9,8 +9,9 @@ the change shows up in review as a diff:
 
     ALBEDIAN_UPDATE_API_SURFACE=1 uv run pytest tests/integration/test_api_surface.py
 
-The surface is built with the default allowed origins, as `services.api:app` is served when
-ALBEDIAN_CORS_ORIGINS is unset, so a lane that sets the variable sees the same surface.
+The surface is built with the default allowed origins and hosts, as `services.api:app` is served when
+ALBEDIAN_CORS_ORIGINS and ALBEDIAN_TRUSTED_HOSTS are unset, and its client sends Host: localhost, so neither a
+lane that sets a variable nor the test run's testserver host changes the surface.
 """
 
 from __future__ import annotations
@@ -25,9 +26,9 @@ from fastapi.routing import iter_route_contexts
 from fastapi.testclient import TestClient
 import pytest
 
-from services.api import DEFAULT_CORS_ORIGINS, create_app
+from services.api import DEFAULT_CORS_ORIGINS, DEFAULT_TRUSTED_HOSTS, create_app
 
-app = create_app(cors_origins=DEFAULT_CORS_ORIGINS)
+app = create_app(cors_origins=DEFAULT_CORS_ORIGINS, trusted_hosts=DEFAULT_TRUSTED_HOSTS)
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "api_surface.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_API_SURFACE"
 REGENERATE_HINT = (
@@ -56,6 +57,7 @@ PINNED_REQUESTS: list[tuple[str, str, str, dict[str, Any], int]] = [
     ("CORS headers on a browser request", "GET", "/api/unknown", {"headers": BROWSER_ORIGIN}, 404),
     ("CORS preflight from a foreign origin", "OPTIONS", "/api/science/solve", {"headers": FOREIGN_PREFLIGHT}, 400),
     ("POST from a foreign origin", "POST", "/api/science/solve", {"headers": FOREIGN_ORIGIN, "json": MOMENT}, 403),
+    ("a Host that does not name this machine", "GET", "/api/health", {"headers": {"Host": "evil.example"}}, 400),
 ]
 PINNED_HEADERS = (
     "access-control-allow-credentials",
@@ -70,7 +72,7 @@ PINNED_HEADERS = (
 
 def build_api_surface(api: FastAPI) -> dict[str, Any]:
     """Return what the app exposes over HTTP, as plain JSON."""
-    client = TestClient(api)
+    client = TestClient(api, base_url="http://localhost")
     responses: dict[str, Any] = {}
     for label, method, path, options, _ in PINNED_REQUESTS:
         response = client.request(method, path, **options)
