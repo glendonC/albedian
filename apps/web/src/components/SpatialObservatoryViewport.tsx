@@ -19,6 +19,8 @@ import {
 import {
   observatoryAudio,
 } from '../audio/ObservatoryAudioEngine.js';
+import { skyAudio } from '../audio/SkyAudioFeed.js';
+import { AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
 import {
   CoalescingBar,
 } from './CoalescingBar.js';
@@ -253,6 +255,23 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     observatoryAudio.setMasterVolume(volumeLevel);
   }, [volumeLevel]);
+
+  // While audio is on, the catalog stars in view sound and the camera turns the listener
+  useEffect(() => {
+    if (!soundEnabled) return;
+    let frame = 0;
+    const follow = () => {
+      skyAudio.follow(rendererRef.current?.getCameraSkyPose?.() ?? null);
+      frame = window.requestAnimationFrame(follow);
+    };
+    frame = window.requestAnimationFrame(follow);
+    return () => window.cancelAnimationFrame(frame);
+  }, [soundEnabled]);
+
+  // The voices carry the evidence class of the star layer they sound; none where it is undeclared
+  useEffect(() => {
+    skyAudio.setEvidenceClass(renderLayers?.find((layer) => layer.kind === 'catalog_stars')?.evidenceClass ?? null);
+  }, [renderLayers]);
 
   // Landing Page Non-Interactive 3D Background Scene Carousel
   useEffect(() => {
@@ -522,6 +541,7 @@ export const SpatialObservatoryViewport: React.FC<
               type="button"
               className={`alb-audio-label-btn ${soundEnabled ? 'is-active' : ''}`}
               onClick={handleToggleSound}
+              aria-describedby={soundEnabled ? 'alb-audio-disclosure' : undefined}
             >
               Audio
             </button>
@@ -539,6 +559,20 @@ export const SpatialObservatoryViewport: React.FC<
               }}
             />
           </div>
+          {/* What the sound is, and the credits and notices of the works the audio engine ships */}
+          {soundEnabled && (
+            <div className="alb-audio-notes">
+              <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{AUDIO_DISCLOSURE}</p>
+              <ul className="alb-audio-credits" aria-label="Audio credits">
+                {AUDIO_CREDIT_LINES.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <a className="alb-audio-notices" href={AUDIO_NOTICES_URL} target="_blank" rel="noopener noreferrer">
+                Notices
+              </a>
+            </div>
+          )}
         </div>
       </header>
     </div>
