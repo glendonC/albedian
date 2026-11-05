@@ -633,8 +633,9 @@ def test_fastapi_endpoints() -> None:
     )
     assert r_voice_ok.status_code == 200
     v_ok = r_voice_ok.json()
-    assert v_ok["status"] == "completed"
-    assert v_ok["newStateVersion"] == 5
+    # The backend applies nothing: a checked action is proposed for the app's reducer, with no state version
+    assert v_ok["status"] == "proposed"
+    assert "newStateVersion" not in v_ok
     assert v_ok["proposedAction"]["type"] == "space.enter"
 
     r_voice_stale = client.post(
@@ -727,7 +728,7 @@ def test_fastapi_endpoints() -> None:
         )
         assert r_vc.status_code == 200
         vc_data = r_vc.json()
-        assert vc_data["status"] == "completed"
+        assert vc_data["status"] == "proposed"
         assert vc_data["proposedAction"]["type"] == expected_type
         assert expected_target_substr in vc_data["proposedAction"]["findingId"]
         assert len(vc_data.get("scientificExplanation", "")) > 20

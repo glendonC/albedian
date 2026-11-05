@@ -1,15 +1,16 @@
 """Claude intent path: one utterance becomes at most one `AlbedianAction`, through the Anthropic SDK.
 
 The model only picks an action type and its semantic fields, through strict tools. The server fills
-every identifier and safety literal, and `validate_and_execute_voice_command` stays the authority on
-what runs. Whenever this path has no usable action it returns None, and the deterministic rules parser
-in `services/voice/intent.py` answers instead.
+every identifier and safety literal, and `check_voice_command` in `services/voice/intent.py` checks
+every action before the app may apply it. Whenever this path has no usable action it returns None, and
+the deterministic rules parser in `services/voice/intent.py` answers instead.
 
 Live calls are paid. They happen only with `ALBEDIAN_ENABLE_LIVE_CLAUDE=1` and `ANTHROPIC_API_KEY` set.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache
 import json
@@ -57,6 +58,25 @@ _FINDING_ID = {
         "state.pointer.overlappingCandidateIds)."
     ),
 }
+
+
+@dataclass(frozen=True)
+class ModelAction:
+    """An action the model formed, with the model that was asked and the model whose answer it is."""
+
+    action: dict[str, Any]
+    requested_model: str
+    served_by: str
+
+    @property
+    def interpretation(self) -> dict[str, str]:
+        """The contract's ActionInterpretation for this action."""
+        return {"parser": "model", "requestedModel": self.requested_model, "servedBy": self.served_by}
+
+
+def epoch_iso(year_ce: int) -> str:
+    """The `epochISO` both parsers give a space.epoch year: January 1 of that year at 00:00 UTC."""
+    return f"{year_ce:04d}-01-01T00:00:00Z"
 
 
 def _object(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -341,8 +361,8 @@ def compose_action(
         if ("yearCE" in tool_input) == ("yearsBeforeNow" in tool_input):
             return None
         year_ce = tool_input["yearCE"] if "yearCE" in tool_input else current_year - tool_input["yearsBeforeNow"]
-        # Same form as the rules parser; the validator rejects years outside the propagation bounds.
-        action["epochISO"] = f"{year_ce:04d}-01-01T00:00:00Z"
+        # Same form as the rules parser; the checks reject a year outside the contract's range.
+        action["epochISO"] = epoch_iso(year_ce)
         action["yearCE"] = year_ce
     elif tool_name == "history_back":
         action["mode"] = tool_input["mode"]
@@ -379,6 +399,23 @@ def _log_serving_model(message: Any, requested_model: str) -> None:
         logger.info("Claude intent answered by %s", message.model)
 
 
+def _serving_model(message: Any) -> str:
+    """The model whose answer the reply is: the fallback model when one served it, else the top-level model.
+
+    A `fallback_message` entry in `usage.iterations` is the terminal entry of a turn a fallback model
+    served, and a `fallback` block's `to` names the model producing the content after it (type docs of
+    BetaFallbackMessageIterationUsage and BetaFallbackBlock, Anthropic Python SDK 2.4.0).
+    """
+    iterations = getattr(message.usage, "iterations", None) or []
+    served = [getattr(entry, "model", None) for entry in iterations if getattr(entry, "type", None) == "fallback_message"]
+    if served and served[-1]:
+        return str(served[-1])
+    handoffs = [getattr(getattr(block, "to", None), "model", None) for block in message.content if block.type == "fallback"]
+    if handoffs and handoffs[-1]:
+        return str(handoffs[-1])
+    return str(message.model)
+
+
 def propose_action_with_claude(
     utterance: str,
     context: ActionContext,
@@ -387,7 +424,7 @@ def propose_action_with_claude(
     *,
     client: anthropic.Anthropic | None = None,
     current_year: int | None = None,
-) -> dict[str, Any] | None:
+) -> ModelAction | None:
     """Ask the configured model for one action. None means the rules parser should answer."""
     if client is None:
         if not live_claude_enabled():
@@ -447,4 +484,5 @@ def propose_action_with_claude(
     if action is None:
         logger.warning("Claude tool call %s did not compose a valid action; the rules parser answers",
                        tool_calls[0].name)
-    return action
+        return None
+    return ModelAction(action=action, requested_model=model, served_by=_serving_model(message))

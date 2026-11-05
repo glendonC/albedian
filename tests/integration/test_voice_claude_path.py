@@ -18,8 +18,9 @@ import anthropic
 import httpx2
 import pytest
 
+from services.contracts import voice as contract
 from services.voice import claude
-from services.voice.intent import ActionContext, parse_voice_intent
+from services.voice.intent import ActionContext, check_voice_command, parse_voice_intent
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_voice_actions.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"
@@ -117,10 +118,21 @@ def _clean_claude_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(name, raising=False)
 
 
-def _propose(api: _Api, utterance: str = "take me to that one", **kwargs: Any) -> dict[str, Any] | None:
+def _propose(api: _Api, utterance: str = "take me to that one", **kwargs: Any) -> claude.ModelAction | None:
     return claude.propose_action_with_claude(
         utterance, CONTEXT, "req-1", 3, client=api.client(), current_year=2026, **kwargs
     )
+
+
+def _model(served_by: str = "claude-opus-5-5") -> dict[str, str]:
+    return {"parser": "model", "requestedModel": "claude-opus-5-5", "servedBy": served_by}
+
+
+def _live(monkeypatch: pytest.MonkeyPatch, api: _Api) -> None:
+    """Turn the live path on with the test key, answered by `api` in this process."""
+    monkeypatch.setenv(claude.ENABLE_ENV, "1")
+    monkeypatch.setenv(claude.API_KEY_ENV, TEST_KEY)
+    monkeypatch.setattr(claude, "_shared_client", lambda api_key: api.client())
 
 
 def test_model_and_effort_are_read_from_one_place(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -285,7 +297,10 @@ def test_each_tool_call_becomes_a_contract_action(
     tool_name: str, tool_input: dict[str, Any], expected: dict[str, Any]
 ) -> None:
     api = _Api(_reply(THINKING, _tool_use(tool_name, tool_input)))
-    assert _propose(api) == {**BASE, **expected}
+    proposal = _propose(api)
+    assert proposal is not None
+    assert proposal.action == {**BASE, **expected}
+    assert proposal.interpretation == _model()
 
 
 FALLBACK_BLOCK = {
@@ -305,7 +320,10 @@ def test_a_fallback_answer_is_used_and_never_silent(caplog: pytest.LogCaptureFix
     ]
     api = _Api(_reply(FALLBACK_BLOCK, THINKING, SKY, model="claude-opus-4-8", iterations=iterations))
     with caplog.at_level(logging.INFO, logger=claude.logger.name):
-        assert _propose(api) == {**BASE, "type": "sky.show", "mode": "measured"}
+        proposal = _propose(api)
+    assert proposal is not None
+    assert proposal.action == {**BASE, "type": "sky.show", "mode": "measured"}
+    assert proposal.interpretation == _model(served_by="claude-opus-4-8")
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert any("claude-opus-4-8" in message and "fallback" in message for message in warnings)
 
@@ -328,7 +346,11 @@ def test_each_fallback_signal_alone_is_reported(
     reply: dict[str, Any], signal: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     with caplog.at_level(logging.INFO, logger=claude.logger.name):
-        assert _propose(_Api(reply)) == {**BASE, "type": "sky.show", "mode": "measured"}
+        proposal = _propose(_Api(reply))
+    assert proposal is not None
+    assert proposal.action == {**BASE, "type": "sky.show", "mode": "measured"}
+    # Each signal alone is enough to name the fallback model as the one that answered
+    assert proposal.served_by == "claude-opus-4-8"
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
     assert signal in warnings[0]
@@ -337,7 +359,8 @@ def test_each_fallback_signal_alone_is_reported(
 def test_the_serving_model_is_logged_for_every_answer(caplog: pytest.LogCaptureFixture) -> None:
     api = _Api(_reply(_tool_use("source_return", {})))
     with caplog.at_level(logging.INFO, logger=claude.logger.name):
-        _propose(api)
+        proposal = _propose(api)
+    assert proposal is not None and proposal.served_by == "claude-opus-5-5"
     assert any("claude-opus-5-5" in r.getMessage() for r in caplog.records)
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
@@ -353,26 +376,67 @@ def test_a_refusal_hands_the_utterance_to_the_rules_parser(
         stop_details={"type": "refusal", "category": "general_harms", "explanation": None},
     )
     api = _Api(refusal)
-    monkeypatch.setenv(claude.ENABLE_ENV, "1")
-    monkeypatch.setenv(claude.API_KEY_ENV, TEST_KEY)
-    monkeypatch.setattr(claude, "_shared_client", lambda api_key: api.client())
+    _live(monkeypatch, api)
     with caplog.at_level(logging.INFO, logger=claude.logger.name):
         assert parse_voice_intent(utterance, CONTEXT) == rules_answer
     assert len(api.requests) == 1
-    assert rules_answer["type"] == "space.enter"
+    assert rules_answer.action is not None and rules_answer.action["type"] == "space.enter"
+    assert rules_answer.interpretation == {"parser": "rules"}
     assert any("general_harms" in r.getMessage() for r in caplog.records)
 
 
 def test_a_valid_tool_call_wins_over_the_rules_parser(monkeypatch: pytest.MonkeyPatch) -> None:
     api = _Api(_reply(_tool_use("finding_describe", {"findingId": "finding-obs-9", "fields": ["type"]})))
-    monkeypatch.setenv(claude.ENABLE_ENV, "1")
-    monkeypatch.setenv(claude.API_KEY_ENV, TEST_KEY)
-    monkeypatch.setattr(claude, "_shared_client", lambda api_key: api.client())
-    action = parse_voice_intent("what is that one?", CONTEXT, request_id="req-9")
-    assert action == {
+    _live(monkeypatch, api)
+    intent = parse_voice_intent("what is that one?", CONTEXT, request_id="req-9")
+    assert intent.action == {
         "type": "finding.describe", "requestId": "req-9", "expectedViewRevision": 3,
         "findingId": "finding-obs-9", "fields": ["type"],
     }
+    assert intent.interpretation == _model()
+
+
+ABSTENTIONS = {
+    "no tool": _reply({"type": "text", "text": "No catalog object by that name."}, stop_reason="end_turn"),
+    "unknown finding id": _reply(_tool_use("space_enter", {"findingId": "finding-star-andromeda"})),
+    "refusal": _reply(stop_reason="refusal", stop_details={"type": "refusal", "category": None, "explanation": None}),
+}
+
+
+@pytest.mark.parametrize("reply", ABSTENTIONS.values(), ids=ABSTENTIONS.keys())
+def test_a_model_abstention_reaches_rules_that_invent_no_target(
+    monkeypatch: pytest.MonkeyPatch, reply: dict[str, Any]
+) -> None:
+    api = _Api(reply)
+    _live(monkeypatch, api)
+    bare = {"viewRevision": 3, "calibrationState": "calibrated"}
+    outcome = check_voice_command("take me to the Andromeda galaxy", bare)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert len(api.requests) == 1
+    assert (outcome["status"], outcome["reason"]) == ("rejected", "ambiguous_target")
+    assert outcome["interpretation"] == {"parser": "rules"}
+    assert "proposedAction" not in outcome
+    assert "betelgeuse" not in json.dumps(outcome).lower()
+
+
+def test_the_reply_names_the_model_asked_and_the_model_that_answered(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = _Api(_reply(SKY, iterations=[FALLBACK_ITERATION]))
+    _live(monkeypatch, api)
+    outcome = check_voice_command("show me the sky I recorded", CONTEXT)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert outcome["status"] == "proposed"
+    assert outcome["proposedAction"]["type"] == "sky.show"
+    assert outcome["interpretation"] == _model(served_by="claude-opus-4-8")
+
+
+def test_a_blank_request_reaches_no_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = _Api()
+    _live(monkeypatch, api)
+    outcome = check_voice_command("   ", CONTEXT)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert api.requests == []
+    assert (outcome["status"], outcome["reason"]) == ("rejected", "no_grounded_answer")
+    assert outcome["interpretation"] == {"parser": "rules"}
 
 
 UNUSABLE_REPLIES = {

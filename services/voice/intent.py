@@ -1,28 +1,70 @@
-"""Server-side intent parser, authoritative scientific explanation generator,
-and revision-checked action validator mirroring `@albedian/contracts`. The optional
-Claude intent path lives in `services/voice/claude.py`.
+"""Server-side voice intent: the rules parser, and the checks every action passes before the app may apply it.
+
+The optional Claude path lives in `services/voice/claude.py`; when it forms no action, the rules here answer.
+The backend holds no session state, so it applies nothing. Every reply fits the contract's
+VoiceCommandResponseSchema (mirror: `services/contracts/voice.py`). An action that passes these checks comes
+back "proposed", as the validated action, for the app's reducer to apply; a request that forms no action, or
+an action these checks refuse, comes back as a rejected or needs_input outcome with no action in it, and an
+action that fails the contract is refused as invalid_action with its issues, never its values. Every reply to
+a request parsed here names who interpreted it, as the contract's ActionInterpretation.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import logging
 import re
 from typing import Any
 
+from services.contracts.voice import (
+    ALBEDIAN_ACTION,
+    EPOCH_MAX_YEAR_CE,
+    EPOCH_MIN_YEAR_CE,
+    FINDING_ACTION_TYPES,
+    JAVASCRIPT_SPACES,
+    QUESTION_MAX_UTF16,
+    action_issues,
+    utf16_length,
+)
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
-    PINNED_CATALOG_STARS,
     STAR_BY_ID,
     CatalogStar,
     compute_light_travel_time_description,
 )
-from services.science.ephemeris import compute_solar_system_ephemerides
-from services.voice.claude import PREDICTED_BODY_KEYS, propose_action_with_claude
-
-_STARS_BY_NAME_LEN: tuple[CatalogStar, ...] = tuple(
-    sorted(ALL_SKY_CATALOG_STARS, key=lambda s: len(s.common_name), reverse=True)
+from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
+from services.voice.claude import (
+    CATALOG_FINDING_IDS,
+    PREDICTED_BODY_KEYS,
+    PREDICTED_FINDING_IDS,
+    epoch_iso,
+    propose_action_with_claude,
 )
-_SOLAR_SYSTEM_BODIES: tuple[str, ...] = PREDICTED_BODY_KEYS
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_REQUEST_ID = "req-voice-1"
+# What the reducer answers for each action the app cannot do yet (packages/observation/src/reducer.ts)
+NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
+    "space.regime": ("not_connected", "Voice cannot do this in the app yet."),
+    "scene.show": ("not_connected", "Voice cannot do this in the app yet."),
+    "audio.set": ("not_connected", "Voice cannot do this in the app yet."),
+    "question.ask": ("no_grounded_answer", "No tool can answer questions from your data yet."),
+}
+UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
+
+
+def _whole_word(name: str) -> re.Pattern[str]:
+    """Match `name` only as a whole word, so the Moon is not found in "honeymoon"."""
+    return re.compile(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])")
+
+
+# Every name the catalog and the ephemeris hold, longest first so "Deneb Algedi" wins over "Deneb"
+_NAMED_FINDINGS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
+    (_whole_word(star.common_name), f"finding-{star.id}")
+    for star in sorted(ALL_SKY_CATALOG_STARS, key=lambda star: len(star.common_name), reverse=True)
+) + tuple((_whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
 
 
 @dataclass(frozen=True)
@@ -118,327 +160,429 @@ def _optional_str(data: dict[str, Any], *keys: str) -> str | None:
     return None
 
 
-def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | None:
-    """Resolve explicit star/planet name across all 70+ all-sky objects or deictic context."""
-    lower = utterance.lower()
-    for star in _STARS_BY_NAME_LEN:
-        if star.common_name.lower() in lower:
-            return f"finding-{star.id}"
-    for body in _SOLAR_SYSTEM_BODIES:
-        if body in lower:
-            return f"finding-predicted-{body}"
+@dataclass(frozen=True)
+class VoiceIntent:
+    """What one utterance became, and who interpreted it.
 
+    `action` is a contract AlbedianAction, or None when none could be formed; then `reason`, a contract
+    rejection reason, and `explanation` say why. `interpretation` is the contract's ActionInterpretation:
+    the rules, or the model that was asked and the model whose answer it is.
+    """
+
+    request_id: str
+    action: dict[str, Any] | None
+    interpretation: dict[str, str]
+    reason: str | None = None
+    explanation: str | None = None
+
+
+def _rules_intent(
+    request_id: str,
+    action: dict[str, Any] | None,
+    reason: str | None = None,
+    explanation: str | None = None,
+) -> VoiceIntent:
+    return VoiceIntent(request_id, action, {"parser": "rules"}, reason, explanation)
+
+
+def _named_finding_id(utterance: str) -> str | None:
+    """The catalog star or predicted body the utterance names as a whole word, if any."""
+    lower = utterance.lower()
+    return next((finding_id for pattern, finding_id in _NAMED_FINDINGS if pattern.search(lower)), None)
+
+
+def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | None:
+    """The object the utterance names, else the one pointed at, selected or focused, else None.
+
+    Nothing else stands in: a request naming an object neither the catalog nor the ephemeris holds,
+    with nothing in view, has no target.
+    """
+    named = _named_finding_id(utterance)
+    if named is not None:
+        return named
     if context.recent_pointer and context.recent_pointer.nearest_finding_id:
         return context.recent_pointer.nearest_finding_id
-    if context.selected_finding_id:
-        return context.selected_finding_id
-    if context.focused_finding_id:
-        return context.focused_finding_id
+    return context.selected_finding_id or context.focused_finding_id or None
+
+
+_NUMBER = r"(\d{1,3}(?:,\d{3})+|\d+)"
+_YEARS_AGO = re.compile(rf"(?<![\d,]){_NUMBER}\s+years?\s+ago\b")
+_YEAR_THEN_ERA = re.compile(rf"(?<![\d,]){_NUMBER}\s*(bce|bc|ce|ad)\b")
+_ERA_THEN_YEAR = re.compile(rf"\b(?:ad|ce)\s+{_NUMBER}(?![\d,])")
+_YEAR_WORD = re.compile(rf"\b(?:year|epoch)\s+(-?){_NUMBER}(?![\d,])")
+
+
+def _whole_number(digits: str) -> int:
+    return int(digits.replace(",", ""))
+
+
+def _said_year_ce(text: str, current_year: int) -> int | None:
+    """The calendar year a lower-cased request names, or None when it names none.
+
+    "N years ago" counts back from `current_year`. BCE years are negative, as in the Claude path's
+    space_epoch tool (500 BCE is -500).
+    """
+    if match := _YEARS_AGO.search(text):
+        return current_year - _whole_number(match.group(1))
+    if match := _YEAR_THEN_ERA.search(text):
+        year = _whole_number(match.group(1))
+        return -year if match.group(2) in ("bce", "bc") else year
+    if match := _ERA_THEN_YEAR.search(text):
+        return _whole_number(match.group(1))
+    if match := _YEAR_WORD.search(text):
+        year = _whole_number(match.group(2))
+        return -year if match.group(1) else year
     return None
 
 
-def _build_scientific_explanation(
-    utterance: str,
-    action: dict[str, Any],
-    context: ActionContext,
-) -> str:
-    """Compute an authoritative, deterministic scientific explanation for the action/target."""
-    action_type = str(action.get("type", ""))
-    finding_id = str(
-        action.get("findingId")
-        or action.get("targetFindingId")
-        or _resolve_target_finding_id(utterance, context)
-        or ""
-    )
-
-    star_key = finding_id.replace("finding-", "")
-    if star_key in STAR_BY_ID:
-        star = STAR_BY_ID[star_key]
-        lt = compute_light_travel_time_description(star.median_pc)
-        return (
-            f"{star.common_name} ({star.bayer_designation} in {star.constellation}, "
-            f"spectral type {star.spectral_type}, mag {star.mag:+.2f}) lies at a "
-            f"Bailer-Jones distance of {star.median_pc:.1f} pc "
-            f"[{star.lower_pc:.1f}–{star.upper_pc:.1f} pc] — a light-travel lookback time "
-            f"of {lt['description']}. Proper motion: ({star.pm_ra_mas_yr:+.1f}, "
-            f"{star.pm_dec_mas_yr:+.1f}) mas/yr."
-        )
-
-    for body_lower in _SOLAR_SYSTEM_BODIES:
-        if body_lower in finding_id.lower() or body_lower in utterance.lower():
-            body_cap = body_lower.capitalize()
-            if not context.has_observation_moment:
-                return (
-                    f"{body_cap}'s position depends on when and where you are observing, "
-                    f"and no observation time and location are set yet."
-                )
-            try:
-                ephem_list = compute_solar_system_ephemerides(
-                    obs_utc_iso=context.simulation_epoch_iso,
-                    lat_deg=context.observer_lat,
-                    lon_deg=context.observer_lon,
-                    bodies=(body_cap,),
-                )
-                if ephem_list:
-                    eph = ephem_list[0]
-                    lt = compute_light_travel_time_description(eph.distance_pc)
-                    return (
-                        f"{eph.name} (JPL Analytical Ephemeris · evidenceClass='predicted') is at "
-                        f"{eph.distance_au:.4f} AU ({lt['description']} light-travel time), "
-                        f"topocentric Alt {eph.alt_deg:+.1f}°, Az {eph.az_deg:.1f}° "
-                        f"(RA {eph.ra_deg:.2f}°, Dec {eph.dec_deg:+.2f}°)."
-                    )
-            except Exception:
-                pass
-
-    if action_type == "space.epoch":
-        year_ce = action.get("yearCE", 1026)
-        return (
-            f"Propagated 3D starfield to {year_ce} CE using Gaia DR3 / Hipparcos 6D astrometric "
-            f"phase space (proper motion + radial velocity + Bailer-Jones distance)."
-        )
-
-    if action_type == "media.restore":
-        prof = action.get("profile", "star_protected")
-        return (
-            f"Executed astronomy-aware '{prof}' restoration branch with allowSyntheticSky=False: "
-            f"lifted dark foreground shadows while protecting observed stellar PSF cores."
-        )
-
-    if action_type == "source.return":
-        return (
-            "Restored exact saved CameraCheckpoint back to the original camera recording, "
-            "frame timestamp, and synchronized audio stream."
-        )
-
-    if not context.has_observation_moment:
-        return (
-            f"No observation time and location are set yet, so there is no sky to describe "
-            f"(calibration state '{context.calibration_state}')."
-        )
-    return (
-        f"Sky for {context.simulation_epoch_iso} at "
-        f"Lat {context.observer_lat:.3f}°, Lon {context.observer_lon:.3f}° "
-        f"(calibration state '{context.calibration_state}')."
-    )
+_NO_TARGET = (
+    "The request names no object the catalog or the ephemeris holds, and none is pointed at, selected "
+    "or focused."
+)
 
 
-def parse_voice_intent(
-    utterance: str,
-    context: ActionContext | dict[str, Any],
-    request_id: str = "req-voice-1",
-    expected_view_revision: int | None = None,
-) -> dict[str, Any]:
-    """Translate a natural-language utterance into a schema-valid `AlbedianAction`.
-
-    The Claude intent path answers when it is enabled and returns a valid action; otherwise the
-    deterministic rules below do.
-    """
-    ctx = ActionContext.from_dict(context)
-    rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
+def _parse_with_rules(
+    utterance: str, ctx: ActionContext, request_id: str, rev: int, current_year: int
+) -> VoiceIntent:
+    """Keyword families in a fixed order. A target comes only from a name or from the view, never a default."""
     text = utterance.strip().lower()
+    base = {"requestId": request_id, "expectedViewRevision": rev}
 
-    claude_action = propose_action_with_claude(utterance, ctx, request_id, rev)
-    if claude_action is not None:
-        return claude_action
+    def formed(action_type: str, **fields: Any) -> VoiceIntent:
+        return _rules_intent(request_id, {"type": action_type, **base, **fields})
 
     if text in ("stop", "wait", "cancel", "hold on", "pause transition"):
-        return {"type": "navigation.cancel", "requestId": request_id, "expectedViewRevision": rev}
+        return formed("navigation.cancel")
 
     return_phrases = (
         "back to moment", "back to my video", "back to the video",
         "back to photo", "return to source", "return to original", "original recording",
     )
     if any(phrase in text for phrase in return_phrases):
-        return {
-            "type": "source.return",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "restoreAudio": True,
-        }
+        return formed("source.return", restoreAudio=True)
 
     if "go back" in text or "step back" in text or "halfway back" in text:
-        is_partial = "halfway" in text or "partway" in text
-        action: dict[str, Any] = {
-            "type": "history.back",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "mode": "partial" if is_partial else "checkpoint",
-        }
-        if is_partial:
-            action["fraction"] = 0.5
-        return action
+        if "halfway" in text or "partway" in text:
+            return formed("history.back", mode="partial", fraction=0.5)
+        return formed("history.back", mode="checkpoint")
 
-    epoch_match = re.search(r"(\d{3,4})\s*(ce|ad|bce|bc)?", text)
-    if ("epoch" in text or "year" in text or "ce" in text or "ago" in text) and epoch_match:
-        val = int(epoch_match.group(1))
-        suffix = (epoch_match.group(2) or "").lower()
-        year_ce = (2026 - val) if "ago" in text else (-val if suffix in ("bce", "bc") else val)
-        return {
-            "type": "space.epoch",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "epochISO": f"{year_ce:04d}-01-01T00:00:00Z",
-            "yearCE": year_ce,
-        }
+    year_ce = _said_year_ce(text, current_year)
+    if year_ce is not None:
+        return formed("space.epoch", epochISO=epoch_iso(year_ce), yearCE=year_ce)
 
     if any(kw in text for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")):
         profile = "temporal" if "temporal" in text or "stack" in text else "star_protected"
         if "natural" in text or "tone" in text:
             profile = "natural"
-        return {
-            "type": "media.restore",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "sourceAssetId": ctx.source_asset_id,
-            "profile": profile,
-            "constraints": {
-                "preservePeople": True,
-                "allowSyntheticSky": False,
-                "protectStars": True,
-            },
-        }
+        return formed(
+            "media.restore",
+            sourceAssetId=ctx.source_asset_id,
+            profile=profile,
+            constraints={"preservePeople": True, "allowSyntheticSky": False, "protectStars": True},
+        )
 
+    target = _resolve_target_finding_id(utterance, ctx)
     if any(kw in text for kw in ("3d", "space", "fly", "travel", "go to", "take me to", "enter", "beyond")):
-        target_id = _resolve_target_finding_id(utterance, ctx) or "finding-star-betelgeuse"
-        return {
-            "type": "space.enter",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "findingId": target_id,
-            "distancePolicy": "measured_or_estimated",
-        }
+        if target is None:
+            return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
+        return formed("space.enter", findingId=target, distancePolicy="measured_or_estimated")
 
     describe_kws = ("what is", "what were we", "how far", "where is", "describe", "tell me about", "identify")
     if any(kw in text for kw in describe_kws):
-        target_id = _resolve_target_finding_id(utterance, ctx) or "finding-star-betelgeuse"
-        return {
-            "type": "finding.describe",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "findingId": target_id,
-            "fields": ["distance", "type", "motion", "evidence"],
-        }
+        if target is None:
+            return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
+        return formed("finding.describe", findingId=target, fields=["distance", "type", "motion", "evidence"])
 
-    resolved_target = _resolve_target_finding_id(utterance, ctx)
-    if resolved_target is not None and any(kw in text for kw in ("select", "focus", "lock", "point", "show me")):
-        return {
-            "type": "finding.select",
-            "requestId": request_id,
-            "expectedViewRevision": rev,
-            "findingId": resolved_target,
-        }
+    if target is not None and any(kw in text for kw in ("select", "focus", "lock", "point", "show me")):
+        return formed("finding.select", findingId=target)
 
     if "predicted" in text or "planet" in text or "ephemeris" in text:
-        return {"type": "sky.show", "requestId": request_id, "expectedViewRevision": rev, "mode": "predicted"}
+        return formed("sky.show", mode="predicted")
 
     if "sky" in text or "calibrate" in text or "constellation" in text:
-        return {"type": "sky.show", "requestId": request_id, "expectedViewRevision": rev, "mode": "measured"}
+        return formed("sky.show", mode="measured")
 
-    target_id = resolved_target or "finding-star-betelgeuse"
+    if target is not None:
+        return formed("finding.select", findingId=target)
+
+    question = utterance.strip()
+    # The contract counts a question's length as JavaScript does, in UTF-16 code units
+    if utf16_length(question) > QUESTION_MAX_UTF16:
+        return _rules_intent(
+            request_id,
+            None,
+            "no_grounded_answer",
+            "No action matches the request, and it is longer than a question can hold "
+            f"({QUESTION_MAX_UTF16} characters as the app counts them).",
+        )
+    return formed("question.ask", question=question)
+
+
+def parse_voice_intent(
+    utterance: str,
+    context: ActionContext | dict[str, Any],
+    request_id: str = DEFAULT_REQUEST_ID,
+    expected_view_revision: int | None = None,
+    *,
+    current_year: int | None = None,
+) -> VoiceIntent:
+    """Turn one utterance into at most one contract `AlbedianAction`, and name who interpreted it.
+
+    A blank request forms no action and reaches no model. Otherwise the Claude path answers when it is
+    enabled and forms a valid action, and the deterministic rules answer when it does not. `current_year`
+    stands in for the UTC clock's year.
+    """
+    ctx = ActionContext.from_dict(context)
+    rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
+    # Blank by Python's measure or JavaScript's, so a question formed from what is left always fits the contract
+    if all(char.isspace() or char in JAVASCRIPT_SPACES for char in utterance):
+        return _rules_intent(
+            request_id, None, "no_grounded_answer", "The request is empty, so there is nothing to act on."
+        )
+
+    proposal = propose_action_with_claude(utterance, ctx, request_id, rev, current_year=current_year)
+    if proposal is not None:
+        return VoiceIntent(request_id, proposal.action, proposal.interpretation)
+
+    year = current_year if current_year is not None else datetime.now(timezone.utc).year
+    return _parse_with_rules(utterance, ctx, request_id, rev, year)
+
+
+def _rejected(action_id: str, reason: str, explanation: str, next_actions: list[str]) -> dict[str, Any]:
     return {
-        "type": "finding.select",
-        "requestId": request_id,
-        "expectedViewRevision": rev,
-        "findingId": target_id,
+        "status": "rejected",
+        "actionId": action_id,
+        "reason": reason,
+        "explanation": explanation,
+        "nextActions": next_actions,
     }
 
 
-def validate_and_execute_voice_command(
-    utterance: str,
-    context: ActionContext | dict[str, Any],
-    proposed_action: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Validate revision, epistemic boundaries, and deictic disambiguation before executing."""
-    ctx = ActionContext.from_dict(context)
-    action = proposed_action if proposed_action is not None else parse_voice_intent(utterance, ctx)
-    action_id = str(action.get("requestId", "req-voice-1"))
-    action_type = str(action.get("type", ""))
-    expected_rev = int(action.get("expectedViewRevision", ctx.view_revision))
-    lower_utt = utterance.lower()
+def _as_whole(value: Any) -> int | None:
+    """`value` as a whole number, or None: text, booleans and fractions are not whole numbers."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return None
 
-    if any(p in lower_utt for p in ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")):
+
+def _space_enter_refusal(action: dict[str, Any], ctx: ActionContext) -> tuple[str, str, list[str]] | None:
+    """Why the reducer would refuse this flight, as far as the backend can tell, or None.
+
+    The reducer flies only to a catalog-matched finding with a distance interval. Only a calibrated sky
+    has catalog-matched findings, and the plate solver names each one after its catalog star.
+    """
+    if ctx.calibration_state != "calibrated":
+        return (
+            "unresolved_sky",
+            "Entering 3D catalog space needs a calibrated sky with catalog-matched stars; the sky's "
+            f"calibration state is '{ctx.calibration_state}'.",
+            ["Calibrate the sky first"],
+        )
+    finding_id = str(action.get("findingId", ""))
+    if finding_id not in CATALOG_FINDING_IDS:
+        what = "a predicted ephemeris position" if finding_id in PREDICTED_FINDING_IDS else "not a catalog star"
+        return (
+            "no_distance_estimate",
+            f"3D catalog space flies only to a catalog-matched star with a distance interval, and "
+            f"{finding_id} is {what}.",
+            ["Select a catalog-matched star first"],
+        )
+    return None
+
+
+def _epoch_refusal(action: dict[str, Any]) -> tuple[str, str, list[str]] | None:
+    """Why a space.epoch year cannot stand: a whole year outside the contract's range. None otherwise.
+
+    A missing or malformed year fails the contract itself, and is refused as invalid_action.
+    """
+    year_ce = _as_whole(action.get("yearCE"))
+    if year_ce is None or EPOCH_MIN_YEAR_CE <= year_ce <= EPOCH_MAX_YEAR_CE:
+        return None
+    return (
+        "invalid_epoch",
+        f"Year {year_ce} is outside the {EPOCH_MIN_YEAR_CE} to {EPOCH_MAX_YEAR_CE} range of a space.epoch year.",
+        [f"Choose a year from {EPOCH_MIN_YEAR_CE} to {EPOCH_MAX_YEAR_CE}"],
+    )
+
+
+def _describe_star(star: CatalogStar) -> str:
+    light = compute_light_travel_time_description(star.median_pc)["description"]
+    return (
+        f"{star.common_name} ({star.bayer_designation} in {star.constellation}, spectral type "
+        f"{star.spectral_type}, apparent magnitude {star.mag:+.2f}) is {star.median_pc:.1f} pc ({light}) "
+        f"away [{star.lower_pc:.1f} to {star.upper_pc:.1f} pc]. Distance: {star.distance_source}. Proper "
+        f"motion ({star.pm_ra_mas_yr:+.1f}, {star.pm_dec_mas_yr:+.1f}) mas/yr. Catalog values for "
+        f"{star.catalog_source_id}, not measured from this recording."
+    )
+
+
+def _describe_body(name: str, ctx: ActionContext) -> str | None:
+    when, lat, lon = ctx.simulation_epoch_iso, ctx.observer_lat, ctx.observer_lon
+    if when is None or lat is None or lon is None:
+        return (
+            f"{name}'s position depends on when and where you are observing, "
+            f"and no observation time and location are set yet."
+        )
+    try:
+        eph = compute_solar_system_ephemerides(obs_utc_iso=when, lat_deg=lat, lon_deg=lon, bodies=(name,))[0]
+    except ValueError as exc:
+        logger.warning("No ephemeris position for %s at the given moment: %s", name, exc)
+        return None
+    light = compute_light_travel_time_description(eph.distance_pc)["description"]
+    distance = f"{eph.distance_au * AU_KM:,.0f} km" if eph.object_type == "moon" else f"{eph.distance_au:.4f} AU"
+    bound_km = (eph.distance_upper_au - eph.distance_au) * AU_KM
+    return (
+        f"{eph.name} (evidence class predicted) is {distance} ({light}) away, to within {bound_km:,.0f} km, "
+        f"at altitude {eph.alt_deg:+.1f}° and azimuth {eph.az_deg:.1f}° (RA {eph.ra_deg:.2f}°, Dec "
+        f"{eph.dec_deg:+.2f}°) for {eph.obs_utc_iso}, to within about {eph.uncertainty_arcsec:,.0f} arcsec. "
+        f"Model: {eph.method}. " + " ".join(eph.limitations)
+    )
+
+
+def _describe_finding(finding_id: str, ctx: ActionContext) -> str | None:
+    """The catalog row or ephemeris prediction behind a finding id, in its source's words; None if neither holds it."""
+    if finding_id in CATALOG_FINDING_IDS:
+        return _describe_star(STAR_BY_ID[finding_id.removeprefix("finding-")])
+    if finding_id in PREDICTED_FINDING_IDS:
+        return _describe_body(finding_id.removeprefix("finding-predicted-").capitalize(), ctx)
+    return None
+
+
+def _check(
+    utterance: str,
+    ctx: ActionContext,
+    action: dict[str, Any] | None,
+    action_id: str,
+    reason: str | None = None,
+    explanation: str | None = None,
+) -> dict[str, Any]:
+    """The backend's verdict on one action, or on a request that formed none.
+
+    In order: an unsafe request, no action, a stale revision, a year out of range, an action that fails
+    the contract, a pointer over several findings, a flight the reducer would refuse, an action the app
+    cannot do yet. An action that passes all of them is proposed as the contract parses it.
+    """
+    lower_utt = utterance.lower()
+    if any(phrase in lower_utt for phrase in UNSAFE_PHRASES):
         return {
-            "status": "rejected",
-            "actionId": action_id,
-            "reason": "unsafe_synthetic_edit",
-            "explanation": "Albedian never fabricates or replaces sky observations with synthetic stars.",
+            **_rejected(
+                action_id,
+                "unsafe_synthetic_edit",
+                "Albedian never fabricates or replaces sky observations with synthetic stars.",
+                ["media.restore(star_protected)", "sky.show(predicted)"],
+            ),
             "scientificExplanation": (
                 "Scientific Integrity Policy: Albedian never injects synthetic catalog stars "
                 "into sensor restoration outputs (`allowSyntheticSky: false`)."
             ),
-            "nextActions": ["media.restore(star_protected)", "sky.show(predicted)"],
         }
 
-    if expected_rev != ctx.view_revision:
+    if action is None:
+        hint = ["Name a catalog star or planet, or point at one"] if reason == "ambiguous_target" else []
+        return _rejected(
+            action_id, reason or "no_grounded_answer", explanation or "The request formed no action.", hint
+        )
+
+    if not isinstance(action, dict):
         return {
-            "status": "rejected",
-            "actionId": action_id,
-            "reason": "stale_revision",
-            "explanation": f"Action expected viewRevision {expected_rev}, but current session is at revision {ctx.view_revision}.",
+            **_rejected(action_id, "invalid_action", "The action does not match the contract.", []),
+            "issues": action_issues(action),
+        }
+    action_type = action.get("type")
+    # A revision that is not a whole number fails the contract below, as invalid_action
+    expected_rev = _as_whole(action.get("expectedViewRevision"))
+    if expected_rev is not None and expected_rev != ctx.view_revision:
+        return {
+            **_rejected(
+                action_id,
+                "stale_revision",
+                f"Action expected viewRevision {expected_rev}, but current session is at revision {ctx.view_revision}.",
+                ["Refresh context and retry command"],
+            ),
             "scientificExplanation": "Stale viewRevision rejected to preserve state machine determinism.",
-            "nextActions": ["Refresh context and retry command"],
         }
 
-    if action_type == "navigation.cancel":
+    if action_type == "space.epoch":
+        refusal = _epoch_refusal(action)
+        if refusal is not None:
+            return _rejected(action_id, *refusal)
+
+    # The boundary on what a model or a client may propose: an action that fails the contract goes no
+    # further, and the reply names where it fails, never what it held
+    issues = action_issues(action)
+    if issues:
         return {
-            "status": "canceled",
-            "actionId": action_id,
-            "settledStateVersion": ctx.view_revision + 1,
-            "visualStatus": "Transition canceled; camera settled at current pose.",
-            "scientificExplanation": "Camera transition halted immediately on user barge-in.",
+            **_rejected(action_id, "invalid_action", "The action does not match the contract.", []),
+            "issues": issues,
         }
 
     if (
         ctx.recent_pointer is not None
         and len(ctx.recent_pointer.overlapping_candidate_ids) > 1
-        and action_type in ("finding.select", "finding.describe", "space.enter")
+        and action_type in FINDING_ACTION_TYPES
+        and _named_finding_id(utterance) is None
     ):
-        explicit_named = any(
-            st.common_name.lower() in lower_utt for st in ALL_SKY_CATALOG_STARS
-        ) or any(body in lower_utt for body in _SOLAR_SYSTEM_BODIES)
-        if not explicit_named:
-            choices = [
-                {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
-                for cid in ctx.recent_pointer.overlapping_candidate_ids
-            ]
-            return {
-                "status": "needs_input",
-                "actionId": action_id,
-                "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
-                "choices": choices,
-                "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
-            }
-
-    if action_type == "space.enter" and ctx.calibration_state not in ("calibrated", "predicted_only", "approximate"):
+        choices = [
+            {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
+            for cid in ctx.recent_pointer.overlapping_candidate_ids
+        ]
         return {
-            "status": "rejected",
+            "status": "needs_input",
             "actionId": action_id,
-            "reason": "unresolved_sky",
-            "explanation": f"Cannot enter calibrated 3D catalog space while calibrationState is '{ctx.calibration_state}'.",
-            "scientificExplanation": "3D catalog space requires a calibrated WCS or GPS+Horizon sky registration.",
-            "nextActions": ["sky.show(predicted)", "media.restore(temporal)"],
+            "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+            "choices": choices,
+            "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
         }
 
-    if action_type == "space.epoch":
-        year_ce = int(action.get("yearCE", 2026))
-        if not (-10000 <= year_ce <= 12000):
-            return {
-                "status": "rejected",
-                "actionId": action_id,
-                "reason": "invalid_epoch",
-                "explanation": f"Epoch year {year_ce} CE is outside valid proper-motion propagation bounds.",
-                "scientificExplanation": "Linear 3D space-velocity proper-motion propagation is bounded to [-10000, +12000] CE.",
-                "nextActions": ["Choose an epoch between -10000 CE and 12000 CE"],
-            }
+    refusal = None
+    if action_type == "space.enter":
+        refusal = _space_enter_refusal(action, ctx)
+    elif action_type in NOT_IN_THE_APP_YET:
+        refusal = (*NOT_IN_THE_APP_YET[action_type], [])
+    if refusal is not None:
+        return _rejected(action_id, *refusal)
 
-    sci_explanation = _build_scientific_explanation(utterance, action, ctx)
-    return {
-        "status": "completed",
+    # As the contract parses it: unknown keys dropped and whole numbers written as integers
+    valid = ALBEDIAN_ACTION.dump_python(ALBEDIAN_ACTION.validate_python(action), by_alias=True, exclude_unset=True)
+    reply: dict[str, Any] = {
+        "status": "proposed",
         "actionId": action_id,
-        "newStateVersion": ctx.view_revision + 1,
-        "spokenFeedback": sci_explanation,
-        "scientificExplanation": sci_explanation,
-        "visualStatus": f"Completed {action_type}",
-        "action": action,
+        "proposedAction": valid,
+        "visualStatus": f"Checked {action_type}; not applied",
     }
+    if action_type in FINDING_ACTION_TYPES:
+        description = _describe_finding(valid["findingId"], ctx)
+        if description is not None:
+            reply["scientificExplanation"] = description
+    return reply
+
+
+def check_voice_command(
+    utterance: str,
+    context: ActionContext | dict[str, Any],
+    proposed_action: dict[str, Any] | None = None,
+    *,
+    current_year: int | None = None,
+) -> dict[str, Any]:
+    """Check one voice command and say what the app may do with it. Nothing here applies an action.
+
+    An action that passes every check comes back with status "proposed", carrying the validated action and
+    no state version, since only the app's reducer changes state; otherwise the reply is the contract's
+    rejected or needs_input outcome, with no action in it, so the client keeps its own request. The reply
+    names who interpreted the utterance when the backend parsed it rather than receiving the client's own
+    action.
+    """
+    ctx = ActionContext.from_dict(context)
+    if proposed_action is not None:
+        request_id = proposed_action.get("requestId") if isinstance(proposed_action, dict) else None
+        action_id = request_id if isinstance(request_id, str) and request_id else DEFAULT_REQUEST_ID
+        return _check(utterance, ctx, proposed_action, action_id)
+
+    intent = parse_voice_intent(utterance, ctx, current_year=current_year)
+    reply = _check(utterance, ctx, intent.action, intent.request_id, intent.reason, intent.explanation)
+    reply["interpretation"] = intent.interpretation
+    return reply
