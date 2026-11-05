@@ -18,7 +18,7 @@ import {
 
 /**
  * ============================================================================
- * @albedian/observation — Revision-Gated Action Dispatcher & State Reducer
+ * @albedian/observation: Revision-Gated Action Dispatcher & State Reducer
  * ============================================================================
  */
 
@@ -195,7 +195,7 @@ export function dispatchAlbedianAction(
       if (action.fields.includes('motion') && finding.catalogRef?.properMotionRaMasYr !== undefined) {
         segments.push(`Proper motion: (${finding.catalogRef.properMotionRaMasYr}, ${finding.catalogRef.properMotionDecMasYr ?? 0}) mas/yr`);
       }
-      if (action.fields.includes('evidence')) segments.push(`Evidence: ${badge.label} — ${badge.disclosure}`);
+      if (action.fields.includes('evidence')) segments.push(`Evidence: ${badge.label}. ${badge.disclosure}`);
       // A finding without a sky position has no line of sight, so no cone is drawn for it
       const sky = finding.skyPosition;
       if (action.fields.includes('behind_sightline')) {
@@ -311,37 +311,6 @@ export function dispatchAlbedianAction(
       );
     }
 
-    case 'space.epoch': {
-      if (!Number.isInteger(action.yearCE) || action.yearCE < -10000 || action.yearCE > 12000 || !action.epochISO || action.epochISO.trim().length < 4) {
-        return rejectAction(session, action.requestId, 'invalid_epoch', `Epoch year ${action.yearCE} CE is outside the valid proper-motion integration bounds (-10000 to 12000 CE).`, ['Specify an epoch between 10,000 BCE and 12,000 CE']);
-      }
-      const fromSource = base.machines.navigation === 'source' || base.machines.navigation === 'comparison';
-      const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, `Checkpoint before epoch change to ${action.yearCE} CE`) : base.navigationHistory;
-      const nextNavState = fromSource ? 'sky_registered' : base.machines.navigation;
-      const status = `Modeled Sky · Epoch ${action.yearCE} CE (Gaia DR3 proper motion propagation)`;
-      return completeAction(
-        {
-          ...base,
-          viewRevision: nextRev,
-          isPlaying: false,
-          machines: { ...base.machines, navigation: nextNavState, voice: 'listening' },
-          spatialView: {
-            ...base.spatialView,
-            mode: 'modeled_epoch',
-            transitionPhase: nextNavState === 'space' ? 'at_space' : 'at_registered_sky',
-            transitionProgress: 1,
-            simulationEpochISO: action.epochISO,
-          },
-          navigationHistory: nextHistory,
-          lastStatusBanner: status,
-        },
-        action.requestId,
-        nextRev,
-        `Showing modeled sky at ${action.yearCE} CE using Gaia proper motions.`,
-        status
-      );
-    }
-
     case 'history.back': {
       if (action.mode === 'partial') {
         const fraction = Math.min(Math.max(action.fraction ?? 0.35, 0.05), 1);
@@ -444,6 +413,16 @@ export function dispatchAlbedianAction(
     case 'scene.show':
     case 'audio.set':
       return rejectAction(session, action.requestId, 'not_connected', 'Voice cannot do this in the app yet.', []);
+    // Nothing in the app moves a star to another year yet (camera-rig's propagation has no caller), so a
+    // new epoch would change only the words on screen
+    case 'space.epoch':
+      return rejectAction(
+        session,
+        action.requestId,
+        'not_connected',
+        'The app cannot show the sky at another year yet: nothing propagates star positions.',
+        []
+      );
 
     // Answers wait for the M3 tools, which compute every number from the user's own data
     case 'question.ask':

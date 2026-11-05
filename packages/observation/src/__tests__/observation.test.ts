@@ -11,12 +11,13 @@ import {
   createEmptyObservationSession,
   createSessionForSourceAsset,
   dispatchAlbedianAction,
+  epochIsoForYear,
   transitionOrthogonalMachine,
   validateMediaTimelineSync,
 } from '../index';
 import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions';
 
-describe('@albedian/observation — Golden Sessions & Core Property-Based Invariants', () => {
+describe('@albedian/observation: Golden Sessions & Core Property-Based Invariants', () => {
   it('validates createSyntheticCalibratedSession against ObservationSessionSchema and all 14 findings', () => {
     const session = createSyntheticCalibratedSession();
     const parsed = ObservationSessionSchema.parse(session);
@@ -328,7 +329,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
                   type: 'space.epoch',
                   requestId: reqId,
                   expectedViewRevision: session.viewRevision,
-                  epochISO: `${step.yearCE < 0 ? '-' : ''}${Math.abs(step.yearCE).toString().padStart(4, '0')}-01-01T00:00:00Z`,
+                  epochISO: epochIsoForYear(step.yearCE),
                   yearCE: step.yearCE,
                 };
                 break;
@@ -344,7 +345,13 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
             }
 
             const res = dispatchAlbedianAction(session, action);
-            expect(res.outcome.status).toBe('completed');
+            // space.epoch is refused until a unit wires star propagation, and leaves the session as it was
+            if (action.type === 'space.epoch') {
+              expect(res.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected' });
+              expect(res.session).toBe(session);
+            } else {
+              expect(res.outcome.status).toBe('completed');
+            }
             session = res.session;
           }
 
@@ -422,7 +429,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
         type: 'space.epoch',
         requestId: 'req_stale',
         expectedViewRevision: rev,
-        epochISO: '1026-01-01T00:00:00Z',
+        epochISO: epochIsoForYear(1026),
         yearCE: 1026,
       }),
       (rev: number): AlbedianAction => ({
@@ -561,7 +568,7 @@ describe('@albedian/observation — Golden Sessions & Core Property-Based Invari
           });
           expect(back1.outcome.status).toBe('completed');
 
-          // Second partial back — must use the new viewRevision
+          // Second partial back: must use the new viewRevision
           const back2 = dispatchAlbedianAction(back1.session, {
             type: 'history.back',
             requestId: 'chain_back2',

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildActionContext, executeVoiceOrTextCommand, parseUtteranceToAction } from '../index';
 import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions';
 
+// A clock for "N years ago": a year no code path may assume
+const NOW = new Date(Date.UTC(2101, 5, 1));
+
 describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Barge-In (40+ Cases)', () => {
   const baseSession = createSyntheticCalibratedSession();
   const withBetelgeuseSelected = {
@@ -410,13 +413,14 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
       },
     },
     {
-      name: '37. Show me this sky a thousand years ago -> space.epoch (yearCE: 1026)',
+      name: '37. Show me this sky a thousand years ago -> space.epoch (yearCE: the clock year minus 1000)',
       utterance: 'Show me this sky a thousand years ago',
       session: baseSession,
       expectedActionType: 'space.epoch',
       verify: (a) => {
         if (a.type === 'space.epoch') {
-          expect(a.yearCE).toBe(1026);
+          expect(a.yearCE).toBe(1101);
+          expect(a.epochISO).toBe('1101-01-01T00:00:00Z');
         }
       },
     },
@@ -492,7 +496,7 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
     '$name',
     ({ utterance, session, recentPointer, expectedActionType, verify }) => {
       const context = buildActionContext(session, recentPointer);
-      const parsed = parseUtteranceToAction(utterance, context, session);
+      const parsed = parseUtteranceToAction(utterance, context, session, { now: NOW });
       expect(parsed.action).toBeDefined();
       expect(parsed.action?.type).toBe(expectedActionType);
       if (parsed.action && verify) {

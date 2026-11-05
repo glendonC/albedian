@@ -15,11 +15,112 @@ import { dispatchAlbedianAction } from './reducer.js';
 
 /**
  * ============================================================================
- * @albedian/observation — Context-Bound Voice Utterance Parser & Deictic Resolver
+ * @albedian/observation: Context-Bound Voice Utterance Parser & Deictic Resolver
  * ============================================================================
+ *
+ * The parser says only what the request and the view hold. A target comes from a name, matched as a
+ * whole word, or from what is selected, focused or pointed at; nothing else stands in for it. Years count
+ * from the clock. A request no rule matches is a question, and every refusal carries its own reason.
  */
 
 export const MAX_POINTER_RECENCY_MS = 10_000;
+
+type RejectionReason = Extract<ActionOutcome, { status: 'rejected' }>['reason'];
+
+/** The contract's bounds on a space.epoch year, which is historical: 500 BCE is -500, and there is no year 0. */
+const EPOCH_MIN_YEAR_CE = -10000;
+const EPOCH_MAX_YEAR_CE = 12000;
+/** The contract's longest question, in UTF-16 code units, as a JavaScript string's length counts them. */
+const QUESTION_MAX_UTF16 = 500;
+
+export interface VoiceParseOptions {
+  /** Stands in for the clock, whose UTC year "N years ago" counts back from. */
+  now?: Date;
+}
+
+export interface VoiceParseResult {
+  action?: AlbedianAction;
+  disambiguation?: { question: string; choices: Array<{ id: string; label: string }> };
+  error?: string;
+  /** Why no action was formed, as the contract's rejection reason; set whenever `error` is. */
+  reason?: RejectionReason;
+}
+
+/**
+ * epochISO for a historical year, as ISO 8601 writes it: January 1 at 00:00 UTC, in astronomical
+ * numbering (1 BCE is year 0, 500 BCE is -499), with the signed six-digit expanded year outside 0000 to
+ * 9999, the only form JavaScript's Date reads there. A yearCE of 0, which historical counting lacks, maps
+ * to astronomical year 0.
+ */
+export function epochIsoForYear(yearCE: number): string {
+  const astronomical = yearCE < 0 ? yearCE + 1 : yearCE;
+  const digits = String(Math.abs(astronomical));
+  const year =
+    astronomical >= 0 && astronomical <= 9999
+      ? digits.padStart(4, '0')
+      : `${astronomical < 0 ? '-' : '+'}${digits.padStart(6, '0')}`;
+  return `${year}-01-01T00:00:00Z`;
+}
+
+/** The historical year of an astronomical one: astronomical 0 is 1 BCE (-1), and -1 is 2 BCE (-2). */
+function historicalYear(astronomicalYear: number): number {
+  return astronomicalYear <= 0 ? astronomicalYear - 1 : astronomicalYear;
+}
+
+const NUMBER = String.raw`(\d{1,3}(?:,\d{3})+|\d+)`;
+const YEARS_AGO = new RegExp(String.raw`(?<![\d,])${NUMBER}\s+years?\s+ago\b`);
+const THOUSAND_YEARS_AGO = /\b(?:a\s+)?thousand\s+years?\s+ago\b/;
+const YEARS_FROM_NOW = new RegExp(String.raw`(?<![\d,])${NUMBER}\s+years?\s+from\s+now\b`);
+const YEAR_THEN_ERA = new RegExp(String.raw`(?<![\d,])${NUMBER}\s*(bce|bc|ce|ad)\b`);
+const ERA_THEN_YEAR = new RegExp(String.raw`\b(?:ad|ce)\s+${NUMBER}(?![\d,])`);
+const YEAR_WORD = new RegExp(String.raw`\b(?:year|epoch)\s+(-?)${NUMBER}(?![\d,])`);
+
+function wholeNumber(digits: string): number {
+  return Number.parseInt(digits.replace(/,/g, ''), 10);
+}
+
+/**
+ * The historical year a lower-cased request names, 'year_zero' for a year 0, or undefined when it names
+ * none. "N years ago" counts back from `currentYear`, across 1 BCE to 1 CE. Era words count only as whole
+ * words, so the "ce" in "space" or "since" names no year.
+ */
+function saidYear(text: string, currentYear: number): number | 'year_zero' | undefined {
+  let match = text.match(YEARS_AGO);
+  if (match?.[1]) return historicalYear(currentYear - wholeNumber(match[1]));
+  if (THOUSAND_YEARS_AGO.test(text)) return historicalYear(currentYear - 1000);
+  match = text.match(YEARS_FROM_NOW);
+  if (match?.[1]) return currentYear + wholeNumber(match[1]);
+  match = text.match(YEAR_THEN_ERA);
+  if (match?.[1] && match[2]) {
+    const year = wholeNumber(match[1]);
+    if (year === 0) return 'year_zero';
+    return match[2].startsWith('bc') ? -year : year;
+  }
+  match = text.match(ERA_THEN_YEAR);
+  if (match?.[1]) {
+    const year = wholeNumber(match[1]);
+    return year === 0 ? 'year_zero' : year;
+  }
+  match = text.match(YEAR_WORD);
+  if (match?.[2]) {
+    const year = wholeNumber(match[2]);
+    if (year === 0) return 'year_zero';
+    return match[1] ? -year : year;
+  }
+  return undefined;
+}
+
+function describeYear(yearCE: number): string {
+  return yearCE < 0 ? `${-yearCE} BCE` : `${yearCE} CE`;
+}
+
+/** True when `name` appears in the lower-cased utterance as a whole word, so the Moon is not in "honeymoon". */
+function namesWholeWord(normalizedUtterance: string, name: string): boolean {
+  const needle = name.trim().toLowerCase();
+  if (!needle) return false;
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(normalizedUtterance);
+}
 
 /**
  * Builds a schema-validated `ActionContext` from the current `ObservationSession`
@@ -62,13 +163,13 @@ function findNamedFindingInUtterance(
   session: ObservationSession
 ): CelestialFinding | undefined {
   for (const finding of session.observationSolution.findings) {
-    if (normalizedUtterance.includes(finding.title.toLowerCase())) return finding;
-    const idShort = finding.id.replace(/^finding_/, '').toLowerCase();
-    if (idShort.length >= 3 && normalizedUtterance.includes(idShort)) return finding;
-    if (finding.catalogRef?.bayerDesignation && normalizedUtterance.includes(finding.catalogRef.bayerDesignation.toLowerCase())) {
+    if (namesWholeWord(normalizedUtterance, finding.title)) return finding;
+    const idShort = finding.id.replace(/^finding_/, '');
+    if (idShort.length >= 3 && namesWholeWord(normalizedUtterance, idShort)) return finding;
+    if (finding.catalogRef?.bayerDesignation && namesWholeWord(normalizedUtterance, finding.catalogRef.bayerDesignation)) {
       return finding;
     }
-    if (finding.catalogRef?.catalogSourceId && normalizedUtterance.includes(finding.catalogRef.catalogSourceId.toLowerCase())) {
+    if (finding.catalogRef?.catalogSourceId && namesWholeWord(normalizedUtterance, finding.catalogRef.catalogSourceId)) {
       return finding;
     }
   }
@@ -79,6 +180,7 @@ interface TargetResolutionResult {
   findingId?: string;
   disambiguation?: { question: string; choices: Array<{ id: string; label: string }> };
   error?: string;
+  reason?: RejectionReason;
 }
 
 function resolveTargetFinding(
@@ -113,35 +215,42 @@ function resolveTargetFinding(
     if (context.recentPointer.overlappingCandidateIds?.length === 1) return { findingId: context.recentPointer.overlappingCandidateIds[0] };
   }
 
-  const soleFinding = session.observationSolution.findings[0];
-  if (session.observationSolution.findings.length === 1 && soleFinding) return { findingId: soleFinding.id };
-
+  // Nothing else stands in: not the solution's only finding, and not any default star
+  if (context.calibrationState === 'unresolved') {
+    return {
+      error: 'The sky is unresolved, so no finding in it can be named, selected or pointed at yet.',
+      reason: 'unresolved_sky',
+    };
+  }
   return {
-    error: 'Ambiguous target reference: no star is currently selected and no recent pointer location matches the active view revision.',
+    error: 'No finding in the sky solution is named in the request, and none is selected, focused or pointed at.',
+    reason: 'ambiguous_target',
   };
 }
 
 /**
  * Translates natural-language voice or text utterances into schema-validated `AlbedianAction`
- * payloads bound to `context.viewRevision`, or returns a structured `disambiguation` / `error`.
+ * payloads bound to `context.viewRevision`, or returns a structured `disambiguation`, or an `error`
+ * with its contract `reason`. A request no rule matches becomes `question.ask`.
  */
 export function parseUtteranceToAction(
   utterance: string,
   context: ActionContext,
-  session: ObservationSession
-): {
-  action?: AlbedianAction;
-  disambiguation?: { question: string; choices: Array<{ id: string; label: string }> };
-  error?: string;
-} {
+  session: ObservationSession,
+  options: VoiceParseOptions = {}
+): VoiceParseResult {
   const trimmed = utterance.trim();
-  if (!trimmed) return { error: 'Empty voice or text command.' };
+  if (!trimmed) return { error: 'Empty voice or text command.', reason: 'no_grounded_answer' };
 
   const norm = trimmed.toLowerCase();
   const requestId = `req_${context.viewRevision}_${deterministicHexDigest(`${trimmed}:${context.viewRevision}`).slice(0, 8)}`;
+  const currentYear = (options.now ?? new Date()).getUTCFullYear();
 
   if (/\b(fake|synthetic|hallucinate|invent|replace the sky|add a moon|add a nebula|generate a galaxy)\b/i.test(norm)) {
-    return { error: 'Unsafe synthetic edit rejected: Albedian preserves authentic observations and never fabricates sky content.' };
+    return {
+      error: 'Unsafe synthetic edit rejected: Albedian preserves authentic observations and never fabricates sky content.',
+      reason: 'unsafe_synthetic_edit',
+    };
   }
 
   if (/^(stop|cancel|wait|halt|abort|freeze)\b/i.test(norm) || /\b(stop|cancel)\s+(navigation|transition|flight)\b/i.test(norm)) {
@@ -165,32 +274,23 @@ export function parseUtteranceToAction(
     };
   }
 
-  if (/\b(thousand years ago|1000 years ago|1026\s*ce|year\s+-?\d+|\d+\s*(?:ce|bce|bc|ad)|years from now|years ago|epoch)\b/i.test(norm)) {
-    let yearCE = 1026;
-    if (!/\b(thousand years ago|1000 years ago|1026)\b/i.test(norm)) {
-      const bceMatch = norm.match(/(\d+)\s*(?:bce|bc)\b/i);
-      const ceMatch = norm.match(/(-?\d+)\s*(?:ce|ad)\b/i);
-      const agoMatch = norm.match(/(\d+)\s*years\s*ago\b/i);
-      const futureMatch = norm.match(/(\d+)\s*years\s*from\s*now\b/i);
-      const yearMatch = norm.match(/year\s+(-?\d+)/i);
-      if (bceMatch?.[1]) yearCE = -Number.parseInt(bceMatch[1], 10);
-      else if (ceMatch?.[1]) yearCE = Number.parseInt(ceMatch[1], 10);
-      else if (agoMatch?.[1]) yearCE = 2026 - Number.parseInt(agoMatch[1], 10);
-      else if (futureMatch?.[1]) yearCE = 2026 + Number.parseInt(futureMatch[1], 10);
-      else if (yearMatch?.[1]) yearCE = Number.parseInt(yearMatch[1], 10);
+  const yearCE = saidYear(norm, currentYear);
+  if (yearCE === 'year_zero') {
+    return { error: 'There is no year 0: 1 BCE is followed by 1 CE.', reason: 'invalid_epoch' };
+  }
+  if (yearCE !== undefined) {
+    if (yearCE < EPOCH_MIN_YEAR_CE || yearCE > EPOCH_MAX_YEAR_CE) {
+      return {
+        error: `Year ${describeYear(yearCE)} is outside the range of a space.epoch year, ${describeYear(EPOCH_MIN_YEAR_CE)} to ${describeYear(EPOCH_MAX_YEAR_CE)}.`,
+        reason: 'invalid_epoch',
+      };
     }
-
-    if (yearCE < -10000 || yearCE > 12000) {
-      return { error: `Requested epoch year ${yearCE} CE is outside the validated proper-motion propagation window (-10000 to 12000 CE).` };
-    }
-
-    const paddedYear = yearCE < 0 ? `-${Math.abs(yearCE).toString().padStart(4, '0')}` : yearCE.toString().padStart(4, '0');
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.epoch',
         requestId,
         expectedViewRevision: context.viewRevision,
-        epochISO: `${paddedYear}-01-01T00:00:00Z`,
+        epochISO: epochIsoForYear(yearCE),
         yearCE,
       }),
     };
@@ -256,12 +356,13 @@ export function parseUtteranceToAction(
   if (/\b(another viewpoint|different viewpoint|orbit|another angle|from the side|translate viewpoint|shift viewpoint)\b/i.test(norm)) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.viewpoint',
         requestId,
         expectedViewRevision: context.viewRevision,
-        targetFindingId: resolved.findingId ?? session.selectedFindingId ?? 'finding_betelgeuse',
+        targetFindingId: resolved.findingId,
         units: 'pc',
         offsetParsec: [12, 8, -5],
         trajectory: /\b(translate|shift)\b/i.test(norm) ? 'translate' : 'orbit',
@@ -272,7 +373,7 @@ export function parseUtteranceToAction(
   if (/\b(how far|distance|light years|parsecs|how distant)\b/i.test(norm)) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.describe',
@@ -287,7 +388,7 @@ export function parseUtteranceToAction(
   if (/\b(what's behind|what is behind|what lies beyond|behind it|beyond it|behind|beyond|behind sightline|along this sightline)\b/i.test(norm)) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.describe',
@@ -302,7 +403,7 @@ export function parseUtteranceToAction(
   if (/\b(take me there|fly there|go there|explore|fly to|travel to|enter space|enter 3d|zoom into space|take me to)\b/i.test(norm)) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.enter',
@@ -317,7 +418,7 @@ export function parseUtteranceToAction(
   if (/\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i.test(norm) || Boolean(findNamedFindingInUtterance(norm, session))) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.select',
@@ -328,7 +429,21 @@ export function parseUtteranceToAction(
     };
   }
 
-  return { error: `Unrecognized or ambiguous observation command: "${trimmed}".` };
+  // No rule matches: a question, which the reducer refuses until the M3 tools can answer it from the user's data
+  if (trimmed.length > QUESTION_MAX_UTF16) {
+    return {
+      error: 'No command matches the request, and it is longer than a question can hold.',
+      reason: 'no_grounded_answer',
+    };
+  }
+  return {
+    action: AlbedianActionSchema.parse({
+      type: 'question.ask',
+      requestId,
+      expectedViewRevision: context.viewRevision,
+      question: trimmed,
+    }),
+  };
 }
 
 export const resolveVoiceUtterance = parseUtteranceToAction;
@@ -340,14 +455,15 @@ export function executeVoiceOrTextCommand(
   session: ObservationSession,
   utterance: string,
   modality: 'voice' | 'text' | 'pointer' = 'voice',
-  recentPointer?: ActionContext['recentPointer']
+  recentPointer?: ActionContext['recentPointer'],
+  options: VoiceParseOptions = {}
 ): {
   session: ObservationSession;
   outcome: ActionOutcome;
   voiceActionRecord: VoiceAction;
 } {
   const context = buildActionContext(session, recentPointer);
-  const parsed = parseUtteranceToAction(utterance, context, session);
+  const parsed = parseUtteranceToAction(utterance, context, session, options);
   const actionRecordId = `voice_act_${session.viewRevision}_${session.voiceActions.length + 1}`;
 
   const voiceActionRecord: VoiceAction = VoiceActionSchema.parse({
@@ -356,7 +472,7 @@ export function executeVoiceOrTextCommand(
     modality,
     context,
     proposedAction: parsed.action,
-    createdAtUTC: new Date().toISOString(),
+    createdAtUTC: (options.now ?? new Date()).toISOString(),
   });
 
   if (parsed.disambiguation) {
@@ -379,13 +495,12 @@ export function executeVoiceOrTextCommand(
 
   if (!parsed.action) {
     const errText = parsed.error ?? 'Could not resolve voice or text command.';
-    const reason = /synthetic/i.test(errText)
-      ? 'unsafe_synthetic_edit'
-      : /epoch/i.test(errText)
-        ? 'invalid_epoch'
-        : session.machines.calibration === 'unresolved'
-          ? 'unresolved_sky'
-          : 'ambiguous_target';
+    // The parser's own reason, never one guessed from the wording of its message
+    const reason = parsed.reason ?? 'ambiguous_target';
+    const nextActions =
+      reason === 'invalid_epoch'
+        ? [`Choose a year from ${describeYear(EPOCH_MIN_YEAR_CE)} to ${describeYear(EPOCH_MAX_YEAR_CE)}`]
+        : ['Select a star on screen, or name one the sky solution found', 'Ask "What were we looking at?"', 'Say "Back to moment"'];
 
     return {
       session: {
@@ -398,11 +513,7 @@ export function executeVoiceOrTextCommand(
         actionId: actionRecordId,
         reason,
         explanation: errText,
-        nextActions: [
-          'Select a star on screen or name it explicitly (e.g. "Select Betelgeuse")',
-          'Ask "What were we looking at?"',
-          'Say "Back to moment"',
-        ],
+        nextActions,
       }),
       voiceActionRecord,
     };
