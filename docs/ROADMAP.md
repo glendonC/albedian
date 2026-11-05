@@ -41,7 +41,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
   - Commands go through regex parsers.
   - The backend returns template text instead of executing actions (`services/voice/intent.py`).
   - There is no knowledge base, retrieval or citation system.
-- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. Since 2026-11-04 they carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Most textures, all models and all splats have no recorded provenance (section 6).
+- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. Since 2026-11-04 they carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Eleven assets still have no recorded provenance (section 6).
 - **Rendering.**
   - Only the cislunar scene has layer disclosures.
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
@@ -97,7 +97,7 @@ Done when a real phone photo from the corpus solves in the app to a verified WCS
 
 Owners: `science` for catalogs, `architecture` for contracts, `verification` for provenance checks.
 
-- **M1, data registry.** Give every asset a sources file with its URL, version, licence, checksum and bake script. Make `verify:docs`, or a new check, fail on any asset without one. Remove or document the unused assets in section 6. [proposed]
+- **M1, data registry.** Landed on 2026-11-04: every file under `apps/web/public` has a `PROVENANCE.json` record (source, version, licence, credit, checksum and bake script) or a pinned gap, a test in CI fails on anything else, and five unused assets are deleted. [tested] Next: close the 11 gaps in section 6. [proposed]
 - **M2, small authoritative tables.** [verified sizes; ingestion proposed]
   - NASA Exoplanet Archive PSCompPars (6,451 planets).
   - The ATNF Pulsar Catalogue (4,503 pulsars).
@@ -208,7 +208,8 @@ Owner: `verification`, with each area's owner.
   - EXP-07 and EXP-11 in `research/experiments/EXPERIMENT_REGISTRY.md` are marked verified, but they do not test what they claim.
   - AUDIO_ENGINE.md still says the volume slider is unconnected, and it names the wrong radiometry endpoint.
 - **Fabrication remnants.**
-  - `services/science/vision_calibrator.py` is described as a Claude Vision check but sends no image, and nothing calls it.
+  - `services/science/vision_calibrator.py`, described as a Claude Vision check, sent no image and was used by one test only. Deleted on 2026-11-04. [tested]
+  - Since 2026-11-04 the backend no longer reports a 999 px residual or a fit residual as held-out, gives no source a default hash, lists no unreadable file at a standard size and frame rate, and calls no star measured through an unverified pose observed. [tested]
 - **Data outside git.** `data/uploads` (205 MB), `data/artifacts`, `data/lookdev` (289 MB) and several gitignored splats exist only on this machine.
 
 ## 4. Long-running jobs to start early
@@ -281,14 +282,11 @@ Some licences carry obligations:
 
 ## 6. Assets without recorded provenance
 
-- **Textures:**
-  - `eso_orion_nebula.jpg`, `eso_lagoon_nebula.jpg`.
-  - `earth_clouds.png`, `earth_normal.jpg`, `earth_specular.jpg`.
-  - `lro_moon_2k.jpg`, `lro_moon_disp.jpg`, `moon_albedo.jpg`.
-  - `cycles_nebula_volume_4k.png`.
-- **Models:** `local_bubble_oneill2024.glb`, `nasa_bp_tauri.glb`, `nasa_cas_a.glb`, `nasa_lro_moon_3d.glb` and `nasa_pillars_3d.glb`. The nebula splats trace to `nasa_pillars_3d.glb`, but its mesh is named `CasA_2025`.
-- **Splats:** all five in `apps/web/public/splats/`.
-- **Not used by any code:** `nasa_bp_tauri.glb`, `nasa_cas_a.glb`, `cycles_nebula_volume_4k.png`, `moon_albedo.jpg`, `cozy-spaceship.rad`, `sutro.zip` and `distant-igloo.spz`.
+Every other file under `apps/web/public` has a record ([ASSET_PROVENANCE.md](architecture/ASSET_PROVENANCE.md)). These 11 are pinned gaps in `scripts/provenance_gaps.json`, and a test fails if a gap's bytes change or a file arrives without a record. [tested]
+
+- **Models:** `local_bubble_oneill2024.glb` (the name points to O'Neill et al. 2024), `nasa_lro_moon_3d.glb` (made in Blender, with relief about 2.4 times the real range) and `nasa_pillars_3d.glb` (its mesh is named `CasA_2025`), and the two splat files baked from them, `lb_splats.json` and `nasa_nebula_splats.json`.
+- **Splats:** `snow-street.spz` and `valley.spz`, the WebGPU spike's scaling fixtures, with no licence stated at their source.
+- **Textures:** `bruneton_atmo_lut.png` (hand-set single scattering, to be replaced), and `earth_clouds.png`, `earth_normal.jpg` and `earth_specular.jpg`, whose replacements from NASA, NOAA and Natural Earth have landed and wait for the renderer.
 
 ## 7. Running this in new sessions
 
