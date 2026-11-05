@@ -22,7 +22,7 @@ import {
   WCSCalibrationModel,
 } from '@albedian/contracts';
 
-describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', () => {
+describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () => {
   it('PBT-EVID-1: No Predicted or Simulated finding may ever become Observed, nor become Catalog Matched without valid pixel+WCS proof', () => {
     const evidenceClassArb = fc.constantFrom<EvidenceClass>(
       'observed',
@@ -194,7 +194,8 @@ describe('@albedian/evidence — PBT Suite #3 (Epistemic Integrity) & EXP-12', (
       method: 'photogeometric_bailer_jones_edr3',
     });
     expect(formatted.canEnter3DSpace).toBe(true);
-    expect(formatted.parsecText).toContain('264.5 pc (198.0–342.0 pc)');
+    expect(formatted.parsecText).toBe('264.5 pc (198.0 to 342.0 pc)');
+    expect(formatted.lightYearText).toBe('863 ly (646 to 1115 ly)');
     expect(formatted.uncertaintyText).toContain('photogeometric_bailer_jones_edr3');
   });
 
@@ -599,6 +600,17 @@ describe('@albedian/evidence: licence and source strings', () => {
       "No finding uses JPL Horizons data; only the landing scene's baked Sun and Moon positions come from it"
     );
     expect(lastRecord(predicted(rigel('SIMBAD')))?.license).toBe('Not used: Albedian makes no SIMBAD query');
+  });
+
+  it('titles a catalog record by provider, release, name and catalog id', () => {
+    expect(lastRecord(predicted(rigel('Gaia DR3')))?.title).toBe('Gaia DR3 (DR3-2022): Rigel (HIP 24436)');
+  });
+
+  it('says that no licence is recorded for a public sample, whose record cannot name one', () => {
+    const publicSample: SourceAsset = { ...sourceAsset, privacyClass: 'public_sample' };
+    expect(buildFindingEvidenceRecords(publicSample, solution, predicted())[0]?.license).toBe(
+      'No licence recorded: the asset record names none'
+    );
   });
 
   it('names the models behind a prediction that has no catalog record', () => {

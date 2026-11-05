@@ -298,8 +298,8 @@ export function formatDistanceWithUncertainty(
   const halfSpanPc = (distancePc.upper - distancePc.lower) / 2;
 
   return {
-    parsecText: `${distancePc.median.toFixed(1)} pc (${distancePc.lower.toFixed(1)}–${distancePc.upper.toFixed(1)} pc)`,
-    lightYearText: `${lyMedian.toFixed(0)} ly (${lyLower.toFixed(0)}–${lyUpper.toFixed(0)} ly)`,
+    parsecText: `${distancePc.median.toFixed(1)} pc (${distancePc.lower.toFixed(1)} to ${distancePc.upper.toFixed(1)} pc)`,
+    lightYearText: `${lyMedian.toFixed(0)} ly (${lyLower.toFixed(0)} to ${lyUpper.toFixed(0)} ly)`,
     uncertaintyText: `±${halfSpanPc.toFixed(1)} pc (68% CI · ${distancePc.method})`,
     canEnter3DSpace: true,
   };
@@ -515,7 +515,8 @@ export function buildFindingEvidenceRecords(
     sourceIdentifier: `sha256:${sourceAsset.sha256}`,
     license:
       sourceAsset.privacyClass === 'public_sample'
-        ? 'CC-BY-4.0 / Public Sample'
+        ? // SourceAsset has no licence field, so no sample's record can name one
+          'No licence recorded: the asset record names none'
         : 'Observer First-Party Recording',
     observationTimeUtc: captureTimeUtc,
     modelEpochUtc: solution.observedAtUTC,
@@ -598,7 +599,7 @@ export function buildFindingEvidenceRecords(
     const catalogRecord: EvidenceRecord = {
       id: `${finding.id}:catalog:${cat.id}`,
       kind: catalogKind,
-      title: `${cat.provider} (${cat.releaseVersion}) — ${cat.commonName} (${cat.catalogSourceId})`,
+      title: `${cat.provider} (${cat.releaseVersion}): ${cat.commonName} (${cat.catalogSourceId})`,
       sourceIdentifier: `${cat.provider}:${cat.catalogSourceId}`,
       license: resolveCatalogLicense(cat.provider),
       observationTimeUtc: solution.observedAtUTC,
