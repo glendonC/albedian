@@ -8,6 +8,8 @@
  */
 
 import {
+  REGIME_DISTANCE_WINDOWS,
+  STAR_DISTANCE_WINDOW,
   directReverbGains,
   directToReverberantDb,
   distanceLowpassHz,
@@ -19,6 +21,7 @@ import {
   receivedLevelDb,
   uncertaintyBeatHz,
   type DistanceWindow,
+  type ScaleAudioRegime,
 } from './mappings.js';
 
 export type Vec3 = readonly [number, number, number];
@@ -84,6 +87,11 @@ export type PlanOutcome =
 export interface PlanContext {
   readonly distanceWindow: DistanceWindow;
   readonly listenerOrientation: Quat;
+}
+
+/** The window a voice's distance cues sweep: stars take the stellar window in every regime, other kinds their regime's. */
+export function distanceWindowFor(kind: AudioSourceKind, regime: ScaleAudioRegime): DistanceWindow {
+  return kind === 'star' ? STAR_DISTANCE_WINDOW : REGIME_DISTANCE_WINDOWS[regime];
 }
 
 export function planVoice(input: AudioSourceInput, context: PlanContext): PlanOutcome {

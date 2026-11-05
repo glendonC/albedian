@@ -1,8 +1,10 @@
 # Albedian Spatial Audio Engine
 
 Status: **Locally implemented and tested capability** (November 2026). Pure mappings are covered by
-property tests; the Web Audio graph was exercised in Chrome 152 on macOS. Nothing here has been
-judged by a human ear yet; section 10 lists what needs one.
+property tests; the Web Audio graph was exercised in Chrome 152 on macOS. Since 2026-11-04 the
+catalog stars on screen drive the voices, with Gaia DR3 temperatures and luminosities, and the
+camera turns the listener (section 8). Nothing here has been judged by a human ear yet; section 10
+lists what needs one.
 
 Code: [`apps/web/src/audio/`](../../apps/web/src/audio/). Listening harness:
 [`apps/web/spike/audio/`](../../apps/web/spike/audio/) (run `pnpm dev`, open `/spike/audio/`).
@@ -28,7 +30,9 @@ Code: [`apps/web/src/audio/`](../../apps/web/src/audio/). Listening harness:
 ```mermaid
 flowchart LR
     subgraph Pure["Pure (Node-testable)"]
+        Sky["skySources.ts<br/>catalog stars on screen,<br/>camera orientation in ICRS"]
         Inputs["AudioSourceInput[]<br/>sky brightness, unveil,<br/>regime, orientation"]
+        Sky --> Inputs
         Plan["planVoice()<br/>mappings.ts"]
         Select["selectVoices()<br/>8 voices, targets first,<br/>3 dB hysteresis"]
         Pitch["assignIdentityPitches()"]
@@ -54,6 +58,8 @@ flowchart LR
 |---|---|
 | `mappings.ts` | Every data-to-parameter mapping (pure). |
 | `voicePlanning.ts` | Input types, `planVoice`, `selectVoices`, identity pitches, listener geometry (pure). |
+| `skySources.ts` | The catalog stars on screen as `AudioSourceInput`s from core and astro tiles, and the camera's orientation in ICRS (pure). |
+| `SkyAudioFeed.ts` | Follows the camera pose each frame while audio is on, with its own tile loader; the `skyAudio` singleton (section 8). |
 | `dsp.ts` | Seeded noise, diffuse-field encodings, soft-clip curve, Schroeder phases, PeriodicWave coefficients, pulse-train series, IR energy normalization (pure). |
 | `engine/SpatialAudioEngine.ts` | Composition root and lifecycle; `getSnapshot()` reports what sounds and why. |
 | `engine/VoicePool.ts` | Bounded pool of HRTF voices realizing plans. |
@@ -114,9 +120,13 @@ listening).
 
 ### 4.1 Distance: direct-to-reverberant ratio and high-frequency rolloff
 
-- Input `distancePc`. `p` is its position, in log distance, inside the window of the current
-  regime (`REGIME_DISTANCE_WINDOWS`, e.g. 1 to 2000 pc for `earth_capture`, 1,000 to 10 million km
-  for `cislunar`). The window is a display choice like a map's scale bar, set by `setScaleRegime`.
+- Input `distancePc`. `p` is its position, in log distance, inside a window. A star takes
+  `STAR_DISTANCE_WINDOW`, 1 to 2,000 pc, in every regime; other kinds take the window of the
+  current regime (`REGIME_DISTANCE_WINDOWS`, e.g. 1,000 to 10 million km for `cislunar`), set by
+  `setScaleRegime` (`distanceWindowFor`). A window is a display choice like a map's scale bar.
+  Before 2026-11-04 stars took the regime's window too, so at cislunar scale (landing scene 01)
+  every star clamped to the far edge (DRR -15 dB, 3 kHz low-pass) and at deep-sky scale (scene 02)
+  to the near edge, and distance said nothing there.
 - DRR = lerp(+15 dB, -15 dB, p). The dry and reverb sends split unit energy:
   direct = sqrt(r/(1+r)), reverb = sqrt(1/(1+r)), r = 10^(DRR/10), so distance moves energy
   between direct and reverberant without changing the voice's loudness.
@@ -124,7 +134,8 @@ listening).
 - Basis: level and DRR are the main absolute distance cues, with spectral loss adding at long
   range, and perceived distance is a compressive function of physical distance (Verified external:
   Zahorik, Brungart and Bronkhorst 2005, Acta Acustica united with Acustica 91(3), 409-420). The
-  +/-15 dB range, the 3 kHz far cutoff and the windows are Proposed design.
+  +/-15 dB range, the 3 kHz far cutoff and the windows, the stellar one included, are Proposed
+  design.
 - Delivered DRR matches the plan within 0.8 dB in Chrome (section 6).
 
 ### 4.2 Luminosity: loudness at the source, attenuated with distance
@@ -277,48 +288,84 @@ both, so release notices must carry the Apache-2.0 attribution and that NOTICE t
 
 ## 8. Integration with the viewport and renderer
 
-The viewport currently calls only `toggle`, `setScaleRegime` and `playDetentClick`, so in the app
-**enabling audio plays only the detent until data is wired**. The header volume slider is not yet
-connected to `setMasterVolume`. Wiring belongs to the viewport and renderer owners:
+**The catalog stars on screen drive the voices** (since 2026-11-04). While audio is on, the viewport
+calls `skyAudio.follow(pose)` each animation frame with the renderer's `getCameraSkyPose()`, and
+`skyAudio.setEvidenceClass()` with the evidence class of the drawn `catalog_stars` layer. Those
+hookups belong to the render lane (`SpatialObservatoryViewport.tsx`, `cosmosRenderer.ts` and both
+renderers). A renderer that reports no pose leaves the sky silent; enabling audio then plays only
+the detent.
 
-```ts
-observatoryAudio.setListenerOrientation(cameraQuaternionXYZW); // per frame, same world frame as directions
-observatoryAudio.setSources(objects.map((o) => ({
-  id: o.id,
-  kind: 'star',
-  directionWorld: o.unitVectorFromCamera,
-  distancePc: o.distancePc,
-  luminositySolar: o.luminositySolar,
-  teffK: o.teffK,
-  extinctionAvMag: o.avMag,       // optional
-  residualArcsec: o.residualArcsec, // optional
-  isTarget: o.id === selectedId,
-  evidenceClass: o.evidenceClass,
-})));
-observatoryAudio.setSkyBrightness(skyMagArcsec2OrNull);
-observatoryAudio.setUnveil(revealFraction);
-```
+- **One frame, ICRS.** The pose carries two world quaternions: the camera's, and the catalog star
+  sphere's (ICRS axes into world axes). The listener orientation is the camera's turn in ICRS,
+  `sphere^-1 x camera` (`listenerOrientationIcrs`), and each direction is its tile's ICRS unit
+  vector, so the two share a frame by construction. A test builds the renderers' scene graph (a
+  turned parent, the ICRS sphere centred on the camera, a camera turned inside a moved rig) and
+  checks that every star sounds from the direction the camera sees it drawn. The stars sit at
+  infinity, as drawn, so there is no parallax.
+- **Which stars.** Those on screen (inside the frustum) and brighter than the star field's limiting
+  magnitude, from the release the star field draws. Each becomes a `star` source with its core
+  tile's ICRS direction and Bailer-Jones (2021) median distance and its astro tile's GSP-Phot
+  temperature and FLAME luminosity medians. A value Gaia DR3 lacks stays null, and that star is
+  silent. The feed passes the 24 loudest stars with all three values (by received level) and the 8
+  brightest missing one, so `getSnapshot().silent` names them; the engine picks 8 voices from those.
+  The two bounds limit cost; they are not data. A star of a tile whose astro tile is still loading,
+  or failed to load, is left out rather than passed as missing. A voiced star keeps its voice until
+  about 2 degrees past the screen edge, so jitter there does not cut it.
+- **Loading.** The feed keeps its own `CatalogStarTileLoader` on the star field's release, given the
+  same view cone and limit, so it reads the core files the star field reads (and decodes them a
+  second time) and fetches the astro tiles of the tiles in view. It fetches nothing before the first
+  pose, that is, before the user enables audio. At the default limit, 6.5, only the naked-eye layer
+  is read: on the landing, 7 of its 12 core tiles and their 7 astro tiles.
+- **Evidence class.** The voices carry the class of the star layer they sound (`simulated` on the
+  cislunar landing, which both renderers declare) and none where a renderer declares no layers.
+  Sound cannot show a class, so an inspector should disclose it; `getSnapshot()` passes it through.
 
-| Engine input | Source available today | Note |
+What the real rows give (tested, `skySources.test.ts` and `skyAudioFeed.test.ts`): in a 20 degree
+view on Cassiopeia, 289 stars are on screen and 105 of them have all three values. Segin (eps Cas:
+14,806 K, 3,062 Lsun, 140.4 pc) plans at -23.0 dBFS, 6.3 dB above Achird (eta Cas: 5,726 K,
+1.27 Lsun, 5.92 pc), though both are G 3.3, because Segin's bolometric flux is the larger; its
+centroid is 2.6 times higher. Caph, Schedar and Ruchbah there, and Sirius and Vega elsewhere, are
+Hipparcos entries with distances but no Gaia DR3 temperature or luminosity, so they are silent
+with `missing: ['luminositySolar', 'teffK']`.
+
+Measured in the app (Chrome 152 on macOS, 2026-11-04, with the render lane's hookups applied
+locally): the WebGL landing had 821 stars on screen, 357 of them with all three values, and 8
+voices from -25.8 to -30.7 dBFS with centroids from 776 to 1,435 Hz; the WebGPU host had 775 and
+332. A drag turned the voices with the camera, the listener stayed put while audio was off, and the
+console showed no errors. One source update (9 tiles, 9,222 stars, 1,097 on screen) took 0.8 ms and
+runs at most ten times a second; a listener turn, which replans 32 sources, took 0.02 ms per frame.
+More than half of the naked-eye stars on screen are silent (464 of 821 on the WebGL landing), the
+brightest among them.
+
+**Not wired, and why.**
+
+| Engine input | State | Why |
 |---|---|---|
-| `distancePc` | `CelestialFinding.inferredDistancePc.median`, `CatalogReference.bailerJonesDistancePc.median` | Never `1000 / parallax` for parallax <= 0 (scientific-integrity steering). |
-| `directionWorld` | `raDecToUnitVector` from `@albedian/camera-rig`, in the camera's frame | Must share a frame with the listener quaternion. |
-| `residualArcsec` | `ScientificEvidence.angularResidualArcsec` | |
-| `teffK`, `luminositySolar` | `services/science/deep_sky.py` `compute_stellar_astrophysics` output | Not in `packages/contracts` yet. |
-| `skyBrightnessMagArcsec2` | `/api/science/radiometry` `krisciunasSchaeferSky.skyBrightnessMagArcsec2` | A model (predicted) value; the UI should say so. |
-| `extinctionAvMag`, `spinFrequencyHz` | No source yet | Would need a dust map and an ATNF subset. |
+| `setSkyBrightness` | null, so the bed is silent | `/api/science/radiometry-audit` gives a Krisciunas and Schaefer (1991) sky brightness: natural sky (21.6 mag/arcsec^2 at the zenith, scaled by airmass) plus moonlight, with no artificial term (`services/science/radiometry.py`). The bed sounds artificial skyglow only (section 4.4), so fed this value a moonless, pristine sky would hiss at about -37.5 dBFS and moonlight would sound as light pollution. It waits for a source of artificial brightness: the photo's measured sky background less the Krisciunas and Schaefer prediction, once a solve has photometry, or the Falchi et al. (2016) atlas (CC BY-NC 4.0, available by request). |
+| `setUnveil` | 0 | Nothing in the app produces a reveal fraction yet: there is no Unveil gesture, and nothing calls `setLimitingMagnitude`. |
+| `isTarget` | absent | No catalog star can be selected yet. |
+| `residualArcsec` | absent | Catalog stars carry no solve residual; a matched finding's `ScientificEvidence.angularResidualArcsec` would. |
+| `extinctionAvMag` | absent | GSP-Phot A0 is the extinction at 547.7 nm, not A_V, and the dust channel is unheard (section 10, item 4). |
+| `spinFrequencyHz` | absent | The app has no pulsar catalog; an ATNF subset would be needed. |
 
-Adding these fields to the contracts is an architecture decision and is escalated, not done here.
-Audio cannot display an evidence class, so whatever inspector shows the target should disclose the
-class of the values being heard; `getSnapshot()` passes `evidenceClass` through for that.
+The header volume slider sets `setMasterVolume` (the viewport's volume effect); its 0 to 1 value
+is the master gain. For stars matched in a user's photo, carrying temperature, luminosity and
+extinction on findings is a contracts decision, escalated rather than made here.
 
 ## 9. Verification
 
 - `pnpm typecheck` and `pnpm test` from the repository root; the audio suites are
-  `apps/web/src/audio/__tests__/` (mappings, voice planning, DSP, engine lifecycle). Property tests
-  (fast-check) cover monotonicity, bounds and silence-on-missing for every mapping, energy
-  preservation of the DRR split, exact pass-through of spin rates, pool bounds and hysteresis,
-  pitch uniqueness, quaternion invariants, the clip curve and IR normalization.
+  `apps/web/src/audio/__tests__/` (mappings, voice planning, DSP, engine lifecycle, sky sources,
+  sky feed). Property tests (fast-check) cover monotonicity, bounds and silence-on-missing for every
+  mapping, energy preservation of the DRR split, exact pass-through of spin rates, pool bounds and
+  hysteresis, pitch uniqueness, quaternion invariants, the clip curve and IR normalization, and for
+  the sky: the listener orientation and the drawn direction in one frame, the view test against
+  three's projection, catalog values passed through with missing ones left missing, the limiting
+  magnitude, and a bounded, ranked source list whatever the tile order. `ALBEDIAN_FC_SEED` pins
+  the fast-check seed for repeated runs.
+- The sky suites read the committed naked-eye tiles of `apps/web/public/catalog/stars/gaia-dr3/`
+  (real rows: Segin, Fulu, Achird, Caph, Schedar, Ruchbah, Sirius, Vega) and run the feed through
+  the real engine with no AudioContext.
 - The harness typechecks with `pnpm --dir apps/web exec tsc -p spike/audio/tsconfig.json`.
 - In Chrome 152: no context before the click; IR and Omnitone load after it; 16 sources reduce to
   8 voices with the target first; dust, beating, pulsar rate and centroids match their formulas; the
@@ -327,8 +374,9 @@ class of the values being heard; `getSnapshot()` passes `evidenceClass` through 
 ## 10. What needs a human ear
 
 1. Balance between bed, voices and UI detents; every absolute level is an engineering default.
-2. Distance: whether +/-15 dB of DRR and the per-regime windows read as "near" and "far" rather
-   than "dry" and "wet"; whether the 3 kHz far cutoff fights the Teff timbre.
+2. Distance: whether +/-15 dB of DRR, the stellar window (1 to 2,000 pc) and the regime windows
+   read as "near" and "far" rather than "dry" and "wet"; whether the 3 kHz far cutoff fights the
+   Teff timbre.
 3. Teff timbre: whether 4.3 octaves of centroid travel is pleasant; hot stars put energy in many
    unresolved harmonics and may sound buzzy, cool stars are close to a sine.
 4. Separability of the three spectral channels (Teff, distance rolloff, dust): a hot, distant,
@@ -357,3 +405,9 @@ class of the values being heard; `getSnapshot()` passes `evidenceClass` through 
 - Beds use 10 s noise loops (about 7.7 MB at 48 kHz for the four-channel bed) generated on the main
   thread at first enable.
 - Omnitone's console logging cannot be turned off.
+- The brightest stars of the sky are silent: the 226 Hipparcos entries (Sirius, Vega, Capella,
+  Deneb and the rest of the bright end) carry no Gaia DR3 temperature or luminosity, nor do many
+  Gaia stars of the naked-eye layer. That is the data, not a fault; a source of temperatures and
+  luminosities for the bright end would need its own catalog, citation and labels.
+- The sky feed decodes the core tiles a second time, beside the star field's loader. Sharing one
+  loader would need the star fields to expose theirs.

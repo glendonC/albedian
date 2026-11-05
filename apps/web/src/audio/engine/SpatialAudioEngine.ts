@@ -11,6 +11,7 @@ import {
   DEFAULT_VOICE_CAPACITY,
   IDENTITY_QUAT,
   assignIdentityPitches,
+  distanceWindowFor,
   normalizeQuat,
   planVoice,
   selectVoices,
@@ -379,9 +380,12 @@ export class SpatialAudioEngine {
   }
 
   private refresh(): void {
-    const distanceWindow = REGIME_DISTANCE_WINDOWS[this.regime];
-    const context = { distanceWindow, listenerOrientation: this.orientation };
-    const outcomes = this.sources.map((source) => planVoice(source, context));
+    const outcomes = this.sources.map((source) =>
+      planVoice(source, {
+        distanceWindow: distanceWindowFor(source.kind, this.regime),
+        listenerOrientation: this.orientation,
+      })
+    );
     const audible = outcomes.flatMap((outcome) => (outcome.status === 'audible' ? [outcome.plan] : []));
     const incumbents = new Set(this.selected.map((plan) => plan.id));
     const selected = selectVoices(audible, incumbents, this.capacity);

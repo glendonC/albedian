@@ -282,6 +282,29 @@ describe('ObservatoryAudioEngine data rules', () => {
     expect(engine.getSnapshot().bed).toMatchObject({ levelDb: -Infinity });
   });
 
+  it('sounds a star at its distance among the stars at every scale, and a pulsar at its regime scale', () => {
+    const { engine } = makeEngine();
+    const crab: AudioSourceInput = { id: 'crab', kind: 'pulsar', directionWorld: [0, 0, -1], distancePc: 2000, luminositySolar: 1e5, spinFrequencyHz: 29.946923 };
+    engine.setSources([star('near', { distancePc: 5.9 }), star('far', { distancePc: 140 }), crab]);
+    const cues = (id: string) => {
+      const voice = engine.getSnapshot().voices.find((v) => v.id === id)!;
+      return { drrDb: voice.drrDb, lowpassHz: voice.distanceLowpassHz };
+    };
+    engine.setScaleRegime('earth_capture');
+    const near = cues('near');
+    const far = cues('far');
+    expect(near.drrDb).toBeGreaterThan(far.drrDb);
+    expect(near.lowpassHz).toBeGreaterThan(far.lowpassHz);
+    const pulsarCues = new Set<number>();
+    for (const regime of ['cislunar', 'solar_neighborhood', 'deep_sky', 'planetary_surface'] as const) {
+      engine.setScaleRegime(regime);
+      expect(cues('near')).toEqual(near);
+      expect(cues('far')).toEqual(far);
+      pulsarCues.add(cues('crab').drrDb);
+    }
+    expect(pulsarCues.size).toBeGreaterThan(1);
+  });
+
   it('ignores regimes it does not know, including inherited object keys', () => {
     const { engine } = makeEngine();
     engine.setScaleRegime('solar_neighborhood');

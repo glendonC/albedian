@@ -83,6 +83,14 @@ export const REGIME_DISTANCE_WINDOWS: Readonly<Record<ScaleAudioRegime, Distance
   planetary_surface: { nearPc: 1e3 * PC_PER_KM, farPc: 1e9 * PC_PER_KM },
 };
 
+/**
+ * The window of every star, in every regime: from the nearest stars (1 pc) to 2,000 pc, the
+ * `earth_capture` window. A star's distance cues then say how far it lies among the stars at any
+ * scale, instead of clamping to the far edge at cislunar scale or the near edge at deep-sky scale.
+ * Like the regime windows, a display choice, not data.
+ */
+export const STAR_DISTANCE_WINDOW: DistanceWindow = { nearPc: 1, farPc: 2000 };
+
 export function isValidDistanceWindow(window: DistanceWindow | null | undefined): window is DistanceWindow {
   return (
     !!window &&

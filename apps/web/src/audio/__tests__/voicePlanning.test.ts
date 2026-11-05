@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { LOUDNESS, REGIME_DISTANCE_WINDOWS } from '../mappings';
+import { LOUDNESS, REGIME_DISTANCE_WINDOWS, STAR_DISTANCE_WINDOW, type ScaleAudioRegime } from '../mappings';
 import {
   IDENTITY_PITCHES_HZ,
   IDENTITY_QUAT,
   assignIdentityPitches,
   directionFromAzimuthElevation,
+  distanceWindowFor,
   planVoice,
   rotateByQuat,
   selectVoices,
@@ -159,6 +160,16 @@ describe('Property: voice planning stays silent on missing input', () => {
   it('reports a too-faint object as below the audibility floor, not as missing data', () => {
     const outcome = planVoice({ ...audibleStar, luminositySolar: 1e-4, distancePc: 1e5 }, context);
     expect(outcome).toMatchObject({ status: 'silent', reason: 'below_audibility_floor', missing: [] });
+  });
+});
+
+describe('distance windows by kind', () => {
+  it('gives stars the stellar window in every regime, and other kinds their regime window', () => {
+    expect(STAR_DISTANCE_WINDOW).toEqual({ nearPc: 1, farPc: 2000 });
+    for (const regime of Object.keys(REGIME_DISTANCE_WINDOWS) as ScaleAudioRegime[]) {
+      expect(distanceWindowFor('star', regime)).toEqual(STAR_DISTANCE_WINDOW);
+      expect(distanceWindowFor('pulsar', regime)).toEqual(REGIME_DISTANCE_WINDOWS[regime]);
+    }
   });
 });
 
