@@ -229,7 +229,6 @@ export class SparkPortalRenderer {
     uCoolColor: { value: THREE.Vector3 };
     uWarmColor: { value: THREE.Vector3 };
     uHotColor: { value: THREE.Vector3 };
-    uCoronaInner: { value: THREE.Vector3 };
     uCoronaOuter: { value: THREE.Vector3 };
   };
   private planetarySkyUniforms: {
@@ -358,7 +357,6 @@ export class SparkPortalRenderer {
       uCoolColor: { value: new THREE.Vector3(0.28, 0.03, 0.005) },
       uWarmColor: { value: new THREE.Vector3(0.92, 0.24, 0.03) },
       uHotColor: { value: new THREE.Vector3(1.38, 0.78, 0.28) },
-      uCoronaInner: { value: new THREE.Vector3(1.05, 0.48, 0.14) },
       uCoronaOuter: { value: new THREE.Vector3(0.68, 0.11, 0.015) },
     };
     this.planetarySkyUniforms = {
@@ -1106,8 +1104,8 @@ export class SparkPortalRenderer {
   }
 
   /**
-   * REGIME 2: solar neighbourhood (landing scene 03): a modelled star with a corona glow and a ring
-   * drawn from noise, decorative particles, and 14,281 Spark splats (`lb_splats.json`) on
+   * REGIME 2: solar neighbourhood (landing scene 03): a modelled star and 14,281 Spark splats
+   * (`lb_splats.json`) on
    * a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), all placed around the camera for composition, not at
    * their sizes or distances; see SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS in webglRenderLayers.ts.
    */
@@ -1237,163 +1235,6 @@ export class SparkPortalRenderer {
     betelgeuse.position.copy(starCenter);
     group.add(betelgeuse);
     this.betelgeuseMesh = betelgeuse;
-
-    const coronaPlaneSize = starRadius * 5.8;
-    const coronaGeo = new THREE.PlaneGeometry(coronaPlaneSize, coronaPlaneSize);
-    const coronaMat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: this.localBubbleUniforms.uTime,
-        uCoronaInner: this.localBubbleUniforms.uCoronaInner,
-        uCoronaOuter: this.localBubbleUniforms.uCoronaOuter,
-      },
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv * 2.0 - 1.0;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        uniform vec3 uCoronaInner;
-        uniform vec3 uCoronaOuter;
-        varying vec2 vUv;
-
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-
-        float noise2D(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
-            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
-            f.y
-          );
-        }
-
-        float fbm2(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 5; i++) {
-            v += a * noise2D(p);
-            p = p * 2.15 + vec2(3.7, 1.9);
-            a *= 0.5;
-          }
-          return v;
-        }
-
-        void main() {
-          float r = length(vUv);
-          if (r > 0.98) discard;
-
-          float innerDiskMask = smoothstep(0.30, 0.35, r);
-          float distFromLimb = max(0.0, r - 0.335);
-          float angle = atan(vUv.y, vUv.x);
-
-          float fineRays = fbm2(vec2(angle * 18.0, r * 4.5 - uTime * 0.09));
-          float loopArches = sin(angle * 14.0 + fbm2(vUv * 6.0 + uTime * 0.05) * 4.0) * 0.5 + 0.5;
-          float prominence = fbm2(vec2(angle * 11.0 + uTime * 0.03, r * 8.5 - uTime * 0.14));
-
-          float outerWindow = smoothstep(0.96, 0.36, r) * innerDiskMask;
-          float innerChromosphere = exp(-distFromLimb * 11.5) * (0.65 + 0.65 * prominence * loopArches);
-          float outerCorona = exp(-distFromLimb * 4.5) * (0.32 + 0.62 * fineRays) * outerWindow;
-
-          float totalGlow = (innerChromosphere * 0.85 + outerCorona * 0.42) * outerWindow;
-          vec3 col = mix(uCoronaOuter, uCoronaInner, clamp(innerChromosphere * 1.1, 0.0, 1.0)) * totalGlow;
-          gl_FragColor = vec4(col, clamp(totalGlow, 0.0, 1.0));
-        }
-      `,
-    });
-    const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
-    coronaMesh.position.set(starCenter.x, starCenter.y, starCenter.z - 0.15);
-    group.add(coronaMesh);
-
-    const ringGeo = new THREE.RingGeometry(starRadius * 1.28, starRadius * 2.95, 160, 12);
-    const ringMat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: this.localBubbleUniforms.uTime,
-        uInnerRadius: { value: starRadius * 1.28 },
-        uOuterRadius: { value: starRadius * 2.95 },
-        uCoolColor: this.localBubbleUniforms.uCoolColor,
-        uWarmColor: this.localBubbleUniforms.uWarmColor,
-        uHotColor: this.localBubbleUniforms.uHotColor,
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vLocalPos;
-        void main() {
-          vLocalPos = position;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        uniform float uInnerRadius;
-        uniform float uOuterRadius;
-        uniform vec3 uCoolColor;
-        uniform vec3 uWarmColor;
-        uniform vec3 uHotColor;
-        varying vec3 vLocalPos;
-
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-        }
-
-        float noise2D(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
-            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x),
-            f.y
-          );
-        }
-
-        void main() {
-          float r = length(vLocalPos.xy);
-          float normR = clamp((r - uInnerRadius) / (uOuterRadius - uInnerRadius), 0.0, 1.0);
-          float angle = atan(vLocalPos.y, vLocalPos.x);
-
-          float spiral1 = noise2D(vec2(normR * 28.0, angle * 3.0 - uTime * 0.45 / (0.4 + normR)));
-          float spiral2 = noise2D(vec2(normR * 64.0, angle * 6.0 - uTime * 0.75 / (0.3 + normR)));
-          float filaments = smoothstep(0.25, 0.85, spiral1 * 0.6 + spiral2 * 0.4);
-
-          float envelope = smoothstep(0.0, 0.14, normR) * smoothstep(1.0, 0.22, normR);
-          float doppler = 0.72 + 0.42 * cos(angle + 0.45);
-
-          vec3 col = mix(uCoolColor, uWarmColor, filaments);
-          col = mix(col, uHotColor * 1.15, smoothstep(0.55, 0.0, normR) * filaments);
-          float alpha = envelope * (0.06 + 0.22 * filaments) * doppler;
-
-          gl_FragColor = vec4(col * alpha * 1.15, clamp(alpha, 0.0, 0.48));
-        }
-      `,
-    });
-    const plasmaRing = new THREE.Mesh(ringGeo, ringMat);
-    plasmaRing.position.copy(starCenter);
-    plasmaRing.rotation.x = 1.24;
-    plasmaRing.rotation.y = -0.28;
-    plasmaRing.rotation.z = 0.22;
-    group.add(plasmaRing);
-
-    group.add(
-      this.createDecorativeParticles(
-        starCenter,
-        starRadius * 1.16,
-        starRadius * 3.15,
-        5400
-      )
-    );
 
     // Spark splats (`lb_splats.json`) on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024)
     const cavityGroup = new THREE.Group();
@@ -2611,7 +2452,6 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uCoolColor.value.set(0.08, 0.38, 0.52);
       this.localBubbleUniforms.uWarmColor.value.set(0.24, 0.72, 0.88);
       this.localBubbleUniforms.uHotColor.value.set(0.58, 0.92, 1.0);
-      this.localBubbleUniforms.uCoronaInner.value.set(0.35, 0.85, 1.0);
       this.localBubbleUniforms.uCoronaOuter.value.set(0.08, 0.35, 0.58);
       return;
     }
@@ -2619,7 +2459,6 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uCoolColor.value.set(0.42, 0.28, 0.12);
       this.localBubbleUniforms.uWarmColor.value.set(0.88, 0.68, 0.36);
       this.localBubbleUniforms.uHotColor.value.set(1.18, 0.96, 0.64);
-      this.localBubbleUniforms.uCoronaInner.value.set(0.95, 0.78, 0.45);
       this.localBubbleUniforms.uCoronaOuter.value.set(0.45, 0.32, 0.12);
       return;
     }
@@ -2628,19 +2467,16 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uCoolColor.value.set(0.28, 0.03, 0.005);
       this.localBubbleUniforms.uWarmColor.value.set(0.92, 0.24, 0.03);
       this.localBubbleUniforms.uHotColor.value.set(1.38, 0.78, 0.28);
-      this.localBubbleUniforms.uCoronaInner.value.set(1.05, 0.48, 0.14);
       this.localBubbleUniforms.uCoronaOuter.value.set(0.68, 0.11, 0.015);
     } else if (colorIdx < -0.02) {
       this.localBubbleUniforms.uCoolColor.value.set(0.14, 0.28, 0.68);
       this.localBubbleUniforms.uWarmColor.value.set(0.48, 0.72, 1.25);
       this.localBubbleUniforms.uHotColor.value.set(0.95, 1.15, 1.55);
-      this.localBubbleUniforms.uCoronaInner.value.set(0.68, 0.88, 1.35);
       this.localBubbleUniforms.uCoronaOuter.value.set(0.18, 0.42, 0.95);
     } else {
       this.localBubbleUniforms.uCoolColor.value.set(0.32, 0.42, 0.65);
       this.localBubbleUniforms.uWarmColor.value.set(0.82, 0.92, 1.18);
       this.localBubbleUniforms.uHotColor.value.set(1.32, 1.38, 1.52);
-      this.localBubbleUniforms.uCoronaInner.value.set(0.88, 0.94, 1.25);
       this.localBubbleUniforms.uCoronaOuter.value.set(0.28, 0.48, 0.88);
     }
   }

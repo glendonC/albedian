@@ -87,7 +87,7 @@ export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
   WEBGL_CAMERA_OPTICS,
 ]);
 
-/** Decorative particles around the black hole, drawn only in its view, and around the scene 03 star. */
+/** Decorative particles around the black hole, drawn only in its view. */
 const DEEP_SKY_PARTICLES: RenderLayer = {
   id: 'deep-sky.particles',
   kind: 'procedural',
@@ -132,10 +132,10 @@ export const DEEP_SKY_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
 ]);
 
 /**
- * The solar-neighbourhood regime (landing scene 03, Betelgeuse): a modelled star, a glow and a ring
- * drawn from noise around it, decorative particles, and splats on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024),
- * all placed around the camera for composition. The star's colours are
- * hand-picked for a red star; its surface is noise, not an observation.
+ * The solar-neighbourhood regime (landing scene 03, Betelgeuse): a modelled star and splats on a
+ * Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), all placed around the
+ * camera for composition. The star's colours are hand-picked for a red star; its surface is noise,
+ * not an observation.
  */
 export const SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
   { ...sharedLayer('cislunar.sky'), id: 'local.sky' },
@@ -149,15 +149,6 @@ export const SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLay
       "A modelled star, not Betelgeuse's measured surface: cells, spots and bright ribbons from noise on a sphere with limb darkening, in hand-picked colours, not at its size or distance.",
     sources: [],
   },
-  {
-    id: 'local.corona',
-    kind: 'procedural',
-    title: 'Corona and ring',
-    evidenceClass: 'simulated',
-    disclosure: 'A glow and a ring drawn from noise around the star for display, not observed structure around Betelgeuse.',
-    sources: [],
-  },
-  { ...DEEP_SKY_PARTICLES, id: 'local.particles' },
   {
     id: 'local.bubble',
     kind: 'dust_volume',

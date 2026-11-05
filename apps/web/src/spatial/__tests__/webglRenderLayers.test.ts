@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { RenderLayerSetSchema } from '@albedian/contracts';
 import {
@@ -96,8 +98,6 @@ describe('WebGL renderer: Betelgeuse view (landing scene 03)', () => {
       ['local.sky', 'sky_background'],
       ['local.catalog-stars', 'catalog_stars'],
       ['local.star', 'procedural'],
-      ['local.corona', 'procedural'],
-      ['local.particles', 'procedural'],
       ['local.bubble', 'dust_volume'],
       ['post.camera-optics', 'camera_optics'],
     ]);
@@ -109,7 +109,6 @@ describe('WebGL renderer: Betelgeuse view (landing scene 03)', () => {
     expect(star).toMatch(/modelled star/i);
     expect(star).toMatch(/not Betelgeuse's measured surface/);
     expect(star).toMatch(/not at its size or distance/);
-    expect(local('local.corona')?.disclosure).toMatch(/not observed/);
   });
 
   it("says the Local Bubble mesh's origin is unrecorded and the splats are placed for composition", () => {
@@ -124,6 +123,17 @@ describe('WebGL renderer: Betelgeuse view (landing scene 03)', () => {
     const { id: _cislunarSkyId, ...cislunarSky } = layer('cislunar.sky')!;
     expect(sky).toEqual(cislunarSky);
     expect(local('post.camera-optics')).toEqual(layer('post.camera-optics'));
+  });
+});
+
+describe('WebGL renderer: scene 03 draws no invented structure', () => {
+  it('builds no corona plane, ring or decorative particles around the star', () => {
+    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
+    const start = renderer.indexOf('  private buildSolarNeighborhoodWorld(): void {');
+    const body = renderer.slice(start, renderer.indexOf('\n  }\n', start));
+    expect(start).toBeGreaterThan(0);
+    expect(body).not.toMatch(/RingGeometry|coronaMesh|plasmaRing|createDecorativeParticles/);
+    expect(renderer).not.toMatch(/uCoronaInner/);
   });
 });
 
