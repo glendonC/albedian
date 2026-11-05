@@ -116,6 +116,37 @@ def test_a_mismatch_leaves_no_file_behind(tmp_path: Path, server: str, served: s
     assert not folder.exists() or list(folder.iterdir()) == []
 
 
+def test_a_response_longer_than_listed_stops_at_the_listed_size(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The size check runs on each block as it arrives, so a response that does not end is cut off at once and
+    never written out in full first (the auditor's 2d test)."""
+    target = tmp_path / ".cache" / "test" / "payload.bin"
+    part = target.with_name(target.name + ".part")
+    reads: list[int] = []
+    largest_part = [0]
+
+    class LongResponse:
+        """Serves 64 blocks of the size asked for: far more than listed, finite so a missing cap cannot hang the test."""
+
+        def read(self, size: int) -> bytes:
+            if part.exists():
+                largest_part[0] = max(largest_part[0], part.stat().st_size)
+            reads.append(size)
+            return b"x" * size if len(reads) <= 64 else b""
+
+        def __enter__(self) -> LongResponse:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+    monkeypatch.setattr(fetch_download.urllib.request, "urlopen", lambda *args, **kwargs: LongResponse())
+    with pytest.raises(fetch_download.FetchError, match="more than the"):
+        fetch_download.fetch(download("https://example.org/payload.bin"), root=tmp_path)
+    assert len(reads) == 1, "the first block past the listed size ends the download"
+    assert largest_part[0] <= len(PAYLOAD)
+    assert not part.exists() and not target.exists()
+
+
 @pytest.mark.parametrize("path", ["data/payload.bin", ".cache/../data/payload.bin", "/tmp/payload.bin", ".cache"])
 def test_a_path_outside_the_cache_is_refused_before_any_request(tmp_path: Path, server: str, path: str) -> None:
     with pytest.raises(fetch_download.FetchError, match=r"not under \.cache/"):
