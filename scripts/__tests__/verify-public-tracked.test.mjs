@@ -1,7 +1,7 @@
 // The web build's public folder check (scripts/verify-public-tracked.mjs): Vite copies every file under
 // apps/web/public into the build, dotfiles included, and follows symbolic links, so a file git does not track there,
-// or any link, must stop the build. Scratch repositories are made outside this one; staging a file is enough for git
-// to track it, so no commit is needed.
+// a tracked file whose working copy differs from the last commit, or any link, must stop the build. Scratch
+// repositories are made outside this one; track() commits, since the check compares the working copy with HEAD.
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   copyFileSync,
@@ -35,8 +35,27 @@ function scratch({ git = true, files = {} } = {}) {
   return root;
 }
 
-function track(root, ...names) {
+// A fixed test identity, with signing and hooks off, whatever this machine's git configuration says
+const COMMIT = [
+  '-c',
+  'user.name=verify-public test',
+  '-c',
+  'user.email=verify-public@example.invalid',
+  '-c',
+  'commit.gpgsign=false',
+  '-c',
+  'core.hooksPath=/dev/null',
+];
+
+/** Stages names without committing them. */
+function stage(root, ...names) {
   execFileSync('git', ['-C', root, 'add', '--', ...names]);
+}
+
+/** Stages names and commits everything staged, so the last commit holds them. */
+function track(root, ...names) {
+  stage(root, ...names);
+  execFileSync('git', ['-C', root, ...COMMIT, 'commit', '--quiet', '--no-verify', '-m', 'track']);
 }
 
 afterAll(() => {
@@ -50,8 +69,9 @@ describe('the public folder check', () => {
     expect(publicTrackedCheck(root)).toEqual({
       ok: true,
       untracked: 0,
+      changed: 0,
       links: 0,
-      message: `[verify:public] OK: git tracks all 2 files under ${PUBLIC_DIR}, and none is a symbolic link.`,
+      message: `[verify:public] OK: git tracks all 2 files under ${PUBLIC_DIR}, none differs from the last commit, and none is a symbolic link.`,
     });
   });
 
@@ -108,6 +128,7 @@ describe('the public folder check', () => {
     expect(result).toEqual({
       ok: false,
       untracked: 0,
+      changed: 0,
       links: 1,
       message:
         `[verify:public] FAIL: 1 entry under ${PUBLIC_DIR} is a symbolic link, which Vite follows when it copies the ` +
@@ -124,6 +145,7 @@ describe('the public folder check', () => {
     expect(publicTrackedCheck(root)).toEqual({
       ok: false,
       untracked: 0,
+      changed: 0,
       links: 1,
       message:
         `[verify:public] FAIL: 1 entry under ${PUBLIC_DIR} is a symbolic link, which Vite follows when it copies the ` +
@@ -138,6 +160,7 @@ describe('the public folder check', () => {
     expect(publicTrackedCheck(root)).toEqual({
       ok: false,
       untracked: 1,
+      changed: 0,
       links: 0,
       message:
         `[verify:public] FAIL: 1 file under ${PUBLIC_DIR} is not tracked by git, and Vite would copy it into the build. ` +
@@ -152,10 +175,84 @@ describe('the public folder check', () => {
     expect(publicTrackedCheck(root)).toEqual({
       ok: false,
       untracked: 1,
+      changed: 0,
       links: 1,
       message:
         `[verify:public] FAIL: 1 file under ${PUBLIC_DIR} is not tracked by git, and Vite would copy it into the build. ` +
         `List them on this machine with: git status --short --ignored ${PUBLIC_DIR}\n` +
+        `[verify:public] FAIL: 1 entry under ${PUBLIC_DIR} is a symbolic link, which Vite follows when it copies the ` +
+        `folder into the build, so the check refuses it whether git tracks it or not. ` +
+        `List them on this machine with: find ${PUBLIC_DIR} -type l`,
+    });
+  });
+
+  it('fails on a tracked file whose working copy differs from the last commit, and names no file', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/textures/sky.png`]: 'png' } });
+    track(root, PUBLIC_DIR);
+    writeFileSync(path.join(root, PUBLIC_DIR, 'textures/sky.png'), 'a local render');
+    const result = publicTrackedCheck(root);
+    expect(result).toEqual({
+      ok: false,
+      untracked: 0,
+      changed: 1,
+      links: 0,
+      message:
+        `[verify:public] FAIL: 1 tracked file under ${PUBLIC_DIR} differs from the last commit, and Vite would copy ` +
+        `the local version into the build. List them on this machine with: git status --short ${PUBLIC_DIR}`,
+    });
+    expect(result.message).not.toMatch(/sky|textures/);
+  });
+
+  it('counts a file staged but never committed as changed, not as untracked', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/holiday/clip-01.png`]: 'png' } });
+    track(root, `${PUBLIC_DIR}/kept.json`);
+    stage(root, `${PUBLIC_DIR}/holiday/clip-01.png`);
+    expect(publicTrackedCheck(root)).toMatchObject({ ok: false, untracked: 0, changed: 1, links: 0 });
+  });
+
+  it('lets a tracked file deleted from the working copy through, since it ships nothing', () => {
+    const root = scratch({
+      files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/index.json`]: '{}', [`${PUBLIC_DIR}/old.png`]: 'png' },
+    });
+    track(root, PUBLIC_DIR);
+    rmSync(path.join(root, PUBLIC_DIR, 'old.png'));
+    expect(publicTrackedCheck(root)).toEqual({
+      ok: true,
+      untracked: 0,
+      changed: 0,
+      links: 0,
+      message: `[verify:public] OK: git tracks all 2 files under ${PUBLIC_DIR}, none differs from the last commit, and none is a symbolic link.`,
+    });
+  });
+
+  it('fails closed in a checkout with no commit yet, since nothing says what the last commit holds', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}' } });
+    stage(root, PUBLIC_DIR);
+    expect(publicTrackedCheck(root)).toEqual({
+      ok: false,
+      untracked: null,
+      changed: null,
+      links: null,
+      message: `[verify:public] FAIL: this checkout has no commit yet, so the build cannot tell which files under ${PUBLIC_DIR} differ from the last commit.`,
+    });
+  });
+
+  it('counts changed files apart from untracked files and links, one line each, and a staged link only as a link', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/notes.txt`]: 'notes' } });
+    track(root, `${PUBLIC_DIR}/kept.json`);
+    writeFileSync(path.join(root, PUBLIC_DIR, 'kept.json'), '{"local": true}');
+    symlinkSync('kept.json', path.join(root, PUBLIC_DIR, 'alias.json'));
+    stage(root, `${PUBLIC_DIR}/alias.json`);
+    expect(publicTrackedCheck(root)).toEqual({
+      ok: false,
+      untracked: 1,
+      changed: 1,
+      links: 1,
+      message:
+        `[verify:public] FAIL: 1 file under ${PUBLIC_DIR} is not tracked by git, and Vite would copy it into the build. ` +
+        `List them on this machine with: git status --short --ignored ${PUBLIC_DIR}\n` +
+        `[verify:public] FAIL: 1 tracked file under ${PUBLIC_DIR} differs from the last commit, and Vite would copy ` +
+        `the local version into the build. List them on this machine with: git status --short ${PUBLIC_DIR}\n` +
         `[verify:public] FAIL: 1 entry under ${PUBLIC_DIR} is a symbolic link, which Vite follows when it copies the ` +
         `folder into the build, so the check refuses it whether git tracks it or not. ` +
         `List them on this machine with: find ${PUBLIC_DIR} -type l`,
@@ -172,6 +269,7 @@ describe('the public folder check', () => {
     const result = publicTrackedCheck(root);
     expect(result.ok).toBe(false);
     expect(result.untracked).toBeNull();
+    expect(result.changed).toBeNull();
     expect(result.links).toBeNull();
     expect(result.message).toBe(
       `[verify:public] FAIL: git could not list the files it tracks here, so the build cannot tell which files under ${PUBLIC_DIR} it would ship.`
@@ -242,7 +340,9 @@ describe('the check as a Vite plugin, at build start', () => {
     track(root, `${PUBLIC_DIR}/holiday/clip-01.png`);
     const built = viteBuild(root, 'apps/webgpu-spike');
     expect(built.status).toBe(0);
-    expect(built.output).toContain(`[verify:public] OK: git tracks all 2 files under ${PUBLIC_DIR}, and none is a symbolic link.`);
+    expect(built.output).toContain(
+      `[verify:public] OK: git tracks all 2 files under ${PUBLIC_DIR}, none differs from the last commit, and none is a symbolic link.`
+    );
     expect(existsSync(path.join(dist, 'holiday/clip-01.png'))).toBe(true);
   }, 120_000);
 

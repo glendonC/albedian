@@ -6,6 +6,7 @@ export declare const PLUGIN_NAME: string;
 export interface PublicTrackedResult {
   ok: boolean;
   untracked: number | null;
+  changed: number | null;
   links: number | null;
   message: string;
 }

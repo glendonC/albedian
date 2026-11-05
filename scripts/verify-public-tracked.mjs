@@ -5,9 +5,12 @@
  * apps/web/public into apps/web/dist, dotfiles included, whether git tracks it or not, so a file git does not track
  * there, ignored or not, would ship with the build. The check lists every file under the folder and every file git
  * tracks there, and fails when any file is untracked.
+ * - Vite copies the working copy, so a tracked file edited, or staged and never committed, would ship a local
+ *   version the last commit does not hold. The check compares the working copy with HEAD and counts those files apart
+ *   (a tracked file deleted from the working copy ships nothing, so it is not counted). Without a commit it fails.
  * - Vite also follows symbolic links when it copies the folder, so a link git tracks would ship whatever it points
  *   to, which git may not track. The check refuses every symbolic link under the folder, tracked or not, without
- *   following it, and counts links apart from untracked files.
+ *   following it, and counts links apart from untracked and changed files.
  * - Its message gives only the counts and the commands that list the entries on this machine, never a path, so a
  *   build log never carries a file's or folder's name.
  * - Where git cannot list what it tracks (outside a git checkout, or without git), it fails: a build that cannot
@@ -36,34 +39,56 @@ function entriesUnder(root, folder) {
   return { files, links };
 }
 
+/** git's answer for a command, or null when git fails. Its own error output is dropped: it may carry paths. */
+function git(root, args) {
+  try {
+    return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+}
+
+/** A refusal for which git gave no answer, so nothing is counted. */
+function unknown(message) {
+  return { ok: false, untracked: null, changed: null, links: null, message: `[verify:public] FAIL: ${message}` };
+}
+
 /**
- * Whether git tracks every file under publicDir in the checkout at root, and no symbolic link is there:
- * { ok, untracked, links, message }. untracked counts files git does not track; links counts every link.
+ * Whether every file under publicDir in the checkout at root is tracked by git and as the last commit holds it, and
+ * no symbolic link is there: { ok, untracked, changed, links, message }. untracked counts files git does not track,
+ * changed counts tracked files whose working copy differs from HEAD (staged or not, deletions aside), links counts
+ * every link; a link is counted only as a link.
  */
 export function publicTrackedCheck(root, publicDir = PUBLIC_DIR) {
-  let tracked;
-  try {
-    const listed = execFileSync('git', ['-C', root, 'ls-files', '-z', '--', publicDir], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    tracked = new Set(listed.split('\0').filter(Boolean));
-  } catch {
-    return {
-      ok: false,
-      untracked: null,
-      links: null,
-      message: `[verify:public] FAIL: git could not list the files it tracks here, so the build cannot tell which files under ${publicDir} it would ship.`,
-    };
+  const listed = git(root, ['ls-files', '-z', '--', publicDir]);
+  if (listed === null) {
+    return unknown(
+      `git could not list the files it tracks here, so the build cannot tell which files under ${publicDir} it would ship.`
+    );
   }
+  if (git(root, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']) === null) {
+    return unknown(
+      `this checkout has no commit yet, so the build cannot tell which files under ${publicDir} differ from the last commit.`
+    );
+  }
+  const differing = git(root, ['diff', '--name-only', '-z', '--no-renames', '--no-ext-diff', '--diff-filter=d', 'HEAD', '--', publicDir]);
+  if (differing === null) {
+    return unknown(
+      `git could not compare the files under ${publicDir} with the last commit, so the build cannot tell what it would ship.`
+    );
+  }
+  const tracked = new Set(listed.split('\0').filter(Boolean));
   const { files, links } = entriesUnder(root, publicDir);
+  const linked = new Set(links);
   const untracked = files.filter((file) => !tracked.has(file)).length;
-  if (untracked === 0 && links.length === 0) {
+  const changed = differing.split('\0').filter((file) => file && !linked.has(file)).length;
+  if (untracked === 0 && changed === 0 && links.length === 0) {
     return {
       ok: true,
       untracked: 0,
+      changed: 0,
       links: 0,
-      message: `[verify:public] OK: git tracks all ${files.length} files under ${publicDir}, and none is a symbolic link.`,
+      message: `[verify:public] OK: git tracks all ${files.length} files under ${publicDir}, none differs from the last commit, and none is a symbolic link.`,
     };
   }
   const failures = [];
@@ -72,6 +97,13 @@ export function publicTrackedCheck(root, publicDir = PUBLIC_DIR) {
     failures.push(
       `${untracked} ${one ? 'file' : 'files'} under ${publicDir} ${one ? 'is' : 'are'} not tracked by git, ` +
         `and Vite would copy ${one ? 'it' : 'them'} into the build. List them on this machine with: git status --short --ignored ${publicDir}`
+    );
+  }
+  if (changed > 0) {
+    const one = changed === 1;
+    failures.push(
+      `${changed} tracked ${one ? 'file' : 'files'} under ${publicDir} ${one ? 'differs' : 'differ'} from the last commit, ` +
+        `and Vite would copy the local ${one ? 'version' : 'versions'} into the build. List them on this machine with: git status --short ${publicDir}`
     );
   }
   if (links.length > 0) {
@@ -85,6 +117,7 @@ export function publicTrackedCheck(root, publicDir = PUBLIC_DIR) {
   return {
     ok: false,
     untracked,
+    changed,
     links: links.length,
     message: failures.map((failure) => `[verify:public] FAIL: ${failure}`).join('\n'),
   };
