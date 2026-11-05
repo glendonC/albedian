@@ -43,7 +43,7 @@ Each unresolved technical question identified in the foundational research is tr
 - **Failure Condition:** Any negative/noise fixture marked `calibrated`, or held-out median residual $> 3.0\text{ px}$ on valid starfields.
 
 ### EXP-02: Low-Light Video Star Detection & Temporal Aggregation
-- **Hypothesis:** Aligning and median/mean-stacking $N = 8\text{–}16$ low-SNR frames with sub-pixel translation/rotation registration increases point-source SNR by $\approx 2.2\times\text{–}3.5\times$ over a single frame and enables valid WCS calibration where single frames fail.
+- **Hypothesis:** Aligning and median/mean-stacking $N = 8$ to $16$ low-SNR frames with sub-pixel translation/rotation registration increases point-source SNR by $\approx 2.2\times$ to $3.5\times$ over a single frame and enables valid WCS calibration where single frames fail.
 - **Fixtures:** Multi-frame synthetic consumer low-light video sequence with Poisson shot noise, read noise, and slight handheld drift + foreground horizon mask.
 - **Baseline:** Single highest-SNR frame star extraction.
 

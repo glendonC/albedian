@@ -7,7 +7,7 @@ All files placed inside `data/uploads/` and `data/artifacts/` are **strictly git
 - `data/uploads/public_samples/`: drop rights-cleared or public dark-sky comparison images/videos here.
 - `data/artifacts/`: the output directory where `scripts/run_real_media_experiment.py` writes content-addressed probes, side-by-side comparison frames, audio-preserved restored MP4s, WCS plate-solving diagnostics, and JSON provenance manifests.
 
-## Running the Real-Footage Experiment Suite (`E1`–`E6`)
+## Running the Real-Footage Experiment Suite (`E1` to `E6`)
 
 Once you place one or more clips or photos in a folder under `data/uploads/` (for example `data/uploads/public_samples/`), run:
 
