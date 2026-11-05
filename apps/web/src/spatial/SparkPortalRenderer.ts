@@ -510,7 +510,7 @@ export class SparkPortalRenderer {
       );
     };
 
-    // ESO eso0932a; provenance in sky_texture_sources.json.
+    // ESO eso0932a; provenance in textures/PROVENANCE.json.
     // The panorama is bound only with its fitted registration, so it is never drawn misaligned.
     const panorama = new Promise<THREE.Texture>((resolve) => loadTex('/textures/eso_milkyway_panorama.jpg', resolve));
     void Promise.all([loadPanoramaRegistration(), panorama]).then(
@@ -533,7 +533,7 @@ export class SparkPortalRenderer {
       },
       (error: unknown) => console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
     );
-    // NASA Blue Marble (Nov 2004) and Black Marble 2016 lights; provenance in earth_texture_sources.json
+    // NASA Blue Marble (Nov 2004) and Black Marble 2016 lights; provenance in textures/PROVENANCE.json
     loadTex('/textures/earth_day_bluemarble_2004-11_8k.jpg', (t) => {
       this.earthUniforms.uDayTex.value = t;
     });

@@ -2,7 +2,7 @@
 
 The landing scenes draw an all-sky dome behind the catalog stars: ESO's Milky Way panorama. Until this change both renderers drew the dome at an arbitrary rotation, `Euler(0.18, 0, 0.32)`, so the photograph's Milky Way and stars sat at positions unrelated to the Gaia DR3 and Hipparcos stars, which are drawn at their ICRS directions. Both renderers now sample the dome by view direction through the same scene orientation the catalog stars use. On screen, the dome's star images fall a median 0.22 to 0.23 texels from their catalog stars, at most 1.08 [measured, section 3].
 
-The panorama is not in exact galactic coordinates. Its axes sit 3.78 degrees from galactic, and the stitching of its almost 300 fields leaves smooth offsets of up to 2.2 texels. `scripts/register_sky_panorama.py` fits both against catalog stars and writes the solution the renderers use. The image's pixels are not changed. Its provenance is in [`sky_texture_sources.json`](../../apps/web/public/textures/sky_texture_sources.json).
+The panorama is not in exact galactic coordinates. Its axes sit 3.78 degrees from galactic, and the stitching of its almost 300 fields leaves smooth offsets of up to 2.2 texels. `scripts/register_sky_panorama.py` fits both against catalog stars and writes the solution the renderers use. The image's pixels are not changed. Its provenance is in the textures folder's record, [`PROVENANCE.json`](../../apps/web/public/textures/PROVENANCE.json).
 
 A texel here is one pixel of the 6000-pixel-wide panorama: 360/6000 degrees, 216 arcseconds.
 

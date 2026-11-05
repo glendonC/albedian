@@ -7,9 +7,9 @@ import type { RenderLayerSet } from '@albedian/contracts';
  * acknowledged. Layers drawn only from files made in this repository need none. This app-side
  * table stands in until the data lane's PROVENANCE.json records carry the credits.
  *
- * - ESO/S. Brunier: ESO's credit for the Milky Way panorama eso0932a (sky_texture_sources.json).
+ * - ESO/S. Brunier: ESO's credit for the Milky Way panorama eso0932a (textures/PROVENANCE.json).
  * - ESA/Gaia/DPAC and ESA Hipparcos: the catalog stars (Gaia DR3 and Hipparcos 2007).
- * - NASA Earth Observatory: Blue Marble and Black Marble (earth_texture_sources.json).
+ * - NASA Earth Observatory: Blue Marble and Black Marble (textures/PROVENANCE.json).
  * - NASA's Scientific Visualization Studio: the CGI Moon Kit maps (SVS 4720) the Moon draws.
  * - ESO/R. Colombari: ESO's credit for eso1804a, the Lupus 3 photograph behind the black hole.
  * - ESO/J. Emerson/VISTA, with ESO's acknowledgment of the Cambridge Astronomical Survey Unit:

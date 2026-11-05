@@ -17,7 +17,7 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     sources: [
       'ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0',
       'Registration fitted to Gaia DR3 and Hipparcos 2007 stars (eso0932a_registration.json)',
-      'Provenance: apps/web/public/textures/sky_texture_sources.json',
+      'Provenance: apps/web/public/textures/PROVENANCE.json',
     ],
   },
   {

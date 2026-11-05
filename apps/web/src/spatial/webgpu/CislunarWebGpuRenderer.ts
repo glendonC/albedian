@@ -139,7 +139,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.scene.add(this.rig);
     this.scene.add(this.world);
 
-    // ESO eso0932a; provenance in sky_texture_sources.json
+    // ESO eso0932a; provenance in textures/PROVENANCE.json
     const milkyWay = this.loadTexture('/textures/eso_milkyway_panorama.jpg', SRGBColorSpace, true);
     // The dome is drawn only with the panorama's fitted registration, never misaligned
     this.pending.push(
@@ -166,7 +166,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       new SphereGeometry(EARTH.radius, 160, 160),
       createEarthMaterial(
         {
-          // NASA Blue Marble (Nov 2004) and Black Marble 2016; provenance in earth_texture_sources.json
+          // NASA Blue Marble (Nov 2004) and Black Marble 2016; provenance in textures/PROVENANCE.json
           day: this.loadTexture('/textures/earth_day_bluemarble_2004-11_8k.jpg', SRGBColorSpace, true),
           night: this.loadTexture('/textures/earth_night_blackmarble_2016_8k.jpg', SRGBColorSpace, true),
           specular: this.loadTexture('/textures/earth_specular.jpg', NoColorSpace, true),
