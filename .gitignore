@@ -37,10 +37,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# Internal ops files — local only, never committed
+# Internal ops files: local only, never committed
 docs/internal/
 
-# Kiro local IDE settings — machine-specific, not project config
+# Kiro local IDE settings: machine-specific, not project config
 .kiro/settings/
 
 # NOTE: .kiro specs, steering, hooks, and agents ARE intentionally tracked.

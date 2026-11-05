@@ -117,6 +117,34 @@ describe('the public folder check', () => {
     expect(result.message).not.toMatch(/renders|outside|holiday|clip-01/);
   });
 
+  it('fails on a symbolic link git tracks one folder down, since the walk looks for links at every depth', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/textures/sky.png`]: 'png', 'outside/holiday/clip-01.png': 'png' } });
+    symlinkSync('../../../../outside/holiday', path.join(root, PUBLIC_DIR, 'textures', 'renders'));
+    track(root, `${PUBLIC_DIR}/textures/sky.png`, `${PUBLIC_DIR}/textures/renders`);
+    expect(publicTrackedCheck(root)).toEqual({
+      ok: false,
+      untracked: 0,
+      links: 1,
+      message:
+        `[verify:public] FAIL: 1 entry under ${PUBLIC_DIR} is a symbolic link, which Vite follows when it copies the ` +
+        `folder into the build, so the check refuses it whether git tracks it or not. ` +
+        `List them on this machine with: find ${PUBLIC_DIR} -type l`,
+    });
+  });
+
+  it('fails on an untracked file inside a dot folder such as .well-known/, since Vite copies dot folders too', () => {
+    const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/.well-known/notes.txt`]: 'x' } });
+    track(root, `${PUBLIC_DIR}/kept.json`);
+    expect(publicTrackedCheck(root)).toEqual({
+      ok: false,
+      untracked: 1,
+      links: 0,
+      message:
+        `[verify:public] FAIL: 1 file under ${PUBLIC_DIR} is not tracked by git, and Vite would copy it into the build. ` +
+        `List them on this machine with: git status --short --ignored ${PUBLIC_DIR}`,
+    });
+  });
+
   it('counts links apart from untracked files, one line each, so its message never calls a tracked link untracked', () => {
     const root = scratch({ files: { [`${PUBLIC_DIR}/kept.json`]: '{}', [`${PUBLIC_DIR}/notes.txt`]: 'notes' } });
     symlinkSync('kept.json', path.join(root, PUBLIC_DIR, 'alias.json'));
