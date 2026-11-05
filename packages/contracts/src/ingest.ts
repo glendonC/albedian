@@ -14,6 +14,9 @@ import {
  *
  * Missing metadata stays missing: a hint is absent when the file does not hold it, and a capture time
  * written without a zone (EXIF DateTimeOriginal alone) stays a local time with no UTC, never a guess.
+ * A time a file holds only in UTC (QuickTime's creation_time) has no local time, and a file's own time
+ * is labelled as such: it may be when the file was written or exported, so it never becomes the
+ * asset's capture time.
  *
  * Mirrored in Python by `services/contracts/ingest.py`. The shared samples in
  * `tests/fixtures/ingest_contract.json` are written by the Python side and parsed here.
@@ -39,20 +42,38 @@ const label = () => z.string().min(1).max(128);
 /** Offsets in use run from UTC-12:00 to UTC+14:00; the bound is symmetric at 14 hours. */
 export const UTC_OFFSET_LIMIT_MINUTES = 840;
 
+/**
+ * What a capture time marks. `recorded`: the file says when the picture or clip was taken (EXIF
+ * DateTimeOriginal, QuickTime com.apple.quicktime.creationdate). `file_written`: the file's own time
+ * (QuickTime creation_time), which may be when the file was written or exported, not when it was
+ * recorded. Only a recorded time becomes the asset's `capturedAtUTC`.
+ */
+export const CAPTURE_TIME_MARKS = ['recorded', 'file_written'] as const;
+
+/**
+ * A capture time as the file writes it: a local time, a UTC instant, or both. The offset is known
+ * exactly when both are (then UTC is the local time minus the offset); a local time alone has no zone,
+ * and a UTC instant alone has no local time.
+ */
 export const CaptureTimeHintSchema = z
   .object({
-    localDateTime: z.string().regex(new RegExp(INGEST_PATTERNS.localDateTime)),
+    localDateTime: z.string().regex(new RegExp(INGEST_PATTERNS.localDateTime)).nullable(),
     utcOffsetMinutes: z.number().int().min(-UTC_OFFSET_LIMIT_MINUTES).max(UTC_OFFSET_LIMIT_MINUTES).nullable(),
     utc: utcInstant().nullable(),
+    marks: z.enum(CAPTURE_TIME_MARKS),
     source: MetadataSourceSchema,
   })
   .strict()
   .superRefine((hint, ctx) => {
-    if ((hint.utcOffsetMinutes === null) !== (hint.utc === null)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utc'], message: 'utc is known exactly when the file gives the offset' });
+    if (hint.localDateTime === null && hint.utc === null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['localDateTime'], message: 'a capture time needs a local time, a UTC instant, or both' });
       return;
     }
-    if (hint.utc !== null && hint.utcOffsetMinutes !== null) {
+    if ((hint.utcOffsetMinutes !== null) !== (hint.localDateTime !== null && hint.utc !== null)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utcOffsetMinutes'], message: 'the offset is known exactly when both the local time and UTC are' });
+      return;
+    }
+    if (hint.localDateTime !== null && hint.utc !== null && hint.utcOffsetMinutes !== null) {
       const expected = Date.parse(`${hint.localDateTime}Z`) - hint.utcOffsetMinutes * 60_000;
       if (Date.parse(hint.utc) !== expected) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utc'], message: 'utc must be the local time minus the offset' });
@@ -193,10 +214,13 @@ export const IngestReceiptSchema = z
     const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
     // Uploads are the owner's own media: they stay private and on this machine
     if (asset.privacyClass !== 'private') issue(['sourceAsset', 'privacyClass'], 'an uploaded asset is private');
-    // The asset carries exactly what its hints read, with the same sources
-    const utc = hints.captureTime?.utc ?? undefined;
-    if (asset.capturedAtUTC !== utc) issue(['sourceAsset', 'capturedAtUTC'], 'capturedAtUTC must be the capture-time hint in UTC, or absent');
-    if (utc !== undefined && !sameSource(asset.metadataSources?.capturedAtUTC, hints.captureTime?.source)) {
+    // The asset carries exactly what its hints read, with the same sources. Its capture time is a
+    // recorded one: a file's own time stays a hint, labelled as such
+    const recorded = hints.captureTime?.marks === 'recorded' ? (hints.captureTime.utc ?? undefined) : undefined;
+    if (asset.capturedAtUTC !== recorded) {
+      issue(['sourceAsset', 'capturedAtUTC'], 'capturedAtUTC must be the recorded capture time in UTC, or absent');
+    }
+    if (recorded !== undefined && !sameSource(asset.metadataSources?.capturedAtUTC, hints.captureTime?.source)) {
       issue(['sourceAsset', 'metadataSources', 'capturedAtUTC'], 'the capture time keeps its hint source');
     }
     const place = asset.observerLocation;

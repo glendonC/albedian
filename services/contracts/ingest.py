@@ -5,7 +5,9 @@ What the backend returns when a photo or clip is uploaded: the stored, content-a
 `SourceAsset`, the capture metadata read from the file as hints (each with the container and tags it
 came from), and the solve job whose progress counts real work. Missing metadata stays missing: a hint
 is absent when the file does not hold it, and a capture time written without a zone stays a local
-time with no UTC.
+time with no UTC. A time a file holds only in UTC (QuickTime's creation_time) has no local time, and a
+file's own time is labelled as such: it may be when the file was written or exported, so it never
+becomes the asset's capture time.
 
 Field names, patterns and rules match the Zod schemas; tests/fixtures/ingest_contract.json is written
 from `build_ingest_samples()` and parsed by the TypeScript tests, so a change on one side fails one of
@@ -42,6 +44,10 @@ INGEST_PATTERNS = {
     "jobId": JOB_ID_PATTERN,
 }
 METADATA_CONTAINERS = ("exif", "quicktime", "xmp", "user", "synthetic")
+# What a capture time marks: when the picture or clip was recorded, or the file's own time (QuickTime
+# creation_time), which may be when the file was written or exported. Only a recorded time becomes the
+# asset's capturedAtUTC.
+CAPTURE_TIME_MARKS = ("recorded", "file_written")
 JOB_STAGES = ("store", "decode", "detect", "solve", "verify")
 PROGRESS_UNITS = ("bytes", "frames", "candidates", "steps")
 JOB_STATES = ("queued", "running", "succeeded", "failed", "canceled")
@@ -179,18 +185,26 @@ class SourceAsset(_Loose):
 
 
 class CaptureTimeHint(_Model):
-    nullable: ClassVar[frozenset[str]] = frozenset({"utcOffsetMinutes", "utc", "utc_offset_minutes"})
-    local_date_time: Annotated[str, StringConstraints(pattern=LOCAL_DATE_TIME_PATTERN)]
+    """A local time, a UTC instant, or both; the offset is known exactly when both are."""
+
+    nullable: ClassVar[frozenset[str]] = frozenset(
+        {"localDateTime", "local_date_time", "utcOffsetMinutes", "utc_offset_minutes", "utc"}
+    )
+    local_date_time: Optional[Annotated[str, StringConstraints(pattern=LOCAL_DATE_TIME_PATTERN)]]
     utc_offset_minutes: Optional[Annotated[int, Field(ge=-UTC_OFFSET_LIMIT_MINUTES, le=UTC_OFFSET_LIMIT_MINUTES)]]
     utc: Optional[UtcInstant]
+    marks: Literal["recorded", "file_written"]
     source: MetadataSource
 
     @model_validator(mode="after")
-    def _utc_follows_the_offset(self) -> "CaptureTimeHint":
-        if (self.utc_offset_minutes is None) != (self.utc is None):
-            raise ValueError("utc is known exactly when the file gives the offset")
-        local = datetime.fromisoformat(self.local_date_time)
-        if self.utc is not None and self.utc_offset_minutes is not None:
+    def _times_agree(self) -> "CaptureTimeHint":
+        if self.local_date_time is None and self.utc is None:
+            raise ValueError("a capture time needs a local time, a UTC instant, or both")
+        both = self.local_date_time is not None and self.utc is not None
+        if (self.utc_offset_minutes is not None) != both:
+            raise ValueError("the offset is known exactly when both the local time and UTC are")
+        if both:
+            local = datetime.fromisoformat(self.local_date_time)
             expected = (local - timedelta(minutes=self.utc_offset_minutes)).replace(tzinfo=timezone.utc)
             if _parse_utc(self.utc) != expected:
                 raise ValueError("utc must be the local time minus the offset")
@@ -290,10 +304,12 @@ class IngestReceipt(_Model):
         sources = asset.metadata_sources
         if asset.privacy_class != "private":
             raise ValueError("an uploaded asset is private")
-        utc = hints.capture_time.utc if hints.capture_time is not None else None
-        if asset.captured_at_utc != utc:
-            raise ValueError("capturedAtUTC must be the capture-time hint in UTC, or absent")
-        if utc is not None and sources.captured_at_utc != hints.capture_time.source:
+        # The asset's capture time is a recorded one: a file's own time stays a hint, labelled as such
+        hint = hints.capture_time
+        recorded = hint.utc if hint is not None and hint.marks == "recorded" else None
+        if asset.captured_at_utc != recorded:
+            raise ValueError("capturedAtUTC must be the recorded capture time in UTC, or absent")
+        if recorded is not None and sources.captured_at_utc != hint.source:
             raise ValueError("the capture time keeps its hint source")
         if (asset.observer_location is None) != (hints.location is None):
             raise ValueError("observerLocation must be the location hint, or absent")
@@ -361,8 +377,19 @@ def build_ingest_samples() -> dict[str, Any]:
         "privacyClass": "private",
         "immutable": True,
     }
+    apple_time = {"container": "quicktime", "tags": ["com.apple.quicktime.creationdate"]}
+    file_time = {"container": "quicktime", "tags": ["creation_time"]}
+    recorded_clip_time = {"localDateTime": "2031-05-02T21:30:00", "utcOffsetMinutes": 120, "utc": "2031-05-02T19:30:00Z",
+                          "marks": "recorded", "source": apple_time}
+    # QuickTime's creation_time alone: a UTC instant with no local time, and the file's own time
+    file_written_time = {"localDateTime": None, "utcOffsetMinutes": None, "utc": "2031-05-02T19:31:40Z",
+                         "marks": "file_written", "source": file_time}
+    clip_recorded = {**clip, "capturedAtUTC": "2031-05-02T19:30:00Z", "metadataSources": {"capturedAtUTC": apple_time}}
+    clip_file_time = {**clip, "id": "src_7e6f5a4b3c2d1e0f", "title": "Clip with only a file time (synthetic)",
+                      "sha256": "7e6f5a4b3c2d1e0f" * 4, "uri": "/api/ingest/assets/" + "7e6f5a4b3c2d1e0f" * 4}
     hints_full = {
-        "captureTime": {"localDateTime": "2031-05-02T21:14:09.120", "utcOffsetMinutes": 120, "utc": "2031-05-02T19:14:09.120Z", "source": exif_time},
+        "captureTime": {"localDateTime": "2031-05-02T21:14:09.120", "utcOffsetMinutes": 120, "utc": "2031-05-02T19:14:09.120Z",
+                        "marks": "recorded", "source": exif_time},
         "location": {"latDeg": 46.5197, "lonDeg": 7.9861, "altitudeM": 3466, "source": exif_gps},
         "camera": {"make": "Synthetic", "model": "Test Phone", "lensModel": "Main 24 mm", "focalLengthMm": 6.9,
                    "focalLength35mmMm": 24, "exposureTimeSec": 10, "fNumber": 1.78, "iso": 1600, "source": exif_camera},
@@ -372,10 +399,15 @@ def build_ingest_samples() -> dict[str, Any]:
     receipts = [
         {"sourceAsset": photo, "hints": hints_full, "alreadyStored": False, "solveJobId": "job_5f2b0c9a7d31e448"},
         {"sourceAsset": zoneless_photo, "hints": {
-            "captureTime": {"localDateTime": "2031-05-02T21:14:09", "utcOffsetMinutes": None, "utc": None, "source": {"container": "exif", "tags": ["DateTimeOriginal"]}},
+            "captureTime": {"localDateTime": "2031-05-02T21:14:09", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
+                            "source": {"container": "exif", "tags": ["DateTimeOriginal"]}},
             "camera": hints_full["camera"]}, "alreadyStored": True},
         {"sourceAsset": clip, "hints": {}, "alreadyStored": False, "solveJobId": "job_0a1b2c3d4e5f6071"},
+        {"sourceAsset": clip_recorded, "hints": {"captureTime": recorded_clip_time}, "alreadyStored": False},
+        # The file time stays a hint: the asset has no capture time
+        {"sourceAsset": clip_file_time, "hints": {"captureTime": file_written_time}, "alreadyStored": False},
     ]
+    capture_times = [hints_full["captureTime"], receipts[1]["hints"]["captureTime"], recorded_clip_time, file_written_time]
     sha = clip["sha256"]
     jobs = [
         {"id": "job_0a1b2c3d4e5f6071", "sourceAssetSha256": sha, "state": "queued", "createdAtUTC": "2031-05-02T19:20:00Z", "stages": []},
@@ -442,6 +474,19 @@ def build_ingest_samples() -> dict[str, Any]:
         "the asset's place source differs from its hint's")
     bad("IngestReceipt", with_(receipts[0], ["hints", "weather"], {}), "an unknown hint")
     bad("IngestReceipt", with_(receipts[2], ["solveJobId"], "job_123"), "a malformed job id")
+    bad("IngestReceipt", with_(with_(receipts[4], ["sourceAsset", "capturedAtUTC"], file_written_time["utc"]),
+                               ["sourceAsset", "metadataSources"], {"capturedAtUTC": file_time}),
+        "a file's own time never becomes the asset's capture time")
+    bad("IngestReceipt", with_(receipts[3], ["hints", "captureTime", "marks"], "file_written"),
+        "the asset keeps no capture time its hint marks as the file's own")
+    bad("CaptureTimeHint", {**file_written_time, "utc": None}, "no time at all")
+    bad("CaptureTimeHint", {**file_written_time, "utcOffsetMinutes": 120}, "an offset without a local time")
+    bad("CaptureTimeHint", {**recorded_clip_time, "utcOffsetMinutes": None}, "both times without an offset")
+    bad("CaptureTimeHint", {**recorded_clip_time, "utc": None}, "an offset without UTC")
+    bad("CaptureTimeHint", {k: v for k, v in file_written_time.items() if k != "marks"}, "what the time marks is required")
+    bad("CaptureTimeHint", {**file_written_time, "marks": "exported"}, "an unknown mark")
+    bad("CaptureTimeHint", {k: v for k, v in file_written_time.items() if k != "localDateTime"},
+        "an unknown local time is null, never absent")
     bad("SolveJob", with_(jobs[0], ["startedAtUTC"], "2031-05-02T19:20:01Z"), "a queued job has not started")
     bad("SolveJob", with_(jobs[1], ["startedAtUTC"], _DROP), "a running job has a start time")
     bad("SolveJob", with_(jobs[2], ["solutionId"], _DROP), "a succeeded job names its solution")
@@ -462,11 +507,13 @@ def build_ingest_samples() -> dict[str, Any]:
         "patterns": INGEST_PATTERNS,
         "enums": {
             "metadataContainers": list(METADATA_CONTAINERS),
+            "captureTimeMarks": list(CAPTURE_TIME_MARKS),
             "jobStages": list(JOB_STAGES),
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
         },
-        "valid": {"SourceAsset": [photo, clip, zoneless_photo], "IngestReceipt": receipts, "SolveJob": jobs},
+        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time], "IngestReceipt": receipts,
+                  "CaptureTimeHint": capture_times, "SolveJob": jobs},
         "invalid": invalid,
     }
 

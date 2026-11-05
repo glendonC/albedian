@@ -15,6 +15,10 @@
       "user",
       "synthetic"
     ],
+    "captureTimeMarks": [
+      "recorded",
+      "file_written"
+    ],
     "jobStages": [
       "store",
       "decode",
@@ -171,6 +175,67 @@
             ]
           }
         }
+      },
+      {
+        "id": "src_0a1b2c3d4e5f6071",
+        "title": "Night clip (synthetic)",
+        "mediaKind": "video",
+        "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "fpsNumerator": 30000,
+        "fpsDenominator": 1001,
+        "videoCodec": "hevc",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "aa11bb22cc33dd44"
+          }
+        ],
+        "privacyClass": "private",
+        "immutable": true,
+        "capturedAtUTC": "2031-05-02T19:30:00Z",
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "quicktime",
+            "tags": [
+              "com.apple.quicktime.creationdate"
+            ]
+          }
+        }
+      },
+      {
+        "id": "src_7e6f5a4b3c2d1e0f",
+        "title": "Clip with only a file time (synthetic)",
+        "mediaKind": "video",
+        "sha256": "7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+        "uri": "/api/ingest/assets/7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+        "width": 1080,
+        "height": 1920,
+        "durationMs": 12000,
+        "fpsNumerator": 30000,
+        "fpsDenominator": 1001,
+        "videoCodec": "hevc",
+        "audioStreams": [
+          {
+            "index": 1,
+            "codec": "aac",
+            "sampleRateHz": 48000,
+            "channels": 2,
+            "startPtsMs": 0,
+            "durationMs": 12000,
+            "sha256": "aa11bb22cc33dd44"
+          }
+        ],
+        "privacyClass": "private",
+        "immutable": true
       }
     ],
     "IngestReceipt": [
@@ -245,6 +310,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -344,6 +410,7 @@
             "localDateTime": "2031-05-02T21:14:09",
             "utcOffsetMinutes": null,
             "utc": null,
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -407,6 +474,153 @@
         "hints": {},
         "alreadyStored": false,
         "solveJobId": "job_0a1b2c3d4e5f6071"
+      },
+      {
+        "sourceAsset": {
+          "id": "src_0a1b2c3d4e5f6071",
+          "title": "Night clip (synthetic)",
+          "mediaKind": "video",
+          "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+          "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+          "width": 1080,
+          "height": 1920,
+          "durationMs": 12000,
+          "fpsNumerator": 30000,
+          "fpsDenominator": 1001,
+          "videoCodec": "hevc",
+          "audioStreams": [
+            {
+              "index": 1,
+              "codec": "aac",
+              "sampleRateHz": 48000,
+              "channels": 2,
+              "startPtsMs": 0,
+              "durationMs": 12000,
+              "sha256": "aa11bb22cc33dd44"
+            }
+          ],
+          "privacyClass": "private",
+          "immutable": true,
+          "capturedAtUTC": "2031-05-02T19:30:00Z",
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "quicktime",
+              "tags": [
+                "com.apple.quicktime.creationdate"
+              ]
+            }
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T21:30:00",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T19:30:00Z",
+            "marks": "recorded",
+            "source": {
+              "container": "quicktime",
+              "tags": [
+                "com.apple.quicktime.creationdate"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      {
+        "sourceAsset": {
+          "id": "src_7e6f5a4b3c2d1e0f",
+          "title": "Clip with only a file time (synthetic)",
+          "mediaKind": "video",
+          "sha256": "7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+          "uri": "/api/ingest/assets/7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+          "width": 1080,
+          "height": 1920,
+          "durationMs": 12000,
+          "fpsNumerator": 30000,
+          "fpsDenominator": 1001,
+          "videoCodec": "hevc",
+          "audioStreams": [
+            {
+              "index": 1,
+              "codec": "aac",
+              "sampleRateHz": 48000,
+              "channels": 2,
+              "startPtsMs": 0,
+              "durationMs": 12000,
+              "sha256": "aa11bb22cc33dd44"
+            }
+          ],
+          "privacyClass": "private",
+          "immutable": true
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": null,
+            "utcOffsetMinutes": null,
+            "utc": "2031-05-02T19:31:40Z",
+            "marks": "file_written",
+            "source": {
+              "container": "quicktime",
+              "tags": [
+                "creation_time"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      }
+    ],
+    "CaptureTimeHint": [
+      {
+        "localDateTime": "2031-05-02T21:14:09.120",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T19:14:09.120Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "SubSecTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T21:14:09",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ]
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T21:30:00",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T19:30:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        }
+      },
+      {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:31:40Z",
+        "marks": "file_written",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
       }
     ],
     "SolveJob": [
@@ -1554,6 +1768,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -1679,6 +1894,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -1789,6 +2005,7 @@
             "localDateTime": "2031-05-02T21:14:09",
             "utcOffsetMinutes": null,
             "utc": null,
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -1897,6 +2114,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T21:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2000,6 +2218,7 @@
             "localDateTime": "2031-05-02T21:14:09",
             "utcOffsetMinutes": null,
             "utc": "2031-05-02T21:14:09Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2108,6 +2327,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 900,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2233,6 +2453,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2358,6 +2579,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2475,6 +2697,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2597,6 +2820,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2722,6 +2946,7 @@
             "localDateTime": "2031-05-02T21:14:09.120",
             "utcOffsetMinutes": 120,
             "utc": "2031-05-02T19:14:09.120Z",
+            "marks": "recorded",
             "source": {
               "container": "exif",
               "tags": [
@@ -2809,6 +3034,228 @@
         "solveJobId": "job_123"
       },
       "reason": "a malformed job id"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_7e6f5a4b3c2d1e0f",
+          "title": "Clip with only a file time (synthetic)",
+          "mediaKind": "video",
+          "sha256": "7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+          "uri": "/api/ingest/assets/7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f7e6f5a4b3c2d1e0f",
+          "width": 1080,
+          "height": 1920,
+          "durationMs": 12000,
+          "fpsNumerator": 30000,
+          "fpsDenominator": 1001,
+          "videoCodec": "hevc",
+          "audioStreams": [
+            {
+              "index": 1,
+              "codec": "aac",
+              "sampleRateHz": 48000,
+              "channels": 2,
+              "startPtsMs": 0,
+              "durationMs": 12000,
+              "sha256": "aa11bb22cc33dd44"
+            }
+          ],
+          "privacyClass": "private",
+          "immutable": true,
+          "capturedAtUTC": "2031-05-02T19:31:40Z",
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "quicktime",
+              "tags": [
+                "creation_time"
+              ]
+            }
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": null,
+            "utcOffsetMinutes": null,
+            "utc": "2031-05-02T19:31:40Z",
+            "marks": "file_written",
+            "source": {
+              "container": "quicktime",
+              "tags": [
+                "creation_time"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "a file's own time never becomes the asset's capture time"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_0a1b2c3d4e5f6071",
+          "title": "Night clip (synthetic)",
+          "mediaKind": "video",
+          "sha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+          "uri": "/api/ingest/assets/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+          "width": 1080,
+          "height": 1920,
+          "durationMs": 12000,
+          "fpsNumerator": 30000,
+          "fpsDenominator": 1001,
+          "videoCodec": "hevc",
+          "audioStreams": [
+            {
+              "index": 1,
+              "codec": "aac",
+              "sampleRateHz": 48000,
+              "channels": 2,
+              "startPtsMs": 0,
+              "durationMs": 12000,
+              "sha256": "aa11bb22cc33dd44"
+            }
+          ],
+          "privacyClass": "private",
+          "immutable": true,
+          "capturedAtUTC": "2031-05-02T19:30:00Z",
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "quicktime",
+              "tags": [
+                "com.apple.quicktime.creationdate"
+              ]
+            }
+          }
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T21:30:00",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T19:30:00Z",
+            "marks": "file_written",
+            "source": {
+              "container": "quicktime",
+              "tags": [
+                "com.apple.quicktime.creationdate"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "the asset keeps no capture time its hint marks as the file's own"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "file_written",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
+      },
+      "reason": "no time at all"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T19:31:40Z",
+        "marks": "file_written",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
+      },
+      "reason": "an offset without a local time"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T21:30:00",
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:30:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        }
+      },
+      "reason": "both times without an offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T21:30:00",
+        "utcOffsetMinutes": 120,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        }
+      },
+      "reason": "an offset without UTC"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:31:40Z",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
+      },
+      "reason": "what the time marks is required"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:31:40Z",
+        "marks": "exported",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
+      },
+      "reason": "an unknown mark"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:31:40Z",
+        "marks": "file_written",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        }
+      },
+      "reason": "an unknown local time is null, never absent"
     },
     {
       "schema": "SolveJob",
