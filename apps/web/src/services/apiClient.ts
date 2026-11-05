@@ -171,49 +171,6 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
 }
 
 /**
- * Ask the Python FastAPI backend (`POST /api/voice/command`) to interpret an utterance and
- * explain it. Returns null when the backend is unreachable or answers with an error status;
- * nothing stands in for it offline.
- */
-export async function postVoiceIntentToBackend(
-  utterance: string,
-  session: ObservationSession
-): Promise<{
-  proposedAction?: Record<string, unknown>;
-  scientificExplanation?: string;
-} | null> {
-  try {
-    const res = await fetch('/api/voice/command', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        utterance,
-        context: {
-          sessionId: session.id,
-          sourceAssetId: session.sourceAsset.id,
-          sourceTimeSec: session.currentSourceTimeSec,
-          navigationState: session.machines.navigation,
-          calibrationState: session.machines.calibration,
-          selectedFindingId: session.selectedFindingId,
-          viewRevision: session.viewRevision,
-          observerLat: session.sourceAsset.observerLocation?.latDeg ?? null,
-          observerLon: session.sourceAsset.observerLocation?.lonDeg ?? null,
-          observedAtUTC: session.sourceAsset.capturedAtUTC ?? null,
-          simulationEpochISO: session.spatialView.simulationEpochISO,
-        },
-      }),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as {
-      proposedAction?: Record<string, unknown>;
-      scientificExplanation?: string;
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Build an `ObservationSession` from a backend-discovered capture. Findings come only from
  * the backend's own solution for that file; without one the session stays `pending`.
  * Media stays `importing` because audio stream descriptors are not probed yet.

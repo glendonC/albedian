@@ -15,8 +15,8 @@ import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
 import {
   DiscoveredMediaItem,
   fetchDiscoveredMedia,
-  postVoiceIntentToBackend,
 } from './services/apiClient.js';
+import { applyVoiceBackendReply, askVoiceBackend, backendMayResolve } from './voice/voiceBackend.js';
 import './styles/albedian.css';
 
 async function sha256HexOfFile(file: File): Promise<string> {
@@ -37,6 +37,11 @@ export const App: React.FC = () => {
 
   const audioBusRef = useRef<AlbedianWebAudioBus | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // The session as it stands now, for a backend reply that arrives after later changes
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   const { animatePhaseAToPhaseBSpaceFlight } = useCameraFlightAnimation(session, setSession);
 
@@ -95,13 +100,16 @@ export const App: React.FC = () => {
       if (result.voiceActionRecord.proposedAction?.type === 'space.enter') {
         animatePhaseAToPhaseBSpaceFlight(result.voiceActionRecord.proposedAction.findingId);
       }
-    } else if (result.outcome.status === 'rejected') {
-      void postVoiceIntentToBackend(utterance, session).then((remote) => {
-        if (remote?.scientificExplanation) {
-          setSession((prev) => ({
-            ...prev,
-            lastStatusBanner: remote.scientificExplanation ?? prev.lastStatusBanner,
-          }));
+    } else if (result.outcome.status === 'rejected' && backendMayResolve(result.outcome.reason)) {
+      // The backend may read what the parser could not. Its reply applies to the session as it stands when
+      // the reply arrives, through the reducer, which refuses an action that went stale meanwhile.
+      void askVoiceBackend(utterance, result.session, recentPointer).then((reply) => {
+        if (!reply) return;
+        const applied = applyVoiceBackendReply(sessionRef.current, reply);
+        setSession(applied.session);
+        if (applied.outcome?.status === 'completed') {
+          audioBusRef.current?.playSelectionClick(isMuted);
+          if (applied.flyToFindingId) animatePhaseAToPhaseBSpaceFlight(applied.flyToFindingId);
         }
       });
     }

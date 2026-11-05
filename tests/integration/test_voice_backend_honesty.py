@@ -19,7 +19,8 @@ Covers:
 - PBT: no reply completes, cancels or bumps a state version, for any client action, revision or sky
 - Each catalog star is described with its own distance method and catalog id, as catalog values not
   measured from this recording
-- A predicted body is described by the model that computed it, never as topocentric or JPL Horizons
+- A predicted body is described by the model that computed it, never as topocentric or JPL Horizons, at the
+  recording's capture time (never the simulation epoch), and the text never writes that time
 - PBT: space.enter needs a calibrated sky and a catalog star, as the reducer does
 - PBT: "N years ago" counts back from the clock year across 1 BCE to 1 CE, and "a thousand years ago" and
   "N years from now" count from it too; an era or "year N" is read as said, and an era inside another word
@@ -51,7 +52,7 @@ from services.science.catalog import ALL_SKY_CATALOG_STARS
 from services.science.catalog_model import BAILER_JONES_PHOTOGEOMETRIC
 from services.science.ephemeris import MOON_METHOD, PLANET_METHOD
 from services.voice import claude
-from services.voice.intent import check_voice_command, parse_voice_intent
+from services.voice.intent import ActionContext, check_voice_command, parse_voice_intent
 
 YEAR = 2101  # a clock year no code path may assume
 
@@ -62,7 +63,8 @@ BARE: dict[str, Any] = {
     "viewRevision": 4,
     "calibrationState": "calibrated",
 }
-MOMENT = {"simulationEpochISO": "2001-01-01T00:00:00Z", "observerLat": 12.5, "observerLon": 45.25}
+# A recording's capture time and place, as the client sends them
+MOMENT = {"observedAtUTC": "2001-01-01T00:00:00Z", "observerLat": 12.5, "observerLon": 45.25}
 # The calibration machine's states, plus the solution status the Python validator used to accept
 SKY_STATES = (
     "not_requested", "detecting", "solving", "verifying", "calibrated",
@@ -341,6 +343,36 @@ def test_a_predicted_body_is_described_by_the_model_that_computed_it(body: str, 
     for false_label in ("JPL Analytical", "topocentric", "Topocentric", "Horizons", "DE440"):
         assert false_label not in text
     assert ("Geocentric" in text) == (body == "moon")
+    # Said to be at the recording's capture time, which the text never writes: the moment stays in its field
+    assert "at the recording's capture time" in text
+    for part_of_the_moment in (MOMENT["observedAtUTC"], "2001-01-01", "T00:00", "00:00"):
+        assert part_of_the_moment not in text
+
+
+@pytest.mark.parametrize("body", ["saturn", "moon"])
+def test_a_predicted_body_is_never_placed_at_the_simulation_epoch(body: str) -> None:
+    # Before any epoch, a recording without a capture time carries the session's creation time as its
+    # simulation epoch: a moment nothing observed
+    describe = _action("finding.describe", findingId=f"finding-predicted-{body}", fields=["distance"])
+    epoch_only = {**BARE, "simulationEpochISO": "2001-01-01T00:00:00Z", "observerLat": 12.5, "observerLon": 45.25}
+    text = _reply(f"where is the {body}?", epoch_only, describe)["scientificExplanation"]
+    assert "no observation time and location are set yet" in text
+    assert re.search(r"[0-9] (AU|km)\b", text) is None
+
+
+def test_a_predicted_body_is_placed_at_the_capture_time_whatever_the_simulation_epoch() -> None:
+    describe = _action("finding.describe", findingId="finding-predicted-saturn", fields=["distance"])
+    at_capture = _reply("where is Saturn?", {**BARE, **MOMENT}, describe)["scientificExplanation"]
+    assert re.search(r"[0-9] AU\b", at_capture) is not None
+    another_epoch = {**BARE, **MOMENT, "simulationEpochISO": "2040-01-01T00:00:00Z"}
+    assert _reply("where is Saturn?", another_epoch, describe)["scientificExplanation"] == at_capture
+
+
+def test_the_observation_moment_is_the_capture_time_and_place() -> None:
+    assert ActionContext.from_dict({**BARE, **MOMENT}).has_observation_moment
+    epoch_only = {**BARE, "simulationEpochISO": "2001-01-01T00:00:00Z", "observerLat": 12.5, "observerLon": 45.25}
+    assert not ActionContext.from_dict(epoch_only).has_observation_moment
+    assert not ActionContext.from_dict({**BARE, "observedAtUTC": "2001-01-01T00:00:00Z"}).has_observation_moment
 
 
 def test_a_predicted_body_without_a_moment_has_no_position() -> None:

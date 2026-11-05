@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
 import { SourceAssetSchema } from '@albedian/contracts';
-import { createEmptyObservationSession } from '@albedian/observation';
 import {
   buildSessionFromDiscoveredMedia,
   fetchDiscoveredMedia,
-  postVoiceIntentToBackend,
   type DiscoveredMediaItem,
 } from '../services/apiClient';
 
@@ -156,17 +154,5 @@ describe('backend calls report failure as it is', () => {
     expect(await fetchDiscoveredMedia()).toEqual([]);
     stubFetch(async () => ({ ok: false, json: async () => ({ items: [] }) }));
     expect(await fetchDiscoveredMedia()).toEqual([]);
-  });
-
-  it('returns null for a voice request when the backend is unreachable or answers with an error', async () => {
-    const session = createEmptyObservationSession('2031-06-01T00:00:00.000Z');
-    stubFetch(async () => {
-      throw new TypeError('Failed to fetch');
-    });
-    expect(await postVoiceIntentToBackend('what is that', session)).toBeNull();
-    stubFetch(async () => ({ ok: false, json: async () => ({ scientificExplanation: 'not used' }) }));
-    expect(await postVoiceIntentToBackend('what is that', session)).toBeNull();
-    stubFetch(async () => ({ ok: true, json: async () => ({ scientificExplanation: 'from the backend' }) }));
-    expect(await postVoiceIntentToBackend('what is that', session)).toEqual({ scientificExplanation: 'from the backend' });
   });
 });

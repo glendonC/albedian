@@ -193,7 +193,7 @@ export function buildActionContext(
   });
 }
 
-function isPointerFreshAndMatchingRevision(
+export function isPointerFreshAndMatchingRevision(
   pointer: NonNullable<ActionContext['recentPointer']> | undefined,
   context: ActionContext
 ): pointer is NonNullable<ActionContext['recentPointer']> {

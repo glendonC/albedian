@@ -111,7 +111,11 @@ class ActionContext:
     selected_finding_id: str | None = None
     focused_finding_id: str | None = None
     recent_pointer: PointerContext | None = None
+    # The view's epoch. No description is placed at it: with every epoch refused it is the capture time or,
+    # for a recording without one, the moment the session was created, which nothing observed
     simulation_epoch_iso: str | None = None
+    # The recording's capture time, as the client sends it: the moment a predicted body is placed at
+    observed_at_utc: str | None = None
     view_revision: int = 1
     reduced_motion: bool = False
     observer_lat: float | None = None
@@ -119,9 +123,9 @@ class ActionContext:
 
     @property
     def has_observation_moment(self) -> bool:
-        """True only when the client supplied a real time and place for the sky."""
+        """True only when the client sent the recording's capture time and place."""
         return (
-            self.simulation_epoch_iso is not None
+            self.observed_at_utc is not None
             and self.observer_lat is not None
             and self.observer_lon is not None
         )
@@ -142,6 +146,7 @@ class ActionContext:
             focused_finding_id=data.get("focusedFindingId", data.get("focused_finding_id")),
             recent_pointer=ptr,
             simulation_epoch_iso=_optional_str(data, "simulationEpochISO", "simulation_epoch_iso"),
+            observed_at_utc=_optional_str(data, "observedAtUTC", "observed_at_utc"),
             view_revision=int(data.get("viewRevision", data.get("view_revision", 1))),
             reduced_motion=bool(data.get("reducedMotion", data.get("reduced_motion", False))),
             observer_lat=_optional_float(data, "observerLat", "observer_lat"),
@@ -504,7 +509,12 @@ def _describe_star(star: CatalogStar) -> str:
 
 
 def _describe_body(name: str, ctx: ActionContext) -> str | None:
-    when, lat, lon = ctx.simulation_epoch_iso, ctx.observer_lat, ctx.observer_lon
+    """A predicted body at the recording's capture time and place, or why it has no position.
+
+    The text says the moment is the capture time and never writes it, nor the place: they stay in their own
+    fields, out of any free text.
+    """
+    when, lat, lon = ctx.observed_at_utc, ctx.observer_lat, ctx.observer_lon
     if when is None or lat is None or lon is None:
         return (
             f"{name}'s position depends on when and where you are observing, "
@@ -513,7 +523,8 @@ def _describe_body(name: str, ctx: ActionContext) -> str | None:
     try:
         eph = compute_solar_system_ephemerides(obs_utc_iso=when, lat_deg=lat, lon_deg=lon, bodies=(name,))[0]
     except ValueError as exc:
-        logger.warning("No ephemeris position for %s at the given moment: %s", name, exc)
+        # The error's message can hold the requested moment, so only its kind is logged
+        logger.warning("No ephemeris position for %s at the recording's capture time (%s)", name, type(exc).__name__)
         return None
     light = compute_light_travel_time_description(eph.distance_pc)["description"]
     distance = f"{eph.distance_au * AU_KM:,.0f} km" if eph.object_type == "moon" else f"{eph.distance_au:.4f} AU"
@@ -521,8 +532,8 @@ def _describe_body(name: str, ctx: ActionContext) -> str | None:
     return (
         f"{eph.name} (evidence class predicted) is {distance} ({light}) away, to within {bound_km:,.0f} km, "
         f"at altitude {eph.alt_deg:+.1f}° and azimuth {eph.az_deg:.1f}° (RA {eph.ra_deg:.2f}°, Dec "
-        f"{eph.dec_deg:+.2f}°) for {eph.obs_utc_iso}, to within about {eph.uncertainty_arcsec:,.0f} arcsec. "
-        f"Model: {eph.method}. " + " ".join(eph.limitations)
+        f"{eph.dec_deg:+.2f}°) at the recording's capture time, to within about "
+        f"{eph.uncertainty_arcsec:,.0f} arcsec. Model: {eph.method}. " + " ".join(eph.limitations)
     )
 
 
