@@ -61,11 +61,13 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
    - The NASA star map is removed: it duplicated the catalog stars and added a second, misplaced Milky Way.
    - Venus and Jupiter stay in the panorama, disclosed as planets the 2008 to 2009 shoot photographed.
    - The `halpha` and `jwst_ir` modes and the red boost are removed: they recoloured the RGB photograph.
-   - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (Track 4). The owner signs off on the picture.
+   - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (Track 4). The owner signs off on the picture. On 2026-11-05 the owner said yes to that moment (2025-03-07 11:00 UTC) and no to its look, which reads as a low-quality still image rather than a universe to explore: the fidelity pass in Track 4 comes back for a new yes.
 3. **The AgX look.** Set the contrast and black level for the WebGPU renderer (spike doc section 10, step 12).
 4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decided on 2026-11-04: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure says plainly that it is a modelled composition.
 5. **Model for intent parsing.** Track 3 starts every route on `claude-opus-5-5`. Whether the latency-critical intent route later moves to a smaller model is yours to decide, after measuring.
 6. **Hosting.** Deep catalogs and dust volumes need object storage and a CDN. For example, Cloudflare R2 costs $0.015 per GB-month with no egress fees [verified].
+7. **Audio is music first.** Decided on 2026-11-05, after the owner heard the data-only sonification: a composed, adaptive score is the foundation, and the real catalog data plays inside it (Track 5).
+8. **Every interaction pattern comes from a proven reference.** Decided on 2026-11-05: each moment of the experience takes its pattern from a game or app that already does it well, chosen for a stated reason, never an invented style (Track 8).
 
 ## 3. Tracks
 
@@ -173,6 +175,7 @@ The WebGPU migration continues from [RENDERER_WEBGPU_SPIKE.md](architecture/REND
 - **Textures.** `lro_moon_2k.jpg` is only 1024x512. It is being replaced by the 8k colour map and the LOLA relief of NASA SVS's CGI Moon Kit (svs.gsfc.nasa.gov/4720), with recorded provenance. [proposed] The plotted star map is gone from the app; the Blender look-dev sky still uses the NASA SVS Deep Star Maps and moves to the registered panorama. [proposed]
 - **Honest set pieces.** Delete `derivePlanetaryWorldDescriptor`, and act on decision 4. [proposed]
 - **Switching the default.** Switch after Safari and Windows runs, per-regime snapshot tests and frame-time budgets in CI. [proposed]
+- **The landing's fidelity, first.** The Milky Way behind the Moon is a 6000x3000 photograph, magnified about three to five times at the landing's view, so its stars turn soft, and the camera holds still [tested]. Point stars come only from the catalog tiles, sharp at any zoom; the Milky Way becomes diffuse light only; a slow camera motion gives real parallax at the same moment; every image layer's pixels per degree are measured against 1080p and 4K. [proposed]
 
 Done when every landing scene runs on WebGPU with layer disclosures, the AgX look is signed off and the WebGL path is gone.
 
@@ -182,7 +185,7 @@ Owners: `experience`, with `science` for the data fields.
 
 - Connect the data inputs (`setSources`, `setListenerOrientation`, `setSkyBrightness`, `setUnveil`) to the catalog tiles, the camera, radiometry and the reveal ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md), section 8). [proposed]
 - Add temperature, luminosity, extinction and pulsar spin to the contracts, as AUDIO_ENGINE.md escalates, fed by Track 2 M2 and M3. [proposed]
-- Run the listening test for the 13 items in AUDIO_ENGINE.md section 10. [proposed]
+- Run the listening test for the 13 items in AUDIO_ENGINE.md section 10. Done on 2026-11-05: the owner rejected the data-only sound and asked for music with a beat and swells (decision 7). Next: three short music directions over the real landing for the owner to pick by ear, then the chosen one in the app, with its credits and a statement of what the data chooses. [proposed]
 - Ship the Apache-2.0 notices for Omnitone and the York HRTFs. [proposed]
 - Learn from published, data-grounded work: the NASA Chandra sonifications, SYSTEM Sounds' TRAPPIST-1 piece and STScI's Astronify [verified]. [proposed]
 
@@ -201,7 +204,7 @@ Owner: `spatial`, with `media`. [proposed]
 Owner: `verification`, with each area's owner.
 
 - **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
-- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Before any public deployment: the build's guard against shipping the owner's ignored media (a gitignored folder of clip renders under `apps/web/public/` is copied into `dist/` today) and a review of the hosted setup. [proposed]
+- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Landed on 2026-11-05: the web build refuses while `apps/web/public/` holds a file git does not track or a symbolic link, and the owner's clip renders now live in the ignored `data/renders/`, outside the web root. [tested] Before any public deployment: the same check in the WebGPU spike's build, which also copies that folder; a refusal for tracked files with local edits there; and a review of the hosted setup. [proposed]
 - **Docs drift.**
   - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
   - AGENTS.md cites `docs/adr/`, `docs/internal/integration-ledger.md` and `apps/web/src/voice/`, none of which exist.
@@ -211,6 +214,18 @@ Owner: `verification`, with each area's owner.
   - `services/science/vision_calibrator.py`, described as a Claude Vision check, sent no image and was used by one test only. Deleted on 2026-11-04. [tested]
   - Since 2026-11-04 the backend no longer reports a 999 px residual or a fit residual as held-out, gives no source a default hash, lists no unreadable file at a standard size and frame rate, and calls no star measured through an unverified pose observed. [tested]
 - **Data outside git.** `data/uploads` (205 MB), `data/artifacts`, `data/lookdev` (289 MB) and several gitignored splats exist only on this machine.
+
+### Track 8: the experience
+
+Owner: `experience`.
+
+How a person explores Albedian, from arriving on the landing to going back to their photo. Every pattern comes from a proven reference (decision 8).
+
+- **Reference board.** For each moment (the landing, uploading a photo, the solve and the reveal, exploring, picking a star and learning about it, travelling, voice, Back to Moment, the credits), a pattern from games and apps that already do it well, with official screenshots, for the owner's yes; then mockups for a second yes; then the build, one screen at a time. [proposed]
+- **Exploring is not built yet.** After the landing's Launch there is only drag, keys and the wheel: no picking, labels, card, flight, arrival or way back. [tested]
+- **A companion for third-person flight** (the owner's idea, 2026-11-05). An optional mode in which you fly as a character: an original one, based on the owner's own Shiba Inu, leaving a trail whose colours could be the real colours of the stars it passes. Its art and sound are our own; any existing character would need its creator's permission. It is labelled as playful, never as data, and comes after the demo-critical tracks unless it proves cheap. [proposed]
+
+Done when the owner has said yes to the board and the mockups and the app follows them.
 
 ## 4. Long-running jobs to start early
 
