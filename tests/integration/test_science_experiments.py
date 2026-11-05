@@ -3,7 +3,8 @@ scientific astrometry, plate solver, proper-motion propagation, astronomy-aware
 media restoration runtime, FFmpeg audio-preserving export, and FastAPI service.
 
 Covers:
-- PBT Suite #7 (`test_pbt_scientific_coordinates_and_distances`)
+- PBT Suite #7 (`test_pbt_scientific_coordinates_and_distances`), and a broken catalog distance refused in
+  the star's own distance's words (`test_a_broken_distance_is_refused_in_the_stars_own_words`)
 - EXP-01 (`test_exp01_consumer_photo_plate_solving_and_negative_rejection`)
 - EXP-02 (`test_exp02_low_light_video_temporal_stack_calibration`)
 - EXP-03 (`test_exp03_catalog_alignment_and_false_artifact_rejection`)
@@ -16,6 +17,7 @@ Covers:
 
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 import math
@@ -35,7 +37,7 @@ from services.science.catalog import (
     PINNED_CATALOG_STARS,
     STAR_BY_ID,
     angular_separation_deg,
-    bailer_jones_cartesian_pc,
+    catalog_cartesian_pc,
     compute_light_travel_time_description,
     get_star_by_name,
     icrs_to_altaz,
@@ -76,7 +78,7 @@ def _as_request(moment: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# PBT Suite #7: Scientific Coordinates, WCS Inversion & Bailer-Jones Bounds
+# PBT Suite #7: Scientific Coordinates, WCS Inversion & Catalog Distance Bounds
 # ---------------------------------------------------------------------------
 
 
@@ -102,7 +104,7 @@ def test_pbt_scientific_coordinates_and_distances(
     star_idx: int,
 ) -> None:
     """PBT Suite #7: Verify spherical unit-vector round-trip, WCS forward/inverse round-trip,
-    and Bailer-Jones distance interval invariants across catalog stars and epochs.
+    and catalog distance interval invariants across catalog stars and epochs.
     """
     # 1. Unit vector norm & spherical round-trip
     vec = ra_dec_to_unit_vector(ra_deg, dec_deg)
@@ -133,16 +135,37 @@ def test_pbt_scientific_coordinates_and_distances(
     x_out, y_out = wcs.world_to_pixel(w_ra, w_dec)
     assert math.hypot(x_out - x_in, y_out - y_in) < 1e-5
 
-    # 3. Bailer-Jones distance ordering and epoch propagation invariants
+    # 3. Catalog distance ordering and epoch propagation invariants
     assert len(PINNED_CATALOG_STARS) >= 16
     base_star = PINNED_CATALOG_STARS[star_idx]
     assert 0.0 < base_star.lower_pc <= base_star.median_pc <= base_star.upper_pc
 
     prop_star = propagate_star_epoch(base_star, epoch_year)
     assert 0.0 < prop_star.lower_pc <= prop_star.median_pc <= prop_star.upper_pc
-    cx, cy, cz = bailer_jones_cartesian_pc(prop_star)
+    cx, cy, cz = catalog_cartesian_pc(prop_star)
     dist_3d = math.sqrt(cx * cx + cy * cy + cz * cz)
     assert abs(dist_3d - prop_star.median_pc) < 1e-6
+
+
+@pytest.mark.parametrize(
+    "break_bounds",
+    [
+        lambda star: {"lower_pc": 0.0},
+        lambda star: {"lower_pc": star.median_pc * 2.0},
+        lambda star: {"upper_pc": star.median_pc / 2.0},
+    ],
+    ids=["lower-zero", "lower-above-median", "upper-below-median"],
+)
+@pytest.mark.parametrize("name", ["Rigel", "Tabit"])
+def test_a_broken_distance_is_refused_in_the_stars_own_words(name: str, break_bounds) -> None:
+    # Rigel's distance is 1000/parallax from Hipparcos 2007 and Tabit's the Bailer-Jones et al. (2021) estimate
+    # from Gaia DR3: a broken interval is refused in the star's own distance's words, not one method's for both
+    star = get_star_by_name(name)
+    with pytest.raises(ValueError) as refused:
+        catalog_cartesian_pc(replace(star, **break_bounds(star)))
+    message = str(refused.value)
+    assert name in message and star.distance_source in message
+    assert ("Bailer-Jones" in message) is (star.provider == "Gaia DR3")
 
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ import re
 
 import numpy as np
 
-from services.science.catalog import CatalogStar, bailer_jones_cartesian_pc
+from services.science.catalog import CatalogStar, catalog_cartesian_pc
 
 EVIDENCE_CLASSES = ("observed", "catalog_matched", "predicted", "simulated")
 _SHA256_HEX = re.compile(r"[0-9a-f]{64}")
@@ -378,7 +378,7 @@ class CelestialFindingRecord:
                 "upper": float(self.catalog_star.upper_pc),
                 "method": self.catalog_star.distance_method,
             }
-            cx, cy, cz = bailer_jones_cartesian_pc(self.catalog_star)
+            cx, cy, cz = catalog_cartesian_pc(self.catalog_star)
             payload["cartesianParsecICRS"] = [float(cx), float(cy), float(cz)]
         return payload
 

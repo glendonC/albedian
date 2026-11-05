@@ -13,7 +13,7 @@ from typing import Any
 from services.science.catalog import (
     STAR_BY_ID,
     STAR_BY_NAME,
-    bailer_jones_cartesian_pc,
+    catalog_cartesian_pc,
     get_all_sky_catalog_stars,
 )
 
@@ -30,12 +30,12 @@ def compute_3d_nearest_neighbors(
     if target is None:
         return []
 
-    tx, ty, tz = bailer_jones_cartesian_pc(target)
+    tx, ty, tz = catalog_cartesian_pc(target)
     neighbors: list[tuple[float, Any]] = []
     for star in get_all_sky_catalog_stars():
         if star.id == target.id:
             continue
-        sx, sy, sz = bailer_jones_cartesian_pc(star)
+        sx, sy, sz = catalog_cartesian_pc(star)
         dist_pc = math.sqrt((sx - tx) ** 2 + (sy - ty) ** 2 + (sz - tz) ** 2)
         neighbors.append((dist_pc, star))
 

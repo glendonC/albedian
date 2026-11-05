@@ -222,12 +222,16 @@ def altaz_to_icrs(
     )
 
 
-def bailer_jones_cartesian_pc(star: CatalogStar) -> tuple[float, float, float]:
-    """Compute 3D ICRS Cartesian coordinates in parsecs using Bailer-Jones median distance."""
+def catalog_cartesian_pc(star: CatalogStar) -> tuple[float, float, float]:
+    """Compute 3D ICRS Cartesian coordinates in parsecs at the median of the star's own catalog distance.
+
+    That distance is 1000/parallax for a Hipparcos 2007 row and the Bailer-Jones et al. (2021) photogeometric
+    estimate for a Gaia DR3 row; `star.distance_source` names which.
+    """
     if not (0.0 < star.lower_pc <= star.median_pc <= star.upper_pc):
         raise ValueError(
-            f"Invalid Bailer-Jones distance bounds for {star.common_name}: "
-            f"({star.lower_pc}, {star.median_pc}, {star.upper_pc})"
+            f"Invalid distance bounds for {star.common_name} ({star.distance_source}): "
+            f"({star.lower_pc}, {star.median_pc}, {star.upper_pc}) pc"
         )
     ux, uy, uz = ra_dec_to_unit_vector(star.ra_deg, star.dec_deg)
     d = float(star.median_pc)

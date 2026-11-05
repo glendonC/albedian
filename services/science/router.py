@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
     CONSTELLATION_EDGES,
-    bailer_jones_cartesian_pc,
+    catalog_cartesian_pc,
     compute_light_travel_time_description,
     icrs_to_altaz,
 )
@@ -104,7 +104,7 @@ def get_science_sky_context(
     stars_out: list[dict[str, Any]] = []
     for st in ALL_SKY_CATALOG_STARS:
         alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
-        cx, cy, cz = bailer_jones_cartesian_pc(st)
+        cx, cy, cz = catalog_cartesian_pc(st)
         light_travel = compute_light_travel_time_description(st.median_pc)
         stars_out.append(
             {
