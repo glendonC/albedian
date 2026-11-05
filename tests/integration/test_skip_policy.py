@@ -7,6 +7,7 @@ without the option.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -44,6 +45,13 @@ def run_pytest(root: Path, *arguments: str, environment: dict[str, str] | None =
     )
 
 
+def write_registry(root: Path, *paths: str) -> None:
+    """A scratch data/downloads.json that lists these paths; the marker rule reads only each entry's path."""
+    registry = root / "data" / "downloads.json"
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_text(json.dumps({"downloads": [{"path": path} for path in paths]}))
+
+
 # =============================================================================================
 # The markers
 # =============================================================================================
@@ -76,6 +84,7 @@ def test_local_dataset_marker_skips_with_its_reason_only_where_a_path_is_absent(
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "conftest.py").write_text((REPO_ROOT / "tests" / "conftest.py").read_text())
     (tmp_path / ".cache" / "present").mkdir(parents=True)
+    write_registry(tmp_path, ".cache/present", ".cache/absent/map.fits")
     (tmp_path / "tests" / "test_marked.py").write_text(
         "import pytest\n\n"
         "@pytest.mark.local_dataset('.cache/present')\n"
@@ -93,6 +102,39 @@ def test_local_dataset_marker_skips_with_its_reason_only_where_a_path_is_absent(
     assert run.returncode == 0, run.stdout[-2000:]
     assert "1 passed, 1 skipped" in run.stdout
     assert "needs the public dataset .cache/absent/map.fits, downloaded into the shared .cache and not in git" in run.stdout
+
+
+@pytest.mark.parametrize(
+    ("marked", "listed", "named"),
+    [
+        (".cache/unlisted.fits", (".cache/listed.fits",), "is not listed in data/downloads.json"),
+        ("data/outside.fits", ("data/outside.fits",), "is not under .cache/"),
+        (".cache/../data/outside.fits", (".cache/../data/outside.fits",), "is not under .cache/"),
+        ("/tmp/absolute.fits", ("/tmp/absolute.fits",), "is not under .cache/"),
+    ],
+    ids=["unlisted", "outside-the-cache", "dot-dot", "absolute"],
+)
+def test_local_dataset_accepts_only_a_listed_path_under_the_cache(
+    tmp_path: Path, marked: str, listed: tuple[str, ...], named: str
+) -> None:
+    root = scratch_tree(
+        tmp_path,
+        {"tests/test_marked.py": f"import pytest\n\n@pytest.mark.local_dataset({marked!r})\ndef test_marked():\n    pass\n"},
+    )
+    write_registry(root, *listed)
+    run = run_pytest(root, "tests")
+    assert run.returncode == USAGE_ERROR, run.stdout[-2000:] + run.stderr[-2000:]
+    assert f"tests/test_marked.py::test_marked: local_dataset path {marked} {named}" in run.stderr
+
+
+def test_local_dataset_refuses_every_path_where_there_is_no_registry(tmp_path: Path) -> None:
+    root = scratch_tree(
+        tmp_path,
+        {"tests/test_marked.py": "import pytest\n\n@pytest.mark.local_dataset('.cache/map.fits')\ndef test_marked():\n    pass\n"},
+    )
+    run = run_pytest(root, "tests")
+    assert run.returncode == USAGE_ERROR, run.stdout[-2000:] + run.stderr[-2000:]
+    assert "local_dataset path .cache/map.fits is not listed in data/downloads.json" in run.stderr
 
 
 # =============================================================================================
@@ -174,6 +216,7 @@ def test_no_unexpected_skips_allows_a_local_dataset_skip_only_for_its_own_missin
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests" / "conftest.py").write_text((REPO_ROOT / "tests" / "conftest.py").read_text())
     (tmp_path / ".cache" / "present").mkdir(parents=True)
+    write_registry(tmp_path, ".cache/present", ".cache/absent/map.fits")
     (tmp_path / "tests" / "test_kinds.py").write_text(
         "import pytest\n\n"
         "@pytest.mark.local_dataset('.cache/absent/map.fits')\n"

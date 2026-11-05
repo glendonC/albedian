@@ -6,8 +6,10 @@ default, or the folders the marker names, for example `@pytest.mark.owner_media(
 
 `@pytest.mark.local_dataset(*paths)` marks a test that reads a large public download kept in the
 shared `.cache/` rather than in git, for example
-`@pytest.mark.local_dataset(".cache/dust/edenhofer2024/mean_and_std_healpix.fits")`. It is skipped,
-with its reason printed, wherever a path it names is absent.
+`@pytest.mark.local_dataset(".cache/dust/edenhofer2024/mean_and_std_healpix.fits")`. Each path must be
+under `.cache/` and listed in `data/downloads.json`, the registry that gives each download's fetch
+script, URL, size, SHA-256 and licence; any other path stops the run with a usage error. The test is
+skipped, with its reason printed, wherever a path it names is absent.
 
 `--no-unexpected-skips` (CI runs with it) holds the run to every test it collects:
 - A skip fails, including a module skipped at collection, unless it is the skip that the owner_media or
@@ -28,12 +30,14 @@ host, before any test imports `services.api`; the API's own default never includ
 from __future__ import annotations
 
 from collections.abc import Generator
+import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+DOWNLOADS = REPO_ROOT / "data" / "downloads.json"
 DEFAULT_OWNER_MEDIA_FOLDERS = ("data/uploads",)
 STRICT = "--no-unexpected-skips"
 # The "Skipped: <reason>" text of each skip a marker added to an item for its own missing folder or path
@@ -78,7 +82,23 @@ def _skip_for_marker(item: pytest.Item, reason: str) -> None:
     item.add_marker(pytest.mark.skip(reason=reason))
 
 
-def _skip_where_marked_input_is_absent(item: pytest.Item) -> None:
+def _registered_downloads() -> frozenset[str]:
+    """The paths data/downloads.json lists; none where the file is absent, as in a scratch tree."""
+    if not DOWNLOADS.is_file():
+        return frozenset()
+    try:
+        return frozenset(entry["path"] for entry in json.loads(DOWNLOADS.read_text(encoding="utf-8"))["downloads"])
+    except (ValueError, KeyError, TypeError) as error:
+        raise pytest.UsageError(f"data/downloads.json is not a readable registry of downloads: {error!r}") from None
+
+
+def _is_cache_path(path: str) -> bool:
+    """True for a relative path to something inside .cache/, with no '..' anywhere in it."""
+    parts = PurePosixPath(path).parts
+    return not PurePosixPath(path).is_absolute() and len(parts) > 1 and parts[0] == ".cache" and ".." not in parts
+
+
+def _skip_where_marked_input_is_absent(item: pytest.Item, downloads: frozenset[str]) -> None:
     media = item.get_closest_marker("owner_media")
     if media is not None:
         folders = media.args or DEFAULT_OWNER_MEDIA_FOLDERS
@@ -89,6 +109,14 @@ def _skip_where_marked_input_is_absent(item: pytest.Item) -> None:
     if dataset is not None:
         if not dataset.args:
             raise pytest.UsageError(f"{item.nodeid}: local_dataset names no path")
+        for path in dataset.args:
+            if not _is_cache_path(path):
+                raise pytest.UsageError(f"{item.nodeid}: local_dataset path {path} is not under .cache/")
+            if path not in downloads:
+                raise pytest.UsageError(
+                    f"{item.nodeid}: local_dataset path {path} is not listed in data/downloads.json; add it there "
+                    "with its fetch script, URL, size, SHA-256 and licence"
+                )
         missing = [path for path in dataset.args if not (REPO_ROOT / path).exists()]
         if missing:
             reason = f"needs the public dataset {', '.join(missing)}, downloaded into the shared .cache and not in git"
@@ -126,8 +154,9 @@ def _refuse_tests_left_out(config: pytest.Config, collected: list[str], items: l
 
 @pytest.hookimpl(wrapper=True)
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> Generator[None, object, object]:
+    downloads = _registered_downloads()
     for item in items:
-        _skip_where_marked_input_is_absent(item)
+        _skip_where_marked_input_is_absent(item, downloads)
     collected = [item.nodeid for item in items]
     result = yield
     if config.getoption(STRICT):

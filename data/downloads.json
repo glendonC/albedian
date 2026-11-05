@@ -1,0 +1,65 @@
+{
+  "about": "Large public downloads kept in the shared .cache/, not in git. A test may name a path with @pytest.mark.local_dataset only if it is listed here (tests/conftest.py). `uv run python scripts/fetch_download.py <path>` fetches an entry and keeps it only if its size and SHA-256 match. Each sha256 is that of the copy the tests were run against.",
+  "downloads": [
+    {
+      "path": ".cache/dust/edenhofer2024/mean_and_std_healpix.fits",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://zenodo.org/api/records/8187943/files/mean_and_std_healpix.fits/content",
+      "bytes": 3252715200,
+      "sha256": "7c36dd928afcd2a774ce746ccddba95a1d8490d7a034073fd622c57217c63ae6",
+      "licence": "CC-BY-4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "source": "Edenhofer, Zucker, Frank, Saydjari, Speagle, Finkbeiner and Ensslin 2024, A parsec-scale Galactic 3D dust map out to 1.25 kpc from the Sun, A&A, doi:10.1051/0004-6361/202347628; dataset v1.0 (2023-08-01), doi:10.5281/zenodo.8187943"
+    },
+    {
+      "path": ".cache/earth-maps/ne_10m_ocean.zip",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_ocean.zip",
+      "bytes": 3189765,
+      "sha256": "db626fcd5d50b096b156c78a2cc95011b39f32a61b4e47d147e3f7a77b8b2719",
+      "licence": "LicenseRef-Natural-Earth-Public-Domain",
+      "licenceUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "source": "Natural Earth 1:10m physical vectors, ocean (credit optional: Made with Natural Earth)"
+    },
+    {
+      "path": ".cache/earth-maps/ne_10m_lakes.zip",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_lakes.zip",
+      "bytes": 2349685,
+      "sha256": "0803a06f9c3cb4671d89b68c48b142aad9366ba40f665245e12a913fbc61722a",
+      "licence": "LicenseRef-Natural-Earth-Public-Domain",
+      "licenceUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "source": "Natural Earth 1:10m physical vectors, lakes (credit optional: Made with Natural Earth)"
+    },
+    {
+      "path": ".cache/earth-maps/cloud_combined_2048.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/images/cloud_combined_2048.jpg",
+      "bytes": 829367,
+      "sha256": "daddaad84d7a33bbbc86cdda3f591099f57cee8607b7bcf3b67eb7e4f7a1c793",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA Earth Observatory, The Blue Marble (2002), cloud layer at 2048 x 1024"
+    },
+    {
+      "path": ".cache/earth-maps/ETOPO_2022_v1_60s_N90W180_surface.tif",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif",
+      "bytes": 465969062,
+      "sha256": "9d27d4b8ea8e76977e2988bca667d7c8fa68b927355feffcddd6b4875a7fd08e",
+      "licence": "CC0-1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "NOAA National Centers for Environmental Information, ETOPO 2022 Global Relief Model, 60 arc-second surface elevation (not to be used for navigation)"
+    },
+    {
+      "path": ".cache/earth-maps/world.200411.3x21600x10800.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/november/world.200411.3x21600x10800.jpg",
+      "bytes": 23766556,
+      "sha256": "1959bbe72897d3e9526c440dae3ec04cfdbdc4080c8ff0b14632925ae31167b1",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA Earth Observatory, Blue Marble Next Generation base map, November 2004, 21600 x 10800"
+    }
+  ]
+}
