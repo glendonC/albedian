@@ -1,5 +1,6 @@
-"""Radiometric night-sky brightness, lunar phase/scattering model (Krisciunas & Schaefer 1991),
-and wearable-sensor single-frame vs. coherent multi-frame limiting magnitude audit.
+"""Lunar phase and the Krisciunas & Schaefer (1991) moonlit sky brightness model, predicted for a stated target.
+
+No sensor limiting magnitude is estimated: its coefficients would have to come from a measured camera.
 """
 
 from __future__ import annotations
@@ -176,73 +177,35 @@ def compute_krisciunas_schaefer_sky_brightness(
     }
 
 
-def compute_sensor_limiting_magnitude_audit(
+def predict_sky_brightness(
     obs_utc_iso: str,
     moon_alt_deg: float,
-    target_sep_deg: float = 8.0,
-    target_alt_deg: float = 30.0,
-    aperture_mm: float = 2.2,
-    exposure_sec: float = 1.0 / 30.0,
-    stack_frames: int = 9,
+    target_alt_deg: float,
+    sep_from_moon_deg: float,
+    target: str,
 ) -> dict[str, Any]:
-    """Compute wearable-camera single-frame vs. coherent multi-frame limiting magnitude
-    under Krisciunas & Schaefer (1991) sky brightness and 8-bit H.265 quantization.
+    """The Krisciunas & Schaefer (1991) V-band sky brightness at a stated target, labelled `predicted`.
 
-    The limiting-magnitude coefficients are rough, uncalibrated estimates that have not been
-    fitted to any measured sensor, and the result says so.
+    No sensor or limiting magnitude is modelled: nothing has measured one. The model's site values (V-band
+    extinction and dark-sky zenith brightness, `compute_krisciunas_schaefer_sky_brightness`' defaults) are
+    assumptions, and the output says so.
     """
-    ks = compute_krisciunas_schaefer_sky_brightness(
-        sep_from_moon_deg=target_sep_deg,
+    sky = compute_krisciunas_schaefer_sky_brightness(
+        sep_from_moon_deg=sep_from_moon_deg,
         target_alt_deg=target_alt_deg,
         moon_alt_deg=moon_alt_deg,
         obs_utc_iso=obs_utc_iso,
     )
-    sky_mag = float(ks["skyBrightnessMagArcsec2"])
-    veil_loss_mag = float(ks["lunarVeilDeltaMag"])
-
-    # Effective 5-sigma point-source limiting magnitude for a sub-3mm wearable aperture:
-    # Scales with 2.5*log10(D_mm) + 1.25*log10(t_sec) + 0.5*(sky_mag - 21.6) - H.265 quantization penalty
-    aperture_term = 2.5 * math.log10(max(0.5, float(aperture_mm)) / 2.2)
-    exposure_term = 1.25 * math.log10(max(1e-4, float(exposure_sec)) / (1.0 / 30.0))
-    sky_penalty = 0.48 * (21.6 - sky_mag)
-    single_frame_lim_mag = 2.85 + aperture_term + exposure_term - sky_penalty
-
-    n_stack = max(1, int(stack_frames))
-    stack_gain_mag = 1.25 * math.log10(float(n_stack))
-    coherent_stack_lim_mag = single_frame_lim_mag + stack_gain_mag
-
-    # Solve for N frames needed to reach m_lim >= 3.0 mag (e.g. Deneb Algedi at mag 2.85)
-    target_mag = 3.0
-    if single_frame_lim_mag >= target_mag:
-        frames_needed_mag3 = 1
-    else:
-        mag_deficit = target_mag - single_frame_lim_mag
-        frames_needed_mag3 = min(600, max(2, int(math.ceil(10.0 ** (mag_deficit / 1.25)))))
-
-    explanation = (
-        f"Uncalibrated estimate (coefficients not fitted to a measured sensor). "
-        f"At {target_sep_deg:.1f}° from the {ks['lunarPhaseName']} "
-        f"({ks['illuminationFraction'] * 100.0:.0f}% illuminated, Alt {moon_alt_deg:+.1f}°), "
-        f"Rayleigh/Mie scattering brightens the sky by {veil_loss_mag:.2f} mag/arcsec² "
-        f"to {sky_mag:.2f} mag/arcsec². With a {aperture_mm:.1f} mm wearable aperture at "
-        f"{exposure_sec * 1000.0:.1f} ms exposure, the single-frame 5σ limiting magnitude is "
-        f"m_lim(1) = {single_frame_lim_mag:+.2f} mag; a {n_stack}-frame WCS-coherent stack "
-        f"reaches m_lim({n_stack}) = {coherent_stack_lim_mag:+.2f} mag "
-        f"(~{frames_needed_mag3} coherent frames required to recover mag 3.0 stars)."
-    )
-
     return {
-        "singleFrameLimitingMag": round(single_frame_lim_mag, 2),
-        "coherentStackLimitingMag": round(coherent_stack_lim_mag, 2),
-        "stackGainMag": round(stack_gain_mag, 2),
-        "framesNeededForMag3Star": int(frames_needed_mag3),
-        "skyBrightnessMagArcsec2": round(sky_mag, 2),
-        "lunarVeilDeltaMag": round(veil_loss_mag, 2),
-        "illuminationFraction": ks["illuminationFraction"],
-        "lunarPhaseName": ks["lunarPhaseName"],
-        "apertureMm": float(aperture_mm),
-        "exposureSec": float(exposure_sec),
-        "stackFrames": int(n_stack),
-        "calibratedToSensor": False,
-        "explanation": explanation,
+        **sky,
+        "target": target,
+        "targetAltDeg": round(float(target_alt_deg), 2),
+        "moonAltDeg": round(float(moon_alt_deg), 2),
+        "evidenceClass": "predicted",
+        "method": "Krisciunas and Schaefer (1991, PASP 103, 1033) moonlit sky brightness model",
+        "limitations": [
+            "Predicted for the time and place; not measured in any image.",
+            "Assumes a V-band extinction of 0.20 mag per airmass and a dark-sky zenith of 21.6 mag/arcsec2, "
+            "site values the model needs and nothing measured here; light pollution is not modelled.",
+        ],
     }

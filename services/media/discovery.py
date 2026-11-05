@@ -20,11 +20,10 @@ import numpy as np
 
 from services.media.models import compute_file_sha256
 from services.science.coherent_stack import integrate_wcs_coherent_star_trajectories
-from services.science.deep_sky import DEEP_SKY_CATALOG
 from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 from services.science.optical_flow import compute_video_pose_trajectory
-from services.science.radiometry import compute_sensor_limiting_magnitude_audit
+from services.science.radiometry import predict_sky_brightness
 from services.science.wcs_models import ObservationSolution
 
 SUPPORTED_MEDIA_EXTENSIONS = {".mov", ".mp4", ".m4v", ".png", ".jpg", ".jpeg"}
@@ -64,8 +63,8 @@ class DiscoveredMediaItem:
     observation_solution: ObservationSolution | None = None
     ephemerides: list[dict[str, Any]] = field(default_factory=list)
     pose_trajectory: list[dict[str, Any]] = field(default_factory=list)
-    radiometry_audit: dict[str, Any] = field(default_factory=dict)
-    deep_sky_objects: list[dict[str, Any]] = field(default_factory=list)
+    # Krisciunas & Schaefer sky brightness predicted at the zenith for the capture's moment and place
+    predicted_sky_brightness: dict[str, Any] = field(default_factory=dict)
     coherent_star_audit: list[dict[str, Any]] = field(default_factory=list)
     # ffmpeg's reason when no frame could be decoded: the item then has no pose, trajectory or coherent audit
     decode_error: str | None = None
@@ -109,8 +108,7 @@ class DiscoveredMediaItem:
             ),
             "ephemerides": list(self.ephemerides),
             "poseTrajectory": list(self.pose_trajectory),
-            "radiometryAudit": dict(self.radiometry_audit),
-            "deepSkyObjects": list(self.deep_sky_objects),
+            "predictedSkyBrightness": dict(self.predicted_sky_brightness),
             "coherentStarAudit": list(self.coherent_star_audit),
         }
         if self.duration_sec is not None:
@@ -442,12 +440,11 @@ def discover_uploaded_media_report(
         except FrameDecodeError as exc:
             # No frame: no pose, trajectory or coherent audit; the predictions for the moment need no pixels
             luma, pose_trajectory, decode_error = None, [], str(exc)
-        # The sky solution, ephemerides and radiometry all need the real capture time and place;
+        # The sky solution, ephemerides and sky brightness all need the real capture time and place;
         # a file without them gets none rather than a borrowed moment
         solution: ObservationSolution | None = None
         ephemerides: list[dict[str, Any]] = []
-        radiometry_audit: dict[str, Any] = {}
-        deep_sky_objects: list[dict[str, Any]] = []
+        sky_brightness: dict[str, Any] = {}
         coherent_audit: list[dict[str, Any]] = []
         if lat_deg is not None and lon_deg is not None and captured_at_utc is not None:
             if luma is not None:
@@ -468,19 +465,12 @@ def discover_uploaded_media_report(
                 **({"observation_solution_id": solution_id} if solution is not None else {}),
             )
             ephemerides = [b.to_contract_dict(source_sha256=sha256) for b in ephem_objs]
-            moon_eph = next((b for b in ephem_objs if b.name == "Moon"), None)
-            moon_alt = float(moon_eph.alt_deg) if moon_eph is not None else -15.0
-            radiometry_audit = compute_sensor_limiting_magnitude_audit(
-                obs_utc_iso=captured_at_utc,
-                moon_alt_deg=moon_alt,
-                target_sep_deg=8.2,
-                target_alt_deg=max(10.0, moon_alt if moon_alt > 0.0 else 30.0),
-                stack_frames=max(1, len(pose_trajectory)),
+            # The ephemerides include the Moon; the sky brightness is predicted at the zenith, a stated target
+            moon_alt = float(next(b for b in ephem_objs if b.name == "Moon").alt_deg)
+            sky_brightness = predict_sky_brightness(
+                captured_at_utc, moon_alt_deg=moon_alt, target_alt_deg=90.0, sep_from_moon_deg=90.0 - moon_alt,
+                target="zenith",
             )
-            deep_sky_objects = [
-                dso.to_contract_dict(obs_utc_iso=captured_at_utc, lat_deg=lat_deg, lon_deg=lon_deg)
-                for dso in DEEP_SKY_CATALOG
-            ]
             coherent_audit = (
                 integrate_wcs_coherent_star_trajectories(
                     frames=[luma],
@@ -525,8 +515,7 @@ def discover_uploaded_media_report(
             observation_solution=solution,
             ephemerides=ephemerides,
             pose_trajectory=pose_trajectory,
-            radiometry_audit=radiometry_audit,
-            deep_sky_objects=deep_sky_objects,
+            predicted_sky_brightness=sky_brightness,
             coherent_star_audit=coherent_audit,
             decode_error=decode_error,
         )

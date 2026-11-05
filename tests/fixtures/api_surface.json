@@ -95,7 +95,7 @@
       "/api/science/radiometry-audit": {
         "get": {
           "summary": "Get Science Radiometry Audit",
-          "description": "Return Krisciunas & Schaefer (1991) lunar sky brightness and sensor limiting magnitude audit.",
+          "description": "Return the Krisciunas & Schaefer (1991) sky brightness predicted at the stated target (its altitude and\nits separation from the Moon). No sensor limiting magnitude is estimated.",
           "operationId": "get_science_radiometry_audit_api_science_radiometry_audit_get",
           "parameters": [
             {
@@ -132,37 +132,23 @@
             {
               "name": "target_sep_deg",
               "in": "query",
-              "required": false,
+              "required": true,
               "schema": {
                 "type": "number",
                 "maximum": 180.0,
                 "minimum": 0.5,
-                "default": 8.2,
                 "title": "Target Sep Deg"
               }
             },
             {
               "name": "target_alt_deg",
               "in": "query",
-              "required": false,
+              "required": true,
               "schema": {
                 "type": "number",
                 "maximum": 90.0,
                 "minimum": 0.0,
-                "default": 32.0,
                 "title": "Target Alt Deg"
-              }
-            },
-            {
-              "name": "stack_frames",
-              "in": "query",
-              "required": false,
-              "schema": {
-                "type": "integer",
-                "maximum": 600,
-                "minimum": 1,
-                "default": 9,
-                "title": "Stack Frames"
               }
             }
           ],

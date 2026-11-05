@@ -1,8 +1,8 @@
 """Integration and property tests for Frontier Upgrades 1 & 2 and Deep Scientific Engines:
 - `services/media/silhouette.py`: `compute_2d_sky_silhouette_mask` & `deband_shadow_macroblocks`
 - `services/science/optical_flow.py`: `compute_video_pose_trajectory` (`beacon_lock` & `silhouette_flow`)
-- `services/science/radiometry.py`: Krisciunas & Schaefer (1991) lunar sky brightness & limiting mag audit
-- `services/science/deep_sky.py`: `DEEP_SKY_CATALOG`, `compute_stellar_astrophysics`, `compute_3d_nearest_neighbors`
+- `services/science/radiometry.py`: Krisciunas & Schaefer (1991) lunar sky brightness at a stated target
+- `services/science/deep_sky.py`: `compute_3d_nearest_neighbors`
 - `services/science/coherent_stack.py`: `subtract_lunar_scattering_veil`, `integrate_wcs_coherent_star_trajectories`
 """
 
@@ -22,16 +22,11 @@ from services.science.coherent_stack import (
     integrate_wcs_coherent_star_trajectories,
     subtract_lunar_scattering_veil,
 )
-from services.science.deep_sky import (
-    DEEP_SKY_CATALOG,
-    compute_3d_nearest_neighbors,
-    compute_stellar_astrophysics,
-)
+from services.science.deep_sky import compute_3d_nearest_neighbors
 from services.science.optical_flow import compute_video_pose_trajectory
 from services.science.radiometry import (
     compute_krisciunas_schaefer_sky_brightness,
     compute_lunar_phase_and_illumination,
-    compute_sensor_limiting_magnitude_audit,
 )
 from services.science.solver import render_synthetic_starfield
 
@@ -156,14 +151,13 @@ def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_dee
     for item in items:
         assert "poseTrajectory" in item
         assert len(item["poseTrajectory"]) >= 1
-        assert "radiometryAudit" in item
-        assert "deepSkyObjects" in item
+        assert item["predictedSkyBrightness"]["evidenceClass"] == "predicted"
+        assert "deepSkyObjects" not in item
 
 
-def test_deep_engines_radiometry_astrophysics_and_coherent_stack() -> None:
-    """Verify Krisciunas & Schaefer (1991) lunar radiometry, Stefan-Boltzmann stellar
-    astrophysics, 3D nearest neighbors, lunar veil subtraction, and WCS-coherent trajectory
-    stacking.
+def test_deep_engines_sky_brightness_nearest_neighbors_and_coherent_stack() -> None:
+    """Verify Krisciunas & Schaefer (1991) lunar sky brightness, 3D nearest neighbors, lunar veil
+    subtraction, and WCS-coherent trajectory stacking.
     """
     # 1. Radiometry (`services/science/radiometry.py`)
     # A synthetic moment and place that point at nobody (the open North Atlantic, about 1,321 km from
@@ -194,34 +188,7 @@ def test_deep_engines_radiometry_astrophysics_and_coherent_stack() -> None:
     assert ks_moonlit["skyBrightnessMagArcsec2"] < ks_moonless["skyBrightnessMagArcsec2"]
     assert ks_moonlit["lunarVeilDeltaMag"] > 1.5
 
-    audit = compute_sensor_limiting_magnitude_audit(
-        obs_utc_iso=obs_utc,
-        moon_alt_deg=33.0,
-        target_sep_deg=8.2,
-        target_alt_deg=32.0,
-        stack_frames=16,
-    )
-    assert audit["coherentStackLimitingMag"] > audit["singleFrameLimitingMag"]
-    assert audit["framesNeededForMag3Star"] >= 2
-
-    # 2. Deep-Sky Catalog, Stellar Astrophysics & 3D Nearest Neighbors (`services/science/deep_sky.py`)
-    assert len(DEEP_SKY_CATALOG) == 8
-    dso_names = {d.common_name for d in DEEP_SKY_CATALOG}
-    assert "Helix Nebula" in dso_names
-    assert "Orion Nebula" in dso_names
-
-    astro_betelgeuse = compute_stellar_astrophysics(
-        mag=0.42,
-        bp_rp=2.05,
-        distance_pc=168.0,
-        spectral_type="M1-M2 Ia-ab",
-        common_name="Betelgeuse",
-    )
-    assert 3000 <= astro_betelgeuse["teffK"] <= 4200
-    assert astro_betelgeuse["luminositySolar"] > 10000.0
-    assert astro_betelgeuse["radiusSolar"] > 200.0
-    assert "Supergiant" in astro_betelgeuse["evolutionaryStage"]
-
+    # 2. 3D Nearest Neighbors (`services/science/deep_sky.py`)
     nn_fomalhaut = compute_3d_nearest_neighbors("star-fomalhaut", k=3)
     assert len(nn_fomalhaut) == 3
     assert nn_fomalhaut[0]["distanceFromTargetPc"] <= nn_fomalhaut[1]["distanceFromTargetPc"]
@@ -280,12 +247,14 @@ def test_deep_engines_radiometry_astrophysics_and_coherent_stack() -> None:
     # 4. FastAPI endpoint GET /api/science/radiometry-audit
     client = TestClient(app)
     assert client.get("/api/science/radiometry-audit").status_code == 422
+    moment = {"obs_utc_iso": obs_utc, "lat_deg": obs_lat, "lon_deg": obs_lon}
+    # No target, no prediction: there is no default 8.2 degrees from the Moon
+    assert client.get("/api/science/radiometry-audit", params=moment).status_code == 422
     r_rad = client.get(
-        "/api/science/radiometry-audit",
-        params={"obs_utc_iso": obs_utc, "lat_deg": obs_lat, "lon_deg": obs_lon},
+        "/api/science/radiometry-audit", params={**moment, "target_sep_deg": 8.2, "target_alt_deg": 32.0}
     )
     assert r_rad.status_code == 200
     rad_json = r_rad.json()
     assert "lunarPhase" in rad_json
-    assert "krisciunasSchaeferSky" in rad_json
-    assert "sensorAudit" in rad_json
+    assert rad_json["predictedSkyBrightness"]["evidenceClass"] == "predicted"
+    assert "sensorAudit" not in rad_json

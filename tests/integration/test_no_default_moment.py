@@ -13,7 +13,7 @@ import pytest
 from services.api import app
 from services.media.discovery import normalize_creation_utc, parse_iso6709_location
 from services.science.horizon_solver import MAX_POSE_FIT_RESIDUAL_PX, solve_horizon_and_beacon_pose
-from services.science.radiometry import compute_sensor_limiting_magnitude_audit
+from services.science.radiometry import predict_sky_brightness
 from services.science.solver import SourceDetection, solve_and_verify_field
 from services.voice.intent import ActionContext
 
@@ -141,10 +141,12 @@ def test_plate_solver_without_wcs_invents_no_sky_positions() -> None:
     assert all("skyPosition" not in f for f in sol.to_contract_dict()["findings"])
 
 
-def test_uncalibrated_estimates_say_so() -> None:
-    audit = compute_sensor_limiting_magnitude_audit(obs_utc_iso=MOMENT["obs_utc_iso"], moon_alt_deg=33.0)
-    assert audit["calibratedToSensor"] is False
-    assert audit["explanation"].startswith("Uncalibrated estimate")
+def test_predictions_say_what_they_assume() -> None:
+    sky = predict_sky_brightness(
+        MOMENT["obs_utc_iso"], moon_alt_deg=33.0, target_alt_deg=90.0, sep_from_moon_deg=57.0, target="zenith"
+    )
+    assert sky["evidenceClass"] == "predicted"
+    assert any(note.startswith("Assumes") for note in sky["limitations"])
     assert ActionContext.from_dict({}).calibration_state == "not_requested"
 
 
