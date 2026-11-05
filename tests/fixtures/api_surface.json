@@ -889,14 +889,26 @@
       "args": [],
       "kwargs": {
         "allow_origins": [
-          "*"
+          "http://localhost:5173",
+          "http://127.0.0.1:5173"
         ],
-        "allow_credentials": true,
+        "allow_credentials": false,
         "allow_methods": [
-          "*"
+          "GET",
+          "POST"
         ],
         "allow_headers": [
-          "*"
+          "Content-Type"
+        ]
+      }
+    },
+    {
+      "class": "services.api.ForeignOriginGuard",
+      "args": [],
+      "kwargs": {
+        "origins": [
+          "http://localhost:5173",
+          "http://127.0.0.1:5173"
         ]
       }
     }
@@ -1092,9 +1104,8 @@
       "request": "OPTIONS /api/science/solve",
       "status": 200,
       "headers": {
-        "access-control-allow-credentials": "true",
-        "access-control-allow-headers": "content-type",
-        "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT, QUERY",
+        "access-control-allow-headers": "Accept, Accept-Language, Content-Language, Content-Type",
+        "access-control-allow-methods": "GET, POST",
         "access-control-allow-origin": "http://localhost:5173",
         "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
       },
@@ -1104,12 +1115,31 @@
       "request": "GET /api/unknown",
       "status": 404,
       "headers": {
-        "access-control-allow-credentials": "true",
         "access-control-allow-origin": "http://localhost:5173",
         "vary": "Origin"
       },
       "body": {
         "detail": "Not Found"
+      }
+    },
+    "CORS preflight from a foreign origin": {
+      "request": "OPTIONS /api/science/solve",
+      "status": 400,
+      "headers": {
+        "access-control-allow-headers": "Accept, Accept-Language, Content-Language, Content-Type",
+        "access-control-allow-methods": "GET, POST",
+        "vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Access-Control-Request-Private-Network"
+      },
+      "body": "Disallowed CORS origin"
+    },
+    "POST from a foreign origin": {
+      "request": "POST /api/science/solve",
+      "status": 403,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "Origin https://evil.example is not allowed to send POST requests to this API. Add it to ALBEDIAN_CORS_ORIGINS when you start the API."
       }
     }
   }

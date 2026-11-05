@@ -8,6 +8,9 @@ leaves every part of it unchanged. A deliberate change to the API regenerates th
 the change shows up in review as a diff:
 
     ALBEDIAN_UPDATE_API_SURFACE=1 uv run pytest tests/integration/test_api_surface.py
+
+The surface is built with the default allowed origins, as `services.api:app` is served when
+ALBEDIAN_CORS_ORIGINS is unset, so a lane that sets the variable sees the same surface.
 """
 
 from __future__ import annotations
@@ -22,8 +25,9 @@ from fastapi.routing import iter_route_contexts
 from fastapi.testclient import TestClient
 import pytest
 
-from services.api import app
+from services.api import DEFAULT_CORS_ORIGINS, create_app
 
+app = create_app(cors_origins=DEFAULT_CORS_ORIGINS)
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "api_surface.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_API_SURFACE"
 REGENERATE_HINT = (
@@ -35,8 +39,10 @@ REGENERATE_HINT = (
 MOMENT = {"observedAtUTC": "2000-01-01T12:00:00Z", "latDeg": 0.0, "lonDeg": 0.0}
 BROWSER_ORIGIN = {"Origin": "http://localhost:5173"}
 PREFLIGHT = {**BROWSER_ORIGIN, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"}
+FOREIGN_ORIGIN = {"Origin": "https://evil.example"}
+FOREIGN_PREFLIGHT = {**PREFLIGHT, **FOREIGN_ORIGIN}
 
-# (label, method, path, request options, the status `main` answered with)
+# (label, method, path, request options, the status the API answers with)
 PINNED_REQUESTS: list[tuple[str, str, str, dict[str, Any], int]] = [
     ("solve without detections or image", "POST", "/api/science/solve", {"json": {"width": 960, "height": 540, **MOMENT}}, 422),
     ("solve with an unmeasured detection", "POST", "/api/science/solve", {"json": {**MOMENT, "detections": [{"xPx": 12.5}]}}, 422),
@@ -48,6 +54,8 @@ PINNED_REQUESTS: list[tuple[str, str, str, dict[str, Any], int]] = [
     ("trailing slash", "GET", "/api/health/", {"follow_redirects": False}, 307),
     ("CORS preflight", "OPTIONS", "/api/science/solve", {"headers": PREFLIGHT}, 200),
     ("CORS headers on a browser request", "GET", "/api/unknown", {"headers": BROWSER_ORIGIN}, 404),
+    ("CORS preflight from a foreign origin", "OPTIONS", "/api/science/solve", {"headers": FOREIGN_PREFLIGHT}, 400),
+    ("POST from a foreign origin", "POST", "/api/science/solve", {"headers": FOREIGN_ORIGIN, "json": MOMENT}, 403),
 ]
 PINNED_HEADERS = (
     "access-control-allow-credentials",

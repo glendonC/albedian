@@ -107,6 +107,8 @@ uv run uvicorn services.api:app --reload --port 8000
 pnpm dev
 ```
 
+The API answers browser pages only from the web app's own origins, by default http://localhost:5173 and http://127.0.0.1:5173. A lane (web ports 5180 to 5188) or a preview (5174, 5186) that serves the web app on another port sets `ALBEDIAN_CORS_ORIGINS` to its origins, comma-separated, when it starts the API, for example `ALBEDIAN_CORS_ORIGINS=http://localhost:5180 uv run uvicorn services.api:app --port 8100`. Any other origin's preflight is refused, and its POST, PUT, PATCH or DELETE gets 403 before a route runs.
+
 ---
 
 ## Scientific Methodology & Limitations

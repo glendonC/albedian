@@ -2,14 +2,25 @@
 
 Each domain serves its routes from a router in its own package: `services/science/router.py`,
 `services/media/router.py` and `services/voice/router.py`. Serve with `uvicorn services.api:app`.
+
+The API answers browser pages only from the web app's own origins: those in `ALBEDIAN_CORS_ORIGINS`
+(comma-separated, exact), or by default the Vite dev server at http://localhost:5173 and
+http://127.0.0.1:5173. A preflight from any other origin is refused, and a POST, PUT, PATCH or DELETE that
+carries any other Origin is answered 403 before a route runs. A request with no Origin header passes.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+import os
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from services.media.router import router as media_router
 from services.science.catalog import (
@@ -19,6 +30,81 @@ from services.science.catalog import (
 )
 from services.science.router import router as science_router
 from services.voice.router import router as voice_router
+
+CORS_ORIGINS_ENV = "ALBEDIAN_CORS_ORIGINS"
+# The web app's Vite dev server (apps/web/vite.config.ts), under both names a browser may use for it
+DEFAULT_CORS_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
+UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _checked_origin(origin: str) -> str:
+    """Return the origin if a browser could send it exactly so; otherwise raise ValueError naming the setting."""
+
+    def refuse(why: str) -> ValueError:
+        return ValueError(f"{CORS_ORIGINS_ENV}: {origin!r} {why}; list exact origins such as http://localhost:5173")
+
+    if not origin:
+        raise refuse("is an empty entry")
+    if "*" in origin:
+        raise refuse("is a wildcard, which this API does not accept")
+    parts = urlsplit(origin)
+    if parts.scheme not in DEFAULT_PORTS or not parts.netloc:
+        raise refuse("is not an http or https origin")
+    if parts.path or parts.query or parts.fragment or origin.endswith(("?", "#")):
+        raise refuse("has a path, query or fragment, which an origin never carries")
+    if parts.netloc.endswith(":"):
+        raise refuse("has an empty port")
+    if "@" in parts.netloc:
+        raise refuse("has user information, which an origin never carries")
+    if origin != origin.lower():
+        raise refuse("has capitals, but a browser sends the scheme and host in lowercase")
+    try:
+        port = parts.port
+    except ValueError as error:
+        raise refuse(f"has an invalid port ({error})") from None
+    if port == DEFAULT_PORTS[parts.scheme]:
+        raise refuse(f"names the default port {port}, which a browser leaves out")
+    return origin
+
+
+def allowed_origins(configured: Sequence[str] | None = None) -> tuple[str, ...]:
+    """The origins the API answers: those given, else ALBEDIAN_CORS_ORIGINS, else the Vite dev server's."""
+    if configured is None:
+        value = os.environ.get(CORS_ORIGINS_ENV)
+        if value is None:
+            return DEFAULT_CORS_ORIGINS
+        configured = value.split(",")
+    origins = tuple(_checked_origin(entry.strip()) for entry in configured)
+    if not origins:
+        raise ValueError(f"{CORS_ORIGINS_ENV} lists no origin")
+    return origins
+
+
+class ForeignOriginGuard:
+    """Answer 403, before any route runs, to a POST, PUT, PATCH or DELETE from a page outside the allowed origins.
+
+    A CORS refusal stops only requests that need a preflight. A multipart, form or text/plain POST needs none, so
+    a browser sends it, and without this guard the route would act on it. A request with no Origin header does
+    not come from a browser page and passes.
+    """
+
+    def __init__(self, app: ASGIApp, origins: Sequence[str]) -> None:
+        self.app = app
+        self.origins = frozenset(origins)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope["method"] in UNSAFE_METHODS:
+            origin = Headers(scope=scope).get("origin")
+            if origin is not None and origin not in self.origins:
+                detail = (
+                    f"Origin {origin} is not allowed to send {scope['method']} requests to this API. "
+                    f"Add it to {CORS_ORIGINS_ENV} when you start the API."
+                )
+                await JSONResponse({"detail": detail}, status_code=403)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
 
 health_router = APIRouter()
 
@@ -37,20 +123,27 @@ def get_health() -> dict[str, Any]:
     }
 
 
-def create_app() -> FastAPI:
-    """Build the API: CORS first, then the health, science, media and voice routes in that order."""
+def create_app(cors_origins: Sequence[str] | None = None) -> FastAPI:
+    """Build the API: CORS first, then the foreign-origin guard, then the health, science, media and voice routes.
+
+    `cors_origins` replaces ALBEDIAN_CORS_ORIGINS and the default; a wildcard or a malformed origin raises
+    ValueError.
+    """
+    origins = allowed_origins(cors_origins)
     app = FastAPI(
         title="Albedian Observation & Media Runtime API",
         version="0.2.0",
         description="Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",
     )
 
+    # add_middleware puts each new layer outside the last, so CORS sees a request first
+    app.add_middleware(ForeignOriginGuard, origins=origins)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=list(origins),
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
     )
 
     for domain_router in (health_router, science_router, media_router, voice_router):
