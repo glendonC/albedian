@@ -255,6 +255,10 @@ live readings came from the master bus meter (mean per-ear power).
 The DRR calibration was taken on pink noise; for cool stars (most energy below 1 kHz) the wet path
 runs about 1.8 dB hotter than for the Sun-like tone. A per-voice correction is possible later.
 
+Until 2026-11-04 every parameter glide that followed a value set at the same instant started from
+the parameter's default instead (section 10, item 0): onsets were wrong (the bed opened at full gain,
+voice attacks and the master fade-in were skipped). The steady-state figures above are not onsets.
+
 ## 7. Assets and licenses
 
 **Impulse response** `apps/web/src/audio/assets/aachen-nikolauskapelle-s1-r12-stereo.wav`
@@ -407,6 +411,20 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
    asked whether a static-like sound came from the app (2026-11-04). The clips compare the landing
    as the app plays it with the same voices dry, the loudest voice alone, and the voices with
    harmonics cut above 4 kHz.
+   Found while measuring them (tested, OfflineAudioContext in headless Chrome 156, 2026-11-04):
+   every start of the engine opened with a burst of noise. In each of clips A to D, energy above
+   12 kHz stood about 56 dB over its steady level at 0.17 s and was gone by about 2.7 s; with no
+   sources at all, and the bed meant to be silent, the same burst played and faded at about
+   24 dB a second. The cause was `glideParam`: its `cancelScheduledValues(now)` deleted a value set
+   at that same instant, so a glide on a new node started from the parameter's default, a gain's 1.
+   A 1 kHz tone set to 0 and glided to 1 that way peaked at 1.000 in its first 2 ms instead of
+   0.022. So the skyglow bed opened at full gain (plus Omnitone's +2.8 dB) and faded over its
+   0.35 s time constant, each new voice skipped its 80 ms attack and started with a click, the
+   uncertainty layer opened at full gain, and the master fade-in was skipped. The glide now cancels
+   only what comes after its own start, and the same no-source render is silent. The burst, about
+   12 dB above the star chord at the app's volume (inference from the bed's noise level and trim),
+   and the voice clicks are the likeliest static the owner heard. The clips were rendered again
+   after the fix.
 1. Balance between bed, voices and UI detents; every absolute level is an engineering default.
 2. Distance: whether +/-15 dB of DRR, the stellar window (1 to 2,000 pc) and the regime windows
    read as "near" and "far" rather than "dry" and "wet"; whether the 3 kHz far cutoff fights the
