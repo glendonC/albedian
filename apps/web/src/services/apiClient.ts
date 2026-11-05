@@ -24,8 +24,10 @@ export interface DiscoveredMediaItem {
   mediaKind: 'image' | 'video';
   width: number;
   height: number;
+  /** A clip's duration as discovery probed it; 0 for a still. */
   durationSec: number;
-  fps: number;
+  /** A clip's frame rate as discovery probed it; a still has none. */
+  fps: number | null;
   videoCodec: string;
   capturedAtUTC: string | null;
   latDeg: number | null;
@@ -39,10 +41,10 @@ interface RawBackendDiscoveredItem {
   id: string;
   filename: string;
   sha256: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: string;
   width: number;
   height: number;
-  durationSec: number;
+  durationSec?: number;
   fps?: number;
   videoCodec?: string;
   capturedAtUTC?: string | null;
@@ -53,6 +55,27 @@ interface RawBackendDiscoveredItem {
   } | null;
   variants?: Record<string, string>;
   observationSolution?: ObservationSession['observationSolution'];
+}
+
+function isMediaKind(value: unknown): value is DiscoveredMediaItem['mediaKind'] {
+  return value === 'image' || value === 'video';
+}
+
+function isPositiveFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function isNonNegativeFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+/** A still has no frame rate: its asset takes 1/1, as the empty session's still does. */
+function frameRateOf(item: DiscoveredMediaItem): { fpsNumerator: number; fpsDenominator: number } {
+  if (item.mediaKind === 'image') return { fpsNumerator: 1, fpsDenominator: 1 };
+  if (!isPositiveFinite(item.fps)) {
+    throw new Error(`A clip needs the frame rate discovery probed for it, and ${item.filename} has none.`);
+  }
+  return { fpsNumerator: Math.max(1, Math.round(item.fps * 1000)), fpsDenominator: 1000 };
 }
 
 function toCartesian(raDeg: number, decDeg: number, distPc: number): [number, number, number] {
@@ -93,6 +116,8 @@ function calibrationStateForSolution(status: SolutionStatus): CalibrationMachine
 /**
  * Query the Python FastAPI backend (`GET /api/media/discover`) for any media files
  * dynamically present in `data/uploads/`. Returns an empty list when the backend is unavailable.
+ * The kind, and a clip's frame rate and duration, are taken as discovery probed them: an item
+ * without them is left out, never given guessed ones. A still has neither.
  */
 export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
   try {
@@ -101,21 +126,29 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
     const data = (await res.json()) as { items?: RawBackendDiscoveredItem[] };
     if (!Array.isArray(data.items)) return [];
 
-    return data.items.map((raw) => {
+    return data.items.flatMap((raw): DiscoveredMediaItem[] => {
+      if (!isMediaKind(raw.mediaType)) return [];
+      let durationSec = 0;
+      let fps: number | null = null;
+      if (raw.mediaType === 'video') {
+        if (!isPositiveFinite(raw.fps) || !isNonNegativeFinite(raw.durationSec)) return [];
+        durationSec = raw.durationSec;
+        fps = raw.fps;
+      }
       const v = raw.variants ?? {};
       const origUrl = v.orig_png ?? v.default_png ?? v.orig_jpg ?? '';
       const v1Url = v.v1_png ?? origUrl;
       const v2Url = v.v2_png ?? v1Url;
-      return {
+      return [{
         id: raw.id,
         title: formatReadableTitle(raw.filename),
         filename: raw.filename,
         sha256: raw.sha256,
-        mediaKind: raw.mediaType ?? 'video',
+        mediaKind: raw.mediaType,
         width: raw.width,
         height: raw.height,
-        durationSec: raw.durationSec,
-        fps: raw.fps ?? 1,
+        durationSec,
+        fps,
         videoCodec: raw.videoCodec ?? 'unknown',
         capturedAtUTC: raw.capturedAtUTC ?? null,
         latDeg: raw.observerLocation?.latDeg ?? null,
@@ -130,7 +163,7 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
           v2VideoUrl: v.v2_mp4,
         },
         solution: raw.observationSolution,
-      };
+      }];
     });
   } catch {
     return [];
@@ -138,8 +171,9 @@ export async function fetchDiscoveredMedia(): Promise<DiscoveredMediaItem[]> {
 }
 
 /**
- * Query the Python FastAPI backend (`POST /api/voice/command`) for natural-language
- * intent parsing and grounded scientific explanation, with deterministic offline fallback.
+ * Ask the Python FastAPI backend (`POST /api/voice/command`) to interpret an utterance and
+ * explain it. Returns null when the backend is unreachable or answers with an error status;
+ * nothing stands in for it offline.
  */
 export async function postVoiceIntentToBackend(
   utterance: string,
@@ -197,8 +231,7 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
       width: item.width,
       height: item.height,
       durationMs: Math.round(item.durationSec * 1000),
-      fpsNumerator: Math.max(1, Math.round(item.fps * 1000)),
-      fpsDenominator: 1000,
+      ...frameRateOf(item),
       videoCodec: item.videoCodec,
       audioStreams: [],
       capturedAtUTC: item.capturedAtUTC ?? undefined,
