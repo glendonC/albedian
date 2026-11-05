@@ -87,6 +87,37 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('SkyAudioFeed with the star voices off (the app until the music lands)', () => {
+  it('turns the listener with the camera but passes no sources and fetches nothing, so no voice is planned', async () => {
+    const { fetchImpl, requests } = releaseFetch();
+    const { target, orientations, sourceLists } = recordingTarget();
+    const clock = { t: 0 };
+    const feed = new SkyAudioFeed(target, { fetch: fetchImpl, baseUrl: BASE_URL, now: () => clock.t, voices: false });
+    for (let i = 0; i < 20; i++) {
+      clock.t += 120;
+      feed.follow(CASSIOPEIA);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(orientations).toHaveLength(1);
+    expect(sourceLists).toEqual([]);
+    expect(requests).toEqual([]);
+    expect(feed.getStatus()).toMatchObject({ catalog: 'idle', starsInView: 0, audibleSources: 0, silentSources: 0 });
+
+    // Through the real engine: the stars in view (289 on screen there) plan no voice
+    const engine = new ObservatoryAudioEngine();
+    const appFeed = new SkyAudioFeed(engine, { fetch: fetchImpl, baseUrl: BASE_URL, now: () => clock.t, voices: false });
+    appFeed.follow(CASSIOPEIA);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(engine.getSnapshot().voices).toEqual([]);
+    expect(engine.getSnapshot().silent).toEqual([]);
+  });
+
+  it('is how the app singleton is built', async () => {
+    const { skyAudio } = await import('../SkyAudioFeed');
+    expect(skyAudio.voicesEnabled).toBe(false);
+  });
+});
+
 describe('SkyAudioFeed', () => {
   it('fetches nothing and asks nothing of the engine until a camera pose arrives', async () => {
     const { fetchImpl, requests } = releaseFetch();

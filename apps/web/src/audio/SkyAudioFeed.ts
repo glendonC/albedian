@@ -57,6 +57,11 @@ export interface SkyAudioFeedOptions {
   readonly maxSilent?: number;
   /** Resident star bound of the feed's own loader. */
   readonly maxResidentStars?: number;
+  /**
+   * False: the feed only turns the listener with the camera, and loads and passes no stars, so no
+   * star voice is planned. Default true.
+   */
+  readonly voices?: boolean;
 }
 
 /** As the star fields: plan tiles again when the view moves 0.01 rad, at most every 120 ms. */
@@ -125,6 +130,11 @@ export class SkyAudioFeed {
     this.now = options.now ?? (() => performance.now());
   }
 
+  /** Whether the feed passes the stars in view to the engine (see `SkyAudioFeedOptions.voices`). */
+  get voicesEnabled(): boolean {
+    return this.options.voices !== false;
+  }
+
   /**
    * Call once per animation frame while audio is on. `null` (no renderer, or no pose yet) changes
    * nothing: the engine keeps what it last had.
@@ -137,6 +147,7 @@ export class SkyAudioFeed {
       this.orientation = view.orientationIcrs;
       this.audio.setListenerOrientation(view.orientationIcrs);
     }
+    if (!this.voicesEnabled) return;
     if (this.catalog === 'idle') this.open();
     const loader = this.loader;
     if (!loader) return;
@@ -298,5 +309,10 @@ export class SkyAudioFeed {
   }
 }
 
-/** The feed the viewport drives, sounding through the app's audio engine. */
-export const skyAudio = new SkyAudioFeed(observatoryAudio);
+/**
+ * The feed the viewport drives, sounding through the app's audio engine. Its star voices are off:
+ * the owner heard the data-only star sound on 2026-11-05 and asked for music with the data inside
+ * it, so until the music (AUDIO_ENGINE.md section 8) replaces it, the stars in view stay silent and
+ * only the listener turns.
+ */
+export const skyAudio = new SkyAudioFeed(observatoryAudio, { voices: false });

@@ -6,7 +6,8 @@ camera's pose into voices for the catalog stars on screen, with Gaia DR3 tempera
 luminosities, and turns the listener with the camera (section 8), but the app does not call it yet:
 the viewport's calls belong to the render lane and have not landed (2026-11-05), so enabling audio
 in the app plays only the detent. The owner heard the listening session's clips (section 10) on
-2026-11-05 and asked for music, with the data inside it.
+2026-11-05 and asked for music, with the data inside it; until it comes, the app's feed keeps its
+star voices off.
 
 Code: [`apps/web/src/audio/`](../../apps/web/src/audio/). Listening harness:
 [`apps/web/spike/audio/`](../../apps/web/spike/audio/) (run `pnpm dev`, open `/spike/audio/`).
@@ -319,6 +320,12 @@ hookups that feed it belong to the render lane (`SpatialObservatoryViewport.tsx`
 audio is on and `skyAudio.setEvidenceClass()` with the evidence class of the drawn `catalog_stars`
 layer. Until they land, and with any renderer that reports no pose, the sky is silent and enabling
 audio plays only the detent.
+
+The app's feed (`skyAudio`) is built with its star voices off (`voices: false`). The owner heard
+the data-only star sound on 2026-11-05 and asked for music with the data inside it, so until that
+music replaces it, the app's feed turns the listener with the camera, loads no tiles and passes no
+stars, and enabling audio plays only the detent even once the hookups land. A feed with its voices
+on, as the tests build it, does everything the rest of this section describes.
 
 - **One frame, ICRS.** The pose carries two world quaternions: the camera's, and the catalog star
   sphere's (ICRS axes into world axes). The listener orientation is the camera's turn in ICRS,
