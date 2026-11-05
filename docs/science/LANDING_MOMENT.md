@@ -83,4 +83,7 @@ data URL [tested].
   Earth is darker than its albedo of about 0.3.
 - **Sky resolution** [open]: at this field of view one panorama texel (216 arcsec) spans 2.48 px at
   1080p [tested, the sky dome check] and about 5 px at 2160p, so the sky looks soft at 4K.
-- **The anamorphic streak** [open]: it adds copies of bright pixels at fixed offsets (render-6d).
+- **The anamorphic streak**: render-6e replaced its copies of bright pixels at fixed offsets with one
+  continuous horizontal Gaussian carrying the same energy. Spread out, that energy adds less than one
+  code value per pixel along a star's streak at 1080p, so the landing shows no streak [tested]; a
+  visible line would need about ten times the energy [inference], a look choice.
