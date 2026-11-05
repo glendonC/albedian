@@ -304,7 +304,8 @@ def solve_horizon_and_beacon_pose(
         )
     )
 
-    moment = f"{observer_lat:.4f}°, {observer_lon:.4f}° @ {obs_utc_iso}"
+    # The place and the moment travel only in the solution's own fields (observerLocation, observedAtUTC), never in
+    # its warnings: for a recording those are where and when it was made
     if wcs is not None and fit_residuals_px is not None and beacon_detection is not None and horizon_y is not None:
         # No star was held out, so there is no held-out residual; the pose's own fit residual stays on the
         # observed Moon finding it was fitted to
@@ -321,8 +322,8 @@ def solve_horizon_and_beacon_pose(
         status = "approximate"
         warnings = [
             f"Pose from the Moon at ({beacon_detection.x_px:.1f}, {beacon_detection.y_px:.1f}) px and the "
-            f"horizon at row {horizon_y:.0f} ({moment}). Four constraints fit four pose parameters, so "
-            "near-zero residuals do not measure accuracy, and no stars were held out for verification."
+            f"horizon at row {horizon_y:.0f}, for the given time and place. Four constraints fit four pose "
+            "parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
             + (
                 f" The Moon's predicted position is geocentric: from this place it appears about "
                 f"{moon_parallax_shift_arcsec(moon_eph.distance_au, moon_eph.alt_deg)[1]:,.0f} arcsec lower, "
@@ -344,8 +345,8 @@ def solve_horizon_and_beacon_pose(
         )
         status = "predicted_only"
         warning = (
-            f"{pose_rejection}, so camera pointing is unknown. Showing the sky predicted from {moment}, "
-            "not placed in the frame."
+            f"{pose_rejection}, so camera pointing is unknown. Showing the sky predicted for the given time and "
+            "place, not placed in the frame."
         )
         if beacon_detection is not None:
             warning += (

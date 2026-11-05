@@ -756,7 +756,7 @@
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984 (30.0000°, -40.0000° @ 2030-11-01T22:32:00Z). Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 2,962 arcsec lower, and the pose carries that offset."
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 2,962 arcsec lower, and the pose carries that offset."
     ],
     "wcs": {
       "projection": "TAN",
@@ -876,7 +876,7 @@
       }
     ],
     "warnings": [
-      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted from 30.0000°, -40.0000° @ 2030-11-01T22:32:00Z, not placed in the frame."
+      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted for the given time and place, not placed in the frame."
     ]
   }
 }
