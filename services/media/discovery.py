@@ -20,7 +20,7 @@ import numpy as np
 
 from services.media.models import compute_file_sha256
 from services.science.coherent_stack import integrate_wcs_coherent_star_trajectories
-from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.ephemeris import compute_solar_system_ephemerides, require_ephemeris_range
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 from services.science.optical_flow import compute_video_pose_trajectory
 from services.science.radiometry import predict_sky_brightness
@@ -68,6 +68,8 @@ class DiscoveredMediaItem:
     coherent_star_audit: list[dict[str, Any]] = field(default_factory=list)
     # ffmpeg's reason when no frame could be decoded: the item then has no pose, trajectory or coherent audit
     decode_error: str | None = None
+    # Why a capture moment got no ephemerides and no pose: outside the ephemeris' 1800 to 2050
+    ephemeris_error: str | None = None
 
     def to_contract_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -117,6 +119,8 @@ class DiscoveredMediaItem:
             payload["fps"] = float(self.fps)
         if self.decode_error is not None:
             payload["decodeError"] = self.decode_error
+        if self.ephemeris_error is not None:
+            payload["ephemerisError"] = self.ephemeris_error
         return payload
 
 
@@ -446,7 +450,14 @@ def discover_uploaded_media_report(
         ephemerides: list[dict[str, Any]] = []
         sky_brightness: dict[str, Any] = {}
         coherent_audit: list[dict[str, Any]] = []
-        if lat_deg is not None and lon_deg is not None and captured_at_utc is not None:
+        # A moment outside the ephemeris' 1800 to 2050 gets no predictions and no pose (which rests on the Moon)
+        ephemeris_error: str | None = None
+        if captured_at_utc is not None:
+            try:
+                require_ephemeris_range(captured_at_utc)
+            except ValueError as exc:
+                ephemeris_error = str(exc)
+        if lat_deg is not None and lon_deg is not None and captured_at_utc is not None and ephemeris_error is None:
             if luma is not None:
                 solution = solve_horizon_and_beacon_pose(
                     image=luma,
@@ -518,6 +529,7 @@ def discover_uploaded_media_report(
             predicted_sky_brightness=sky_brightness,
             coherent_star_audit=coherent_audit,
             decode_error=decode_error,
+            ephemeris_error=ephemeris_error,
         )
         _DISCOVERY_CACHE[cache_key] = {"item": item}
         discovered_items.append(item)

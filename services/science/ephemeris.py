@@ -6,6 +6,10 @@ barycentre and without light-time correction. The Moon comes from Meeus (1998) c
 longitude, 4 latitude and 4 distance terms, seen from the Earth's centre. No JPL Horizons request and no DE440
 file is involved; magnitudes are not computed. Every finding is `predicted`: computed from time and place, never
 measured in an image.
+
+It answers only for 1800-01-01 to 2050-12-31 UTC, where the planets' published elements and errors hold; the Moon's
+bound is measured over the same span against Meeus 47 (tests/integration/test_ephemeris_range.py). Any other
+moment raises EphemerisOutOfRange instead of an answer whose stated error would not apply.
 """
 
 from __future__ import annotations
@@ -397,6 +401,23 @@ def _planet_error_bound_au(
     return planet + earth + BARYCENTRE_OFFSET_KM / AU_KM + light_time
 
 
+class EphemerisOutOfRange(ValueError):
+    """A moment outside 1800-01-01 to 2050-12-31 UTC, the span the ephemeris' method and its stated errors hold for."""
+
+
+_VALID_FROM_JD = _iso_to_julian_date("1800-01-01T00:00:00Z")
+_VALID_UNTIL_JD = _iso_to_julian_date("2051-01-01T00:00:00Z")
+
+
+def require_ephemeris_range(obs_utc_iso: str) -> None:
+    """Raise EphemerisOutOfRange for a moment outside the span the ephemeris holds for."""
+    if not _VALID_FROM_JD <= _iso_to_julian_date(obs_utc_iso) < _VALID_UNTIL_JD:
+        raise EphemerisOutOfRange(
+            f"{obs_utc_iso} is outside 1800-01-01 to 2050-12-31 UTC, the span the ephemeris' method and its "
+            "stated errors hold for."
+        )
+
+
 def compute_solar_system_ephemerides(
     obs_utc_iso: str,
     lat_deg: float,
@@ -404,7 +425,11 @@ def compute_solar_system_ephemerides(
     bodies: tuple[str, ...] = ("Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"),
     observation_solution_id: str = "sol-ephemeris",
 ) -> list[EphemerisFinding]:
-    """Predicted positions of the requested bodies at `obs_utc_iso`, with each one's error bounds for the moment."""
+    """Predicted positions of the requested bodies at `obs_utc_iso`, with each one's error bounds for the moment.
+
+    Raises EphemerisOutOfRange outside 1800-01-01 to 2050-12-31 UTC.
+    """
+    require_ephemeris_range(obs_utc_iso)
     jd = _iso_to_julian_date(obs_utc_iso)
     t_centuries = (jd - 2451545.0) / 36525.0
 

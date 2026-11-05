@@ -31,7 +31,7 @@ if str(ROOT_DIR) not in sys.path:
 
 from services.media.runtime import MediaExperimentRuntime
 from services.science.catalog import PINNED_CATALOG_STARS, icrs_to_altaz
-from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.ephemeris import EphemerisOutOfRange, compute_solar_system_ephemerides
 from services.science.solver import detect_point_sources, solve_and_verify_field
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".webm"}
@@ -274,11 +274,15 @@ def main() -> int:
             source_sha256=asset_hash,
         )
         calibration_status = solution.status
-        ephemerides = compute_solar_system_ephemerides(
-            obs_utc_iso=meta["creation_utc"],
-            lat_deg=meta["lat_deg"],
-            lon_deg=meta["lon_deg"],
-        )
+        try:
+            ephemerides = compute_solar_system_ephemerides(
+                obs_utc_iso=meta["creation_utc"],
+                lat_deg=meta["lat_deg"],
+                lon_deg=meta["lon_deg"],
+            )
+        except EphemerisOutOfRange as exc:
+            print(f"      No Solar System positions: {exc}")
+            ephemerides = []
         visible_bodies = [b for b in ephemerides if b.alt_deg > 0.0]
         for star in PINNED_CATALOG_STARS:
             alt, az = icrs_to_altaz(star.ra_deg, star.dec_deg, meta["lat_deg"], meta["lon_deg"], meta["creation_utc"])

@@ -16,7 +16,11 @@ from services.science.catalog import (
     icrs_to_altaz,
 )
 from services.science.deep_sky import compute_3d_nearest_neighbors
-from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.ephemeris import (
+    EphemerisOutOfRange,
+    compute_solar_system_ephemerides,
+    require_ephemeris_range,
+)
 from services.science.stellar_parameters import gaia_stellar_parameters
 from services.science.radiometry import compute_lunar_phase_and_illumination, predict_sky_brightness
 from services.science.solver import (
@@ -71,6 +75,14 @@ class EphemerisRequest(BaseModel):
 _NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input for a missing observation."
 
 
+def _within_ephemeris_range(obs_utc_iso: str) -> None:
+    """A 422 naming the span when the moment lies outside the ephemeris' 1800 to 2050."""
+    try:
+        require_ephemeris_range(obs_utc_iso)
+    except EphemerisOutOfRange as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 def _measured(detection: dict[str, Any], *keys: str) -> float:
     """Return a detection measurement by any of its accepted keys; a missing one is a client error."""
     for key in keys:
@@ -88,6 +100,7 @@ def get_science_sky_context(
     """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
     Solar System ephemerides, and constellation stick-figure edges.
     """
+    _within_ephemeris_range(obs_utc_iso)
     stars_out: list[dict[str, Any]] = []
     for st in ALL_SKY_CATALOG_STARS:
         alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
@@ -182,6 +195,7 @@ def get_science_radiometry_audit(
 ) -> dict[str, Any]:
     """Return the Krisciunas & Schaefer (1991) sky brightness predicted at the stated target (its altitude and
     its separation from the Moon). No sensor limiting magnitude is estimated."""
+    _within_ephemeris_range(obs_utc_iso)
     (moon,) = compute_solar_system_ephemerides(
         obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg, bodies=("Moon",)
     )
@@ -268,6 +282,8 @@ def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
     """Fit a camera pose to a detected celestial beacon (the Moon) and the horizon, for the given time and place."""
     if req.image_luma is None:
         raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="image_luma"))
+    # The pose rests on the predicted Moon, so the moment must lie in the ephemeris' span
+    _within_ephemeris_range(req.obs_utc_iso)
     arr = np.asarray(req.image_luma, dtype=np.float64)
 
     solution = solve_horizon_and_beacon_pose(
@@ -284,6 +300,7 @@ def post_science_solve_horizon(req: SolveRequest) -> dict[str, Any]:
 @router.post("/api/science/ephemeris")
 def post_science_ephemeris(req: EphemerisRequest) -> dict[str, Any]:
     """Compute analytical ephemerides for Solar System bodies with explicit `predicted` evidence class."""
+    _within_ephemeris_range(req.obs_utc_iso)
     try:
         ephem = compute_solar_system_ephemerides(
             obs_utc_iso=req.obs_utc_iso,
