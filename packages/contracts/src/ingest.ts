@@ -220,6 +220,10 @@ export const IngestReceiptSchema = z
     const issue = (path: (string | number)[], message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
     // Uploads are the owner's own media: they stay private and on this machine
     if (asset.privacyClass !== 'private') issue(['sourceAsset', 'privacyClass'], 'an uploaded asset is private');
+    // The backend probes every clip it keeps, so a stored clip carries the frame rate it read
+    if (asset.mediaKind === 'video' && asset.fpsNumerator === undefined) {
+      issue(['sourceAsset', 'fpsNumerator'], 'a stored clip carries its probed frame rate');
+    }
     // The asset carries exactly what its hints read, with the same sources. Its capture time is a
     // recorded one: a file's own time stays a hint, labelled as such
     const recorded = hints.captureTime?.marks === 'recorded' ? (hints.captureTime.utc ?? undefined) : undefined;

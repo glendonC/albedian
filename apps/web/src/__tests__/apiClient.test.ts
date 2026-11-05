@@ -65,16 +65,21 @@ describe('discovered media keeps what discovery probed and guesses nothing', () 
     expect(stillBare).toMatchObject({ mediaKind: 'image', fps: null, durationSec: 0 });
   });
 
-  it('gives a still 1/1 and a clip its probed rate, each in a contract-valid asset', async () => {
+  it('gives a still no frame rate and a clip its probed rate, each in a contract-valid asset', async () => {
     stubListing([
       listed('clip', 1, { mediaType: 'video', fps: 29.97, durationSec: 12.5 }),
       listed('still-at-25', 2, { mediaType: 'image', fps: 25, durationSec: 0 }),
     ]);
     const [clip, still] = (await fetchDiscoveredMedia()).map(buildSessionFromDiscoveredMedia);
     expect(SourceAssetSchema.parse(clip!.sourceAsset)).toMatchObject({ fpsNumerator: 29970, fpsDenominator: 1000, durationMs: 12500 });
-    expect(SourceAssetSchema.parse(still!.sourceAsset)).toMatchObject({ fpsNumerator: 1, fpsDenominator: 1, durationMs: 0 });
+    const stillAsset = SourceAssetSchema.parse(still!.sourceAsset);
+    expect(stillAsset.durationMs).toBe(0);
+    expect(stillAsset).not.toHaveProperty('fpsNumerator');
+    expect(stillAsset).not.toHaveProperty('fpsDenominator');
     // A still built by hand with a rate still has none
-    expect(buildSessionFromDiscoveredMedia(stillItem(25)).sourceAsset).toMatchObject({ fpsNumerator: 1, fpsDenominator: 1 });
+    const handBuilt = buildSessionFromDiscoveredMedia(stillItem(25)).sourceAsset;
+    expect(handBuilt).not.toHaveProperty('fpsNumerator');
+    expect(handBuilt).not.toHaveProperty('fpsDenominator');
   });
 
   it('refuses to build a clip without a frame rate', () => {
@@ -120,7 +125,14 @@ describe('discovered media keeps what discovery probed and guesses nothing', () 
           expect(item!.fps).toBe(fps);
           expect(item!.durationSec).toBe(durationSec);
         }
-        expect(() => SourceAssetSchema.parse(buildSessionFromDiscoveredMedia(item!).sourceAsset)).not.toThrow();
+        const asset = SourceAssetSchema.parse(buildSessionFromDiscoveredMedia(item!).sourceAsset);
+        // A still carries no frame rate; a clip carries the one discovery probed, in thousandths
+        if (mediaType === 'image') {
+          expect(asset).not.toHaveProperty('fpsNumerator');
+          expect(asset).not.toHaveProperty('fpsDenominator');
+        } else {
+          expect(asset).toMatchObject({ fpsNumerator: Math.max(1, Math.round((fps as number) * 1000)), fpsDenominator: 1000 });
+        }
       }),
       {
         seed: SEED,

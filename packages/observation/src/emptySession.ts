@@ -51,7 +51,7 @@ export function createEmptyObservationSession(
     sourceAsset: {
       id: EMPTY_SOURCE_ASSET_ID, title: 'No observation yet', mediaKind: 'image', sha256: EMPTY_SHA256,
       uri: 'albedian://none', width: 1, height: 1, durationMs: 0,
-      fpsNumerator: 1, fpsDenominator: 1, videoCodec: 'none', audioStreams: [],
+      videoCodec: 'none', audioStreams: [],
       privacyClass: 'private', immutable: true,
     },
     activeVariantId: EMPTY_MEDIA_VARIANT_ID, compareWipePosition: 0.5,

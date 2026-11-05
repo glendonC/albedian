@@ -200,6 +200,32 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
     );
   });
 
+  it('gives a frame rate only to a clip, both fields or neither, and a stored clip the rate it was probed at', () => {
+    // A photo receipt with every hint and a clip receipt with none, as the Python side wrote them
+    const receipts = fixture.valid.IngestReceipt as { sourceAsset: Record<string, unknown> }[];
+    const cases = [receipts[0]!, receipts[2]!];
+    expect(cases.map((receipt) => receipt.sourceAsset.mediaKind)).toEqual(['image', 'video']);
+    for (const receipt of cases) {
+      const { fpsNumerator: _numerator, fpsDenominator: _denominator, ...unrated } = receipt.sourceAsset;
+      const kind = unrated.mediaKind;
+      for (const hasNumerator of [false, true]) {
+        for (const hasDenominator of [false, true]) {
+          const asset = {
+            ...unrated,
+            ...(hasNumerator ? { fpsNumerator: 30000 } : {}),
+            ...(hasDenominator ? { fpsDenominator: 1001 } : {}),
+          };
+          const assetOk = hasNumerator === hasDenominator && (kind === 'video' || !hasNumerator);
+          const label = `${String(kind)} with numerator ${hasNumerator} and denominator ${hasDenominator}`;
+          expect(SourceAssetSchema.safeParse(asset).success, label).toBe(assetOk);
+          // The backend probes every clip it keeps, so a receipt's clip carries its rate
+          const receiptOk = assetOk && (kind === 'image' || hasNumerator);
+          expect(IngestReceiptSchema.safeParse({ ...receipt, sourceAsset: asset }).success, `receipt: ${label}`).toBe(receiptOk);
+        }
+      }
+    }
+  });
+
   it('requires a source for every capture time, place and camera a SourceAsset carries', () => {
     const asset = fixture.valid.SourceAsset[0] as Record<string, unknown>;
     expect(SourceAssetSchema.safeParse(asset).success).toBe(true);

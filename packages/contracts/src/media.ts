@@ -97,8 +97,9 @@ export const SourceAssetSchema = z
     width: z.number().int().positive(),
     height: z.number().int().positive(),
     durationMs: z.number().nonnegative(),
-    fpsNumerator: z.number().int().positive(),
-    fpsDenominator: z.number().int().positive(),
+    // A clip's frame rate, both fields once probed, neither until then; a still has none
+    fpsNumerator: z.number().int().positive().optional(),
+    fpsDenominator: z.number().int().positive().optional(),
     videoCodec: z.string().min(1),
     audioStreams: z.array(AudioStreamDescriptorSchema),
     capturedAtUTC: z.string().datetime().optional(),
@@ -139,6 +140,18 @@ export const SourceAssetSchema = z
     immutable: z.literal(true),
   })
   .superRefine((asset, ctx) => {
+    // A frame rate is a clip's and needs both fields; a still has none, so it carries neither
+    const hasNumerator = asset.fpsNumerator !== undefined;
+    const hasDenominator = asset.fpsDenominator !== undefined;
+    if (hasNumerator !== hasDenominator) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [hasNumerator ? 'fpsDenominator' : 'fpsNumerator'],
+        message: 'a frame rate needs both its numerator and its denominator',
+      });
+    } else if (hasNumerator && asset.mediaKind === 'image') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fpsNumerator'], message: 'a still has no frame rate' });
+    }
     // Recorded where it came from, or not recorded at all: no capture metadata without its source
     for (const field of SOURCE_ASSET_METADATA_FIELDS) {
       const present = asset[field] !== undefined;

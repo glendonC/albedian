@@ -157,6 +157,23 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(located.spatialView.simulationEpochISO).toBe('2030-11-01T22:32:00Z');
   });
 
+  it('leaves the empty session still and a clip nothing has probed without a frame rate', () => {
+    const createdAtISO = '2026-11-03T08:00:00.000Z';
+    const still = createEmptyObservationSession(createdAtISO).sourceAsset;
+    expect(still.mediaKind).toBe('image');
+    expect(still).not.toHaveProperty('fpsNumerator');
+    expect(still).not.toHaveProperty('fpsDenominator');
+    // The shape App.tsx gives a local video upload before anything probes the file
+    const unprobed = createSessionForSourceAsset(
+      { ...still, id: 'src_upload_2', title: 'night.mov', mediaKind: 'video', sha256: 'cd'.repeat(32), uri: 'blob:night' },
+      'importing',
+      createdAtISO
+    );
+    expect(unprobed.sourceAsset.mediaKind).toBe('video');
+    expect(unprobed.sourceAsset).not.toHaveProperty('fpsNumerator');
+    expect(unprobed.sourceAsset).not.toHaveProperty('fpsDenominator');
+  });
+
   it('enforces scientific distance prerequisites on space.enter and space.viewpoint', () => {
     const session = createSyntheticCalibratedSession();
 

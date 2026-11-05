@@ -72,7 +72,8 @@ def test_an_upload_is_stored_once_under_its_hash_and_read_only(client: TestClien
     assert receipt["alreadyStored"] is False
     assert (asset["sha256"], asset["byteSize"], asset["mimeType"]) == (sha, len(data), "image/jpeg")
     assert asset["uri"] == f"/api/ingest/{sha}/original"
-    assert (asset["fpsNumerator"], asset["fpsDenominator"], asset["durationMs"]) == (1, 1, 0)
+    # A still has no frame rate: its asset carries none, and a duration of 0
+    assert "fpsNumerator" not in asset and "fpsDenominator" not in asset and asset["durationMs"] == 0
     assert asset["privacyClass"] == "private" and asset["immutable"] is True
     stored = store.root / sha[:2] / sha / "original.jpg"
     assert stored.read_bytes() == data

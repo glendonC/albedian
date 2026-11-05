@@ -481,7 +481,7 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
 describe('@albedian/evidence: detections without a sky position', () => {
   const sourceAsset: SourceAsset = {
     id: 'asset_02', title: 'Hazy Field Recording', mediaKind: 'image', sha256: 'b1c2d3e4f5a60718293a4b5c6d7e8f90b1c2d3e4f5a60718293a4b5c6d7e8f90',
-    uri: '/data/uploads/hazy_field.jpg', width: 960, height: 540, durationMs: 0, fpsNumerator: 1, fpsDenominator: 1,
+    uri: '/data/uploads/hazy_field.jpg', width: 960, height: 540, durationMs: 0,
     videoCodec: 'none', audioStreams: [], privacyClass: 'private', immutable: true,
   };
   const pixelOnly = (xPx = 733.0, yPx = 120.4): CelestialFinding => ({

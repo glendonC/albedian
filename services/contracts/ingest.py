@@ -190,8 +190,9 @@ class SourceAsset(_Loose):
     width: Annotated[int, Field(gt=0)]
     height: Annotated[int, Field(gt=0)]
     duration_ms: Annotated[float, Field(ge=0)]
-    fps_numerator: Annotated[int, Field(gt=0)]
-    fps_denominator: Annotated[int, Field(gt=0)]
+    # A clip's frame rate, both fields once probed, neither until then; a still has none
+    fps_numerator: Optional[Annotated[int, Field(gt=0)]] = None
+    fps_denominator: Optional[Annotated[int, Field(gt=0)]] = None
     video_codec: Text
     audio_streams: list[AudioStreamDescriptor]
     captured_at_utc: Optional[Annotated[str, StringConstraints(pattern=ZOD_DATETIME_PATTERN)]] = Field(default=None, alias="capturedAtUTC")
@@ -209,6 +210,16 @@ class SourceAsset(_Loose):
         if value is not None:
             _parse_utc(value)
         return value
+
+    @model_validator(mode="after")
+    def _frame_rate_is_a_clips(self) -> "SourceAsset":
+        """A frame rate is a clip's and needs both fields; a still has none, so it carries neither."""
+        has_numerator, has_denominator = self.fps_numerator is not None, self.fps_denominator is not None
+        if has_numerator != has_denominator:
+            raise ValueError("a frame rate needs both its numerator and its denominator")
+        if has_numerator and self.media_kind == "image":
+            raise ValueError("a still has no frame rate")
+        return self
 
     @model_validator(mode="after")
     def _metadata_has_sources(self) -> "SourceAsset":
@@ -350,6 +361,9 @@ class IngestReceipt(_Model):
         sources = asset.metadata_sources
         if asset.privacy_class != "private":
             raise ValueError("an uploaded asset is private")
+        # The backend probes every clip it keeps, so a stored clip carries the frame rate it read
+        if asset.media_kind == "video" and asset.fps_numerator is None:
+            raise ValueError("a stored clip carries its probed frame rate")
         # The asset's capture time is a recorded one: a file's own time stays a hint, labelled as such
         hint = hints.capture_time
         recorded = hint.utc if hint is not None and hint.marks == "recorded" else None
@@ -405,8 +419,6 @@ def build_ingest_samples() -> dict[str, Any]:
         "width": 4032,
         "height": 3024,
         "durationMs": 0,
-        "fpsNumerator": 1,
-        "fpsDenominator": 1,
         "videoCodec": "mjpeg",
         "audioStreams": [],
         "capturedAtUTC": "2031-05-02T03:42:18.120Z",
@@ -443,6 +455,10 @@ def build_ingest_samples() -> dict[str, Any]:
     clip_recorded = {**clip, "capturedAtUTC": "2031-05-02T19:30:00Z", "metadataSources": {"capturedAtUTC": apple_time}}
     clip_file_time = {**clip, "id": "src_7e6f5a4b3c2d1e0f", "title": "Clip with only a file time (synthetic)",
                       "sha256": "7e6f5a4b3c2d1e0f" * 4, "uri": "/api/ingest/assets/" + "7e6f5a4b3c2d1e0f" * 4}
+    # A clip whose frame rate nothing has probed yet carries none: a valid asset, but never a stored one
+    clip_unrated = {key: value for key, value in clip.items() if key not in ("fpsNumerator", "fpsDenominator")}
+    clip_unrated.update({"id": "src_9c8b7a6f5e4d3c2b", "title": "Clip with no frame rate yet (synthetic)",
+                         "sha256": "9c8b7a6f5e4d3c2b" * 4, "uri": "blob:synthetic-unprobed-clip"})
     exif_orientation = {"container": "exif", "tags": ["Orientation"]}
     orientation_hints = [
         {**EXIF_ORIENTATIONS[6], "source": exif_orientation},
@@ -529,6 +545,9 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("SourceAsset", with_(photo, ["immutable"], False), "a source asset is immutable")
     bad("SourceAsset", with_(photo, ["capturedAtUTC"], "2031-02-30T03:42:18Z"), "not a calendar date")
     bad("SourceAsset", with_(photo, ["byteSize"], None), "null where the field may only be absent")
+    bad("SourceAsset", {**photo, "fpsNumerator": 1, "fpsDenominator": 1}, "a still has no frame rate")
+    bad("SourceAsset", with_(clip, ["fpsDenominator"], _DROP), "a frame rate needs its denominator")
+    bad("SourceAsset", with_(clip, ["fpsNumerator"], _DROP), "a frame rate needs its numerator")
     bad("IngestReceipt", with_(receipts[0], ["sourceAsset", "privacyClass"], "public_sample"), "an uploaded asset is private")
     bad("IngestReceipt", with_(receipts[0], ["sourceAsset", "capturedAtUTC"], "2031-05-02T03:42:19Z"), "the asset's time differs from its hint")
     bad("IngestReceipt", with_(with_(receipts[1], ["sourceAsset", "capturedAtUTC"], "2031-05-02T05:42:18Z"),
@@ -544,6 +563,9 @@ def build_ingest_samples() -> dict[str, Any]:
         "the asset's place source differs from its hint's")
     bad("IngestReceipt", with_(receipts[0], ["hints", "weather"], {}), "an unknown hint")
     bad("IngestReceipt", with_(receipts[2], ["solveJobId"], "job_123"), "a malformed job id")
+    bad("IngestReceipt", {**receipts[2], "sourceAsset": clip_unrated}, "a stored clip carries its probed frame rate")
+    bad("IngestReceipt", with_(receipts[0], ["sourceAsset"], {**photo, "fpsNumerator": 1, "fpsDenominator": 1}),
+        "a stored still carries no frame rate")
     bad("IngestReceipt", with_(with_(receipts[4], ["sourceAsset", "capturedAtUTC"], file_written_time["utc"]),
                                ["sourceAsset", "metadataSources"], {"capturedAtUTC": file_time}),
         "a file's own time never becomes the asset's capture time")
@@ -592,7 +614,8 @@ def build_ingest_samples() -> dict[str, Any]:
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
         },
-        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo], "IngestReceipt": receipts,
+        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated],
+                  "IngestReceipt": receipts,
                   "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints, "SolveJob": jobs},
         "orientations": {"exif": {str(value): form for value, form in EXIF_ORIENTATIONS.items()}},
         "invalid": invalid,

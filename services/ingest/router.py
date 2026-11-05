@@ -77,8 +77,8 @@ def _asset(received: Received, title: str, facts: MediaFacts, hints: dict[str, A
         "width": facts.width,
         "height": facts.height,
         "durationMs": facts.duration_ms,
-        "fpsNumerator": facts.fps_numerator,
-        "fpsDenominator": facts.fps_denominator,
+        # A still has no frame rate; a clip carries the one ffprobe read
+        **({"fpsNumerator": facts.fps_numerator, "fpsDenominator": facts.fps_denominator} if facts.fps_numerator is not None else {}),
         "videoCodec": facts.codec,
         "audioStreams": list(facts.audio_streams),
         "privacyClass": "private",

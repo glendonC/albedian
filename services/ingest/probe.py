@@ -3,7 +3,7 @@
 Only what the file says, read on this machine: a still's size from its own header (Pillow for JPEG, PNG
 and TIFF, the `ispe` box for HEIC), and a clip's facts from ffprobe. Nothing is assumed: a file whose
 facts cannot be read is refused with the reason (`ProbeError`), and the store keeps nothing of it. A
-still has no frame rate or duration; its asset carries 1/1 and 0, as the empty session's still does.
+still spans no time and has no frame rate: its facts give a duration of 0 and no frame rate.
 """
 
 from __future__ import annotations
@@ -39,8 +39,9 @@ class MediaFacts:
     width: int
     height: int
     duration_ms: float
-    fps_numerator: int
-    fps_denominator: int
+    # A clip's frame rate as ffprobe reads it; None for a still, which has none
+    fps_numerator: int | None
+    fps_denominator: int | None
     codec: str
     audio_streams: tuple[dict[str, Any], ...] = ()
     # A clip's container tags as ffprobe reports them, for the metadata hints
@@ -50,7 +51,7 @@ class MediaFacts:
 def probe_media(path: Path, file_type: FileType) -> MediaFacts:
     if file_type.media_kind == "image":
         width, height = _still_size(path, file_type)
-        return MediaFacts("image", width, height, 0, 1, 1, STILL_CODECS[file_type.family])
+        return MediaFacts("image", width, height, 0, None, None, STILL_CODECS[file_type.family])
     return _probe_clip(path)
 
 

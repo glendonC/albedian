@@ -9,6 +9,7 @@ test. Regenerate it after a deliberate change with:
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -98,6 +99,34 @@ def test_every_valid_sample_round_trips_and_every_invalid_one_is_rejected() -> N
     for case in samples["invalid"]:
         with pytest.raises(ValidationError):
             MODELS[case["schema"]].model_validate(case["sample"])
+
+
+@pytest.mark.parametrize("kind", ["image", "video"])
+@pytest.mark.parametrize("has_numerator", [False, True])
+@pytest.mark.parametrize("has_denominator", [False, True])
+def test_a_frame_rate_is_a_clips_both_fields_or_neither_and_a_stored_clip_carries_its_probed_rate(
+    kind: str, has_numerator: bool, has_denominator: bool
+) -> None:
+    # A photo receipt with every hint and a clip receipt with none
+    receipts = ingest.build_ingest_samples()["valid"]["IngestReceipt"]
+    receipt = copy.deepcopy(receipts[0] if kind == "image" else receipts[2])
+    asset = receipt["sourceAsset"]
+    assert asset["mediaKind"] == kind
+    asset.pop("fpsNumerator", None)
+    asset.pop("fpsDenominator", None)
+    if has_numerator:
+        asset["fpsNumerator"] = 30000
+    if has_denominator:
+        asset["fpsDenominator"] = 1001
+    asset_ok = has_numerator == has_denominator and (kind == "video" or not has_numerator)
+    # The backend probes every clip it keeps, so a receipt's clip carries its rate
+    receipt_ok = asset_ok and (kind == "image" or has_numerator)
+    for model, sample, ok in ((ingest.SourceAsset, asset, asset_ok), (ingest.IngestReceipt, receipt, receipt_ok)):
+        if ok:
+            model.model_validate(sample)
+        else:
+            with pytest.raises(ValidationError):
+                model.model_validate(sample)
 
 
 def test_missing_metadata_stays_missing() -> None:

@@ -69,9 +69,9 @@ function isNonNegativeFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
-/** A still has no frame rate: its asset takes 1/1, as the empty session's still does. */
-function frameRateOf(item: DiscoveredMediaItem): { fpsNumerator: number; fpsDenominator: number } {
-  if (item.mediaKind === 'image') return { fpsNumerator: 1, fpsDenominator: 1 };
+/** A still has no frame rate, so its asset carries none; a clip's is the rate discovery probed. */
+function frameRateOf(item: DiscoveredMediaItem): { fpsNumerator?: number; fpsDenominator?: number } {
+  if (item.mediaKind === 'image') return {};
   if (!isPositiveFinite(item.fps)) {
     throw new Error(`A clip needs the frame rate discovery probed for it, and ${item.filename} has none.`);
   }
