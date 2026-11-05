@@ -19,7 +19,7 @@ build/
 data/uploads/
 data/artifacts/
 data/ingest/
-apps/web/public/morocco/
+data/renders/
 apps/web/public/splats/*.rad
 apps/web/public/splats/*.zip
 *.sqlite
