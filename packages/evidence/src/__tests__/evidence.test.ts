@@ -558,3 +558,64 @@ describe('@albedian/evidence: detections without a sky position', () => {
     expect(CelestialFindingSchema.safeParse(promoted).success).toBe(true);
   });
 });
+
+describe('@albedian/evidence: licence and source strings', () => {
+  type CatalogRef = NonNullable<CelestialFinding['catalogRef']>;
+  type DistanceMethod = NonNullable<CatalogRef['bailerJonesDistancePc']>['method'];
+  // A synthetic recording and moment that point at nobody
+  const sourceAsset: SourceAsset = {
+    id: 'asset_03', title: 'Synthetic Sky Recording', mediaKind: 'video', sha256: 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90',
+    uri: '/data/uploads/synthetic_sky.mp4', width: 1920, height: 1080, durationMs: 12000, fpsNumerator: 30, fpsDenominator: 1,
+    videoCodec: 'hevc', audioStreams: [], privacyClass: 'private', immutable: true,
+  };
+  const solution: ObservationSolution = {
+    id: 'sol_03', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status: 'predicted_only',
+    observedAtUTC: '2030-01-01T02:00:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
+    quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
+    findings: [], warnings: [],
+  };
+  const rigel = (provider: CatalogRef['provider'], method?: DistanceMethod): CatalogRef => ({
+    id: 'cat_rigel', provider, releaseVersion: 'DR3-2022', catalogSourceId: 'HIP 24436', commonName: 'Rigel',
+    constellation: 'Orion', objectType: 'star', coordinateEpoch: 'J2016.0', raDeg: 78.6345, decDeg: -8.2016, apparentMagnitude: 0.13,
+    ...(method ? { bailerJonesDistancePc: { lower: 240.0, median: 264.5, upper: 290.0, method } } : {}),
+    citation: 'ESA Gaia DR3 / Hipparcos HIP 24436',
+  });
+  // A prediction for the solution's moment, from a catalog record or, with none, from the ephemeris models
+  const predicted = (catalogRef?: CatalogRef): CelestialFinding => ({
+    id: 'finding-rigel', observationSolutionId: 'sol_03', evidenceClass: 'predicted', title: 'Rigel', subtitle: 'Beta Orionis · Orion',
+    ...(catalogRef ? { catalogRef } : {}),
+    skyPosition: { raDeg: 78.6345, decDeg: -8.2016, uncertaintyArcsec: 14.2 },
+    evidence: {
+      id: 'ev-rigel', evidenceClass: 'predicted', verificationMethod: 'Position predicted for the given time',
+      limitations: ['Predicted for the given time and place; not measured in the image'], verifiedByIndependentHoldout: false,
+    },
+  });
+  const lastRecord = (finding: CelestialFinding) => buildFindingEvidenceRecords(sourceAsset, solution, finding).at(-1);
+
+  it('gives each catalog provider the licence its archive states, or says what Albedian uses it for', () => {
+    expect(lastRecord(predicted(rigel('Gaia DR3')))?.license).toBe('CC BY-NC 3.0 IGO (ESA archive terms); credit ESA/Gaia/DPAC');
+    expect(lastRecord(predicted(rigel('Hipparcos')))?.license).toBe('CC BY-NC 3.0 IGO (ESA archive terms); credit ESA');
+    expect(lastRecord(predicted(rigel('JPL Horizons')))?.license).toBe(
+      "No finding uses JPL Horizons data; only the landing scene's baked Sun and Moon positions come from it"
+    );
+    expect(lastRecord(predicted(rigel('SIMBAD')))?.license).toBe('Not used: Albedian makes no SIMBAD query');
+  });
+
+  it('names the models behind a prediction that has no catalog record', () => {
+    expect(lastRecord(predicted())?.license).toBe(
+      'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request'
+    );
+  });
+
+  it('describes a catalog distance by the method that gave it', () => {
+    expect(lastRecord(predicted(rigel('Gaia DR3', 'photogeometric_bailer_jones_edr3')))?.uncertaintyDescription).toBe(
+      'Bailer-Jones et al. (2021) photogeometric distance 264.5 pc (16th to 84th percentile: 240.0 to 290.0 pc)'
+    );
+    expect(lastRecord(predicted(rigel('Hipparcos', 'geometric_parallax')))?.uncertaintyDescription).toBe(
+      'Inverse-parallax distance 264.5 pc (240.0 to 290.0 pc from the parallax error)'
+    );
+    expect(lastRecord(predicted(rigel('JPL Horizons', 'ephemeris_au')))?.uncertaintyDescription).toBe(
+      "Ephemeris distance 264.5 pc (240.0 to 290.0 pc from the model's error bounds)"
+    );
+  });
+});

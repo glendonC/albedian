@@ -457,16 +457,37 @@ function describeHeldOutResiduals(quality: ObservationSolution['quality']): stri
   return `Held-out median residual ±${medianResidualPx.toFixed(2)} px${arcsec}, p95 ±${p95ResidualPx.toFixed(2)} px across ${heldOutInliers} held-out inliers`;
 }
 
+/**
+ * The licence of each catalog provider's data. Gaia DR3 and Hipparcos come from the ESA archive, whose terms
+ * (docs/science/CATALOG_STAR_TILES.md) are CC BY-NC 3.0 IGO. No finding uses JPL Horizons data: only the landing
+ * scene's baked Sun and Moon positions come from it (scripts/plan_landing_moment.py writes
+ * apps/web/src/spatial/webgpu/cislunar/landingMoment.json). Albedian makes no SIMBAD query.
+ */
 function resolveCatalogLicense(provider: CatalogReference['provider']): string {
   switch (provider) {
     case 'Gaia DR3':
-      return 'CC0 1.0 / ESA Gaia Collaboration';
+      return 'CC BY-NC 3.0 IGO (ESA archive terms); credit ESA/Gaia/DPAC';
     case 'Hipparcos':
-      return 'ESA Hipparcos Public Archive';
+      return 'CC BY-NC 3.0 IGO (ESA archive terms); credit ESA';
     case 'JPL Horizons':
-      return 'NASA JPL Public Domain (DE440/DE441)';
+      return "No finding uses JPL Horizons data; only the landing scene's baked Sun and Moon positions come from it";
     case 'SIMBAD':
-      return 'CDS SIMBAD Academic Attribution';
+      return 'Not used: Albedian makes no SIMBAD query';
+  }
+}
+
+type DistanceEstimate = NonNullable<CatalogReference['bailerJonesDistancePc']>;
+
+/** A catalog distance in words, named for the method that gave it (as services/science/catalog_model.py does). */
+function describeCatalogDistance({ lower, median, upper, method }: DistanceEstimate): string {
+  const range = `${lower.toFixed(1)} to ${upper.toFixed(1)} pc`;
+  switch (method) {
+    case 'photogeometric_bailer_jones_edr3':
+      return `Bailer-Jones et al. (2021) photogeometric distance ${median.toFixed(1)} pc (16th to 84th percentile: ${range})`;
+    case 'geometric_parallax':
+      return `Inverse-parallax distance ${median.toFixed(1)} pc (${range} from the parallax error)`;
+    case 'ephemeris_au':
+      return `Ephemeris distance ${median.toFixed(1)} pc (${range} from the model's error bounds)`;
   }
 }
 
@@ -591,7 +612,7 @@ export function buildFindingEvidenceRecords(
         distancePc: 'pc',
       },
       uncertaintyDescription: dist
-        ? `Bailer-Jones distance ${dist.median.toFixed(1)} pc (68% CI: ${dist.lower.toFixed(1)}–${dist.upper.toFixed(1)} pc via ${dist.method})${cat.parallaxMas !== undefined && cat.parallaxErrorMas !== undefined ? `; parallax ${cat.parallaxMas.toFixed(2)} ± ${cat.parallaxErrorMas.toFixed(2)} mas` : ''}`
+        ? `${describeCatalogDistance(dist)}${cat.parallaxMas !== undefined && cat.parallaxErrorMas !== undefined ? `; parallax ${cat.parallaxMas.toFixed(2)} ± ${cat.parallaxErrorMas.toFixed(2)} mas` : ''}`
         : finding.evidence.distanceUncertaintyNote ??
           (sky
             ? `Angular uncertainty ±${sky.uncertaintyArcsec.toFixed(1)} arcsec`
@@ -633,7 +654,9 @@ export function buildFindingEvidenceRecords(
       kind: deriveEvidenceKind(finding, solution.status),
       title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
       sourceIdentifier: `${solution.solver.catalogRelease}:${finding.id}`,
-      license: 'NASA JPL / IAU SOFA Ephemeris',
+      // Every prediction without a catalog record comes from services/science/ephemeris.py's two models
+      license:
+        'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request',
       observationTimeUtc: solution.observedAtUTC,
       modelEpochUtc: solution.observedAtUTC,
       coordinateFrame: 'Topocentric / ICRS J2000',
