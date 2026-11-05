@@ -46,7 +46,7 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
   - Only the cislunar scene has layer disclosures.
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
   - `derivePlanetaryWorldDescriptor` in `apps/web/src/spatial/SparkPortalRenderer.ts` invents planets for any star. Nothing calls it.
-- **Security.** The API checks no `Host` header, so a page that rebinds its name to this machine can read the API's answers. The client chooses the `uploads_dir`, `public_dir` and `artifacts_dir` it scans (`services/media/router.py:35`), and the responses include absolute file paths. Since 2026-11-04 the API answers only the web app's own origins (`ALBEDIAN_CORS_ORIGINS`) and refuses a foreign write before any route runs. [tested]
+- **Security.** Since 2026-11-04 the API answers only the web app's own origins (`ALBEDIAN_CORS_ORIGINS`) and only a `Host` that names this machine (`ALBEDIAN_TRUSTED_HOSTS`), refuses a foreign write before any route runs, scans only its own folders, and returns no absolute path. [tested] A public deployment still needs its own review (section 3, Track 7).
 
 ## 2. Decisions waiting on you
 
@@ -201,7 +201,7 @@ Owner: `spatial`, with `media`. [proposed]
 Owner: `verification`, with each area's owner.
 
 - **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
-- **Security.** CORS landed on 2026-11-04: only the web app's own origins, no credentials, and a foreign write refused before any route runs. [tested] Next, before the upload store lands: a trusted-host check against DNS rebinding, and fixed scan folders from configuration instead of the query string. [proposed]
+- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Before any public deployment: the build's guard against shipping the owner's ignored media (`apps/web/public/morocco/` is copied into `dist/` today) and a review of the hosted setup. [proposed]
 - **Docs drift.**
   - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
   - AGENTS.md cites `docs/adr/`, `docs/internal/integration-ledger.md` and `apps/web/src/voice/`, none of which exist.
