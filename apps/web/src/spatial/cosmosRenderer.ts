@@ -10,6 +10,23 @@ export type ShowcaseSceneKey = 'cislunar' | 'black_hole' | 'supergiant' | 'satur
 
 export type CosmosRendererKind = 'webgl-spark' | 'webgpu';
 
+/**
+ * Where the camera looks against the catalog sky, for listeners that follow the view (the audio
+ * engine). Quaternions are three.js order (x, y, z, w).
+ */
+export interface CameraSkyPose {
+  /** Rotates camera axes (looking along -z, +y up) into world axes. */
+  readonly cameraWorldQuaternion: readonly [number, number, number, number];
+  /** Rotates ICRS axes into world axes: the catalog star sphere drawn now. */
+  readonly icrsWorldQuaternion: readonly [number, number, number, number];
+  /** Vertical field of view, degrees. */
+  readonly fovDeg: number;
+  /** Width over height. */
+  readonly aspect: number;
+  /** Faintest catalog magnitude the star field draws now. */
+  readonly limitingMagnitude: number;
+}
+
 export interface CosmosRenderer {
   setObserverCoordinates(latDeg: number, lonDeg: number): void;
   setShowcaseMode(enabled: boolean): void;
@@ -27,6 +44,8 @@ export interface CosmosRenderer {
    * regime, where not declared yet.
    */
   getRenderLayers?(): RenderLayerSet | null;
+  /** The camera's pose against the catalog sky; absent, or null before a star sphere is mounted. */
+  getCameraSkyPose?(): CameraSkyPose | null;
 }
 
 /** Landing scenes each renderer can draw, in carousel order. */

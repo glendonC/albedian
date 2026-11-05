@@ -18,7 +18,8 @@ import {
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import type { RenderLayerSet } from '@albedian/contracts';
-import type { CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
+import { cameraSkyPose } from '../cameraSkyPose.js';
+import type { CameraSkyPose, CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
 import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { centreOnCamera } from '../skyMounts.js';
@@ -359,6 +360,11 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
 
   get catalogStars(): CatalogStarSpriteField {
     return this.stars;
+  }
+
+  /** The camera's pose against the catalog star sphere, for the audio listener; the rig's turn included. */
+  getCameraSkyPose(): CameraSkyPose {
+    return cameraSkyPose(this.camera, this.starMount, this.stars.getLimitingMagnitude());
   }
 
   /** Updates the camera and the tile view for the current pose without rendering. */

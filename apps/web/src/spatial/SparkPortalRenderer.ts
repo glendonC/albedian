@@ -13,6 +13,8 @@ import {
   SplatMesh,
 } from '@sparkjsdev/spark';
 import type { RenderLayerSet } from '@albedian/contracts';
+import { cameraSkyPose } from './cameraSkyPose.js';
+import type { CameraSkyPose } from './cosmosRenderer.js';
 import {
   CatalogStarField,
   DEFAULT_LIMITING_MAGNITUDE,
@@ -2258,6 +2260,13 @@ export class SparkPortalRenderer {
 
   public getCatalogStarStats(): CatalogStarFieldStats | null {
     return this.catalogStars?.getStats() ?? null;
+  }
+
+  /** The camera's pose against the catalog star sphere drawn now, for the audio listener. */
+  public getCameraSkyPose(): CameraSkyPose | null {
+    const sky = this.catalogStarMounts.find((m) => m.parent?.visible !== false) ?? this.catalogStarMounts[0];
+    if (!sky || !this.catalogStars) return null;
+    return cameraSkyPose(this.camera, sky, this.catalogStars.getLimitingMagnitude());
   }
 
   /**
