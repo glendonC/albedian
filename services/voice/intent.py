@@ -39,6 +39,7 @@ from services.voice.claude import (
     PREDICTED_BODY_KEYS,
     PREDICTED_FINDING_IDS,
     epoch_iso,
+    historical_year,
     propose_action_with_claude,
 )
 
@@ -50,6 +51,12 @@ NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
     "space.regime": ("not_connected", "Voice cannot do this in the app yet."),
     "scene.show": ("not_connected", "Voice cannot do this in the app yet."),
     "audio.set": ("not_connected", "Voice cannot do this in the app yet."),
+    # The view cannot show another year yet: it does not move the drawn stars to a chosen year, so a new epoch
+    # would change only the words on screen
+    "space.epoch": (
+        "not_connected",
+        "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.",
+    ),
     "question.ask": ("no_grounded_answer", "No tool can answer questions from your data yet."),
 }
 UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
@@ -205,33 +212,109 @@ def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | 
     return context.selected_finding_id or context.focused_finding_id or None
 
 
-_NUMBER = r"(\d{1,3}(?:,\d{3})+|\d+)"
-_YEARS_AGO = re.compile(rf"(?<![\d,]){_NUMBER}\s+years?\s+ago\b")
-_YEAR_THEN_ERA = re.compile(rf"(?<![\d,]){_NUMBER}\s*(bce|bc|ce|ad)\b")
-_ERA_THEN_YEAR = re.compile(rf"\b(?:ad|ce)\s+{_NUMBER}(?![\d,])")
-_YEAR_WORD = re.compile(rf"\b(?:year|epoch)\s+(-?){_NUMBER}(?![\d,])")
+# Years are read as packages/observation/src/voiceParser.ts reads them, so both parsers read the same phrases:
+# ASCII digits and word boundaries (re.ASCII), and JavaScript's whitespace in place of Python's \s.
+_S = "[" + "".join(re.escape(char) for char in sorted(JAVASCRIPT_SPACES)) + "]"
+# A number may not continue another: no digit, and no digit and separator, before it or after it
+_NUMBER = r"(?<!\d)(?<!\d[,.])(\d{1,3}(?:,\d{3})+|\d+)"
+_NOT_CONTINUED = r"(?!\d|[,.]\d)"
+_YEARS_AGO = re.compile(rf"{_NUMBER}{_S}+years?{_S}+ago\b", re.ASCII)
+_A_THOUSAND_YEARS_AGO = re.compile(rf"(?<!half{_S})\ba{_S}+thousand{_S}+years?{_S}+ago\b", re.ASCII)
+_YEARS_FROM_NOW = re.compile(rf"{_NUMBER}{_S}+years?{_S}+from{_S}+now\b", re.ASCII)
+_YEAR_THEN_ERA = re.compile(rf"{_NUMBER}{_S}*(bce|bc|ce|ad)\b", re.ASCII)
+_ERA_THEN_YEAR = re.compile(rf"\b(?:ad|ce){_S}+{_NUMBER}{_NOT_CONTINUED}", re.ASCII)
+_YEAR_WORD = re.compile(rf"\b(?:year|epoch){_S}+(-?){_NUMBER}{_NOT_CONTINUED}", re.ASCII)
+# Words that count years. Only "a thousand years ago" is read from words; any other count right before
+# "years ago" or "years from now" is refused, never misread. "how many years ago..." asks, it does not count.
+# The digit branch starts only where a run of digits and separators starts, so a long run is searched in
+# linear time: a branch that could start at every digit of the run would retry it from each one.
+_COUNT_WORDS = (
+    "a", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+    "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty",
+    "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "hundreds", "thousand", "thousands",
+    "million", "millions", "billion", "billions", "few", "several", "couple", "dozen", "dozens", "some", "of",
+)
+_COUNTED_YEARS = re.compile(
+    rf"(?:(?<![\d.,])[.,]*\d[\d.,]*|\b(?:{'|'.join(_COUNT_WORDS)}|(?<!how{_S})many)){_S}+years?{_S}+(?:ago|from{_S}+now)\b",
+    re.ASCII,
+)
+# JavaScript's numbers hold every integer of up to 15 digits exactly, and Python reads at most 4,300 digits
+# from text: a longer number is never read, and no year past 15 digits is quoted back
+MAX_YEAR_DIGITS = 15
+_YEAR_ZERO = "year_zero"
+_TOO_LONG = "too_long"
+_NOT_IN_DIGITS = "not_in_digits"
+
+NO_YEAR_ZERO = "There is no year 0: 1 BCE is followed by 1 CE."
+NOT_IN_DIGITS = "The number of years must be a whole number in digits, as in 2000 years ago."
 
 
-def _whole_number(digits: str) -> int:
-    return int(digits.replace(",", ""))
+def _era(year_ce: int) -> str:
+    return f"{-year_ce} BCE" if year_ce < 0 else f"{year_ce} CE"
 
 
-def _said_year_ce(text: str, current_year: int) -> int | None:
-    """The calendar year a lower-cased request names, or None when it names none.
+EPOCH_RANGE = f"{_era(EPOCH_MIN_YEAR_CE)} to {_era(EPOCH_MAX_YEAR_CE)}"
+EPOCH_ADVICE = [f"Choose a year from {EPOCH_RANGE}"]
 
-    "N years ago" counts back from `current_year`. BCE years are negative, as in the Claude path's
-    space_epoch tool (500 BCE is -500).
+
+def _out_of_range(year_ce: int | None) -> str:
+    """The TypeScript parser's words for a year outside the contract's range; one past 15 digits is not quoted."""
+    if year_ce is None or abs(year_ce) >= 10**MAX_YEAR_DIGITS:
+        return f"The year is outside the range of a space.epoch year, {EPOCH_RANGE}."
+    return f"Year {_era(year_ce)} is outside the range of a space.epoch year, {EPOCH_RANGE}."
+
+
+def _whole_number(digits: str) -> int | None:
+    """The number `digits` says, or None past 15 significant digits."""
+    significant = digits.replace(",", "").lstrip("0")
+    return None if len(significant) > MAX_YEAR_DIGITS else int(significant or "0")
+
+
+def _signed(year: int | None, *, negative: bool) -> int | str:
+    if year is None:
+        return _TOO_LONG
+    if year == 0:
+        return _YEAR_ZERO
+    return -year if negative else year
+
+
+def _said_year(text: str, current_year: int) -> int | str | None:
+    """The historical year a lower-cased request names, a marker for one it names but cannot give, or None.
+
+    "N years ago" counts back from `current_year`, across 1 BCE to 1 CE. BCE years are negative, as in the
+    Claude path's space_epoch tool (500 BCE is -500). Era words count only as whole words, so the "ce" in
+    "space" or "since" names no year. The markers: year 0, a number past 15 digits, and years counted in
+    anything but one whole number in digits.
     """
     if match := _YEARS_AGO.search(text):
-        return current_year - _whole_number(match.group(1))
+        years = _whole_number(match.group(1))
+        return _TOO_LONG if years is None else historical_year(current_year - years)
+    if _A_THOUSAND_YEARS_AGO.search(text):
+        return historical_year(current_year - 1000)
+    if match := _YEARS_FROM_NOW.search(text):
+        years = _whole_number(match.group(1))
+        return _TOO_LONG if years is None else current_year + years
     if match := _YEAR_THEN_ERA.search(text):
-        year = _whole_number(match.group(1))
-        return -year if match.group(2) in ("bce", "bc") else year
+        return _signed(_whole_number(match.group(1)), negative=match.group(2) in ("bce", "bc"))
     if match := _ERA_THEN_YEAR.search(text):
-        return _whole_number(match.group(1))
+        return _signed(_whole_number(match.group(1)), negative=False)
     if match := _YEAR_WORD.search(text):
-        year = _whole_number(match.group(2))
-        return -year if match.group(1) else year
+        return _signed(_whole_number(match.group(2)), negative=match.group(1) == "-")
+    if _COUNTED_YEARS.search(text):
+        return _NOT_IN_DIGITS
+    return None
+
+
+def _year_refusal(said: int | str) -> str | None:
+    """Why a said year forms no space.epoch, in the TypeScript parser's words; None for a year in range."""
+    if said == _YEAR_ZERO:
+        return NO_YEAR_ZERO
+    if said == _NOT_IN_DIGITS:
+        return NOT_IN_DIGITS
+    if isinstance(said, str):  # a number past 15 digits
+        return _out_of_range(None)
+    if not EPOCH_MIN_YEAR_CE <= said <= EPOCH_MAX_YEAR_CE:
+        return _out_of_range(said)
     return None
 
 
@@ -266,9 +349,11 @@ def _parse_with_rules(
             return formed("history.back", mode="partial", fraction=0.5)
         return formed("history.back", mode="checkpoint")
 
-    year_ce = _said_year_ce(text, current_year)
-    if year_ce is not None:
-        return formed("space.epoch", epochISO=epoch_iso(year_ce), yearCE=year_ce)
+    said = _said_year(text, current_year)
+    if isinstance(said, int) and _year_refusal(said) is None:
+        return formed("space.epoch", epochISO=epoch_iso(said), yearCE=said)
+    if said is not None:
+        return _rules_intent(request_id, None, "invalid_epoch", _year_refusal(said))
 
     if any(kw in text for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")):
         profile = "temporal" if "temporal" in text or "stack" in text else "star_protected"
@@ -395,18 +480,16 @@ def _space_enter_refusal(action: dict[str, Any], ctx: ActionContext) -> tuple[st
 
 
 def _epoch_refusal(action: dict[str, Any]) -> tuple[str, str, list[str]] | None:
-    """Why a space.epoch year cannot stand: a whole year outside the contract's range. None otherwise.
+    """Why a space.epoch year cannot stand, as the rules say it: year 0, or a whole year outside the contract's
+    range. None otherwise.
 
     A missing or malformed year fails the contract itself, and is refused as invalid_action.
     """
     year_ce = _as_whole(action.get("yearCE"))
-    if year_ce is None or EPOCH_MIN_YEAR_CE <= year_ce <= EPOCH_MAX_YEAR_CE:
+    if year_ce is None:
         return None
-    return (
-        "invalid_epoch",
-        f"Year {year_ce} is outside the {EPOCH_MIN_YEAR_CE} to {EPOCH_MAX_YEAR_CE} range of a space.epoch year.",
-        [f"Choose a year from {EPOCH_MIN_YEAR_CE} to {EPOCH_MAX_YEAR_CE}"],
-    )
+    refusal = _year_refusal(_YEAR_ZERO if year_ce == 0 else year_ce)
+    return None if refusal is None else ("invalid_epoch", refusal, list(EPOCH_ADVICE))
 
 
 def _describe_star(star: CatalogStar) -> str:
@@ -462,9 +545,9 @@ def _check(
 ) -> dict[str, Any]:
     """The backend's verdict on one action, or on a request that formed none.
 
-    In order: an unsafe request, no action, a stale revision, a year out of range, an action that fails
-    the contract, a pointer over several findings, a flight the reducer would refuse, an action the app
-    cannot do yet. An action that passes all of them is proposed as the contract parses it.
+    In order: an unsafe request, no action, a stale revision, year 0 or a year out of range, an action
+    that fails the contract, a pointer over several findings, a flight the reducer would refuse, an action
+    the app cannot do yet. An action that passes all of them is proposed as the contract parses it.
     """
     lower_utt = utterance.lower()
     if any(phrase in lower_utt for phrase in UNSAFE_PHRASES):
@@ -482,9 +565,12 @@ def _check(
         }
 
     if action is None:
-        hint = ["Name a catalog star or planet, or point at one"] if reason == "ambiguous_target" else []
+        hints = {"ambiguous_target": ["Name a catalog star or planet, or point at one"], "invalid_epoch": EPOCH_ADVICE}
         return _rejected(
-            action_id, reason or "no_grounded_answer", explanation or "The request formed no action.", hint
+            action_id,
+            reason or "no_grounded_answer",
+            explanation or "The request formed no action.",
+            list(hints.get(reason or "", [])),
         )
 
     if not isinstance(action, dict):

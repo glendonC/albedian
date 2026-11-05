@@ -283,8 +283,14 @@ TOOL_CALLS = [
         {"findingId": "finding-predicted-saturn"},
         {"type": "space.enter", "findingId": "finding-predicted-saturn", "distancePolicy": "measured_or_estimated"},
     ),
-    ("space_epoch", {"yearCE": -500}, {"type": "space.epoch", "epochISO": "-500-01-01T00:00:00Z", "yearCE": -500}),
+    # epochISO in ISO 8601's astronomical numbering, as voiceParser.ts writes it: 500 BCE is the year -499
+    ("space_epoch", {"yearCE": -500}, {"type": "space.epoch", "epochISO": "-000499-01-01T00:00:00Z", "yearCE": -500}),
+    ("space_epoch", {"yearCE": 12000}, {"type": "space.epoch", "epochISO": "+012000-01-01T00:00:00Z", "yearCE": 12000}),
     ("space_epoch", {"yearsBeforeNow": 1000}, {"type": "space.epoch", "epochISO": "1026-01-01T00:00:00Z", "yearCE": 1026}),
+    # Counting back from the clock year 2026 crosses from 1 CE to 1 BCE: there is no year 0
+    ("space_epoch", {"yearsBeforeNow": 2025}, {"type": "space.epoch", "epochISO": "0001-01-01T00:00:00Z", "yearCE": 1}),
+    ("space_epoch", {"yearsBeforeNow": 2026}, {"type": "space.epoch", "epochISO": "0000-01-01T00:00:00Z", "yearCE": -1}),
+    ("space_epoch", {"yearsBeforeNow": 2027}, {"type": "space.epoch", "epochISO": "-000001-01-01T00:00:00Z", "yearCE": -2}),
     ("history_back", {"mode": "checkpoint"}, {"type": "history.back", "mode": "checkpoint"}),
     ("history_back", {"mode": "partial", "fraction": 0.5}, {"type": "history.back", "mode": "partial", "fraction": 0.5}),
     ("navigation_cancel", {}, {"type": "navigation.cancel"}),
@@ -427,6 +433,32 @@ def test_the_reply_names_the_model_asked_and_the_model_that_answered(monkeypatch
     assert outcome["status"] == "proposed"
     assert outcome["proposedAction"]["type"] == "sky.show"
     assert outcome["interpretation"] == _model(served_by="claude-opus-4-8")
+
+
+MODEL_EPOCHS = {
+    # Every epoch in range is refused as the reducer refuses it, whoever formed it
+    "a year in range": ({"yearCE": 1601}, "not_connected",
+                        "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year."),
+    "years before now": ({"yearsBeforeNow": 300}, "not_connected",
+                         "The app cannot show the sky at another year yet: the view does not move the stars to a chosen year."),
+    "year 0": ({"yearCE": 0}, "invalid_epoch", "There is no year 0: 1 BCE is followed by 1 CE."),
+    "a year out of range": ({"yearCE": -10001}, "invalid_epoch",
+                            "Year 10001 BCE is outside the range of a space.epoch year, 10000 BCE to 12000 CE."),
+}
+
+
+@pytest.mark.parametrize("tool_input, reason, explanation", MODEL_EPOCHS.values(), ids=MODEL_EPOCHS.keys())
+def test_a_model_epoch_is_refused_and_names_the_model(
+    monkeypatch: pytest.MonkeyPatch, tool_input: dict[str, Any], reason: str, explanation: str
+) -> None:
+    api = _Api(_reply(_tool_use("space_epoch", tool_input)))
+    _live(monkeypatch, api)
+    outcome = check_voice_command("show me the sky in another year", CONTEXT)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert len(api.requests) == 1
+    assert (outcome["status"], outcome["reason"], outcome["explanation"]) == ("rejected", reason, explanation)
+    assert outcome["interpretation"] == _model()
+    assert "proposedAction" not in outcome
 
 
 def test_a_blank_request_reaches_no_model(monkeypatch: pytest.MonkeyPatch) -> None:

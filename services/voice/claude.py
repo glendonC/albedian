@@ -74,9 +74,25 @@ class ModelAction:
         return {"parser": "model", "requestedModel": self.requested_model, "servedBy": self.served_by}
 
 
+def historical_year(astronomical_year: int) -> int:
+    """The historical year of an astronomical one: astronomical 0 is 1 BCE (-1), and -1 is 2 BCE (-2)."""
+    return astronomical_year - 1 if astronomical_year <= 0 else astronomical_year
+
+
 def epoch_iso(year_ce: int) -> str:
-    """The `epochISO` both parsers give a space.epoch year: January 1 of that year at 00:00 UTC."""
-    return f"{year_ce:04d}-01-01T00:00:00Z"
+    """The `epochISO` both parsers give a space.epoch year: January 1 of that year, 00:00 UTC, in ISO 8601.
+
+    The year is written in astronomical numbering (1 BCE is year 0, 500 BCE is -499), as the signed
+    six-digit expanded year outside 0000 to 9999, the only form JavaScript's Date reads there: the string
+    epochIsoForYear writes in packages/observation/src/voiceParser.ts. A yearCE of 0, which historical
+    counting lacks, maps to astronomical year 0 there too; the checks refuse it before it is proposed.
+    """
+    astronomical = year_ce + 1 if year_ce < 0 else year_ce
+    if 0 <= astronomical <= 9999:
+        year = f"{astronomical:04d}"
+    else:
+        year = f"{'-' if astronomical < 0 else '+'}{abs(astronomical):06d}"
+    return f"{year}-01-01T00:00:00Z"
 
 
 def _object(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
@@ -360,8 +376,12 @@ def compose_action(
     elif tool_name == "space_epoch":
         if ("yearCE" in tool_input) == ("yearsBeforeNow" in tool_input):
             return None
-        year_ce = tool_input["yearCE"] if "yearCE" in tool_input else current_year - tool_input["yearsBeforeNow"]
-        # Same form as the rules parser; the checks reject a year outside the contract's range.
+        if "yearCE" in tool_input:
+            year_ce = tool_input["yearCE"]
+        else:
+            # Counting back crosses from 1 CE to 1 BCE, as the rules count: there is no year 0
+            year_ce = historical_year(current_year - tool_input["yearsBeforeNow"])
+        # Same form as the rules parser; the checks refuse year 0 and a year outside the contract's range.
         action["epochISO"] = epoch_iso(year_ce)
         action["yearCE"] = year_ce
     elif tool_name == "history_back":

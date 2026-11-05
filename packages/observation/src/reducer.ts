@@ -413,14 +413,14 @@ export function dispatchAlbedianAction(
     case 'scene.show':
     case 'audio.set':
       return rejectAction(session, action.requestId, 'not_connected', 'Voice cannot do this in the app yet.', []);
-    // Nothing in the app moves a star to another year yet (camera-rig's propagation has no caller), so a
-    // new epoch would change only the words on screen
+    // The view cannot show another year yet: it does not move the drawn stars to a chosen year (camera-rig's
+    // propagation has no caller), so a new epoch would change only the words on screen
     case 'space.epoch':
       return rejectAction(
         session,
         action.requestId,
         'not_connected',
-        'The app cannot show the sky at another year yet: nothing propagates star positions.',
+        'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.',
         []
       );
 

@@ -67,51 +67,99 @@ function historicalYear(astronomicalYear: number): number {
   return astronomicalYear <= 0 ? astronomicalYear - 1 : astronomicalYear;
 }
 
-const NUMBER = String.raw`(\d{1,3}(?:,\d{3})+|\d+)`;
-const YEARS_AGO = new RegExp(String.raw`(?<![\d,])${NUMBER}\s+years?\s+ago\b`);
-const THOUSAND_YEARS_AGO = /\b(?:a\s+)?thousand\s+years?\s+ago\b/;
-const YEARS_FROM_NOW = new RegExp(String.raw`(?<![\d,])${NUMBER}\s+years?\s+from\s+now\b`);
-const YEAR_THEN_ERA = new RegExp(String.raw`(?<![\d,])${NUMBER}\s*(bce|bc|ce|ad)\b`);
-const ERA_THEN_YEAR = new RegExp(String.raw`\b(?:ad|ce)\s+${NUMBER}(?![\d,])`);
-const YEAR_WORD = new RegExp(String.raw`\b(?:year|epoch)\s+(-?)${NUMBER}(?![\d,])`);
+// The backend reads years the same way (services/voice/intent.py), so both parsers read the same phrases.
+// A number may not continue another: no digit, and no digit and separator, before it or after it.
+const NUMBER = String.raw`(?<!\d)(?<!\d[,.])(\d{1,3}(?:,\d{3})+|\d+)`;
+const NOT_CONTINUED = String.raw`(?!\d|[,.]\d)`;
+const YEARS_AGO = new RegExp(String.raw`${NUMBER}\s+years?\s+ago\b`);
+const A_THOUSAND_YEARS_AGO = /(?<!half\s)\ba\s+thousand\s+years?\s+ago\b/;
+const YEARS_FROM_NOW = new RegExp(String.raw`${NUMBER}\s+years?\s+from\s+now\b`);
+const YEAR_THEN_ERA = new RegExp(String.raw`${NUMBER}\s*(bce|bc|ce|ad)\b`);
+const ERA_THEN_YEAR = new RegExp(String.raw`\b(?:ad|ce)\s+${NUMBER}${NOT_CONTINUED}`);
+const YEAR_WORD = new RegExp(String.raw`\b(?:year|epoch)\s+(-?)${NUMBER}${NOT_CONTINUED}`);
+/**
+ * Words that count years. Only "a thousand years ago" is read from words; any other count right before
+ * "years ago" or "years from now" is refused, never misread. "how many years ago..." asks, it does not count.
+ * The digit branch starts only where a run of digits and separators starts, so a long run is searched in
+ * linear time: a branch that could start at every digit of the run would retry it from each one.
+ */
+const COUNT_WORDS = [
+  'a', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+  'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty',
+  'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'hundred', 'hundreds', 'thousand', 'thousands',
+  'million', 'millions', 'billion', 'billions', 'few', 'several', 'couple', 'dozen', 'dozens', 'some', 'of',
+];
+const COUNTED_YEARS = new RegExp(
+  String.raw`(?:(?<![\d.,])[.,]*\d[\d.,]*|\b(?:${COUNT_WORDS.join('|')}|(?<!how\s)many))\s+years?\s+(?:ago|from\s+now)\b`
+);
+/** JavaScript's numbers hold every integer of up to 15 digits exactly: a longer number is never read or quoted. */
+const MAX_YEAR_DIGITS = 15;
+const NO_YEAR_ZERO = 'There is no year 0: 1 BCE is followed by 1 CE.';
+const NOT_IN_DIGITS = 'The number of years must be a whole number in digits, as in 2000 years ago.';
 
-function wholeNumber(digits: string): number {
-  return Number.parseInt(digits.replace(/,/g, ''), 10);
+/** What a request says of a year: the historical year, or why it names one it cannot give. */
+type SaidYear = number | 'year_zero' | 'too_long' | 'not_in_digits';
+
+/** The number `digits` says, or undefined past 15 significant digits. */
+function wholeNumber(digits: string): number | undefined {
+  const significant = digits.replace(/,/g, '').replace(/^0+/, '');
+  return significant.length > MAX_YEAR_DIGITS ? undefined : Number.parseInt(significant || '0', 10);
+}
+
+function signed(year: number | undefined, negative: boolean): SaidYear {
+  if (year === undefined) return 'too_long';
+  if (year === 0) return 'year_zero';
+  return negative ? -year : year;
 }
 
 /**
- * The historical year a lower-cased request names, 'year_zero' for a year 0, or undefined when it names
- * none. "N years ago" counts back from `currentYear`, across 1 BCE to 1 CE. Era words count only as whole
- * words, so the "ce" in "space" or "since" names no year.
+ * The historical year a lower-cased request names, a marker for one it names but cannot give, or
+ * undefined when it names none. "N years ago" counts back from `currentYear`, across 1 BCE to 1 CE. Era
+ * words count only as whole words, so the "ce" in "space" or "since" names no year. The markers: year 0,
+ * a number past 15 digits, and years counted in anything but one whole number in digits.
  */
-function saidYear(text: string, currentYear: number): number | 'year_zero' | undefined {
+function saidYear(text: string, currentYear: number): SaidYear | undefined {
   let match = text.match(YEARS_AGO);
-  if (match?.[1]) return historicalYear(currentYear - wholeNumber(match[1]));
-  if (THOUSAND_YEARS_AGO.test(text)) return historicalYear(currentYear - 1000);
-  match = text.match(YEARS_FROM_NOW);
-  if (match?.[1]) return currentYear + wholeNumber(match[1]);
-  match = text.match(YEAR_THEN_ERA);
-  if (match?.[1] && match[2]) {
-    const year = wholeNumber(match[1]);
-    if (year === 0) return 'year_zero';
-    return match[2].startsWith('bc') ? -year : year;
-  }
-  match = text.match(ERA_THEN_YEAR);
   if (match?.[1]) {
-    const year = wholeNumber(match[1]);
-    return year === 0 ? 'year_zero' : year;
+    const years = wholeNumber(match[1]);
+    return years === undefined ? 'too_long' : historicalYear(currentYear - years);
   }
+  if (A_THOUSAND_YEARS_AGO.test(text)) return historicalYear(currentYear - 1000);
+  match = text.match(YEARS_FROM_NOW);
+  if (match?.[1]) {
+    const years = wholeNumber(match[1]);
+    return years === undefined ? 'too_long' : currentYear + years;
+  }
+  match = text.match(YEAR_THEN_ERA);
+  if (match?.[1] && match[2]) return signed(wholeNumber(match[1]), match[2].startsWith('bc'));
+  match = text.match(ERA_THEN_YEAR);
+  if (match?.[1]) return signed(wholeNumber(match[1]), false);
   match = text.match(YEAR_WORD);
-  if (match?.[2]) {
-    const year = wholeNumber(match[2]);
-    if (year === 0) return 'year_zero';
-    return match[1] ? -year : year;
-  }
+  if (match?.[2]) return signed(wholeNumber(match[2]), match[1] === '-');
+  if (COUNTED_YEARS.test(text)) return 'not_in_digits';
   return undefined;
 }
 
 function describeYear(yearCE: number): string {
   return yearCE < 0 ? `${-yearCE} BCE` : `${yearCE} CE`;
+}
+
+/** Why a year is outside the contract's range; a year past 15 digits is not quoted. */
+function outOfRange(yearCE: number | undefined): string {
+  const range = `${describeYear(EPOCH_MIN_YEAR_CE)} to ${describeYear(EPOCH_MAX_YEAR_CE)}`;
+  if (yearCE === undefined || Math.abs(yearCE) >= 10 ** MAX_YEAR_DIGITS) {
+    return `The year is outside the range of a space.epoch year, ${range}.`;
+  }
+  return `Year ${describeYear(yearCE)} is outside the range of a space.epoch year, ${range}.`;
+}
+
+/** The space.epoch year a said year gives, or the parser's words for why it gives none. */
+function epochYear(said: SaidYear): { yearCE: number } | { refusal: string } {
+  if (said === 'year_zero') return { refusal: NO_YEAR_ZERO };
+  if (said === 'not_in_digits') return { refusal: NOT_IN_DIGITS };
+  if (said === 'too_long') return { refusal: outOfRange(undefined) };
+  if (said < EPOCH_MIN_YEAR_CE || said > EPOCH_MAX_YEAR_CE) return { refusal: outOfRange(said) };
+  return { yearCE: said };
 }
 
 /** True when `name` appears in the lower-cased utterance as a whole word, so the Moon is not in "honeymoon". */
@@ -274,24 +322,17 @@ export function parseUtteranceToAction(
     };
   }
 
-  const yearCE = saidYear(norm, currentYear);
-  if (yearCE === 'year_zero') {
-    return { error: 'There is no year 0: 1 BCE is followed by 1 CE.', reason: 'invalid_epoch' };
-  }
-  if (yearCE !== undefined) {
-    if (yearCE < EPOCH_MIN_YEAR_CE || yearCE > EPOCH_MAX_YEAR_CE) {
-      return {
-        error: `Year ${describeYear(yearCE)} is outside the range of a space.epoch year, ${describeYear(EPOCH_MIN_YEAR_CE)} to ${describeYear(EPOCH_MAX_YEAR_CE)}.`,
-        reason: 'invalid_epoch',
-      };
-    }
+  const said = saidYear(norm, currentYear);
+  if (said !== undefined) {
+    const year = epochYear(said);
+    if ('refusal' in year) return { error: year.refusal, reason: 'invalid_epoch' };
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.epoch',
         requestId,
         expectedViewRevision: context.viewRevision,
-        epochISO: epochIsoForYear(yearCE),
-        yearCE,
+        epochISO: epochIsoForYear(year.yearCE),
+        yearCE: year.yearCE,
       }),
     };
   }

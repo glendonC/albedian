@@ -13,7 +13,7 @@ import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } fr
  *   while yearCE stays historical (500 BCE is -500, and there is no year 0)
  * - a request no rule matches is a question, which no tool answers yet
  * - each refusal carries the parser's own reason, not one guessed from its wording
- * - space.epoch is refused until a unit wires star propagation, since nothing moves a star today
+ * - space.epoch is refused until the view can show another year: it does not move the stars to a chosen year
  */
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
@@ -49,6 +49,38 @@ function historical(astronomicalYear: number): number {
   return astronomicalYear <= 0 ? astronomicalYear - 1 : astronomicalYear;
 }
 
+/** The parser's words for a year outside the contract's range, which the backend says too. */
+function outOfRange(yearCE: number): string {
+  const era = yearCE < 0 ? `${-yearCE} BCE` : `${yearCE} CE`;
+  return `Year ${era} is outside the range of a space.epoch year, 10000 BCE to 12000 CE.`;
+}
+
+const NO_YEAR_ZERO = 'There is no year 0: 1 BCE is followed by 1 CE.';
+const NOT_IN_DIGITS = 'The number of years must be a whole number in digits, as in 2000 years ago.';
+/** For a number past 15 digits, which JavaScript cannot hold exactly, so it is never quoted. */
+const UNNAMED_OUT_OF_RANGE = 'The year is outside the range of a space.epoch year, 10000 BCE to 12000 CE.';
+
+/** Years counted in words, or in digits that are not one whole number: refused, never misread. */
+const WORD_COUNTS = [
+  'show me the sky two thousand years ago',
+  'show me the sky ten thousand years ago',
+  'show me the sky a few thousand years ago',
+  'show me the sky twenty one thousand years ago',
+  'show me the sky one thousand years ago',
+  'show the sky thousand years ago',
+  'show me the sky half a thousand years ago',
+  'show me the sky two hundred years ago',
+  'show me the sky a year ago',
+  'show me the sky a couple of years ago',
+  'show me the sky many years ago',
+  'show me the sky five years from now',
+  'show me the sky 1.5 years ago',
+  'show me the sky 1.500 years ago',
+  'show me the sky 2 thousand years ago',
+  // A number after a lone separator: an anchor that skips the separator would miss it
+  'show me the sky ,6.5 years ago',
+];
+
 function wholeWord(name: string, utterance: string): boolean {
   const escaped = name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(utterance.toLowerCase());
@@ -81,8 +113,7 @@ describe('@albedian/observation voice parser: epochs', () => {
         const parsed = parse(`show me the sky as it was ${said} years ago`);
         const yearCE = historical(YEAR - years);
         if (yearCE < -10000 || yearCE > 12000) {
-          expect(parsed.action).toBeUndefined();
-          expect(parsed.reason).toBe('invalid_epoch');
+          expect([parsed.action, parsed.reason, parsed.error]).toEqual([undefined, 'invalid_epoch', outOfRange(yearCE)]);
           return;
         }
         expect(parsed.action).toEqual({
@@ -103,35 +134,125 @@ describe('@albedian/observation voice parser: epochs', () => {
   });
 
   it('counts "a thousand years ago" and "N years from now" from the clock year too', () => {
-    for (const utterance of ['Show me this sky a thousand years ago', 'show the sky thousand years ago']) {
-      expect(parse(utterance).action).toMatchObject({ type: 'space.epoch', yearCE: YEAR - 1000 });
-    }
+    expect(parse('Show me this sky a thousand years ago').action).toMatchObject({ type: 'space.epoch', yearCE: YEAR - 1000 });
+    // From the clock year 1000, a thousand years back is 1 BCE: there is no year 0
+    const year1000 = new Date(Date.UTC(1000, 5, 1));
+    expect(parseUtteranceToAction('show me the sky a thousand years ago', buildActionContext(base), base, { now: year1000 }).action)
+      .toMatchObject({ type: 'space.epoch', yearCE: -1 });
     expect(parse('show me the sky 300 years from now').action).toMatchObject({ yearCE: YEAR + 300 });
-    expect(parse('show me the sky 10,000 years from now').reason).toBe('invalid_epoch');
+    expect(parse('show me the sky 1 year from now').action).toMatchObject({ yearCE: YEAR + 1 });
+    const far = parse('show me the sky 10,000 years from now');
+    expect([far.action, far.reason, far.error]).toEqual([undefined, 'invalid_epoch', outOfRange(YEAR + 10000)]);
+  });
+
+  it('refuses years counted in words, or in anything but one whole number in digits, instead of misreading them', () => {
+    for (const utterance of WORD_COUNTS) {
+      const parsed = parse(utterance);
+      expect([utterance, parsed.action, parsed.reason, parsed.error]).toEqual([utterance, undefined, 'invalid_epoch', NOT_IN_DIGITS]);
+    }
+  });
+
+  it('leaves a question about how many years ago to the other rules', () => {
+    for (const utterance of ['how many years ago did the light leave Vega?', 'how many years ago did that light leave?']) {
+      const parsed = parse(utterance);
+      expect(parsed.reason).not.toBe('invalid_epoch');
+      expect(parsed.action?.type).not.toBe('space.epoch');
+    }
+  });
+
+  it('reads a year followed by a comma or a full stop', () => {
+    const cases: Array<[string, number]> = [
+      ['show me the sky in the year 1500, please', 1500],
+      ['show me the sky in AD 1500, please', 1500],
+      ['show me the sky in AD 1500.', 1500],
+      ['show me the sky in 1500 BCE, please', -1500],
+      ['show me the sky 500 years ago, please', historical(YEAR - 500)],
+    ];
+    for (const [utterance, yearCE] of cases) {
+      expect(parse(utterance).action).toMatchObject({ type: 'space.epoch', yearCE });
+    }
+  });
+
+  it('quotes no year past 15 digits, which JavaScript cannot hold exactly, and counts no leading zeros', () => {
+    const fifteen = parse('show the sky in the year 999999999999999');
+    expect([fifteen.reason, fifteen.error]).toEqual(['invalid_epoch', outOfRange(999_999_999_999_999)]);
+    const long = '9'.repeat(5000);
+    const tooLong = [
+      `show the sky ${long} years ago`,
+      `show the sky ${long} years from now`,
+      `show the sky in ${long} BCE`,
+      `show the sky in AD ${long}`,
+      `show the sky in the year ${long}`,
+      `show the sky in ${['1', ...Array<string>(1500).fill('000')].join(',')} bc`,
+      'show the sky in the year 1000000000000000',
+      // 16 digits counted back from the clock leave a 15-digit year, which is not quoted either: the count is
+      // never read
+      'show the sky 1000000000000000 years ago',
+    ];
+    for (const utterance of tooLong) {
+      const parsed = parse(utterance);
+      expect([parsed.action, parsed.reason, parsed.error]).toEqual([undefined, 'invalid_epoch', UNNAMED_OUT_OF_RANGE]);
+    }
+    expect(parse('show the sky in the year 0000000000000001601').action).toMatchObject({ yearCE: 1601 });
+    // Fifteen digits counted forward from the clock give a sixteen-digit year, which is not quoted either
+    const sixteen = parse('show the sky 999,999,999,999,999 years from now');
+    expect([sixteen.reason, sixteen.error]).toEqual(['invalid_epoch', UNNAMED_OUT_OF_RANGE]);
+  });
+
+  it("reads years across JavaScript's whitespace and ASCII digits only, as the backend does", () => {
+    // U+FEFF is whitespace to JavaScript's \s and not to Python's; U+001C is the reverse
+    expect(parse(`show the sky 500${String.fromCharCode(0xfeff)}years ago`).action).toMatchObject({
+      type: 'space.epoch',
+      yearCE: historical(YEAR - 500),
+    });
+    // Arabic-Indic digits for 1500, which JavaScript's \d does not read
+    const arabicIndic = String.fromCharCode(0x661, 0x665, 0x660, 0x660);
+    for (const utterance of [`show the sky 500${String.fromCharCode(0x1c)}years ago`, `show the sky in the year ${arabicIndic}`]) {
+      const parsed = parse(utterance);
+      expect(parsed.action?.type).not.toBe('space.epoch');
+      expect(parsed.reason).not.toBe('invalid_epoch');
+    }
+  });
+
+  it('reads a long run of digits in linear time, which a pattern retried from every digit would not', () => {
+    // Alone, before " years", or mixed with separators: a quadratic pattern takes tens of seconds here
+    for (const utterance of ['9'.repeat(200_000), `${'9'.repeat(200_000)} years`, '1.,'.repeat(66_667)]) {
+      const start = performance.now();
+      const parsed = parse(utterance);
+      expect(performance.now() - start).toBeLessThan(5_000);
+      expect(parsed.action?.type).not.toBe('space.epoch');
+    }
   });
 
   it('PBT: an era or "year N" is read as said, and BCE is negative', () => {
     const forms = ['{y} BCE', '{y} bc', '{y} CE', '{y} AD', 'AD {y}', 'the year {y}', 'year -{y}'];
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: 12000 }), fc.constantFrom(...forms), (year, form) => {
+      fc.property(fc.integer({ min: 1, max: 12001 }), fc.constantFrom(...forms), (year, form) => {
         const parsed = parse(`show the sky in ${form.replace('{y}', String(year))}`);
         const negative = /bce|bc|-\{y\}/i.test(form);
         const yearCE = negative ? -year : year;
-        if (yearCE < -10000) {
-          expect(parsed.reason).toBe('invalid_epoch');
+        if (yearCE < -10000 || yearCE > 12000) {
+          expect([parsed.action, parsed.reason, parsed.error]).toEqual([undefined, 'invalid_epoch', outOfRange(yearCE)]);
         } else {
           expect(parsed.action).toMatchObject({ type: 'space.epoch', yearCE, epochISO: epochIsoForYear(yearCE) });
         }
       }),
-      { seed: SEED, numRuns: NUM_RUNS, examples: [[500, '{y} BCE'], [10001, '{y} BCE'], [1026, '{y} CE']] }
+      {
+        seed: SEED,
+        numRuns: NUM_RUNS,
+        examples: [[500, '{y} BCE'], [10001, '{y} BCE'], [12001, 'AD {y}'], [1, 'year -{y}'], [1026, '{y} CE']],
+      }
     );
   });
 
   it('refuses year 0, which historical counting does not have', () => {
-    for (const utterance of ['show the sky in the year 0', 'show the sky in 0 CE', 'show the sky in 0 BCE', 'AD 0']) {
+    const yearZero = [
+      'show the sky in the year 0', 'show the sky in 0 CE', 'show the sky in 0 BCE', 'AD 0', 'year -0',
+      'the sky in 0,000 bc', 'the sky in 000 ad',
+    ];
+    for (const utterance of yearZero) {
       const parsed = parse(utterance);
-      expect(parsed.action).toBeUndefined();
-      expect(parsed.reason).toBe('invalid_epoch');
+      expect([utterance, parsed.action, parsed.reason, parsed.error]).toEqual([utterance, undefined, 'invalid_epoch', NO_YEAR_ZERO]);
     }
   });
 
@@ -141,11 +262,15 @@ describe('@albedian/observation voice parser: epochs', () => {
     }
   });
 
-  it('refuses space.epoch in the reducer, since nothing propagates a star to another year yet', () => {
+  it('refuses space.epoch in the reducer, since the view does not move the stars to a chosen year', () => {
     const epoch = parse('show the sky in 1500 CE').action;
     expect(epoch?.type).toBe('space.epoch');
     const result = dispatchAlbedianAction(base, epoch!);
-    expect(result.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected' });
+    expect(result.outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'not_connected',
+      explanation: 'The app cannot show the sky at another year yet: the view does not move the stars to a chosen year.',
+    });
     expect(result.session).toBe(base);
     const spoken = executeVoiceOrTextCommand(base, 'show the sky in 1500 CE', 'voice', undefined, { now: NOW });
     expect(spoken.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected' });
