@@ -9,7 +9,7 @@ and computes each item's `ObservationSolution` and Solar System ephemerides.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
@@ -28,6 +28,10 @@ from services.science.wcs_models import ObservationSolution
 
 SUPPORTED_MEDIA_EXTENSIONS = {".mov", ".mp4", ".m4v", ".png", ".jpg", ".jpeg"}
 ISO6709_PATTERN = re.compile(r"([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)(?:([+-]\d+(?:\.\d+)?))?")
+# ffmpeg's showinfo filter logs each frame it passes with ffmpeg's own timestamp for it
+SHOWINFO_PTS_TIME = re.compile(r"\bpts_time:\s*(-?\d+(?:\.\d+)?)")
+# Under -loglevel level+info ffmpeg tags each line with its level; these are its error lines
+FFMPEG_ERROR_TAG = re.compile(r"\[(?:error|fatal|panic)\] ")
 
 _DISCOVERY_CACHE: dict[str, dict[str, Any]] = {}
 
@@ -63,7 +67,8 @@ class DiscoveredMediaItem:
     observation_solution: ObservationSolution | None = None
     ephemerides: list[dict[str, Any]] = field(default_factory=list)
     pose_trajectory: list[dict[str, Any]] = field(default_factory=list)
-    # Krisciunas & Schaefer sky brightness predicted at the zenith for the capture's moment and place
+    # Krisciunas & Schaefer sky brightness predicted at the zenith for the place and the moment of the frame decoded
+    # (the capture moment plus the frame's time in the clip), like the ephemerides and the solution
     predicted_sky_brightness: dict[str, Any] = field(default_factory=dict)
     coherent_star_audit: list[dict[str, Any]] = field(default_factory=list)
     # ffmpeg's reason when no frame could be decoded: the item then has no pose, trajectory or coherent audit
@@ -155,6 +160,15 @@ def normalize_creation_utc(raw_date: str | None) -> str | None:
         return None
 
 
+def _moment_plus(utc_iso: str, seconds: float) -> str:
+    """`utc_iso`, as normalize_creation_utc writes it, plus `seconds`: the moment of a frame that many seconds into a
+    clip. In the same form, with milliseconds only when the moment has a fraction of a second."""
+    moment = datetime.strptime(utc_iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) + timedelta(seconds=seconds)
+    if moment.microsecond == 0:
+        return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
     """Run `ffprobe` on `file_path` to extract stream geometry, duration, and QuickTime tags."""
     cmd = [
@@ -187,20 +201,26 @@ class FrameDecodeError(RuntimeError):
 
 def _extract_representative_luma(
     file_path: Path, width: int, height: int
-) -> tuple[np.ndarray, list[dict[str, Any]]]:
+) -> tuple[np.ndarray, list[dict[str, Any]], float]:
     """Decode up to 8 representative frames (1 fps), select the frame with the strongest
     upper-sky signal as a 2D float64 luminance array in [0, 1], and compute 1 fps pose trajectory.
 
-    Raises FrameDecodeError when ffmpeg decodes no frame: nothing stands in for the pixels.
+    Also returns the selected frame's time in the clip, in seconds from the start of its video stream: ffmpeg's own
+    timestamp for that frame (showinfo's pts_time after the fps filter), 0 for a still.
+
+    Raises FrameDecodeError when ffmpeg decodes no frame, or gives no time for the frames it decodes: nothing stands
+    in for the pixels or for when they were recorded.
     """
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
     is_vid = file_path.suffix.lower() in {".mov", ".mp4", ".m4v"}
-    vf = f"fps=1,scale={scale_w}:{scale_h}" if is_vid else f"scale={scale_w}:{scale_h}"
+    vf = (f"fps=1,scale={scale_w}:{scale_h}" if is_vid else f"scale={scale_w}:{scale_h}") + ",showinfo"
     cmd = [
         "ffmpeg",
-        "-v",
-        "error",
+        "-hide_banner",
+        # showinfo logs at the info level; the level tags keep ffmpeg's error lines apart from it
+        "-loglevel",
+        "level+info",
         "-i",
         str(file_path),
         "-frames:v",
@@ -220,8 +240,14 @@ def _extract_representative_luma(
         check=False,
     )
     frame_bytes = scale_w * scale_h
+    log = proc.stderr.decode("utf-8", errors="replace").splitlines()
     if proc.returncode == 0 and len(proc.stdout) >= frame_bytes:
         n_frames = len(proc.stdout) // frame_bytes
+        frame_times = [float(match.group(1)) for line in log if (match := SHOWINFO_PTS_TIME.search(line))]
+        if len(frame_times) < n_frames:
+            raise FrameDecodeError(
+                f"ffmpeg decoded {n_frames} frame(s) but gave a time for {len(frame_times)}: no time for the frames"
+            )
         frames = (
             np.frombuffer(proc.stdout[: n_frames * frame_bytes], dtype=np.uint8)
             .reshape((n_frames, scale_h, scale_w))
@@ -248,10 +274,11 @@ def _extract_representative_luma(
             }
             for step in raw_traj
         ]
-        return rep_luma, scaled_traj
-    lines = proc.stderr.decode("utf-8", errors="replace").strip().splitlines()
+        return rep_luma, scaled_traj, frame_times[best_idx]
+    # ffmpeg's first error line, without its level tag, as it reads under -v error
+    errors = [FFMPEG_ERROR_TAG.sub("", line, count=1).strip() for line in log if FFMPEG_ERROR_TAG.search(line)]
     raise FrameDecodeError(
-        lines[0] if lines else f"ffmpeg returned {len(proc.stdout)} bytes, less than one {scale_w} x {scale_h} frame"
+        errors[0] if errors else f"ffmpeg returned {len(proc.stdout)} bytes, less than one {scale_w} x {scale_h} frame"
     )
 
 
@@ -427,22 +454,22 @@ def discover_uploaded_media_report(
         asset_id = f"asset-{primary.stem}"
         solution_id = f"sol-{sha256[:10]}"
 
-        # Decode representative sky frame directly from primary media (or PNG fallback)
-        frame_source_path = primary
-        if not primary.exists() and "orig_png" in variants:
-            cand_png = pub_root / variants["orig_png"].lstrip("/")
-            if cand_png.exists():
-                frame_source_path = cand_png
-
+        # The representative frame comes from the original file only: a rendered variant never stands in for it
         decode_error: str | None = None
         luma: np.ndarray | None
+        frame_time_sec: float | None = None
         try:
-            luma, pose_trajectory = _extract_representative_luma(
-                frame_source_path, width=width, height=height
-            )
+            luma, pose_trajectory, frame_time_sec = _extract_representative_luma(primary, width=width, height=height)
         except FrameDecodeError as exc:
             # No frame: no pose, trajectory or coherent audit; the predictions for the moment need no pixels
             luma, pose_trajectory, decode_error = None, [], str(exc)
+        # Every prediction is for the moment of the frame decoded: the recorded start of the clip plus the frame's
+        # time in it [inference: QuickTime's creationdate marks the start of recording]. Without a frame, the start.
+        frame_moment = (
+            _moment_plus(captured_at_utc, frame_time_sec)
+            if captured_at_utc is not None and frame_time_sec is not None
+            else captured_at_utc
+        )
         # The sky solution, ephemerides and sky brightness all need the real capture time and place;
         # a file without them gets none rather than a borrowed moment
         solution: ObservationSolution | None = None
@@ -451,25 +478,25 @@ def discover_uploaded_media_report(
         coherent_audit: list[dict[str, Any]] = []
         # A moment outside the ephemeris' 1800 to 2050 gets no predictions and no pose (which rests on the Moon)
         ephemeris_error: str | None = None
-        if captured_at_utc is not None:
+        if frame_moment is not None:
             try:
-                require_ephemeris_range(captured_at_utc)
+                require_ephemeris_range(frame_moment)
             except ValueError as exc:
                 ephemeris_error = str(exc)
-        if lat_deg is not None and lon_deg is not None and captured_at_utc is not None and ephemeris_error is None:
-            if luma is not None:
+        if lat_deg is not None and lon_deg is not None and frame_moment is not None and ephemeris_error is None:
+            if luma is not None and frame_time_sec is not None:
                 solution = solve_horizon_and_beacon_pose(
                     image=luma,
-                    obs_utc_iso=captured_at_utc,
+                    obs_utc_iso=frame_moment,
                     observer_lat=lat_deg,
                     observer_lon=lon_deg,
                     source_asset_id=asset_id,
                     source_sha256=sha256,
-                    frame_time_sec=0.0,
+                    frame_time_sec=frame_time_sec,
                     solution_id=solution_id,
                 )
             ephem_objs = compute_solar_system_ephemerides(
-                obs_utc_iso=captured_at_utc,
+                obs_utc_iso=frame_moment,
                 lat_deg=lat_deg,
                 lon_deg=lon_deg,
                 **({"observation_solution_id": solution_id} if solution is not None else {}),
@@ -478,7 +505,7 @@ def discover_uploaded_media_report(
             # The ephemerides include the Moon; the sky brightness is predicted at the zenith, a stated target
             moon_alt = float(next(b for b in ephem_objs if b.name == "Moon").alt_deg)
             sky_brightness = predict_sky_brightness(
-                captured_at_utc, moon_alt_deg=moon_alt, target_alt_deg=90.0, sep_from_moon_deg=90.0 - moon_alt,
+                frame_moment, moon_alt_deg=moon_alt, target_alt_deg=90.0, sep_from_moon_deg=90.0 - moon_alt,
                 target="zenith",
             )
             coherent_audit = (

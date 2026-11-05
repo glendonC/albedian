@@ -101,7 +101,7 @@ def test_discovery_never_calls_a_star_observed_through_the_horizon_pose(tmp_path
         },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
-    monkeypatch.setattr(discovery, "_extract_representative_luma", lambda path, width, height: (frame, []))
+    monkeypatch.setattr(discovery, "_extract_representative_luma", lambda path, width, height: (frame, [], 0.0))
     item = discovery.discover_uploaded_media(uploads, tmp_path / "public", tmp_path / "artifacts")[0]
     audit = item.coherent_star_audit
     assert item.observation_solution is not None and item.observation_solution.status == "approximate"

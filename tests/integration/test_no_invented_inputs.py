@@ -119,7 +119,8 @@ def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatc
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     monkeypatch.setattr(
-        discovery, "_extract_representative_luma", lambda path, width, height: (_night_frame(height, width, moon=False) / 255.0, [])
+        discovery, "_extract_representative_luma",
+        lambda path, width, height: (_night_frame(height, width, moon=False) / 255.0, [], 0.0),
     )
     items = discovery.discover_uploaded_media(uploads, tmp_path / "public", tmp_path / "artifacts")
     assert len(items) == 1

@@ -10,6 +10,9 @@ Covers:
   pose or sky prediction, and discovery reports no file time; with a recorded creationdate, that is the moment
 - Real clips (owner media): each item's size and frame rate are the ones ffprobe reads, none failed to decode, and
   each capture moment is the clip's recorded creationdate
+- A clip's solution names the frame discovery decoded: ffmpeg's time for it, and every prediction for that frame is
+  for its moment, the recorded start plus that time; frames ffmpeg gives no time for are not used, and a missing
+  original is never replaced by a rendered variant (real clips too, as flags)
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ from __future__ import annotations
 from fractions import Fraction
 import json
 from pathlib import Path
+import re
 import subprocess
 
 from fastapi.testclient import TestClient
@@ -28,8 +32,11 @@ from services.api import app, create_app
 from services.media.router import MediaFolders
 from services.media import discovery
 from services.media.discovery import normalize_creation_utc
+from services.science.ephemeris import compute_solar_system_ephemerides
 
 ROOT = Path(__file__).resolve().parents[2]
+# A synthetic moment and place that point at nobody, as the tags of a recording
+SYNTHETIC_TAGS = {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"}
 
 
 def _discover(tmp_path: Path) -> dict:
@@ -84,6 +91,12 @@ def test_a_video_whose_frames_cannot_be_decoded_gets_no_solve(tmp_path: Path, mo
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
     item = _discover(tmp_path)["items"][0]
     assert item["decodeError"]
+    # ffmpeg's own first error line, as `ffmpeg -v error` prints it (memory addresses differ from run to run)
+    plain = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(tmp_path / "uploads" / "undecodable.mov"), "-f", "null", "-"],
+        check=False, capture_output=True,
+    ).stderr.decode("utf-8", errors="replace").splitlines()
+    assert re.sub(r"0x[0-9a-f]+", "0x", item["decodeError"]) == re.sub(r"0x[0-9a-f]+", "0x", plain[0].strip())
     assert (item["observationSolution"], item["poseTrajectory"], item["coherentStarAudit"]) == (None, [], [])
     # Predictions for the clip's moment and place need no pixels
     assert len(item["ephemerides"]) >= 6
@@ -155,3 +168,129 @@ def test_real_clips_report_what_ffprobe_reads() -> None:
         recorded = normalize_creation_utc(tags.get("com.apple.quicktime.creationdate"))
         is_recorded_moment = recorded is not None and item["capturedAtUTC"] == recorded
         assert is_recorded_moment, "the capture moment is not the clip's recorded creationdate"
+
+
+def _clip_with_a_beacon_in_its_fourth_second(path: Path) -> None:
+    """A 6 s clip at 10 fps: a dark sky over a lit foreground, with a compact bright source high in the sky only from
+    3.0 to 3.9 s, so of the frames discovery decodes at 1 fps the one with it is the one ffmpeg times at 3 s."""
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=320x180:r=10:d=6", "-vf",
+         "drawbox=x=0:y=100:w=320:h=80:color=gray:t=fill,"
+         "drawbox=x=150:y=10:w=6:h=6:color=white:t=fill:enable='between(t,3,3.9)'",
+         "-c:v", "mpeg4", "-q:v", "2", str(path)],
+        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+
+
+def test_a_clip_solution_names_the_frame_it_decoded_and_that_frames_moment(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "uploads").mkdir()
+    clip = tmp_path / "uploads" / "beacon-in-its-fourth-second.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(clip)
+    # The clip's own streams, with the tags of a recording made at the synthetic moment and place
+    probe = discovery._probe_media_metadata(clip)
+    probe["format"]["tags"] = dict(SYNTHETIC_TAGS)
+    monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
+    # Which moment the sky brightness is asked for: over 3 s none of its rounded outputs moves, so ask the call
+    asked: list[str] = []
+    real_predict = discovery.predict_sky_brightness
+    monkeypatch.setattr(
+        discovery, "predict_sky_brightness", lambda moment, **kwargs: asked.append(moment) or real_predict(moment, **kwargs)
+    )
+    item = _discover(tmp_path)["items"][0]
+    assert asked == ["2030-11-01T22:32:03Z"]
+    solution = item["observationSolution"]
+    # The frame is the one ffmpeg times at 3 s; the predictions are for its moment, 3 s after the recorded start, and
+    # the item's capture moment stays the recorded start
+    assert solution["frameTimeSec"] == 3.0
+    assert solution["observedAtUTC"] == "2030-11-01T22:32:03Z"
+    assert item["capturedAtUTC"] == "2030-11-01T22:32:00Z"
+    moon = next(e for e in item["ephemerides"] if e["id"] == "finding-predicted-moon")
+    (at_frame,) = compute_solar_system_ephemerides("2030-11-01T22:32:03Z", 30.0, -40.0, bodies=("Moon",))
+    (at_start,) = compute_solar_system_ephemerides("2030-11-01T22:32:00Z", 30.0, -40.0, bodies=("Moon",))
+    # The sky turns about 0.0125 degrees in 3 s, far beyond the tolerance below
+    assert abs(at_frame.alt_deg - at_start.alt_deg) > 0.005
+    assert moon["skyPosition"]["altDeg"] == pytest.approx(at_frame.alt_deg, abs=1e-9)
+    assert item["predictedSkyBrightness"]["moonAltDeg"] == round(at_frame.alt_deg, 2)
+
+
+def test_a_frame_moment_keeps_a_fraction_of_a_second() -> None:
+    assert discovery._moment_plus("2030-11-01T22:32:00Z", 3.0) == "2030-11-01T22:32:03Z"
+    assert discovery._moment_plus("2030-11-01T22:32:00Z", 3.5) == "2030-11-01T22:32:03.500Z"
+    assert discovery._moment_plus("2030-11-01T22:32:59Z", 1.25) == "2030-11-01T22:33:00.250Z"
+
+
+def test_frames_ffmpeg_gives_no_time_for_are_not_used(tmp_path: Path, monkeypatch) -> None:
+    clip = tmp_path / "beacon-in-its-fourth-second.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(clip)
+    real_run = subprocess.run
+
+    def run_without_frame_times(cmd, *args, **kwargs):
+        done = real_run(cmd, *args, **kwargs)
+        if cmd[0] != "ffmpeg":
+            return done
+        kept = b"\n".join(line for line in done.stderr.splitlines() if b"pts_time" not in line)
+        return subprocess.CompletedProcess(done.args, done.returncode, done.stdout, kept)
+
+    monkeypatch.setattr(discovery.subprocess, "run", run_without_frame_times)
+    with pytest.raises(discovery.FrameDecodeError, match="no time"):
+        discovery._extract_representative_luma(clip, width=320, height=180)
+
+
+def test_a_missing_original_is_never_replaced_by_a_rendered_variant(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / "uploads").mkdir()
+    (tmp_path / "public").mkdir()
+    original = tmp_path / "uploads" / "vanishing.png"
+    Image.fromarray(np.full((90, 160), 7, dtype=np.uint8)).save(original)
+    # A rendered variant named for it in the web folder, which discovery used to decode in place of a missing original
+    Image.fromarray(np.full((90, 160), 200, dtype=np.uint8)).save(tmp_path / "public" / "vanishing_orig.png")
+    probe = {
+        "streams": [{"codec_type": "video", "width": 160, "height": 90, "codec_name": "png"}],
+        "format": {"tags": dict(SYNTHETIC_TAGS)},
+    }
+
+    def probe_then_lose_the_original(path: Path) -> dict:
+        path.unlink()  # the original is gone between the scan and the decode
+        return probe
+
+    monkeypatch.setattr(discovery, "_probe_media_metadata", probe_then_lose_the_original)
+    item = _discover(tmp_path)["items"][0]
+    assert item["variants"] == {"orig_png": "/vanishing_orig.png"}
+    assert "decodeError" in item
+    assert item["observationSolution"] is None
+
+
+def _picked_frame_time(path: Path, width: int, height: int) -> float | None:
+    """ffmpeg's time for the frame discovery's picker takes, recomputed from an independent decode: of the first 8
+    frames at 1 fps, 480 px wide, the one whose top 22% of rows holds the brightest point above their median."""
+    scale_w = min(480, max(64, width))
+    scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
+    done = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "level+info", "-i", str(path), "-frames:v", "8", "-vf",
+         f"fps=1,scale={scale_w}:{scale_h},showinfo", "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1"],
+        check=False, capture_output=True,
+    )
+    n = len(done.stdout) // (scale_w * scale_h)
+    times = [float(t) for t in re.findall(rb"pts_time:\s*(-?\d+(?:\.\d+)?)", done.stderr)]
+    if done.returncode != 0 or n == 0 or len(times) < n:
+        return None
+    frames = np.frombuffer(done.stdout[: n * scale_w * scale_h], dtype=np.uint8).reshape((n, scale_h, scale_w)) / 255.0
+    sky_h = max(8, int(scale_h * 0.22))
+    return times[int(np.argmax([float(np.max(f[:sky_h]) - np.median(f[:sky_h])) for f in frames]))]
+
+
+@pytest.mark.owner_media("data/uploads")
+def test_each_real_clip_solution_names_its_frames_time_and_moment() -> None:
+    items = TestClient(app).get("/api/media/discover").json()["items"]
+    # Flags with fixed messages: a failing assert on an item would print the clips' names, places and capture times
+    solved = [item for item in items if item["observationSolution"] is not None]
+    count = len(solved)
+    assert count >= 3, "fewer than three real clips have a solution"
+    for item in solved:
+        solution = item["observationSolution"]
+        expected = _picked_frame_time(ROOT / "data" / "uploads" / item["relativePath"], item["width"], item["height"])
+        decoded = expected is not None
+        assert decoded, "the independent decode of a real clip failed"
+        names_its_frame = solution["frameTimeSec"] == expected
+        assert names_its_frame, "a real clip's solution does not name the time of the frame discovery decoded"
+        at_its_moment = solution["observedAtUTC"] == discovery._moment_plus(item["capturedAtUTC"], expected)
+        assert at_its_moment, "a real clip's solution is not for the moment of the frame discovery decoded"
