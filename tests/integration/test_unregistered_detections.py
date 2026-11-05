@@ -179,17 +179,33 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
 
 def test_solution_quality_leaves_out_the_residuals_it_does_not_have() -> None:
     quality = SolutionQuality(
-        detected_candidate_count=8, matched_inlier_count=0, held_out_inliers=0, median_residual_px=None,
-        p95_residual_px=None, median_residual_arcsec=None, passed_independent_verification=False,
+        detected_candidate_count=8, matched_inlier_count=0, held_out_pair_count=0, held_out_inliers=0,
+        median_residual_px=None, p95_residual_px=None, median_residual_arcsec=None, passed_independent_verification=False,
     )
     payload = quality.to_contract_dict()
     assert not {"medianResidualPx", "p95ResidualPx", "medianResidualArcsec"} & payload.keys()
     assert _none_paths(payload) == []
     measured = SolutionQuality(
-        detected_candidate_count=12, matched_inlier_count=11, held_out_inliers=7, median_residual_px=0.12,
-        p95_residual_px=0.17, median_residual_arcsec=25.8, passed_independent_verification=True,
+        detected_candidate_count=12, matched_inlier_count=11, held_out_pair_count=8, held_out_inliers=7,
+        median_residual_px=0.12, p95_residual_px=0.17, median_residual_arcsec=25.8, passed_independent_verification=True,
     )
     assert measured.to_contract_dict()["medianResidualPx"] == 0.12
+
+
+def test_solution_quality_keeps_the_contracts_held_out_rules() -> None:
+    counts = {"detected_candidate_count": 12, "matched_inlier_count": 0, "passed_independent_verification": False}
+    residuals = {"median_residual_px": 4.2, "p95_residual_px": 6.8, "median_residual_arcsec": 520.0}
+    none = {"median_residual_px": None, "p95_residual_px": None, "median_residual_arcsec": None}
+    # Residuals with held-out pairs and no inlier: every pair beyond the gate but within 8 px
+    SolutionQuality(**counts, held_out_pair_count=5, held_out_inliers=0, **residuals)
+    with pytest.raises(ValueError, match="exactly when a held-out star was paired"):
+        SolutionQuality(**counts, held_out_pair_count=0, held_out_inliers=0, **residuals)
+    with pytest.raises(ValueError, match="exactly when a held-out star was paired"):
+        SolutionQuality(**counts, held_out_pair_count=5, held_out_inliers=0, **none)
+    with pytest.raises(ValueError, match="cannot be more of them"):
+        SolutionQuality(**counts, held_out_pair_count=4, held_out_inliers=6, **residuals)
+    with pytest.raises(ValueError, match="judged on"):
+        SolutionQuality(**{**counts, "passed_independent_verification": True}, held_out_pair_count=0, held_out_inliers=0, **none)
 
 
 def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> None:
@@ -211,10 +227,16 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
     wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
 
     def solution(wcs_model: WCSModel | None, passed: bool, finding: CelestialFindingRecord) -> ObservationSolution:
+        # A passed fit was judged on measured held-out residuals; an unverified one here paired no held-out star
+        held_out = (
+            {"held_out_pair_count": 7, "held_out_inliers": 7, "median_residual_px": 0.4, "p95_residual_px": 0.9,
+             "median_residual_arcsec": 50.4}
+            if passed
+            else {"held_out_pair_count": 0, "held_out_inliers": 0, "median_residual_px": None, "p95_residual_px": None,
+                  "median_residual_arcsec": None}
+        )
         quality = SolutionQuality(
-            detected_candidate_count=1, matched_inlier_count=0, held_out_inliers=0,
-            median_residual_px=None, p95_residual_px=None, median_residual_arcsec=None,
-            passed_independent_verification=passed,
+            detected_candidate_count=8, matched_inlier_count=0, passed_independent_verification=passed, **held_out
         )
         return ObservationSolution(
             id="sol-1", source_asset_id="hand-built", source_sha256=RECORD_SHA, frame_time_sec=0.0, revision=1,
@@ -235,9 +257,12 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         solution(wcs, True, pixel_only)
     # A catalog match follows held-out verification, so only a verified WCS carries one
     assert solution(wcs, True, matched).findings == [matched]
-    for wcs_model, passed in ((None, False), (wcs, False), (None, True)):
+    for wcs_model, passed in ((None, False), (wcs, False)):
         with pytest.raises(ValueError, match="needs a verified WCS"):
             solution(wcs_model, passed, matched)
+    # A verification that passed without a WCS cannot exist, whatever the solution holds
+    with pytest.raises(ValueError, match="passes only with a WCS"):
+        solution(None, True, matched)
 
 
 def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:

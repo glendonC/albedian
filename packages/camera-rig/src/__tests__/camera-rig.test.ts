@@ -328,7 +328,7 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
         id: `ev-${id}`,
         evidenceClass: 'catalog_matched',
         verificationMethod: 'wcs_holdout',
-        sourceAssetSha256: '0123456789abcdef0123456789abcdef',
+        sourceAssetSha256: '0123456789abcdef'.repeat(4),
         limitations: ['Catalog distance estimate'],
         verifiedByIndependentHoldout: true,
       },
@@ -362,7 +362,7 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
 
 describe('@albedian/camera-rig: detections without a sky position', () => {
   const evidence = (id: string, evidenceClass: 'observed' | 'catalog_matched') => ({
-    id: `ev-${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: '0123456789abcdef0123456789abcdef',
+    id: `ev-${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: '0123456789abcdef'.repeat(4),
     limitations: ['Generated for camera rig tests.'], verifiedByIndependentHoldout: evidenceClass === 'catalog_matched',
   });
   const pixelOnly: CelestialFinding = {

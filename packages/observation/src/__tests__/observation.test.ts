@@ -114,6 +114,9 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(parsed.observationSolution.findings).toHaveLength(0);
     expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
     expect(parsed.observationSolution.quality.medianResidualPx).toBeUndefined();
+    // Nothing solved yet, so no recording is named (the placeholder asset's own hash goes with integrity-4d)
+    expect(parsed.observationSolution.sourceSha256).toBeUndefined();
+    expect(parsed.observationSolution.quality.heldOutPairCount).toBe(0);
     expect(parsed.observationSolution.observedAtUTC).toBe(createdAtISO);
   });
 

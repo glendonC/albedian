@@ -19,6 +19,7 @@
     "quality": {
       "detectedCandidateCount": 4,
       "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
       "heldOutInliers": 0,
       "passedIndependentVerification": false
     },
@@ -132,6 +133,7 @@
     "quality": {
       "detectedCandidateCount": 8,
       "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
       "heldOutInliers": 0,
       "passedIndependentVerification": false
     },
@@ -245,6 +247,7 @@
     "quality": {
       "detectedCandidateCount": 12,
       "matchedInlierCount": 11,
+      "heldOutPairCount": 7,
       "heldOutInliers": 7,
       "passedIndependentVerification": true,
       "medianResidualPx": 0.11587721002381521,
@@ -558,6 +561,7 @@
     "quality": {
       "detectedCandidateCount": 1,
       "matchedInlierCount": 1,
+      "heldOutPairCount": 0,
       "heldOutInliers": 0,
       "passedIndependentVerification": false
     },
@@ -789,6 +793,7 @@
     "quality": {
       "detectedCandidateCount": 0,
       "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
       "heldOutInliers": 0,
       "passedIndependentVerification": false
     },

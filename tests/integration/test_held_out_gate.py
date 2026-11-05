@@ -87,7 +87,8 @@ def test_a_fit_that_misses_most_held_out_stars_fails_on_its_median() -> None:
     # Six held-out Orion stars sit inside the inlier gate and the p95 is 5 px, so only the median decides
     assert sol.quality.median_residual_px == pytest.approx(5.0, abs=0.01)
     assert sol.quality.p95_residual_px == pytest.approx(5.0, abs=0.01)
-    assert sol.quality.held_out_inliers == 6
+    # All fourteen held-out stars pair within 8 px; six sit inside the inlier gate
+    assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (14, 6)
     assert sol.status == "ambiguous"
     assert sol.quality.passed_independent_verification is False
     assert sol.wcs is None
@@ -100,7 +101,7 @@ def test_a_fit_with_a_few_far_held_out_misses_fails_on_its_p95() -> None:
     # Eight held-out inliers and a median of 0 px, so only the 95th percentile decides
     assert sol.quality.p95_residual_px == pytest.approx(7.0, abs=0.01)
     assert sol.quality.median_residual_px == pytest.approx(0.0, abs=0.01)
-    assert sol.quality.held_out_inliers == 8
+    assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (14, 8)
     assert sol.status == "ambiguous"
     assert sol.wcs is None
 
@@ -112,7 +113,7 @@ def test_the_same_fit_calibrates_when_its_misses_stay_within_bounds() -> None:
     # The six misses are measured and reported, not dropped from the statistics
     assert sol.quality.p95_residual_px == pytest.approx(5.0, abs=0.01)
     assert sol.quality.median_residual_px == pytest.approx(0.0, abs=0.01)
-    assert sol.quality.held_out_inliers == 8
+    assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (14, 8)
     assert sol.status == "calibrated"
     matched = {f.common_name for f in sol.findings if f.evidence_class == "catalog_matched"}
     assert len(matched) == 12 and matched.isdisjoint(misses)
@@ -127,7 +128,7 @@ def test_a_fit_with_nothing_held_out_reports_no_residual() -> None:
     ]
     sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
     assert "WCS solution did not pass independent held-out calibration gate." in sol.warnings
-    assert sol.quality.held_out_inliers == 0 and sol.status != "calibrated"
+    assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (0, 0) and sol.status != "calibrated"
     quality = sol.quality
     assert (quality.median_residual_px, quality.p95_residual_px, quality.median_residual_arcsec) == (None, None, None)
     assert not {"medianResidualPx", "p95ResidualPx", "medianResidualArcsec"} & sol.to_contract_dict()["quality"].keys()

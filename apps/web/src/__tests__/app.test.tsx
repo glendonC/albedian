@@ -132,8 +132,9 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
     ) as Record<string, ObservationSolution>;
     for (const name of ['plate_wcs_failed_verification', 'horizon_approximate']) {
       const solution = samples[name]!;
+      expect(solution.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
       const session = buildSessionFromDiscoveredMedia({
-        id: name, title: name, filename: `${name}.png`, sha256: solution.sourceSha256, mediaKind: 'image',
+        id: name, title: name, filename: `${name}.png`, sha256: solution.sourceSha256!, mediaKind: 'image',
         width: 960, height: 540, durationSec: 0, fps: 1, videoCodec: 'none', capturedAtUTC: solution.observedAtUTC,
         latDeg: solution.observerLocation?.latDeg ?? null, lonDeg: solution.observerLocation?.lonDeg ?? null,
         cameraModel: 'Unknown camera', urls: { origUrl: `/media/${name}.png`, v1Url: '', v2Url: '' }, solution,

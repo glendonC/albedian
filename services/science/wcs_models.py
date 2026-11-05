@@ -226,8 +226,10 @@ class WCSModel:
 class SolutionQuality:
     """Astrometric verification metrics including independent held-out residual evaluation.
 
-    The held-out residuals are None when no held-out star paired with the catalog: the contract then leaves them
-    out rather than carry a stand-in number.
+    `held_out_pair_count` counts the held-out detections paired with a catalog star within the association radius;
+    `held_out_inliers` are those of them inside the per-star inlier gate, and the residuals cover all of them. The
+    residuals are None exactly when no held-out star paired: the contract then leaves them out rather than carry
+    a stand-in number. The contract's rules on these fields are checked here too, so no producer can break them.
     """
 
     detected_candidate_count: int
@@ -237,11 +239,22 @@ class SolutionQuality:
     p95_residual_px: float | None
     median_residual_arcsec: float | None
     passed_independent_verification: bool
+    held_out_pair_count: int = field(kw_only=True)
+
+    def __post_init__(self) -> None:
+        residuals = (self.median_residual_px, self.p95_residual_px, self.median_residual_arcsec)
+        if any((value is not None) != (self.held_out_pair_count > 0) for value in residuals):
+            raise ValueError("Held-out residuals are reported exactly when a held-out star was paired.")
+        if self.held_out_inliers > self.held_out_pair_count:
+            raise ValueError("Held-out inliers are held-out pairs inside the gate: there cannot be more of them.")
+        if self.passed_independent_verification and self.median_residual_px is None:
+            raise ValueError("Held-out verification passes only with the held-out residuals it was judged on.")
 
     def to_contract_dict(self) -> dict:
         payload: dict = {
             "detectedCandidateCount": int(self.detected_candidate_count),
             "matchedInlierCount": int(self.matched_inlier_count),
+            "heldOutPairCount": int(self.held_out_pair_count),
             "heldOutInliers": int(self.held_out_inliers),
             "passedIndependentVerification": bool(self.passed_independent_verification),
         }
@@ -402,6 +415,8 @@ class ObservationSolution:
     warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if self.quality.passed_independent_verification and self.wcs is None:
+            raise ValueError("Held-out verification passes only with a WCS.")
         # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
         # sky position exactly when there is one, and a catalog match needs one
         verified = self.has_verified_wcs

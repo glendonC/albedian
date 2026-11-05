@@ -58,10 +58,11 @@ export function createEmptyObservationSession(
     currentSourceTimeSec: 0, isPlaying: false, audioGain: 1, cropTransform: { zoom: 1, panX: 0, panY: 0 },
     processingGraphs: [], processingAttempts: [], mediaVariants: [],
     observationSolution: {
-      id: 'sol_none', sourceAssetId: EMPTY_SOURCE_ASSET_ID, sourceSha256: EMPTY_SHA256, frameTimeSec: 0,
+      // Nothing has been solved, so the pending solution names no recording
+      id: 'sol_none', sourceAssetId: EMPTY_SOURCE_ASSET_ID, frameTimeSec: 0,
       revision: 1, status: 'pending', observedAtUTC: createdAtISO,
       solver: { name: 'none', version: '0', catalogRelease: 'none' },
-      quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
+      quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
       findings: [], warnings: [],
     },
     selectedFindingId: null, focusedFindingId: null, spatialView,

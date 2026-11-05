@@ -26,7 +26,7 @@ Each unresolved technical question identified in the foundational research is tr
 ## Detailed Experiment Specifications
 
 ### EXP-01: Consumer Photo Plate Solving & Independent WCS Verification
-- **Hypothesis:** A consumer night-sky scene with $\ge 8$ detectable point sources above local background noise can be blind/hint-solved via geometric quad hashing against the Gaia DR3 / Hipparcos bright-star catalog and verified on held-out detections with median residual $\le 2.0\text{ px}$, while near-black/featureless scenes deterministically resolve to `unresolved` with zero false solves.
+- **Hypothesis:** A consumer night-sky scene with $\ge 8$ detectable point sources above local background noise can be blind/hint-solved via triangle matching against the Gaia DR3 / Hipparcos bright-star catalog and verified on held-out detections with median residual $\le 2.0\text{ px}$, while near-black/featureless scenes deterministically resolve to `unresolved` with zero false solves.
 - **Fixtures:** Golden starfield fixture (`Orion / Winter Hexagon` wide-angle consumer frame, $1920 \times 1080$, known gnomonic + radial distortion $k_1$) and negative fixtures (clipped black frame, random hot-pixel noise frame).
 - **Baseline:** Nearest-neighbor unverified matching without held-out split.
 - **Measurement:** Inlier count, held-out median and p95 pixel residual (px), angular residual (arcsec), false-positive rate on negative fixtures.

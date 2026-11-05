@@ -9,7 +9,7 @@ import {
   hasVerifiedWcs,
 } from '../index.js';
 
-const SHA = '0123456789abcdef0123456789abcdef';
+const SHA = '0123456789abcdef'.repeat(4);
 const DETECTION = {
   assetId: 'src_01', frameTimeSec: 0, xPx: 412.5, yPx: 300.2, flux: 5000, snr: 25, fwhmPx: 2.5, centroidUncertaintyPx: 0.1,
 };
@@ -43,9 +43,11 @@ function solution(parts: { wcs: boolean; passed: boolean; findings: unknown[] })
     status: parts.wcs && parts.passed ? 'calibrated' : 'unresolved', observedAtUTC: '2030-01-01T02:00:00Z',
     solver: { name: 'test', version: '1', catalogRelease: 'test' },
     ...(parts.wcs ? { wcs: WCS } : {}),
+    // Eight held-out detections paired with the catalog and measured; inliers only when the fit passed
     quality: {
-      detectedCandidateCount: parts.findings.length, matchedInlierCount: 0, heldOutInliers: 0,
-      medianResidualPx: 0, p95ResidualPx: 0, medianResidualArcsec: 0, passedIndependentVerification: parts.passed,
+      detectedCandidateCount: parts.findings.length, matchedInlierCount: 0, heldOutPairCount: 8,
+      heldOutInliers: parts.passed ? 8 : 0, medianResidualPx: 0.4, p95ResidualPx: 0.9, medianResidualArcsec: 50,
+      passedIndependentVerification: parts.passed,
     },
     findings: parts.findings,
     warnings: [],
@@ -97,11 +99,14 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
         // Model-based oracle: catalog, predicted and simulated positions are required, and a catalog
         // match needs a verified WCS; an observed detection is on the sky exactly when a verified WCS
         // puts it there, and otherwise in pixels
-        const obeysContract = spec.findings.every((f) =>
-          f.evidenceClass === 'observed'
-            ? (f.sky !== undefined) === verified && (f.sky !== undefined || f.detection)
-            : f.sky !== undefined && (f.evidenceClass !== 'catalog_matched' || verified)
-        );
+        // ... and held-out verification passes only with a WCS (the helper always carries the residuals)
+        const obeysContract =
+          (!spec.passed || spec.wcs) &&
+          spec.findings.every((f) =>
+            f.evidenceClass === 'observed'
+              ? (f.sky !== undefined) === verified && (f.sky !== undefined || f.detection)
+              : f.sky !== undefined && (f.evidenceClass !== 'catalog_matched' || verified)
+          );
         const parsed = ObservationSolutionSchema.safeParse(
           solution({ ...spec, findings: spec.findings.map((f, i) => finding(`f${i}`, f.evidenceClass, f)) })
         );
@@ -158,7 +163,9 @@ describe('@albedian/contracts: Python contract parity', () => {
 });
 
 describe('@albedian/contracts: solution quality residuals', () => {
-  const counts = { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false };
+  const counts = {
+    detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false,
+  };
 
   it('accepts a solution without held-out residuals, as when no held-out star paired with the catalog', () => {
     const parsed = ObservationSolutionSchema.safeParse({
@@ -198,5 +205,65 @@ describe('@albedian/contracts: the recording behind the evidence', () => {
   it('rejects a hash sent as null: a missing hash is left out, never null', () => {
     const f = finding('moon', 'predicted', { sky: SKY });
     expect(CelestialFindingSchema.safeParse({ ...f, evidence: { ...f.evidence, sourceAssetSha256: null } }).success).toBe(false);
+  });
+});
+
+const issuePaths = (result: { error?: { issues: { path: (string | number)[] }[] } }) =>
+  (result.error?.issues ?? []).map((issue) => issue.path.join('.'));
+
+describe('@albedian/contracts: held-out pairs, residuals and verification', () => {
+  const unverified = solution({ wcs: false, passed: false, findings: [] });
+  const withQuality = (quality: Record<string, unknown>) =>
+    ObservationSolutionSchema.safeParse({
+      ...unverified,
+      quality: { detectedCandidateCount: 8, matchedInlierCount: 0, passedIndependentVerification: false, ...quality },
+    });
+  const residuals = { medianResidualPx: 4.2, p95ResidualPx: 6.8, medianResidualArcsec: 520 };
+
+  it('accepts residuals exactly when held-out stars were paired, inliers or not', () => {
+    expect(issuePaths(withQuality({ heldOutPairCount: 0, heldOutInliers: 0 }))).toEqual([]);
+    // Every held-out pair beyond the inlier gate but within the association radius: residuals and no inlier
+    expect(issuePaths(withQuality({ heldOutPairCount: 5, heldOutInliers: 0, ...residuals }))).toEqual([]);
+  });
+
+  it('rejects residuals without a held-out pair, and a held-out pair without its residuals', () => {
+    const sentinels = { medianResidualPx: 999, p95ResidualPx: 999, medianResidualArcsec: 9999 };
+    expect(issuePaths(withQuality({ heldOutPairCount: 0, heldOutInliers: 0, ...sentinels }))).toContain('quality.medianResidualPx');
+    expect(issuePaths(withQuality({ heldOutPairCount: 5, heldOutInliers: 0 }))).toContain('quality.medianResidualPx');
+  });
+
+  it('never counts more held-out inliers than held-out pairs', () => {
+    expect(issuePaths(withQuality({ heldOutPairCount: 4, heldOutInliers: 6, ...residuals }))).toContain('quality.heldOutInliers');
+  });
+
+  it('passes held-out verification only with a WCS and the residuals it was judged on', () => {
+    const verified = solution({ wcs: true, passed: true, findings: [] });
+    expect(issuePaths(ObservationSolutionSchema.safeParse(verified))).toEqual([]);
+    const { wcs: _dropped, ...withoutWcs } = verified;
+    expect(issuePaths(ObservationSolutionSchema.safeParse(withoutWcs))).toContain('quality.passedIndependentVerification');
+    const withoutResiduals = {
+      ...verified,
+      quality: { detectedCandidateCount: 8, matchedInlierCount: 8, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: true },
+    };
+    expect(issuePaths(ObservationSolutionSchema.safeParse(withoutResiduals))).toContain('quality.passedIndependentVerification');
+  });
+});
+
+describe('@albedian/contracts: the hashes a solution and its evidence name', () => {
+  it('take only a SHA-256 as 64 lowercase hex, never 64 zeros', () => {
+    for (const notAHash of ['0123456789abcdef0123456789abcdef', 'AB'.repeat(32), '0'.repeat(64), 'ab'.repeat(31) + 'zz']) {
+      const sol = { ...solution({ wcs: false, passed: false, findings: [] }), sourceSha256: notAHash };
+      expect(ObservationSolutionSchema.safeParse(sol).success, notAHash).toBe(false);
+      const f = finding('moon', 'predicted', { sky: SKY });
+      expect(CelestialFindingSchema.safeParse({ ...f, evidence: { ...f.evidence, sourceAssetSha256: notAHash } }).success, notAHash).toBe(false);
+    }
+  });
+
+  it('let only a pending solution with no findings name no source hash', () => {
+    const { sourceSha256: _none, ...pending } = { ...solution({ wcs: false, passed: false, findings: [] }), status: 'pending' };
+    expect(issuePaths(ObservationSolutionSchema.safeParse(pending))).toEqual([]);
+    expect(issuePaths(ObservationSolutionSchema.safeParse({ ...pending, status: 'unresolved' }))).toContain('sourceSha256');
+    const withFinding = { ...pending, findings: [finding('obs', 'observed', { detection: true })] };
+    expect(issuePaths(ObservationSolutionSchema.safeParse(withFinding))).toContain('sourceSha256');
   });
 });

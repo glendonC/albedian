@@ -311,6 +311,7 @@ def solve_horizon_and_beacon_pose(
         quality = SolutionQuality(
             detected_candidate_count=1,
             matched_inlier_count=1,
+            held_out_pair_count=0,
             held_out_inliers=0,
             median_residual_px=None,
             p95_residual_px=None,
@@ -334,6 +335,7 @@ def solve_horizon_and_beacon_pose(
         quality = SolutionQuality(
             detected_candidate_count=1 if beacon_detection is not None else 0,
             matched_inlier_count=0,
+            held_out_pair_count=0,
             held_out_inliers=0,
             median_residual_px=None,
             p95_residual_px=None,

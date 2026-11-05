@@ -1,5 +1,12 @@
 import { z } from 'zod';
+import { SHA256_HEX_PATTERN } from './media.js';
 import { EvidenceClass, EvidenceClassSchema, SolutionStatusSchema } from './primitives.js';
+
+/** A recording's SHA-256 as 64 lowercase hex digits. 64 zeros is a placeholder for a hash nobody computed, not a hash. */
+export const SourceSha256Schema = z
+  .string()
+  .regex(new RegExp(SHA256_HEX_PATTERN))
+  .refine((value) => !/^0+$/.test(value), { message: 'A SHA-256 of 64 zeros is a placeholder, not a hash.' });
 
 /**
  * Astronomical Domain Entities: CatalogReference, ScientificEvidence,
@@ -44,7 +51,7 @@ export const ScientificEvidenceSchema = z.object({
   verificationMethod: z.string().min(1),
   // The recording the evidence rests on. Absent only for a prediction made for a time and place with no
   // recording behind it; observed and catalog-matched findings must name theirs (CelestialFindingSchema).
-  sourceAssetSha256: z.string().min(16).optional(),
+  sourceAssetSha256: SourceSha256Schema.optional(),
   wcsSolutionId: z.string().optional(),
   catalogReferenceId: z.string().optional(),
   angularResidualArcsec: z.number().nonnegative().optional(),
@@ -164,7 +171,8 @@ export const ObservationSolutionSchema = z
   .object({
     id: z.string().min(1),
     sourceAssetId: z.string().min(1),
-    sourceSha256: z.string().min(16),
+    // Absent only for a pending solution with no findings: nothing has been solved, so no recording is named
+    sourceSha256: SourceSha256Schema.optional(),
     frameTimeSec: z.number().nonnegative(),
     revision: z.number().int().positive(),
     status: SolutionStatusSchema,
@@ -185,8 +193,11 @@ export const ObservationSolutionSchema = z
     quality: z.object({
       detectedCandidateCount: z.number().int().nonnegative(),
       matchedInlierCount: z.number().int().nonnegative(),
+      // Held-out detections paired with a catalog star under the fitted WCS (within the association radius), and
+      // those of them inside the per-star inlier gate
+      heldOutPairCount: z.number().int().nonnegative(),
       heldOutInliers: z.number().int().nonnegative(),
-      // Held-out residuals: absent when no held-out star paired with the catalog, never a stand-in number
+      // Held-out residuals, over every held-out pair: present exactly when there is one, never a stand-in number
       medianResidualPx: z.number().nonnegative().optional(),
       p95ResidualPx: z.number().nonnegative().optional(),
       medianResidualArcsec: z.number().nonnegative().optional(),
@@ -196,6 +207,40 @@ export const ObservationSolutionSchema = z
     warnings: z.array(z.string()),
   })
   .superRefine((solution, ctx) => {
+    const quality = solution.quality;
+    (['medianResidualPx', 'p95ResidualPx', 'medianResidualArcsec'] as const).forEach((key) => {
+      if ((quality[key] !== undefined) !== quality.heldOutPairCount > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quality', key],
+          message:
+            quality.heldOutPairCount > 0
+              ? 'Held-out stars were paired, so their residual is reported.'
+              : 'No held-out star was paired, so there is no residual to report.',
+        });
+      }
+    });
+    if (quality.heldOutInliers > quality.heldOutPairCount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['quality', 'heldOutInliers'],
+        message: 'Held-out inliers are held-out pairs inside the inlier gate: there cannot be more of them than pairs.',
+      });
+    }
+    if (quality.passedIndependentVerification && (solution.wcs === undefined || quality.medianResidualPx === undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['quality', 'passedIndependentVerification'],
+        message: 'Held-out verification passes only with a WCS and the held-out residuals it was judged on.',
+      });
+    }
+    if (solution.sourceSha256 === undefined && !(solution.status === 'pending' && solution.findings.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sourceSha256'],
+        message: 'Only a pending solution with no findings names no recording.',
+      });
+    }
     // Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
     // sky position exactly when there is one, and a catalog match needs one
     const verified = hasVerifiedWcs(solution);

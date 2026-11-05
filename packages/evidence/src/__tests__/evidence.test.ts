@@ -225,7 +225,7 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
         id: 'ev_01',
         evidenceClass: 'observed',
         verificationMethod: 'DAOStarFinder local peak SNR >= 3.5',
-        sourceAssetSha256: '0123456789abcdef0123456789abcdef',
+        sourceAssetSha256: '0123456789abcdef'.repeat(4),
         limitations: ['Pixel detection only prior to WCS verification'],
         verifiedByIndependentHoldout: false,
       },
@@ -354,7 +354,7 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
       evidence: {
         id: 'ev_rigel',
         evidenceClass: 'catalog_matched',
-        verificationMethod: 'Geometric quad hash + held-out TAN WCS verification',
+        verificationMethod: 'Triangle-matched WCS with held-out residual verification',
         sourceAssetSha256: sourceAsset.sha256,
         wcsSolutionId: 'wcs_01',
         catalogReferenceId: 'cat_rigel',
@@ -410,9 +410,9 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
         placeName: 'Synthetic place, open North Atlantic',
       },
       solver: {
-        name: 'AlbedianQuadWCS',
-        version: '2.1.0',
-        catalogRelease: 'Gaia DR3 + Hipparcos Bright Subset',
+        name: 'AlbedianTriangleSolver',
+        version: '1.0.0',
+        catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)',
       },
       wcs: {
         projection: 'TAN',
@@ -431,6 +431,7 @@ describe('@albedian/evidence: PBT Suite #3 (Epistemic Integrity) & EXP-12', () =
       quality: {
         detectedCandidateCount: 16,
         matchedInlierCount: 12,
+        heldOutPairCount: 9,
         heldOutInliers: 8,
         medianResidualPx: 0.42,
         p95ResidualPx: 0.91,
@@ -498,9 +499,10 @@ describe('@albedian/evidence: detections without a sky position', () => {
   // observedAtUTC is a synthetic moment that points at nobody
   const solutionFor = (finding: CelestialFinding, status: SolutionStatus, wcs?: WCSCalibrationModel): ObservationSolution => ({
     id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
-    observedAtUTC: '2030-11-01T22:32:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
+    observedAtUTC: '2030-11-01T22:32:00Z', solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
     wcs,
-    quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutInliers: 0, medianResidualPx: 999, p95ResidualPx: 999, medianResidualArcsec: 9999, passedIndependentVerification: false },
+    // No held-out star paired with the catalog, so no held-out residual
+    quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
     findings: [finding], warnings: [],
   });
 
@@ -532,12 +534,9 @@ describe('@albedian/evidence: detections without a sky position', () => {
 
   it('describes a pose with no held-out residual without inventing one', () => {
     const finding = pixelOnly();
-    const { detectedCandidateCount, matchedInlierCount, heldOutInliers, passedIndependentVerification } =
-      solutionFor(finding, 'approximate', approximateWcs).quality;
-    const solution: ObservationSolution = {
-      ...solutionFor(finding, 'approximate', approximateWcs),
-      quality: { detectedCandidateCount, matchedInlierCount, heldOutInliers, passedIndependentVerification },
-    };
+    // The pose paired no held-out star, so its quality carries no held-out residual
+    const solution = solutionFor(finding, 'approximate', approximateWcs);
+    expect(solution.quality.medianResidualPx).toBeUndefined();
     const records = buildFindingEvidenceRecords(sourceAsset, solution, finding);
     const description = records[1]?.uncertaintyDescription ?? '';
     expect(description).toContain('No held-out star paired with the catalog, so no held-out residual');
@@ -572,7 +571,7 @@ describe('@albedian/evidence: licence and source strings', () => {
   const solution: ObservationSolution = {
     id: 'sol_03', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status: 'predicted_only',
     observedAtUTC: '2030-01-01T02:00:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
-    quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
+    quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
     findings: [], warnings: [],
   };
   const rigel = (provider: CatalogRef['provider'], method?: DistanceMethod): CatalogRef => ({

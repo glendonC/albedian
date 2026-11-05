@@ -85,6 +85,10 @@ class HeldOutVerification:
         return tuple(res_px for _, _, res_px, is_train in self.associations if not is_train)
 
     @property
+    def held_out_pair_count(self) -> int:
+        return len(self.held_out_residuals_px)
+
+    @property
     def held_out_inliers(self) -> int:
         return sum(res_px <= self.inlier_gate_px for res_px in self.held_out_residuals_px)
 
@@ -369,6 +373,7 @@ def _build_unresolved_solution(
         quality=SolutionQuality(
             detected_candidate_count=len(detections),
             matched_inlier_count=0,
+            held_out_pair_count=0,
             held_out_inliers=0,
             median_residual_px=None,
             p95_residual_px=None,
@@ -600,6 +605,7 @@ def solve_and_verify_field(
         quality=SolutionQuality(
             detected_candidate_count=len(detections),
             matched_inlier_count=len(verified_matches) if passed_verification else 0,
+            held_out_pair_count=verification.held_out_pair_count,
             held_out_inliers=held_out_inliers,
             median_residual_px=median_residual_px, p95_residual_px=p95_residual_px,
             median_residual_arcsec=median_residual_arcsec,
