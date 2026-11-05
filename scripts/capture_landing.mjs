@@ -40,6 +40,10 @@ if (!args.out) {
 const [width, height] = args.size.split('x').map(Number);
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const SETTLE_MS = 3000;
+// DevTools replies of 3 MB arrive; replies of 4.7 MB and more never do (measured with Chrome 156
+// and Node's WebSocket), and a busy 1080p frame is a 4.7 MB data URL. Frames stay in the page,
+// are compared by SHA-256 there, and come over in pieces of this many characters.
+const CHUNK_CHARS = 1_000_000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Runs before the app: three.js announces every Scene and WebGLRenderer to this devtools hook
@@ -96,6 +100,16 @@ const HELPERS = `
       await this.frames(3);
       return this.liveWebGl().domElement.toDataURL('image/png');
     },
+    // Keeps the frame in the page and returns its length and SHA-256
+    async store(kind) {
+      this.stored = await this.png(kind);
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(this.stored));
+      const sha256 = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+      return { length: this.stored.length, sha256 };
+    },
+    piece(start, end) {
+      return this.stored.slice(start, end);
+    },
     geometry(kind) {
       const cam = this.camera();
       const scene = this.scene();
@@ -126,7 +140,7 @@ const HELPERS = `
         const radius = sphere.radius * scale;
         if (radius > 500) return;
         const c = sphere.center.clone().applyMatrix4(o.matrixWorld);
-        out.bodies.push({ name: o.name || o.geometry.type, center: [c.x, c.y, c.z], radius });
+        out.bodies.push({ name: o.name || o.geometry.type, center: [c.x, c.y, c.z], radius, matrixWorld: Array.from(e) });
       });
       return out;
     },
@@ -173,6 +187,16 @@ async function evaluate(devtools, sessionId, expression) {
   );
   if (res.exceptionDetails) throw new Error(`page: ${JSON.stringify(res.exceptionDetails).slice(0, 1200)}`);
   return res.result.value;
+}
+
+/** The frame the page stored last, brought over in pieces. */
+async function fetchStored(devtools, sessionId, length) {
+  let dataUrl = '';
+  for (let start = 0; start < length; start += CHUNK_CHARS) {
+    dataUrl += await evaluate(devtools, sessionId, `window.__capture.piece(${start}, ${start + CHUNK_CHARS})`);
+  }
+  if (dataUrl.length !== length) throw new Error(`frame arrived with ${dataUrl.length} of ${length} characters`);
+  return dataUrl;
 }
 
 function writeDataUrl(file, dataUrl) {
@@ -228,18 +252,18 @@ async function capture(devtools, kind) {
     }
     // The clock is held, so a settled frame repeats exactly; keep capturing until two match
     let previous = null;
-    let full = null;
     for (let i = 0; i < 12; i++) {
-      full = await evaluate(devtools, sessionId, `window.__capture.png('${kind}')`);
-      if (full === previous) break;
-      previous = full;
+      const frame = await evaluate(devtools, sessionId, `window.__capture.store('${kind}')`);
+      if (previous && frame.sha256 === previous.sha256) break;
+      previous = frame;
       if (i === 11) consoleLines.push('[capture] the frame never repeated exactly; kept the last');
       await sleep(1000);
     }
-    writeDataUrl(path.join(args.out, `${kind}-full.png`), full);
+    writeDataUrl(path.join(args.out, `${kind}-full.png`), await fetchStored(devtools, sessionId, previous.length));
     const geometry = await evaluate(devtools, sessionId, `window.__capture.geometry('${kind}')`);
     await evaluate(devtools, sessionId, 'window.__capture.setStarsVisible(false)');
-    writeDataUrl(path.join(args.out, `${kind}-dome.png`), await evaluate(devtools, sessionId, `window.__capture.png('${kind}')`));
+    const dome = await evaluate(devtools, sessionId, `window.__capture.store('${kind}')`);
+    writeDataUrl(path.join(args.out, `${kind}-dome.png`), await fetchStored(devtools, sessionId, dome.length));
     await evaluate(devtools, sessionId, 'window.__capture.setStarsVisible(true)');
     fs.writeFileSync(
       path.join(args.out, `${kind}-camera.json`),

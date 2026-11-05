@@ -5,6 +5,7 @@ import {
   Mesh,
   NoColorSpace,
   PerspectiveCamera,
+  Quaternion,
   RepeatWrapping,
   SRGBColorSpace,
   Scene,
@@ -25,34 +26,36 @@ import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.j
 import { createCinemaOpticsUniforms } from './cinemaOptics.js';
 import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './cislunar/bodyMaterials.js';
 import { CISLUNAR_RENDER_LAYERS } from './cislunar/cislunarLayers.js';
+import { EARTH_RADIUS_KM, KM_PER_UNIT, MOON_RADIUS_KM, landingPose } from './cislunar/landingScene.js';
 import { createSkyBackgroundNode } from './cislunar/skyBackground.js';
 import { buildCosmosPostChain, DEFAULT_COSMOS_POST, type CosmosPostChain, type CosmosPostOptions } from './postChain.js';
-import { CatalogStarSpriteField } from './stars/CatalogStarSpriteField.js';
+import { CatalogStarSpriteField, DEFAULT_CATALOG_STAR_EXPOSURE } from './stars/CatalogStarSpriteField.js';
 import type { FrameTimeBenchOptions, FrameTimeBenchRun } from './frameTimeBench.js';
 import { WebGpuHost, captureToPngBlob, type HostCapture, type WebGpuHostBackend } from './WebGpuHost.js';
 
 /**
- * Scene layout of the cislunar landing regime, as built by SparkPortalRenderer.buildCislunarWorld.
- * The WebGL renderer places the regime at (0, 42, -160) with the camera rig at the same anchor;
- * only relative positions matter, so this host puts both at the origin.
+ * The landing at one real moment, at true scale (cislunar/landingScene.ts): the Earth at the
+ * origin and the Moon where JPL Horizons puts them at 2025-03-07 11:00 UTC, turned by their IAU
+ * rotation models and lit by that moment's Sun, with the camera rig beyond the Moon on the line
+ * from the galactic centre through the Earth. One scene unit is 1000 km. The moment is held: the
+ * bodies do not spin, and nothing the viewer does turns them.
  */
-const EARTH = { radius: 13.5, center: new Vector3(-11.8, -16.8, -28.0), rotation: new Vector3(0.12, -1.52, -0.18) };
+const LANDING = landingPose();
 const ATMOSPHERE_RADIUS_FACTOR = 1.022;
-const MOON = { radius: 1.98, center: new Vector3(2.45, 1.25, -8.2), yaw: -0.85 };
 const CATALOG_STAR_MOUNT_RADIUS = 85.0;
-const EARTH_SUN_DIR_VIEW = new Vector3(0.68, 0.28, -0.58).normalize();
-const MOON_SUN_DIR_VIEW = new Vector3(0.58, 0.22, 0.78).normalize();
+/** Vertical field of view of the landing: the Moon fills about 11.6 deg of it, the Earth 1.85. */
+const LANDING_FOV_DEG = 26;
+/** The narrowest wheel zoom, wide enough to keep the Moon's relief at the map's resolution. */
+const MIN_FOV_DEG = 6;
+/**
+ * Exposure of the landing and the display gain of the sky panorama. With the Moon at its true
+ * albedo, the camera exposes for the sunlit bodies; the Milky Way is then shown far brighter than
+ * one exposure could record it, and dimmed from its usual grade so the bodies stay brightest.
+ */
+const LANDING_EXPOSURE = 3.0;
+const LANDING_SKY_GAIN = 0.3;
 /** Sharpens the 8k colour and the normal map toward the limb, where the sphere is seen edge-on. */
 const MOON_MAP_ANISOTROPY = 8;
-
-/**
- * The WebGL loop advanced these once per frame (0.00018 and 0.0005 rad, x3.2 on the landing);
- * here they are per second at the 60 Hz the values were tuned at, so the spin does not depend
- * on the display's refresh rate.
- */
-const EARTH_SPIN_RAD_PER_S = 0.00018 * 60;
-const MOON_SPIN_RAD_PER_S = 0.0005 * 60;
-const SHOWCASE_SPIN_MULTIPLIER = 3.2;
 /** Per-frame easing of 0.14 at 60 Hz, applied as 1 - 0.86^(60 dt). */
 const LOOK_EASING_PER_60HZ_FRAME = 0.14;
 const WARP_DECAY_PER_60HZ_FRAME = 0.85;
@@ -115,7 +118,8 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
   private readonly camera = new PerspectiveCamera(56, 16 / 9, 0.05, 2800);
   private readonly rig = new Group();
   private readonly world = new Group();
-  private readonly stars = new CatalogStarSpriteField();
+  /** The catalog stars belong to the sky, so they take its display gain under the landing's exposure */
+  private readonly stars = new CatalogStarSpriteField({ exposure: DEFAULT_CATALOG_STAR_EXPOSURE * LANDING_SKY_GAIN });
   /** The catalog star sphere, centred on the camera every frame so the stars sit at infinity. */
   private readonly starMount: Group;
   private readonly optics = createCinemaOpticsUniforms();
@@ -129,8 +133,11 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
   private elapsedSec = 0;
   private showcaseMode = false;
   private readonly look = { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0 };
-  private targetFov = 56;
-  private curFov = 56;
+  private targetFov = LANDING_FOV_DEG;
+  private curFov = LANDING_FOV_DEG;
+  /** The Sun's direction in view space, for the Earth and its atmosphere; set every frame. */
+  private readonly earthSunView = uniform(new Vector3(0, 0, 1));
+  private readonly cameraWorldQuaternion = new Quaternion();
   private readonly warned = new Set<string>();
   private readonly onRegimeChange: ((regime: SpatialScaleRegime) => void) | undefined;
 
@@ -138,6 +145,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.camera.rotation.order = 'YXZ';
     this.rig.add(this.camera);
     this.scene.add(this.rig);
+    this.placeRig();
     this.scene.add(this.world);
 
     // ESO eso0932a; provenance in textures/PROVENANCE.json
@@ -146,7 +154,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.pending.push(
       loadPanoramaRegistration().then(
         (registration) => {
-          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, registration);
+          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, registration, LANDING_SKY_GAIN);
         },
         (error: unknown) => console.warn('[webgpu host] sky panorama registration failed; no sky dome', error)
       )
@@ -162,9 +170,9 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     lutTexture.generateMipmaps = false;
     const lut = createBrunetonLut(lutTexture, lutReady);
 
-    const earthSun = uniform(EARTH_SUN_DIR_VIEW.clone());
+    const earthSun = this.earthSunView;
     this.earth = new Mesh(
-      new SphereGeometry(EARTH.radius, 160, 160),
+      new SphereGeometry(EARTH_RADIUS_KM / KM_PER_UNIT, 160, 160),
       createEarthMaterial(
         {
           // NASA Blue Marble (Nov 2004) and Black Marble 2016; provenance in textures/PROVENANCE.json
@@ -178,16 +186,16 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       )
     );
     this.earth.name = 'cislunarEarth';
-    this.earth.position.copy(EARTH.center);
-    this.earth.rotation.set(EARTH.rotation.x, EARTH.rotation.y, EARTH.rotation.z);
+    this.earth.position.copy(LANDING.earth.position);
+    this.earth.quaternion.copy(LANDING.earth.quaternion);
     this.world.add(this.earth);
 
     const atmosphere = new Mesh(
-      new SphereGeometry(EARTH.radius * ATMOSPHERE_RADIUS_FACTOR, 160, 160),
+      new SphereGeometry((EARTH_RADIUS_KM / KM_PER_UNIT) * ATMOSPHERE_RADIUS_FACTOR, 160, 160),
       createAtmosphereShellMaterial(lut, earthSun)
     );
     atmosphere.name = 'cislunarAtmosphereShell';
-    atmosphere.position.copy(EARTH.center);
+    atmosphere.position.copy(LANDING.earth.position);
     this.world.add(atmosphere);
 
     // NASA SVS 4720 colour and LOLA normals, baked by scripts/bake_moon_maps.py
@@ -196,13 +204,12 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     moonColour.anisotropy = MOON_MAP_ANISOTROPY;
     moonNormal.anisotropy = MOON_MAP_ANISOTROPY;
     this.moon = new Mesh(
-      new SphereGeometry(MOON.radius, 256, 128),
-      // The composition's light direction, now held in world space rather than view space
-      createMoonMaterial({ colour: moonColour, normal: moonNormal }, uniform(MOON_SUN_DIR_VIEW.clone()))
+      new SphereGeometry(MOON_RADIUS_KM / KM_PER_UNIT, 256, 128),
+      createMoonMaterial({ colour: moonColour, normal: moonNormal }, uniform(LANDING.moon.sunDirection.clone()))
     );
     this.moon.name = 'cislunarMoon';
-    this.moon.position.copy(MOON.center);
-    this.moon.rotation.y = MOON.yaw;
+    this.moon.position.copy(LANDING.moon.position);
+    this.moon.quaternion.copy(LANDING.moon.quaternion);
     this.world.add(this.moon);
 
     this.onRegimeChange = options.onRegimeChange;
@@ -231,20 +238,18 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.post = buildCosmosPostChain(this.host.renderer, this.scene, this.camera, this.postOptions, this.optics);
   }
 
-  setObserverCoordinates(latDeg: number, _lonDeg: number): void {
-    // As SparkPortalRenderer: turn the globe toward the observer's hemisphere, flip the Moon in the south
-    const isSouthern = latDeg < 0;
-    this.moon.rotation.z = isSouthern ? Math.PI * 0.85 : 0.0;
-    if (isSouthern) this.earth.rotation.set(-0.88, -1.15, 0.18);
-    else this.earth.rotation.set(-0.55, 1.68, -0.24);
-  }
+  /**
+   * The WebGL renderer turns its composed globe toward the observer's hemisphere. This landing
+   * shows the Earth and the Moon as they were at its moment, so where the viewer is turns nothing.
+   */
+  setObserverCoordinates(_latDeg: number, _lonDeg: number): void {}
 
   setShowcaseMode(enabled: boolean): void {
     this.showcaseMode = enabled;
     if (!enabled) {
       this.look.yaw = 0;
       this.look.pitch = 0;
-      this.targetFov = 56;
+      this.targetFov = LANDING_FOV_DEG;
     }
   }
 
@@ -253,14 +258,13 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       this.warnOnce(`scene:${sceneKey}`, `showcase scene ${sceneKey} is not ported to the WebGPU host`);
       return;
     }
-    this.rig.position.set(0, 0, 0);
-    this.rig.rotation.set(0, 0, 0);
+    this.placeRig();
     Object.assign(this.look, { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0 });
     this.camera.rotation.set(0, 0, 0);
-    this.targetFov = 56;
-    this.curFov = 56;
+    this.targetFov = LANDING_FOV_DEG;
+    this.curFov = LANDING_FOV_DEG;
     if (!instant) {
-      this.curFov = 61;
+      this.curFov = LANDING_FOV_DEG + 5;
       this.optics.warpFactor.value = 0.48;
     }
     // The WebGL renderer reports every regime jump; the audio engine follows it
@@ -275,23 +279,26 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     const sensitivity = 0.0032 * (this.curFov / 56);
     this.look.yaw -= deltaPixelsX * sensitivity;
     this.look.pitch = Math.max(-1.15, Math.min(1.15, this.look.pitch - deltaPixelsY * sensitivity));
-    this.moon.rotation.y += deltaPixelsX * 0.004;
-    this.moon.rotation.x = Math.max(-0.6, Math.min(0.6, this.moon.rotation.x + deltaPixelsY * 0.003));
   }
 
   zoomByWheel(deltaY: number): void {
     const step = Math.max(-120, Math.min(120, deltaY)) * 0.045;
-    this.targetFov = Math.max(18, Math.min(74, this.targetFov + step));
-    const forward = new Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    this.targetFov = Math.max(MIN_FOV_DEG, Math.min(74, this.targetFov + step));
+    const forward = new Vector3(0, 0, -1).applyQuaternion(this.camera.getWorldQuaternion(this.cameraWorldQuaternion));
     this.rig.position.addScaledVector(forward, -step * 0.22);
   }
 
   nudgeMovement(dx: number, dy: number, dz: number): void {
-    const forward = new Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
-    const right = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    this.rig.position.addScaledVector(right, dx);
-    this.rig.position.addScaledVector(new Vector3(0, 1, 0), dy);
-    this.rig.position.addScaledVector(forward, dz);
+    const turn = this.camera.getWorldQuaternion(this.cameraWorldQuaternion);
+    this.rig.position.addScaledVector(new Vector3(1, 0, 0).applyQuaternion(turn), dx);
+    this.rig.position.addScaledVector(new Vector3(0, 1, 0).applyQuaternion(this.rig.quaternion), dy);
+    this.rig.position.addScaledVector(new Vector3(0, 0, 1).applyQuaternion(turn), dz);
+  }
+
+  /** Puts the camera rig at the landing's viewpoint, looking between the Earth and the Moon. */
+  private placeRig(): void {
+    this.rig.position.copy(LANDING.camera.position);
+    this.rig.quaternion.copy(LANDING.camera.quaternion);
   }
 
   nudgeLook(dYaw: number, dPitch: number): void {
@@ -396,6 +403,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
       return;
     }
     this.host = host;
+    host.renderer.toneMappingExposure = LANDING_EXPOSURE;
     host.onResize(() => {
       this.camera.aspect = host.aspect;
       this.camera.updateProjectionMatrix();
@@ -420,16 +428,12 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     if (!held) this.elapsedSec += dtSec;
     const t = clockSec ?? this.elapsedSec;
 
-    // A held clock holds the spin too, as in the WebGL renderer, so the pose depends on t alone
-    const spin = held ? 0 : (this.showcaseMode ? SHOWCASE_SPIN_MULTIPLIER : 1) * dtSec;
-    this.earth.rotation.y += EARTH_SPIN_RAD_PER_S * spin;
-    this.moon.rotation.y += MOON_SPIN_RAD_PER_S * spin;
-
-    // Showcase drift of the landing camera, as in SparkPortalRenderer's loop
+    // Showcase drift of the landing camera, as in SparkPortalRenderer's loop, scaled from its 56 deg view
     if (this.showcaseMode) {
-      this.look.yaw = Math.sin(t * 0.42) * 0.095;
-      this.look.pitch = Math.cos(t * 0.29) * 0.042;
-      this.targetFov = 53 + Math.sin(t * 0.35) * 2.4;
+      const scale = LANDING_FOV_DEG / 56;
+      this.look.yaw = Math.sin(t * 0.42) * 0.095 * scale;
+      this.look.pitch = Math.cos(t * 0.29) * 0.042 * scale;
+      this.targetFov = (53 + Math.sin(t * 0.35) * 2.4) * scale;
     }
     // A held clock has no frame history, so the eased values sit on their targets
     const k = held ? 1 : 1 - Math.pow(1 - LOOK_EASING_PER_60HZ_FRAME, 60 * dtSec);
@@ -448,8 +452,11 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     if (this.host) this.camera.aspect = this.host.aspect;
     this.camera.fov = this.curFov;
     this.camera.updateProjectionMatrix();
-    this.camera.updateMatrixWorld();
+    // The rig carries the landing's viewpoint; the camera's own turn is the look offset
+    this.rig.updateMatrixWorld(true);
     centreOnCamera(this.starMount, this.camera);
+    // The Earth's materials light in view space; the Sun stays put in the world as the view turns
+    this.earthSunView.value.copy(LANDING.earth.sunDirection).transformDirection(this.camera.matrixWorldInverse);
   }
 
   /**

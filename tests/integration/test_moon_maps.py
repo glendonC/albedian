@@ -152,3 +152,18 @@ def test_the_textures_record_pins_both_maps_and_the_svs_inputs_they_come_from():
         assert sources[source_id]["url"].endswith(name)
         assert sources[source_id]["credit"] == "NASA's Scientific Visualization Studio"
         assert "aesthetics, not science" in sources[source_id]["note"]
+
+
+def test_the_material_scales_the_colour_map_by_its_measured_mean_to_the_moons_albedo():
+    # cislunar/bodyMaterials.ts divides by the map's area-weighted mean linear luminance; a rebake
+    # that changed the mean without the constant would change the Moon's brightness unseen
+    with Image.open(TEXTURES / bake.COLOUR_OUTPUT) as image:
+        small = np.asarray(image.convert("RGB").resize((1024, 512), Image.BOX), dtype=np.float64) / 255.0
+    linear = np.where(small <= 0.04045, small / 12.92, ((small + 0.055) / 1.055) ** 2.4)
+    luminance = linear @ np.array([0.2126, 0.7152, 0.0722])
+    weights = np.cos(np.radians(90.0 - (np.arange(512) + 0.5) * 180.0 / 512))[:, None] * np.ones((1, 1024))
+    mean = float((luminance * weights).sum() / weights.sum())
+    material = (ROOT / "apps" / "web" / "src" / "spatial" / "webgpu" / "cislunar" / "bodyMaterials.ts").read_text()
+    assert "export const SVS_COLOUR_MEAN_LINEAR_LUMINANCE = 0.483;" in material
+    assert "export const MOON_GEOMETRIC_ALBEDO = 0.12;" in material
+    assert abs(mean - 0.483) < 0.0005

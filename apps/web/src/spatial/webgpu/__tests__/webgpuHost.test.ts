@@ -15,6 +15,7 @@ import {
 } from '../stars/starColor.js';
 import { tileRadiance, DEFAULT_CATALOG_STAR_EXPOSURE } from '../stars/CatalogStarSpriteField.js';
 import { CISLUNAR_RENDER_LAYERS } from '../cislunar/cislunarLayers.js';
+import { MOON_GEOMETRIC_ALBEDO } from '../cislunar/bodyMaterials.js';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 
 function integrate2d(f: (x: number, y: number) => number, extent: number, h: number): number {
@@ -149,6 +150,30 @@ describe('WebGPU host: cislunar render layers', () => {
     expect(sources).toMatch(/ldem_16_uint.*moon_svs4720_lola_normal_16ppd\.webp/);
     // A sphere, not the old mesh of unrecorded provenance and exaggerated relief
     expect(sources).not.toMatch(/\.glb/);
+  });
+
+  it('places, turns and lights the Earth and the Moon as they were at the landing moment', () => {
+    const layer = (id: string) => CISLUNAR_RENDER_LAYERS.find((l) => l.id === id)!;
+    for (const id of ['cislunar.earth', 'cislunar.moon']) {
+      expect(layer(id).disclosure).toMatch(/2025-03-07 11:00 UTC/);
+      expect(layer(id).sources.join(' ')).toMatch(/JPL Horizons API, DE441 \(landingMoment\.json\)/);
+      expect(`${layer(id).disclosure} ${layer(id).sources.join(' ')}`).toMatch(/IAU/);
+      expect(layer(id).disclosure).not.toMatch(/for composition|not at an ephemeris position/);
+    }
+    expect(layer('cislunar.earth').disclosure).toMatch(/clouds are not that day's/);
+    expect(layer('cislunar.earth').disclosure).toMatch(/city lights are drawn far brighter/);
+    expect(layer('cislunar.moon').sources.join(' ')).toMatch(/geometric albedo 0\.12/);
+    expect(layer('cislunar.atmosphere').disclosure).toMatch(/2025-03-07 11:00 UTC/);
+    const optics = layer('post.camera-optics').disclosure;
+    expect(optics).toMatch(/simulated camera/i);
+    expect(optics).toMatch(/beyond the Moon/);
+    expect(optics).toMatch(/Milky Way is shown far brighter than one exposure could record/);
+  });
+
+  it("scales the Moon's colour map to the geometric albedo 0.12 that the Moon layer's source states", () => {
+    expect(MOON_GEOMETRIC_ALBEDO).toBe(0.12);
+    const moon = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.moon')!;
+    expect(moon.sources).toContain(`Colour scaled to the geometric albedo ${MOON_GEOMETRIC_ALBEDO} of the NASA Moon fact sheet`);
   });
 
   it("loads the Moon's baked maps, the colour as sRGB and the normals as linear data", () => {

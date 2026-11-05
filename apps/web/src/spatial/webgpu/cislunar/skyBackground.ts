@@ -67,7 +67,12 @@ export function createPanoramaOffsetTexture(registration: PanoramaRegistration):
  * display; no new structure is synthesized. Not ported: the WebGL dome's unrestored sensor veil,
  * which nothing switches on.
  */
-export function createSkyBackgroundNode(milkyWay: Texture, registration: PanoramaRegistration): Node<'vec4'> {
+export function createSkyBackgroundNode(
+  milkyWay: Texture,
+  registration: PanoramaRegistration,
+  /** Display gain on the graded panorama; the landing sets it so the sunlit bodies stay brightest */
+  gain = 1
+): Node<'vec4'> {
   const sceneToPanorama = uniform(new Matrix3().set(...sceneToPanoramaRows(registration)));
   const { imageWidth, imageHeight, yOffsetPx, offsetTable } = registration;
   const milkyWayNode = texture(milkyWay);
@@ -90,7 +95,7 @@ export function createSkyBackgroundNode(milkyWay: Texture, registration: Panoram
 
     const galacticBulge = pow(cleanMw, vec3(1.52)).mul(vec3(1.22, 1.04, 0.9)).mul(1.32);
     const deepSpaceBase = vec3(0.002, 0.003, 0.008);
-    const sky = deepSpaceBase.add(galacticBulge);
+    const sky = deepSpaceBase.add(galacticBulge).mul(gain);
     return vec4(sky, 1.0);
   })() as unknown as Node<'vec4'>;
 }

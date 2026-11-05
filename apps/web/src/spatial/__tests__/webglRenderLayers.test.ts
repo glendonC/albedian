@@ -20,9 +20,15 @@ describe('WebGL renderer: cislunar render layers', () => {
   });
 
   it('shares the WebGPU disclosures where both renderers draw the same data', () => {
-    for (const id of ['cislunar.sky', 'cislunar.earth', 'cislunar.atmosphere']) {
-      expect(layer(id)).toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === id));
+    expect(layer('cislunar.sky')).toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky'));
+  });
+
+  it('keeps its composed Earth and atmosphere, which the WebGPU landing has moved to the real moment', () => {
+    for (const id of ['cislunar.earth', 'cislunar.atmosphere']) {
+      expect(layer(id)).not.toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === id));
     }
+    expect(layer('cislunar.earth')?.disclosure).toMatch(/placed, turned and lit for composition/);
+    expect(layer('cislunar.atmosphere')?.disclosure).toMatch(/tuned for appearance/);
   });
 
   it('declares its own Moon: the old SVS maps on the mesh, until WebGL catches up', () => {

@@ -60,7 +60,7 @@ const LANDING_SHOWCASE_SCENES = [
     key: 'black_hole' as const,
     num: '02',
     title: 'Sagittarius A*',
-    subtitle: 'Relativistic Black Hole · 26,670 ly',
+    subtitle: 'Modelled black hole · 26,670 ly',
   },
   {
     key: 'supergiant' as const,

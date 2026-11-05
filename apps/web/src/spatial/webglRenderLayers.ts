@@ -37,6 +37,31 @@ const WEBGL_MOON: RenderLayer = {
   ],
 };
 
+/**
+ * The WebGL Earth and its atmosphere keep the composed landing; the WebGPU host shows them at the
+ * real moment (cislunarLayers.ts).
+ */
+const WEBGL_EARTH: RenderLayer = {
+  id: 'cislunar.earth',
+  kind: 'solar_system_body',
+  title: 'Earth',
+  evidenceClass: 'simulated',
+  disclosure: 'NASA day and night imagery on a globe placed, turned and lit for composition, not at an ephemeris position.',
+  sources: [
+    'NASA Blue Marble Next Generation, November 2004',
+    'NASA Black Marble 2016',
+    'Cloud and ocean masks (earth_clouds.png, earth_specular.jpg; provenance not recorded)',
+  ],
+};
+const WEBGL_ATMOSPHERE: RenderLayer = {
+  id: 'cislunar.atmosphere',
+  kind: 'atmosphere',
+  title: 'Atmosphere',
+  evidenceClass: 'simulated',
+  disclosure: 'Modeled single scattering with hand-set colour terms, baked to a lookup table and tuned for appearance.',
+  sources: ['scripts/bake_bruneton_lut_and_splats.py'],
+};
+
 /** Unreal bloom, the cinema optics pass and ACES tone mapping, the same in every view. */
 const WEBGL_CAMERA_OPTICS: RenderLayer = {
   id: 'post.camera-optics',
@@ -49,15 +74,15 @@ const WEBGL_CAMERA_OPTICS: RenderLayer = {
 
 /**
  * What the WebGL renderer (`SparkPortalRenderer`) draws in the cislunar regime, in draw order,
- * with each layer's evidence class and the disclosure the UI shows. The sky, Earth and atmosphere
- * sample the same data the same way as on the WebGPU host, so they share its declarations; the
- * catalog stars, the Moon and the optics are drawn differently here.
+ * with each layer's evidence class and the disclosure the UI shows. The sky samples the same data
+ * the same way as on the WebGPU host, so it shares its declaration; the catalog stars, the Earth,
+ * the atmosphere, the Moon and the optics are drawn differently here.
  */
 export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
   sharedLayer('cislunar.sky'),
   WEBGL_CATALOG_STARS,
-  sharedLayer('cislunar.earth'),
-  sharedLayer('cislunar.atmosphere'),
+  WEBGL_EARTH,
+  WEBGL_ATMOSPHERE,
   WEBGL_MOON,
   WEBGL_CAMERA_OPTICS,
 ]);

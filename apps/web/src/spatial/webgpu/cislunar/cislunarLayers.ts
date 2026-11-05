@@ -38,11 +38,14 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     kind: 'solar_system_body',
     title: 'Earth',
     evidenceClass: 'simulated',
-    disclosure: 'NASA day and night imagery on a globe placed, turned and lit for composition, not at an ephemeris position.',
+    disclosure:
+      "NASA day and night imagery on the Earth as it was turned and lit at 2025-03-07 11:00 UTC, at true scale; the clouds are not that day's, and city lights are drawn far brighter than an exposure for the day side shows them.",
     sources: [
       'NASA Blue Marble Next Generation, November 2004',
       'NASA Black Marble 2016',
       'Cloud and ocean masks (earth_clouds.png, earth_specular.jpg; provenance not recorded)',
+      'Sun and Moon: JPL Horizons API, DE441 (landingMoment.json)',
+      'Rotation: GMST (IAU 1982) after IAU 1976 precession (bodyOrientation.ts)',
     ],
   },
   {
@@ -50,7 +53,8 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     kind: 'atmosphere',
     title: 'Atmosphere',
     evidenceClass: 'simulated',
-    disclosure: 'Modeled single scattering with hand-set colour terms, baked to a lookup table and tuned for appearance.',
+    disclosure:
+      'Modeled single scattering with hand-set colour terms, baked to a lookup table and tuned for appearance, lit by the Sun of 2025-03-07 11:00 UTC.',
     sources: ['scripts/bake_bruneton_lut_and_splats.py'],
   },
   {
@@ -59,10 +63,13 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Moon',
     evidenceClass: 'simulated',
     disclosure:
-      'NASA SVS lunar colour, made for appearance rather than science, and LOLA relief at true slopes, on a sphere placed and lit for composition, not at an ephemeris position.',
+      'NASA SVS lunar colour, made for appearance rather than science, and LOLA relief at true slopes, where the Moon was and as it was turned and lit at 2025-03-07 11:00 UTC, at true scale.',
     sources: [
       "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): colour lroc_color_16bit_srgb_8k from the LROC WAC mosaic (moon_svs4720_color_8k.jpg)",
       'SVS 4720 LOLA heights ldem_16_uint, 16 per degree, as normals by scripts/bake_moon_maps.py (moon_svs4720_lola_normal_16ppd.webp)',
+      'Colour scaled to the geometric albedo 0.12 of the NASA Moon fact sheet',
+      'Position: JPL Horizons API, DE441 (landingMoment.json)',
+      'Rotation: IAU WGCCRE lunar model with 13 libration terms (bodyOrientation.ts)',
     ],
   },
   {
@@ -70,7 +77,8 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     kind: 'camera_optics',
     title: 'Camera optics',
     evidenceClass: 'simulated',
-    disclosure: 'Modeled lens glare, chromatic aberration, anamorphic streaks and vignette, then AgX tone mapping.',
+    disclosure:
+      'A simulated camera 15,500 km beyond the Moon. Modeled lens glare, chromatic aberration, streaks and vignette, then AgX; the Milky Way is shown far brighter than one exposure could record it.',
     sources: [],
   },
 ]);
