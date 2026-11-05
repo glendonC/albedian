@@ -176,7 +176,8 @@ listening).
   Level = -34 dBFS + 10 log10(ratio x (1 - unveil)), capped at -12 dBFS, silent below -72 dBFS.
   A natural sky (SB 22.0 or darker) is silent: the hiss is the light pollution only.
   The bed is heard only in the `earth_capture` regime (skyglow exists inside the atmosphere).
-- Spectrum: pink noise, 180 Hz high-pass.
+- Spectrum: pink noise, 180 Hz high-pass. Both are design choices: no measurement sets the bed's
+  spectrum.
 - Basis (Verified external): Falchi et al. 2016, Science Advances 2(6) e1600377, use a natural
   background of 174 ucd/m^2, about 22.0 mag/arcsec^2 in V, and map exactly this artificial-to-
   natural ratio. Intensity proportional to artificial flux is the Pogson choice again. Design
@@ -463,3 +464,98 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
   luminosities for the bright end would need its own catalog, citation and labels.
 - The sky feed decodes the core tiles a second time, beside the star field's loader. Sharing one
   loader would need the star fields to expose theirs.
+
+## 12. Lessons from published sonifications
+
+Read at the sources on 2026-11-04:
+
+- NASA Chandra X-ray Center, "A Universe of Sound", https://chandra.si.edu/sound/, with the release
+  pages https://chandra.si.edu/photo/2021/sonify4/ (Westerlund 2, Tycho's supernova remnant, M87)
+  and https://chandra.si.edu/photo/2024/sonify9/ (Cassiopeia A, 30 Doradus, NGC 6872), credited to
+  NASA/CXC/SAO/K. Arcand and SYSTEM Sounds (M. Russo, A. Santaguida).
+- K. Arcand et al. 2024, "A Universe of Sound: processing NASA data into sonifications to explore
+  participant response", Frontiers in Communication 9, doi:10.3389/fcomm.2024.1288896.
+- SYSTEM Sounds, "TRAPPIST Sounds", https://www.system-sounds.com/trappist-sounds/, with
+  D. Tamayo, H. Rein, C. Petrovich and N. Murray 2017, "Convergent Migration Renders TRAPPIST-1
+  Long-lived", ApJL 840, L19, doi:10.3847/2041-8213/aa70ea.
+- STScI's Astronify, https://astronify.readthedocs.io/, with J. Tucker Brown, C. M. Harrison,
+  A. Zanella and J. Trayford 2022, "Evaluating the efficacy of sonification for signal detection in
+  univariate, evenly sampled light curves using astronify", arXiv:2209.04465 (MNRAS 516, 5674).
+
+### 12.1 Practices Albedian already follows, with their sources
+
+- **The mapping is stated beside every sound.** Each Chandra release lists, per object, what drives
+  what under "About the Sound": for Westerlund 2, brightness drives volume, height in the image
+  drives pitch and left to right drives stereo position; for Tycho, X-ray colour drives pitch,
+  redder lower. Arcand et al. recommend making "descriptions of the goals and the creation process"
+  central, after open answers showed listeners misreading the medium. Albedian states each mapping
+  in section 4, `getSnapshot()` reports what sounds and why, and the listening session lists every
+  clip's values with their kinds.
+- **Time scaling keeps real ratios.** The TRAPPIST-1 piece uses one speed-up for each use, the same
+  for every planet. For pitch, time runs about 212 million times faster: planet h's 18.76-day orbit
+  becomes 130.81 Hz (C3) and the star's rotation 745 Hz, so the resonant chain's ratios survive as
+  a chord, slightly out of tune where the resonance is inexact. For rhythm, time is scaled so that
+  planet h completes an orbit every 2 seconds (30 bpm), about 810,000 times faster (inference:
+  18.76 days over 2 s): each planet plays one note per orbit, and each conjunction of neighbours
+  strikes a drum (inference: the page calls the beat "related to the pulses of TRAPPIST Melody"
+  and gives it no factor of its own). Albedian's pulsars play at their catalog spin rates with no
+  scaling (4.6), and no value is quantized to a musical scale; the identity pitch carries no data
+  (4.8).
+
+### 12.2 Where Albedian differs
+
+- **Data and design choices are labelled apart.** None of these pages separates them: Chandra
+  presents its instrument assignments as mappings, and the TRAPPIST-1 page marks its choices (the
+  key, the drum kit) only in passing. Albedian labels each value catalog, published, test value
+  or listening device, and names the identity pitch, the chapel reverb and the bed spectrum as
+  design choices.
+- **One mapping per quantity everywhere.** Chandra varies its mappings "based on the object and the
+  data available". Albedian keeps each quantity on one attribute in every view (rule 1), so a
+  listener can learn the code once (inference; Tucker Brown et al. recommend training listeners).
+
+### 12.3 What the evaluations found
+
+- **Arcand et al. 2024:** 3,184 responses after cleaning, from blind or low-vision and sighted
+  respondents. Enjoyment was high in both groups with no significant difference. Trust that the
+  sound represents the data faithfully varied little between the groups, with three caveats from
+  the authors: some of it may come from NASA's association with the project; it was the only rating
+  where blind or low-vision respondents chose Agree more often than Agree Strongly; and "perhaps
+  trust is the essential aspect to improve". Learning was self-reported: blind or low-vision
+  respondents reported more learning for each of the three pieces, significantly so only for
+  Cassiopeia A. A frequent misreading: listeners asked for "actual sound from space" and did not
+  see how the sounds relate to the images. The authors name their limits (their section 4.1): a
+  convenience sample, a possible social desirability bias (they asked about sonifications they
+  made), few blind or low-vision respondents and a United States-heavy sample; and a single
+  exposure cannot show long-term learning.
+- **Tucker Brown et al. 2022:** 192 valid responses counted transit-like dips in synthetic light
+  curves by sound, by plot or by both, under Astronify's linear brightness-to-pitch mapping. By sound
+  alone, experts and non-experts counted correctly in 85 to 100 percent of cases at signal-to-noise
+  ratios of 30 and 100, and were consistent with guessing at 3 and 5; at medium ratios experts did
+  about two to three times better with plots. They recommend training, richer mappings and an
+  animated plot with a moving cursor.
+
+### 12.4 Proposed for Albedian, not built
+
+Each needs its own unit with a file list; (a) and (d) come first, after the owner answers the
+listening session.
+
+- **(a) Stars as short events, diffuse light as sustained sound.** Chandra plays compact X-ray
+  sources as bells or plucks and diffuse X-ray light as sustained tones (Westerlund 2, M87).
+  Albedian sustains every star voice, and the first listener heard the landing as static (section
+  10, item 0).
+- **(b) A "listen to this view" sweep.** Chandra turns a still image into time with a scan (left to
+  right, centre out, clockwise); each star on screen would sound as the sweep reaches it, at its
+  received level.
+- **(c) Show what is sounding.** Mark the voiced stars on screen, as an animated plot's cursor does
+  (Tucker Brown et al.), since listeners missed how the sounds relate to the image (Arcand et al.).
+- **(d) Say what the sound is.** Beside the Audio control, say that no sound reaches us from space
+  and what the sound is made of: data and stated design choices, none of it a recording of space.
+  Not every sound is data (the detent click and the identity pitch carry none, 4.8), and the chapel
+  reverb is a recording of an earthly room. Listeners asked for "actual sound from space", and the
+  same authors single out trust as the rating to improve (12.3).
+- **(e) Keep fine distinctions on screen.** Sound alone carried strong signals and missed weak ones
+  (Tucker Brown et al.); small differences of temperature, distance or residual need the
+  inspector's numbers beside the sound.
+- **(f) Orbits with stated time factors.** In the cislunar scale the Moon's motion could sound
+  with one disclosed speed-up for each use (pitch, rhythm), as the TRAPPIST-1 piece does, so its
+  real ratios survive.
