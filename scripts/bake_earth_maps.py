@@ -5,7 +5,7 @@ Inputs, downloaded into the shared `.cache/earth-maps/` (not in git) and pinned 
 - Natural Earth 1:10m ocean and lakes, public domain (`ne_10m_ocean.zip`, `ne_10m_lakes.zip`);
 - NASA's Blue Marble (2002) cloud layer, `cloud_combined_2048.jpg`, under NASA's media guidelines;
 - NOAA ETOPO 2022 60 arc-second surface elevation, CC0 (`ETOPO_2022_v1_60s_N90W180_surface.tif`);
-- NASA's Blue Marble Next Generation base map for November 2004 (`world.200411.3x21600x10800.jpg`),
+- NASA's Blue Marble Next Generation base map for March 2004 (`world.200403.3x21600x10800.jpg`),
   which, unlike the topography versions, has no relief shading baked in.
 
 Outputs in `apps/web/public/textures/`, each with its entry in that folder's `PROVENANCE.json`:
@@ -16,8 +16,8 @@ Outputs in `apps/web/public/textures/`, each with its entry in that folder's `PR
 - `earth_height_etopo2022_4k.png`: 4096x2048 equirectangular heights, the mean over each pixel's
   ETOPO cells in metres above the EGM2008 geoid. Each pixel stores round(height + 11000) as
   R * 256 + G, with B = 0 and no alpha, so a browser decodes it losslessly as data.
-- `earth_day_bluemarble_2004-11_base_8k.jpg`: the base map at 8192x4096 (Lanczos, JPEG quality 90,
-  as for the shaded day map), so relief is lit once, from the height map.
+- `earth_day_bluemarble_2004-03_base_8k.jpg`: the base map at 8192x4096 (Lanczos, JPEG quality 90),
+  so relief is lit once, from the height map.
 
 The shapefiles are read straight from the zip archives with the standard library and filled with
 numpy, and Pillow reads the GeoTIFF, so the bake needs no GIS software. Usage, from the repository
@@ -51,7 +51,7 @@ TEXTURES = ROOT_DIR / "apps" / "web" / "public" / "textures"
 WATER_NAME = "earth_water_natural_earth_4k.png"
 CLOUDS_NAME = "earth_clouds_bluemarble2002_2k.jpg"
 HEIGHT_NAME = "earth_height_etopo2022_4k.png"
-DAY_NAME = "earth_day_bluemarble_2004-11_base_8k.jpg"
+DAY_NAME = "earth_day_bluemarble_2004-03_base_8k.jpg"
 DAY_SIZE = (8192, 4096)
 WATER_SIZE = (4096, 2048)
 HEIGHT_SIZE = (4096, 2048)
@@ -90,9 +90,9 @@ INPUTS = {
         "9d27d4b8ea8e76977e2988bca667d7c8fa68b927355feffcddd6b4875a7fd08e",
     ),
     "day": Input(
-        "world.200411.3x21600x10800.jpg",
-        "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/november/world.200411.3x21600x10800.jpg",
-        "1959bbe72897d3e9526c440dae3ec04cfdbdc4080c8ff0b14632925ae31167b1",
+        "world.200403.3x21600x10800.jpg",
+        "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/march/world.200403.3x21600x10800.jpg",
+        "af37f61a9715c59dc86763df19f588a20c9d92b3d0a8034a0b00acd6b97ccb7d",
     ),
 }
 
@@ -232,7 +232,7 @@ def decode_heights(rgb: np.ndarray) -> np.ndarray:
 
 
 def resample_day_map(path: Path) -> bytes:
-    """The base day map as an 8192x4096 JPEG: Lanczos, quality 90, as for the shaded day map."""
+    """The base day map as an 8192x4096 JPEG: Lanczos, quality 90."""
     Image.MAX_IMAGE_PIXELS = None
     buffer = io.BytesIO()
     Image.open(path).convert("RGB").resize(DAY_SIZE, Image.Resampling.LANCZOS).save(buffer, format="JPEG", quality=90, optimize=True)
@@ -335,10 +335,10 @@ def record_sources(cache: Path) -> list[dict]:
             ),
         },
         {
-            "id": "nasa-bmng-2004-11-base",
-            "title": "Blue Marble: Next Generation, November 2004, base map",
+            "id": "nasa-bmng-2004-03-base",
+            "title": "Blue Marble: Next Generation, March 2004, base map",
             "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
-            "version": "November 2004, 21600x10800 JPEG",
+            "version": "March 2004, 21600x10800 JPEG",
             "license": NASA_GUIDELINES,
             "credit": "NASA Earth Observatory",
             "acknowledgement": (
@@ -347,12 +347,19 @@ def record_sources(cache: Path) -> list[dict]:
             ),
             "sha256": INPUTS["day"].sha256,
             "note": (
-                f"Input file {INPUTS['day'].url}, linked from that page (checked 2026-11-04). The topography "
+                f"Input file {INPUTS['day'].url}, linked from that page (checked 2026-11-05). The topography "
                 "versions' pages say they include shading for topography (and bathymetry); the base map's "
                 "page names no shading. NASA's Blue Marble: Next Generation page, "
                 "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/, says: 'Anyone "
-                "using or republishing Blue Marble: Next Generation please credit NASA Earth Observatory.' A "
-                "cloud-free surface composite for November 2004, not current conditions."
+                "using or republishing Blue Marble: Next Generation please credit \u201cNASA Earth Observatory.\u201d' "
+                "The same page says deep oceans are not in the source data and are given a uniform blue, and that "
+                "snow and cloud are not completely told apart where snow lies for less than three or four months. "
+                "Measured on this map at 1024x512 against earth_water_natural_earth_4k.png "
+                "(tests/integration/test_earth_maps.py): north of latitude 60 degrees N it shows no sea ice, under "
+                "0.1 per cent of the open sea there looking like ice, and Hudson Bay is dark open-water blue, not "
+                "ice. Around Antarctica the water mask covers the ice shelves, the Ross and Ronne-Filchner among "
+                "them, which the map draws white. A cloud-free surface composite for March 2004, not current "
+                "conditions."
             ),
         },
     ]
@@ -402,28 +409,32 @@ def record_files() -> list[dict]:
         {
             "path": DAY_NAME,
             "sha256": hashlib.sha256((TEXTURES / DAY_NAME).read_bytes()).hexdigest(),
-            "sources": ["nasa-bmng-2004-11-base"],
+            "sources": ["nasa-bmng-2004-03-base"],
             "producedBy": {
                 "method": "script",
                 "script": "scripts/bake_earth_maps.py",
                 "command": "uv run python scripts/bake_earth_maps.py",
             },
             "note": (
-                "A Lanczos resample of the base map to 8192x4096, JPEG quality 90, as for "
-                "earth_day_bluemarble_2004-11_8k.jpg, whose source has relief shading baked in. With "
-                "earth_height_etopo2022_4k.png, relief is lit once, by the renderer."
+                "A Lanczos resample of the base map to 8192x4096, JPEG quality 90. It has no relief shading of its "
+                "own: with earth_height_etopo2022_4k.png, relief is lit once, by the renderer."
             ),
         },
     ]
 
 
+def replaced_in_place(entries: list[dict], replacements: list[dict], key: str) -> list[dict]:
+    """Each entry whose key a replacement shares, replaced where it stands; replacements for new keys at the end."""
+    new = {replacement[key]: replacement for replacement in replacements}
+    return [new.pop(entry[key], entry) for entry in entries] + list(new.values())
+
+
 def update_record(record_path: Path, sources: list[dict], files: list[dict]) -> None:
-    """Replace this bake's sources and files in the folder's record, keeping every other entry."""
+    """Replace this bake's sources and files in the folder's record where they stand, keeping every other entry
+    where it is: scripts/bake_moon_maps.py writes the same record and its --verify compares the whole text."""
     record = json.loads(record_path.read_text(encoding="utf-8"))
-    ids = {source["id"] for source in sources}
-    paths = {entry["path"] for entry in files}
-    record["sources"] = [s for s in record["sources"] if s["id"] not in ids] + sources
-    record["files"] = [f for f in record["files"] if f["path"] not in paths] + files
+    record["sources"] = replaced_in_place(record["sources"], sources, "id")
+    record["files"] = replaced_in_place(record["files"], files, "path")
     record_path.write_text(dumps_record(AssetProvenanceRecord.model_validate(record)), encoding="utf-8")
 
 

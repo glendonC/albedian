@@ -1,5 +1,5 @@
-"""Earth maps (data-5): a Natural Earth water mask, NASA's Blue Marble cloud layer and an ETOPO
-2022 height map.
+"""Earth maps (data-5): a Natural Earth water mask, NASA's Blue Marble cloud layer, an ETOPO 2022
+height map and NASA's Blue Marble Next Generation base map for March 2004.
 
 `scripts/bake_earth_maps.py` reads public downloads kept in the shared `.cache/earth-maps/`, not in
 git, and writes textures to `apps/web/public/textures/` with their provenance entries. The
@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import io
+import json
 import struct
 import sys
 import zipfile
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CACHE = ".cache/earth-maps"
 OCEAN_REL, LAKES_REL, CLOUDS_REL = f"{CACHE}/ne_10m_ocean.zip", f"{CACHE}/ne_10m_lakes.zip", f"{CACHE}/cloud_combined_2048.jpg"
 ETOPO_REL = f"{CACHE}/ETOPO_2022_v1_60s_N90W180_surface.tif"
-DAY_REL = f"{CACHE}/world.200411.3x21600x10800.jpg"
+DAY_REL = f"{CACHE}/world.200403.3x21600x10800.jpg"
 TEXTURES = ROOT / "apps" / "web" / "public" / "textures"
 
 
@@ -191,6 +192,27 @@ def test_downloads_match_their_pinned_checksums():
         assert hashlib.sha256((ROOT / CACHE / source.filename).read_bytes()).hexdigest() == source.sha256, name
 
 
+def test_record_update_leaves_every_entry_where_it_stands(tmp_path: Path):
+    # textures/PROVENANCE.json is shared with scripts/bake_moon_maps.py, whose --verify compares the whole file, so
+    # a rebake here replaces its own entries in place, keeps every other entry where it is and appends a new one
+    def source(source_id: str, title: str = "Before") -> dict:
+        licence = {"spdx": "CC0-1.0", "name": "Creative Commons Zero v1.0 Universal", "url": "https://example.org/cc0"}
+        return {"id": source_id, "title": title, "url": "https://example.org/", "version": "1", "license": licence, "credit": "Example"}
+
+    def entry(path: str, source_id: str, note: str = "Before") -> dict:
+        return {"path": path, "sha256": "ab" * 32, "sources": [source_id], "producedBy": {"method": "downloaded-as-is"}, "note": note}
+
+    record = tmp_path / "PROVENANCE.json"
+    sources = [source("other-a"), source("mine"), source("other-b")]
+    files = [entry("a.jpg", "other-a"), entry("mine.jpg", "mine"), entry("b.jpg", "other-b")]
+    record.write_text(json.dumps({"format": "albedian.asset-provenance", "formatVersion": 1, "sources": sources, "files": files, "fileSets": []}))
+    bake.update_record(record, [source("mine", "Rebaked"), source("new")], [entry("mine.jpg", "mine", "Rebaked"), entry("new.jpg", "new")])
+    written = json.loads(record.read_text(encoding="utf-8"))
+    assert [s["id"] for s in written["sources"]] == ["other-a", "mine", "other-b", "new"]
+    assert [f["path"] for f in written["files"]] == ["a.jpg", "mine.jpg", "b.jpg", "new.jpg"]
+    assert written["sources"][1]["title"] == "Rebaked" and written["files"][1]["note"] == "Rebaked"
+
+
 def test_record_entries_cite_the_bake_and_the_sources():
     from services.contracts.provenance import AssetProvenanceRecord
 
@@ -300,13 +322,90 @@ def test_height_map_record_cites_etopo_under_cc0():
 
 
 # =============================================================================================
-# Day map: NASA's Blue Marble Next Generation base map, which has no baked relief shading
+# Day map: NASA's Blue Marble Next Generation base map for March 2004, which has no baked relief
+# shading. It replaced the November 2004 base map, which nothing had drawn.
 # =============================================================================================
+
+NOVEMBER_BASE_NAME = "earth_day_bluemarble_2004-11_base_8k.jpg"
+
+
+def test_day_map_is_the_march_2004_base_map():
+    assert bake.DAY_NAME == "earth_day_bluemarble_2004-03_base_8k.jpg"
+    assert bake.INPUTS["day"].filename == "world.200403.3x21600x10800.jpg"
+    assert "/bmng-base/march/" in bake.INPUTS["day"].url
+
+
+def test_the_november_base_map_is_gone_with_its_record_entry_and_source():
+    from services.contracts.provenance import AssetProvenanceRecord
+
+    record = AssetProvenanceRecord.model_validate_json((TEXTURES / "PROVENANCE.json").read_text(encoding="utf-8"))
+    assert not (TEXTURES / NOVEMBER_BASE_NAME).exists()
+    assert NOVEMBER_BASE_NAME not in {entry.path for entry in record.files}
+    assert "nasa-bmng-2004-11-base" not in {source.id for source in record.sources}
 
 
 def test_committed_day_map_is_8k_rgb():
     image = Image.open(TEXTURES / bake.DAY_NAME)
     assert image.mode == "RGB" and image.size == (8192, 4096)
+
+
+@pytest.fixture(scope="module")
+def day_and_water_1k():
+    """The committed day map and water mask, both box-averaged to 1024x512: RGB levels, and water fractions."""
+    rgb = np.asarray(Image.open(TEXTURES / bake.DAY_NAME).convert("RGB").resize((1024, 512), Image.Resampling.BOX), dtype=np.float64)
+    water = np.asarray(Image.open(TEXTURES / bake.WATER_NAME).resize((1024, 512), Image.Resampling.BOX), dtype=np.float64)
+    return rgb, water / 255.0
+
+
+def _blueness(rgb: np.ndarray) -> np.ndarray:
+    """Blue minus red as a share of the three levels: about 0.67 on NASA's ocean blue, about 0 on land."""
+    return (rgb[..., 2] - rgb[..., 0]) / np.maximum(rgb.sum(axis=-1), 1.0)
+
+
+def _correlation_at_shift(score: np.ndarray, water: np.ndarray, dx: int, dy: int) -> float:
+    """Pearson r between the water fraction and the score moved dx columns (wrapping) and dy rows (cropped)."""
+    moved, rows = np.roll(score, dx, axis=1), score.shape[0]
+    a, b = moved[max(dy, 0) : rows + min(dy, 0)], water[max(-dy, 0) : rows + min(-dy, 0)]
+    return float(np.corrcoef(a.ravel(), b.ravel())[0, 1])
+
+
+def test_committed_day_map_registers_with_the_water_mask(day_and_water_1k):
+    # The renderer lays the day map, the water mask and the height map on one grid, from longitude -180 and
+    # latitude 90. Blue against water peaks with no shift (r 0.94 measured) and drops a pixel (0.35 degrees)
+    # either way, or half a turn round the globe.
+    rgb, water = day_and_water_1k
+    score = _blueness(rgb)
+    aligned = _correlation_at_shift(score, water, 0, 0)
+    assert aligned > 0.9
+    for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1), (512, 0)]:
+        assert _correlation_at_shift(score, water, dx, dy) < aligned, (dx, dy)
+
+
+def test_committed_day_map_shows_no_sea_ice_north_of_60n(day_and_water_1k):
+    # NASA gives the deep ocean one uniform blue, and this March map shows the high northern seas as open water;
+    # Hudson Bay is dark open-water blue, not ice (stated in the map's record). An ice or snow colour: bright, blue
+    # no stronger than red.
+    rgb, water = day_and_water_1k
+    latitude = 90.0 - (np.arange(rgb.shape[0]) + 0.5) * 180.0 / rgb.shape[0]
+    far_north_sea = (water == 1.0) & (latitude > 60.0)[:, None]
+    looks_icy = (rgb.mean(axis=2) > 150) & (_blueness(rgb) < 0.2)
+    assert far_north_sea.sum() > 50_000
+    assert looks_icy[far_north_sea].mean() < 0.001
+    hudson_bay = rgb[int((90 - 60.0) / 180 * 512), int((-85.0 + 180) / 360 * 1024)]
+    assert hudson_bay.max() < 40 and _blueness(hudson_bay) > 0.5
+
+
+@pytest.mark.parametrize(
+    "shelf,lat,lon",
+    [("Ross Ice Shelf", -81.5, -175.0), ("Ronne Ice Shelf", -78.5, -61.0), ("Filchner Ice Shelf", -79.0, -40.0)],
+)
+def test_antarctic_ice_shelves_are_water_in_the_mask_and_white_in_the_map(day_and_water_1k, shelf, lat, lon):
+    # Natural Earth's ocean runs under the floating ice shelves, and the base map draws them as ice, so south of
+    # 60 degrees S "open sea" in the mask is not all open water in the map (stated in the map's record)
+    rgb, water = day_and_water_1k
+    row, column = int((90 - lat) / 180 * 512), int((lon + 180) / 360 * 1024)
+    assert water[row, column] == 1.0, shelf
+    assert rgb[row, column].min() > 200 and _blueness(rgb[row, column]) < 0.05, shelf
 
 
 @pytest.mark.local_dataset(DAY_REL)
@@ -322,16 +421,25 @@ def test_base_day_map_download_matches_its_pinned_checksum():
     assert hashlib.sha256((ROOT / DAY_REL).read_bytes()).hexdigest() == bake.INPUTS["day"].sha256
 
 
-def test_day_map_record_cites_the_unshaded_base_map():
+def test_day_map_record_cites_the_unshaded_march_base_map():
     from services.contracts.provenance import AssetProvenanceRecord
 
     record = AssetProvenanceRecord.model_validate_json((TEXTURES / "PROVENANCE.json").read_text(encoding="utf-8"))
     entry = next(entry for entry in record.files if entry.path == bake.DAY_NAME)
-    source = next(source for source in record.sources if source.id == "nasa-bmng-2004-11-base")
-    assert entry.sources == ("nasa-bmng-2004-11-base",)
+    source = next(source for source in record.sources if source.id == "nasa-bmng-2004-03-base")
+    assert entry.sources == ("nasa-bmng-2004-03-base",)
     assert entry.produced_by.method == "script" and entry.produced_by.script == "scripts/bake_earth_maps.py"
     assert source.credit == "NASA Earth Observatory"
     assert source.license.spdx == "LicenseRef-NASA-Media-Guidelines"
+    assert source.version == "March 2004, 21600x10800 JPEG"
     assert "shading" in source.note and source.sha256 == bake.INPUTS["day"].sha256
+    assert bake.INPUTS["day"].url in source.note
     assert "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/" in source.note
-    assert "please credit NASA Earth Observatory" in source.note
+    # NASA's sentence verbatim, with the page's own quotation marks
+    assert "please credit “NASA Earth Observatory.”" in source.note
+    # NASA's two limitations, and what was measured on this map, each said where it holds
+    assert "deep oceans are not in the source data and are given a uniform blue" in source.note
+    assert "where snow lies for less than three or four months" in source.note
+    assert "north of latitude 60 degrees N it shows no sea ice, under 0.1 per cent of the open sea there" in source.note
+    assert "Hudson Bay is dark open-water blue, not ice" in source.note
+    assert "Around Antarctica the water mask covers the ice shelves, the Ross and Ronne-Filchner among them, which the map draws white" in source.note

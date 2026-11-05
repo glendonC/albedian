@@ -52,14 +52,14 @@
       "source": "NOAA National Centers for Environmental Information, ETOPO 2022 Global Relief Model, 60 arc-second surface elevation (not to be used for navigation)"
     },
     {
-      "path": ".cache/earth-maps/world.200411.3x21600x10800.jpg",
+      "path": ".cache/earth-maps/world.200403.3x21600x10800.jpg",
       "fetch": "scripts/fetch_download.py",
-      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/november/world.200411.3x21600x10800.jpg",
-      "bytes": 23766556,
-      "sha256": "1959bbe72897d3e9526c440dae3ec04cfdbdc4080c8ff0b14632925ae31167b1",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/march/world.200403.3x21600x10800.jpg",
+      "bytes": 22848375,
+      "sha256": "af37f61a9715c59dc86763df19f588a20c9d92b3d0a8034a0b00acd6b97ccb7d",
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-      "source": "NASA Earth Observatory, Blue Marble Next Generation base map, November 2004, 21600 x 10800"
+      "source": "NASA Earth Observatory, Blue Marble Next Generation base map, March 2004, 21600 x 10800"
     },
     {
       "path": ".cache/moon-svs4720/lroc_color_16bit_srgb_8k.tif",
