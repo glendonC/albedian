@@ -3,7 +3,7 @@
 **Research cutoff:** October 31, 2026  
 **Competition:** Kiroween 2026  
 **Decision:** Conditional GO for a narrowly scoped *evidence-aware night video restoration workspace*; NO-GO for a broad, multi-model autonomous editor as the first build.  
-**Status:** External research and proposed design, not an implementation or firsthand performance test. No supplied original Sahara footage was tested.
+**Status:** External research and proposed design, not an implementation or firsthand performance test. No supplied original night-sky footage was tested.
 
 ## Reading Guide
 
@@ -89,7 +89,7 @@ PSNR values shown above use **different datasets, reference formats, sensor dist
 
 | Dataset / source | What it supports | What it does NOT establish |
 |---|---|---|
-| **BVI-RLV**, 2026, IEEE TMM accepted October 3: [paper](https://research-information.bris.ac.uk/en/publications/bvi-rlv-a-fully-registered-dataset-for-low-light-video-enhancemen/), [project/data](https://lrr-rachel.github.io/BVI-RLV/) | 31,800 paired 1920×1080 frames, 40 controlled scenes, 25 fps, carefully registered moving scenes. Suitable for full-reference evaluation. | The project page describes studio lighting around **3–5 and 10–14 lux** in reduced-light captures, not moonless Sahara star fields. Also check dataset rights before redistributing samples. |
+| **BVI-RLV**, 2026, IEEE TMM accepted October 3: [paper](https://research-information.bris.ac.uk/en/publications/bvi-rlv-a-fully-registered-dataset-for-low-light-video-enhancemen/), [project/data](https://lrr-rachel.github.io/BVI-RLV/) | 31,800 paired 1920×1080 frames, 40 controlled scenes, 25 fps, carefully registered moving scenes. Suitable for full-reference evaluation. | The project page describes studio lighting around **3 to 5 and 10 to 14 lux** in reduced-light captures, not moonless dark-sky star fields. Also check dataset rights before redistributing samples. |
 | **AIM 2025 RAW challenge** | Capture-aware Bayer denoising; controlled sensor and illumination variables | Cannot be substituted for real RGB/HEVC consumer video benchmark. |
 | **SDSD / SMID / DID** (discussed in [IJCAI 2025 study](https://ijcai.org/proceedings/2025/238)) | Established low-light video comparisons, motion and paired references | Inconsistent captures/splits/alignment among studies; retrieve the exact versions and licenses first. |
 | **LOLBlur, LOLv2, RealLOLBlur, LSRW** ([DarkIR](https://github.com/cidautai/DarkIR)) | Still-image enhancement, noise/blur baselines | Not sufficient for temporal video consistency. |
@@ -168,7 +168,7 @@ Immediate: per-clip method selection, cached reruns, paired human preferences an
 
 **1–5 s, conditional on actual compute:** behind the same player, ingest/probe checks dimensions, transfer function, noise, exposure histogram, codec, motion and scene boundaries. UI changes `Analyzing` to `Ready to Restore` only when real analysis completes. If metadata inspection fails, provide a usable manual path.
 
-**First visible choices:** `Restore`, `Compare`, `Original`, a small `Advanced`/`Processing Graph` entry. On a heavy dark Sahara clip the user can issue “Recover genuine detail. Keep people unchanged. Don't invent stars.”
+**First visible choices:** `Restore`, `Compare`, `Original`, a small `Advanced`/`Processing Graph` entry. On a heavy dark night-sky clip the user can issue “Recover genuine detail. Keep people unchanged. Don't invent stars.”
 
 ## Scenario B: Autonomous attempts
 
@@ -220,7 +220,7 @@ Comparison of four hypotheses, design assessment (1 weak to 5 strong; **subjecti
 
 ```text
 ┌────────────────────────────────────────────────────────────────────┐
-│  PROJECT / Sahara Night        Original | Restore | Compare  Export │
+│  PROJECT / Night Sky           Original | Restore | Compare  Export │
 ├─────────────────────────────────────────────────────────┬──────────┤
 │                                                         │          │
 │           LARGE VIDEO PLAYER                            │ INSPECT  │
@@ -553,7 +553,7 @@ Official [rules](https://kiroween.devpost.com/rules), [FAQ](https://kiroween.dev
 | Nov 24–28 | Voice only if stable, graph overlay, user experience/accessibility testing, New Zealand footage as optional validation |
 | Nov 29–Dec 3 | Freeze dependencies, deploy judge path, record <3 min truthful demo, public repo and Kiro writeup, submit early |
 
-No milestone requires New Zealand footage; Sahara or controlled clips are sufficient if lawful and representative.
+No milestone requires location-specific footage; public or controlled clips are sufficient if lawful and representative.
 
 ### Three-minute demo narrative
 
@@ -577,7 +577,7 @@ The tests are ordered to disprove the largest risky assumptions before polishing
 
 | Priority | Hypothesis / assets | Procedure and strong baseline | Go / failure signal | Effort / implications |
 |---|---|---|---|---|
-| **E1: Very dark MP4 actually contains recoverable signal** | 3–5 representative glasses/phone clips, including hardest Sahara footage, no special capture | Probe bit depth, codec, low-percentile histogram; compare tone-only, classical denoise, multi-frame. Blind crop inspection. | **Go** if genuine structures become more discernible without severe new artifacts. **Fail** if dominant area is clipped or pure codec noise; pivot to capture assistance or footage-quality triage. | 0.5–1 day, local CPU |
+| **E1: Very dark MP4 actually contains recoverable signal** | 3 to 5 representative glasses/phone clips, including hardest low-light footage, no special capture | Probe bit depth, codec, low-percentile histogram; compare tone-only, classical denoise, multi-frame. Blind crop inspection. | **Go** if genuine structures become more discernible without severe new artifacts. **Fail** if dominant area is clipped or pure codec noise; pivot to capture assistance or footage-quality triage. | 0.5 to 1 day, local CPU |
 | **E2: Temporal method beats good classical baseline** | Static terrain, pan, moving person clips | Aligned temporal vs tuned spatial processing on same spans; motion and flicker review | **Go** if temporal improves static details without harming faces/motion. **Fail** if ghosting dominates; make temporal method conditional. | 0.5–2 days |
 | **E3: Available neural candidate runs and helps** | 1 vetted repo, checkpoint, licensed code, representative compressed clips | Reproduce pinned environment; test 50–150 frames against classical method; measure speed/memory and artifacts | **Go** if accessible and materially useful. **Fail** if CUDA-only, weights absent, weak generalization, or unacceptable flicker; remove from MVP. | 1–4 days, cloud GPU optional |
 | **E4: Star and face integrity can be guarded** | Source with point light/true stars, face footage with consent; secondary reference if possible | Source-aligned point map, user A/B, frame sequence, motion-aware face ROIs | **Go** if obvious invented points and face distortions are rejected reliably enough for demo. **Fail** if output changes identity/creates stars; strictly restrict restoration class. | 1–2 days |
@@ -688,4 +688,4 @@ The tests are ordered to disprove the largest risky assumptions before polishing
 
 ## Research gaps and honesty statement
 
-This is a **source-backed architecture research document**, not a full systematic literature meta-analysis or an independently replicated benchmark survey. I did not have original Sahara clips, test cameras, model artifacts, running jobs, exact cloud pricing or a live competitive usability study. Claims about *best algorithm on the user's footage, model performance on their Mac, reliable star retention, all competitor capabilities, licenses of every research checkpoint, and commercial uniqueness* therefore remain open. The next step is a test/evidence package, **not** a final agent implementation prompt. If E1–E3 fail, revise the product definition before designing a large autonomous system.
+This is a **source-backed architecture research document**, not a full systematic literature meta-analysis or an independently replicated benchmark survey. I did not have original field clips, test cameras, model artifacts, running jobs, exact cloud pricing or a live competitive usability study. Claims about *best algorithm on the user's footage, model performance on their Mac, reliable star retention, all competitor capabilities, licenses of every research checkpoint, and commercial uniqueness* therefore remain open. The next step is a test/evidence package, **not** a final agent implementation prompt. If E1 to E3 fail, revise the product definition before designing a large autonomous system.

@@ -5,7 +5,7 @@
 **Purpose:** Independent scientific, competitive, product and engineering assessment. Not an implementation order.  
 **Decision:** **CONDITIONAL GO** for a narrowly scoped *Observation Explorer* prototype; **DEFER** fully unified night-video restoration + live satellite identification + arbitrary 3D flight; **NO-GO** for building a generic photo plate solver or planetarium as the central innovation.  
 **Prior research:** `Frontier_Media_Restoration_Research_2026-10-31.md` remains intact. Its Conditional GO and untested low-light-video enhancement performance are unchanged.  
-**Evidence labels:** **Confirmed externally** = official source/paper/repository supports a capability; **Engineering inference** = plausible integration unproven here; **Proposed** = design or acceptance criterion; **Not verified** = missing product/API/performance evidence. **No source Sahara media, iPhone recording or Meta glasses file was tested. No experiments described below have been run.**
+**Evidence labels:** **Confirmed externally** = official source/paper/repository supports a capability; **Engineering inference** = plausible integration unproven here; **Proposed** = design or acceptance criterion; **Not verified** = missing product/API/performance evidence. **No source night-sky media, iPhone recording or Meta glasses file was tested. No experiments described below have been run.**
 
 ---
 
@@ -277,7 +277,7 @@ The product is first a **memory artifact and a useful result**, not a telescope 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  NIGHT OBSERVATION           Sahara · Oct 2026          Export  │
+│  NIGHT OBSERVATION           Source capture             Export  │
 │─────────────────────────────────────────────────────────────────│
 │                                                                 │
 │                                                                 │
@@ -307,7 +307,7 @@ This is an **information hierarchy**, not a final visual comp. Use generous spac
 
 ## Concrete first-use walkthrough
 
-**Scene A: import a Sahara sky photograph.** The original image appears immediately. Original recording and audio are preserved with immutable checksum and metadata. An understated `Analyzing` activity region says which measurable work is occurring: source point detection, solving, brightness correction. The experience never hides the source behind a spinner. If enough stars exist, `Calibrated` appears with count of independently matched sources and a small `Details` affordance. A `Sky` toggle reveals labels positioned via the WCS. If solve fails, use `Unresolved` plus a reason and offer `Predicted Sky` separately if timestamp/location suffice. No fake star overlay on an unsolved photo.
+**Scene A: import a night-sky photograph.** The original image appears immediately. Original recording and audio are preserved with immutable checksum and metadata. An understated `Analyzing` activity region says which measurable work is occurring: source point detection, solving, brightness correction. The experience never hides the source behind a spinner. If enough stars exist, `Calibrated` appears with count of independently matched sources and a small `Details` affordance. A `Sky` toggle reveals labels positioned via the WCS. If solve fails, use `Unresolved` plus a reason and offer `Predicted Sky` separately if timestamp/location suffice. No fake star overlay on an unsolved photo.
 
 **Scene B: restore but don't invent stars.** On voice or text request `Recover genuine details; don't create stars`, create a constrained transformation plan using conventional enhancement and (if tested) neural restoration. Track precise graph/input changes, compare against the untouched recording and original-aligned point sources; label methods. The original sky solution remains an independent measurement; rerun restoration only on affected job branches. New bright points that cannot be supported by original pixels get flagged instead of silently named.
 
@@ -601,7 +601,7 @@ E7 (satellite) = standalone optional investigation after E1/E3/E4
 
 | Time | Onscreen action | What the judge learns |
 |---|---|---|
-| **0:00–0:18** | Real dark Sahara or other rights-cleared night photo/video with original ambient sound. “I saw more than the camera recorded.” | Immediate human problem, real media. |
+| **0:00 to 0:18** | Real dark field recording or other rights-cleared night photo/video with original ambient sound. “I saw more than the camera recorded.” | Immediate human problem, real media. |
 | **0:18–0:40** | Drop source into app. Show actual source detection and calibrated result or transparent fallback. | Actual software does work, not a concept animation. |
 | **0:40–1:02** | Toggle `Original` / genuinely enhanced treatment; inspect source-aligned evidence and label which detections are real matches. | Restoration constraints and honesty about observations. If enhancement unproven, show honest minimal adjustment, not invented stars. |
 | **1:02–1:27** | Select a matched star, retrieve Gaia identity/distance with uncertainty; optionally ask “How far away?” | Scientific data meaningfully tied to this photo. |

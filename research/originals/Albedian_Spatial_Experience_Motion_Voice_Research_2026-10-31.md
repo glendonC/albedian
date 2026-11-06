@@ -201,7 +201,7 @@ Source inspector: `Source`, `Time`, `Detected`, `Matched`, `Unresolved`, `Solve 
 
 **[D]** Albedian's identity should derive from *albedo*: reflected light measured in darkness. It should look like a precision instrument that leaves the night intact, not like a spaceship command console. The interface is absent until there is a reason for it; when invoked, it is exact and exquisitely legible.
 
-**Imagery is the color. Geometry is the interface.** A dim Sahara photograph, the color of astronomical survey data, and the luminous star points must be the visual hero. Avoid a branded purple nebula wallpaper, persistent grids, swarm cursors, animated random stars or noisy glass UI.
+**Imagery is the color. Geometry is the interface.** A dim night-sky photograph, the color of astronomical survey data, and the luminous star points must be the visual hero. Avoid a branded purple nebula wallpaper, persistent grids, swarm cursors, animated random stars or noisy glass UI.
 
 ### Proposed tokens (not externally validated usability measurements)
 
@@ -847,7 +847,7 @@ The camera is an image crop/zoom transform. No 3D camera. Use 150–300ms real-r
 
 | Clock | What judge sees | Real software proof | Visual / sound direction |
 |---|---|---|---|
-| **0:00–0:15** | Dark recorded Sahara clip with people's voices or night ambience. Text: `What the camera kept` | Actual source hash and source player; no simulated darkness | Original sound establishes emotional context, no music |
+| **0:00 to 0:15** | Dark recorded night clip with people's voices or night ambience. Text: `What the camera kept` | Actual source hash and source player; no simulated darkness | Original sound establishes emotional context, no music |
 | **0:15–0:34** | Say `Recover what you can. Don't invent stars.` Real processing starts | Typed constraint + actual graph/job lifecycle event | One understated job activity lane, not a swarm |
 | **0:34–0:55** | One completed preview, same timestamp A/B reveal; optional quick second attempt | Two real media derivatives and synchronized compare | Quiet source sound, crisp wipe, no theatrical flash |
 | **0:55–1:12** | Pause on solved sky image, `Calibrated` and actual matched-star dots | Real WCS result + held-out residual; calibrated on real uploaded image | Dots align one by one only after result arrives |
