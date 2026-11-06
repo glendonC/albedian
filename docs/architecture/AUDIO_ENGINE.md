@@ -1,16 +1,17 @@
 # Albedian Spatial Audio Engine
 
-Status: **Locally implemented and tested capability** (November 2026). Pure mappings are covered by
-property tests; the Web Audio graph was exercised in Chrome 152 on macOS. The sky feed turns the
-camera's pose into voices for the catalog stars on screen, with Gaia DR3 temperatures and
-luminosities, and turns the listener with the camera (section 8), but the app does not call it yet:
-the viewport's calls belong to the render lane and have not landed (2026-11-05), so enabling audio
-in the app plays only the detent. The owner heard the listening session's clips (section 10) on
-2026-11-05 and asked for music, with the data inside it; until it comes, the app's feed keeps its
-star voices off.
+Status: **Locally implemented and tested capability**. Pure mappings and the musical data layer are
+covered by property tests (`[tested]`); the Web Audio graph and the three musical directions over
+the landing are exercised and measured in headless Chrome on macOS (`[tested]`). The primary audio
+architecture is music first (section 13): a composed, adaptive musical score in which the catalog
+stars on screen play the data layer (`apps/web/src/audio/music/`). The continuous Planck-voice sky
+feed (`SkyAudioFeed`, section 8) remains implemented and tested, with the application's `skyAudio`
+singleton configured with continuous star voices disabled (`voices: false`) so enabling audio plays
+only the UI detent while the musical score direction is selected.
 
-Code: [`apps/web/src/audio/`](../../apps/web/src/audio/). Listening harness:
-[`apps/web/spike/audio/`](../../apps/web/spike/audio/) (run `pnpm dev`, open `/spike/audio/`).
+Code: [`apps/web/src/audio/`](../../apps/web/src/audio/) (including [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/)).
+Harnesses: [`apps/web/spike/music/`](../../apps/web/spike/music/) (music directions, section 13) and
+[`apps/web/spike/audio/`](../../apps/web/spike/audio/) (`pnpm dev`, open `/spike/music/` or `/spike/audio/`).
 
 ## 1. Rules the engine follows
 
@@ -312,20 +313,20 @@ checks that each embedded text matches its source byte for byte.
 
 ## 8. Integration with the viewport and renderer
 
-**The catalog stars on screen drive the voices once the viewport passes the camera's pose.**
-`SkyAudioFeed` (since 2026-11-04) turns each pose into sources and the listener's orientation. The
-hookups that feed it belong to the render lane (`SpatialObservatoryViewport.tsx`,
-`cosmosRenderer.ts` and both renderers) and are not in the app yet (2026-11-05): each renderer's
-`getCameraSkyPose()`, and the viewport's calls, `skyAudio.follow(pose)` each animation frame while
-audio is on and `skyAudio.setEvidenceClass()` with the evidence class of the drawn `catalog_stars`
-layer. Until they land, and with any renderer that reports no pose, the sky is silent and enabling
+**The catalog stars on screen drive the feed when `voices` is enabled.** `SkyAudioFeed` turns each
+camera pose into sources and the listener's orientation (`[tested]`). Each renderer exposes
+`getCameraSkyPose()`, and `SpatialObservatoryViewport.tsx` calls `skyAudio.follow(pose)` each
+animation frame while audio is on and `skyAudio.setEvidenceClass()` with the evidence class of the
+drawn `catalog_stars` layer. With any renderer that reports no pose, the sky is silent and enabling
 audio plays only the detent.
 
-The app's feed (`skyAudio`) is built with its star voices off (`voices: false`). The owner heard
-the data-only star sound on 2026-11-05 and asked for music with the data inside it, so until that
-music replaces it, the app's feed turns the listener with the camera, loads no tiles and passes no
-stars, and enabling audio plays only the detent even once the hookups land. A feed with its voices
-on, as the tests build it, does everything the rest of this section describes.
+The application's `skyAudio` singleton is constructed with continuous star voices disabled
+(`voices: false`, `[tested]`). Under the music-first architecture (section 13), the catalog stars on
+screen are voiced as discrete musical notes inside a composed arrangement rather than as continuous
+sustained Planck-spectrum drones. With `voices: false`, `skyAudio` updates listener orientation
+with the camera, loads no star tiles and schedules no continuous star voices, so enabling audio in
+the header plays only the UI detent. A `SkyAudioFeed` constructed with `voices: true` performs the
+continuous star-voice pipeline described below.
 
 - **One frame, ICRS.** The pose carries two world quaternions: the camera's, and the catalog star
   sphere's (ICRS axes into world axes). The listener orientation is the camera's turn in ICRS,
@@ -400,12 +401,24 @@ extinction on findings is a contracts decision, escalated rather than made here.
 - The sky suites read the committed naked-eye tiles of `apps/web/public/catalog/stars/gaia-dr3/`
   (real rows: Segin, Fulu, Achird, Caph, Schedar, Ruchbah, Sirius, Vega) and run the feed through
   the real engine with no AudioContext.
-- The harness typechecks with `pnpm --dir apps/web exec tsc -p spike/audio/tsconfig.json`.
+- The music data layer and spike suites (`apps/web/src/audio/music/__tests__/` and
+  `apps/web/spike/music/__tests__/`, 79 tests across 6 files, `[tested]`) cover MIDI/frequency
+  conversion, chord and scale parsing, chord tones in a register, log-temperature pitch selection,
+  2 dB-per-magnitude loudness, left-to-right screen sweeps, silence when any of `teffK`,
+  `luminositySolar` or `distancePc` is missing, sample zone selection and harmonic-sum tuning
+  correction, onset/tempo/beat-grid and Krumhansl-Kessler key/chord analysis, LPC click detection,
+  and all three musical arrangements over the landing.
+- The harnesses typecheck with `pnpm --dir apps/web exec tsc -p spike/audio/tsconfig.json` and
+  `pnpm --dir apps/web exec tsc -p spike/music/tsconfig.json`.
 - In Chrome 152: no context before the click; IR and Omnitone load after it; 16 sources reduce to
   8 voices with the target first; dust, beating, pulsar rate and centroids match their formulas; the
   app's Audio button still toggles; no console errors. Safari, Firefox and mobile are **not tested**.
 
-## 10. What needs a human ear
+## 10. Diagnostic listening harness (retired as the user experience)
+
+> **Status:** Retired as the user-facing audio experience in favour of the composed musical score
+> with the catalog data layer inside it (section 13). Retained as an engineering diagnostic harness
+> for individual psychoacoustic channels (`apps/web/spike/listening/`).
 
 The listening session (`apps/web/spike/listening/`) turns these items into short clips for the
 owner. `items.ts` holds each question and what each clip plays: catalog stars named by their IAU
@@ -647,33 +660,218 @@ Read at the sources on 2026-11-04:
   about two to three times better with plots. They recommend training, richer mappings and an
   animated plot with a moving cursor.
 
-### 12.4 Proposed for Albedian, not built
+### 12.4 Realization in the music-first architecture and remaining items
 
-Each needs its own unit with a file list; (a) and (d) come first, after the owner answers the
-listening session.
+Items (a) and (b) are realized in the music data layer (section 13); (c), (e) and (f) remain
+proposed for subsequent units (`[proposed]`).
 
-- **(a) Stars as short events, diffuse light as sustained sound.** Chandra plays compact X-ray
-  sources as bells or plucks and diffuse X-ray light as sustained tones (Westerlund 2, M87).
-  Albedian sustains every star voice, and the first listener heard the landing as static (section
-  10, item 0).
-- **(b) A "listen to this view" sweep.** Chandra turns a still image into time with a scan (left to
-  right, centre out, clockwise); each star on screen would sound as the sweep reaches it, at its
-  received level.
-- **(c) Show what is sounding.** Mark the voiced stars on screen, as an animated plot's cursor does
-  (Tucker Brown et al.), since listeners missed how the sounds relate to the image (Arcand et al.).
-- **(d) Say what the sound is.** Built in part. `AUDIO_DISCLOSURE` in `audioCredits.ts` reads "No
+- **(a) Stars as short events, diffuse light as sustained sound.** Realized in section 13 (`[tested]`):
+  compact catalog stars play discrete struck notes (hand chimes, vibraphone, glockenspiel) while
+  harmonic pads, pipe organ manuals and recorded beds sustain the underlying harmony.
+- **(b) A "listen to this view" sweep.** Realized in section 13 (`[tested]`): `starSweep` orders the
+  loudest complete stars on screen from left to right (`screenX`) and steps through them on the beat
+  subdivisions of each bar.
+- **(c) Show what is sounding (`[proposed]`).** Mark the voiced stars on screen, as an animated plot's
+  cursor does (Tucker Brown et al.), since listeners missed how the sounds relate to the image
+  (Arcand et al.).
+- **(d) Say what the sound is (`[tested]`).** `AUDIO_DISCLOSURE` in `audioCredits.ts` reads "No
   sound reaches us from space. What you hear is made from data and stated design choices; none of
   it is a recording of space." It calls nothing data that is not: the detent click and the identity
-  pitch carry none (4.8), and the chapel reverb is a recording of an earthly room. The listening
-  page opens with its own sentence, which names its value kinds: "No sound reaches us from space.
-  Each clip is made from the values it names (catalog, published or labelled test values) with
-  stated design choices; none is a recording of space." The viewport shows the app's sentence
-  beside the Audio control while audio is on once the render lane's credits display (render-6g)
-  lands. Listeners asked for "actual sound from space", and the same authors single out trust as
-  the rating to improve (12.3).
-- **(e) Keep fine distinctions on screen.** Sound alone carried strong signals and missed weak ones
-  (Tucker Brown et al.); small differences of temperature, distance or residual need the
-  inspector's numbers beside the sound.
-- **(f) Orbits with stated time factors.** In the cislunar scale the Moon's motion could sound
-  with one disclosed speed-up for each use (pitch, rhythm), as the TRAPPIST-1 piece does, so its
-  real ratios survive.
+  pitch carry none (4.8), and the chapel reverb is a recording of an earthly room. The music
+  directions page opens with: "No sound reaches us from space. This is composed music; the notes the
+  stars play are chosen by their catalog values, as each clip says." The viewport shows the app's
+  sentence beside the Audio control while audio is on.
+- **(e) Keep fine distinctions on screen (`[proposed]`).** Sound alone carried strong signals and
+  missed weak ones (Tucker Brown et al.); small differences of temperature, distance or residual
+  need the inspector's numbers beside the sound.
+- **(f) Orbits with stated time factors (`[proposed]`).** In the cislunar scale the Moon's motion
+  could sound with one disclosed speed-up for each use (pitch, rhythm), as the TRAPPIST-1 piece
+  does, so its real ratios survive.
+
+## 13. Music over the landing
+
+Status: **Locally implemented and tested capability** (`[tested]`). Pure harmony and star-note
+mappings live in [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/); the three candidate
+arrangements, sample engine, audio analysis, click detector and headless Chrome render pipeline live
+in [`apps/web/spike/music/`](../../apps/web/spike/music/).
+
+### 13.1 Design principles
+
+1. **Music first, with the real stars as a performer inside the score.** Rather than playing
+   continuous unpitched or microtonal drones for every star in view, the audio engine presents a
+   composed, harmonically coherent score whose tempo, meter, key and bar-by-bar chord progression
+   frame a dedicated data voice (`The stars`).
+2. **Strict separation of composed music, recordings and catalog data.** Every part and every event
+   carries an explicit `kind` (`'composed' | 'data' | 'recording'`). In each arrangement, exactly
+   one part is marked `'data'`; every note in that part is derived deterministically from a catalog
+   star on screen (`[tested]`, `directions.test.ts`). Composed pads, organs, bass lines, drums and
+   reverb tails are disclosed as composed music and never described as astronomical measurements.
+3. **Every data note stays inside the active harmony.** The score specifies each bar's chord (or, in
+   Direction C when a bar's chord cannot be measured from the recording with sufficient margin, the
+   excerpt key's pentatonic scale). A star's catalog temperature selects which tone of that chord
+   and register it plays, so the data layer never clashes with the harmony while preserving a
+   strictly monotone mapping from temperature to pitch within every bar (`[tested]`).
+4. **Silence on missing catalog inputs.** In keeping with rule 2 (section 1), a star on screen that
+   lacks a Gaia DR3 effective temperature (`teffK`), FLAME luminosity (`luminositySolar`) or
+   Bailer-Jones distance (`distancePc`) returns `null` from `starNote` and plays nothing
+   (`[tested]`). On the landing view, the brightest naked-eye stars lacking Gaia DR3 GSP-Phot/FLAME
+   parameters (`Shaula`, `Kaus Australis`, `Sargas`, `Nunki`, `HIP 86670`, `Larawag`) are listed
+   explicitly as silent in the page's facts.
+
+### 13.2 The catalog data layer (`apps/web/src/audio/music/`)
+
+The pure data layer consists of [`harmony.ts`](../../apps/web/src/audio/music/harmony.ts) and
+[`starNotes.ts`](../../apps/web/src/audio/music/starNotes.ts) (`[tested]`, 21 property and unit
+tests):
+
+| Musical attribute | Catalog input | Mapping (`starNotes.ts`) | Bounds & invariants (`[tested]`) |
+|---|---|---|---|
+| Which stars play (`screenStars`, `loudestStars`, `starSweep`) | `teffK`, `luminositySolar`, `distancePc` | Keep only stars with all three values finite and positive; rank by bolometric received level $L / d^2$ (`receivedLevelDb`); take the loudest $N$ (`count`) | Stars missing any of the three values return `null` and never sound |
+| Note order within a bar (`sweepOrder`, `starSweep`) | Horizontal screen coordinate `screenX` in $[-1, 1]$ | Sort the selected $N$ stars from left to right (`screenX` ascending, tie-broken by `id`); schedule one note per beat subdivision `stepSec` | Deterministic sweep across the field of view |
+| Pitch (`temperaturePosition`, `starNote`, `chordTonesInRange`) | Effective temperature $T_{\text{eff}}$ (K) and bar's `PitchSet` | Candidate MIDI pitches are all tones of the bar's chord (or pentatonic set) in $[M_{\text{low}}, M_{\text{high}}]$ (`chordTonesInRange`). Position $u = \operatorname{clamp}(\ln(T_{\text{eff}} / 3000) / \ln(30000 / 3000), 0, 1)$ (`temperaturePosition`) selects index $\min(K - 1, \lfloor u \cdot K \rfloor)$ | Every note is a pitch class of the bar's chord; monotone non-decreasing with $T_{\text{eff}}$; equal log-temperature intervals |
+| Note gain (`starNote`, `receivedLevelDb`) | Bolometric received level $L_{\text{dB}} = \text{receivedLevelDb}(L, d)$ | $g_{\text{dB}} = \operatorname{clamp}(0.5 \cdot (L_{\text{dB}} - (-27)), -12, 0)$ | $2\text{ dB}$ per bolometric magnitude (half the $4\text{ dB/mag}$ raw flux scale so faint stars remain audible over musical accompaniment); clamped to $[-12, 0]\text{ dB}$ |
+| Stereo pan (`screenPosition`, `starNote`) | Horizontal screen coordinate `screenX` in $[-1, 1]$ | $\text{pan} = \operatorname{clamp}(0.7 \cdot \text{screenX}, -0.7, 0.7)$ | Keeps notes inside $\pm 0.7$ so both ears hear every star on headphones |
+
+On the WebGPU landing view (`landingPose()`, `2025-03-07T11:00:00Z`, field centre RA $270.04^\circ$,
+Dec $-31.81^\circ$, vertical FOV $26^\circ$ at $16:9$, limiting magnitude $6.5$), `483` catalog
+stars lie on screen and `171` carry complete Gaia DR3 temperature, luminosity and distance values
+(`[tested]`). In a D minor bar over `D4` to `D6` (`MIDI 62..86`), the eight loudest complete stars
+sweep left to right as `A4, D4, F4, F4, A4, A5, F4, A4` (`starNotes.test.ts`, `[tested]`).
+
+### 13.3 The three musical directions (`apps/web/spike/music/`)
+
+All three directions are rendered over the same landing sky at `48 kHz` stereo on an
+`OfflineAudioContext` in headless Chrome (`main.ts` and `render.mjs`, `[tested]`):
+
+1. **A. Organ and pulse (`organ-pulse`, composed by Albedian).**
+   - **Structure:** D minor resolving to D major at bar 11 (`40.0 s`), `60.0 BPM` so each beat marks
+     one real second, 12 bars of `4.0 s` plus a `5.0 s` tail (`53.0 s` total).
+   - **Chords (bars 1 to 12):** `Dm, Dm, Bb/D, C/D, Dm, Bb/D, Gm/D, Asus4, Bb, C, D, D`.
+   - **Composed parts:** Pipe organ quiet manual and quiet pedal throughout, joined by loud manual
+     and loud pedal from bar 9 (`32.0 s`); recorded pipe-organ blower wind under the full clip;
+     claves ticking on every second from bar 2 to bar 12; a `7.5 s` suspended-cymbal crescendo roll
+     terminating on the bar-11 downbeat (`40.0 s`); room reverberation via the measured St. Nicholas
+     Chapel, Aachen impulse response (`chapel`, return `-4 dB`).
+   - **Data part (`The stars`):** Hand chimes (`A4` to `D7`, `MIDI 69..98`, data bus `+3 dB`, reverb
+     send `-7 dB`), 8 star notes per bar on eighth notes from bar 3 to bar 12, joined in bars 11 and
+     12 by the next 8 loudest stars (`sweepBar` with `offsetStars: 8`) on the sixteenth off-beats
+     (`96` star notes across `16` stars).
+2. **B. Ambient beats (`ambient-beats`, composed by Albedian).**
+   - **Structure:** F minor, `96.0 BPM` (`beat = 0.625 s`, `bar = 2.5 s`), 20 bars plus a `3.5 s`
+     tail (`53.5 s` total), arranged across four sections: intro (bars 1 to 4), groove (bars 5 to
+     12), breakdown and riser (bars 13 to 16), and arrival (bars 17 to 20, `40.0 s`).
+   - **Chords (4-bar loop):** `Fm9, Dbmaj7, Abmaj7, Eb6`.
+   - **Composed parts:** Three-saw-per-voice pad (`32` harmonics, detuned `-8, 0, +8` cents) through
+     a low-pass filter whose cutoff opens from `700 Hz` in the intro to `4.2 kHz` at the arrival,
+     ducked by `-5 dB` over `30 ms` under each kick (`duckUnderKicks`); sub bass (fundamental plus
+     `0.12` second and `0.04` third harmonic); synthesized sine kick (`150 Hz` to `48 Hz` over
+     `110 ms` under a $C^1$-smooth `(1 - e^{-t/1.2\text{ ms}}) e^{-t/85\text{ ms}}` envelope); VCSL
+     hand claps on beats 2 and 4, swung eighth-note hi-hats (`4 %` beat swing), and sixteenth-note
+     shaker; band-pass noise riser in bars 15 to 16; synthetic stereo hall (`3.4 s` decay below
+     `2 kHz`, `1.6 s` above, `18 ms` pre-delay) and dotted-eighth ping-pong delay (`0.4688 s`,
+     feedback `0.38`, low-pass `3.2 kHz`).
+   - **Data part (`The stars`):** Soft-mallet vibraphone (`F4` to `E6`, `MIDI 65..88`, `15 ms`
+     attack ramp), 8 star notes per bar on eighth notes (16 sixteenth notes in bar 16 before the
+     arrival; answered by the next 8 stars on off-sixteenths in bars 17 to 19; 4 quarter notes in
+     bar 20; `188` star notes across `16` stars).
+3. **C. A recording, with the stars in its key (`recording`, Scott Buckley + Albedian data layer).**
+   - **Source recording:** Scott Buckley, *Signal to Noise* (`No Piano Melody` mix, CC BY 4.0).
+   - **Audio analysis (`apps/web/spike/music/analysis.ts`, `[tested]`):**
+     - *Tempo:* Whole-track log-spectral-flux onset envelope (`1024`-sample Hann STFT, `256`-sample
+       hop at `22,050 Hz`; `2048`/`512` at `44.1` and `48 kHz`) autocorrelated via `estimateTempo`
+       (default `minBpm = 50, maxBpm = 180`; `main.ts` passes `50` and `95`) weighted by 8-second
+       window overlap (`span - lag`) and smoothed by a `30 ms` Gaussian measures `66.66 BPM`
+       (normalized autocorrelation strength `0.72`).
+     - *Beat grid:* `beatGrid` searches within $\pm 1\%$ (`[0.99, 1.01]`, `COMB_PERIOD_SPAN = 0.01`)
+       of the autocorrelation period around the excerpt window and locks at `66.66 BPM`
+       (`beatSec = 0.9000 s`, `barSec = 3.6001 s`), placing the downbeat nearest `203 s` at
+       `fromSec = 203.12 s` (`14` bars = `50.40 s` plus tail, `52.9 s` total).
+     - *Key:* Pitch-class chroma accumulated over `55 Hz` to `2,000 Hz` (`CHROMA_MIN_HZ = 55`,
+       `CHROMA_MAX_HZ = 2000`, `8192`-sample Hann STFT, `2048`-sample hop at `44.1` and `48 kHz`)
+       correlated against the 24 Krumhansl-Kessler major and minor profiles identifies `G major`
+       ($r = 0.67$).
+     - *Bar chords and pentatonic fallback:* Each bar's chroma vector is cosine-scored against the
+       `24` binary major and minor triad templates (`TRIADS`, no 7ths). A bar's chord is accepted as
+       `confident` only when its best score is at least `0.67` (`DEFAULT_MIN_SCORE = 0.67`) and
+       exceeds the runner-up by at least `0.055` (`DEFAULT_MIN_MARGIN = 0.055`, `barChords`). Across
+       the 14 bars, `13 of 14` bars are confident (`Dm, Dm, Em, Em, Dm, Dm, Em, Em, Dm, Dm, Em`,
+       bar 12 fallback, `F, F`). In bar 12 (`Em` best score `0.767`, margin `0.039 < 0.055`),
+       `recordingBarSet` falls back to `G major pentatonic` (`G, A, B, D, E`), and the page's chord
+       list discloses `(pentatonic fallback)` on that bar (`[tested]`).
+   - **Data part (`The stars`):** VCSL glockenspiel (`A5` to `A7`, `MIDI 81..105`) where the piano
+     melody sat in the full mix: 4 quarter notes per bar in bars 1 and 2, then 8 eighth notes per
+     bar in bars 3 to 14 (`104` star notes across `8` stars, all `104` on the measured beat grid and
+     inside their bar's pitch set).
+
+### 13.4 Sample pitch convention and tuning correction (`sampler.ts`)
+
+1. **VCSL octave convention (`vcslRootMidi`, `[tested]`).** Harmonic-sum fundamental estimation on
+   the raw VCSL organ and chime files shows that VCSL's file names place middle C (`261.6 Hz`) at
+   `C3` (`NT5_Man3Quiet_C3_rr1.wav` measures `261.6 Hz`; `sus_C4_r01_main.wav` measures `522.7 Hz`).
+   `vcslRootMidi(name)` therefore adds `12` semitones to `parseNote(name)` so every sample plays in
+   standard scientific pitch (`C4 = MIDI 60 = 261.63 Hz`).
+2. **Per-sample tuning measurement (`measureTuningCents`, `[tested]`).** When `SampleBank.load`
+   decodes a pitched sample, it takes a Hann-windowed FFT of up to `1.0 s` starting `0.3 s` after
+   onset, locates the spectral peak within $\pm 50$ cents of each of the first four harmonics of
+   `midiToHz(rootMidi)`, refines each peak by parabolic interpolation on log magnitude, and takes
+   the magnitude-weighted mean over harmonics at least $25\%$ as strong as the strongest.
+   `playbackRate(semitones, centsOffset)` applies $2^{\text{semitones}/12 - \text{cents}/1200}$ so
+   every pitched sample is corrected to equal temperament at `A4 = 440 Hz` on playback. Measured
+   offsets across the loaded samples: `-5.0` to `+10.8` cents in Direction A (`35` pitched files),
+   `-0.2` to `+0.0` cents in Direction B (`13` pitched files), and `+8.2` to `+15.8` cents in
+   Direction C (`8` pitched files).
+
+### 13.5 Mastering, mono compatibility and click verification (`render.mjs`, `clicks.ts`)
+
+Each rendered clip is mastered to `-16.0 LUFS` integrated loudness (`TARGET_LUFS`) with a true-peak
+ceiling of `-1.0 dBTP` (`ffmpeg` `ebur128=peak=true`, 4x oversampled true peak). If a single linear
+gain to `-16.0 LUFS` keeps the true peak at or below `-1.0 dBTP`, only that linear gain is applied;
+if it would exceed `-1.0 dBTP`, `render.mjs` upsamples to `192 kHz`, applies `alimiter` at
+`-1.5 dBFS` (`attack = 5 ms`, `release = 60 ms`), resamples to `48 kHz`, and records the limiter use
+in `facts.json` and on the page. None of the three directions required limiting (`[tested]`).
+
+`render.mjs` also verifies mono compatibility by folding stereo to dual mono
+(`0.5 * L + 0.5 * R`), measuring integrated loudness on the mono fold-down, computing the
+mono-to-stereo power ratio $10 \log_{10}(\sum M^2 / \frac{1}{2}\sum(L^2 + R^2))$ and the interchannel
+Pearson correlation $r_{LR}$, and scanning both channels with `detectClicks` (`clicks.ts`, order-24
+Levinson-Durbin linear prediction on `1024`-sample Hann frames with `512`-sample hop, flagging
+residual peaks above $10 \times 1.4826 \times \text{median}|e|$ that concentrate at least half of a
+64-sample window's residual energy within $\pm 2$ samples, `[tested]`). Each detection is classified
+as either within `[-5 ms, +80 ms]` of a scheduled percussion onset (`percussionOnsetsSec`: `kick`,
+`claves`, `cymbalSwell`, `hats`, `clap`, `shaker`) or away from percussion:
+
+| Direction | Duration | Star notes (in chord) | Render LUFS | Gain applied | Master LUFS / True peak / LRA | Mono fold-down LUFS (power vs stereo, $r_{LR}$) | Clicks away from percussion | Clicks on percussion (`-5..+80 ms`) |
+|---|---|---|---|---|---|---|---|---|
+| **A. Organ and pulse** (`organ-pulse`) | `53.0 s` | `96 / 96` (`16` stars) | `-22.9 LUFS` | `+6.90 dB` (no limiter) | `-16.1 LUFS` / `-2.2 dBTP` / `14.0 LU` | `-16.9 LUFS` (`-0.97 dB`, $r_{LR} = 0.60$) | `0` | `0` |
+| **B. Ambient beats** (`ambient-beats`) | `53.5 s` | `188 / 188` (`16` stars) | `-18.5 LUFS` | `+2.50 dB` (no limiter) | `-16.0 LUFS` / `-4.4 dBTP` / `2.3 LU` | `-16.3 LUFS` (`-0.25 dB`, $r_{LR} = 0.89$) | `0` | `0` |
+| **C. Recording + stars** (`recording`) | `52.9 s` | `104 / 104` (`8` stars) | `-18.3 LUFS` | `+2.30 dB` (no limiter) | `-16.0 LUFS` / `-4.5 dBTP` / `2.2 LU` | `-17.2 LUFS` (`-1.22 dB`, $r_{LR} = 0.51$) | `0` | `0` |
+
+Across all three rendered masters (`organ-pulse`, `ambient-beats`, `recording`), `detectClicks`
+finds `0` clicks away from percussion and `0` clicks on percussion (`0` clicks total, `[tested]`).
+
+### 13.6 Sources, licences and reproduction
+
+All 216 audio source files used or cataloged by the music spike are recorded with their upstream
+URL, licence, credit line, byte size and SHA-256 in
+[`apps/web/spike/music/sources.json`](../../apps/web/spike/music/sources.json) (`[verified]`):
+
+| Source work | Files in `sources.json` | Licence | Attribution / credit |
+|---|---|---|---|
+| Pipe organ (Quiet, Loud, Quiet Pedal, Loud Pedal, Blower), sampled by Simon Dalzell of Ivy Audio in the Versilian Community Sample Library | `66` files (`65` WAV files plus `Info.txt` under `vcsl/Aerophones/.../Pipe Organ/`, pinned to commit `c1ea7bcc`) | **CC0 1.0** | Pipe organ sampled by Simon Dalzell of Ivy Audio, Versilian Community Sample Library (VCSL), Versilian Studios LLC, CC0 1.0 |
+| Hand chimes, claves, suspended cymbal, soft-mallet vibraphone, glockenspiel, hi-hat cymbal, hand claps, small shaker, woodblock, timpani, `LICENSE` and `README.md` in the Versilian Community Sample Library | `145` files (`124` under `vcsl/Idiophones/Struck Idiophones/`, `19` under `vcsl/Membranophones/`, `LICENSE`, `README.md`, pinned to commit `c1ea7bcc`) | **CC0 1.0** | Versilian Community Sample Library (VCSL), Versilian Studios LLC, CC0 1.0 |
+| Scott Buckley, *Signal to Noise* (`No Piano Melody` mix and sibling mixes evaluated during selection) | `5` MP3 files (`scottbuckley/`) | **CC BY 4.0** | `'Signal to Noise' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au` |
+| St. Nicholas Chapel, Aachen Cathedral impulse response (section 7) | `1` WAV file (`apps/web/src/audio/assets/aachen-nikolauskapelle-s1-r12-stereo.wav`) | **CC BY 4.0** | Martin Zerwas and Selin Kayku, Zenodo `10.5281/zenodo.23312556`, CC BY 4.0 |
+| Gaia DR3 stellar parameters and Bailer-Jones (2021) photogeometric distances | Committed star tiles (`apps/web/public/catalog/stars/gaia-dr3/`) | **CC BY-NC 3.0 IGO** (ESA/Gaia/DPAC) | ESA/Gaia/DPAC, Gaia DR3 (`teff_gspphot`, `lum_flame`); Bailer-Jones et al. (2021) |
+
+`render.mjs` verifies the SHA-256 of every present file in `.cache/music/sources/` against
+`sources.json` before rendering and writes `.cache/music/page/notices.txt` alongside
+`.cache/music/page/index.html`. To fetch the sources on a clean machine and reproduce the three
+masters, the `256 kb/s` AAC clips, `facts.json` and the listening page:
+
+```sh
+python3 -I .lanetools/music_sources_list.py
+python3 -I .lanetools/fetch_sources.py
+pnpm --filter @albedian/web exec vite --port 5188 --strictPort &
+node apps/web/spike/music/render.mjs --url http://localhost:5188 --out .cache/music
+```
+

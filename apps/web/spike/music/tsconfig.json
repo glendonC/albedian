@@ -1,0 +1,10 @@
+{
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["./*.ts", "../listening/spectrum.ts", "../../src/audio/**/*.ts"],
+  "exclude": ["../../src/audio/__tests__/**", "../../src/audio/music/__tests__/**"]
+}
