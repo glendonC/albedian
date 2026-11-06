@@ -202,14 +202,16 @@ class FrameDecodeError(RuntimeError):
 def _extract_representative_luma(
     file_path: Path, width: int, height: int
 ) -> tuple[np.ndarray, list[dict[str, Any]], float]:
-    """Decode up to 8 representative frames (1 fps), select the frame with the strongest
-    upper-sky signal as a 2D float64 luminance array in [0, 1], and compute 1 fps pose trajectory.
+    """Decode up to 8 frames (1 fps at up to 480 px wide) to pick the frame with the strongest
+    upper-sky signal and compute the 1 fps pose trajectory, then decode that picked frame again at
+    its native size in 16-bit gray (`gray16le`) as a 2D float64 luminance array in [0, 1].
 
     Also returns the selected frame's time in the clip, in seconds from the start of its video stream: ffmpeg's own
     timestamp for that frame (showinfo's pts_time after the fps filter), 0 for a still.
 
-    Raises FrameDecodeError when ffmpeg decodes no frame, or gives no time for the frames it decodes: nothing stands
-    in for the pixels or for when they were recorded.
+    Raises FrameDecodeError when ffmpeg decodes no frame, gives no time for the frames it decodes, or the native
+    decode does not return that same frame at `(height, width)`: nothing stands in for the pixels or for when they
+    were recorded.
     """
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
@@ -258,10 +260,57 @@ def _extract_representative_luma(
         best_idx = int(
             np.argmax([float(np.max(f[:sky_h, :]) - np.median(f[:sky_h, :])) for f in frames])
         )
-        arr_small = frames[best_idx]
-        y_idx = np.linspace(0, scale_h - 1, height).astype(np.intp)
-        x_idx = np.linspace(0, scale_w - 1, width).astype(np.intp)
-        rep_luma = arr_small[np.ix_(y_idx, x_idx)]
+        picked_time = frame_times[best_idx]
+        native_vf = (f"fps=1,select=eq(n\\,{best_idx})" if is_vid else f"select=eq(n\\,{best_idx})") + ",showinfo"
+        native_proc = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "level+info",
+                "-i",
+                str(file_path),
+                "-frames:v",
+                "1",
+                "-vf",
+                native_vf,
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "gray16le",
+                "pipe:1",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        native_bytes = width * height * 2
+        native_log = native_proc.stderr.decode("utf-8", errors="replace").splitlines()
+        if native_proc.returncode != 0 or len(native_proc.stdout) != native_bytes:
+            native_errors = [
+                FFMPEG_ERROR_TAG.sub("", line, count=1).strip()
+                for line in native_log
+                if FFMPEG_ERROR_TAG.search(line)
+            ]
+            raise FrameDecodeError(
+                native_errors[0]
+                if native_errors
+                else (
+                    f"ffmpeg returned {len(native_proc.stdout)} bytes, expected one "
+                    f"{width} x {height} gray16le frame ({native_bytes} bytes)"
+                )
+            )
+        native_times = [float(match.group(1)) for line in native_log if (match := SHOWINFO_PTS_TIME.search(line))]
+        if native_times != [picked_time]:
+            raise FrameDecodeError(
+                f"native decode of frame {best_idx} gave time {native_times}, expected [{picked_time}]"
+            )
+        rep_luma = (
+            np.frombuffer(native_proc.stdout, dtype="<u2")
+            .reshape((height, width))
+            .astype(np.float64)
+            / 65535.0
+        )
 
         raw_traj = compute_video_pose_trajectory(list(frames), fps=1.0)
         sx = float(width) / float(max(scale_w, 1))
@@ -274,7 +323,7 @@ def _extract_representative_luma(
             }
             for step in raw_traj
         ]
-        return rep_luma, scaled_traj, frame_times[best_idx]
+        return rep_luma, scaled_traj, picked_time
     # ffmpeg's first error line, without its level tag, as it reads under -v error
     errors = [FFMPEG_ERROR_TAG.sub("", line, count=1).strip() for line in log if FFMPEG_ERROR_TAG.search(line)]
     raise FrameDecodeError(
@@ -513,9 +562,9 @@ def discover_uploaded_media_report(
                     frames=[luma],
                     wcs=solution.wcs,
                     pose_trajectory=pose_trajectory,
-                    # The horizon pose is never held-out verified, and this frame is a 480 px decode, upsampled
+                    # The frame is a native-size decode of the recording, but the horizon pose is never held-out verified
                     wcs_verified=solution.has_verified_wcs,
-                    original_pixels=False,
+                    original_pixels=True,
                     max_stars=6,
                 )
                 if solution is not None and solution.wcs is not None

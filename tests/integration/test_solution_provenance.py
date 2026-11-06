@@ -107,8 +107,8 @@ def test_discovery_never_calls_a_star_observed_through_the_horizon_pose(tmp_path
     assert item.observation_solution is not None and item.observation_solution.status == "approximate"
     assert any(r["status"] == "signal_at_predicted_position" for r in audit)
     assert all(r["evidenceClass"] == "predicted" and r["wcsVerified"] is False for r in audit)
-    # The frame discovery measures is a 480 px decode, upsampled: not the recording's own pixels
-    assert all(r["originalPixels"] is False for r in audit)
+    # Discovery measures a native-size decode of the recording's frame, through an unverified horizon pose
+    assert all(r["originalPixels"] is True for r in audit)
 
 
 def test_each_solution_names_its_own_solver_and_catalog() -> None:

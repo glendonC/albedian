@@ -11,8 +11,10 @@ Covers:
 - Real clips (owner media): each item's size and frame rate are the ones ffprobe reads, none failed to decode, and
   each capture moment is the clip's recorded creationdate
 - A clip's solution names the frame discovery decoded: ffmpeg's time for it, and every prediction for that frame is
-  for its moment, the recorded start plus that time; frames ffmpeg gives no time for are not used, and a missing
-  original is never replaced by a rendered variant (real clips too, as flags)
+  for its moment, the recorded start plus that time; discovery solves on a native-size gray16le decode of that frame
+  (never the 480 px picker decode stretched back by repeating pixels) and marks its coherent audit originalPixels
+  True; frames ffmpeg gives no time for are not used, and a missing original is never replaced by a rendered variant
+  (real clips too, as flags)
 """
 
 from __future__ import annotations
@@ -259,9 +261,10 @@ def test_a_missing_original_is_never_replaced_by_a_rendered_variant(tmp_path: Pa
     assert item["observationSolution"] is None
 
 
-def _picked_frame_time(path: Path, width: int, height: int) -> float | None:
-    """ffmpeg's time for the frame discovery's picker takes, recomputed from an independent decode: of the first 8
-    frames at 1 fps, 480 px wide, the one whose top 22% of rows holds the brightest point above their median."""
+def _picked_frame_and_time(path: Path, width: int, height: int) -> tuple[np.ndarray, float] | None:
+    """The native-size gray16le decode and ffmpeg time for the frame discovery's picker takes, recomputed from an
+    independent decode: of the first 8 frames at 1 fps, 480 px wide, the one whose top 22% of rows holds the
+    brightest point above their median."""
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
     done = subprocess.run(
@@ -275,11 +278,113 @@ def _picked_frame_time(path: Path, width: int, height: int) -> float | None:
         return None
     frames = np.frombuffer(done.stdout[: n * scale_w * scale_h], dtype=np.uint8).reshape((n, scale_h, scale_w)) / 255.0
     sky_h = max(8, int(scale_h * 0.22))
-    return times[int(np.argmax([float(np.max(f[:sky_h]) - np.median(f[:sky_h])) for f in frames]))]
+    best = int(np.argmax([float(np.max(f[:sky_h]) - np.median(f[:sky_h])) for f in frames]))
+    native = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1", "-vf", f"fps=1,select=eq(n\\,{best})",
+         "-f", "rawvideo", "-pix_fmt", "gray16le", "pipe:1"],
+        check=False, capture_output=True,
+    )
+    if native.returncode != 0 or len(native.stdout) != width * height * 2:
+        return None
+    frame = np.frombuffer(native.stdout, dtype="<u2").reshape((height, width)).astype(np.float64) / 65535.0
+    return frame, times[best]
+
+
+def test_discovery_solves_on_a_native_decode_of_the_picked_frame(tmp_path: Path, monkeypatch) -> None:
+    """On a clip wider than the 480 px picker decode (1344 x 1792), discovery decodes the picked frame again at its
+    native size in 16-bit gray and solves on that, so the observed Moon centroid sits at the beacon's true centre
+    instead of its 480 px block, and the coherent audit marks originalPixels True while keeping evidenceClass
+    predicted."""
+    (tmp_path / "uploads").mkdir()
+    width, height = 1344, 1792
+    y_hor = int(height * 0.55)
+    clip = tmp_path / "uploads" / "wide-night-fourth-second.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r=10:d=6", "-vf",
+         f"drawbox=x=0:y={y_hor}:w={width}:h={height - y_hor}:color=0x282828:t=fill,"
+         "drawbox=x=930:y=118:w=8:h=8:color=0xf0f0f0:t=fill:enable='between(t,3,3.9)'",
+         "-c:v", "mpeg4", "-q:v", "1", str(clip)],
+        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    probe = discovery._probe_media_metadata(clip)
+    probe["format"]["tags"] = dict(SYNTHETIC_TAGS)
+    monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
+    solved_images: list[np.ndarray] = []
+    real_solve = discovery.solve_horizon_and_beacon_pose
+
+    def spy_solve(image: np.ndarray, *args, **kwargs):
+        solved_images.append(image)
+        return real_solve(image, *args, **kwargs)
+
+    monkeypatch.setattr(discovery, "solve_horizon_and_beacon_pose", spy_solve)
+    item = _discover(tmp_path)["items"][0]
+    expected = _picked_frame_and_time(clip, width, height)
+    assert expected is not None
+    expected_frame, expected_time = expected
+    assert expected_time == 3.0
+    assert len(solved_images) == 1 and np.array_equal(solved_images[0], expected_frame)
+    solution = item["observationSolution"]
+    assert solution["status"] == "approximate"
+    observed_moon = next(f for f in solution["findings"] if f["id"] == "finding-observed-moon")
+    det = observed_moon["sourceDetection"]
+    assert det["xPx"] == pytest.approx(933.5, abs=0.25)
+    assert det["yPx"] == pytest.approx(121.5, abs=0.25)
+    audit = item["coherentStarAudit"]
+    assert audit
+    assert all(
+        r["originalPixels"] is True and r["wcsVerified"] is False and r["evidenceClass"] == "predicted"
+        for r in audit
+    )
+
+
+def test_a_native_decode_whose_time_or_bytes_disagree_is_not_used(tmp_path: Path, monkeypatch) -> None:
+    clip = tmp_path / "beacon-in-its-fourth-second.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(clip)
+    real_run = subprocess.run
+
+    def run_with_wrong_native_time(cmd, *args, **kwargs):
+        done = real_run(cmd, *args, **kwargs)
+        if cmd[0] == "ffmpeg" and "gray16le" in cmd:
+            wrong = re.sub(rb"pts_time:\s*-?\d+(?:\.\d+)?", b"pts_time:0", done.stderr)
+            return subprocess.CompletedProcess(done.args, done.returncode, done.stdout, wrong)
+        return done
+
+    monkeypatch.setattr(discovery.subprocess, "run", run_with_wrong_native_time)
+    with pytest.raises(discovery.FrameDecodeError, match="time"):
+        discovery._extract_representative_luma(clip, width=320, height=180)
+
+    def run_with_truncated_native_bytes(cmd, *args, **kwargs):
+        done = real_run(cmd, *args, **kwargs)
+        if cmd[0] == "ffmpeg" and "gray16le" in cmd:
+            return subprocess.CompletedProcess(done.args, done.returncode, done.stdout[:-2], done.stderr)
+        return done
+
+    monkeypatch.setattr(discovery.subprocess, "run", run_with_truncated_native_bytes)
+    with pytest.raises(discovery.FrameDecodeError, match="gray16le"):
+        discovery._extract_representative_luma(clip, width=320, height=180)
+
+    def run_with_native_error(cmd, *args, **kwargs):
+        done = real_run(cmd, *args, **kwargs)
+        if cmd[0] == "ffmpeg" and "gray16le" in cmd:
+            return subprocess.CompletedProcess(done.args, 1, b"", b"[error] native decode failed\n")
+        return done
+
+    monkeypatch.setattr(discovery.subprocess, "run", run_with_native_error)
+    with pytest.raises(discovery.FrameDecodeError, match=r"^native decode failed$"):
+        discovery._extract_representative_luma(clip, width=320, height=180)
 
 
 @pytest.mark.owner_media("data/uploads")
-def test_each_real_clip_solution_names_its_frames_time_and_moment() -> None:
+def test_each_real_clip_solution_names_its_frames_time_and_moment(monkeypatch) -> None:
+    discovery._DISCOVERY_CACHE.clear()
+    solved_images: dict[str, np.ndarray] = {}
+    real_solve = discovery.solve_horizon_and_beacon_pose
+
+    def spy_solve(image: np.ndarray, *args, **kwargs):
+        solved_images[kwargs["source_asset_id"]] = image
+        return real_solve(image, *args, **kwargs)
+
+    monkeypatch.setattr(discovery, "solve_horizon_and_beacon_pose", spy_solve)
     items = TestClient(app).get("/api/media/discover").json()["items"]
     # Flags with fixed messages: a failing assert on an item would print the clips' names, places and capture times
     solved = [item for item in items if item["observationSolution"] is not None]
@@ -287,10 +392,14 @@ def test_each_real_clip_solution_names_its_frames_time_and_moment() -> None:
     assert count >= 3, "fewer than three real clips have a solution"
     for item in solved:
         solution = item["observationSolution"]
-        expected = _picked_frame_time(ROOT / "data" / "uploads" / item["relativePath"], item["width"], item["height"])
+        expected = _picked_frame_and_time(ROOT / "data" / "uploads" / item["relativePath"], item["width"], item["height"])
         decoded = expected is not None
         assert decoded, "the independent decode of a real clip failed"
-        names_its_frame = solution["frameTimeSec"] == expected
+        expected_frame, expected_time = expected
+        names_its_frame = solution["frameTimeSec"] == expected_time
         assert names_its_frame, "a real clip's solution does not name the time of the frame discovery decoded"
-        at_its_moment = solution["observedAtUTC"] == discovery._moment_plus(item["capturedAtUTC"], expected)
+        at_its_moment = solution["observedAtUTC"] == discovery._moment_plus(item["capturedAtUTC"], expected_time)
         assert at_its_moment, "a real clip's solution is not for the moment of the frame discovery decoded"
+        solved_image = solved_images.get(item["id"])
+        is_native = solved_image is not None and np.array_equal(solved_image, expected_frame)
+        assert is_native, "a real clip was not solved on a native-size decode of its picked frame"
