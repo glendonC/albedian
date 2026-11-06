@@ -222,11 +222,18 @@ export function validateMediaTimelineSync(
     }
   }
 
-  const audioPreserved =
-    source.audioStreams.length === 0 ? true : variant.audioStreamCopiedFromSource === true;
+  const hasSourceAudio = source.audioStreams.length > 0;
+  const audioPreserved = !hasSourceAudio ? true : variant.audioStreamCopiedFromSource === true;
+  // Fail closed when a recording has audio and the variant carries no measured audio sync offset
+  const hasMeasuredAudioOffset =
+    !hasSourceAudio ||
+    (variant.audioSyncOffsetMs !== undefined && Number.isFinite(variant.audioSyncOffsetMs));
 
   const durationDriftMs = Math.abs(variant.durationMs - source.durationMs);
-  const audioOffsetDriftMs = Math.abs(variant.audioSyncOffsetMs);
+  const audioOffsetDriftMs =
+    variant.audioSyncOffsetMs !== undefined && Number.isFinite(variant.audioSyncOffsetMs)
+      ? Math.abs(variant.audioSyncOffsetMs)
+      : 0;
   const lastFrameTs = timestamps.length > 0 ? timestamps[timestamps.length - 1] : undefined;
   const lastFrameDriftMs =
     lastFrameTs !== undefined && lastFrameTs > source.durationMs
@@ -242,6 +249,7 @@ export function validateMediaTimelineSync(
     sameSourceAsset &&
     monotonic &&
     audioPreserved &&
+    hasMeasuredAudioOffset &&
     maxDriftMs <= MAX_ALLOWED_MEDIA_DRIFT_MS;
 
   return {

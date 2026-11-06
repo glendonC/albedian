@@ -490,12 +490,12 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       expect(check.maxDriftMs).toBeLessThanOrEqual(42);
     }
 
-    // 2. Property test over arbitrary positive frame intervals and audio sync offsets
+    // 2. Property test over arbitrary positive frame intervals and optional audio sync offsets
     const baseVariant = baseSession.mediaVariants[1]!;
     fc.assert(
       fc.property(
         fc.array(fc.double({ min: 8, max: 50, noNaN: true }), { minLength: 5, maxLength: 120 }),
-        fc.double({ min: 0, max: 120, noNaN: true }),
+        fc.option(fc.double({ min: 0, max: 120, noNaN: true }), { nil: undefined }),
         fc.boolean(),
         (frameDeltas, audioSyncOffsetMs, audioCopied) => {
           const timestamps: number[] = [];
@@ -516,16 +516,41 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
           const res = validateMediaTimelineSync(source, syntheticVariant);
           expect(res.monotonic).toBe(true);
           expect(res.audioPreserved).toBe(audioCopied);
+          expect(Number.isFinite(res.maxDriftMs)).toBe(true);
           const lastTs = timestamps[timestamps.length - 1] ?? 0;
           const expectedValid =
             audioCopied &&
+            audioSyncOffsetMs !== undefined &&
             audioSyncOffsetMs <= 42 &&
             lastTs <= source.durationMs + 42;
           expect(res.valid).toBe(expectedValid);
         }
       ),
-      { numRuns: 100 }
+      {
+        numRuns: 100,
+        examples: [
+          [[16, 16, 16, 16, 16], undefined, true],
+          [[16, 16, 16, 16, 16], 12.5, true],
+        ],
+      }
     );
+
+    // A source with audio whose variant has no measured audio offset fails closed with a finite drift;
+    // a silent source needs no audio offset
+    const missingOffsetOnSourceWithAudio = validateMediaTimelineSync(source, {
+      ...baseVariant,
+      audioStreamCopiedFromSource: true,
+      audioSyncOffsetMs: undefined,
+    });
+    expect(missingOffsetOnSourceWithAudio.valid).toBe(false);
+    expect(Number.isFinite(missingOffsetOnSourceWithAudio.maxDriftMs)).toBe(true);
+
+    const silentSourceVariant = validateMediaTimelineSync(
+      { ...source, audioStreams: [] },
+      { ...baseVariant, audioStreamCopiedFromSource: false, audioSyncOffsetMs: undefined }
+    );
+    expect(silentSourceVariant.valid).toBe(true);
+    expect(silentSourceVariant.audioPreserved).toBe(true);
 
     // 3. Property test verifying non-monotonic timestamps are always rejected
     fc.assert(

@@ -218,11 +218,11 @@ export const AttemptEvaluationMetricsSchema = z.object({
   hasPairedReference: z.boolean(),
   shadowSnrGainDb: z.number(),
   estimatedNoiseReductionPct: z.number().min(0).max(100),
-  pointSourceRetentionRatio: z.number().min(0).max(1.5),
+  pointSourceRetentionRatio: z.number().min(0).max(1.5).optional(),
   falsePointArtifactCount: z.number().int().nonnegative(),
   faceRegionStabilityScore: z.number().min(0).max(1).optional(),
-  temporalFlickerIndex: z.number().nonnegative(),
-  audioSyncOffsetMs: z.number().nonnegative(),
+  temporalFlickerIndex: z.number().nonnegative().optional(),
+  audioSyncOffsetMs: z.number().nonnegative().optional(),
   validityNotes: z.array(z.string()),
 });
 export type AttemptEvaluationMetrics = z.infer<typeof AttemptEvaluationMetricsSchema>;
@@ -240,7 +240,7 @@ export const ProcessingAttemptSchema = z.object({
   elapsedMs: z.number().nonnegative(),
   cpuMs: z.number().nonnegative(),
   gpuMs: z.number().nonnegative(),
-  peakMemoryBytes: z.number().int().nonnegative(),
+  peakMemoryBytes: z.number().int().nonnegative().optional(),
   outputVariantId: z.string().optional(),
   metrics: AttemptEvaluationMetricsSchema.optional(),
   failureReason: z.string().optional(),
@@ -260,7 +260,7 @@ export const MediaVariantSchema = z.object({
   durationMs: z.number().nonnegative(),
   frameTimestampsMs: z.array(z.number().nonnegative()),
   audioStreamCopiedFromSource: z.boolean(),
-  audioSyncOffsetMs: z.number().nonnegative(),
+  audioSyncOffsetMs: z.number().nonnegative().optional(),
   summaryNote: z.string().min(1),
 });
 export type MediaVariant = z.infer<typeof MediaVariantSchema>;
@@ -277,7 +277,7 @@ export const ExportArtifactSchema = z.object({
   videoCodec: z.string().min(1),
   audioPreserved: z.boolean(),
   audioCodec: z.string().optional(),
-  audioSyncOffsetMs: z.number().nonnegative(),
+  audioSyncOffsetMs: z.number().nonnegative().optional(),
   processingGraphId: z.string().min(1),
   observationSolutionId: z.string().optional(),
   catalogCitations: z.array(z.string()),

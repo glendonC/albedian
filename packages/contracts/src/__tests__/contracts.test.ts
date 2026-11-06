@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  AttemptEvaluationMetricsSchema,
+  ExportArtifactSchema,
+  MediaVariantSchema,
+  ProcessingAttemptSchema,
   ProcessingGraph,
   ProcessingGraphSchema,
   ProcessingNode,
@@ -293,5 +297,103 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
       ),
       { numRuns: 80 }
     );
+  });
+
+  it('accepts restore metrics, attempts, variants and exports with unmeasured fields omitted and rejects null', () => {
+    const metricsWithoutUnmeasured = {
+      evaluationMethod: 'no_reference_internal_sky_background_mad_and_star_core_flux',
+      hasPairedReference: false,
+      shadowSnrGainDb: 3.2,
+      estimatedNoiseReductionPct: 28.5,
+      falsePointArtifactCount: 0,
+      validityNotes: ['Single frame: temporal flicker is not defined.', 'No reference stars detected.'],
+    };
+    expect(AttemptEvaluationMetricsSchema.safeParse(metricsWithoutUnmeasured).success).toBe(true);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({
+        ...metricsWithoutUnmeasured,
+        pointSourceRetentionRatio: 0.96,
+        temporalFlickerIndex: 0.03,
+        audioSyncOffsetMs: 0.4,
+      }).success
+    ).toBe(true);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, pointSourceRetentionRatio: null }).success
+    ).toBe(false);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, temporalFlickerIndex: null }).success
+    ).toBe(false);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, audioSyncOffsetMs: null }).success
+    ).toBe(false);
+
+    const attemptWithoutPeakMemory = {
+      id: 'attempt_01',
+      sourceAssetId: 'src_01',
+      graphId: 'graph_01',
+      label: 'Restoration Branch (star_protected)',
+      status: 'ready' as const,
+      cacheKey: '0123456789abcdef0123456789abcdef',
+      startedAtUTC: '2030-01-01T02:00:00.000Z',
+      completedAtUTC: '2030-01-01T02:00:00.250Z',
+      elapsedMs: 250,
+      cpuMs: 210,
+      gpuMs: 0,
+      metrics: metricsWithoutUnmeasured,
+    };
+    expect(ProcessingAttemptSchema.safeParse(attemptWithoutPeakMemory).success).toBe(true);
+    expect(
+      ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: 67108864 }).success
+    ).toBe(true);
+    expect(
+      ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: null }).success
+    ).toBe(false);
+
+    const variantWithoutAudioOffset = {
+      id: 'variant_01',
+      sourceAssetId: 'src_01',
+      attemptId: 'attempt_01',
+      graphId: 'graph_01',
+      label: 'Star-Protected Variant',
+      uri: 'ni:///sha-256;abcdef0123456789',
+      sha256: '0123456789abcdef0123456789abcdef',
+      width: 1920,
+      height: 1080,
+      durationMs: 4000,
+      frameTimestampsMs: [0, 1000, 2000, 3000],
+      audioStreamCopiedFromSource: false,
+      summaryNote: 'Frames only; no audio stream.',
+    };
+    expect(MediaVariantSchema.safeParse(variantWithoutAudioOffset).success).toBe(true);
+    expect(MediaVariantSchema.safeParse({ ...variantWithoutAudioOffset, audioSyncOffsetMs: 0.5 }).success).toBe(true);
+    expect(MediaVariantSchema.safeParse({ ...variantWithoutAudioOffset, audioSyncOffsetMs: null }).success).toBe(false);
+
+    const exportWithoutAudioOffset = {
+      id: 'export_01',
+      sessionId: 'sess_01',
+      sourceAssetId: 'src_01',
+      sourceSha256: '0123456789abcdef0123456789abcdef',
+      exportedVariantId: 'variant_01',
+      outputUri: 'ni:///sha-256;f4OxZX_x_FO5LcGBSKHWXfwtSx-j1ncoSt3SABJtkGk',
+      outputSha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      containerFormat: 'mp4' as const,
+      videoCodec: 'h264',
+      audioPreserved: false,
+      processingGraphId: 'graph_01',
+      catalogCitations: [],
+      epistemicSummary: {
+        observedCount: 0,
+        catalogMatchedCount: 0,
+        predictedCount: 0,
+        simulatedViewsIncluded: false,
+        strictFidelityEnforced: true,
+      },
+      exportedAtUTC: '2030-01-01T02:00:01.000Z',
+    };
+    expect(ExportArtifactSchema.safeParse(exportWithoutAudioOffset).success).toBe(true);
+    expect(ExportArtifactSchema.safeParse({ ...exportWithoutAudioOffset, audioSyncOffsetMs: 0.2 }).success).toBe(true);
+    expect(
+      ExportArtifactSchema.safeParse({ ...exportWithoutAudioOffset, audioSyncOffsetMs: null }).success
+    ).toBe(false);
   });
 });
