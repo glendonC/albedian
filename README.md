@@ -23,7 +23,7 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
 1. **`01 · Night Sky` (`earth_capture`):** Restores the user's real recording, locks WCS coordinates only after held-out star verification passes, and grounds the sky above a 3D ray-marched local horizon, with a northern or southern landscape picked by the observer's hemisphere.
 2. **`02 · Cislunar Orbit` (`cislunar`, `1.28 light-sec`):** Transitions into Earth-Moon orbital space with Rayleigh/Mie atmospheric limb scattering and NASA LRO laser-altimetry lunar relief.
 3. **`03 · Nearby Stars` (`solar_neighborhood`, `4.37 to 548 ly`):** Shows a modelled star, not Betelgeuse's measured surface and not at its size or distance, with `@sparkjsdev/spark` 3D Gaussian splats on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), placed around it for composition.
-4. **`04 · Deep Space` (`deep_sky`, `26,670 ly`):** Shows a modelled black hole: an approximate Schwarzschild bending of light around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not Sgr A*'s data. Decorative particles drift on noise; they simulate no gas.
+4. **`04 · Deep Space` (`deep_sky`, `26,670 ly`):** Shows a modelled black hole: an approximate Schwarzschild bending of light around a hand-set disk, over ESO's photograph of the nearby Lupus 3 cloud, not Sgr A*'s data.
 5. **`05 · World Surface` (`planetary_surface`):** Lands on procedurally generated, illustrative worlds (analytical-derivative GPU ray-marching after [Inigo Quilez](https://iquilezles.org/articles/morenoise/)): Shackleton Crater on the Moon, an imagined canyon on Proxima Centauri b, Titan's hydrocarbon seas beneath Saturn's rings, and a fictional relativistic tidal ocean world. `Return to My Photo [Esc]` reversibly restores the exact source recording. See [`docs/product/PRODUCT_THESIS.md`](docs/product/PRODUCT_THESIS.md) for full citations and epistemic boundaries.
 
 ---
@@ -59,7 +59,7 @@ Albedian is an observation-centered media restoration and 3D spatial astronomy i
     camera-rig/             # WCS pixel<->world math, quaternion SLERP, log-tan-FOV & floating origin
     design-system/          # Albedian observational instrument tokens, marker grammar & motion specs
   research/
-    originals/              # Intact foundational research reports (2026-10-31 & 2026-11-02)
+    originals/              # Preserved foundational research reports
     experiments/            # Reproducible technical experiment registry & benchmark harnesses
   docs/
     product/                # Product thesis, experience states & UI/UX reference system
@@ -123,4 +123,4 @@ The API also answers only a `Host` that names this machine: localhost, 127.0.0.1
 
 ## License
 
-Released under the [MIT License](LICENSE). The catalogs and models used are ESA Gaia DR3, ESA Hipparcos 2007, the Standish and Williams (1992) planetary elements from JPL Solar System Dynamics, Meeus (1998) for the Moon and, for the landing scene's Sun and Moon positions only, the NASA/JPL Horizons API; their credits and the library licenses are in [`docs/architecture/ARCHITECTURE_OVERVIEW.md`](docs/architecture/ARCHITECTURE_OVERVIEW.md).
+Released under the [MIT License](LICENSE). The catalogs and models used are ESA Gaia DR3, ESA Hipparcos 2007, the Standish and Williams (1992) planetary elements from JPL Solar System Dynamics, Meeus (1998) for the Moon and, for the landing scene's Sun and Moon positions and check values (sub-observer and sub-solar points, pole and phase angles) only, the NASA/JPL Horizons API; their credits and the library licenses are in [`docs/architecture/ARCHITECTURE_OVERVIEW.md`](docs/architecture/ARCHITECTURE_OVERVIEW.md).

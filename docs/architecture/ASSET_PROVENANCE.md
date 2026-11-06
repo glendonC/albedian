@@ -105,25 +105,24 @@ Gitignored files under the folder are counted and left out, because git never pu
 A local `pnpm build` still copies them into `dist/`; this check does not look there.
 
 `uv run pytest` runs the check on this repository (`test_this_repository_passes` in
-`tests/integration/test_asset_provenance.py`), so every lane's gates and CI's Python jobs
-enforce it. On 2026-11-04 it hashed 7,698 files (226 MB) in 0.8 s on the development
+`tests/integration/test_asset_provenance.py`), so local test suites and CI's Python jobs
+enforce it. Hashing all 7,698 files (226 MB) took 0.8 s on an Apple M5 Max development
 machine [measured].
 
 ## Known gaps
 
 `scripts/provenance_gaps.json` lists the files that have no record yet, each with its reason.
-It may only shrink. `BASELINE_GAPS` in the check pins, by path and SHA-256, the files that lacked
-a record when the check arrived and are still here, and an entry fails when:
+It may only shrink. `BASELINE_GAPS` in the check pins, by path and SHA-256, the legacy files
+that still lack a provenance record, and an entry fails when:
 
 - its path is not in the baseline (a new asset needs a record, not a gap);
 - its file has a record now, or is gone (remove the entry);
 - its bytes changed (a changed asset needs a record).
 
-The list started with 16 entries: six textures (the atmosphere lookup table, which a script
-makes from hand-set parameters with no outside data; three Earth maps that match three.js
-example textures or are unidentified; two files due for deletion), all seven files in
-`models/`, and the three tracked splats. Seven unused ones were deleted since (three models, a
-splat, two textures and the Orion view's nebula splat rows in `models/`), and left the baseline
-with them, so they can return only with a record. Nine remain.
+`BASELINE_GAPS` pins nine entries: four textures (the atmosphere lookup table, which a script
+makes from hand-set parameters with no outside data, and three legacy Earth maps that match
+three.js example textures or are unidentified), three files in `models/`, and the two tracked
+sample splats. Any deleted legacy asset is removed from `BASELINE_GAPS` at the same time so it
+can return only with a provenance record.
 
 To close a gap, write the file's record and delete its entry in the same change.

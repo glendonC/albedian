@@ -16,7 +16,7 @@ Labels follow [AGENTS.md](../../AGENTS.md): [tested], [verified] with its source
 | Edenhofer et al. 2024, A parsec-scale Galactic 3D dust map out to 1.25 kpc from the Sun, A&A, doi:10.1051/0004-6361/202347628; data v1.0 (2023-08-01), doi:10.5281/zenodo.8187943 | `mean_and_std_healpix.fits` | 3,252,715,200 bytes | CC BY 4.0 | Edenhofer, Zucker, Frank, Saydjari, Speagle, Finkbeiner and Ensslin 2024 |
 | O'Neill et al. 2024, The Local Bubble is a Local Chimney: A New Model from 3D Dust Mapping; Harvard Dataverse version 2.1 (2024-10-21), doi:10.7910/DVN/INB1RB | 16 FITS files, here `ONeill2024_LocalBubble_Shell_xyz.fits` | 3,211,367,040 bytes | CC0 1.0 | O'Neill et al. 2024 |
 
-Both were downloaded on 2026-11-04 into `.cache/dust/`, and every file matches its
+Both datasets are cached under `.cache/dust/`, and every file matches its
 provider's MD5 [tested]; SHA-256 sums are in `.cache/dust/SHA256SUMS`. The Dataverse record's
 nine interactive HTML figures were not downloaded: they hold no data.
 
@@ -36,7 +36,7 @@ What the files hold [tested, read from their FITS headers]:
 A_V at 540 nm is 2.8 times the ZGR23 extinction [verified, Edenhofer et al. 2024, arXiv:2308.01295
 v2, section 7]. Other bands need the ZGR23 extinction curve (doi:10.5281/zenodo.7692680). The
 spike reddens with CCM89 (R_V 3.1); with this map the consistent curve is ZGR23's [inference].
-Downloading that curve belongs to the render lane's dust unit.
+Downloading that curve is deferred to the renderer dust integration.
 
 ## Method
 
@@ -67,7 +67,7 @@ percentile 16%).
 ## Results [measured]
 
 Reproduce with `uv run python scripts/bake_dust_bricks.py --voxel 8 4 2 --rays 1000`; it took
-365 s on the M5 Max on 2026-11-04 and wrote `.cache/dust/bricks-pilot/summary.json`. Column
+365 s on an Apple M5 Max and wrote `.cache/dust/bricks-pilot/summary.json`. Column
 errors are relative to the map's exact column along each ray. Bytes are float16 density, one
 value per voxel. For scale, the median A_V to 1,248 pc over 1,500 random directions is 0.16 mag
 (maximum 4.2 mag).
@@ -127,24 +127,23 @@ ZGR23/pc (11 MB as float16), 705 above 1e-3 (5.8 MB), 427 above 3e-3 (3.5 MB). B
 5. **Baking is cheap.** The 2 pc build of the whole 1.25 kpc sphere takes about 4 minutes and
    2.7 GB of memory; the whole pilot peaked at 5.2 GB. [measured]
 
-## Recommendation for the bake unit [proposed]
+## Recommendation for production dust baking [proposed]
 
 - Bake Edenhofer as two levels: a 16 pc base for the whole 1.25 kpc sphere and 4 pc detail
   bricks where the residual exceeds 1e-3, about 31 MB of float16, on the scale of the spike's
   64 MB test grid, which ray-marched in 1.85 ms at half resolution at 4K. Whether 31 MB
-  marches as fast depends on how the renderer walks bricks [open, render lane].
+  marches as fast depends on how the renderer walks bricks [open].
 - Add 2 pc detail later where it shows (the solar neighbourhood, Orion, Taurus), sized by
   this pilot's 2 pc rows.
 - Bake the O'Neill shell at 2 pc with a peak threshold (about 11 MB), to replace the
   GLB-derived Local Bubble splats.
 - Keep the standard deviation as an optional second channel for the inspector, at the same
   layout and twice the bytes.
-- Render reddening with the ZGR23 curve rather than CCM89, once the render lane downloads it.
+- Render reddening with the ZGR23 curve rather than CCM89 once that curve is integrated.
 
 ## Not covered
 
-- GPU frame time for these layouts, trilinear sampling, and level-of-detail transitions
-  (render lane).
+- GPU frame time for these layouts, trilinear sampling, and level-of-detail transitions.
 - Dust beyond 1.25 kpc: Bayestar19 and the 15.7 GB 2 pc Edenhofer grid need a yes first.
 - The 68.6 pc inner sphere: the map's integrated inner column could attenuate light per
   direction, but it has no 3D shape.

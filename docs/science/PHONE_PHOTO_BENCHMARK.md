@@ -17,7 +17,7 @@ Code: `research/benchmarks/phone_photos/`. Tests: `tests/science/test_phone_phot
 ```bash
 uv run pytest tests/science/test_phone_photo_benchmark.py            # the CI subset, about 10 s
 uv run python -m research.benchmarks.phone_photos run --suite full --solver today-api --workers 8 --timeout 120
-uv run python -m research.benchmarks.phone_photos.real_clips         # the owner's clips, local only
+uv run python -m research.benchmarks.phone_photos.real_clips         # local real-clip corpus only
 ```
 
 The full run writes `summary.json`, `frames.jsonl` and `summary.md` under
@@ -54,7 +54,7 @@ and 6e-15 (Kannala-Brandt, 5,355 lenses) [tested].
 
 ## Cameras
 
-Fields of view are the makers' own figures, read on 2026-11-04 (quotes verbatim in `cameras.py`):
+Fields of view are the makers' published specifications (quoted verbatim in `cameras.py`):
 
 | Camera | Diagonal field | Source |
 |---|---|---|
@@ -124,13 +124,14 @@ pixel within max(4 px, 2 FWHM, 1.5 trail lengths).
 A false claim is any claim that is not correct. Track 1's bar is zero false claims on the hard
 negatives. Time per frame is the solver's wall time on one worker process.
 
-## Results: today's solver (simulated)
+## Results: baseline 18-star triangle solver (simulated)
 
 The full suite, seed 20261104: 210 positives over the seven cameras (30 each) and 60 hard negatives
 (10 of each kind), at 2016 x 1512 or 1512 x 2016 for the phones and 1440 x 1920 for the head-worn
-camera. Solver `today-api`: today's solver exactly as `POST /api/science/solve` runs it at commit
-73bebfb, on its default 18-star catalog, blind, with a 120 s limit per frame; 8 worker processes on an
-18-core arm64 Mac. Machine-readable: `research/benchmarks/phone_photos/results/today-solver-baseline.json`.
+camera. Solver adapter `today-api`: the baseline 18-star triangle solver as exposed by
+`POST /api/science/solve`, on its default 18-star catalog, blind, with a 120 s limit per frame; 8 worker
+processes on an 18-core arm64 Mac. Machine-readable:
+`research/benchmarks/phone_photos/results/today-solver-baseline.json`.
 Any later change to the solver or its gate needs a re-run before these numbers describe it.
 
 | Frames | Count | correct | imprecise | wrong | unresolved | timeout |
@@ -160,7 +161,7 @@ What it shows [tested, on simulated frames only]:
   is one) and, as the roadmap asks, agreement between two independent paths [proposed].
 
 Two adapters were not run on the full suite: `today-allsky` (the 71-star all-sky list) and
-`horizon-moon`. Blind, today's solver builds its triangles from only the 18 brightest stars of
+`horizon-moon`. Blind, the baseline triangle solver builds its triangles from only the 18 brightest stars of
 whatever catalog it gets (`services/science/solver.py`, the `cat_pool` line) [verified, read in
 code], so the larger list adds few triangles to a frame; and the horizon and Moon solver never claims
 held-out verification by design, so the benchmark would score every frame as no claim [inference].
@@ -168,8 +169,8 @@ On the CI subset, `today-api` solved 0 of 4 positives and claimed nothing on its
 
 ## Real clips (no ground truth)
 
-Today's solver on the owner's three clips, run on this machine only (`real_clips.py`): six single
-frames spread over each clip and one five-frame stack from its middle (today's stacker), on the
+The baseline 18-star solver on the three local real-clip captures (`real_clips.py`): six single
+frames spread over each clip and one five-frame stack from its middle (using the frame stacker), on the
 decoded luma plane of the original frames, with a 150 s limit per run. Ids are neutral; nothing
 finer than this table is published.
 
@@ -188,7 +189,7 @@ claim, had one come, could not have been trusted.
 
 ## What real frames need for ground truth
 
-For the owner's shot list [proposed]:
+For the golden-corpus field capture protocol [proposed]:
 
 1. The original files from the camera app (HEIC or JPEG, and RAW where the phone offers it) with
    untouched metadata: capture time from a phone clock checked against network time, location,

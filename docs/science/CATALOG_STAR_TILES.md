@@ -49,7 +49,7 @@ IAU products are released under Creative Commons Attribution.
   extinction, 1,780,872 a FLAME luminosity, 3,062,208 a RUWE and
   3,062,208 a parallax error. The archive's own counts over the whole G < 12
   selection, before the bright-star merge removes duplicates, are 1,812,696, 1,780,875 and
-  3,062,317 (count queries on 2026-11-04). A value Gaia DR3 lacks stays missing and is never
+  3,062,317 (verified by archive count queries). A value Gaia DR3 lacks stays missing and is never
   filled; the 226 Hipparcos entries carry none. GSP-Phot and FLAME values are model fits to
   BP/RP spectra, photometry and parallax; their papers above describe their reach and limits.
   61 FLAME luminosities lie below their own 16th percentile, as in the archive, where their
@@ -120,11 +120,10 @@ wherever Gaia DR3 gives no value, and the manifest source ids behind the values 
 
 ### Measured load times
 
-These were measured once, on 2026-11-03, when the tiles arrived (commit `32acaf4`): cold loads
-(HTTP cache bypassed) from the Vite dev server on the same machine, 6 concurrent requests, for a
-56 degree 16:9 view unless noted. No script in the repository reproduces them and the commit
-does not record how they were collected, so read them as indicative. They predate astro tiles,
-which load only on request:
+These figures were measured on cold loads (HTTP cache bypassed) from the Vite dev server on the
+development machine, with 6 concurrent requests, for a 56 degree 16:9 view unless noted. No
+automated script in the repository reproduces them, so read them as indicative of core tile
+streaming (astro tiles load only on request):
 
 | View | Limit | Tiles | Stars | Bytes | Wall time | Decode total |
 |---|---|---|---|---|---|---|
@@ -154,10 +153,10 @@ uv run python scripts/bake_catalog_star_tiles.py --fetch-only  # fill the cache,
 A full bake makes about 210 archive queries for the base columns (each planned from an exact
 count query, because the Gaia TAP service silently truncates synchronous results at 50,000 rows)
 and 207 more for the astro columns: each astro query joins `gaiadr3.astrophysical_parameters` to
-the same chunk of `gaiadr3.gaia_source` and must return exactly that chunk's rows. The base
-fetch took 10.5 minutes. On 2026-11-04 the astro fetch took about 100 minutes over three runs
-(4 workers, then 2): the archive was overloaded, spent from seconds to over ten minutes on each
-join and reset some connections, and a rerun fetches only the chunks still missing. The astro cache
+the same chunk of `gaiadr3.gaia_source` and must return exactly that chunk's rows. In initial
+bakes the base fetch took 10.5 minutes and the astro fetch took about 100 minutes across
+resumed runs (4 workers, then 2, as archive load varied); a rerun fetches only the chunks
+still missing. The astro cache
 keeps more DR3 columns than the tiles encode (logg, [M/H], GSP-Phot distance, E(BP-RP), FLAME
 radius, mass and age, flags). An offline rebake takes about 70 seconds and
 reproduces every file byte for byte.

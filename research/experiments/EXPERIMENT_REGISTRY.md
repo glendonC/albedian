@@ -21,7 +21,7 @@ Each unresolved technical question identified in the foundational research is tr
 | **EXP-11** | Browser Frame Pacing & Memory Under 1k / 10k / 50k Star Catalog Workloads (X9) | P1 | Spatial / Perf | Partly measured: Node frame preparation only | `pnpm vitest run packages/camera-rig/src/__tests__/experiments.test.ts -t EXP-11` |
 | **EXP-12** | Epistemic Boundary Comprehension: Observed vs. Catalog Matched vs. Predicted vs. Simulated (X5) | P1 | Experience | Not run: needs a study with testers | `pnpm vitest run packages/evidence/src/__tests__/evidence.test.ts` |
 
-### What each relabelled test checks today
+### What each relabelled test checks
 
 - **EXP-01:** the test renders the solver's own 18 stars at 960 x 540 through its own WCS, and the solver matches triplets, not quads; a calibration needs 4 training and 6 held-out matches, so 8 sources can never calibrate. Nothing is solved against Gaia DR3 or Hipparcos on a 1920 x 1080 consumer frame.
 - **EXP-02:** the frames get Gaussian read noise only (`services/science/detector.py`); there is no Poisson shot noise.
