@@ -25,6 +25,7 @@ import {
   CoalescingBar,
 } from './CoalescingBar.js';
 import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
+import { VoiceCommandHud } from './VoiceCommandHud.js';
 import '../styles/albedian.css';
 
 export interface SpatialObservatoryViewportProps {
@@ -109,6 +110,10 @@ export const SpatialObservatoryViewport: React.FC<
   discoveredMedia,
   activeDiscoveredId,
   activeDiscoveredItem: propActiveDiscoveredItem,
+  commandText,
+  setCommandText,
+  onRunUtterance,
+  onPushToTalk,
   onTriggerUpload,
 }) => {
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
@@ -486,6 +491,18 @@ export const SpatialObservatoryViewport: React.FC<
             </div>
           </footer>
         </>
+      )}
+
+      {!entryStageActive && (
+        <VoiceCommandHud
+          voiceState={session.machines?.voice ?? 'off'}
+          lastStatusBanner={session.lastStatusBanner ?? null}
+          lastUtterance={session.voiceActions?.at(-1)?.utterance ?? null}
+          commandText={commandText}
+          setCommandText={setCommandText}
+          onRunUtterance={onRunUtterance}
+          onPushToTalk={onPushToTalk}
+        />
       )}
 
       {/* =======================================================================

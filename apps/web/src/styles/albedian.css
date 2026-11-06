@@ -2154,6 +2154,143 @@
 }
 
 /* ============================================================================
+   MOMENT 07 VOICE & TEXT DIRECT MANIPULATION HUD (Siri Edge Glow + Sourced Banner)
+   ============================================================================ */
+.alb-voice-edge-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 28;
+  border: 2.5px solid rgba(138, 180, 216, 0.76);
+  box-shadow:
+    inset 0 0 42px rgba(102, 162, 232, 0.48),
+    inset 0 0 12px rgba(212, 180, 131, 0.34);
+}
+
+.alb-voice-hud {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 28px;
+  width: min(720px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.alb-voice-status-banner {
+  background: rgba(9, 12, 18, 0.9);
+  border: 1px solid rgba(138, 180, 216, 0.42);
+  border-radius: 6px;
+  padding: 14px 16px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alb-voice-utterance {
+  font-family: var(--alb-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8ab4d8;
+}
+
+.alb-voice-status-text {
+  margin: 0;
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #f2f4f8;
+}
+
+.alb-voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(9, 12, 18, 0.88);
+  border: 1px solid rgba(200, 206, 216, 0.24);
+  border-radius: 6px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.alb-voice-ptt-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: rgba(240, 240, 250, 0.08);
+  color: #e4e8ef;
+  border: 1px solid rgba(240, 240, 250, 0.24);
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.alb-voice-ptt-btn.is-listening {
+  background: #8ab4d8;
+  border-color: #8ab4d8;
+  color: #06080d;
+}
+
+.alb-voice-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: #f2f4f8;
+  font-family: var(--alb-font-sans);
+  font-size: 13.5px;
+  outline: none;
+}
+
+.alb-voice-input::placeholder {
+  color: rgba(167, 174, 186, 0.72);
+}
+
+.alb-voice-submit-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: #f0f0fa;
+  color: #06080d;
+  border: 1px solid #f0f0fa;
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.alb-voice-submit-btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .alb-voice-hud {
+    left: 12px;
+    right: 12px;
+    bottom: 16px;
+    width: auto;
+    transform: none;
+  }
+}
+
+/* ============================================================================
    @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
    ============================================================================ */
 .alb-zzzz-optics-drawer {
