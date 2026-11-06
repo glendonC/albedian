@@ -12,7 +12,7 @@
    - `observed`: Measured directly from original pixels (centroid, flux, SNR, frame/time).
    - `catalog_matched`: Associated with an external astronomical catalog (`Gaia DR3`, `HIP`, `JPL`) only after an independently verified WCS calibration and held-out residual check.
    - `predicted`: Computed from ephemeris/catalog + time/location/pose assumptions; never rendered as if recovered from camera pixels.
-   - `simulated`: Catalog-geometry 3D navigation, alternative viewpoints, or historical epoch models; must display explicit disclosure (`Catalog Geometry · Distance Estimates` or `Modeled Sky`).
+   - `simulated`: Catalog-geometry 3D navigation, modeled bodies and scenes, alternative viewpoints, or historical epoch models; must display explicit disclosure that the layer or view is drawn or computed by the app and not measured in the source recording, with each layer naming its own source and limits.
 3. **No Fake Computation or AI Theater:** Never animate fake progress percentages, fake star detections, or decorative agent cursors. Progress indicators must be driven by observable job denominators or show elapsed time in an indeterminate state.
 4. **Voice Is Direct Manipulation:** LLMs translate natural language into schema-validated `AlbedianAction` payloads (`packages/contracts`). Authoritative validators and deterministic domain services execute all scientific and media operations.
 5. **Reversible Navigation:** Leaving the source recording for calibrated sky or 3D space saves an immutable `CameraCheckpoint` (`sourceAssetId`, `sourceTimeSec`, `playbackWasPlaying`, `audioGain`, `mediaVariantId`, `cropTransform`, `selectedFindingId`, `cameraRig`). `Back to Moment` restores that exact state.
