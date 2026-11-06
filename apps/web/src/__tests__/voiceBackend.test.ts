@@ -139,6 +139,21 @@ describe('@albedian/web voice backend: asking', () => {
   it('asks only after a refusal the backend may resolve', () => {
     expect([...BACKEND_MAY_RESOLVE].sort()).toEqual(['ambiguous_target', 'no_grounded_answer']);
   });
+
+  it('refuses an utterance past 2,000 UTF-16 code units before calling fetch', async () => {
+    for (const within of ['a'.repeat(2000), '\u{1F52D}'.repeat(1000)]) {
+      const fetchMock = answering(rejected());
+      expect(await askVoiceBackend(within, base)).toEqual(rejected());
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      vi.unstubAllGlobals();
+    }
+    for (const over of ['a'.repeat(2001), `${'a'.repeat(1999)}\u{1F52D}`]) {
+      const fetchMock = answering(rejected());
+      expect(await askVoiceBackend(over, base)).toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe('@albedian/web voice backend: applying a reply', () => {

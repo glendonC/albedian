@@ -1,5 +1,5 @@
 import type { ActionContext, ActionOutcome, ObservationSession, VoiceCommandResponse } from '@albedian/contracts';
-import { VoiceCommandResponseSchema } from '@albedian/contracts';
+import { VoiceCommandRequestSchema, VoiceCommandResponseSchema } from '@albedian/contracts';
 import { buildActionContext, dispatchAlbedianAction, isPointerFreshAndMatchingRevision } from '@albedian/observation';
 
 /**
@@ -40,18 +40,20 @@ export async function askVoiceBackend(
   try {
     const unpointed = buildActionContext(session);
     const pointer = isPointerFreshAndMatchingRevision(recentPointer, unpointed) ? recentPointer : undefined;
+    const payload = {
+      utterance,
+      context: {
+        ...buildActionContext(session, pointer),
+        observerLat: session.sourceAsset.observerLocation?.latDeg ?? null,
+        observerLon: session.sourceAsset.observerLocation?.lonDeg ?? null,
+        observedAtUTC: session.sourceAsset.capturedAtUTC ?? null,
+      },
+    };
+    if (!VoiceCommandRequestSchema.safeParse(payload).success) return null;
     const res = await fetch('/api/voice/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        utterance,
-        context: {
-          ...buildActionContext(session, pointer),
-          observerLat: session.sourceAsset.observerLocation?.latDeg ?? null,
-          observerLon: session.sourceAsset.observerLocation?.lonDeg ?? null,
-          observedAtUTC: session.sourceAsset.capturedAtUTC ?? null,
-        },
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) return null;
     const reply = VoiceCommandResponseSchema.safeParse(await res.json());

@@ -6,20 +6,25 @@ import {
   AlbedianActionSchema,
   FINDING_ACTION_TYPES,
   RejectedOutcomeSchema,
+  UTTERANCE_MAX_MESSAGE,
+  UTTERANCE_MAX_UTF16,
+  VoiceCommandRequestSchema,
   VoiceCommandResponseSchema,
 } from '../index.js';
 
 /**
- * The voice command reply against the samples the Python mirror wrote (`services/contracts/voice.py`,
+ * The voice command request and reply against the samples the Python mirror wrote (`services/contracts/voice.py`,
  * `tests/fixtures/voice_contract.json`): both sides must accept, refuse and strip exactly the same records.
  */
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/voice_contract.json');
 
-type SchemaName = 'AlbedianAction' | 'VoiceCommandResponse';
+type SchemaName = 'AlbedianAction' | 'VoiceCommandRequest' | 'VoiceCommandResponse';
 
 interface VoiceFixture {
   enums: { replyStatuses: string[]; rejectionReasons: string[]; actionTypes: string[]; findingActionTypes: string[] };
   limits: {
+    utteranceMaxUtf16: number;
+    utteranceMaxMessage: string;
     questionMaxUtf16: number;
     epochIsoMinUtf16: number;
     epochMinYearCE: number;
@@ -37,7 +42,11 @@ const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED)
 const NUM_RUNS = 300;
 
 const fixture = JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as VoiceFixture;
-const SCHEMAS = { AlbedianAction: AlbedianActionSchema, VoiceCommandResponse: VoiceCommandResponseSchema };
+const SCHEMAS = {
+  AlbedianAction: AlbedianActionSchema,
+  VoiceCommandRequest: VoiceCommandRequestSchema,
+  VoiceCommandResponse: VoiceCommandResponseSchema,
+};
 
 type Reply = Record<string, unknown> & { status: string; proposedAction?: Record<string, unknown> };
 const replies = fixture.valid.VoiceCommandResponse as Reply[];
@@ -61,6 +70,20 @@ describe('@albedian/contracts: the voice command reply', () => {
 
   it('holds the limits the Python mirror states', () => {
     const { limits } = fixture;
+    expect(UTTERANCE_MAX_UTF16).toBe(2000);
+    expect(limits.utteranceMaxUtf16).toBe(UTTERANCE_MAX_UTF16);
+    expect(limits.utteranceMaxMessage).toBe(UTTERANCE_MAX_MESSAGE);
+    expect(parses('VoiceCommandRequest', { utterance: 'a'.repeat(limits.utteranceMaxUtf16) })).toBe(true);
+    expect(parses('VoiceCommandRequest', { utterance: '\u{1F52D}'.repeat(limits.utteranceMaxUtf16 / 2) })).toBe(true);
+    const overRequest = VoiceCommandRequestSchema.safeParse({
+      utterance: `zq-marker-ts-${'a'.repeat(limits.utteranceMaxUtf16)}`,
+    });
+    expect(overRequest.success).toBe(false);
+    expect(overRequest.error?.issues.map((issue) => issue.message)).toEqual([UTTERANCE_MAX_MESSAGE]);
+    expect(JSON.stringify(overRequest.error?.issues)).not.toContain('zq-marker-ts');
+    expect(parses('VoiceCommandRequest', { utterance: `${'a'.repeat(limits.utteranceMaxUtf16 - 1)}\u{1F52D}` })).toBe(
+      false
+    );
     const ask = (question: string) => ({ type: 'question.ask', requestId: 'req', expectedViewRevision: 0, question });
     expect(parses('AlbedianAction', ask('a'.repeat(limits.questionMaxUtf16)))).toBe(true);
     expect(parses('AlbedianAction', ask('a'.repeat(limits.questionMaxUtf16 + 1)))).toBe(false);
@@ -170,6 +193,37 @@ describe('@albedian/contracts: the voice command reply', () => {
         (reply, status) => !parses('VoiceCommandResponse', { ...reply, status })
       ),
       { seed: SEED, numRuns: NUM_RUNS, examples: [[replies[0]!, 'completed'], [replies[0]!, 'canceled']] }
+    );
+  });
+
+  it('PBT: VoiceCommandRequest caps utterance at 2,000 UTF-16 code units with a plain message', () => {
+    const chunkArb = fc.constantFrom('a', '9', ' ', '\u00e9', '\u{1F52D}');
+    const countArb = fc.oneof(
+      fc.integer({ min: 0, max: 30 }),
+      fc.integer({ min: 990, max: 2020 })
+    );
+    fc.assert(
+      fc.property(
+        fc.array(chunkArb, { minLength: 1, maxLength: 8 }),
+        countArb,
+        fc.boolean(),
+        fc.boolean(),
+        (chunks, repeatCount, withContext, withProposed) => {
+          const basePattern = chunks.join('');
+          const utterance = `zq-marker-${basePattern.repeat(repeatCount)}`.slice(0, repeatCount);
+          const payload: Record<string, unknown> = { utterance };
+          if (withContext) payload.context = { viewRevision: 3 };
+          if (withProposed) payload.proposedAction = actions[0];
+          const parsed = VoiceCommandRequestSchema.safeParse(payload);
+          const expectedOk = utterance.length <= UTTERANCE_MAX_UTF16;
+          expect(parsed.success).toBe(expectedOk);
+          if (!parsed.success) {
+            expect(parsed.error.issues.map((issue) => issue.message)).toEqual([UTTERANCE_MAX_MESSAGE]);
+            expect(JSON.stringify(parsed.error.issues)).not.toContain('zq-marker');
+          }
+        }
+      ),
+      { seed: SEED, numRuns: NUM_RUNS }
     );
   });
 });

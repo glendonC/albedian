@@ -688,10 +688,31 @@ def test_a_long_run_of_digits_is_read_in_linear_time(utterance: str) -> None:
 
 def test_a_year_too_long_to_read_is_refused_by_the_route_not_a_server_error() -> None:
     client = TestClient(app)
-    response = client.post("/api/voice/command", json={"utterance": TOO_LONG_TO_READ[0], "context": BARE})
+    in_cap = f"show the sky {'9' * 1900} years ago"
+    assert len(in_cap) <= contract.UTTERANCE_MAX_UTF16
+    response = client.post("/api/voice/command", json={"utterance": in_cap, "context": BARE})
     assert response.status_code == 200
     assert (response.json()["status"], response.json()["reason"]) == ("rejected", "invalid_epoch")
     _fits_the_contract(response.json())
+
+
+def test_an_utterance_past_2000_characters_is_refused_by_the_route_with_a_plain_message() -> None:
+    client = TestClient(app)
+    for within in ("a" * contract.UTTERANCE_MAX_UTF16, "\U0001f52d" * (contract.UTTERANCE_MAX_UTF16 // 2)):
+        ok = client.post("/api/voice/command", json={"utterance": within, "context": BARE})
+        assert ok.status_code == 200
+        _fits_the_contract(ok.json())
+
+    for over in (
+        f"zq-marker-route-{'a' * contract.UTTERANCE_MAX_UTF16}",
+        "a" * (contract.UTTERANCE_MAX_UTF16 - 1) + "\U0001f52d",
+        TOO_LONG_TO_READ[0],
+    ):
+        refused = client.post("/api/voice/command", json={"utterance": over, "context": BARE})
+        assert refused.status_code == 422
+        assert contract.UTTERANCE_MAX_MESSAGE in refused.text
+        assert "zq-marker-route" not in refused.text
+        assert "9" * 100 not in refused.text
 
 
 @pytest.mark.parametrize(

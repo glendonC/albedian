@@ -36,7 +36,11 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "tests" / "fixtures" / "voice_contract.json"
 CLAUDE_ACTIONS = ROOT / "tests" / "fixtures" / "python_voice_actions.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_VOICE_FIXTURE"
-ADAPTERS = {"AlbedianAction": voice.ALBEDIAN_ACTION, "VoiceCommandResponse": voice.VOICE_COMMAND_RESPONSE}
+ADAPTERS = {
+    "AlbedianAction": voice.ALBEDIAN_ACTION,
+    "VoiceCommandRequest": voice.VOICE_COMMAND_REQUEST,
+    "VoiceCommandResponse": voice.VOICE_COMMAND_RESPONSE,
+}
 
 # ECMAScript's WhiteSpace and LineTerminator code points, written out from the spec rather than taken from
 # the module under test: TAB, VT, FF, ZWNBSP, the Zs category, LF, CR, LS and PS
@@ -204,6 +208,49 @@ def test_pbt_a_question_counts_utf16_units_and_javascript_spaces(question: str) 
     assert accepted == expected
 
 
+MARKER = "zq-marker-7f3"
+
+
+@settings(max_examples=300, deadline=None)
+@given(
+    utterance=st.one_of(
+        st.text(QUESTION_CHARS, max_size=20),
+        st.builds(
+            lambda prefix, tail: f"{MARKER}-{prefix}{tail}",
+            st.text(alphabet="a9 \u00e9\U0001f52d", min_size=980, max_size=1010),
+            st.text(alphabet="a\U0001f52d", min_size=980, max_size=1020),
+        ),
+    ),
+    with_context=st.booleans(),
+    with_proposed=st.booleans(),
+)
+@example(utterance="", with_context=False, with_proposed=False)
+@example(utterance="a" * 2000, with_context=True, with_proposed=False)
+@example(utterance=f"{MARKER}-" + "a" * 2000, with_context=True, with_proposed=True)
+@example(utterance="\U0001f52d" * 1000, with_context=False, with_proposed=False)  # 1,000 code points, 2,000 UTF-16 units
+@example(utterance="a" * 1999 + "\U0001f52d", with_context=False, with_proposed=False)  # 2,000 code points, 2,001 UTF-16 units
+def test_pbt_an_utterance_counts_utf16_units_and_refuses_above_2000_with_a_plain_message(
+    utterance: str, with_context: bool, with_proposed: bool
+) -> None:
+    payload: dict[str, Any] = {"utterance": utterance}
+    if with_context:
+        payload["context"] = {"viewRevision": 3}
+    if with_proposed:
+        payload["proposedAction"] = {"type": "source.return", "requestId": "req", "expectedViewRevision": 3, "restoreAudio": True}
+    expected = _utf16_units(utterance) <= voice.UTTERANCE_MAX_UTF16
+    try:
+        parsed = _round_trip("VoiceCommandRequest", payload)
+        accepted = True
+    except ValidationError as exc:
+        accepted = False
+        messages = [err["msg"] for err in exc.errors()]
+        assert all(voice.UTTERANCE_MAX_MESSAGE in msg for msg in messages)
+        assert all(MARKER not in msg for msg in messages)
+    assert accepted == expected
+    if accepted:
+        assert parsed == payload
+
+
 STATE_VERSION_VALUES = st.one_of(st.integers(), st.floats(allow_nan=False), st.text(), st.none(), st.booleans())
 
 
@@ -254,7 +301,6 @@ def test_pbt_an_integral_float_is_an_integer_and_a_fraction_never_is(year: int, 
         voice.ALBEDIAN_ACTION.validate_python({**epoch, "expectedViewRevision": revision + fraction})
 
 
-MARKER = "zq-marker-7f3"
 MARKED_VALUES = st.one_of(
     st.just(MARKER),
     st.just(""),

@@ -38,6 +38,8 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
+UTTERANCE_MAX_UTF16 = 2000
+UTTERANCE_MAX_MESSAGE = "Utterance must be at most 2,000 characters."
 QUESTION_MAX_UTF16 = 500
 EPOCH_ISO_MIN_UTF16 = 4
 EPOCH_MIN_YEAR_CE = -10000
@@ -56,6 +58,13 @@ JAVASCRIPT_SPACES = frozenset(
 def utf16_length(text: str) -> int:
     """A string's length as JavaScript counts it: UTF-16 code units, two for a character beyond U+FFFF."""
     return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def check_utterance_length(text: str) -> str:
+    """Refuse an utterance past UTTERANCE_MAX_UTF16 UTF-16 code units with a plain message."""
+    if utf16_length(text) > UTTERANCE_MAX_UTF16:
+        raise ValueError(UTTERANCE_MAX_MESSAGE)
+    return text
 
 
 def _units(minimum: int, maximum: int | None = None) -> AfterValidator:
@@ -377,6 +386,15 @@ class RejectedVoiceReply(_Strict):
         return self
 
 
+class VoiceCommandRequest(_Model):
+    """What `POST /api/voice/command` receives: an utterance capped at 2,000 UTF-16 code units, an optional
+    context object, and an optional client-formed proposedAction object for the backend to check."""
+
+    utterance: Annotated[str, AfterValidator(check_utterance_length)]
+    context: Optional[dict[str, Any]] = None
+    proposed_action: Optional[dict[str, Any]] = None
+
+
 REPLY_MODELS = (ProposedVoiceReply, NeedsInputVoiceReply, RejectedVoiceReply)
 VoiceCommandResponse = Annotated[
     Union[ProposedVoiceReply, NeedsInputVoiceReply, RejectedVoiceReply], Field(discriminator="status")
@@ -385,6 +403,7 @@ REPLY_STATUSES: tuple[str, ...] = tuple(get_args(model.model_fields["status"].an
 REJECTION_REASONS: tuple[str, ...] = get_args(RejectedVoiceReply.model_fields["reason"].annotation)
 
 ALBEDIAN_ACTION: TypeAdapter[Any] = TypeAdapter(AlbedianAction)
+VOICE_COMMAND_REQUEST: TypeAdapter[Any] = TypeAdapter(VoiceCommandRequest)
 VOICE_COMMAND_RESPONSE: TypeAdapter[Any] = TypeAdapter(VoiceCommandResponse)
 
 
@@ -532,12 +551,31 @@ def build_voice_samples() -> dict[str, Any]:
         *rejections,
     ]
 
+    requests = [
+        {"utterance": "take me to Vega"},
+        {"utterance": ""},
+        {"utterance": "a" * UTTERANCE_MAX_UTF16, "context": {"viewRevision": 3}},
+        # 1,000 astral characters = 2,000 UTF-16 code units
+        {"utterance": "\U0001f52d" * (UTTERANCE_MAX_UTF16 // 2), "proposedAction": select},
+        {"utterance": "do it", "context": {"viewRevision": 3}, "proposedAction": {"type": "media.delete"}},
+    ]
+
     invalid: list[dict[str, Any]] = []
 
     def bad(schema: str, sample: Any, reason: str) -> None:
         invalid.append({"schema": schema, "sample": sample, "reason": reason})
 
-    action, reply = "AlbedianAction", "VoiceCommandResponse"
+    action, request, reply = "AlbedianAction", "VoiceCommandRequest", "VoiceCommandResponse"
+    bad(request, {"utterance": "a" * (UTTERANCE_MAX_UTF16 + 1)}, "2,001 characters")
+    bad(request, {"utterance": "a" * (UTTERANCE_MAX_UTF16 - 1) + "\U0001f52d"},
+        "2,000 characters but 2,001 UTF-16 code units")
+    bad(request, {}, "no utterance")
+    bad(request, {"utterance": None}, "a null utterance")
+    bad(request, {"utterance": 42}, "an utterance as a number")
+    bad(request, {"utterance": "ok", "context": None}, "an optional context is absent, never null")
+    bad(request, {"utterance": "ok", "context": ["not", "an", "object"]}, "a context is an object")
+    bad(request, {"utterance": "ok", "proposedAction": None}, "an optional proposedAction is absent, never null")
+    bad(request, {"utterance": "ok", "proposedAction": "finding.select"}, "a proposedAction is an object")
     bad(action, _with(restore, ["constraints", "allowSyntheticSky"], True), "a restoration never allows a synthetic sky")
     bad(action, _with(restore, ["constraints", "allowSyntheticSky"], 0), "0 is not false")
     bad(action, _with(restore, ["profile"], "dramatic"), "an unknown profile")
@@ -629,6 +667,7 @@ def build_voice_samples() -> dict[str, Any]:
     stripped = [
         {"schema": action, "sample": {**select, "colour": "blue", "note": None}, "parsed": select},
         {"schema": action, "sample": _with(restore, ["constraints", "brightness"], 2), "parsed": restore},
+        {"schema": request, "sample": {"utterance": "stop", "extraKey": True}, "parsed": {"utterance": "stop"}},
         {
             "schema": reply,
             "sample": proposed({**select, "extra": True}, interpretation={**rules, "confidence": 0.9}),
@@ -644,6 +683,8 @@ def build_voice_samples() -> dict[str, Any]:
             "findingActionTypes": list(FINDING_ACTION_TYPES),
         },
         "limits": {
+            "utteranceMaxUtf16": UTTERANCE_MAX_UTF16,
+            "utteranceMaxMessage": UTTERANCE_MAX_MESSAGE,
             "questionMaxUtf16": QUESTION_MAX_UTF16,
             "epochIsoMinUtf16": EPOCH_ISO_MIN_UTF16,
             "epochMinYearCE": EPOCH_MIN_YEAR_CE,
@@ -651,7 +692,7 @@ def build_voice_samples() -> dict[str, Any]:
             "fractionMin": FRACTION_MIN,
             "fractionMax": FRACTION_MAX,
         },
-        "valid": {"AlbedianAction": actions, "VoiceCommandResponse": replies},
+        "valid": {"AlbedianAction": actions, "VoiceCommandRequest": requests, "VoiceCommandResponse": replies},
         "invalid": invalid,
         "stripped": stripped,
     }

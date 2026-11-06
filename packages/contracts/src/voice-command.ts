@@ -7,7 +7,11 @@ import {
 } from './spatial-and-voice.js';
 
 /**
- * What `POST /api/voice/command` answers (services/voice/router.py; Python mirror services/contracts/voice.py).
+ * What `POST /api/voice/command` receives and answers (services/voice/router.py; Python mirror
+ * services/contracts/voice.py).
+ *
+ * The request carries `utterance` (capped at 2,000 UTF-16 code units with a plain message), an optional
+ * `context` object, and an optional client-formed `proposedAction` object for the backend to check.
  *
  * The backend holds no session and applies nothing. An action that passes its checks comes back `proposed`,
  * with no state version, for the reducer to apply; the reducer reports the outcome. A request that forms
@@ -17,6 +21,16 @@ import {
  * words into the action, and is absent when the client sent its own action. Every reply is strict, so a
  * state version or any other unknown key is refused, not stripped.
  */
+
+export const UTTERANCE_MAX_UTF16 = 2000;
+export const UTTERANCE_MAX_MESSAGE = 'Utterance must be at most 2,000 characters.';
+
+export const VoiceCommandRequestSchema = z.object({
+  utterance: z.string().max(UTTERANCE_MAX_UTF16, UTTERANCE_MAX_MESSAGE),
+  context: z.record(z.unknown()).optional(),
+  proposedAction: z.record(z.unknown()).optional(),
+});
+export type VoiceCommandRequest = z.infer<typeof VoiceCommandRequestSchema>;
 
 /** The action types whose proposed reply may describe the finding it targets. */
 export const FINDING_ACTION_TYPES = ['finding.select', 'finding.describe', 'space.enter'] as const;

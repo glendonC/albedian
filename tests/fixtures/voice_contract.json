@@ -43,6 +43,8 @@
     ]
   },
   "limits": {
+    "utteranceMaxUtf16": 2000,
+    "utteranceMaxMessage": "Utterance must be at most 2,000 characters.",
     "questionMaxUtf16": 500,
     "epochIsoMinUtf16": 4,
     "epochMinYearCE": -10000,
@@ -265,6 +267,38 @@
         "requestId": "req-sample-1",
         "expectedViewRevision": 3,
         "question": "\u001c"
+      }
+    ],
+    "VoiceCommandRequest": [
+      {
+        "utterance": "take me to Vega"
+      },
+      {
+        "utterance": ""
+      },
+      {
+        "utterance": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "context": {
+          "viewRevision": 3
+        }
+      },
+      {
+        "utterance": "\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d",
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega"
+        }
+      },
+      {
+        "utterance": "do it",
+        "context": {
+          "viewRevision": 3
+        },
+        "proposedAction": {
+          "type": "media.delete"
+        }
       }
     ],
     "VoiceCommandResponse": [
@@ -502,6 +536,75 @@
     ]
   },
   "invalid": [
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "reason": "2,001 characters"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83d\udd2d"
+      },
+      "reason": "2,000 characters but 2,001 UTF-16 code units"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {},
+      "reason": "no utterance"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": null
+      },
+      "reason": "a null utterance"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": 42
+      },
+      "reason": "an utterance as a number"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "ok",
+        "context": null
+      },
+      "reason": "an optional context is absent, never null"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "ok",
+        "context": [
+          "not",
+          "an",
+          "object"
+        ]
+      },
+      "reason": "a context is an object"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "ok",
+        "proposedAction": null
+      },
+      "reason": "an optional proposedAction is absent, never null"
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "ok",
+        "proposedAction": "finding.select"
+      },
+      "reason": "a proposedAction is an object"
+    },
     {
       "schema": "AlbedianAction",
       "sample": {
@@ -1785,6 +1888,16 @@
           "allowSyntheticSky": false,
           "protectStars": true
         }
+      }
+    },
+    {
+      "schema": "VoiceCommandRequest",
+      "sample": {
+        "utterance": "stop",
+        "extraKey": true
+      },
+      "parsed": {
+        "utterance": "stop"
       }
     },
     {
