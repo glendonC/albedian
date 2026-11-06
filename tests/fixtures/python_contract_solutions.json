@@ -541,6 +541,309 @@
       "fovVerticalDeg": 32.52929988358449
     }
   },
+  "plate_calibrated_timeless": {
+    "id": "sol-primary-timeless",
+    "sourceAssetId": "synthetic-9782da890647",
+    "sourceSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "calibrated",
+    "solver": {
+      "name": "AlbedianTriangleSolver",
+      "version": "1.0.0",
+      "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+    },
+    "quality": {
+      "detectedCandidateCount": 12,
+      "matchedInlierCount": 11,
+      "heldOutPairCount": 7,
+      "heldOutInliers": 7,
+      "passedIndependentVerification": true,
+      "medianResidualPx": 0.11587721002381521,
+      "p95ResidualPx": 0.17208332897344245,
+      "medianResidualArcsec": 25.82685551751783
+    },
+    "findings": [
+      {
+        "id": "finding-star-rigel",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Rigel",
+        "subtitle": "Beta Orionis · B8 Ia · 264.6 pc [242.7–290.7 pc]",
+        "skyPosition": {
+          "raDeg": 78.634467,
+          "decDeg": -8.201638,
+          "uncertaintyArcsec": 13.050233353953237
+        },
+        "evidence": {
+          "id": "ev-finding-star-rigel",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+          "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-rigel",
+          "angularResidualArcsec": 13.050233353953237,
+          "pixelResidualPx": 0.0585524099203686,
+          "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+          "limitations": [
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-9782da890647",
+          "frameTimeSec": 0.0,
+          "xPx": 586.3999745804418,
+          "yPx": 496.192205050709,
+          "flux": 1559.5250955064007,
+          "snr": 217.83736321927773,
+          "fwhmPx": 2.4316650204469092,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-rigel",
+          "provider": "Hipparcos",
+          "releaseVersion": "Hipparcos 2007",
+          "catalogSourceId": "HIP 24436",
+          "commonName": "Rigel",
+          "bayerDesignation": "Beta Orionis",
+          "constellation": "Orion",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 78.634467,
+          "decDeg": -8.201638,
+          "apparentMagnitude": 0.13,
+          "colorIndexBpRp": -0.03,
+          "spectralType": "B8 Ia",
+          "properMotionRaMasYr": 1.31,
+          "properMotionDecMasYr": 0.5,
+          "radialVelocityKmS": 17.8,
+          "bailerJonesDistancePc": {
+            "lower": 242.71844660194174,
+            "median": 264.55026455026456,
+            "upper": 290.69767441860466,
+            "method": "geometric_parallax"
+          },
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 3.78,
+          "parallaxErrorMas": 0.34
+        },
+        "inferredDistancePc": {
+          "lower": 242.71844660194174,
+          "median": 264.55026455026456,
+          "upper": 290.69767441860466,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          51.60106686984617,
+          256.70968851076134,
+          -37.740007898999316
+        ]
+      },
+      {
+        "id": "finding-star-betelgeuse",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Betelgeuse",
+        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 152.7 pc [135.5–174.8 pc]",
+        "skyPosition": {
+          "raDeg": 88.792939,
+          "decDeg": 7.407064,
+          "uncertaintyArcsec": 29.15969756247523
+        },
+        "evidence": {
+          "id": "ev-finding-star-betelgeuse",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+          "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-betelgeuse",
+          "angularResidualArcsec": 29.15969756247523,
+          "pixelResidualPx": 0.1308306540215864,
+          "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+          "limitations": [
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+          ],
+          "verifiedByIndependentHoldout": true
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-9782da890647",
+          "frameTimeSec": 0.0,
+          "xPx": 401.63469878954527,
+          "yPx": 252.99501063221894,
+          "flux": 1426.2537312688178,
+          "snr": 202.35930030190187,
+          "fwhmPx": 2.431692600529923,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-betelgeuse",
+          "provider": "Hipparcos",
+          "releaseVersion": "Hipparcos 2007",
+          "catalogSourceId": "HIP 27989",
+          "commonName": "Betelgeuse",
+          "bayerDesignation": "Alpha Orionis",
+          "constellation": "Orion",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 88.792939,
+          "decDeg": 7.407064,
+          "apparentMagnitude": 0.42,
+          "colorIndexBpRp": 2.05,
+          "spectralType": "M1-M2 Ia-ab",
+          "properMotionRaMasYr": 27.54,
+          "properMotionDecMasYr": 11.3,
+          "radialVelocityKmS": 21.91,
+          "bailerJonesDistancePc": {
+            "lower": 135.50135501355012,
+            "median": 152.67175572519085,
+            "upper": 174.82517482517483,
+            "method": "geometric_parallax"
+          },
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 6.55,
+          "parallaxErrorMas": 0.83
+        },
+        "inferredDistancePc": {
+          "lower": 135.50135501355012,
+          "median": 152.67175572519085,
+          "upper": 174.82517482517483,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          3.189289086275172,
+          151.36415608441035,
+          19.68211584639134
+        ]
+      },
+      {
+        "id": "finding-star-aldebaran",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "catalog_matched",
+        "title": "Aldebaran",
+        "subtitle": "Alpha Tauri · K5+ III · 20.4 pc [20.1–20.8 pc]",
+        "skyPosition": {
+          "raDeg": 68.980163,
+          "decDeg": 16.509302,
+          "uncertaintyArcsec": 5.4693991636297925
+        },
+        "evidence": {
+          "id": "ev-finding-star-aldebaran",
+          "evidenceClass": "catalog_matched",
+          "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+          "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+          "wcsSolutionId": "sol-primary",
+          "catalogReferenceId": "star-aldebaran",
+          "angularResidualArcsec": 5.4693991636297925,
+          "pixelResidualPx": 0.024539523023162053,
+          "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+          "limitations": [
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-9782da890647",
+          "frameTimeSec": 0.0,
+          "xPx": 705.8147634399265,
+          "yPx": 71.73707307698696,
+          "flux": 1228.0515118801814,
+          "snr": 175.55144716468962,
+          "fwhmPx": 2.440765196865329,
+          "centroidUncertaintyPx": 0.03
+        },
+        "catalogRef": {
+          "id": "star-aldebaran",
+          "provider": "Hipparcos",
+          "releaseVersion": "Hipparcos 2007",
+          "catalogSourceId": "HIP 21421",
+          "commonName": "Aldebaran",
+          "bayerDesignation": "Alpha Tauri",
+          "constellation": "Taurus",
+          "objectType": "star",
+          "coordinateEpoch": "J2000.0",
+          "raDeg": 68.980163,
+          "decDeg": 16.509302,
+          "apparentMagnitude": 0.86,
+          "colorIndexBpRp": 1.54,
+          "spectralType": "K5+ III",
+          "properMotionRaMasYr": 63.45,
+          "properMotionDecMasYr": -188.94,
+          "radialVelocityKmS": 54.26,
+          "bailerJonesDistancePc": {
+            "lower": 20.11667672500503,
+            "median": 20.43318348998774,
+            "upper": 20.759809009757113,
+            "method": "geometric_parallax"
+          },
+          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+          "parallaxMas": 48.94,
+          "parallaxErrorMas": 0.77
+        },
+        "inferredDistancePc": {
+          "lower": 20.11667672500503,
+          "median": 20.43318348998774,
+          "upper": 20.759809009757113,
+          "method": "geometric_parallax"
+        },
+        "cartesianParsecICRS": [
+          7.027045618939282,
+          18.287152938002276,
+          5.8065183050575735
+        ]
+      },
+      {
+        "id": "finding-obs-12",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #12",
+        "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+        "skyPosition": {
+          "raDeg": 75.46722171042907,
+          "decDeg": 15.738000097027232,
+          "uncertaintyArcsec": 98.24327365094196
+        },
+        "evidence": {
+          "id": "ev-finding-obs-12",
+          "evidenceClass": "observed",
+          "verificationMethod": "Measured in the image's pixels",
+          "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-9782da890647",
+          "frameTimeSec": 0.0,
+          "xPx": 602.084011134508,
+          "yPx": 98.81346119185388,
+          "flux": 21.201707755833688,
+          "snr": 5.533123386517967,
+          "fwhmPx": 2.3531466262708625,
+          "centroidUncertaintyPx": 0.4252835987725396
+        }
+      }
+    ],
+    "warnings": [
+      "1 sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
+    ],
+    "wcs": {
+      "projection": "TAN",
+      "crvalRaDeg": 84.00062398801474,
+      "crvalDecDeg": 6.000266124716505,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.06191145378085482,
+      "rotationDeg": 4.49792204944997,
+      "radialDistortionK1": -0.07383922135184579,
+      "radialDistortionK2": 0.23999999999998664,
+      "parity": -1,
+      "fovHorizontalDeg": 54.82866626746391,
+      "fovVerticalDeg": 32.52929988358449
+    }
+  },
   "horizon_approximate": {
     "id": "sol-horizon-beacon",
     "sourceAssetId": "synthetic-d46cb7a0ae83",

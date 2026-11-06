@@ -6,6 +6,8 @@ import {
   CelestialFindingSchema,
   EvidenceClass,
   ObservationSolutionSchema,
+  SolutionStatus,
+  SpatialViewStateSchema,
   hasVerifiedWcs,
 } from '../index.js';
 
@@ -37,10 +39,11 @@ function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof
 }
 
 function solution(parts: { wcs: boolean; passed: boolean; findings: unknown[] }) {
-  // observedAtUTC is a synthetic moment that points at nobody
+  // observedAtUTC and observerLocation are a synthetic moment and open-ocean place that point at nobody
   return {
     id: 'sol_01', sourceAssetId: 'src_01', sourceSha256: SHA, frameTimeSec: 0, revision: 1,
     status: parts.wcs && parts.passed ? 'calibrated' : 'unresolved', observedAtUTC: '2030-01-01T02:00:00Z',
+    observerLocation: { latDeg: 30.0, lonDeg: -40.0 },
     solver: { name: 'test', version: '1', catalogRelease: 'test' },
     ...(parts.wcs ? { wcs: WCS } : {}),
     // Eight held-out detections paired with the catalog and measured; inliers only when the fit passed
@@ -160,6 +163,14 @@ describe('@albedian/contracts: Python contract parity', () => {
     expect(unplaced.length).toBeGreaterThan(0);
     expect(unplaced.every((f) => f.skyPosition === undefined && f.sourceDetection !== undefined)).toBe(true);
   });
+
+  it('parses the Python plate_calibrated_timeless solution with no capture time or observer location', () => {
+    const timeless = ObservationSolutionSchema.parse(samples['plate_calibrated_timeless']);
+    expect(timeless.status).toBe('calibrated');
+    expect(timeless.observedAtUTC).toBeUndefined();
+    expect(timeless.observerLocation).toBeUndefined();
+    expect(hasVerifiedWcs(timeless)).toBe(true);
+  });
 });
 
 describe('@albedian/contracts: solution quality residuals', () => {
@@ -265,5 +276,184 @@ describe('@albedian/contracts: the hashes a solution and its evidence name', () 
     expect(issuePaths(ObservationSolutionSchema.safeParse({ ...pending, status: 'unresolved' }))).toContain('sourceSha256');
     const withFinding = { ...pending, findings: [finding('obs', 'observed', { detection: true })] };
     expect(issuePaths(ObservationSolutionSchema.safeParse(withFinding))).toContain('sourceSha256');
+  });
+});
+
+describe('@albedian/contracts: solution and spatial view time and place', () => {
+  // Synthetic moment and open-ocean coordinates that point at nobody
+  const TIME = '2030-01-01T02:00:00Z';
+  const PLACE = { latDeg: 30.0, lonDeg: -40.0 };
+  const samples = JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as Record<string, unknown>;
+
+  function buildSolution(opts: {
+    status: SolutionStatus;
+    observedAtUTC?: string | null;
+    observerLocation?: typeof PLACE | null;
+    findings?: unknown[];
+  }) {
+    const verified = opts.status === 'calibrated';
+    const base = solution({ wcs: verified, passed: verified, findings: opts.findings ?? [] });
+    const { observedAtUTC: _droppedTime, observerLocation: _droppedPlace, ...withoutTimeAndPlace } = base;
+    return {
+      ...withoutTimeAndPlace,
+      status: opts.status,
+      ...(opts.observedAtUTC !== undefined ? { observedAtUTC: opts.observedAtUTC } : {}),
+      ...(opts.observerLocation !== undefined ? { observerLocation: opts.observerLocation } : {}),
+    };
+  }
+
+  it('accepts a calibrated, unresolved, ambiguous or pending solution without a capture time or observer location', () => {
+    for (const status of ['pending', 'calibrated', 'unresolved', 'ambiguous'] as const) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status })))).toEqual([]);
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status, observedAtUTC: TIME })))).toEqual([]);
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status, observerLocation: PLACE })))).toEqual([]);
+    }
+    const timeless = ObservationSolutionSchema.parse(samples['plate_calibrated_timeless']);
+    expect(timeless.status).toBe('calibrated');
+    expect(timeless.observedAtUTC).toBeUndefined();
+    expect(timeless.observerLocation).toBeUndefined();
+  });
+
+  it('rejects observedAtUTC or observerLocation sent as null: unknown time and place are left out, never null', () => {
+    expect(ObservationSolutionSchema.safeParse(buildSolution({ status: 'calibrated', observedAtUTC: null })).success).toBe(false);
+    expect(ObservationSolutionSchema.safeParse(buildSolution({ status: 'calibrated', observerLocation: null })).success).toBe(false);
+  });
+
+  it('requires both observedAtUTC and observerLocation for approximate and predicted_only solutions', () => {
+    for (const status of ['approximate', 'predicted_only'] as const) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status })))).toEqual([
+        'observedAtUTC',
+        'observerLocation',
+      ]);
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status, observedAtUTC: TIME })))).toEqual([
+        'observerLocation',
+      ]);
+      expect(issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status, observerLocation: PLACE })))).toEqual([
+        'observedAtUTC',
+      ]);
+      expect(
+        issuePaths(
+          ObservationSolutionSchema.safeParse(buildSolution({ status, observedAtUTC: TIME, observerLocation: PLACE }))
+        )
+      ).toEqual([]);
+    }
+  });
+
+  it('requires both observedAtUTC and observerLocation whenever a solution carries a predicted finding, whatever its status', () => {
+    const predictedFinding = finding('moon', 'predicted', { sky: SKY });
+    for (const status of ['calibrated', 'unresolved', 'ambiguous', 'pending'] as const) {
+      expect(
+        issuePaths(ObservationSolutionSchema.safeParse(buildSolution({ status, findings: [predictedFinding] })))
+      ).toEqual(['observedAtUTC', 'observerLocation']);
+      expect(
+        issuePaths(
+          ObservationSolutionSchema.safeParse(
+            buildSolution({ status, observedAtUTC: TIME, findings: [predictedFinding] })
+          )
+        )
+      ).toEqual(['observerLocation']);
+      expect(
+        issuePaths(
+          ObservationSolutionSchema.safeParse(
+            buildSolution({ status, observerLocation: PLACE, findings: [predictedFinding] })
+          )
+        )
+      ).toEqual(['observedAtUTC']);
+      expect(
+        issuePaths(
+          ObservationSolutionSchema.safeParse(
+            buildSolution({ status, observedAtUTC: TIME, observerLocation: PLACE, findings: [predictedFinding] })
+          )
+        )
+      ).toEqual([]);
+    }
+  });
+
+  it('PBT-TIME-1: solution status and predicted findings govern when observedAtUTC and observerLocation are required', () => {
+    const specArb = fc.record({
+      status: fc.constantFrom<SolutionStatus>(
+        'pending',
+        'calibrated',
+        'approximate',
+        'predicted_only',
+        'unresolved',
+        'ambiguous'
+      ),
+      hasTime: fc.boolean(),
+      hasPlace: fc.boolean(),
+      hasPredictedFinding: fc.boolean(),
+    });
+
+    for (let seed = 1; seed <= 20; seed += 1) {
+      fc.assert(
+        fc.property(specArb, (spec) => {
+          const verified = spec.status === 'calibrated';
+          const findings = [
+            finding('f0', verified ? 'catalog_matched' : 'observed', verified ? { sky: SKY } : { detection: true }),
+            ...(spec.hasPredictedFinding ? [finding('f1', 'predicted', { sky: SKY })] : []),
+          ];
+          const candidate = buildSolution({
+            status: spec.status,
+            ...(spec.hasTime ? { observedAtUTC: TIME } : {}),
+            ...(spec.hasPlace ? { observerLocation: PLACE } : {}),
+            findings,
+          });
+          const needsTimeAndPlace =
+            spec.status === 'approximate' || spec.status === 'predicted_only' || spec.hasPredictedFinding;
+          const expectedValid = !needsTimeAndPlace || (spec.hasTime && spec.hasPlace);
+          const parsed = ObservationSolutionSchema.safeParse(candidate);
+          expect(parsed.success).toBe(expectedValid);
+          if (!parsed.success) {
+            const paths = issuePaths(parsed);
+            if (!spec.hasTime) expect(paths).toContain('observedAtUTC');
+            if (!spec.hasPlace) expect(paths).toContain('observerLocation');
+          }
+        }),
+        {
+          seed,
+          numRuns: 40,
+          examples: [
+            [{ status: 'calibrated', hasTime: false, hasPlace: false, hasPredictedFinding: false }],
+            [{ status: 'approximate', hasTime: true, hasPlace: false, hasPredictedFinding: false }],
+            [{ status: 'predicted_only', hasTime: false, hasPlace: true, hasPredictedFinding: false }],
+            [{ status: 'calibrated', hasTime: false, hasPlace: true, hasPredictedFinding: true }],
+            [{ status: 'unresolved', hasTime: true, hasPlace: false, hasPredictedFinding: true }],
+          ],
+        }
+      );
+    }
+  });
+
+  it('lets SpatialViewState omit observationEpochISO when the capture time is unknown while still requiring simulationEpochISO', () => {
+    const baseView = {
+      mode: 'source_2d' as const,
+      transitionPhase: 'at_source' as const,
+      transitionProgress: 0,
+      observerOriginParsec: [0, 0, 0] as [number, number, number],
+      cameraQuaternion: [0, 0, 0, 1] as [number, number, number, number],
+      fovVerticalDeg: 60,
+      frustumShiftNdc: [0, 0] as [number, number],
+      simulationEpochISO: TIME,
+      sceneScalePolicy: 'physical_euclidean' as const,
+      activeOverlays: {
+        observedMarkers: false,
+        catalogMatchedLabels: false,
+        predictedEphemerides: false,
+        constellationLines: false,
+        earthDirectionVector: false,
+        residualVectors: false,
+        sightlineCone: false,
+      },
+    };
+    const withoutObsEpoch = SpatialViewStateSchema.parse(baseView);
+    expect(withoutObsEpoch.observationEpochISO).toBeUndefined();
+    expect(withoutObsEpoch.simulationEpochISO).toBe(TIME);
+
+    const withObsEpoch = SpatialViewStateSchema.parse({ ...baseView, observationEpochISO: TIME });
+    expect(withObsEpoch.observationEpochISO).toBe(TIME);
+
+    expect(SpatialViewStateSchema.safeParse({ ...baseView, observationEpochISO: null }).success).toBe(false);
+    const { simulationEpochISO: _dropped, ...withoutSimEpoch } = baseView;
+    expect(SpatialViewStateSchema.safeParse(withoutSimEpoch).success).toBe(false);
   });
 });

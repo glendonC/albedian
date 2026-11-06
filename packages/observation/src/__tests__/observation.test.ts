@@ -117,7 +117,11 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     // Nothing solved yet, so no recording is named (the placeholder asset's own hash goes with integrity-4d)
     expect(parsed.observationSolution.sourceSha256).toBeUndefined();
     expect(parsed.observationSolution.quality.heldOutPairCount).toBe(0);
-    expect(parsed.observationSolution.observedAtUTC).toBe(createdAtISO);
+    expect(parsed.observationSolution.observedAtUTC).toBeUndefined();
+    expect(parsed.spatialView.observationEpochISO).toBeUndefined();
+    expect(parsed.spatialView.simulationEpochISO).toBe(createdAtISO);
+    expect(parsed.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBeUndefined();
+    expect(parsed.navigationHistory.anchorMomentCheckpoint.spatialView.simulationEpochISO).toBe(createdAtISO);
   });
 
   it('re-anchors the empty session to an imported asset without inventing location or findings', () => {
@@ -134,9 +138,14 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(session.machines.calibration).toBe('not_requested');
     expect(session.observationSolution.sourceAssetId).toBe('src_upload_1');
     expect(session.observationSolution.sourceSha256).toBe(asset.sha256);
+    expect(session.observationSolution.observedAtUTC).toBeUndefined();
     expect(session.observationSolution.observerLocation).toBeUndefined();
     expect(session.observationSolution.findings).toHaveLength(0);
+    expect(session.spatialView.observationEpochISO).toBeUndefined();
+    expect(session.spatialView.simulationEpochISO).toBe(createdAtISO);
     expect(session.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe('src_upload_1');
+    expect(session.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBeUndefined();
+    expect(session.navigationHistory.anchorMomentCheckpoint.spatialView.simulationEpochISO).toBe(createdAtISO);
 
     // A synthetic capture time; the place is the public Lake Tekapo dark-sky reserve
     const located = createSessionForSourceAsset(
@@ -154,7 +163,9 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     );
     expect(located.observationSolution.observerLocation).toEqual({ latDeg: -43.99, lonDeg: 170.46, placeName: undefined });
     expect(located.observationSolution.observedAtUTC).toBe('2030-11-01T22:32:00Z');
+    expect(located.spatialView.observationEpochISO).toBe('2030-11-01T22:32:00Z');
     expect(located.spatialView.simulationEpochISO).toBe('2030-11-01T22:32:00Z');
+    expect(located.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBe('2030-11-01T22:32:00Z');
   });
 
   it('leaves the empty session still and a clip nothing has probed without a frame rate', () => {

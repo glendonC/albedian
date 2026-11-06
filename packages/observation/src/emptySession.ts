@@ -24,8 +24,9 @@ const EMPTY_SHA256 = '0'.repeat(64);
  * The contracts require a `SourceAsset`, an `ObservationSolution` and an anchor
  * checkpoint even before anything is imported, so those are explicit placeholders:
  * no observer location, no capture time, no findings, `calibration: 'not_requested'`
- * and solution `status: 'pending'`. The required timestamps carry `createdAtISO`,
- * the moment this session was created, never a capture time.
+ * and solution `status: 'pending'`. `simulationEpochISO` carries `createdAtISO`,
+ * the modeled sky's initial setting, while `observedAtUTC` and `observationEpochISO`
+ * stay absent until a recording supplies a capture time.
  */
 export function createEmptyObservationSession(
   createdAtISO: string = new Date().toISOString()
@@ -33,7 +34,7 @@ export function createEmptyObservationSession(
   const spatialView: SpatialViewState = {
     mode: 'source_2d', transitionPhase: 'at_source', transitionProgress: 0,
     observerOriginParsec: [0, 0, 0], cameraQuaternion: [0, 0, 0, 1], fovVerticalDeg: 60,
-    frustumShiftNdc: [0, 0], simulationEpochISO: createdAtISO, observationEpochISO: createdAtISO,
+    frustumShiftNdc: [0, 0], simulationEpochISO: createdAtISO,
     sceneScalePolicy: 'physical_euclidean',
     activeOverlays: { observedMarkers: false, catalogMatchedLabels: false, predictedEphemerides: false, constellationLines: false, earthDirectionVector: false, residualVectors: false, sightlineCone: false },
   };
@@ -58,9 +59,9 @@ export function createEmptyObservationSession(
     currentSourceTimeSec: 0, isPlaying: false, audioGain: 1, cropTransform: { zoom: 1, panX: 0, panY: 0 },
     processingGraphs: [], processingAttempts: [], mediaVariants: [],
     observationSolution: {
-      // Nothing has been solved, so the pending solution names no recording
+      // Nothing has been solved, so the pending solution names no recording and no capture time
       id: 'sol_none', sourceAssetId: EMPTY_SOURCE_ASSET_ID, frameTimeSec: 0,
-      revision: 1, status: 'pending', observedAtUTC: createdAtISO,
+      revision: 1, status: 'pending',
       solver: { name: 'none', version: '0', catalogRelease: 'none' },
       quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
       findings: [], warnings: [],
@@ -83,11 +84,11 @@ export function createSessionForSourceAsset(
 ): ObservationSession {
   const empty = createEmptyObservationSession(createdAtISO);
   const location = sourceAsset.observerLocation;
-  const momentISO = sourceAsset.capturedAtUTC ?? createdAtISO;
+  const capturedAtUTC = sourceAsset.capturedAtUTC;
   const spatialView: SpatialViewState = {
     ...empty.spatialView,
-    simulationEpochISO: momentISO,
-    observationEpochISO: momentISO,
+    simulationEpochISO: capturedAtUTC ?? createdAtISO,
+    ...(capturedAtUTC !== undefined ? { observationEpochISO: capturedAtUTC } : {}),
   };
   const anchorCheckpoint: CameraCheckpoint = {
     ...empty.navigationHistory.anchorMomentCheckpoint,
@@ -108,7 +109,7 @@ export function createSessionForSourceAsset(
       id: `sol_${sourceAsset.id}`,
       sourceAssetId: sourceAsset.id,
       sourceSha256: sourceAsset.sha256,
-      observedAtUTC: momentISO,
+      ...(capturedAtUTC !== undefined ? { observedAtUTC: capturedAtUTC } : {}),
       observerLocation: location
         ? { latDeg: location.latDeg, lonDeg: location.lonDeg, placeName: location.placeName }
         : undefined,

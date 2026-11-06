@@ -176,7 +176,8 @@ export const ObservationSolutionSchema = z
     frameTimeSec: z.number().nonnegative(),
     revision: z.number().int().positive(),
     status: SolutionStatusSchema,
-    observedAtUTC: z.string().datetime(),
+    // Present when the recording's capture time is known; required whenever a pose or finding is predicted from time and place
+    observedAtUTC: z.string().datetime().optional(),
     observerLocation: z
       .object({
         latDeg: z.number().min(-90).max(90),
@@ -239,6 +240,26 @@ export const ObservationSolutionSchema = z
         code: z.ZodIssueCode.custom,
         path: ['sourceSha256'],
         message: 'Only a pending solution with no findings names no recording.',
+      });
+    }
+    // Ephemeris predictions and horizon/beacon poses are computed from capture time and observer location,
+    // so approximate and predicted_only solutions and any solution carrying a predicted finding need both
+    const needsTimeAndPlace =
+      solution.status === 'approximate' ||
+      solution.status === 'predicted_only' ||
+      solution.findings.some((finding) => finding.evidenceClass === 'predicted');
+    if (needsTimeAndPlace && solution.observedAtUTC === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observedAtUTC'],
+        message: 'An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC.',
+      });
+    }
+    if (needsTimeAndPlace && solution.observerLocation === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observerLocation'],
+        message: 'An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation.',
       });
     }
     // Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a

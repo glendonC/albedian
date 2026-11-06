@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 import math
@@ -265,6 +266,87 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         solution(None, True, matched)
 
 
+@settings(max_examples=120, deadline=None)
+@given(
+    status=st.sampled_from(["pending", "calibrated", "approximate", "predicted_only", "unresolved", "ambiguous"]),
+    has_time=st.booleans(),
+    has_lat=st.booleans(),
+    has_lon=st.booleans(),
+    has_predicted_finding=st.booleans(),
+)
+@example(status="calibrated", has_time=False, has_lat=False, has_lon=False, has_predicted_finding=False)
+@example(status="calibrated", has_time=False, has_lat=True, has_lon=False, has_predicted_finding=False)
+@example(status="calibrated", has_time=True, has_lat=False, has_lon=True, has_predicted_finding=False)
+@example(status="approximate", has_time=False, has_lat=True, has_lon=True, has_predicted_finding=False)
+@example(status="predicted_only", has_time=True, has_lat=False, has_lon=False, has_predicted_finding=False)
+@example(status="calibrated", has_time=False, has_lat=True, has_lon=True, has_predicted_finding=True)
+@example(status="calibrated", has_time=True, has_lat=False, has_lon=False, has_predicted_finding=True)
+def test_pbt_solution_time_and_place_follow_the_contract(
+    status: str,
+    has_time: bool,
+    has_lat: bool,
+    has_lon: bool,
+    has_predicted_finding: bool,
+) -> None:
+    det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
+    wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
+    calibrated = status == "calibrated"
+    findings: list[CelestialFindingRecord] = [
+        CelestialFindingRecord(
+            id="finding-obs-1", observation_solution_id="sol-1", evidence_class="observed",
+            title="Observed Point Source #1", subtitle="Measured", source_detection=det,
+            ra_deg=83.8 if calibrated else None, dec_deg=4.0 if calibrated else None,
+            uncertainty_arcsec=12.0 if calibrated else None, source_sha256=RECORD_SHA,
+        )
+    ]
+    if has_predicted_finding:
+        findings.append(
+            CelestialFindingRecord(
+                id="finding-pred-1", observation_solution_id="sol-1", evidence_class="predicted",
+                title="Rigel", subtitle="Orion", ra_deg=78.6345, dec_deg=-8.2016, uncertainty_arcsec=14.2,
+                source_sha256=RECORD_SHA,
+            )
+        )
+    quality = (
+        SolutionQuality(
+            detected_candidate_count=8, matched_inlier_count=7, held_out_pair_count=7, held_out_inliers=7,
+            median_residual_px=0.4, p95_residual_px=0.9, median_residual_arcsec=50.4,
+            passed_independent_verification=True,
+        )
+        if calibrated
+        else SolutionQuality(
+            detected_candidate_count=8, matched_inlier_count=0, held_out_pair_count=0, held_out_inliers=0,
+            median_residual_px=None, p95_residual_px=None, median_residual_arcsec=None,
+            passed_independent_verification=False,
+        )
+    )
+    place_complete = has_lat == has_lon
+    has_place = has_lat and has_lon
+    needs_time_and_place = status in ("approximate", "predicted_only") or has_predicted_finding
+    valid = place_complete and (not needs_time_and_place or (has_time and has_place))
+
+    def build() -> ObservationSolution:
+        return ObservationSolution(
+            id="sol-1", source_asset_id="hand-built", source_sha256=RECORD_SHA, frame_time_sec=0.0, revision=1,
+            status=status,
+            observed_at_utc=MOMENT["obs_utc_iso"] if has_time else None,
+            observer_lat=MOMENT["observer_lat"] if has_lat else None,
+            observer_lon=MOMENT["observer_lon"] if has_lon else None,
+            wcs=wcs if calibrated or status == "approximate" else None,
+            quality=quality, findings=findings,
+            solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
+        )
+
+    if not valid:
+        with pytest.raises(ValueError):
+            build()
+        return
+    payload = build().to_contract_dict()
+    assert ("observedAtUTC" in payload) == has_time
+    assert ("observerLocation" in payload) == has_place
+    assert _none_paths(payload) == []
+
+
 def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
@@ -288,16 +370,25 @@ def build_contract_samples() -> dict[str, dict]:
     ]
     frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
     moon_frame, no_moon_frame = _night_frame(1792, 1344, moon=True), _night_frame(1792, 1344, moon=False)
+    # The starfield's float bytes differ by platform (trigonometry, exp and noise), so its hash is of
+    # the call that makes it, which is the same everywhere.
+    calibrated = solve_and_verify_field(
+        detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT,
+        **_sources(("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42)),
+    )
     samples = {
         "plate_too_few_sources": solve_and_verify_field(too_few, WIDTH, HEIGHT, **MOMENT, **_sources(too_few)),
         "plate_wcs_failed_verification": solve_and_verify_field(
             unverified, WIDTH, HEIGHT, **MOON_MOMENT, **_sources(unverified)
         ),
-        # The starfield's float bytes differ by platform (trigonometry, exp and noise), so its hash is of
-        # the call that makes it, which is the same everywhere.
-        "plate_calibrated": solve_and_verify_field(
-            detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT,
-            **_sources(("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42)),
+        "plate_calibrated": calibrated,
+        "plate_calibrated_timeless": replace(
+            calibrated,
+            id=f"{calibrated.id}-timeless",
+            observed_at_utc=None,
+            observer_lat=None,
+            observer_lon=None,
+            findings=[replace(f, alt_deg=None, az_deg=None) for f in calibrated.findings],
         ),
         "horizon_approximate": solve_horizon_and_beacon_pose(moon_frame, **MOON_MOMENT, **_sources(moon_frame)),
         "horizon_predicted_only": solve_horizon_and_beacon_pose(no_moon_frame, **MOON_MOMENT, **_sources(no_moon_frame)),

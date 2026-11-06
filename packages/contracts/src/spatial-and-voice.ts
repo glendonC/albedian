@@ -48,7 +48,8 @@ export const SpatialViewStateSchema = z.object({
   frustumShiftNdc: z.tuple([z.number(), z.number()]),
   lockedAnchorNdc: z.tuple([z.number(), z.number()]).optional(),
   simulationEpochISO: z.string().min(4),
-  observationEpochISO: z.string().datetime(),
+  // Absent when the recording carries no capture time; simulationEpochISO still holds the modeled sky's setting
+  observationEpochISO: z.string().datetime().optional(),
   sceneScalePolicy: z.enum(['physical_euclidean', 'nonlinear_compressed']),
   activeOverlays: z.object({
     observedMarkers: z.boolean(),

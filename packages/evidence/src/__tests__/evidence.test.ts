@@ -17,6 +17,7 @@ import {
   EvidenceClass,
   EvidenceRecordSchema,
   ObservationSolution,
+  ObservationSolutionSchema,
   SolutionStatus,
   SourceAsset,
   WCSCalibrationModel,
@@ -509,32 +510,41 @@ describe('@albedian/evidence: detections without a sky position', () => {
     projection: 'TAN', crvalRaDeg: 222.4, crvalDecDeg: -14.2, crpixX: 480, crpixY: 270, scaleDegPerPx: 0.04,
     rotationDeg: 3.1, radialDistortionK1: 0, radialDistortionK2: 0, parity: -1, fovHorizontalDeg: 37.9, fovVerticalDeg: 21.5,
   };
-  // observedAtUTC is a synthetic moment that points at nobody
-  const solutionFor = (finding: CelestialFinding, status: SolutionStatus, wcs?: WCSCalibrationModel): ObservationSolution => ({
-    id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
-    observedAtUTC: '2030-11-01T22:32:00Z', solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
-    wcs,
-    // No held-out star paired with the catalog, so no held-out residual
-    quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
-    findings: [finding], warnings: [],
-  });
+  // Approximate and predicted_only poses carry a synthetic moment and place that point at nobody;
+  // statuses that do not predict from time or place omit both so timeless solutions are exercised too
+  const solutionFor = (finding: CelestialFinding, status: SolutionStatus, wcs?: WCSCalibrationModel): ObservationSolution =>
+    ObservationSolutionSchema.parse({
+      id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
+      ...(status === 'approximate' || status === 'predicted_only'
+        ? { observedAtUTC: '2030-11-01T22:32:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 } }
+        : {}),
+      solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
+      wcs,
+      // No held-out star paired with the catalog, so no held-out residual
+      quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
+      findings: [finding], warnings: [],
+    });
 
   it('PBT-EVID-2: a detection with no WCS keeps only its capture record and is given no sky coordinates', () => {
-    fc.assert(
-      fc.property(
-        fc.double({ min: 0, max: 959, noNaN: true }),
-        fc.double({ min: 0, max: 539, noNaN: true }),
-        fc.constantFrom<SolutionStatus>('pending', 'unresolved', 'ambiguous', 'predicted_only'),
-        (xPx, yPx, status) => {
-          const finding = pixelOnly(xPx, yPx);
-          const records = buildFindingEvidenceRecords(sourceAsset, solutionFor(finding, status), finding);
-          expect(records.map((r) => r.kind)).toEqual(['captured']);
-          expect(records[0]?.title).toBe(`Sensor Pixel Centroid (${xPx.toFixed(1)}, ${yPx.toFixed(1)}) px`);
-          expect(JSON.stringify(records)).not.toMatch(/RA |Dec |raDeg/);
-        }
-      ),
-      { numRuns: 100 }
-    );
+    for (let seed = 1; seed <= 20; seed += 1) {
+      fc.assert(
+        fc.property(
+          fc.double({ min: 0, max: 959, noNaN: true }),
+          fc.double({ min: 0, max: 539, noNaN: true }),
+          fc.constantFrom<SolutionStatus>('pending', 'unresolved', 'ambiguous', 'predicted_only'),
+          (xPx, yPx, status) => {
+            const finding = pixelOnly(xPx, yPx);
+            const records = buildFindingEvidenceRecords(sourceAsset, solutionFor(finding, status), finding);
+            expect(records.map((r) => r.kind)).toEqual(['captured']);
+            expect(records[0]?.title).toBe(`Sensor Pixel Centroid (${xPx.toFixed(1)}, ${yPx.toFixed(1)}) px`);
+            expect(EvidenceRecordSchema.safeParse(records[0]).success).toBe(true);
+            expect(records[0]?.observationTimeUtc).toBe(status === 'predicted_only' ? '2030-11-01T22:32:00Z' : undefined);
+            expect(JSON.stringify(records)).not.toMatch(/RA |Dec |raDeg/);
+          }
+        ),
+        { seed, numRuns: 25 }
+      );
+    }
   });
 
   it('records the unverified pose a detection belongs to without placing the detection itself', () => {
@@ -581,12 +591,13 @@ describe('@albedian/evidence: licence and source strings', () => {
     uri: '/data/uploads/synthetic_sky.mp4', width: 1920, height: 1080, durationMs: 12000, fpsNumerator: 30, fpsDenominator: 1,
     videoCodec: 'hevc', audioStreams: [], privacyClass: 'private', immutable: true,
   };
-  const solution: ObservationSolution = {
+  const solution: ObservationSolution = ObservationSolutionSchema.parse({
     id: 'sol_03', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status: 'predicted_only',
-    observedAtUTC: '2030-01-01T02:00:00Z', solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
+    observedAtUTC: '2030-01-01T02:00:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 },
+    solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
     quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
     findings: [], warnings: [],
-  };
+  });
   const rigel = (provider: CatalogRef['provider'], method?: DistanceMethod): CatalogRef => ({
     id: 'cat_rigel', provider, releaseVersion: 'DR3-2022', catalogSourceId: 'HIP 24436', commonName: 'Rigel',
     constellation: 'Orion', objectType: 'star', coordinateEpoch: 'J2016.0', raDeg: 78.6345, decDeg: -8.2016, apparentMagnitude: 0.13,

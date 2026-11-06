@@ -416,16 +416,28 @@ class ObservationSolution:
     frame_time_sec: float
     revision: int
     status: str
-    observed_at_utc: str
-    observer_lat: float
-    observer_lon: float
     wcs: WCSModel | None
     quality: SolutionQuality
     solver: SolverIdentity
+    observed_at_utc: str | None = None
+    observer_lat: float | None = None
+    observer_lon: float | None = None
     findings: list[CelestialFindingRecord] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if (self.observer_lat is None) != (self.observer_lon is None):
+            raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
+        has_place = self.observer_lat is not None and self.observer_lon is not None
+        needs_time_and_place = (
+            self.status in ("approximate", "predicted_only")
+            or any(f.evidence_class == "predicted" for f in self.findings)
+        )
+        if needs_time_and_place and (self.observed_at_utc is None or not has_place):
+            raise ValueError(
+                "An approximate or predicted_only solution, or any solution with a predicted finding, "
+                "needs observed_at_utc, observer_lat and observer_lon."
+            )
         if self.quality.passed_independent_verification and self.wcs is None:
             raise ValueError("Held-out verification passes only with a WCS.")
         # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
@@ -484,16 +496,22 @@ class ObservationSolution:
             "frameTimeSec": float(self.frame_time_sec),
             "revision": int(self.revision),
             "status": self.status,
-            "observedAtUTC": self.observed_at_utc,
-            "observerLocation": {
+        }
+        if self.observed_at_utc is not None:
+            result["observedAtUTC"] = self.observed_at_utc
+        if self.observer_lat is not None and self.observer_lon is not None:
+            result["observerLocation"] = {
                 "latDeg": float(self.observer_lat),
                 "lonDeg": float(self.observer_lon),
-            },
-            "solver": self.solver.to_contract_dict(),
-            "quality": self.quality.to_contract_dict(),
-            "findings": [f.to_contract_dict(source_asset_id=self.source_asset_id) for f in self.findings],
-            "warnings": list(self.warnings),
-        }
+            }
+        result.update(
+            {
+                "solver": self.solver.to_contract_dict(),
+                "quality": self.quality.to_contract_dict(),
+                "findings": [f.to_contract_dict(source_asset_id=self.source_asset_id) for f in self.findings],
+                "warnings": list(self.warnings),
+            }
+        )
         if self.wcs is not None:
             result["wcs"] = self.wcs.to_contract_dict()
         return result
