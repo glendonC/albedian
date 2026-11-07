@@ -28,7 +28,7 @@ export function setParamNow(param: AudioParam, value: number, now: number): void
  * start, so a value set at that same instant (setParamNow on a new node) is where it starts.
  * Cancelling at `now` itself would delete that value, and the glide would start from the
  * parameter's default instead (a gain's 1): the bed's full-level opening hiss and the skipped voice
- * attacks found on 2026-11-04 (AUDIO_ENGINE.md section 10, item 0).
+ * attacks documented in AUDIO_ENGINE.md section 10, item 0.
  */
 const AFTER_START_SEC = 1e-6;
 

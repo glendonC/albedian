@@ -3,7 +3,7 @@ Third-party notices for Albedian's spatial audio
 The audio engine ships two third-party works: the Omnitone library, whose
 binaural filters come from the Google/SADIE measurements, and a measured room
 impulse response. Their notices follow, as their licences ask. Each also has a
-one-line credit, in apps/web/src/audio/audioCredits.ts, for the app to show
+one-line credit, in apps/web/src/audio/audioCredits.ts, shown beside the canvas
 while audio is on.
 
 
@@ -20,7 +20,7 @@ otherwise unchanged, and loads it only after the user enables audio.
 2. Omnitone's NOTICE file, quoted exactly
 
 From src/resources/NOTICE at the v2.0.0 tag of github.com/GoogleChrome/omnitone,
-retrieved 2026-11-04, 747 bytes,
+747 bytes,
 SHA-256 2a35afd9c4c6d2fc9271a25ccc3c1442e0cf61c3284265722f158b78f33808a8.
 
 ----- BEGIN NOTICE -----
@@ -71,7 +71,7 @@ Original member: impulse_responses.zip / Nikolauskapelle_Source1_BRIR/S1-Do_R12.
 10.0 s; dodecahedron source S1 and receiver R12, both in the main hall, 9.24 m apart;
 zip CRC-32 125ad33e; SHA-256 b0df0cf359e3242b5c2c3c7215bb793e175b33391b59172c9c7c28d7c386f0e7).
 
-Changes made for Albedian (2026-11-03):
+Changes made for Albedian:
 1. Trimmed to start 30.12 ms into the original, 3.0 ms after the direct-sound onset
    (27.12 ms), which removes the direct sound; the engine supplies its own dry path.
    Trimmed to end at 4.2 s of the original timeline, where the decay meets the

@@ -84,7 +84,7 @@ Data set before `start()` is kept and plays at once when audio is enabled.
 
 | | Omnitone 2.0.0 | Resonance Audio Web SDK 1.0.0 | Plain Web Audio |
 |---|---|---|---|
-| Maintenance (checked November 2026) | Active: 2.0.0 published September 2026, repository pushed October 2026 (CSP, bundler, promise-rejection and rotation fixes). | Repository archived (last push March 2022); last npm publish November 2017. Core `resonance-audio` repo also archived. | Browser API. |
+| Maintenance | Active: 2.0.0 published September 2026, repository pushed October 2026 (CSP, bundler, promise-rejection and rotation fixes). | Repository archived (last push March 2022); last npm publish November 2017. Core `resonance-audio` repo also archived. | Browser API. |
 | License | Apache-2.0; bundled Google/SADIE HRIRs Apache-2.0, (c) 2017 University of York. | Apache-2.0. | n/a |
 | Offers | First- and higher-order ambisonic decoding to binaural through measured HRIRs; sound-field rotation; no runtime dependencies. | Shoebox room model (early reflections and late reverb from room size and materials), ambisonic panning, an old Omnitone 1.x inside. | `PannerNode` (HRTF) per point source; no representation of a whole field. |
 | Types | None shipped (local shim). | None. | Built in. |
@@ -100,7 +100,7 @@ Data set before `start()` is kept and plays at once when audio is enabled.
    still over-estimates coherence at high frequencies compared with a real diffuse field).
 3. Directional skyglow, such as a light dome on one horizon taken from the photo's background
    map, would cost four gains and the rotation matrix, not more panners (**Proposed design**, not
-   built: today the only input is a single sky-brightness value, so the bed is isotropic).
+   built: the current input is a single sky-brightness value, so the bed is isotropic).
 4. It is maintained, permissively licensed, dependency-free, and lazy-loaded after the gesture.
 
 Resonance Audio is rejected: archived, and its shoebox room model has no physical meaning in space
@@ -128,10 +128,10 @@ listening).
 - Input `distancePc`. `p` is its position, in log distance, inside a window. A star takes
   `STAR_DISTANCE_WINDOW`, 1 to 2,000 pc, in every regime; other kinds take the window of the
   current regime (`REGIME_DISTANCE_WINDOWS`, e.g. 1,000 to 10 million km for `cislunar`), set by
-  `setScaleRegime` (`distanceWindowFor`). A window is a display choice like a map's scale bar.
-  Before 2026-11-04 stars took the regime's window too, so at cislunar scale (landing scene 01)
-  every star clamped to the far edge (DRR -15 dB, 3 kHz low-pass) and at deep-sky scale (scene 02)
-  to the near edge, and distance said nothing there.
+  `setScaleRegime` (`distanceWindowFor`). A window is a display choice like a map's scale bar:
+  if stars took the regime's window instead, at cislunar scale (landing scene 01) every star would
+  clamp to the far edge (DRR -15 dB, 3 kHz low-pass) and at deep-sky scale (scene 02) to the near
+  edge, and distance would say nothing there.
 - DRR = lerp(+15 dB, -15 dB, p). The dry and reverb sends split unit energy:
   direct = sqrt(r/(1+r)), reverb = sqrt(1/(1+r)), r = 10^(DRR/10), so distance moves energy
   between direct and reverberant without changing the voice's loudness.
@@ -260,9 +260,8 @@ live readings came from the master bus meter (mean per-ear power).
 The DRR calibration was taken on pink noise; for cool stars (most energy below 1 kHz) the wet path
 runs about 1.8 dB hotter than for the Sun-like tone. A per-voice correction is possible later.
 
-Until 2026-11-04 every parameter glide that followed a value set at the same instant started from
-the parameter's default instead (section 10, item 0): onsets were wrong (the bed opened at full gain,
-voice attacks and the master fade-in were skipped). The steady-state figures above are not onsets.
+Parameter glides cancel only events scheduled after their own start time (section 10, item 0), so a
+value set at the same instant is preserved. The steady-state figures above are not onsets.
 
 ## 7. Assets and licenses
 
@@ -278,8 +277,8 @@ dither. Full record, checksums and the exact operations:
 [`ATTRIBUTION.txt`](../../apps/web/src/audio/assets/ATTRIBUTION.txt). The late-tail interchannel
 correlation is 0.52 to 0.55, as expected (0.5) for that cardioid pair in a diffuse field.
 
-Why not OpenAIR: in November 2026 both `openair.hosted.york.ac.uk` and `openairlib.net` served an
-expired TLS certificate, and a binary asset was not downloaded over an unverified connection.
+Why not OpenAIR: both `openair.hosted.york.ac.uk` and `openairlib.net` served an expired TLS
+certificate when evaluated, and a binary asset is never downloaded over an unverified connection.
 The Zenodo record was fetched over verified HTTPS; only the one member was transferred, using HTTP
 range requests, and its CRC-32 was checked against the zip directory. The chapel is an earthly room:
 its tail is a device for the distance cue, not a claim about the acoustics of space.
@@ -299,17 +298,19 @@ from the Google/SADIE binaural filters, copyright 2017 University of York, also 
 notice is `src/resources/NOTICE` in the Omnitone repository. Shipping the built app redistributes
 both, so the app must carry the Apache-2.0 text and that NOTICE. The npm package ships no NOTICE
 file (only `LICENSE`, `README.md` and `build/`), and the bundled chunk keeps Google's licence
-headers but no word of SADIE or York (tested on a local build, 2026-11-04).
+headers but no word of SADIE or York (verified on the production bundle).
 
 **Where the notices ship.** `apps/web/src/audio/assets/THIRD_PARTY_NOTICES.txt` holds the
 Apache License 2.0 exactly as the package's `LICENSE` carries it, Omnitone's NOTICE quoted
-exactly (fetched once from the v2.0.0 tag on 2026-11-04, 747 bytes, SHA-256
+exactly (from the upstream `v2.0.0` tag, 747 bytes, SHA-256
 `2a35afd9c4c6d2fc9271a25ccc3c1442e0cf61c3284265722f158b78f33808a8`), and the impulse
 response's `ATTRIBUTION.txt` with its CC BY 4.0 licence. `audioCredits.ts` gives one credit line
-per work, worded as each source asks, and the notices file's URL, which the build emits as an
-asset once the app imports the module, as it does the impulse response. Showing the lines beside
-the canvas while audio is on, with a Notices link, is the viewport's part (render lane). A test
-checks that each embedded text matches its source byte for byte.
+per work, worded as each source asks, and the notices file's URL (`AUDIO_NOTICES_URL`), which the
+build emits as an asset because `SpatialObservatoryViewport.tsx` imports `audioCredits.ts`, as the
+engine does the impulse response. While audio is on, `SpatialObservatoryViewport.tsx` renders
+`AUDIO_DISCLOSURE`, `AUDIO_CREDIT_LINES`, and the `Notices` link (`AUDIO_NOTICES_URL`) in the
+viewport status strip. `audioCredits.test.ts` checks that each embedded text matches its source byte
+for byte.
 
 ## 8. Integration with the viewport and renderer
 
@@ -361,14 +362,13 @@ centroid is 2.6 times higher. Caph, Schedar and Ruchbah there, and Sirius and Ve
 Hipparcos entries with distances but no Gaia DR3 temperature or luminosity, so they are silent
 with `missing: ['luminositySolar', 'teffK']`.
 
-Measured in the app (Chrome 152 on macOS, 2026-11-04, with the render lane's hookups applied
-locally): the WebGL landing had 821 stars on screen, 357 of them with all three values, and 8
-voices from -25.8 to -30.7 dBFS with centroids from 776 to 1,435 Hz; the WebGPU host had 775 and
-332. A drag turned the voices with the camera, the listener stayed put while audio was off, and the
-console showed no errors. One source update (9 tiles, 9,222 stars, 1,097 on screen) took 0.8 ms and
-runs at most ten times a second; a listener turn, which replans 32 sources, took 0.02 ms per frame.
-More than half of the naked-eye stars on screen are silent (464 of 821 on the WebGL landing), the
-brightest among them.
+Measured in the app (Chrome 152 on macOS, with `voices: true`): the WebGL landing had 821 stars on
+screen, 357 of them with all three values, and 8 voices from -25.8 to -30.7 dBFS with centroids from
+776 to 1,435 Hz; the WebGPU host had 775 and 332. A drag turned the voices with the camera, the
+listener stayed put while audio was off, and the console showed no errors. One source update (9
+tiles, 9,222 stars, 1,097 on screen) took 0.8 ms and runs at most ten times a second; a listener
+turn, which replans 32 sources, took 0.02 ms per frame. More than half of the naked-eye stars on
+screen are silent (464 of 821 on the WebGL landing), the brightest among them.
 
 **Not wired, and why.**
 
@@ -382,10 +382,11 @@ brightest among them.
 | `spinFrequencyHz` | absent | The app has no pulsar catalog; an ATNF subset would be needed. |
 
 The header volume slider sets `setMasterVolume` (the viewport's volume effect); its 0 to 1 value
-is the master gain. Beside the Audio control, while audio is on, the viewport is to show
-`AUDIO_DISCLOSURE` (what the sound is) with the credits of `audioCredits.ts`; that display is the
-render lane's. For stars matched in a user's photo, carrying temperature, luminosity and
-extinction on findings is a contracts decision, escalated rather than made here.
+is the master gain. Beside the Audio control, while audio is on, `SpatialObservatoryViewport.tsx`
+renders `AUDIO_DISCLOSURE` (what the sound is), `AUDIO_CREDIT_LINES`, and the `Notices` link
+(`AUDIO_NOTICES_URL`) from `audioCredits.ts`. For stars matched in a user's photo, carrying
+temperature, luminosity and extinction on findings is a contracts decision, escalated rather than
+made here.
 
 ## 9. Verification
 
@@ -435,10 +436,10 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
 ```
 
 0. First listen (asked first): the owner heard the landing's voices unprompted, on a laptop, and
-   asked whether a static-like sound came from the app (2026-11-04). The clips compare the landing
+   asked whether a static-like sound came from the app. The clips compare the landing
    as the app plays it with the same voices dry, the loudest voice alone, and the voices with
    harmonics cut above 4 kHz.
-   Found while measuring them (tested, OfflineAudioContext in headless Chrome 156, 2026-11-04):
+   Found while measuring them (tested, OfflineAudioContext in headless Chrome 156):
    every start of the engine opened with a burst of noise. In each of clips A to D, energy above
    12 kHz stood about 56 dB over its steady level at 0.17 s and was gone by about 2.7 s; with no
    sources at all, and the bed meant to be silent, the same burst played and faded at about
@@ -478,8 +479,8 @@ node apps/web/spike/listening/render.mjs --url http://localhost:5188 --out .cach
 
 ### 10.1 Item 0, measured
 
-Measured on 2026-11-04 (tested, `OfflineAudioContext` in headless Chrome 156, with the onset fix,
-d9fb667). `measureFirstListen()` in `main.ts` renders clip A's landing as the app plays it, and
+Measured on an `OfflineAudioContext` in headless Chrome 156 (tested, with the onset fix, d9fb667).
+`measureFirstListen()` in `main.ts` renders clip A's landing as the app plays it, and
 each of its eight voiced stars alone at the same pose, direction and level as in the chord (the
 level is checked on every render). Each is rendered with and without the chapel reverb, at the
 default harmonic ceiling (16 kHz) and at 4 kHz: 36 renders of 8 s. `spectrum.ts` measures each on
@@ -593,7 +594,7 @@ Which of B, C and D the owner picks says which, and 12.4 (a) starts from that an
 
 ## 12. Lessons from published sonifications
 
-Read at the sources on 2026-11-04:
+Sources:
 
 - NASA Chandra X-ray Center, "A Universe of Sound", https://chandra.si.edu/sound/, with the release
   pages https://chandra.si.edu/photo/2021/sonify4/ (Westerlund 2, Tycho's supernova remnant, M87)

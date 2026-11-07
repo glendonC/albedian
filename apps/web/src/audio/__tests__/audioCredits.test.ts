@@ -55,9 +55,9 @@ describe('audio credits and notices', () => {
     expect(section('LICENSE')).toContain('Version 2.0, January 2004');
   });
 
-  it("quotes Omnitone's NOTICE exactly as retrieved at its v2.0.0 tag", () => {
+  it("quotes Omnitone's NOTICE exactly as published at its v2.0.0 tag", () => {
     const notice = section('NOTICE');
-    // src/resources/NOTICE at GoogleChrome/omnitone v2.0.0, retrieved 2026-11-04 (747 bytes)
+    // src/resources/NOTICE at GoogleChrome/omnitone v2.0.0 (747 bytes)
     expect(createHash('sha256').update(notice, 'utf8').digest('hex')).toBe(
       '2a35afd9c4c6d2fc9271a25ccc3c1442e0cf61c3284265722f158b78f33808a8'
     );
@@ -74,6 +74,25 @@ describe('audio credits and notices', () => {
     expect(notices).toContain('Copyright 2016 Google Inc. All Rights Reserved.');
     expect(notices).toContain('Copyright 2017 Google Inc. All Rights Reserved.');
     expect(notices).not.toMatch(/\u2014/);
+  });
+
+  it('uses timeless provenance wording with no session dates or pre-wiring lane drift in notices or AUDIO_ENGINE.md', () => {
+    const doc = read('docs/architecture/AUDIO_ENGINE.md');
+    const attribution = read('apps/web/src/audio/assets/ATTRIBUTION.txt');
+    const creditsSource = read('apps/web/src/audio/audioCredits.ts');
+    for (const [name, text] of [
+      ['THIRD_PARTY_NOTICES.txt', notices],
+      ['ATTRIBUTION.txt', attribution],
+      ['audioCredits.ts', creditsSource],
+      ['AUDIO_ENGINE.md', doc],
+    ] as const) {
+      expect(text, `${name} session dates`).not.toMatch(/2026-11-\d\d|November 2026/);
+      expect(text, `${name} lane drift`).not.toMatch(/render lane|not in the app yet|Before 2026-|Until 2026-/);
+      expect(text, `${name} em dash`).not.toMatch(/\u2014/);
+    }
+    expect(notices.replace(/\s+/g, ' ')).toContain('shown beside the canvas while audio is on');
+    expect(doc).toContain('SpatialObservatoryViewport.tsx');
+    expect(doc).toContain('AUDIO_NOTICES_URL');
   });
 
   it('says what the sound is beside the audio, and the listening page opens with its own version', () => {

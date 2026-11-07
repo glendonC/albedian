@@ -87,7 +87,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('SkyAudioFeed with the star voices off (the app until the music lands)', () => {
+describe('SkyAudioFeed with the star voices off (the app singleton configuration)', () => {
   it('turns the listener with the camera but passes no sources and fetches nothing, so no voice is planned', async () => {
     const { fetchImpl, requests } = releaseFetch();
     const { target, orientations, sourceLists } = recordingTarget();

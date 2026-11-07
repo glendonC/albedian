@@ -310,9 +310,9 @@ export class SkyAudioFeed {
 }
 
 /**
- * The feed the viewport drives, sounding through the app's audio engine. Its star voices are off:
- * the owner heard the data-only star sound on 2026-11-05 and asked for music with the data inside
- * it, so until the music (AUDIO_ENGINE.md section 8) replaces it, the stars in view stay silent and
- * only the listener turns.
+ * The feed the viewport drives, sounding through the app's audio engine. Its continuous star
+ * voices are off (`voices: false`): under the music-first architecture (AUDIO_ENGINE.md sections 8
+ * and 13), the stars in view are voiced inside the musical score rather than as continuous
+ * sustained drones, so `skyAudio` updates only listener orientation with the camera.
  */
 export const skyAudio = new SkyAudioFeed(observatoryAudio, { voices: false });
