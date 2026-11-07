@@ -1,54 +1,52 @@
 # Albedian Roadmap
 
-Date: 2026-11-04, written against `main` at `ec6d64c`. This is the one place for what works, what does not, what needs a decision, and what to start next. Each milestone is sized for one session or one engineer working under [AGENTS.md](../AGENTS.md).
+This document records the current architecture state, open capability gaps, product and engineering decisions, and active roadmap tracks under [AGENTS.md](../AGENTS.md). Each milestone is sized for one engineering unit.
 
 Labels, as AGENTS.md section 3 asks:
 
 - **[tested]** locally implemented and tested capability
-- **[verified]** verified external capability, checked at its source on 2026-11-04
+- **[verified]** verified external capability, checked at its primary source
 - **[inference]** engineering inference
 - **[proposed]** proposed design
 - **[open]** unresolved question
 
-## 1. Where things stand
+## 1. Current state
 
-### Works today
+### Implemented capabilities
 
-- **Evidence contracts.** `ObservationSolution`, `CelestialFinding` and `RenderLayer`, with Zod and Pydantic parity and property tests on both sides. [tested]
-- **Sky and universe in the browser.** Five scale regimes and a four-scene landing carousel. 3.09 million Gaia DR3 and Hipparcos 2007 stars to G 12, streamed per HEALPix tile with names, colours and distances ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested]
+- **Evidence contracts.** `ObservationSolution`, `CelestialFinding`, `RenderLayer`, `VoiceCommandResponse`, `SolarEclipseCatalog`, `LunarEclipseCatalog` and `ExoplanetTable`, with Zod and Pydantic parity and property tests on both sides. [tested]
+- **Sky and universe in the browser.** Five scale regimes and a four-scene landing carousel. 3.09 million Gaia DR3 and Hipparcos 2007 stars to G 12, streamed per HEALPix tile with names, colours, distances, temperature, luminosity, extinction and astrometric quality ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested]
 - **WebGPU renderer, milestone 1.** Behind `?renderer=webgpu`, the cislunar scene draws catalog stars as point-spread sprites, tone-maps with AgX and discloses each layer's evidence class, in about 1 ms per frame at 3840x2160 on the M5 Max ([RENDERER_WEBGPU_SPIKE.md](architecture/RENDERER_WEBGPU_SPIKE.md), section 10). [tested, measured]
-- **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with 61 tests ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). Its data inputs are not connected to the app yet. [tested]
-- **Backend.** Nine FastAPI endpoints. They include a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision ephemeris and a moonlight model. All are tested on synthetic data only. [tested]
+- **Spatial audio engine.** HRTF voices, an ambisonic bed and convolution reverb driven by data mappings, with `SkyAudioFeed` feeding visible catalog stars from the camera pose, evidence-class disclosure and third-party notices in the viewport ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md)). [tested]
+- **Backend.** FastAPI endpoints covering content-addressed upload ingestion (`services/ingest/store.py`, `services/ingest/router.py`), EXIF/HEIF/QuickTime metadata, orientation and probe readers (`services/ingest/metadata.py`, `services/ingest/probe.py`), a plate solver with a held-out WCS gate (at least 6 held-out inliers and a median residual of at most 3 px), a horizon and Moon pose solver, a low-precision analytical ephemeris (`services/science/ephemeris.py`: Standish and Williams 1992 approximate Keplerian elements and Meeus 1998 chapter 47 geocentric Moon), a moonlight model, and a schema-validated voice command endpoint (`services/voice/intent.py`, `services/voice/claude.py`). [tested]
 - **Look-dev.** A Blender 5.2 pipeline renders real moments from NASA Blue Marble, Black Marble and LRO data (`scripts/lookdev/`). [tested]
-- **Gates.** `pnpm typecheck`, `pnpm test` (320 tests), `uv run pytest` (327 tests, and 3 that skip without the local dust dataset), `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`, and CI runs all six on every push and pull request (`.github/workflows/gates.yml`: Node 22 and 24, Python 3.12 and 3.14; a skip outside the owner-media and local-dataset markers fails the run). [tested]
+- **Gates.** `pnpm typecheck`, `pnpm test`, `uv run pytest`, `pnpm verify:contracts`, `pnpm verify:docs` and `pnpm build` all pass on `main`, and CI runs all six on every push and pull request (`.github/workflows/gates.yml`: Node 22 and 24, Python 3.12 and 3.14; a skip outside the `owner_media` and `local_dataset` markers fails the run, and the build refuses any untracked, locally modified or symlinked file under `apps/web/public`). [tested]
 
 ### The gap that matters most
 
-The first promise of the product, upload a night photo and learn where and when it was taken, does not work on a real photo yet:
+The first promise of the product, upload a night photo and learn where and when it was taken, does not solve a real consumer photo end-to-end yet:
 
-- The browser hashes an uploaded file but never sends it to the backend, and the banner says "Not yet decoded or calibrated" (`apps/web/src/App.tsx:206`).
-- The plate solver matches against 18 pinned Orion and Taurus stars (`services/science/catalog.py`). It failed on all three real clips in `data/artifacts/`. On the simulated phone-photo benchmark it solved 0 of 210 frames, and once it certified a wrong sky, about 70 degrees off, that passed the held-out gate ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated]
-- The horizon and Moon solver returns `approximate` or `predicted_only`, never `calibrated`. It looks for the horizon only between 38% and 72% of the frame height (`services/science/horizon_solver.py:52`).
+- The backend upload store, metadata/probe readers, and ingest routes are in place (`services/ingest/store.py`, `services/ingest/metadata.py`, `services/ingest/probe.py`, `services/ingest/router.py`), while the browser upload UI and asynchronous solve-job runner are still being connected (`apps/web/src/App.tsx`).
+- The baseline plate solver matches against 18 pinned Orion and Taurus stars (`services/science/catalog.py`). It failed on all three real clips in `data/artifacts/`. On the simulated phone-photo benchmark it solved 0 of 210 frames, and once it certified a wrong sky, about 70 degrees off, that passed the held-out gate ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated]
+- The horizon and Moon solver returns `approximate` or `predicted_only`, never `calibrated`. It looks for the horizon only between 38% and 72% of the frame height (`services/science/horizon_solver.py`).
 
 The real sky behind the glow, the reveal, the travel and the explanations all depend on a verified solution, so Track 1 comes first.
 
 ### Other gaps
 
 - **Science.**
-  - The ephemeris uses Keplerian elements. It has no Sun, Mercury or Neptune, its Moon is geocentric (topocentric parallax is up to about 1 degree [inference]), and its magnitudes are fixed.
-  - Radiometry assumes a fixed natural sky and has no light-pollution data. Its target is fixed at 8.2 degrees from the Moon and magnitude 3, which was Deneb Algedi in the first test clip: a default in `services/science/router.py:184`, hardcoded in `services/media/discovery.py:439`.
+  - The ephemeris (`services/science/ephemeris.py`) uses the Standish and Williams (1992) approximate Keplerian elements (Earth-Moon barycentre, without light-time correction) and Meeus (1998) chapter 47 for a geocentric Moon (topocentric parallax is up to about 1 degree [inference]), without the Sun, Mercury, Neptune, or computed phase magnitudes.
+  - Radiometry assumes a fixed natural sky and has no light-pollution atlas data yet (`services/science/router.py`, `services/media/discovery.py`).
 - **Language.**
-  - Commands go through regex parsers.
-  - The backend returns template text instead of executing actions (`services/voice/intent.py`).
-  - There is no knowledge base, retrieval or citation system.
-- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. Since 2026-11-04 they carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Eleven assets still have no recorded provenance (section 6).
+  - `services/voice/claude.py` integrates the official Anthropic Python SDK (`claude-opus-5-5` from configuration, strict tools with `tool_choice` `auto`, server-side refusal fallback and prompt caching), and `VoiceCommandResponse` carries schema-validated `AlbedianAction` payloads through the frontend reducer (`packages/contracts/src/spatial-and-voice.ts`, `packages/contracts/src/voice-command.ts`, `services/contracts/voice.py`, `apps/web/src/voice/voiceBackend.ts`). Live LLM calls stay off by default until the evaluation budget and corpus are complete. [tested]
+  - There is no knowledge base, retrieval or citation system yet.
+- **Data.** The star tiles stop at G 12, and their positions stay at epoch J2016.0. They carry Gaia DR3 temperature, luminosity, extinction and astrometric quality where DR3 gives them, and nothing where it does not ([CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md)). [tested] Nine assets still have no recorded provenance (section 6).
 - **Rendering.**
-  - Only the cislunar scene has layer disclosures.
+  - Only the cislunar scene has WebGPU parity; every active scene carries per-layer evidence-class disclosures, and the synthetic nebula and black-hole decorative particle layers have been removed (`apps/web/src/spatial/SparkPortalRenderer.ts`). [tested]
   - The atmosphere lookup is single scattering with hand-set colours, not Bruneton's model.
-  - `derivePlanetaryWorldDescriptor` in `apps/web/src/spatial/SparkPortalRenderer.ts` invents planets for any star. Nothing calls it.
-- **Security.** Since 2026-11-04 the API answers only the web app's own origins (`ALBEDIAN_CORS_ORIGINS`) and only a `Host` that names this machine (`ALBEDIAN_TRUSTED_HOSTS`), refuses a foreign write before any route runs, scans only its own folders, and returns no absolute path. [tested] A public deployment still needs its own review (section 3, Track 7).
+- **Security.** The API answers only the web app's own origins (`ALBEDIAN_CORS_ORIGINS`) and only a `Host` that names the local host (`ALBEDIAN_TRUSTED_HOSTS`), refuses a foreign write before any route runs, scans only its configured folders, and returns no absolute path. Both Vite builds refuse any untracked, locally modified or symlinked file under `apps/web/public/`. [tested] A public deployment still needs its own review (section 3, Track 7).
 
-## 2. Decisions waiting on you
+## 2. Product and architecture decisions
 
 1. **Commercial or not.** Several of the best sources are non-commercial:
    - Gaia, Hipparcos and Planck data (CC BY-NC 3.0 IGO). Commercial use needs ESA authorisation.
@@ -56,40 +54,40 @@ The real sky behind the glow, the reveal, the travel and the explanations all de
    - The Open-Meteo free tier.
    - DSS2 imagery and the Mellinger panorama.
 
-   Decided on 2026-11-04: non-commercial for now, with a public demo on 4 December 2026. These sources can be used with their credits, which must be visible in the app. Revisit before any commercial use, sponsorship, prize terms that grant commercial rights, or adoption by a company.
-2. **The sky dome branch** (`claude/nice-khayyam-277e40`). Decided on 2026-11-04, and landing as separate units:
+   Decision: non-commercial for the current phase, targeting the 4 December 2026 public demo. These sources can be used with their credits visible in the app. Revisit before any commercial use, sponsorship, prize terms that grant commercial rights, or adoption by a company.
+2. **The sky dome registration.** Implemented across the WebGL and WebGPU renderers ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)):
    - The NASA star map is removed: it duplicated the catalog stars and added a second, misplaced Milky Way.
    - Venus and Jupiter stay in the panorama, disclosed as planets the 2008 to 2009 shoot photographed.
    - The `halpha` and `jwst_ir` modes and the red boost are removed: they recoloured the RGB photograph.
-   - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (Track 4). The owner signs off on the picture. On 2026-11-05 the owner said yes to that moment (2025-03-07 11:00 UTC) and no to its look, which reads as a low-quality still image rather than a universe to explore: the fidelity pass in Track 4 comes back for a new yes.
+   - The landing turns toward the galactic centre at true scale, seen from beyond the Moon, at one real moment under one Sun (`2025-03-07T11:00:00Z`, [LANDING_MOMENT.md](science/LANDING_MOMENT.md)), while the fidelity pass in Track 4 replaces magnified background stars with catalog stars and diffuse Milky Way light.
 3. **The AgX look.** Set the contrast and black level for the WebGPU renderer (spike doc section 10, step 12).
-4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decided on 2026-11-04: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure says plainly that it is a modelled composition.
-5. **Model for intent parsing.** Track 3 starts every route on `claude-opus-5-5`. Whether the latency-critical intent route later moves to a smaller model is yours to decide, after measuring.
+4. **Modelled set pieces.** Betelgeuse sits at the centre of the Local Bubble, the Earth and Moon are lit from different directions, and the Saturn horizon is a stylised world. Decision: each is rebuilt to its physical layout as its scene is ported, and until then its disclosure states plainly that it is a modelled composition.
+5. **Model for intent parsing.** Track 3 starts every route on `claude-opus-5-5`. Whether the latency-critical intent route later moves to a smaller model is decided after measuring.
 6. **Hosting.** Deep catalogs and dust volumes need object storage and a CDN. For example, Cloudflare R2 costs $0.015 per GB-month with no egress fees [verified].
-7. **Audio is music first.** Decided on 2026-11-05, after the owner heard the data-only sonification: a composed, adaptive score is the foundation, and the real catalog data plays inside it (Track 5).
-8. **Every interaction pattern comes from a proven reference.** Decided on 2026-11-05: each moment of the experience takes its pattern from a game or app that already does it well, chosen for a stated reason, never an invented style (Track 8).
+7. **Audio is music first.** Decision: a composed, adaptive score is the foundation, and the real catalog data plays inside it (Track 5).
+8. **Every interaction pattern comes from a proven reference.** Decision: each moment of the experience takes its pattern from a game or app that already does it well, chosen for a stated reason, never an invented style (Track 8).
 
 ## 3. Tracks
 
-Each track lists its owners from AGENTS.md section 2, its milestones in order, and what done means. Tracks 1, 2 and 3 can start in parallel because their files do not overlap.
+Each track lists its owners from AGENTS.md section 2, its milestones in order, and what done means. Tracks 1, 2 and 3 can run in parallel because their files do not overlap.
 
 ### Track 1: from a real photo to a verified sky
 
 Owners: `science` and `media`, with `experience` for the upload UI.
 
-- **M1, upload path.** Send the browser upload to the backend as an immutable, content-addressed `SourceAsset`. Extract EXIF time, GPS and lens data as hints, recording where each came from. Run the solve as a job whose progress comes from real denominators. Missing metadata stays missing. [proposed] The contracts landed on 2026-11-04 (`packages/contracts/src/ingest.ts` and its Pydantic mirror): a `SourceAsset` with a full SHA-256, metadata hints that name the tags they came from, and solve jobs with state rules. [tested] Next come the store and its routes, then the solve job. [proposed]
+- **M1, upload path.** Send the browser upload to the backend as an immutable, content-addressed `SourceAsset`. Extract EXIF time, GPS and lens data as hints, recording where each came from. Run the solve as a job whose progress comes from real denominators. Missing metadata stays missing. The ingest contracts (`packages/contracts/src/ingest.ts` and `services/contracts/ingest.py`), the content-addressed upload store (`services/ingest/store.py`), the EXIF/HEIF/QuickTime metadata and probe readers (`services/ingest/metadata.py`, `services/ingest/probe.py`), the ingest routes in `services/ingest/router.py` (`POST /api/ingest`, `GET /api/ingest/{sha256}`, `GET /api/ingest/{sha256}/original`), and optional capture times on `ObservationSolution` are implemented and tested. [tested] Next come the browser upload connection and the solve job. [proposed]
 - **M2, a solver for phone photos.** [proposed, from the research below]
   1. **Detect.** Mask the sky and detect stars on the original pixels only, with SEP (LGPL) or cedar-detect (source-available under FSL-1.1-MIT) [verified]. For the mask, SAM 2.1 runs on Apple Silicon through Apple's Apache-2.0 Core ML conversions [verified], but it is untested on night skies.
   2. **Hint-assisted solve.** When EXIF gives the time and place, solve for attitude only, as `ascal` does for all-sky cameras. `ascal` is MIT-licensed (2026) and reaches a median residual of 0.42 px across 23 systems [verified].
   3. **Blind solve.** Without hints, use cedar-solve (Apache-2.0) with a custom 35 to 85 degree database and a distortion search range. Fall back to astrometry.net indexes 4112 to 4119 (11 MB) on a central crop. astrometry.net is GPL v3, so run it as a separate process [inference].
   4. **Lens model.** Fit a full lens model (Brown-Conrady or Kannala-Brandt) against catalog stars from the existing G 12 tiles, which replace the 18-star catalog.
   5. **Accept.** Keep a solution only if it passes the existing held-out gate and two independent paths agree.
-- **M3, golden corpus and benchmark.** Start now, because weather, the Moon and the season limit how fast real data arrives. [proposed] The benchmark's ground-truth camera and astrometry landed on 2026-11-04 in `research/benchmarks/phone_photos/`, tested against ERFA and Meeus. The renderer, frame suite, scorer, solver adapters, a run on real clips and the baseline of today's solver followed the same day: it solved 0 of 210 simulated frames and once certified a wrong sky, so M2's acceptance test must weigh each match against its chance of coincidence ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated] The corpus has four parts:
+- **M3, golden corpus and benchmark.** The benchmark's ground-truth camera, astrometry, renderer, frame suite, scorer, solver adapters and baseline run live in `research/benchmarks/phone_photos/`, tested against ERFA and Meeus: the baseline 18-star solver solved 0 of 210 simulated frames and once certified a wrong sky, so M2's acceptance test weighs each match against its chance of coincidence ([PHONE_PHOTO_BENCHMARK.md](science/PHONE_PHOTO_BENCHMARK.md)). [tested, simulated] The corpus has four parts:
   - Synthetic Gaia fields rendered through phone fields of view, lens distortion, light-pollution gradients and foregrounds.
   - Real phone frames in RAW and JPEG, with ground truth from a co-mounted narrow-field camera.
   - Hard negatives (cloud, aircraft, the Moon, screens), scored on producing zero false solves.
   - LenghuSky-8 all-sky frames (CC BY 4.0 [verified]) to stress fisheye handling.
-- **M4, ephemeris.** Replace the Keplerian elements with JPL DE440 (114 MB [verified]). Add the Sun, Mercury and Neptune, make the Moon topocentric, and compute magnitudes from phase. Test against JPL Horizons from the backend only, since its fair-use rules forbid browser calls [verified]. [proposed]
+- **M4, ephemeris.** Replace the Keplerian elements in `services/science/ephemeris.py` with JPL DE440 (114 MB [verified]). Add the Sun, Mercury and Neptune, make the Moon topocentric, and compute magnitudes from phase. Test against JPL Horizons from the backend only, since its fair-use rules forbid browser calls [verified]. [proposed]
 - **M5, sky brightness.** Model artificial sky brightness from VIIRS Black Marble VNP46A4 (NASA data, CC0 [verified]) through a Garstang/Cinzano model, or use the Falchi atlas if decision 1 allows. Calibrate against Globe at Night (CC BY 4.0) and TESS-W photometers. Drop the fixed radiometry target. [proposed]
 - **M6, detection integrity.** A denoised `MediaVariant` may propose candidates, but each must pass forced photometry on the original pixels. Injection-recovery runs publish completeness and false-positive rates, and a source seen only in a variant is never `observed`. [proposed]
 
@@ -99,21 +97,21 @@ Done when a real phone photo from the corpus solves in the app to a verified WCS
 
 Owners: `science` for catalogs, `architecture` for contracts, `verification` for provenance checks.
 
-- **M1, data registry.** Landed on 2026-11-04: every file under `apps/web/public` has a `PROVENANCE.json` record (source, version, licence, credit, checksum and bake script) or a pinned gap, a test in CI fails on anything else, and five unused assets are deleted. [tested] Next: close the 11 gaps in section 6. [proposed]
-- **M2, small authoritative tables.** [verified sizes; ingestion proposed]
+- **M1, data registry.** Every file under `apps/web/public` has a `PROVENANCE.json` record (source, version, licence, credit, checksum and bake script) or a pinned gap in `scripts/provenance_gaps.json`, enforced in CI, and unused unrecorded assets have been removed. [tested] Next: close the 9 remaining gaps in section 6. [proposed]
+- **M2, small authoritative tables.** Contracts for `SolarEclipseCatalog`, `LunarEclipseCatalog` and `ExoplanetTable` live in `packages/contracts/src/eclipses.ts`, `packages/contracts/src/exoplanets.ts`, `services/contracts/eclipses.py` and `services/contracts/exoplanets.py`, and Espenak's solar and lunar eclipse catalogues are baked in `apps/web/public/catalog/eclipses/solar.json` and `apps/web/public/catalog/eclipses/lunar.json` with provenance [tested]; remaining table bakes and ingestion: [verified sizes; ingestion proposed]
   - NASA Exoplanet Archive PSCompPars (6,451 planets).
   - The ATNF Pulsar Catalogue (4,503 pulsars).
   - OpenNGC (13,970 objects, CC BY-SA 4.0).
   - The live IAU star-name list (652 names; the tiles use 451 from 2022).
-  - Espenak's eclipse catalogues and the IAU Meteor Data Center showers.
+  - The IAU Meteor Data Center showers.
   - MPCORB (321 MB) for asteroids.
-- **M3, Gaia DR4 and deeper tiles.** Gaia DR4 is due on 2 December 2026, and the archive goes offline from 25 November [verified]. [proposed]
-  - Run the deep extraction once, on DR4. G < 17 holds 157.7 million stars in DR3 [verified count], about 4.3 GB in today's tile format [inference].
+- **M3, Gaia DR4 and deeper tiles.** Gaia DR4 is scheduled for 2 December 2026, with the archive offline from 25 November [verified]. [proposed]
+  - Run the deep extraction once, on DR4. G < 17 holds 157.7 million stars in DR3 [verified count], about 4.3 GB in the current tile format [inference].
   - Add GSP-Phot temperature, FLAME luminosity, extinction, parallax error and RUWE to the tiles.
   - Propagate positions from J2016.0 to the viewing date.
 - **M4, real dust.** [proposed]
   - Edenhofer et al. 2024: CC BY 4.0, either 3.25 GB as a HEALPix mean and standard deviation or 15.7 GB on a 2 pc grid [verified].
-  - The O'Neill et al. 2024 Local Chimney model, published on Harvard Dataverse under CC0 (3.5 GB) [verified]. It replaces today's GLB-derived Local Bubble splats.
+  - The O'Neill et al. 2024 Local Chimney model, published on Harvard Dataverse under CC0 (3.5 GB) [verified]. It replaces the current GLB-derived Local Bubble splats.
   - Bake both to sparse bricks for the WebGPU volume. Bayestar19 (CC0) covers the northern sky beyond 1.25 kpc.
 - **M5, galaxies.** Cosmicflows-4 (55,877 galaxies with measured distances), 2MRS (44,599) and GLADE+ (23.2 million, 13 GB) [verified sizes]. [proposed]
 - **M6, live feeds through the backend.** [proposed]
@@ -131,16 +129,12 @@ Owners: `voice`, with `architecture` for action contracts and `science` for tool
 
 No model training is needed. Claude 3.5 Sonnet already scored 85% on the AstroMLab-1 astronomy benchmark in 2024 [verified]. What a model lacks is the user's own data, so grounding comes from deterministic tools, a licensed corpus and citations, with evidence classes carried into every answer. [inference]
 
-- **M1, a sound model path.** Landed on 2026-11-04: the official SDK, `claude-opus-5-5` read from configuration, strict tools with `tool_choice` `auto`, a server-side refusal fallback that logs the model that served each answer, and a cached system prompt. Live calls stay off until an eval budget exists. [tested]
-  - Use the official Anthropic Python SDK instead of raw HTTP, and `claude-opus-5-5` read from configuration instead of the hardcoded old model.
-  - Make output schema-valid with strict tool definitions (`strict: true`) or structured outputs (`output_config.format`). This model rejects forced `tool_choice`, so use `auto` with strict tools.
-  - Handle the `refusal` stop reason with server-side fallbacks.
-  - Cache the stable system prompt and tool list.
-- **M2, actions that run.** Contracts first. [proposed]
-  - Extend `AlbedianAction`, which has 13 types today, to cover regime and scene navigation, audio and free-form questions.
-  - Make the backend execute validated actions.
-  - Align the Python and TypeScript rules for `space.enter` on `predicted_only` solutions (`services/voice/intent.py:466` against `packages/observation/src/reducer.ts:242`).
-  - Remove the hardcoded year 2026.
+- **M1, a sound model path.** Implemented in `services/voice/claude.py`: the official Anthropic Python SDK, `claude-opus-5-5` read from configuration, strict tools with `tool_choice` `auto`, a server-side refusal fallback that logs the model that served each answer, and a cached system prompt. Live calls stay off until an eval budget exists. [tested]
+- **M2, actions that run.** Implemented across `packages/contracts/src/spatial-and-voice.ts`, `packages/contracts/src/voice-command.ts`, `services/contracts/voice.py`, `packages/observation/src/reducer.ts`, `services/voice/intent.py` and `apps/web/src/voice/voiceBackend.ts`:
+  - `AlbedianAction` covers 20 action types, including regime and scene navigation, audio and free-form questions. [tested]
+  - The backend returns schema-validated `VoiceCommandResponse` payloads that the frontend validates and dispatches through the reducer. [tested]
+  - Python and TypeScript enforce identical rules for `space.enter` on `predicted_only` solutions (`services/voice/intent.py` and `packages/observation/src/reducer.ts`). [tested]
+  - Year parsing uses linear-time anchored patterns without a hardcoded fallback year, and predicted bodies are evaluated at the recording's capture epoch. [tested]
 - **M3, tools.** Every number in an answer comes from a tool result. [proposed] The tools:
   - the ephemeris (Track 1 M4);
   - catalog lookup, through the tiles plus SIMBAD over TAP (ODbL);
@@ -158,7 +152,7 @@ No model training is needed. Claude 3.5 Sonnet already scored 85% on the AstroML
   - Language to `AlbedianAction`, including "that one" and "there".
   - An AstroMLab-1 slice as a regression check.
   - Prompt injection through file names and metadata.
-- **M6, voice.** Text-to-speech (there is none today), barge-in, and a latency budget. [proposed]
+- **M6, voice.** Text-to-speech (not yet implemented), barge-in, and a latency budget. [proposed]
 
 Done when a user can ask "what is that bright one?" about their own photo and get a cited, evidence-labelled answer computed from their solution and the catalogs, and the eval set passes.
 
@@ -171,9 +165,9 @@ The WebGPU migration continues from [RENDERER_WEBGPU_SPIKE.md](architecture/REND
 - **Real atmosphere.** Replace the hand-tuned lookup with Bruneton 2017's precomputation (BSD-3; the bake takes about 250 ms on a GPU [verified]) or with `@takram/three-atmosphere/webgpu` (MIT, work in progress, needs three 0.182 or later [verified]). [proposed]
 - **The night sky, physically.** Model airglow, zodiacal light and integrated starlight, which the GAMBONS model covers [verified], plus artificial sky brightness from Track 1 M5. [proposed]
 - **Dust from data.** Render the Track 2 M4 volume with CCM89 reddening of everything behind it, which the spike already measured. [proposed]
-- **Sky dome registration.** Landed on 2026-11-04: the ESO panorama is registered to the catalog stars in both renderers, and the plotted star map, the synthesized `halpha` and `jwst_ir` bands and the red boost are removed ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)). [tested] Since then, the credits of the drawn imagery and catalogs show beside the canvas without a click, the catalog stars are drawn at infinity so they no longer shift against the dome, and the registration pins only the 60 core tiles its fit reads. [tested]
-- **Textures.** `lro_moon_2k.jpg` is only 1024x512. It is being replaced by the 8k colour map and the LOLA relief of NASA SVS's CGI Moon Kit (svs.gsfc.nasa.gov/4720), with recorded provenance. [proposed] The plotted star map is gone from the app; the Blender look-dev sky still uses the NASA SVS Deep Star Maps and moves to the registered panorama. [proposed]
-- **Honest set pieces.** Delete `derivePlanetaryWorldDescriptor`, and act on decision 4. [proposed]
+- **Sky dome registration.** The ESO panorama is registered to the catalog stars in both renderers, the plotted star map, the synthesized `halpha` and `jwst_ir` bands and the red boost are removed ([SKY_PANORAMA_REGISTRATION.md](science/SKY_PANORAMA_REGISTRATION.md)), the credits of the drawn imagery and catalogs show beside the canvas without a click, the catalog stars are drawn at infinity so they do not shift against the dome, and the registration pins only the 60 core tiles its fit reads. [tested]
+- **Textures.** `lro_moon_2k.jpg` is 1024x512; its replacement comes from the 8k colour map and the LOLA relief of NASA SVS's CGI Moon Kit (svs.gsfc.nasa.gov/4720), with recorded provenance, and the Earth day map uses NASA's March 2004 Blue Marble base map. [tested] The plotted star map is gone from the app; the Blender look-dev sky still uses the NASA SVS Deep Star Maps and moves to the registered panorama. [proposed]
+- **Honest set pieces.** `derivePlanetaryWorldDescriptor`, the decorative deep-sky and black-hole particle clouds, and `nasa_pillars_3d.glb` / `nasa_nebula_splats.json` have been removed (`apps/web/src/spatial/SparkPortalRenderer.ts`), and modelled scenes carry explicit disclosures per decision 4. [tested]
 - **Switching the default.** Switch after Safari and Windows runs, per-regime snapshot tests and frame-time budgets in CI. [proposed]
 - **The landing's fidelity, first.** The Milky Way behind the Moon is a 6000x3000 photograph, magnified about three to five times at the landing's view, so its stars turn soft, and the camera holds still [tested]. Point stars come only from the catalog tiles, sharp at any zoom; the Milky Way becomes diffuse light only; a slow camera motion gives real parallax at the same moment; every image layer's pixels per degree are measured against 1080p and 4K. [proposed]
 
@@ -183,10 +177,10 @@ Done when every landing scene runs on WebGPU with layer disclosures, the AgX loo
 
 Owners: `experience`, with `science` for the data fields.
 
-- Connect the data inputs (`setSources`, `setListenerOrientation`, `setSkyBrightness`, `setUnveil`) to the catalog tiles, the camera, radiometry and the reveal ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md), section 8). [proposed]
+- Connect the data inputs (`setSources`, `setListenerOrientation`, `setSkyBrightness`, `setUnveil`) to the catalog tiles, the camera, radiometry and the reveal ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md), section 8). `SkyAudioFeed` feeds visible catalog stars from the camera pose into the audio engine with evidence-class disclosure and third-party notices in the viewport. [tested]
 - Add temperature, luminosity, extinction and pulsar spin to the contracts, as AUDIO_ENGINE.md escalates, fed by Track 2 M2 and M3. [proposed]
-- Run the listening test for the 13 items in AUDIO_ENGINE.md section 10. Done on 2026-11-05: the owner rejected the data-only sound and asked for music with a beat and swells (decision 7). Next: three short music directions over the real landing for the owner to pick by ear, then the chosen one in the app, with its credits and a statement of what the data chooses. [proposed]
-- Ship the Apache-2.0 notices for Omnitone and the York HRTFs. [proposed]
+- In the 13-item listening evaluation ([AUDIO_ENGINE.md](architecture/AUDIO_ENGINE.md), section 10), data-only sonification was rejected in favour of music with a beat and swells (decision 7). Next: three short music directions over the real landing for selection by ear, then the chosen score in the app, with its credits and a statement of what the data controls. [proposed]
+- Ship the Apache-2.0 notices for Omnitone and the York HRTFs (`apps/web/src/audio/assets/THIRD_PARTY_NOTICES.txt`, `apps/web/src/audio/audioCredits.ts`). [tested]
 - Learn from published, data-grounded work: the NASA Chandra sonifications, SYSTEM Sounds' TRAPPIST-1 piece and STScI's Astronify [verified]. [proposed]
 
 ### Track 6: the capture site (later)
@@ -203,17 +197,17 @@ Owner: `spatial`, with `media`. [proposed]
 
 Owner: `verification`, with each area's owner.
 
-- **CI.** Live since 2026-11-04 on every push and pull request. [tested] Still open: a skip guard that also catches `xfail(run=False)`, dropped files and Vitest `skip` or `todo`, and uv in the Node job for the provenance check. [proposed]
-- **Security.** Landed on 2026-11-04: CORS for the web app's own origins only, with no credentials and a foreign write refused before any route runs; a trusted-host check against DNS rebinding; and fixed scan folders with relative paths in every answer. [tested] Landed on 2026-11-05: the web build refuses while `apps/web/public/` holds a file git does not track or a symbolic link, and the owner's clip renders now live in the ignored `data/renders/`, outside the web root. [tested] Before any public deployment: the same check in the WebGPU spike's build, which also copies that folder; a refusal for tracked files with local edits there; and a review of the hosted setup. [proposed]
-- **Docs drift.**
-  - The Gaia licence is CC BY-NC 3.0 IGO, as `docs/science/CATALOG_STAR_TILES.md` says, not CC BY-SA as `docs/architecture/ARCHITECTURE_OVERVIEW.md` says.
-  - AGENTS.md cites `docs/adr/`, `docs/internal/integration-ledger.md` and `apps/web/src/voice/`, none of which exist.
-  - EXP-07 and EXP-11 in `research/experiments/EXPERIMENT_REGISTRY.md` are marked verified, but they do not test what they claim.
-  - AUDIO_ENGINE.md still says the volume slider is unconnected, and it names the wrong radiometry endpoint.
-- **Fabrication remnants.**
-  - `services/science/vision_calibrator.py`, described as a Claude Vision check, sent no image and was used by one test only. Deleted on 2026-11-04. [tested]
-  - Since 2026-11-04 the backend no longer reports a 999 px residual or a fit residual as held-out, gives no source a default hash, lists no unreadable file at a standard size and frame rate, and calls no star measured through an unverified pose observed. [tested]
-- **Data outside git.** `data/uploads` (205 MB), `data/artifacts`, `data/lookdev` (289 MB) and several gitignored splats exist only on this machine.
+- **CI.** Runs on every push and pull request across Node 22 and 24 and Python 3.12 and 3.14 (`.github/workflows/gates.yml`), enforcing all six verification gates, provenance verification, Vitest `skip`/`todo` rejection (`scripts/vitest-no-unexpected-skips.mjs`), and pytest `skip`/`xfail`/deselection rejection (`tests/conftest.py`). [tested]
+- **Security.** CORS is restricted to the web app's own origins with no credentials and foreign writes refused before any route runs; trusted-host checks guard against DNS rebinding; discovery scans only configured folders and returns relative paths; both Vite builds (`apps/web/vite.config.ts` and `apps/webgpu-spike/vite.config.ts`) refuse any untracked, locally modified or symlinked file under `apps/web/public/`; and private clip renders live in the gitignored `data/renders/` directory outside the web root. [tested] A hosted deployment still needs its own infrastructure review before public launch. [proposed]
+- **Docs verification.**
+  - The Gaia DR3 CC BY-NC 3.0 IGO licence is stated consistently across [CATALOG_STAR_TILES.md](science/CATALOG_STAR_TILES.md) and [ARCHITECTURE_OVERVIEW.md](architecture/ARCHITECTURE_OVERVIEW.md). [tested]
+  - `AGENTS.md` cites only real repository directories, enforced by `pnpm verify:docs` (`scripts/verify-docs.mjs`). [tested]
+  - `EXP-01` through `EXP-12` in `research/experiments/EXPERIMENT_REGISTRY.md` align their summary status labels and detailed specifications with what each test actually runs. [tested]
+  - `AUDIO_ENGINE.md` documents the connected `SkyAudioFeed` and volume controls alongside the radiometry endpoint. [proposed]
+- **Fabrication removal.**
+  - The synthetic vision calibrator, which sent no image, is removed. [tested]
+  - The backend reports no synthetic 999 px or fit residual as held-out, gives no source a default hash, lists no unreadable file at a fallback size or frame rate, and labels no star measured through an unverified pose as `observed`. [tested]
+- **Data outside git.** `data/uploads` (205 MB), `data/artifacts`, `data/lookdev` (289 MB) and several gitignored splats exist only on the local development machine.
 
 ### Track 8: the experience
 
@@ -221,11 +215,11 @@ Owner: `experience`.
 
 How a person explores Albedian, from arriving on the landing to going back to their photo. Every pattern comes from a proven reference (decision 8).
 
-- **Reference board.** For each moment (the landing, uploading a photo, the solve and the reveal, exploring, picking a star and learning about it, travelling, voice, Back to Moment, the credits), a pattern from games and apps that already do it well, with official screenshots, for the owner's yes; then mockups for a second yes; then the build, one screen at a time. [proposed]
-- **Exploring is not built yet.** After the landing's Launch there is only drag, keys and the wheel: no picking, labels, card, flight, arrival or way back. [tested]
-- **A companion for third-person flight** (the owner's idea, 2026-11-05). An optional mode in which you fly as a character: an original one, based on the owner's own Shiba Inu, leaving a trail whose colours could be the real colours of the stars it passes. Its art and sound are our own; any existing character would need its creator's permission. It is labelled as playful, never as data, and comes after the demo-critical tracks unless it proves cheap. [proposed]
+- **Reference board.** For each moment (the landing, uploading a photo, the solve and the reveal, exploring, picking a star and learning about it, travelling, voice, Back to Moment, the credits), a pattern from games and apps that already do it well, with official screenshots, for review, and mockups over real WebGPU captures and catalog rows in the experience cache [verified]; the viewport HUD components (`apps/web/src/components/CelestialMarkerOverlay.tsx`, `apps/web/src/components/CelestialTargetCard.tsx`, `apps/web/src/components/FlightAndRestoreHud.tsx`, `apps/web/src/components/VoiceCommandHud.tsx`, `apps/web/src/components/SpatialObservatoryViewport.tsx`) are implemented and tested [tested], with the remaining screen builds following one screen at a time. [proposed]
+- **Exploring.** Beyond the landing's Launch, picking, labels, object cards, flight, arrival and return navigation are built step by step against the reference board. [proposed]
+- **A companion for third-person flight.** An optional mode in which you fly as an original Shiba Inu companion character, leaving a trail whose colours follow the real colours of the stars it passes. Its art and sound are original; any existing character would need its creator's permission. It is labelled as playful, never as data, and comes after the demo-critical tracks unless it proves cheap. [proposed]
 
-Done when the owner has said yes to the board and the mockups and the app follows them.
+Done when the reference board and mockups are signed off and the app follows them.
 
 ## 4. Long-running jobs to start early
 
@@ -233,10 +227,10 @@ None of this is model training. The only GPU work is optional splat training, pl
 
 | # | Job | Unblocks | Size or time, where grounded | Compute | Start |
 |---|---|---|---|---|---|
-| 1 | Real-sky golden corpus | Solver choice and every regression gate | Limited by weather, the Moon and the season | Camera time | Now |
-| 2 | Licence requests (ESA commercial authorisation, the Falchi atlas form) | A commercial launch; the light-pollution layer | Lead time [open] | None | Now, if commercial |
+| 1 | Real-sky golden corpus | Solver choice and every regression gate | Limited by weather, the Moon and the season | Camera time | Active |
+| 2 | Licence requests (ESA commercial authorisation, the Falchi atlas form) | A commercial launch; the light-pollution layer | Lead time [open] | None | Before commercial launch |
 | 3 | Gaia DR4 deep extraction and tile bake | Deeper sky, the 3D universe, temperatures for audio | 157.7 M stars at G < 17 (DR3 count). DR3's bulk `gaia_source` was 753 GB; output about 4.3 GB of tiles [inference]. The G 12 bake took 10.5 minutes | CPU | After 2 December 2026 |
-| 4 | Dust download and resampling pilot | Dust volume, reddening, the Local Bubble | 3.25 GB (Edenhofer HEALPix) plus 3.5 GB (O'Neill), or 15.7 GB for the 2 pc grid. Memory-heavy; no published timing | CPU | Now |
+| 4 | Dust download and resampling pilot | Dust volume, reddening, the Local Bubble | 3.25 GB (Edenhofer HEALPix) plus 3.5 GB (O'Neill), or 15.7 GB for the 2 pc grid. Memory-heavy; no published timing | CPU | Active |
 | 5 | Capture-site pilot | Track 6 | COLMAP took 478 s on a MacBook Air; msplat 700 s on an M4 Max | Metal GPU | Later |
 | 6 | Night segmentation labels and an injection-recovery benchmark | Sky masks; the original-pixels rule | Human labelling time | CPU, Core ML | With Track 1 M2 |
 | 7 | LLM eval sets | Track 3 | Authoring time | None | With Track 3 M1 |
@@ -250,7 +244,7 @@ Quick jobs to run when needed [verified]:
 
 ## 5. Data sources
 
-Research checked these on 2026-11-04 at the sources named. Sizes are downloads.
+Sizes are downloads checked at the primary sources named.
 
 | Source | What it gives | Size | Licence | Where | Track |
 |---|---|---|---|---|---|
@@ -275,7 +269,7 @@ Research checked these on 2026-11-04 at the sources named. Sizes are downloads.
 | O'Neill et al. 2024 | The Local Bubble (Local Chimney) surface | 3.5 GB | CC0 | doi:10.7910/DVN/INB1RB | 2 M4 |
 | Bayestar19 | 3D dust north of declination -30 | 0.73 GB | CC0 | doi:10.7910/DVN/2EJ9TX | 2 M4 |
 | ESO eso0932a | Milky Way panorama (in use) | 6000x3000 | CC BY 4.0, credit ESO/S. Brunier | eso.org | Have |
-| NASA SVS Deep Star Maps 2020 | Plotted star map, removed from the app on 2026-11-04; the Blender look-dev sky still uses it | Up to 3.8 GB EXR | NASA credit; whether Gaia DR2 terms apply is [open] | svs.gsfc.nasa.gov/4851 | Removed |
+| NASA SVS Deep Star Maps 2020 | Plotted star map, removed from the app; the Blender look-dev sky still uses it | Up to 3.8 GB EXR | NASA credit; whether Gaia DR2 terms apply is [open] | svs.gsfc.nasa.gov/4851 | Removed |
 | CDS HiPS (DSS2, 2MASS, AllWISE, Planck, Fermi) | Multiwavelength all-sky images | Tiled | ODbL packaging. DSS2 is not cleared for products, Planck is CC BY-NC, the others are [open] | alasky.cds.unistra.fr, skies.esac.esa.int | Only once cleared |
 | NASA Exoplanet Archive | 6,451 planets around 4,847 hosts | TAP | No restrictions; cite | exoplanetarchive.ipac.caltech.edu | 2 M2 |
 | ATNF Pulsar Catalogue | 4,503 pulsars | Small | CSIRO property; cite | atnf.csiro.au | 2 M2, 5 |
@@ -297,11 +291,11 @@ Some licences carry obligations:
 
 ## 6. Assets without recorded provenance
 
-Every other file under `apps/web/public` has a record ([ASSET_PROVENANCE.md](architecture/ASSET_PROVENANCE.md)). These 11 are pinned gaps in `scripts/provenance_gaps.json`, and a test fails if a gap's bytes change or a file arrives without a record. [tested]
+Every other file under `apps/web/public` has a record ([ASSET_PROVENANCE.md](architecture/ASSET_PROVENANCE.md)). These 9 are pinned gaps in `scripts/provenance_gaps.json`, and a test fails if a gap's bytes change or a file arrives without a record. [tested]
 
-- **Models:** `local_bubble_oneill2024.glb` (the name points to O'Neill et al. 2024), `nasa_lro_moon_3d.glb` (made in Blender, with relief about 2.4 times the real range) and `nasa_pillars_3d.glb` (its mesh is named `CasA_2025`), and the two splat files baked from them, `lb_splats.json` and `nasa_nebula_splats.json`.
+- **Models:** `local_bubble_oneill2024.glb` (the name points to O'Neill et al. 2024), `nasa_lro_moon_3d.glb` (made in Blender, with relief about 2.4 times the real range), and the splat file baked from the Local Bubble mesh, `lb_splats.json`.
 - **Splats:** `snow-street.spz` and `valley.spz`, the WebGPU spike's scaling fixtures, with no licence stated at their source.
-- **Textures:** `bruneton_atmo_lut.png` (hand-set single scattering, to be replaced), and `earth_clouds.png`, `earth_normal.jpg` and `earth_specular.jpg`, whose replacements from NASA, NOAA and Natural Earth have landed and wait for the renderer.
+- **Textures:** `bruneton_atmo_lut.png` (hand-set single scattering, to be replaced), and `earth_clouds.png`, `earth_normal.jpg` and `earth_specular.jpg`, whose replacements from NASA, NOAA and Natural Earth are staged for the renderer.
 
 ## 7. Running this in new sessions
 

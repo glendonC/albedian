@@ -4,7 +4,9 @@
  * - each of the 8 Kiro specs has requirements.md, design.md and tasks.md under .kiro/specs/<spec>/, none under 50 bytes;
  * - .kiro/steering/ holds at least 4 steering files, each starting with `inclusion:` frontmatter;
  * - the 4 preserved research reports exist in research/originals/;
- * - every relative Markdown link in README.md and in each .md file under docs/ names a file or folder that exists.
+ * - every backticked repository path in AGENTS.md names a file or directory that exists on disk;
+ * - every relative Markdown link in README.md, AGENTS.md, research/experiments/EXPERIMENT_REGISTRY.md and in each .md
+ *   file under docs/ names a file or folder that exists.
  * Links with a scheme (https:, mailto:) are not followed, and neither are fragments (#section) or reference-style
  * links.
  */
@@ -31,10 +33,13 @@ const PRESERVED_REPORTS = [
 // [text](target) and ![alt](target), with an optional "title" after the target
 const LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+const BACKTICKED_REPO_PATH = /`(\.?[A-Za-z0-9_-]+\/[A-Za-z0-9._/-]*)`/g;
 
-/** README.md and every Markdown file under docs/, as paths relative to root. */
+/** README.md, AGENTS.md, research/experiments/EXPERIMENT_REGISTRY.md and every Markdown file under docs/, as paths relative to root. */
 export function markdownFiles(root) {
-  const files = fs.existsSync(path.join(root, 'README.md')) ? ['README.md'] : [];
+  const files = [];
+  if (fs.existsSync(path.join(root, 'README.md'))) files.push('README.md');
+  if (fs.existsSync(path.join(root, 'AGENTS.md'))) files.push('AGENTS.md');
   const walk = (folder) => {
     for (const entry of fs.readdirSync(path.join(root, folder), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
       const relative = path.posix.join(folder, entry.name);
@@ -43,7 +48,37 @@ export function markdownFiles(root) {
     }
   };
   if (fs.existsSync(path.join(root, 'docs'))) walk('docs');
+  if (fs.existsSync(path.join(root, 'research/experiments/EXPERIMENT_REGISTRY.md'))) {
+    files.push('research/experiments/EXPERIMENT_REGISTRY.md');
+  }
   return files;
+}
+
+/** Backticked repository paths in AGENTS.md, each as { file, line, target }. */
+export function agentsPaths(root) {
+  const agentsFile = path.join(root, 'AGENTS.md');
+  if (!fs.existsSync(agentsFile)) return [];
+  const paths = [];
+  fs.readFileSync(agentsFile, 'utf8')
+    .split('\n')
+    .forEach((text, index) => {
+      for (const match of text.matchAll(BACKTICKED_REPO_PATH)) {
+        paths.push({ file: 'AGENTS.md', line: index + 1, target: match[1] });
+      }
+    });
+  return paths;
+}
+
+/** `AGENTS.md:line: target` for each backticked repository path in AGENTS.md that does not exist on disk. */
+export function deadAgentsPaths(root, paths = agentsPaths(root)) {
+  return paths
+    .filter(({ target }) => {
+      const resolved = path.join(root, target);
+      if (!fs.existsSync(resolved)) return true;
+      if (target.endsWith('/') && !fs.statSync(resolved).isDirectory()) return true;
+      return false;
+    })
+    .map(({ file, line, target }) => `${file}:${line}: ${target}`);
 }
 
 /** The relative links in these files, each as { file, line, target }. */
@@ -102,13 +137,16 @@ export function docsGate(root) {
     }
   }
 
+  const agentPaths = agentsPaths(root);
+  for (const dead of deadAgentsPaths(root, agentPaths)) errors.push(`Missing path in AGENTS.md: ${dead}`);
+
   const files = markdownFiles(root);
   const links = relativeLinks(root, files);
   for (const dead of deadLinks(root, links)) errors.push(`Dead relative link: ${dead}`);
 
   const summary =
     `[verify:docs] OK: verified ${EXPECTED_SPECS.length} Kiro specs (24 documents), ${steeringFiles.length} steering files, ` +
-    `${PRESERVED_REPORTS.length} preserved research reports and ${links.length} relative links in ${files.length} Markdown files.`;
+    `${PRESERVED_REPORTS.length} preserved research reports, ${agentPaths.length} AGENTS.md paths and ${links.length} relative links in ${files.length} Markdown files.`;
   return { errors, summary };
 }
 

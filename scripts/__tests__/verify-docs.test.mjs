@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { deadLinks, docsGate, markdownFiles, relativeLinks } from '../verify-docs.mjs';
+import { agentsPaths, deadAgentsPaths, deadLinks, docsGate, markdownFiles, relativeLinks } from '../verify-docs.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const roots = [];
@@ -43,21 +43,60 @@ describe('the docs gate link check', () => {
     expect(deadLinks(root)).toEqual([]);
   });
 
-  it('reads README.md and every Markdown file under docs/, and nothing else', () => {
+  it('reads README.md, AGENTS.md, research/experiments/EXPERIMENT_REGISTRY.md and every Markdown file under docs/', () => {
     const root = scratch({
       'README.md': '',
+      'AGENTS.md': '',
       'docs/one.md': '',
       'docs/deep/two.md': '',
+      'research/experiments/EXPERIMENT_REGISTRY.md': '',
       'docs/notes.txt': '[dead](missing.md)',
       'other/three.md': '[dead](missing.md)',
     });
-    expect(markdownFiles(root)).toEqual(['README.md', 'docs/deep/two.md', 'docs/one.md']);
+    expect(markdownFiles(root)).toEqual([
+      'README.md',
+      'AGENTS.md',
+      'docs/deep/two.md',
+      'docs/one.md',
+      'research/experiments/EXPERIMENT_REGISTRY.md',
+    ]);
+  });
+
+  it('checks every backticked repository path in AGENTS.md against the filesystem', () => {
+    const root = scratch({
+      'AGENTS.md': [
+        '| Agent | Scope |',
+        '| `architecture` | `packages/contracts/`, `docs/adr/`, `docs/internal/integration-ledger.md` |',
+        '| `science` | `DAOStarFinder`/SEP/matched filter, `services/science/` |',
+      ].join('\n'),
+      'packages/contracts/index.ts': '',
+      'services/science': 'a file where a directory is required',
+    });
+    expect(agentsPaths(root)).toEqual([
+      { file: 'AGENTS.md', line: 2, target: 'packages/contracts/' },
+      { file: 'AGENTS.md', line: 2, target: 'docs/adr/' },
+      { file: 'AGENTS.md', line: 2, target: 'docs/internal/integration-ledger.md' },
+      { file: 'AGENTS.md', line: 3, target: 'services/science/' },
+    ]);
+    expect(deadAgentsPaths(root)).toEqual([
+      'AGENTS.md:2: docs/adr/',
+      'AGENTS.md:2: docs/internal/integration-ledger.md',
+      'AGENTS.md:3: services/science/',
+    ]);
+    expect(docsGate(root).errors).toContain('Missing path in AGENTS.md: AGENTS.md:2: docs/adr/');
   });
 
   it('fails the gate on a dead link, and passes this repository', () => {
-    const root = scratch({ 'docs/page.md': 'See [a gone page](gone.md).\n' });
-    expect(docsGate(root).errors).toContain('Dead relative link: docs/page.md:1: gone.md');
+    const root = scratch({
+      'docs/page.md': 'See [a gone page](gone.md).\n',
+      'research/experiments/EXPERIMENT_REGISTRY.md': 'See [missing](../../docs/missing.md).\n',
+    });
+    const errors = docsGate(root).errors;
+    expect(errors).toContain('Dead relative link: docs/page.md:1: gone.md');
+    expect(errors).toContain('Dead relative link: research/experiments/EXPERIMENT_REGISTRY.md:1: ../../docs/missing.md');
     expect(relativeLinks(repoRoot).length).toBeGreaterThan(0);
+    expect(agentsPaths(repoRoot).length).toBeGreaterThanOrEqual(16);
+    expect(deadAgentsPaths(repoRoot)).toEqual([]);
     expect(docsGate(repoRoot).errors).toEqual([]);
   });
 });
