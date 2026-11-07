@@ -2291,6 +2291,77 @@
 }
 
 /* ============================================================================
+   MOMENT 02 & 04 CELESTIAL MARKER OVERLAY (Four Non-Color EvidenceClass Glyphs)
+   ============================================================================ */
+.alb-marker-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 24;
+}
+
+.alb-marker-hit {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.alb-marker-hit.is-focused {
+  outline: 2px solid #f4f2ed;
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+.alb-marker-svg {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.alb-marker-label {
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(9, 12, 18, 0.84);
+  border: 1px solid rgba(244, 242, 237, 0.18);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.alb-marker-hit.is-selected .alb-marker-label {
+  border-color: rgba(244, 242, 237, 0.48);
+  background: rgba(9, 12, 18, 0.94);
+}
+
+.alb-marker-shortcode {
+  font-family: var(--alb-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.alb-marker-title {
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #f4f2ed;
+}
+
+/* ============================================================================
    @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
    ============================================================================ */
 .alb-zzzz-optics-drawer {

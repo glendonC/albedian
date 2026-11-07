@@ -25,6 +25,7 @@ import {
   CoalescingBar,
 } from './CoalescingBar.js';
 import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
+import { CelestialMarkerOverlay } from './CelestialMarkerOverlay.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
 import '../styles/albedian.css';
 
@@ -107,12 +108,14 @@ export const SpatialObservatoryViewport: React.FC<
   SpatialObservatoryViewportProps
 > = ({
   session,
+  selectedFinding,
   discoveredMedia,
   activeDiscoveredId,
   activeDiscoveredItem: propActiveDiscoveredItem,
   commandText,
   setCommandText,
   onRunUtterance,
+  onSelectFinding,
   onPushToTalk,
   onTriggerUpload,
 }) => {
@@ -494,15 +497,22 @@ export const SpatialObservatoryViewport: React.FC<
       )}
 
       {!entryStageActive && (
-        <VoiceCommandHud
-          voiceState={session.machines?.voice ?? 'off'}
-          lastStatusBanner={session.lastStatusBanner ?? null}
-          lastUtterance={session.voiceActions?.at(-1)?.utterance ?? null}
-          commandText={commandText}
-          setCommandText={setCommandText}
-          onRunUtterance={onRunUtterance}
-          onPushToTalk={onPushToTalk}
-        />
+        <>
+          <CelestialMarkerOverlay
+            session={session}
+            selectedFinding={selectedFinding}
+            onSelectFinding={onSelectFinding}
+          />
+          <VoiceCommandHud
+            voiceState={session.machines?.voice ?? 'off'}
+            lastStatusBanner={session.lastStatusBanner ?? null}
+            lastUtterance={session.voiceActions?.at(-1)?.utterance ?? null}
+            commandText={commandText}
+            setCommandText={setCommandText}
+            onRunUtterance={onRunUtterance}
+            onPushToTalk={onPushToTalk}
+          />
+        </>
       )}
 
       {/* =======================================================================
