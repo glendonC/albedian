@@ -4,7 +4,7 @@
       "name": "architecture",
       "role": "Architecture & Contracts Lead",
       "mission": "Own the 14 domain entity schemas, cross-service API contracts, ADRs, and integration boundaries.",
-      "ownedPaths": ["packages/contracts", "docs/architecture", "docs/adr"],
+      "ownedPaths": ["packages/contracts", "packages/observation", "packages/evidence", "docs/architecture"],
       "steering": [".kiro/steering/product-vision.md", ".kiro/steering/scientific-integrity.md", ".kiro/steering/architecture-contracts.md"]
     },
     {

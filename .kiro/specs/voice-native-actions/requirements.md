@@ -18,5 +18,6 @@ Defines the voice and typed command pipeline (`Speech/Text -> Intent -> Context 
 - **Acceptance Criteria:**
   1. `navigation.cancel` SHALL immediately halt active camera interpolation and commit a valid intermediate pose.
   2. `history.back` with `mode: 'partial'` and `fraction f ∈ (0, 1)` SHALL interpolate the camera checkpoint along the fractional path; chaining two `history.back` calls with fractions `f₁` and `f₂` SHALL NOT overshoot beyond the previous checkpoint (i.e., effective combined fraction ≤ max(f₁, f₂)).
-  3. THE voice service SHALL NEVER invent celestial coordinates, distances, or completed restoration jobs.
+  3. THE voice service SHALL NEVER invent celestial coordinates, distances, or completed restoration jobs, SHALL evaluate predicted bodies at `observedAtUTC` without echoing private coordinates or timestamps, and SHALL refuse `ui.overlay` with `reason: 'not_connected'` until an overlay consumer exists.
   4. WHEN an `AlbedianAction` is dispatched with a `findingId` that does not exist in `session.observationSolution.findings`, THE system SHALL return `status: 'rejected'` with `reason: 'unknown_finding'`.
+  5. `VoiceCommandRequest.utterance` SHALL be capped at 2,000 UTF-16 code units on both client and server without echoing the rejected utterance, and `space.epoch` SHALL reject year `0`.

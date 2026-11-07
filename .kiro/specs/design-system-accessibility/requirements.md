@@ -6,9 +6,9 @@ Defines Albedian's observational instrument design tokens, marker grammar across
 ## Requirements
 
 ### REQ-DSA-1: Non-Color-Only Epistemic Marker Grammar
-**User Story:** As a user (including users with color-vision deficiency), I want to distinguish `observed`, `catalog_matched`, `predicted`, and `simulated` objects by shape, stroke, and text badge—not color alone.
+**User Story:** As a user (including users with color-vision deficiency), I want to distinguish `observed`, `catalog_matched`, `predicted`, and `simulated` objects by shape, stroke, and text badge, not color alone.
 - **Acceptance Criteria:**
-  1. `observed` markers SHALL use a solid centroid dot + tick; `catalog_matched` SHALL add a concentric precision ring + elbow label; `predicted` SHALL use a dashed ring + `Predicted` badge; `simulated` SHALL use bracketed reticles + `Catalog Geometry` / `Modeled Sky` badge.
+  1. `observed` markers SHALL use a solid centroid dot + tick; `catalog_matched` SHALL add a concentric precision ring + elbow label; `predicted` SHALL use a dashed ring + `Predicted` badge; `simulated` SHALL use bracketed reticles + `Simulated` badge.
   2. All primary text and control tokens SHALL satisfy WCAG AA/AAA contrast on `#06090D` and `#10161D`.
 
 ### REQ-DSA-2: Reduced Motion & Keyboard Parity

@@ -40,19 +40,19 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 
 1. `ObservationSession`: Root aggregate coordinating the 4+1 orthogonal state machines, active selection, observer context, and history.
 2. `SourceAsset`: Immutable content-addressed original photograph or video (`sha256`, dimensions, codec, FPS, audio stream metadata).
-3. `MediaVariant`: Derivative media asset produced by a `ProcessingAttempt`, aligned to the canonical `SourceAsset` timeline.
+3. `MediaVariant`: Derivative media asset produced by a `ProcessingAttempt`, aligned to the canonical `SourceAsset` timeline (`audioSyncOffsetMs` is optional when not measured, and `validateMediaTimelineSync` fails closed when a source with audio omits `audioSyncOffsetMs`). [tested]
 4. `ProcessingGraph`: Acyclic, typed DAG of deterministic and prior-assisted media operations (`tone_curve`, `spatial_denoise`, `temporal_stack`, `star_protect_merge`, `region_mask`).
-5. `ProcessingAttempt`: Versioned execution instance of a `ProcessingGraph`, with the wall time of the run (reported as `cpuMs`) and quality evaluation metrics. `gpuMs` and `peakMemoryBytes` are not measured: the runtime records a constant 0 and twice the output frame bytes [open].
-6. `ObservationSolution`: Versioned astrometric calibration record (`calibrated`, `predicted_only`, `unresolved`, `ambiguous`) with WCS parameters and held-out pixel residuals.
+5. `ProcessingAttempt`: Versioned execution instance of a `ProcessingGraph`, recording real `startedAtUTC` and `completedAtUTC` timestamps around execution, worker-thread CPU time (`cpuMs`, via `time.thread_time()`), and measured quality evaluation metrics; unmeasured fields (`peakMemoryBytes`, `pointSourceRetentionRatio`, `faceRegionStabilityScore`, `temporalFlickerIndex`) are omitted rather than filled with placeholder values (`services/media/runtime.py`). [tested]
+6. `ObservationSolution`: Versioned astrometric calibration record (`calibrated`, `predicted_only`, `unresolved`, `ambiguous`) with WCS parameters and held-out pixel residuals; `observedAtUTC` and `observerLocation` are optional when a recording lacks a verified capture timestamp or GPS coordinates, and `/api/ingest/{sha256}/solve`, `/api/ingest/jobs/{job_id}`, and `/api/ingest/{sha256}/solution` execute `SolveJob` with real byte, frame, and candidate-triplet denominators. [tested]
 7. `CelestialFinding`: A detected, catalog-matched, predicted, or simulated astronomical object with stable ID and `EvidenceClass`.
    An `observed` finding has a sky position only when its solution's WCS passed held-out verification; without one it is located by its pixel `sourceDetection` alone. A `catalog_matched` finding needs that verified WCS too.
 8. `CatalogReference`: Pinned external catalog record (`Gaia DR3`, `Hipparcos`, `JPL Horizons`) with epoch, astrometric parameters, and proper motion.
 9. `ScientificEvidence`: Audit trail linking pixel measurements, WCS residuals, Bailer-Jones distance intervals, and explicit limitations.
-10. `SpatialViewState`: Current observer origin (parsecs), simulation epoch, camera pose, scale policy, and active overlays.
+10. `SpatialViewState`: Current observer origin (parsecs), simulation epoch (`SpaceEpoch.yearCE`, rejecting astronomical year `0`), optional `observationEpochISO` when the source recording has no verified capture timestamp, camera pose, scale policy, and active overlays. [tested]
 11. `CameraCheckpoint`: Immutable snapshot of media time, playback state, audio gain, crop, selected finding, and camera rig for exact restoration.
-12. `VoiceAction`: Schema-validated `AlbedianAction` command bound to `ActionContext` and `expectedViewRevision`.
+12. `VoiceAction`: Schema-validated `AlbedianAction` command bound to `ActionContext` and `expectedViewRevision`. `VoiceCommandRequest` caps `utterance` at 2,000 UTF-16 code units without echoing the raw utterance on validation failure, both parsers reject year `0`, `ui.overlay` is refused as `not_connected` until an overlay consumer exists, and predicted bodies are evaluated at `observedAtUTC`. [tested]
 13. `NavigationHistory`: Reversible stack of `CameraCheckpoint` snapshots supporting full (`checkpoint`) and continuous (`partial`) backtracking.
-14. `ExportArtifact`: Verified output media file and machine-readable provenance manifest (`sourceSha256`, `outputSha256`, audio sync verification, WCS & catalog citations).
+14. `ExportArtifact`: Verified output media file and machine-readable provenance manifest (`sourceSha256`, `outputSha256`, audio stream copy via `-c:a copy` with `framemd5` packet PTS verification, WCS & catalog citations). [tested]
 
 ---
 
@@ -67,7 +67,7 @@ Defined authoritatively in [`packages/contracts/src/index.ts`](../../packages/co
 
 ## 4. Engineering Standards, Verification & Catalog Attributions
 
-- **Verification Gates:** All changes require passing `pnpm typecheck`, `pnpm test` (Vitest + `fast-check` property-based tests), and `uv run pytest` (Python + `hypothesis` property-based tests).
+- **Verification Gates:** All changes require passing `pnpm typecheck`, `pnpm test` (Vitest + `fast-check` property-based tests), `uv run pytest` (Python + `hypothesis` property-based tests), `pnpm verify:contracts`, `pnpm verify:docs`, `pnpm verify:provenance`, and `pnpm build`.
 - **Third-Party Astronomical Data & Licenses:**
   - **ESA Gaia DR3 (`I/355/gaiadr3`) & Bailer-Jones et al. (`I/352`):** Credit: ESA/Gaia/DPAC (CC BY-NC 3.0 IGO, as [docs/science/CATALOG_STAR_TILES.md](../science/CATALOG_STAR_TILES.md) records).
   - **ESA Hipparcos 2007 (van Leeuwen 2007, through the ESA archive):** Credit: ESA (CC BY-NC 3.0 IGO). SIMBAD is not queried.
