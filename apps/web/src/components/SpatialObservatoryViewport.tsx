@@ -28,6 +28,7 @@ import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
 import { CelestialMarkerOverlay } from './CelestialMarkerOverlay.js';
 import { CelestialTargetCard } from './CelestialTargetCard.js';
 import { FlightAndRestoreHud } from './FlightAndRestoreHud.js';
+import { ObservationSolveAndCompareHud } from '../spatial/ObservationSolveAndCompareHud.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
 import '../styles/albedian.css';
 
@@ -513,6 +514,10 @@ export const SpatialObservatoryViewport: React.FC<
             onPushToTalk={onPushToTalk}
           />
           <FlightAndRestoreHud
+            session={session}
+            setSession={setSession}
+          />
+          <ObservationSolveAndCompareHud
             session={session}
             setSession={setSession}
           />

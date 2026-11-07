@@ -2679,6 +2679,168 @@
 }
 
 /* ============================================================================
+   OBSERVATION SOLVE RECEIPT & ORIGINAL-VS-RESTORED A/B WIPE HUD (Moments 02 & 03)
+   ============================================================================ */
+.albedian-solve-compare-hud {
+  position: absolute;
+  bottom: 92px;
+  left: 32px;
+  z-index: 29;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(460px, calc(100vw - 64px));
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(8, 12, 20, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(200, 206, 216, 0.22);
+  color: #f4f2ed;
+  pointer-events: auto;
+}
+
+.albedian-solve-compare-hud__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.albedian-solve-compare-hud__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(93, 212, 198, 0.14);
+  border: 1px solid rgba(93, 212, 198, 0.45);
+  color: #8bf0e3;
+}
+
+.albedian-solve-compare-hud__asset {
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  color: #9ea8b8;
+}
+
+.albedian-solve-compare-hud__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: #e4e8ef;
+}
+
+.albedian-solve-compare-hud__solver {
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  color: #8ab4d8;
+}
+
+.albedian-solve-compare-hud__disclosure {
+  margin: 0;
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  line-height: 1.42;
+  color: #a8b2c2;
+}
+
+.albedian-solve-compare-hud__warnings {
+  margin: 0;
+  padding-left: 16px;
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  color: #f6d28b;
+}
+
+.albedian-solve-compare-hud__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.albedian-solve-compare-hud__btn-primary {
+  appearance: none;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 4px;
+  background: #f0f0fa;
+  border: 1px solid #f0f0fa;
+  color: #06080d;
+  font-family: var(--alb-font-sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.albedian-solve-compare-hud__btn-primary:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.albedian-solve-compare-hud__btn-secondary {
+  appearance: none;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 4px;
+  background: rgba(240, 240, 250, 0.08);
+  border: 1px solid rgba(240, 240, 250, 0.24);
+  color: #e4e8ef;
+  font-family: var(--alb-font-sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.albedian-solve-compare-hud__btn-secondary:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.albedian-solve-compare-hud__wipe {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(200, 206, 216, 0.16);
+}
+
+.albedian-solve-compare-hud__wipe-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  color: #b8c2d2;
+}
+
+.albedian-solve-compare-hud__slider {
+  width: 100%;
+  accent-color: #79e2d2;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .albedian-solve-compare-hud {
+    left: 12px;
+    right: 12px;
+    bottom: 84px;
+    width: auto;
+  }
+}
+
+/* ============================================================================
    @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
    ============================================================================ */
 .alb-zzzz-optics-drawer {
