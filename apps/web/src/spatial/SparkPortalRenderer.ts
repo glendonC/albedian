@@ -742,9 +742,9 @@ export class SparkPortalRenderer {
 
   /**
    * Builds a subtle atmospheric horizon mist layer (`SplatMesh`) in `earth_capture`
-   * and updates the Earthly Horizon Landscape Dome uniform (`uIsSouthern`) for Sahara vs. Aoraki New Zealand.
+   * and updates the Earthly Horizon Landscape Dome hemisphere uniform (`uIsSouthern`).
    */
-  private rebuildCaptureHorizonSplatMesh(latDeg: number, lonDeg: number): void {
+  private rebuildCaptureHorizonSplatMesh(latDeg: number, _lonDeg: number): void {
     const group = this.regimeGroups.earth_capture;
     if (this.captureHorizonSplatMesh) {
       group.remove(this.captureHorizonSplatMesh);
@@ -752,12 +752,12 @@ export class SparkPortalRenderer {
       this.captureHorizonSplatMesh = null;
     }
 
-    const isSouthernAlpsNZ = latDeg < -34.0 && lonDeg > 160.0;
+    const isSouthern = latDeg < 0;
     const horizonDome = group.getObjectByName('captureHorizonLandscapeDome') as THREE.Mesh | undefined;
     if (horizonDome) {
       const mat = horizonDome.material as THREE.ShaderMaterial;
       if (mat.uniforms?.uIsSouthern) {
-        mat.uniforms.uIsSouthern.value = isSouthernAlpsNZ ? 1.0 : 0.0;
+        mat.uniforms.uIsSouthern.value = isSouthern ? 1.0 : 0.0;
       }
     }
   }
@@ -772,8 +772,8 @@ export class SparkPortalRenderer {
   /**
    * Updates the observer's geographic coordinates (`latDeg`, `lonDeg`) across all 3D regimes:
    * - Updates the Earthly Horizon Landscape Dome for the capture site
-   * - Rotates Planet Earth in Cislunar space so the observer's continent/site faces the H5 sightline
-   * - Inverts Lunar orientation when observing from the Southern Hemisphere (`latDeg < 0`, e.g. New Zealand)
+   * - Rotates Planet Earth in Cislunar space so the observer's hemisphere faces the sightline
+   * - Inverts Lunar orientation when observing from the Southern Hemisphere (`latDeg < 0`)
    */
   public setObserverCoordinates(latDeg: number, lonDeg: number): void {
     if (
@@ -2146,7 +2146,7 @@ export class SparkPortalRenderer {
 
   /** The camera's pose against the catalog star sphere drawn now, for the audio listener. */
   public getCameraSkyPose(): CameraSkyPose | null {
-    const sky = this.catalogStarMounts.find((m) => m.parent?.visible !== false) ?? this.catalogStarMounts[0];
+    const sky = this.catalogStarMounts.find((m) => m.parent?.visible !== false);
     if (!sky || !this.catalogStars) return null;
     return cameraSkyPose(this.camera, sky, this.catalogStars.getLimitingMagnitude());
   }

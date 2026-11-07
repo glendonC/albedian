@@ -248,22 +248,26 @@ describe('the WebGPU landing reports where it looks against the catalog sky', ()
 });
 
 describe('the WebGL renderer reports where it looks against the catalog sky', () => {
-  it('reads the star mount of the regime it shows', () => {
+  it('reads the star mount of the regime it shows and forwards a non-default limiting magnitude', () => {
     const turn = new THREE.Euler(0.4, -0.7, 0.2);
     const { camera, mounts, starMount } = webglArrangement(0.3, -0.2, turn);
-    const pose = webglPose(camera, mounts);
+    const pose = webglPose(camera, mounts, 8.25);
     expect(pose).not.toBeNull();
     const shown = starMount.getWorldQuaternion(new THREE.Quaternion());
     expect(pose!.icrsWorldQuaternion).toEqual([shown.x, shown.y, shown.z, shown.w]);
     expect(pose!.fovDeg).toBe(56);
     expect(pose!.aspect).toBe(16 / 9);
-    expect(pose!.limitingMagnitude).toBe(6.5);
+    expect(pose!.limitingMagnitude).toBe(8.25);
   });
 
-  it('reports no pose before a star sphere is mounted or the catalog exists', () => {
+  it('reports no pose before a star sphere is mounted, when no regime is shown, or before the catalog exists', () => {
     const { camera, mounts } = webglArrangement();
     expect(webglPose(camera, [])).toBeNull();
     expect(webglPose(camera, mounts, null)).toBeNull();
+    for (const mount of mounts) {
+      if (mount.parent) mount.parent.visible = false;
+    }
+    expect(webglPose(camera, mounts)).toBeNull();
   });
 
   it('PBT-POSE-3: hears every catalog direction where the shown regime draws its star', () => {
