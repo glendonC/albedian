@@ -18,10 +18,11 @@ skipped, with its reason printed, wherever a path it names is absent.
   test or a fixture. A test marked xfail that runs and fails is still an expected failure.
 - The run stops with a usage error when `--ignore` or `--ignore-glob` is set (on the command line, in
   addopts or in PYTEST_ADDOPTS); when a loaded conftest sets `collect_ignore` or `collect_ignore_glob`, or
-  defines `pytest_ignore_collect`; or when a collected test is removed before the run, as `--deselect`,
-  `-k`, `-m` or a hook that drops items would do.
-It cannot see a file that `testpaths`, `norecursedirs` or `python_files` keep out of collection, nor a
-test that returns early.
+  defines `pytest_ignore_collect`; when a collected test is removed before the run, as `--deselect`,
+  `-k`, `-m` or a hook that drops items would do; or, when the command line does not target a single `.py`
+  file, when any `test_*.py` file under `tests/` has no collected tests (as `testpaths`,
+  `norecursedirs`, `python_files` or an empty test file would do).
+It cannot see a test that returns early without calling `pytest.skip` or `pytest.xfail`.
 
 The test run sets `ALBEDIAN_TRUSTED_HOSTS` to this machine's names plus `testserver`, TestClient's default
 host, before any test imports `services.api`; the API's own default never includes `testserver`.
@@ -130,6 +131,28 @@ def _relative(config: pytest.Config, path: str) -> str:
         return path
 
 
+_VALUE_OPTIONS = frozenset(
+    ("-o", "-k", "-m", "-W", "-p", "-c", "--ignore", "--ignore-glob", "--deselect", "--basetemp", "--rootdir", "--confcutdir")
+)
+
+
+def _cli_targets_specific_file(config: pytest.Config) -> bool:
+    """True when the command line explicitly names a .py test file (for example pytest tests/test_one.py)."""
+    skip_next = False
+    for arg in config.invocation_params.args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in _VALUE_OPTIONS:
+            skip_next = True
+            continue
+        if arg.startswith("-") or "=" in arg:
+            continue
+        if arg.split("::", 1)[0].endswith(".py"):
+            return True
+    return False
+
+
 def _refuse_tests_left_out(config: pytest.Config, collected: list[str], items: list[pytest.Item]) -> None:
     problems = []
     remaining = {item.nodeid for item in items}
@@ -148,6 +171,22 @@ def _refuse_tests_left_out(config: pytest.Config, collected: list[str], items: l
                 problems.append(f"{where} sets {name}")
         if hasattr(plugin, "pytest_ignore_collect"):
             problems.append(f"{where} defines pytest_ignore_collect")
+    if not _cli_targets_specific_file(config):
+        root = config.rootpath.resolve()
+        tests_dir = root / "tests"
+        if tests_dir.is_dir():
+            collected_files = {Path(item.fspath).resolve() for item in items}
+            uncollected = [
+                path.relative_to(root).as_posix()
+                for path in sorted(tests_dir.rglob("test_*.py"))
+                if path.resolve() not in collected_files
+            ]
+            if uncollected:
+                noun = "file" if len(uncollected) == 1 else "files"
+                verb = "was" if len(uncollected) == 1 else "were"
+                shown = ", ".join(uncollected[:REMOVED_SHOWN])
+                more = f" and {len(uncollected) - REMOVED_SHOWN} more" if len(uncollected) > REMOVED_SHOWN else ""
+                problems.append(f"{len(uncollected)} test {noun} under tests/ {verb} not collected: {shown}{more}")
     if problems:
         raise pytest.UsageError(f"{STRICT} runs every collected test, but {'; '.join(problems)}")
 

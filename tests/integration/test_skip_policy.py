@@ -317,6 +317,30 @@ LEFT_OUT: dict[str, tuple[dict[str, str], tuple[str, ...], dict[str, str], tuple
         {},
         ("tests/sub/conftest.py defines pytest_ignore_collect",),
     ),
+    "testpaths": (
+        {"pytest.ini": "[pytest]\ntestpaths = tests/test_a.py tests/test_b.py\n"},
+        (),
+        {},
+        ("1 test file under tests/ was not collected: tests/sub/test_c.py",),
+    ),
+    "norecursedirs": (
+        {"pytest.ini": "[pytest]\nnorecursedirs = sub\n"},
+        (),
+        {},
+        ("1 test file under tests/ was not collected: tests/sub/test_c.py",),
+    ),
+    "python_files": (
+        {"pytest.ini": "[pytest]\npython_files = test_[ab].py\n"},
+        (),
+        {},
+        ("1 test file under tests/ was not collected: tests/sub/test_c.py",),
+    ),
+    "an empty test file": (
+        {"tests/test_b.py": "# every test in this file was deleted\n"},
+        (),
+        {},
+        ("1 test file under tests/ was not collected: tests/test_b.py",),
+    ),
 }
 
 
@@ -343,3 +367,23 @@ def test_no_unexpected_skips_refuses_every_way_of_leaving_a_collected_test_out(t
     assert "--no-unexpected-skips runs every collected test" in strict.stderr
     for fragment in named:
         assert fragment in strict.stderr
+
+
+def test_no_unexpected_skips_allows_a_single_file_on_the_cli_but_refuses_a_subdirectory(tmp_path: Path) -> None:
+    root = scratch_tree(tmp_path, THREE_TESTS)
+    quiet = ("-W", "ignore::pytest.PytestUnknownMarkWarning")
+
+    single_file = run_pytest(root, "--no-unexpected-skips", *quiet, "tests/test_a.py")
+    assert single_file.returncode == 0, single_file.stdout[-2000:] + single_file.stderr[-2000:]
+    assert "1 passed" in single_file.stdout
+
+    subdir = run_pytest(root, "--no-unexpected-skips", *quiet, "tests/sub")
+    assert subdir.returncode == USAGE_ERROR, subdir.stdout[-2000:] + subdir.stderr[-2000:]
+    assert "2 test files under tests/ were not collected: tests/test_a.py, tests/test_b.py" in subdir.stderr
+
+
+def test_gates_workflow_runs_strict_skip_guards_and_provenance_check() -> None:
+    workflow = (REPO_ROOT / ".github" / "workflows" / "gates.yml").read_text(encoding="utf-8")
+    assert "--reporter=./scripts/vitest-no-unexpected-skips.mjs" in workflow
+    assert "uv run --frozen python scripts/verify_provenance.py" in workflow
+    assert "uv run --frozen pytest -rs --no-unexpected-skips" in workflow
