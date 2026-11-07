@@ -619,6 +619,44 @@ def test_a_fresh_pointer_wins_over_selected_and_focused_and_a_stale_pointer_is_i
     by_focused = parse_voice_intent("what is that one?", stale_time, current_year=YEAR)
     assert by_focused.action is not None and by_focused.action["findingId"] == "finding-star-sirius"
 
+    single_overlap = {
+        **ctx,
+        "recentPointer": {**_pointer("finding-star-rigel"), "nearestFindingId": None},
+    }
+    by_single_overlap = parse_voice_intent("what is that one?", single_overlap, current_year=YEAR)
+    assert by_single_overlap.action is not None and by_single_overlap.action["findingId"] == "finding-star-rigel"
+
+    multi_overlap_no_nearest = {
+        **BARE,
+        "recentPointer": {**_pointer("finding-obs-1", "finding-obs-2"), "nearestFindingId": None},
+    }
+    needs_disambiguation = _reply("what is that one?", multi_overlap_no_nearest)
+    assert needs_disambiguation["status"] == "needs_input"
+    assert [choice["id"] for choice in needs_disambiguation["choices"]] == ["finding-obs-1", "finding-obs-2"]
+
+
+def test_action_context_carries_no_placeholder_ids_and_media_restore_needs_a_source_asset_id() -> None:
+    empty_default = ActionContext()
+    assert empty_default.session_id is None
+    assert empty_default.source_asset_id is None
+    for raw in ({}, {"sessionId": None, "sourceAssetId": None}, {"sessionId": "", "sourceAssetId": ""}):
+        parsed = ActionContext.from_dict(raw)
+        assert parsed.session_id is None
+        assert parsed.source_asset_id is None
+    given = ActionContext.from_dict({"session_id": "s-own", "source_asset_id": "src-own"})
+    assert (given.session_id, given.source_asset_id) == ("s-own", "src-own")
+
+    without_source = {"viewRevision": 4, "calibrationState": "calibrated"}
+    intent = parse_voice_intent("clean up the noise", without_source, current_year=YEAR)
+    assert (intent.action, intent.reason) == (None, "missing_source")
+    assert intent.explanation == "Restoring the recording needs its sourceAssetId in the request context."
+    reply = _reply("clean up the noise", without_source)
+    assert (reply["status"], reply["reason"]) == ("rejected", "missing_source")
+    assert reply["explanation"] == "Restoring the recording needs its sourceAssetId in the request context."
+    assert reply["nextActions"] == ["Send the active recording's sourceAssetId in the request context"]
+    assert "asset-0" not in json.dumps(reply)
+    assert "session-0" not in json.dumps(reply)
+
 
 @pytest.mark.parametrize(
     "utterance, expected_type, expected_reason",
@@ -908,6 +946,18 @@ def test_a_request_no_action_matches_is_a_question_nothing_answers_yet() -> None
     assert "proposedAction" not in reply
     assert parse_voice_intent("hello there", BARE, current_year=YEAR).action == {
         "type": "question.ask", "requestId": reply["actionId"], "expectedViewRevision": 4, "question": "hello there",
+    }
+    with_selected = {**BARE, "selectedFindingId": "finding-star-vega"}
+    assert parse_voice_intent("hello there", with_selected, current_year=YEAR).action == {
+        "type": "question.ask", "requestId": reply["actionId"], "expectedViewRevision": 4, "question": "hello there",
+    }
+    assert parse_voice_intent("that one", with_selected, current_year=YEAR).action == {
+        "type": "finding.select", "requestId": reply["actionId"], "expectedViewRevision": 4,
+        "findingId": "finding-star-vega",
+    }
+    assert parse_voice_intent("this one", with_selected, current_year=YEAR).action == {
+        "type": "finding.select", "requestId": reply["actionId"], "expectedViewRevision": 4,
+        "findingId": "finding-star-vega",
     }
 
 

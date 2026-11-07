@@ -105,8 +105,8 @@ class PointerContext:
 class ActionContext:
     """Multimodal session context for deictic resolution and revision checking."""
 
-    session_id: str = "session-0"
-    source_asset_id: str = "asset-0"
+    session_id: str | None = None
+    source_asset_id: str | None = None
     source_time_sec: float = 0.0
     navigation_state: str = "source"
     calibration_state: str = "not_requested"
@@ -139,8 +139,8 @@ class ActionContext:
         ptr_raw = data.get("recentPointer", data.get("recent_pointer"))
         ptr = PointerContext.from_dict(ptr_raw) if isinstance(ptr_raw, dict) else ptr_raw
         return cls(
-            session_id=str(data.get("sessionId", data.get("session_id", "session-0"))),
-            source_asset_id=str(data.get("sourceAssetId", data.get("source_asset_id", "asset-0"))),
+            session_id=_optional_str(data, "sessionId", "session_id"),
+            source_asset_id=_optional_str(data, "sourceAssetId", "source_asset_id"),
             source_time_sec=float(data.get("sourceTimeSec", data.get("source_time_sec", 0.0))),
             navigation_state=str(data.get("navigationState", data.get("navigation_state", "source"))),
             calibration_state=str(data.get("calibrationState", data.get("calibration_state", "not_requested"))),
@@ -166,11 +166,12 @@ def _optional_float(data: dict[str, Any], *keys: str) -> float | None:
 
 
 def _optional_str(data: dict[str, Any], *keys: str) -> str | None:
-    """Return the first non-null value among `keys` as a string, or None when none is given."""
+    """Return the first non-null, non-empty value among `keys` as a string, or None when none is given."""
     for key in keys:
         value = data.get(key)
         if value is not None:
-            return str(value)
+            text = str(value)
+            return text if text else None
     return None
 
 
@@ -351,7 +352,7 @@ _DESCRIBE = re.compile(
     r"\b(?:what is|how far|where is|describe|tell me about|identify)\b",
     re.ASCII,
 )
-_SELECT = re.compile(r"\b(?:select|focus|lock|point|show me)\b", re.ASCII)
+_SELECT = re.compile(r"\b(?:select|focus|lock|point|show me|that one|this one)\b", re.ASCII)
 _SKY_PREDICTED = re.compile(r"\b(?:predicted|planet|ephemeris)\b", re.ASCII)
 _SKY_MEASURED = re.compile(
     r"\b(?:what were we looking at|what was overhead|show me what was overhead|"
@@ -394,6 +395,13 @@ def _parse_with_rules(
         return _rules_intent(request_id, None, "invalid_epoch", _year_refusal(said))
 
     if any(kw in text for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")):
+        if ctx.source_asset_id is None:
+            return _rules_intent(
+                request_id,
+                None,
+                "missing_source",
+                "Restoring the recording needs its sourceAssetId in the request context.",
+            )
         profile = "temporal" if "temporal" in text or "stack" in text else "star_protected"
         if "natural" in text or "tone" in text:
             profile = "natural"
@@ -424,7 +432,7 @@ def _parse_with_rules(
     if _SKY_MEASURED.search(text):
         return formed("sky.show", mode="measured")
 
-    if target is not None and not _HOW_MANY.search(text):
+    if _named_finding_id(utterance) is not None and not _HOW_MANY.search(text):
         return formed("finding.select", findingId=target)
 
     question = utterance.strip()
@@ -585,6 +593,28 @@ def _describe_finding(finding_id: str, ctx: ActionContext) -> str | None:
     return None
 
 
+def _pointer_disambiguation(
+    utterance: str, pointer: PointerContext | None, action_id: str
+) -> dict[str, Any] | None:
+    if (
+        pointer is None
+        or len(pointer.overlapping_candidate_ids) <= 1
+        or _named_finding_id(utterance) is not None
+    ):
+        return None
+    choices = [
+        {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
+        for cid in pointer.overlapping_candidate_ids
+    ]
+    return {
+        "status": "needs_input",
+        "actionId": action_id,
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": choices,
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
+    }
+
+
 def _check(
     utterance: str,
     ctx: ActionContext,
@@ -614,7 +644,15 @@ def _check(
         }
 
     if action is None:
-        hints = {"ambiguous_target": ["Name a catalog star or planet, or point at one"], "invalid_epoch": EPOCH_ADVICE}
+        if reason == "ambiguous_target":
+            disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
+            if disambiguation is not None:
+                return disambiguation
+        hints = {
+            "ambiguous_target": ["Name a catalog star or planet, or point at one"],
+            "invalid_epoch": EPOCH_ADVICE,
+            "missing_source": ["Send the active recording's sourceAssetId in the request context"],
+        }
         return _rejected(
             action_id,
             reason or "no_grounded_answer",
@@ -655,24 +693,10 @@ def _check(
             "issues": issues,
         }
 
-    pointer = fresh_pointer(ctx)
-    if (
-        pointer is not None
-        and len(pointer.overlapping_candidate_ids) > 1
-        and action_type in FINDING_ACTION_TYPES
-        and _named_finding_id(utterance) is None
-    ):
-        choices = [
-            {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
-            for cid in pointer.overlapping_candidate_ids
-        ]
-        return {
-            "status": "needs_input",
-            "actionId": action_id,
-            "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
-            "choices": choices,
-            "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
-        }
+    if action_type in FINDING_ACTION_TYPES:
+        disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
+        if disambiguation is not None:
+            return disambiguation
 
     refusal = None
     if action_type == "space.enter":

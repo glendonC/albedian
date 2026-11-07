@@ -381,6 +381,8 @@ def compose_action(
         action["findingId"] = tool_input["findingId"]
 
     if tool_name == "media_restore":
+        if context.source_asset_id is None:
+            return None
         action["sourceAssetId"] = context.source_asset_id
         action["profile"] = tool_input["profile"]
         action["constraints"] = {"preservePeople": True, "allowSyntheticSky": False, "protectStars": True}

@@ -516,6 +516,28 @@ def test_an_unsafe_synthetic_request_reaches_no_model(monkeypatch: pytest.Monkey
     assert outcome["interpretation"] == {"parser": "rules"}
 
 
+def test_media_restore_without_a_source_asset_id_returns_none_and_falls_back_to_missing_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    without_source = ActionContext.from_dict({"viewRevision": 3, "calibrationState": "calibrated"})
+    assert without_source.session_id is None
+    assert without_source.source_asset_id is None
+    assert (
+        claude.compose_action(
+            "media_restore", {"profile": "star_protected"}, without_source, "req-1", 3, current_year=2026
+        )
+        is None
+    )
+    api = _Api(_reply(_tool_use("media_restore", {"profile": "star_protected"})))
+    _live(monkeypatch, api)
+    outcome = check_voice_command("clean up the noise", {"viewRevision": 3, "calibrationState": "calibrated"})
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert len(api.requests) == 1
+    assert (outcome["status"], outcome["reason"]) == ("rejected", "missing_source")
+    assert outcome["interpretation"] == {"parser": "rules"}
+    assert "asset-0" not in json.dumps(outcome)
+
+
 UNUSABLE_REPLIES = {
     "refusal before output": _reply(stop_reason="refusal",
                                     stop_details={"type": "refusal", "category": None, "explanation": None}),
