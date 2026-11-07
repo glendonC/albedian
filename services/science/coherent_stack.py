@@ -20,11 +20,11 @@ def subtract_lunar_scattering_veil(
     moon_y_px: float,
     sky_mask: np.ndarray,
 ) -> tuple[np.ndarray, dict[str, float]]:
-    """Fit and subtract the smooth radial Rayleigh/Mie lunar atmospheric glare profile
-    inside `sky_mask > 0.5` outside the lunar core (`r > 18 px`).
+    """Estimate and subtract a radial lunar glare veil inside `sky_mask > 0.5` outside the lunar core (`r > 18 px`).
 
-    Uses the 35th percentile within concentric radial annuli around `(moon_x_px, moon_y_px)`
-    so compact stellar point sources are never absorbed into the background veil model.
+    Takes the 35th percentile above the outer-sky baseline within concentric radial annuli around
+    `(moon_x_px, moon_y_px)`, decaying by an empirical factor of `0.65` in annuli with fewer than 8 sky pixels
+    and enforcing non-increasing radial values so compact point sources are not absorbed into the veil.
     """
     work = _to_luma_2d(luma).copy()
     mask_2d = np.asarray(sky_mask, dtype=np.float64)

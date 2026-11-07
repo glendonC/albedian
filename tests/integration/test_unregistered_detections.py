@@ -165,6 +165,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
                 if with_detection
                 else None
             ),
+            limitations=("Synthetic test finding limitation.",),
             source_sha256=RECORD_SHA,
         )
 
@@ -213,19 +214,25 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
     det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
     pixel_only = CelestialFindingRecord(
         id="finding-obs-1", observation_solution_id="sol-1", evidence_class="observed",
-        title="Observed Point Source #1", subtitle="Measured", source_detection=det, source_sha256=RECORD_SHA,
+        title="Observed Point Source #1", subtitle="Measured", source_detection=det,
+        limitations=("Pixel position only.",), source_sha256=RECORD_SHA,
     )
     placed = CelestialFindingRecord(
         id="finding-obs-2", observation_solution_id="sol-1", evidence_class="observed",
         title="Observed Point Source #2", subtitle="Measured", source_detection=det,
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0, source_sha256=RECORD_SHA,
+        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+        limitations=("Placed by verified WCS.",), source_sha256=RECORD_SHA,
     )
     matched = CelestialFindingRecord(
         id="finding-star-x", observation_solution_id="sol-1", evidence_class="catalog_matched",
         title="Matched star", subtitle="Catalog", source_detection=det,
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0, source_sha256=RECORD_SHA,
+        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+        limitations=("Matched to catalog star.",), source_sha256=RECORD_SHA,
     )
-    wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
+    wcs = WCSModel(
+        crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+        scale_deg_per_px=0.035, width=WIDTH, height=HEIGHT,
+    )
 
     def solution(wcs_model: WCSModel | None, passed: bool, finding: CelestialFindingRecord) -> ObservationSolution:
         # A passed fit was judged on measured held-out residuals; an unverified one here paired no held-out star
@@ -266,6 +273,38 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         solution(None, True, matched)
 
 
+def test_wcs_model_and_finding_record_refuse_missing_dimensions_or_limitations_or_out_of_range_distortion() -> None:
+    with pytest.raises(TypeError):
+        WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035, height=540)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035, width=960)  # type: ignore[call-arg]
+    for bad_w, bad_h in ((0, 540), (-1, 540), (960, 0), (960, -1)):
+        with pytest.raises(ValueError, match="width and height"):
+            WCSModel(
+                crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+                scale_deg_per_px=0.035, width=bad_w, height=bad_h,
+            )
+    for bad_k1, bad_k2 in ((0.26, 0.0), (-0.26, 0.0), (0.0, 0.26), (0.0, -0.26)):
+        with pytest.raises(ValueError, match="radial distortion"):
+            WCSModel(
+                crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+                scale_deg_per_px=0.035, k1=bad_k1, k2=bad_k2, width=WIDTH, height=HEIGHT,
+            )
+    with pytest.raises(TypeError):
+        CelestialFindingRecord(
+            id="finding-pred-1", observation_solution_id="sol-1", evidence_class="predicted",
+            title="Rigel", subtitle="Orion", ra_deg=78.6345, dec_deg=-8.2016, uncertainty_arcsec=14.2,
+            source_sha256=RECORD_SHA,
+        )  # type: ignore[call-arg]
+    for bad_limitations in ((), ("",), ("   ",)):
+        with pytest.raises(ValueError, match="limitations"):
+            CelestialFindingRecord(
+                id="finding-pred-1", observation_solution_id="sol-1", evidence_class="predicted",
+                title="Rigel", subtitle="Orion", ra_deg=78.6345, dec_deg=-8.2016, uncertainty_arcsec=14.2,
+                limitations=bad_limitations, source_sha256=RECORD_SHA,
+            )
+
+
 @settings(max_examples=120, deadline=None)
 @given(
     status=st.sampled_from(["pending", "calibrated", "approximate", "predicted_only", "unresolved", "ambiguous"]),
@@ -289,14 +328,18 @@ def test_pbt_solution_time_and_place_follow_the_contract(
     has_predicted_finding: bool,
 ) -> None:
     det = SourceDetection(x_px=412.5, y_px=300.2, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
-    wcs = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035)
+    wcs = WCSModel(
+        crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+        scale_deg_per_px=0.035, width=WIDTH, height=HEIGHT,
+    )
     calibrated = status == "calibrated"
     findings: list[CelestialFindingRecord] = [
         CelestialFindingRecord(
             id="finding-obs-1", observation_solution_id="sol-1", evidence_class="observed",
             title="Observed Point Source #1", subtitle="Measured", source_detection=det,
             ra_deg=83.8 if calibrated else None, dec_deg=4.0 if calibrated else None,
-            uncertainty_arcsec=12.0 if calibrated else None, source_sha256=RECORD_SHA,
+            uncertainty_arcsec=12.0 if calibrated else None,
+            limitations=("Observed test source.",), source_sha256=RECORD_SHA,
         )
     ]
     if has_predicted_finding:
@@ -304,7 +347,7 @@ def test_pbt_solution_time_and_place_follow_the_contract(
             CelestialFindingRecord(
                 id="finding-pred-1", observation_solution_id="sol-1", evidence_class="predicted",
                 title="Rigel", subtitle="Orion", ra_deg=78.6345, dec_deg=-8.2016, uncertainty_arcsec=14.2,
-                source_sha256=RECORD_SHA,
+                limitations=("Predicted test star.",), source_sha256=RECORD_SHA,
             )
         )
     quality = (

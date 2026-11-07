@@ -137,6 +137,30 @@ def test_frontier_optical_flow_beacon_lock_and_silhouette_flow() -> None:
         assert abs(float(step["duPx"]) - du_true) <= 0.65
         assert abs(float(step["dvPx"]) - dv_true) <= 0.65
 
+    # When neither a beacon nor a horizon silhouette is present, _estimate_horizon_row returns None
+    # and compute_video_pose_trajectory returns [] instead of fabricating silhouette_flow at 54% height
+    from services.science.optical_flow import _estimate_horizon_row
+
+    flat_frame = np.full((h, w), 12.0, dtype=np.float64)
+    assert _estimate_horizon_row(flat_frame) is None
+    assert compute_video_pose_trajectory([flat_frame, flat_frame, flat_frame], fps=1.0) == []
+
+    # With an upper-sky beacon on a horizonless frame, beacon_lock still tracks (with drollDeg == 0.0),
+    # and if the beacon disappears in a later frame without a horizon silhouette, returns []
+    beacon_only_0 = flat_frame + beacon_psf
+    beacon_only_1 = ndimage.shift(beacon_only_0, shift=(-2.5, 4.25), order=3, mode="nearest")
+    traj_beacon_no_horizon = compute_video_pose_trajectory([beacon_only_0, beacon_only_1], fps=1.0)
+    assert len(traj_beacon_no_horizon) == 2
+    assert all(step["trackingMode"] == "beacon_lock" and step["drollDeg"] == 0.0 for step in traj_beacon_no_horizon)
+    assert abs(float(traj_beacon_no_horizon[1]["duPx"]) - 4.25) <= 0.45
+    assert abs(float(traj_beacon_no_horizon[1]["dvPx"]) - (-2.5)) <= 0.45
+    assert compute_video_pose_trajectory([beacon_only_0, flat_frame], fps=1.0) == []
+
+    # subtract_lunar_scattering_veil states its concentric radial-annulus 35th-percentile subtraction and 0.65 decay
+    veil_doc = subtract_lunar_scattering_veil.__doc__ or ""
+    assert "Rayleigh" not in veil_doc and "Mie" not in veil_doc
+    assert "35th percentile" in veil_doc and "0.65" in veil_doc
+
 
 @pytest.mark.owner_media
 def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_deep_sky() -> None:

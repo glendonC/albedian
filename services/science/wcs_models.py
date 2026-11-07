@@ -105,8 +105,16 @@ class WCSModel:
     k1: float = 0.0
     k2: float = 0.0
     parity: int = -1
-    width: int = 1920
-    height: int = 1080
+    width: int = field(kw_only=True)
+    height: int = field(kw_only=True)
+
+    def __post_init__(self) -> None:
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError(f"WCSModel width and height must be positive integers (got {self.width} x {self.height}).")
+        if abs(self.k1) > 0.25 or abs(self.k2) > 0.25:
+            raise ValueError(
+                f"WCSModel radial distortion coefficients k1 and k2 must lie in [-0.25, 0.25] (got k1={self.k1}, k2={self.k2})."
+            )
 
     @property
     def fov_horizontal_deg(self) -> float:
@@ -223,8 +231,8 @@ class WCSModel:
             "crpixY": float(self.crpix_y),
             "scaleDegPerPx": float(self.scale_deg_per_px),
             "rotationDeg": float(self.rotation_deg),
-            "radialDistortionK1": float(max(-0.25, min(0.25, self.k1))),
-            "radialDistortionK2": float(max(-0.25, min(0.25, self.k2))),
+            "radialDistortionK1": float(self.k1),
+            "radialDistortionK2": float(self.k2),
             "parity": -1 if self.parity < 0 else 1,
             "fovHorizontalDeg": float(self.fov_horizontal_deg),
             "fovVerticalDeg": float(self.fov_vertical_deg),
@@ -301,13 +309,15 @@ class CelestialFindingRecord:
     pixel_residual_px: float | None = None
     angular_residual_arcsec: float | None = None
     verified_by_holdout: bool = False
-    limitations: tuple[str, ...] = ("Measured from sensor observation.",)
+    limitations: tuple[str, ...] = field(kw_only=True)
     # The SHA-256 of the recording this finding belongs to: required, since no record can know it by default
     source_sha256: str = field(kw_only=True)
 
     def __post_init__(self) -> None:
         if self.evidence_class not in EVIDENCE_CLASSES:
             raise ValueError(f"Finding {self.id} has unknown evidence class {self.evidence_class!r}.")
+        if len(self.limitations) == 0 or any(not isinstance(lim, str) or not lim.strip() for lim in self.limitations):
+            raise ValueError(f"Finding {self.id} requires at least one non-empty limitation string in limitations.")
         sky = (self.ra_deg, self.dec_deg, self.uncertainty_arcsec)
         if None in sky and any(v is not None for v in (*sky, self.alt_deg, self.az_deg)):
             raise ValueError(

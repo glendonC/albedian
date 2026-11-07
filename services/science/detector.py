@@ -187,9 +187,7 @@ def detect_point_sources(
         cy = float(np.sum(yy * weights) / total_w)
 
         r2_moment = float(np.sum(weights * ((xx - cx) ** 2 + (yy - cy) ** 2)) / total_w)
-        fwhm_px = max(0.55, 1.6651092223153954 * math.sqrt(max(0.0, r2_moment)))
-        if peak_ratio > 0.68:
-            fwhm_px = min(fwhm_px, 0.85)
+        fwhm_px = 1.6651092223153954 * math.sqrt(max(0.0, r2_moment))
 
         snr_final = matched_snr
         centroid_unc = max(0.03, min(1.5, fwhm_px / max(snr_final, 1.0)))
@@ -372,7 +370,9 @@ def render_synthetic_starfield(
     sky_mask: np.ndarray | None = None,
     shift_yx: tuple[float, float] = (0.0, 0.0),
 ) -> tuple[np.ndarray, WCSModel, list[tuple[CatalogStar, float, float]]]:
-    """Synthesize a realistic consumer night-sky frame with known WCS + radial distortion + noise."""
+    """Synthesize a test starfield frame with known WCS, radial distortion, Gaussian read noise,
+    and compressed empirical flux scaling `flux_scale * 10**(-0.14 * (mag - 1.5))` (not Pogson's `10**(-0.4 * mag)`).
+    """
     if wcs is None:
         wcs = WCSModel(
             crval_ra_deg=84.0,

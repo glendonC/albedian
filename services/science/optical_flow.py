@@ -19,8 +19,10 @@ from scipy import ndimage
 from services.science.detector import _to_luma_2d
 
 
-def _estimate_horizon_row(luma: np.ndarray) -> float:
-    """Estimate baseline horizon row from vertical gradient of row 80th-percentile luminance."""
+def _estimate_horizon_row(luma: np.ndarray) -> float | None:
+    """Estimate baseline horizon row from vertical gradient of row 80th-percentile luminance,
+    or return `None` when no vertical gradient in `[0.22*h, 0.80*h]` exceeds `1e-5`.
+    """
     h, _ = luma.shape
     row_p80 = np.percentile(luma, 80.0, axis=1)
     grad = np.gradient(ndimage.gaussian_filter1d(row_p80, sigma=6.0))
@@ -28,17 +30,20 @@ def _estimate_horizon_row(luma: np.ndarray) -> float:
     y_hi = min(h - 4, int(round(h * 0.80)))
     if y_hi > y_lo and float(np.max(np.abs(grad[y_lo:y_hi]))) > 1e-5:
         return float(y_lo + int(np.argmax(np.abs(grad[y_lo:y_hi]))))
-    return float(h * 0.54)
+    return None
 
 
 def _detect_upper_sky_beacon(
     luma: np.ndarray,
-    horizon_y: float,
+    horizon_y: float | None,
     snr_threshold: float = 8.0,
 ) -> tuple[float, float, float] | None:
-    """Detect a bright celestial beacon in the upper sky (`y < horizon_y - 16`) with `SNR >= 8`."""
+    """Detect a bright celestial beacon in the upper sky (`y < horizon_y - 16` or `y < 0.48*h`) with `SNR >= 8`."""
     h, w = luma.shape
-    sky_limit_y = max(16, min(int(round(horizon_y - 16)), int(round(h * 0.48))))
+    upper_bound = int(round(h * 0.48))
+    if horizon_y is not None:
+        upper_bound = min(int(round(horizon_y - 16)), upper_bound)
+    sky_limit_y = max(16, upper_bound)
     if sky_limit_y < 12 or w < 12:
         return None
 
@@ -165,11 +170,15 @@ def compute_video_pose_trajectory(
 
     horizon_y = float(base_horizon_y) if base_horizon_y is not None else _estimate_horizon_row(ref_luma)
     ref_beacon = _detect_upper_sky_beacon(ref_luma, horizon_y=horizon_y, snr_threshold=8.0)
-    ref_horizon_feat = _extract_horizon_gradient_feature(ref_luma, horizon_y=horizon_y)
+    if ref_beacon is None and horizon_y is None:
+        return []
+    ref_horizon_feat = (
+        _extract_horizon_gradient_feature(ref_luma, horizon_y=horizon_y) if horizon_y is not None else None
+    )
 
     mid_x = max(4, w // 2)
-    ref_left_feat = ref_horizon_feat[:, :mid_x]
-    ref_right_feat = ref_horizon_feat[:, mid_x:]
+    ref_left_feat = ref_horizon_feat[:, :mid_x] if ref_horizon_feat is not None else None
+    ref_right_feat = ref_horizon_feat[:, mid_x:] if ref_horizon_feat is not None else None
 
     trajectory: list[dict[str, Any]] = []
     for idx, cur_luma in enumerate(luma_frames):
@@ -193,27 +202,38 @@ def compute_video_pose_trajectory(
             if ref_beacon is not None
             else None
         )
-        cur_horizon_feat = _extract_horizon_gradient_feature(cur_luma, horizon_y=horizon_y)
+        cur_horizon_feat = (
+            _extract_horizon_gradient_feature(cur_luma, horizon_y=horizon_y) if horizon_y is not None else None
+        )
 
-        # Estimate roll from differential vertical shift between left and right horizon halves
-        _, dv_left = _phase_correlation_shift(
-            ref_left_feat, cur_horizon_feat[:, :mid_x], max_shift_px=24
-        )
-        _, dv_right = _phase_correlation_shift(
-            ref_right_feat, cur_horizon_feat[:, mid_x:], max_shift_px=24
-        )
-        baseline_x = max(16.0, 0.5 * float(w))
-        droll_deg = math.degrees(math.atan2(dv_right - dv_left, baseline_x))
+        # Estimate roll from differential vertical shift between left and right horizon halves when a horizon exists
+        if (
+            cur_horizon_feat is not None
+            and ref_left_feat is not None
+            and ref_right_feat is not None
+        ):
+            _, dv_left = _phase_correlation_shift(
+                ref_left_feat, cur_horizon_feat[:, :mid_x], max_shift_px=24
+            )
+            _, dv_right = _phase_correlation_shift(
+                ref_right_feat, cur_horizon_feat[:, mid_x:], max_shift_px=24
+            )
+            baseline_x = max(16.0, 0.5 * float(w))
+            droll_deg = math.degrees(math.atan2(dv_right - dv_left, baseline_x))
+        else:
+            droll_deg = 0.0
 
         if ref_beacon is not None and cur_beacon is not None:
             du_px = cur_beacon[0] - ref_beacon[0]
             dv_px = cur_beacon[1] - ref_beacon[1]
             mode = "beacon_lock"
-        else:
+        elif ref_horizon_feat is not None and cur_horizon_feat is not None:
             du_px, dv_px = _phase_correlation_shift(
                 ref_horizon_feat, cur_horizon_feat, max_shift_px=36
             )
             mode = "silhouette_flow"
+        else:
+            return []
 
         trajectory.append(
             {

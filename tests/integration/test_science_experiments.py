@@ -379,6 +379,31 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
         assert f.limitations[0].startswith("Skipped by catalog matching as a hot-pixel impulse (")
     assert any("skipped as hot-pixel impulse(s)" in w for w in solution.warnings)
 
+    # Single-pixel impulse on a noiseless background has r2_moment == 0 and reports fwhm_px == 0.0 (no 0.55 floor),
+    # and a high-peak-ratio compact source with non-zero wings reports its second-moment FWHM without the 0.85 cap
+    clean_bg = np.full((64, 64), 20.0, dtype=np.float64)
+    rng_bg = np.random.default_rng(7)
+    clean_bg += rng_bg.normal(0.0, 0.2, size=clean_bg.shape)
+    impulse_img = clean_bg.copy()
+    impulse_img[32, 32] += 120.0
+    impulse_dets = detect_point_sources(impulse_img, snr_threshold=4.0)
+    assert len(impulse_dets) == 1
+    assert impulse_dets[0].fwhm_px < 0.55
+
+    # Peak holds > 68% of positive 5x5 flux while outer ring (r=2) gives second-moment FWHM > 0.85 px
+    wing_img = clean_bg.copy()
+    wing_img[32, 32] += 200.0
+    for dy, dx in ((-2, 0), (2, 0), (0, -2), (0, 2)):
+        wing_img[32 + dy, 32 + dx] += 18.0
+    wing_dets = detect_point_sources(wing_img, snr_threshold=4.0)
+    assert len(wing_dets) == 1
+    assert wing_dets[0].peak_to_total_ratio > 0.68
+    assert wing_dets[0].fwhm_px > 0.85
+
+    synth_doc = render_synthetic_starfield.__doc__ or ""
+    assert "realistic" not in synth_doc.lower()
+    assert "-0.14" in synth_doc
+
 
 # ---------------------------------------------------------------------------
 # EXP-04: Astronomy-Aware Point Protection vs. Conventional Denoise
