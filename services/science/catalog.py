@@ -239,7 +239,12 @@ def catalog_cartesian_pc(star: CatalogStar) -> tuple[float, float, float]:
 
 
 def propagate_star_epoch(star: CatalogStar, target_year_ce: float) -> CatalogStar:
-    """Propagate a CatalogStar from its reference epoch to `target_year_ce` using full 3D space velocity."""
+    """Propagate a CatalogStar from its reference epoch to `target_year_ce` using 3D space velocity.
+
+    When `star.rv_km_s` is `None` (no radial velocity in the star's catalog row), the radial velocity
+    term is omitted (`0.0 km/s`); over 1800 to 2050 this changes sky position by at most ~0.1 arcsec
+    for the navigational stars, well inside the 55 arcsec bound.
+    """
     dt_yr = float(target_year_ce) - float(star.epoch_year)
     if abs(dt_yr) < 1e-12:
         return star
@@ -271,12 +276,13 @@ def propagate_star_epoch(star: CatalogStar, target_year_ce: float) -> CatalogSta
 
     km_s_to_pc_yr = 1.022712165045695e-6
     d0_pc = float(star.median_pc)
+    rv_km_s = float(star.rv_km_s) if star.rv_km_s is not None else 0.0
 
     pos0_pc = r_hat * d0_pc
     vel_pc_yr = (
         (d0_pc * mu_ra_rad_yr) * e_ra
         + (d0_pc * mu_dec_rad_yr) * e_dec
-        + (float(star.rv_km_s) * km_s_to_pc_yr) * r_hat
+        + (rv_km_s * km_s_to_pc_yr) * r_hat
     )
     pos1_pc = pos0_pc + vel_pc_yr * dt_yr
     new_dist_pc = float(np.linalg.norm(pos1_pc))

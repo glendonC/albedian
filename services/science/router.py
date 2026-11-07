@@ -106,36 +106,38 @@ def get_science_sky_context(
         alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, lat_deg, lon_deg, obs_utc_iso)
         cx, cy, cz = catalog_cartesian_pc(st)
         light_travel = compute_light_travel_time_description(st.median_pc)
-        stars_out.append(
-            {
-                "id": st.id,
-                "commonName": st.common_name,
-                "bayerDesignation": st.bayer_designation,
-                "constellation": st.constellation,
-                "provider": st.provider,
-                "catalogSourceId": st.catalog_source_id,
-                "raDeg": float(st.ra_deg),
-                "decDeg": float(st.dec_deg),
-                "altDeg": float(alt_deg),
-                "azDeg": float(az_deg),
-                "aboveHorizon": bool(alt_deg >= 0.0),
-                "mag": float(st.mag),
-                "bpRp": float(st.bp_rp),
-                "spectralType": st.spectral_type,
-                "properMotionRaMasYr": float(st.pm_ra_mas_yr),
-                "properMotionDecMasYr": float(st.pm_dec_mas_yr),
-                "radialVelocityKmS": float(st.rv_km_s),
-                "distancePc": {
-                    "lower": float(st.lower_pc),
-                    "median": float(st.median_pc),
-                    "upper": float(st.upper_pc),
-                    "method": st.distance_method,
-                },
-                "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
-                "lightTravel": light_travel,
-                "nearestNeighbors3D": compute_3d_nearest_neighbors(st.id, k=3),
-            }
-        )
+        star_entry: dict[str, Any] = {
+            "id": st.id,
+            "commonName": st.common_name,
+            "bayerDesignation": st.bayer_designation,
+            "constellation": st.constellation,
+            "provider": st.provider,
+            "catalogSourceId": st.catalog_source_id,
+            "raDeg": float(st.ra_deg),
+            "decDeg": float(st.dec_deg),
+            "altDeg": float(alt_deg),
+            "azDeg": float(az_deg),
+            "aboveHorizon": bool(alt_deg >= 0.0),
+            "mag": float(st.mag),
+            "properMotionRaMasYr": float(st.pm_ra_mas_yr),
+            "properMotionDecMasYr": float(st.pm_dec_mas_yr),
+            "distancePc": {
+                "lower": float(st.lower_pc),
+                "median": float(st.median_pc),
+                "upper": float(st.upper_pc),
+                "method": st.distance_method,
+            },
+            "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
+            "lightTravel": light_travel,
+            "nearestNeighbors3D": compute_3d_nearest_neighbors(st.id, k=3),
+        }
+        if st.bp_rp is not None:
+            star_entry["bpRp"] = float(st.bp_rp)
+        if st.spectral_type is not None:
+            star_entry["spectralType"] = st.spectral_type
+        if st.rv_km_s is not None:
+            star_entry["radialVelocityKmS"] = float(st.rv_km_s)
+        stars_out.append(star_entry)
         # Gaia DR3 catalog values only: none for a Hipparcos-only star or a value its row lacks
         astrophysics = gaia_stellar_parameters(st)
         if astrophysics is not None:

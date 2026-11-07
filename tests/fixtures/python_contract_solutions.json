@@ -260,7 +260,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Rigel",
-        "subtitle": "Beta Orionis · B8 Ia · 264.6 pc [242.7–290.7 pc]",
+        "subtitle": "Beta Orionis · 264.6 pc [242.7 to 290.7 pc]",
         "skyPosition": {
           "raDeg": 78.634467,
           "decDeg": -8.201638,
@@ -306,11 +306,8 @@
           "raDeg": 78.634467,
           "decDeg": -8.201638,
           "apparentMagnitude": 0.13,
-          "colorIndexBpRp": -0.03,
-          "spectralType": "B8 Ia",
           "properMotionRaMasYr": 1.31,
           "properMotionDecMasYr": 0.5,
-          "radialVelocityKmS": 17.8,
           "bailerJonesDistancePc": {
             "lower": 242.71844660194174,
             "median": 264.55026455026456,
@@ -338,7 +335,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Betelgeuse",
-        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 152.7 pc [135.5–174.8 pc]",
+        "subtitle": "Alpha Orionis · 152.7 pc [135.5 to 174.8 pc]",
         "skyPosition": {
           "raDeg": 88.792939,
           "decDeg": 7.407064,
@@ -384,11 +381,8 @@
           "raDeg": 88.792939,
           "decDeg": 7.407064,
           "apparentMagnitude": 0.42,
-          "colorIndexBpRp": 2.05,
-          "spectralType": "M1-M2 Ia-ab",
           "properMotionRaMasYr": 27.54,
           "properMotionDecMasYr": 11.3,
-          "radialVelocityKmS": 21.91,
           "bailerJonesDistancePc": {
             "lower": 135.50135501355012,
             "median": 152.67175572519085,
@@ -416,7 +410,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Aldebaran",
-        "subtitle": "Alpha Tauri · K5+ III · 20.4 pc [20.1–20.8 pc]",
+        "subtitle": "Alpha Tauri · 20.4 pc [20.1 to 20.8 pc]",
         "skyPosition": {
           "raDeg": 68.980163,
           "decDeg": 16.509302,
@@ -462,11 +456,8 @@
           "raDeg": 68.980163,
           "decDeg": 16.509302,
           "apparentMagnitude": 0.86,
-          "colorIndexBpRp": 1.54,
-          "spectralType": "K5+ III",
           "properMotionRaMasYr": 63.45,
           "properMotionDecMasYr": -188.94,
-          "radialVelocityKmS": 54.26,
           "bailerJonesDistancePc": {
             "lower": 20.11667672500503,
             "median": 20.43318348998774,
@@ -569,7 +560,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Rigel",
-        "subtitle": "Beta Orionis · B8 Ia · 264.6 pc [242.7–290.7 pc]",
+        "subtitle": "Beta Orionis · 264.6 pc [242.7 to 290.7 pc]",
         "skyPosition": {
           "raDeg": 78.634467,
           "decDeg": -8.201638,
@@ -613,11 +604,8 @@
           "raDeg": 78.634467,
           "decDeg": -8.201638,
           "apparentMagnitude": 0.13,
-          "colorIndexBpRp": -0.03,
-          "spectralType": "B8 Ia",
           "properMotionRaMasYr": 1.31,
           "properMotionDecMasYr": 0.5,
-          "radialVelocityKmS": 17.8,
           "bailerJonesDistancePc": {
             "lower": 242.71844660194174,
             "median": 264.55026455026456,
@@ -645,7 +633,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Betelgeuse",
-        "subtitle": "Alpha Orionis · M1-M2 Ia-ab · 152.7 pc [135.5–174.8 pc]",
+        "subtitle": "Alpha Orionis · 152.7 pc [135.5 to 174.8 pc]",
         "skyPosition": {
           "raDeg": 88.792939,
           "decDeg": 7.407064,
@@ -689,11 +677,8 @@
           "raDeg": 88.792939,
           "decDeg": 7.407064,
           "apparentMagnitude": 0.42,
-          "colorIndexBpRp": 2.05,
-          "spectralType": "M1-M2 Ia-ab",
           "properMotionRaMasYr": 27.54,
           "properMotionDecMasYr": 11.3,
-          "radialVelocityKmS": 21.91,
           "bailerJonesDistancePc": {
             "lower": 135.50135501355012,
             "median": 152.67175572519085,
@@ -721,7 +706,7 @@
         "observationSolutionId": "sol-primary",
         "evidenceClass": "catalog_matched",
         "title": "Aldebaran",
-        "subtitle": "Alpha Tauri · K5+ III · 20.4 pc [20.1–20.8 pc]",
+        "subtitle": "Alpha Tauri · 20.4 pc [20.1 to 20.8 pc]",
         "skyPosition": {
           "raDeg": 68.980163,
           "decDeg": 16.509302,
@@ -765,11 +750,8 @@
           "raDeg": 68.980163,
           "decDeg": 16.509302,
           "apparentMagnitude": 0.86,
-          "colorIndexBpRp": 1.54,
-          "spectralType": "K5+ III",
           "properMotionRaMasYr": 63.45,
           "properMotionDecMasYr": -188.94,
-          "radialVelocityKmS": 54.26,
           "bailerJonesDistancePc": {
             "lower": 20.11667672500503,
             "median": 20.43318348998774,
@@ -934,11 +916,11 @@
         "title": "Dabih (Beta Capricorni)",
         "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.8° Az 220.7° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 305.253250394754,
-          "decDeg": -14.781359914174509,
+          "raDeg": 305.25325039220576,
+          "decDeg": -14.78135991488881,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 34.84135501719781,
-          "azDeg": 220.67071723276584
+          "altDeg": 34.841355015176156,
+          "azDeg": 220.67071723468993
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -963,18 +945,15 @@
           "constellation": "Capricornus",
           "objectType": "star",
           "coordinateEpoch": "J2030.8",
-          "raDeg": 305.253250394754,
-          "decDeg": -14.781359914174509,
+          "raDeg": 305.25325039220576,
+          "decDeg": -14.78135991488881,
           "apparentMagnitude": 3.05,
-          "colorIndexBpRp": 0.92,
-          "spectralType": "K0 II-III + B8 V",
           "properMotionRaMasYr": 48.36,
           "properMotionDecMasYr": 14.02,
-          "radialVelocityKmS": -18.9,
           "bailerJonesDistancePc": {
-            "lower": 90.33369934914909,
-            "median": 100.19980478908623,
-            "upper": 112.48527016817552,
+            "lower": 90.33423667825912,
+            "median": 100.20040080444173,
+            "upper": 112.48593926077935,
             "method": "geometric_parallax"
           },
           "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
@@ -982,15 +961,15 @@
           "parallaxErrorMas": 1.09
         },
         "inferredDistancePc": {
-          "lower": 90.33369934914909,
-          "median": 100.19980478908623,
-          "upper": 112.48527016817552,
+          "lower": 90.33423667825912,
+          "median": 100.20040080444173,
+          "upper": 112.48593926077935,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          55.92052871452813,
-          -79.11619484021479,
-          -25.564097129838057
+          55.920861341152175,
+          -79.11666544682144,
+          -25.564249193162897
         ]
       },
       {
@@ -1000,11 +979,11 @@
         "title": "Algedi (Alpha2 Capricorni)",
         "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +36.2° Az 223.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 304.51412038563154,
-          "decDeg": -12.544826215897732,
+          "raDeg": 304.5141203857354,
+          "decDeg": -12.544826215893426,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 36.20859169932962,
-          "azDeg": 223.0178765168827
+          "altDeg": 36.208591699394574,
+          "azDeg": 223.0178765167861
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -1029,32 +1008,30 @@
           "constellation": "Capricornus",
           "objectType": "star",
           "coordinateEpoch": "J2030.8",
-          "raDeg": 304.51412038563154,
-          "decDeg": -12.544826215897732,
+          "raDeg": 304.5141203857354,
+          "decDeg": -12.544826215893426,
           "apparentMagnitude": 3.57,
-          "colorIndexBpRp": 0.94,
-          "spectralType": "G8 IIIb",
           "properMotionRaMasYr": 62.61,
           "properMotionDecMasYr": 2.66,
-          "radialVelocityKmS": 0.2,
           "bailerJonesDistancePc": {
-            "lower": 33.154366268790156,
-            "median": 33.36440930850486,
-            "upper": 33.55109634380344,
+            "lower": 33.15436000145484,
+            "median": 33.36440300146406,
+            "upper": 33.551090001472254,
             "method": "photogeometric_bailer_jones_edr3"
           },
-          "citation": "Catalog id: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric."
+          "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+          "colorIndexBpRp": 1.1736479
         },
         "inferredDistancePc": {
-          "lower": 33.154366268790156,
-          "median": 33.36440930850486,
-          "upper": 33.55109634380344,
+          "lower": 33.15436000145484,
+          "median": 33.36440300146406,
+          "upper": 33.551090001472254,
           "method": "photogeometric_bailer_jones_edr3"
         },
         "cartesianParsecICRS": [
-          18.453264372092402,
-          -26.83549576312579,
-          -7.246862056529624
+          18.453260883828673,
+          -26.83549069024512,
+          -7.2468606866166745
         ]
       }
     ],

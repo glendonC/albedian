@@ -573,7 +573,7 @@ def solve_and_verify_field(
                     observation_solution_id=solution_id,
                     evidence_class="catalog_matched",
                     title=st.common_name,
-                    subtitle=f"{st.bayer_designation} · {st.spectral_type} · {st.median_pc:.1f} pc [{st.lower_pc:.1f}–{st.upper_pc:.1f} pc]",
+                    subtitle=f"{st.bayer_designation} · {st.median_pc:.1f} pc [{st.lower_pc:.1f} to {st.upper_pc:.1f} pc]",
                     ra_deg=st.ra_deg, dec_deg=st.dec_deg, alt_deg=alt_deg, az_deg=az_deg,
                     uncertainty_arcsec=max(0.5, ang_res_arcsec),
                     source_detection=det, catalog_star=st,

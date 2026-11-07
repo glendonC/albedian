@@ -3,8 +3,9 @@
 Each pinned star names its row in the G 12 star tiles (apps/web/public/catalog/stars/gaia-dr3/): a Hipparcos
 2007 entry, whose distance is 1000/parallax with bounds from the parallax error, or a Gaia DR3 source, whose
 distance is the Bailer-Jones et al. (2021) photogeometric estimate. The factories derive the catalog id, the
-distance, its method and the citation from that source, so a star cannot carry a label its numbers do not
-have. tests/integration/test_pinned_catalog_matches_tiles.py checks every star against its tile row.
+distance, its method, the BP-RP colour index and radial velocity (where measured in Gaia DR3) and the citation
+from that source, so a star cannot carry a label or field its catalog row does not have.
+tests/integration/test_pinned_catalog_matches_tiles.py checks every star against its tile row.
 """
 
 from __future__ import annotations
@@ -17,8 +18,12 @@ HIPPARCOS_2007_CITATION = (
 )
 GAIA_DR3_RELEASE = "Gaia DR3"
 GAIA_DR3_CITATION = (
-    "Catalog id: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) "
-    "AJ 161, 147, photogeometric."
+    "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: "
+    "Bailer-Jones et al. (2021) AJ 161, 147, photogeometric."
+)
+GAIA_DR3_WITH_RV_CITATION = (
+    "Catalog id, color index (BP-RP) and radial velocity: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. "
+    "Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric."
 )
 # Distance methods, as the contract names them
 INVERSE_PARALLAX = "geometric_parallax"
@@ -30,7 +35,9 @@ class CatalogStar:
     """A bright catalog star: its catalog row, J2000 astrometry, and a distance whose method says what it is.
 
     `parallax_mas` and `parallax_error_mas` are set only when the distance comes from them (Hipparcos 2007
-    rows); a Gaia DR3 star's parallax is not in the tiles, so it stays missing.
+    rows); a Gaia DR3 star's parallax is not in the tiles, so it stays missing. `bp_rp` and `rv_km_s` are set
+    only when the star's own Gaia DR3 row carries them (Hipparcos 2007 holds Johnson B-V, not Gaia BP-RP, and
+    no radial velocities), and `spectral_type` is omitted because neither catalog release carries it.
     """
 
     id: str
@@ -43,11 +50,11 @@ class CatalogStar:
     ra_deg: float
     dec_deg: float
     mag: float
-    bp_rp: float
-    spectral_type: str
+    bp_rp: float | None
+    spectral_type: str | None
     pm_ra_mas_yr: float
     pm_dec_mas_yr: float
-    rv_km_s: float
+    rv_km_s: float | None
     parallax_mas: float | None
     parallax_error_mas: float | None
     lower_pc: float
@@ -81,11 +88,8 @@ class CatalogStar:
             "raDeg": float(self.ra_deg % 360.0),
             "decDeg": float(self.dec_deg),
             "apparentMagnitude": float(self.mag),
-            "colorIndexBpRp": float(self.bp_rp),
-            "spectralType": self.spectral_type,
             "properMotionRaMasYr": float(self.pm_ra_mas_yr),
             "properMotionDecMasYr": float(self.pm_dec_mas_yr),
-            "radialVelocityKmS": float(self.rv_km_s),
             "bailerJonesDistancePc": {
                 "lower": float(self.lower_pc),
                 "median": float(self.median_pc),
@@ -94,6 +98,12 @@ class CatalogStar:
             },
             "citation": self.citation,
         }
+        if self.bp_rp is not None:
+            payload["colorIndexBpRp"] = float(self.bp_rp)
+        if self.spectral_type is not None:
+            payload["spectralType"] = self.spectral_type
+        if self.rv_km_s is not None:
+            payload["radialVelocityKmS"] = float(self.rv_km_s)
         # The contract's parallax fields are optional: left out when the catalog row has none
         if self.parallax_mas is not None and self.parallax_error_mas is not None:
             payload["parallaxMas"] = float(self.parallax_mas)
@@ -110,11 +120,8 @@ def hipparcos_star(
     ra_deg: float,
     dec_deg: float,
     mag: float,
-    bp_rp: float,
-    spectral_type: str,
     pm_ra_mas_yr: float,
     pm_dec_mas_yr: float,
-    rv_km_s: float,
     parallax_mas: float,
     parallax_error_mas: float,
 ) -> CatalogStar:
@@ -132,11 +139,11 @@ def hipparcos_star(
         ra_deg=ra_deg,
         dec_deg=dec_deg,
         mag=mag,
-        bp_rp=bp_rp,
-        spectral_type=spectral_type,
+        bp_rp=None,
+        spectral_type=None,
         pm_ra_mas_yr=pm_ra_mas_yr,
         pm_dec_mas_yr=pm_dec_mas_yr,
-        rv_km_s=rv_km_s,
+        rv_km_s=None,
         parallax_mas=parallax_mas,
         parallax_error_mas=parallax_error_mas,
         lower_pc=1000.0 / (parallax_mas + parallax_error_mas),
@@ -157,16 +164,16 @@ def gaia_dr3_star(
     dec_deg: float,
     mag: float,
     bp_rp: float,
-    spectral_type: str,
     pm_ra_mas_yr: float,
     pm_dec_mas_yr: float,
-    rv_km_s: float,
+    rv_km_s: float | None,
     lower_pc: float,
     median_pc: float,
     upper_pc: float,
 ) -> CatalogStar:
     """A star whose tile row is a Gaia DR3 source: the Bailer-Jones (2021) photogeometric distance and its
-    16th and 84th percentiles (r_lo_photogeo, r_med_photogeo, r_hi_photogeo)."""
+    16th and 84th percentiles (r_lo_photogeo, r_med_photogeo, r_hi_photogeo), with its DR3 BP-RP colour
+    index and (where DR3 measures one) radial velocity."""
     return CatalogStar(
         id=star_id,
         common_name=common_name,
@@ -179,7 +186,7 @@ def gaia_dr3_star(
         dec_deg=dec_deg,
         mag=mag,
         bp_rp=bp_rp,
-        spectral_type=spectral_type,
+        spectral_type=None,
         pm_ra_mas_yr=pm_ra_mas_yr,
         pm_dec_mas_yr=pm_dec_mas_yr,
         rv_km_s=rv_km_s,
@@ -189,5 +196,5 @@ def gaia_dr3_star(
         median_pc=median_pc,
         upper_pc=upper_pc,
         distance_method=BAILER_JONES_PHOTOGEOMETRIC,
-        citation=GAIA_DR3_CITATION,
+        citation=GAIA_DR3_WITH_RV_CITATION if rv_km_s is not None else GAIA_DR3_CITATION,
     )
