@@ -36,12 +36,16 @@ WebGL renderer uses a composed cislunar view, disclosed as such in its render la
 
 - **Scale**: one scene unit is 1000 km; the Earth (radius 6371 km) at the origin, the Moon (1737.4 km)
   at its Horizons position.
-- **Viewpoint**: the camera stands on the line from the galactic centre through the Earth, so the
-  Earth is exactly in front of the galactic centre (l 0, b 0). Its distance, 395,273 km from the
-  Earth and 15,472 km above the Moon's far side, is the one composition choice: it puts the Moon's
-  centre 8.5 deg from the Earth's, with the Moon 11.6 deg across and the Earth 1.85 deg. Galactic
-  north is up, so the Milky Way runs level through the Earth; the view looks between the two bodies
-  with a vertical field of view of 26 deg. All of this is in
+- **Viewpoint and parallax motion** [tested]: at `t = 0` the camera stands on the line from the
+  galactic centre through the Earth, so the Earth is in front of the galactic centre (l 0, b 0).
+  Its distance, 395,273 km from the Earth and 15,472 km above the Moon's far side, is the one
+  composition choice: it puts the Moon's centre 8.5 deg from the Earth's, with the Moon 11.6 deg
+  across and the Earth 1.85 deg. Galactic north is up, so the Milky Way runs level through the
+  Earth; the view looks between the two bodies with a vertical field of view of 26 deg. Over a
+  30 s pass (`landingCameraPositionAt` in `apps/web/src/spatial/webgpu/cislunar/landingScene.ts`)
+  the camera rig translates 1,000 km (33.3 km/s) along its local -x axis in the galactic plane
+  past the lunar far side while holding its orientation fixed, producing 3.33 deg of lunar parallax
+  and 0.145 deg of terrestrial parallax against the catalog stars at infinity. All of this is in
   `apps/web/src/spatial/webgpu/cislunar/landingScene.ts`.
 - **Light and exposure**: one Sun, its direction from each body taken from the same Horizons vector.
   The Moon's SVS colour map, made for appearance, has an area-weighted mean linear luminance of

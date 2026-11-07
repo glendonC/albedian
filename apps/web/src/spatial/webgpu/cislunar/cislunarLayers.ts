@@ -78,7 +78,7 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Camera optics',
     evidenceClass: 'simulated',
     disclosure:
-      'A simulated camera 15,500 km beyond the Moon. Modeled lens glare, chromatic aberration, streaks and vignette, then AgX; the Milky Way is shown far brighter than one exposure could record it.',
+      'A simulated camera 15,500 km beyond the Moon, moving 1,000 km over 30 s (33.3 km/s) past the far side. Modeled glare, chromatic aberration, streaks, vignette and AgX; the Milky Way is shown far brighter than one exposure could record it.',
     sources: [],
   },
 ]);

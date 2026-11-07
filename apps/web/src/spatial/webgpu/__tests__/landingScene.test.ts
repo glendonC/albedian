@@ -1,9 +1,19 @@
 import { Quaternion, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import fc from 'fast-check';
 import { ICRS_TO_SCENE_QUATERNION } from '../../catalogStars/CatalogStarField.js';
 import { ICRS_TO_GALACTIC } from '../../sky/skyRegistration.js';
 import moment from '../cislunar/landingMoment.json';
-import { EARTH_MOON_SEPARATION_DEG, KM_PER_UNIT, MOON_RADIUS_KM, landingPose } from '../cislunar/landingScene.js';
+import {
+  EARTH_MOON_SEPARATION_DEG,
+  KM_PER_UNIT,
+  LANDING_CAMERA_SPEED_KM_PER_SEC,
+  LANDING_CAMERA_TRAVEL_KM,
+  LANDING_CAMERA_TRAVEL_SECONDS,
+  MOON_RADIUS_KM,
+  landingCameraPositionAt,
+  landingPose,
+} from '../cislunar/landingScene.js';
 
 /**
  * The landing's geometry, checked without a GPU: where the camera stands, what it sees, and that
@@ -73,5 +83,54 @@ describe('landing geometry at 2025-03-07 11:00 UTC', () => {
     expect(Math.abs(subMoon.lat - geocentric(seen.subObserverLatDeg, seen.radiiKm))).toBeLessThan(TOLERANCE_DEG);
     expect(Math.abs(lonDiff(subSun.lon, seen.subSolarLonDeg))).toBeLessThan(TOLERANCE_DEG);
     expect(Math.abs(subSun.lat - geocentric(seen.subSolarLatDeg, seen.radiiKm))).toBeLessThan(TOLERANCE_DEG);
+  });
+
+  it('moves the camera 1,000 km over 30 s (33.3 km/s) past the far side with true differential parallax', () => {
+    expect(LANDING_CAMERA_TRAVEL_KM).toBe(1000);
+    expect(LANDING_CAMERA_TRAVEL_SECONDS).toBe(30);
+    expect(LANDING_CAMERA_SPEED_KM_PER_SEC).toBeCloseTo(1000 / 30, 9);
+
+    const start = landingCameraPositionAt(0, pose);
+    expect(start.distanceTo(pose.camera.position)).toBeLessThan(1e-12);
+
+    const lateral = new Vector3(-1, 0, 0).applyQuaternion(pose.camera.quaternion);
+    const forward = new Vector3(0, 0, -1).applyQuaternion(pose.camera.quaternion);
+    const mid = landingCameraPositionAt(15, pose);
+    const end = landingCameraPositionAt(LANDING_CAMERA_TRAVEL_SECONDS, pose);
+
+    expect(mid.clone().sub(start).dot(lateral) * KM_PER_UNIT).toBeCloseTo(500, 9);
+    expect(end.clone().sub(start).dot(lateral) * KM_PER_UNIT).toBeCloseTo(LANDING_CAMERA_TRAVEL_KM, 9);
+    expect(Math.abs(end.clone().sub(start).dot(forward))).toBeLessThan(1e-12);
+    expect(end.distanceTo(start) * KM_PER_UNIT).toBeCloseTo(LANDING_CAMERA_TRAVEL_KM, 9);
+
+    // Real parallax: the Moon (17,209 km away) shifts by ~3.33 deg while the Earth (395,273 km away) shifts by ~0.145 deg
+    const moonDirStart = pose.moon.position.clone().sub(start).normalize();
+    const moonDirEnd = pose.moon.position.clone().sub(end).normalize();
+    const earthDirStart = pose.earth.position.clone().sub(start).normalize();
+    const earthDirEnd = pose.earth.position.clone().sub(end).normalize();
+    const moonParallaxDeg = moonDirStart.angleTo(moonDirEnd) / DEG;
+    const earthParallaxDeg = earthDirStart.angleTo(earthDirEnd) / DEG;
+
+    expect(moonParallaxDeg).toBeGreaterThan(3.2);
+    expect(moonParallaxDeg).toBeLessThan(3.5);
+    expect(earthParallaxDeg).toBeGreaterThan(0.13);
+    expect(earthParallaxDeg).toBeLessThan(0.16);
+    expect(moonParallaxDeg / earthParallaxDeg).toBeGreaterThan(20);
+  });
+
+  it('PBT-LANDING-PARALLAX: keeps the camera on its 1,000 km lateral track and both bodies separated in frame', () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 600, noNaN: true }), (t) => {
+        const pos = landingCameraPositionAt(t, pose);
+        const displacementKm = pos.distanceTo(pose.camera.position) * KM_PER_UNIT;
+        expect(displacementKm).toBeGreaterThanOrEqual(0);
+        expect(displacementKm).toBeLessThanOrEqual(LANDING_CAMERA_TRAVEL_KM + 1e-6);
+        const sepDeg =
+          pose.earth.position.clone().sub(pos).angleTo(pose.moon.position.clone().sub(pos)) / DEG;
+        expect(sepDeg).toBeGreaterThanOrEqual(EARTH_MOON_SEPARATION_DEG - 1e-6);
+        expect(sepDeg).toBeLessThan(12);
+      }),
+      { numRuns: 100 }
+    );
   });
 });

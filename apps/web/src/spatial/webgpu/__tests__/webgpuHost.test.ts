@@ -186,7 +186,11 @@ describe('WebGPU host: cislunar render layers', () => {
     const optics = layer('post.camera-optics').disclosure;
     expect(optics).toMatch(/simulated camera/i);
     expect(optics).toMatch(/beyond the Moon/);
+    expect(optics).toMatch(/1,000 km over 30 s \(33\.3 km\/s\) past the far side/);
     expect(optics).toMatch(/Milky Way is shown far brighter than one exposure could record/);
+    const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    expect(host).toMatch(/landingCameraPositionAt\(t,\s*LANDING\)/);
+    expect(host).not.toMatch(/Math\.sin\(t\s*\*\s*0\.42\)/);
   });
 
   it("scales the Moon's colour map to the geometric albedo 0.12 that the Moon layer's source states", () => {

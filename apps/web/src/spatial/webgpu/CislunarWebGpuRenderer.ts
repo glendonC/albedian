@@ -27,7 +27,13 @@ import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.j
 import { createCinemaOpticsUniforms } from './cinemaOptics.js';
 import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './cislunar/bodyMaterials.js';
 import { CISLUNAR_RENDER_LAYERS } from './cislunar/cislunarLayers.js';
-import { EARTH_RADIUS_KM, KM_PER_UNIT, MOON_RADIUS_KM, landingPose } from './cislunar/landingScene.js';
+import {
+  EARTH_RADIUS_KM,
+  KM_PER_UNIT,
+  MOON_RADIUS_KM,
+  landingCameraPositionAt,
+  landingPose,
+} from './cislunar/landingScene.js';
 import { createSkyBackgroundNode } from './cislunar/skyBackground.js';
 import { buildCosmosPostChain, DEFAULT_COSMOS_POST, type CosmosPostChain, type CosmosPostOptions } from './postChain.js';
 import { CatalogStarSpriteField, DEFAULT_CATALOG_STAR_EXPOSURE } from './stars/CatalogStarSpriteField.js';
@@ -304,9 +310,9 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.rig.position.addScaledVector(new Vector3(0, 0, 1).applyQuaternion(turn), dz);
   }
 
-  /** Puts the camera rig at the landing's viewpoint, looking between the Earth and the Moon. */
+  /** Puts the camera rig on the landing's path, looking between the Earth and the Moon. */
   private placeRig(): void {
-    this.rig.position.copy(LANDING.camera.position);
+    this.rig.position.copy(landingCameraPositionAt(this.heldClockSec ?? this.elapsedSec, LANDING));
     this.rig.quaternion.copy(LANDING.camera.quaternion);
   }
 
@@ -442,12 +448,9 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     if (!held) this.elapsedSec += dtSec;
     const t = clockSec ?? this.elapsedSec;
 
-    // Showcase drift of the landing camera, as in SparkPortalRenderer's loop, scaled from its 56 deg view
+    // Lateral translation past the Moon's far side (1,000 km over 30 s, 33.3 km/s), giving real parallax
     if (this.showcaseMode) {
-      const scale = LANDING_FOV_DEG / 56;
-      this.look.yaw = Math.sin(t * 0.42) * 0.095 * scale;
-      this.look.pitch = Math.cos(t * 0.29) * 0.042 * scale;
-      this.targetFov = (53 + Math.sin(t * 0.35) * 2.4) * scale;
+      this.rig.position.copy(landingCameraPositionAt(t, LANDING));
     }
     // A held clock has no frame history, so the eased values sit on their targets
     const k = held ? 1 : 1 - Math.pow(1 - LOOK_EASING_PER_60HZ_FRAME, 60 * dtSec);

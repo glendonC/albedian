@@ -22,6 +22,10 @@ export const EARTH_RADIUS_KM = 6371.0;
 export const MOON_RADIUS_KM = 1737.4;
 /** Composition: the Moon's centre this far from the Earth's, as the camera sees them. */
 export const EARTH_MOON_SEPARATION_DEG = 8.5;
+/** Lateral travel of the landing camera past the Moon's far side over one pass (km and seconds). */
+export const LANDING_CAMERA_TRAVEL_KM = 1000;
+export const LANDING_CAMERA_TRAVEL_SECONDS = 30;
+export const LANDING_CAMERA_SPEED_KM_PER_SEC = LANDING_CAMERA_TRAVEL_KM / LANDING_CAMERA_TRAVEL_SECONDS;
 
 export interface BodyPose {
   /** Scene position of the body's centre */
@@ -119,4 +123,21 @@ export function landingPose(): LandingPose {
       aboveFarSideKm: cameraPos.distanceTo(moonPos) * KM_PER_UNIT - MOON_RADIUS_KM,
     },
   };
+}
+
+/**
+ * Scene position of the landing camera at scene clock `clockSec`.
+ * Starts on the galactic-centre-to-Earth line at `t = 0` and moves laterally along the camera's
+ * left axis (-x in camera space, in the galactic plane) by `LANDING_CAMERA_TRAVEL_KM` over
+ * `LANDING_CAMERA_TRAVEL_SECONDS` (`33.3 km/s`) so the Moon shifts by 3.33 deg against the stars
+ * while the Earth shifts by 0.145 deg. Beyond `LANDING_CAMERA_TRAVEL_SECONDS` the motion reverses
+ * at constant speed along the same 1,000 km track so both bodies stay in frame.
+ */
+export function landingCameraPositionAt(clockSec: number, pose: LandingPose = landingPose()): Vector3 {
+  const t = Number.isFinite(clockSec) ? Math.max(0, clockSec) : 0;
+  const leg = (t / LANDING_CAMERA_TRAVEL_SECONDS) % 2;
+  const fraction = leg <= 1 ? leg : 2 - leg;
+  const offsetUnits = (fraction * LANDING_CAMERA_TRAVEL_KM) / KM_PER_UNIT;
+  const lateral = new Vector3(-1, 0, 0).applyQuaternion(pose.camera.quaternion);
+  return pose.camera.position.clone().addScaledVector(lateral, offsetUnits);
 }
