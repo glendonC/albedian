@@ -95,6 +95,13 @@ def _integral(value: Any) -> Any:
     return value
 
 
+def _nonzero_year(year: int) -> int:
+    """Historical counting skips year 0: 1 BCE (-1) is followed by 1 CE (1)."""
+    if year == 0:
+        raise ValueError("There is no year 0: 1 BCE is followed by 1 CE.")
+    return year
+
+
 def _exactly(expected: bool) -> AfterValidator:
     def check(value: bool) -> bool:
         if value is not expected:
@@ -200,7 +207,9 @@ class SpaceViewpoint(_Action):
 class SpaceEpoch(_Action):
     type: Literal["space.epoch"]
     epoch_iso: Annotated[str, _units(EPOCH_ISO_MIN_UTF16)] = Field(alias="epochISO")
-    year_ce: Annotated[Int, Field(ge=EPOCH_MIN_YEAR_CE, le=EPOCH_MAX_YEAR_CE)] = Field(alias="yearCE")
+    year_ce: Annotated[
+        Int, Field(ge=EPOCH_MIN_YEAR_CE, le=EPOCH_MAX_YEAR_CE), AfterValidator(_nonzero_year)
+    ] = Field(alias="yearCE")
 
 
 class HistoryBack(_Action):
@@ -592,6 +601,7 @@ def build_voice_samples() -> dict[str, Any]:
     bad(action, _with(viewpoint, ["units"], "ly"), "an offset not in parsecs")
     bad(action, _with(epoch, ["yearCE"], EPOCH_MAX_YEAR_CE + 1), "a year after the range")
     bad(action, _with(epoch, ["yearCE"], EPOCH_MIN_YEAR_CE - 1), "a year before the range")
+    bad(action, _with(epoch, ["yearCE"], 0), "there is no year 0")
     bad(action, _with(epoch, ["yearCE"], 1500.5), "a fractional year")
     bad(action, _with(epoch, ["yearCE"], True), "a boolean is not a year")
     bad(action, _with(epoch, ["yearCE"], "1500"), "a year as text")

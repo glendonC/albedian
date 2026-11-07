@@ -93,6 +93,9 @@ describe('@albedian/contracts: the voice command reply', () => {
     for (const [year, ok] of [
       [limits.epochMinYearCE, true],
       [limits.epochMaxYearCE, true],
+      [-1, true],
+      [1, true],
+      [0, false],
       [limits.epochMinYearCE - 1, false],
       [limits.epochMaxYearCE + 1, false],
     ] as const) {

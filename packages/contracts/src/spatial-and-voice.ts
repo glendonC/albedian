@@ -188,7 +188,12 @@ export const AlbedianActionSchema = z.discriminatedUnion('type', [
     requestId: z.string().min(1),
     expectedViewRevision: z.number().int().nonnegative(),
     epochISO: z.string().min(4),
-    yearCE: z.number().int().min(-10000).max(12000),
+    yearCE: z
+      .number()
+      .int()
+      .min(-10000)
+      .max(12000)
+      .refine((year) => year !== 0, 'There is no year 0: 1 BCE is followed by 1 CE.'),
   }),
   z.object({
     type: z.literal('history.back'),

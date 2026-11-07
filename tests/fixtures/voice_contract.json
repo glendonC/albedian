@@ -822,6 +822,17 @@
         "requestId": "req-sample-1",
         "expectedViewRevision": 3,
         "epochISO": "1500-01-01T00:00:00Z",
+        "yearCE": 0
+      },
+      "reason": "there is no year 0"
+    },
+    {
+      "schema": "AlbedianAction",
+      "sample": {
+        "type": "space.epoch",
+        "requestId": "req-sample-1",
+        "expectedViewRevision": 3,
+        "epochISO": "1500-01-01T00:00:00Z",
         "yearCE": 1500.5
       },
       "reason": "a fractional year"

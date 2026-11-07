@@ -150,7 +150,10 @@ def contract_actions(draw: st.DrawFn) -> dict[str, Any]:
         fields = {"targetFindingId": draw(FINDINGS), "units": "pc", "offsetParsec": draw(st.lists(number, min_size=3, max_size=3)),
                   "trajectory": draw(st.sampled_from(["orbit", "translate"]))}
     elif kind == "space.epoch":
-        fields = {"epochISO": draw(_text(min_size=4, max_size=24)), "yearCE": draw(st.integers(-10000, 12000))}
+        fields = {
+            "epochISO": draw(_text(min_size=4, max_size=24)),
+            "yearCE": draw(st.integers(-10000, 12000).filter(lambda year: year != 0)),
+        }
     elif kind == "history.back":
         fields = {"mode": draw(st.sampled_from(["checkpoint", "partial"]))}
         if draw(st.booleans()):
@@ -287,14 +290,18 @@ def test_pbt_a_proposed_reply_has_no_state_version_and_describes_only_findings(
 
 
 @settings(max_examples=300, deadline=None)
-@given(year=st.integers(-10000, 12000), revision=REVISIONS, fraction=st.floats(0.01, 0.99))
+@given(
+    year=st.integers(-10000, 12000).filter(lambda y: y != 0),
+    revision=REVISIONS,
+    fraction=st.floats(0.01, 0.99),
+)
 @example(year=12000, revision=0, fraction=0.5)
 def test_pbt_an_integral_float_is_an_integer_and_a_fraction_never_is(year: int, revision: int, fraction: float) -> None:
     epoch = {"type": "space.epoch", "requestId": "req", "expectedViewRevision": revision,
              "epochISO": "2000-01-01T00:00:00Z", "yearCE": float(year)}
     parsed = voice.ALBEDIAN_ACTION.dump_python(voice.ALBEDIAN_ACTION.validate_python(epoch), by_alias=True)
     assert parsed["yearCE"] == year and isinstance(parsed["yearCE"], int)
-    for bad in (year + fraction, True, False, str(year)):
+    for bad in (0, 0.0, year + fraction, True, False, str(year)):
         with pytest.raises(ValidationError):
             voice.ALBEDIAN_ACTION.validate_python({**epoch, "yearCE": bad})
     with pytest.raises(ValidationError):
