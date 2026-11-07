@@ -59,115 +59,7 @@ const REGIME_CAMERA_ANCHORS: Record<SpatialScaleRegime, THREE.Vector3> = {
   planetary_surface: new THREE.Vector3(0, 210, -880),
 };
 
-export interface PlanetaryWorldDescriptor {
-  worldName: string;
-  worldClass: string;
-  surfaceGravity: string;
-  atmosphereComposition: string;
-  equilibriumTemp: string;
-  parentStarSkyDesc: string;
-  earthReturnSightline: string;
-  terrainPalette:
-    | 'lunar_regolith'
-    | 'exoplanet_terminator'
-    | 'titan_methane'
-    | 'gargantua_tidal_ocean'
-    | 'supergiant_silicate';
-}
-
-/**
- * Computes a scientifically grounded Planetary / Exoplanetary World descriptor
- * from the active celestial target's astrophysical parameters.
- */
-export function derivePlanetaryWorldDescriptor(
-  title: string,
-  bpRp = 0.8,
-  distanceLy = 4.37,
-  observerPlaceName = 'Earth Observation Site'
-): PlanetaryWorldDescriptor {
-  const lower = title.toLowerCase();
-  if (
-    lower.includes('sagittarius') ||
-    lower.includes('sgr a') ||
-    lower.includes('black hole') ||
-    lower.includes('gargantua')
-  ) {
-    return {
-      worldName: 'Tidal Ocean World · Sgr A* Horizon',
-      worldClass: 'Kerr Metric Inner-Orbit Ocean World (a/M = 0.998 · Miller Analog)',
-      surfaceGravity: '1.3× Earth (12.7 m/s²)',
-      atmosphereComposition: 'Shallow Specular Tidal Ocean · Time Dilation 1.7×',
-      equilibriumTemp: '+16°C (289 K · Accretion Disk Glow)',
-      parentStarSkyDesc:
-        '4.15×10⁶ M☉ Relativistic Black Hole, Photon Ring & Doppler-Beamed Accretion Disk',
-      earthReturnSightline: `Gravitational time dilation γ ≈ 1.68 · 26,670 ly to ${observerPlaceName}`,
-      terrainPalette: 'gargantua_tidal_ocean',
-    };
-  }
-  if (lower.includes('moon') || lower.includes('luna')) {
-    return {
-      worldName: 'Lunar South Pole · Shackleton Crater Rim',
-      worldClass: 'Airless Silicate Regolith Body (NASA LRO 100m)',
-      surfaceGravity: '0.17× Earth (1.62 m/s²)',
-      atmosphereComposition: 'Airless Vacuum · Blue Marble Earth Overhead',
-      equilibriumTemp: '-163°C Shadow (110 K)',
-      parentStarSkyDesc: `Blue Marble Earth hanging 3.7× wider than the Moon (${observerPlaceName} visible on limb)`,
-      earthReturnSightline: `1.28 light-sec (384,400 km) direct laser link to ${observerPlaceName}`,
-      terrainPalette: 'lunar_regolith',
-    };
-  }
-  if (lower.includes('saturn') || lower.includes('titan') || lower.includes('jupiter') || lower.includes('uranus') || lower.includes('betelgeuse')) {
-    return {
-      worldName: 'Titan · Hydrocarbon Sea & Saturn Rings',
-      worldClass: 'Cryogenic Organo-Nitrogen Ocean Moon & Ring Horizon',
-      surfaceGravity: '0.14× Earth (1.35 m/s²)',
-      atmosphereComposition: 'Dense Golden Nitrogen-Methane Haze · Ringed Saturn Sky',
-      equilibriumTemp: '-179°C (94 K · Liquid Methane Sea)',
-      parentStarSkyDesc: 'Giant Ringed Saturn & Cassini Division arching 35° across the twilight sky',
-      earthReturnSightline: `75.3 light-min (9.06 AU) back to Sol & ${observerPlaceName}`,
-      terrainPalette: 'titan_methane',
-    };
-  }
-  if (
-    lower.includes('alpha centauri') ||
-    lower.includes('proxima') ||
-    lower.includes('altair') ||
-    lower.includes('acrux') ||
-    lower.includes('fomalhaut') ||
-    lower.includes('deneb') ||
-    lower.includes('dabih') ||
-    lower.includes('albireo') ||
-    (bpRp < 1.15 && distanceLy < 450 && !lower.includes('nebula'))
-  ) {
-    const isAlphaCen = lower.includes('alpha centauri') || lower.includes('proxima');
-    return {
-      worldName: isAlphaCen
-        ? 'Proxima Centauri b · Glacial Terminator Canyon'
-        : `${title.split('(')[0]?.trim()} b · Circumstellar Glacier World`,
-      worldClass: isAlphaCen
-        ? 'Tidally Locked Terrestrial Exoplanet (1.07 M⊕ · 0.0485 AU)'
-        : 'Data-Driven Circumstellar Terrestrial Exoplanet',
-      surfaceGravity: isAlphaCen ? '1.1× Earth (10.9 m/s²)' : '0.96× Earth (9.4 m/s²)',
-      atmosphereComposition: 'Twilight Glacier Canyon · Red Dwarf + Twin Suns Sky',
-      equilibriumTemp: isAlphaCen ? '-39°C (234 K · Eternal Sunset Zone)' : '-5°C (268 K · Temperate Zone)',
-      parentStarSkyDesc: isAlphaCen
-        ? 'Proxima Cen (M5.5V Red Dwarf) + Alpha Cen A/B binary pair gleaming overhead'
-        : `${title.split('(')[0]?.trim()} primary photosphere illuminating the glacier horizon`,
-      earthReturnSightline: `Sol (Earth's Sun) shines as a mag +0.4 yellow star ${distanceLy.toFixed(2)} ly away`,
-      terrainPalette: 'exoplanet_terminator',
-    };
-  }
-  return {
-    worldName: `${title.split('(')[0]?.trim()} · Relativistic Horizon World`,
-    worldClass: 'Deep-Space Tidal Ocean & Eroded Basalt World',
-    surfaceGravity: '1.1× Earth (11.2 m/s²)',
-    atmosphereComposition: 'Ionized H-Alpha & Specular Tidal Ocean Envelope',
-    equilibriumTemp: '+11°C (284 K · Radiative Equilibrium)',
-    parentStarSkyDesc: `${title.split('(')[0]?.trim()} relativistic accretion & ionization front spanning 38° of sky`,
-    earthReturnSightline: `Photons departing toward ${observerPlaceName} require ${Math.round(distanceLy).toLocaleString()} years to reach Earth`,
-    terrainPalette: 'gargantua_tidal_ocean',
-  };
-}
+type PlanetaryTerrainPalette = 'lunar_regolith' | 'exoplanet_terminator' | 'titan_methane';
 
 /**
  * SparkPortalRenderer
@@ -1381,12 +1273,10 @@ export class SparkPortalRenderer {
 
   /**
    * REGIME 4 (`planetary_surface` — `4 · Surface World`):
-   * Full-Viewport Analytical GPU Ray-Marched Planetary Worlds & Relativistic Skies (Zero Polygon Sine-Waves!).
-   * Renders:
+   * Full-Viewport Analytical GPU Ray-Marched Planetary Worlds:
    * - Palette 0 (`lunar_regolith`): Ray-marched Shackleton Crater regolith & boulders + 3D Blue Marble Earth in sky
-   * - Palette 1 (`exoplanet_terminator`): Ray-marched Proxima b glacial canyons, slope-sorted ice & M-Dwarf + binary suns
+   * - Palette 1 (`exoplanet_terminator`): Ray-marched glacial canyons, slope-sorted ice & M-Dwarf + binary suns
    * - Palette 2 (`titan_methane`): Ray-marched coastal cliffs & specular liquid methane waves reflecting Ringed Saturn
-   * - Palette 3 (`gargantua_tidal_ocean`): Miller's Relativistic Tidal Ocean World reflecting Gargantua's warped accretion disk
    */
   private buildPlanetarySurfaceWorld(): void {
     const group = this.regimeGroups.planetary_surface;
@@ -1502,12 +1392,6 @@ export class SparkPortalRenderer {
             float craterBowl = cDist < 12.0 ? -1.8 * (1.0 - cDist / 12.0) : 0.0;
             grad = d * 0.65;
             return -2.4 + a * 2.4 + craterRim + craterBowl + horizonWall * 0.75;
-          } else if (uPaletteId > 2.5) {
-            // 3: Gargantua Relativistic Tidal Ocean World (Miller's Planet — specular ocean + distant towering tidal wave + basalt sea stacks)
-            float swell = exp(-pow((p.y + 38.0 + sin(p.x * 0.06) * 3.5) / 6.5, 2.0)) * 3.2;
-            float seaStacks = (a * 3.1 - 2.65) * smoothstep(5.5, 16.0, abs(p.x));
-            grad = d * 0.45;
-            return max(-1.95 + swell * 0.65, seaStacks);
           }
 
           grad = d;
@@ -1655,34 +1539,7 @@ export class SparkPortalRenderer {
             return sky;
           }
 
-          // PALETTE 3: Gargantua / Sgr A* Relativistic Black Hole & Warped Accretion Disk in the Sky (Interstellar Miller's Planet)
-          vec3 bhDir = normalize(vec3(-0.08, 0.24, -0.967));
-          vec3 upOrtho = normalize(vec3(0.22, 0.95, 0.21));
-          vec3 rightOrtho = normalize(cross(bhDir, upOrtho));
-          upOrtho = cross(rightOrtho, bhDir);
-
-          vec2 bhUv = vec2(dot(rd - bhDir, rightOrtho), dot(rd - bhDir, upOrtho));
-          float rAng = length(bhUv);
-          float rShadow = 0.095;
-
-          // Primary inclined disk + gravitationally lensed upper & lower Einstein arches
-          float diskY = bhUv.y + bhUv.x * 0.14;
-          float archUpper = abs(rAng - rShadow * 1.15 - 0.022 * (1.0 - clamp(bhUv.y / 0.18, 0.0, 1.0)));
-          float ringlets = isReflection
-            ? 0.82
-            : (0.65 + 0.35 * sin(rAng * 190.0 - uTime * 1.4));
-          float primarySlab = exp(-abs(diskY) * 64.0) * smoothstep(rShadow * 0.78, rShadow * 1.12, abs(bhUv.x)) * exp(-abs(bhUv.x) * 4.5) * ringlets;
-          float lensedHalo = exp(-archUpper * 46.0) * smoothstep(rShadow * 0.75, rShadow * 1.02, rAng) * (0.75 + 0.25 * ringlets);
-          float photonRing = exp(-pow((rAng - rShadow) / 0.0055, 2.0)) * 2.1;
-
-          // Relativistic Doppler beaming (left side brilliant white-gold, right side redshifted amber-crimson)
-          float dopplerShift = clamp(1.0 - bhUv.x * 4.2, 0.42, 1.80);
-          vec3 diskColor = mix(vec3(0.92, 0.20, 0.03), vec3(1.55, 1.12, 0.58), smoothstep(0.50, 1.30, dopplerShift));
-          diskColor = mix(diskColor, vec3(1.85, 1.72, 1.48), smoothstep(1.25, 1.75, dopplerShift));
-
-          vec3 bhEmission = diskColor * (primarySlab * 1.65 + lensedHalo * 1.15 + photonRing) * pow(dopplerShift, 1.35);
-          float shadowMask = smoothstep(rShadow * 0.92, rShadow * 1.04, rAng);
-          return sky * shadowMask + bhEmission;
+          return sky;
         }
 
         void main() {
@@ -1730,7 +1587,7 @@ export class SparkPortalRenderer {
             t += max(0.07, diff * 0.40);
           }
 
-          float waterLevel = uPaletteId > 2.5 ? -1.78 : (uPaletteId > 1.5 ? -1.88 : (uPaletteId > 0.5 ? -1.94 : -99.0));
+          float waterLevel = uPaletteId > 1.5 ? -1.88 : (uPaletteId > 0.5 ? -1.94 : -99.0);
           float tWater = (uPaletteId > 0.5 && rd.y < -0.001) ? (waterLevel - ro.y) / rd.y : 1e5;
           vec3 wPos = ro + rd * tWater;
           vec2 wGrad = vec2(0.0);
@@ -1780,15 +1637,12 @@ export class SparkPortalRenderer {
               vec3 albedo = mix(basaltRock, glacierIce, snowMask);
               vec3 skyAmbient = vec3(0.08, 0.05, 0.07) * (0.35 + 0.65 * slope);
               surfCol = albedo * uSunColor * (lommel * 1.55) + skyAmbient + vec3(0.80, 0.92, 1.0) * spec * (0.10 + snowMask * 0.72);
-            } else if (uPaletteId < 2.5) {
+            } else {
               float duneMask = smoothstep(0.60, 0.84, slope);
               vec3 cliffRock = vec3(0.20, 0.12, 0.07) * strata;
               vec3 tholinSand = vec3(0.66, 0.42, 0.17) * (0.82 + 0.18 * microN.x);
               vec3 albedo = mix(cliffRock, tholinSand, duneMask);
               surfCol = albedo * uSunColor * (lommel * 1.40 + 0.08) + uSunColor * spec * 0.24;
-            } else {
-              vec3 wetBasalt = vec3(0.10, 0.12, 0.15) * strata;
-              surfCol = wetBasalt * uSunColor * (lommel * 1.35 + 0.06) + uSunColor * spec * 0.60;
             }
           }
 
@@ -1810,9 +1664,7 @@ export class SparkPortalRenderer {
             float cosTheta = clamp(dot(waterN, V), 0.0, 1.0);
             float fresnel = 0.08 + 0.92 * pow(1.0 - cosTheta, 4.0);
 
-            vec3 deepLiquid = uPaletteId > 2.5
-              ? vec3(0.012, 0.028, 0.045)
-              : (uPaletteId > 1.5 ? vec3(0.028, 0.036, 0.024) : vec3(0.018, 0.042, 0.068));
+            vec3 deepLiquid = uPaletteId > 1.5 ? vec3(0.028, 0.036, 0.024) : vec3(0.018, 0.042, 0.068);
             vec3 waterCol = mix(deepLiquid, reflSky * 1.16, fresnel);
 
             float shoreBlend = smoothstep(0.0, 0.22, waterDepth);
@@ -1852,7 +1704,7 @@ export class SparkPortalRenderer {
    * to match the astrophysical class of the selected celestial target.
    */
   private rebuildPlanetaryTerrainSplats(
-    palette: PlanetaryWorldDescriptor['terrainPalette']
+    palette: PlanetaryTerrainPalette
   ): void {
     const group = this.regimeGroups.planetary_surface;
     if (this.planetaryTerrainSplatMesh) {
@@ -1875,15 +1727,8 @@ export class SparkPortalRenderer {
       this.planetarySkyUniforms.uSunAngularRadius.value = 0.11;
       this.planetarySkyUniforms.uHasRings.value = 1.0;
       this.planetarySkyUniforms.uPaletteId.value = 2.0;
-    } else if (palette === 'gargantua_tidal_ocean' || palette === 'supergiant_silicate') {
-      this.planetarySkyUniforms.uAtmoZenith.value.set(0.005, 0.010, 0.024);
-      this.planetarySkyUniforms.uAtmoHorizon.value.set(0.28, 0.18, 0.11);
-      this.planetarySkyUniforms.uSunColor.value.set(1.35, 0.95, 0.58);
-      this.planetarySkyUniforms.uSunAngularRadius.value = 0.145;
-      this.planetarySkyUniforms.uHasRings.value = 0.0;
-      this.planetarySkyUniforms.uPaletteId.value = 3.0;
     } else {
-      // exoplanet_terminator (Proxima Centauri b / glacial canyon world)
+      // exoplanet_terminator (glacial canyon world)
       this.planetarySkyUniforms.uAtmoZenith.value.set(0.008, 0.018, 0.052);
       this.planetarySkyUniforms.uAtmoHorizon.value.set(0.48, 0.18, 0.10);
       this.planetarySkyUniforms.uSunColor.value.set(1.18, 0.58, 0.36);
@@ -1917,8 +1762,6 @@ export class SparkPortalRenderer {
             color.setRGB(0.65, 0.78, 0.96);
           } else if (palette === 'titan_methane') {
             color.setRGB(0.95, 0.62, 0.24);
-          } else if (palette === 'gargantua_tidal_ocean' || palette === 'supergiant_silicate') {
-            color.setRGB(1.0, 0.78, 0.45);
           } else {
             color.setRGB(0.92, 0.56, 0.42);
           }
@@ -1930,33 +1773,6 @@ export class SparkPortalRenderer {
 
     group.add(terrainSplatMesh);
     this.planetaryTerrainSplatMesh = terrainSplatMesh;
-  }
-
-  /**
-   * Configures the `planetary_surface` (`08 World Surface`) regime for a specific astronomical target
-   * and optionally flies the camera down to its surface.
-   */
-  public descendToPlanetarySurface(
-    title: string,
-    bpRp = 0.8,
-    distanceLy = 4.37,
-    observerPlaceName = 'Earth Observation Site'
-  ): PlanetaryWorldDescriptor {
-    this.setTargetAppearance(title, bpRp);
-    const desc = derivePlanetaryWorldDescriptor(title, bpRp, distanceLy, observerPlaceName);
-    this.rebuildPlanetaryTerrainSplats(desc.terrainPalette);
-
-    if (this.activeRegime !== 'planetary_surface') {
-      this.flightState = {
-        active: true,
-        startPos: this.localFrame.position.clone(),
-        endPos: REGIME_CAMERA_ANCHORS.planetary_surface.clone(),
-        progress: 0,
-        targetRegime: 'planetary_surface',
-      };
-      this.syncRegimeVisibility();
-    }
-    return desc;
   }
 
   private syncRegimeVisibility(): void {
@@ -2370,8 +2186,7 @@ export class SparkPortalRenderer {
     const isBh =
       lower.includes('sagittarius') ||
       lower.includes('sgr a') ||
-      lower.includes('black hole') ||
-      lower.includes('gargantua');
+      lower.includes('black hole');
     this.nebulaUniforms.uIsBlackHole.value = isBh ? 1.0 : 0.0;
     this.showDeepSkyBlackHole(isBh);
 

@@ -162,6 +162,13 @@ describe('WebGL renderer: scene 03 draws no invented structure', () => {
     // uCoronaOuter tinted only the particles' outer shell; the star's rim mixes uWarmColor and uHotColor
     expect(renderer).not.toMatch(/uCoronaOuter/);
   });
+
+  it('deletes the uncalled derivePlanetaryWorldDescriptor, descendToPlanetarySurface and the invented Sgr A* tidal ocean world', () => {
+    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
+    expect(renderer).not.toMatch(
+      /derivePlanetaryWorldDescriptor|PlanetaryWorldDescriptor|descendToPlanetarySurface|gargantua_tidal_ocean|supergiant_silicate|Miller's Planet|Miller Analog|Kerr Metric|Time Dilation 1\.7/
+    );
+  });
 });
 
 describe('WebGL renderer: which view declares layers', () => {
