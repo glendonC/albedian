@@ -375,6 +375,21 @@
         "script": "scripts/bake_moon_maps.py",
         "command": "uv run python scripts/bake_moon_maps.py"
       }
+    },
+    {
+      "path": "eso_milkyway_diffuse_6k.webp",
+      "sha256": "726af416fc491c865bbf3b907bb87fec7c55481d55c7caa805f9727503e99b56",
+      "sources": [
+        "eso0932a",
+        "gaia-dr3",
+        "hipparcos-2007"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_starless_panorama.py",
+        "command": "uv run python scripts/bake_starless_panorama.py"
+      },
+      "note": "ESO/S. Brunier, eso0932a, modified: stars removed. The landing draws its point stars from the catalog tiles, so the photograph's 21,417 catalog stars to magnitude 7 are masked where its registration (eso0932a_registration.json) puts them, with radii measured from the photograph's own star profiles by magnitude (bin and pixels: -1 7, 0 5, 1 4, 2 3, 3 3, 4 3, 5 2, 6 2) plus 2 for the registration's error, and filled from their surroundings; a 5x5 median and a 1 px Gaussian, wrapping in longitude, take the fainter stellar grain. What remains is the photograph's diffuse light: unresolved stars, dust lanes and nebulae. Venus and Jupiter are put back exactly as photographed. Same projection and size as the photograph, so its registration applies unchanged."
     }
   ],
   "fileSets": []

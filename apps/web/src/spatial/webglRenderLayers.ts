@@ -1,12 +1,23 @@
 import { RenderLayerSetSchema, type RenderLayer, type RenderLayerSet } from '@albedian/contracts';
 import type { SpatialScaleRegime } from './SparkPortalRenderer.js';
-import { CISLUNAR_RENDER_LAYERS } from './webgpu/cislunar/cislunarLayers.js';
 
-function sharedLayer(id: string): RenderLayer {
-  const layer = CISLUNAR_RENDER_LAYERS.find((l) => l.id === id);
-  if (!layer) throw new Error(`cislunar layer ${id} is not declared`);
-  return layer;
-}
+/**
+ * The WebGL sky dome: ESO's Milky Way photograph as downloaded, registered to the catalog stars.
+ * The WebGPU host samples the star-removed diffuse map instead (cislunarLayers.ts).
+ */
+const WEBGL_SKY: RenderLayer = {
+  id: 'cislunar.sky',
+  kind: 'sky_background',
+  title: 'Sky panorama',
+  evidenceClass: 'simulated',
+  disclosure:
+    "ESO's Milky Way photograph, registered to the catalog stars and graded for display. It also shows two planets, Venus and Jupiter, where its 2008 to 2009 shoot photographed them.",
+  sources: [
+    'ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0',
+    'Registration fitted to Gaia DR3 and Hipparcos 2007 stars (eso0932a_registration.json)',
+    'Provenance: apps/web/public/textures/PROVENANCE.json',
+  ],
+};
 
 /** The WebGL catalog star sprites, the same in every view. */
 const WEBGL_CATALOG_STARS: RenderLayer = {
@@ -74,12 +85,12 @@ const WEBGL_CAMERA_OPTICS: RenderLayer = {
 
 /**
  * What the WebGL renderer (`SparkPortalRenderer`) draws in the cislunar regime, in draw order,
- * with each layer's evidence class and the disclosure the UI shows. The sky samples the same data
- * the same way as on the WebGPU host, so it shares its declaration; the catalog stars, the Earth,
- * the atmosphere, the Moon and the optics are drawn differently here.
+ * with each layer's evidence class and the disclosure the UI shows. The sky samples ESO's
+ * unmodified panorama, whereas the WebGPU host samples the star-removed diffuse map; the catalog
+ * stars, the Earth, the atmosphere, the Moon and the optics are also drawn differently here.
  */
 export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  sharedLayer('cislunar.sky'),
+  WEBGL_SKY,
   WEBGL_CATALOG_STARS,
   WEBGL_EARTH,
   WEBGL_ATMOSPHERE,
@@ -95,7 +106,7 @@ export const CISLUNAR_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
  * cloud, not what lies behind Sgr A* [inference].
  */
 export const BLACK_HOLE_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...sharedLayer('cislunar.sky'), id: 'deep-sky.sky' },
+  { ...WEBGL_SKY, id: 'deep-sky.sky' },
   { ...WEBGL_CATALOG_STARS, id: 'deep-sky.catalog-stars' },
   {
     id: 'deep-sky.black-hole',
@@ -115,7 +126,7 @@ export const BLACK_HOLE_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSche
  * disclosed.
  */
 export const DEEP_SKY_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...sharedLayer('cislunar.sky'), id: 'deep-sky.sky' },
+  { ...WEBGL_SKY, id: 'deep-sky.sky' },
   { ...WEBGL_CATALOG_STARS, id: 'deep-sky.catalog-stars' },
   WEBGL_CAMERA_OPTICS,
 ]);
@@ -127,7 +138,7 @@ export const DEEP_SKY_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema
  * not an observation.
  */
 export const SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse([
-  { ...sharedLayer('cislunar.sky'), id: 'local.sky' },
+  { ...WEBGL_SKY, id: 'local.sky' },
   { ...WEBGL_CATALOG_STARS, id: 'local.catalog-stars' },
   {
     id: 'local.star',

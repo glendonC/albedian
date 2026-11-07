@@ -3,7 +3,7 @@
 Scene 01 on the WebGPU host shows one real moment, 2025-03-07 11:00 UTC, at true scale: the Earth and
 the Moon where JPL Horizons puts them, turned as they were, lit by that moment's Sun, and seen from a
 simulated camera beyond the Moon's far side with the centre of the Milky Way behind the Earth. The
-WebGL renderer keeps its composed landing, disclosed as such, until WebGPU becomes the default.
+WebGL renderer uses a composed cislunar view, disclosed as such in its render layer set.
 
 ![The landing at 2025-03-07 11:00 UTC on the WebGPU host, 1920x1080](img/landing-moment/landing-webgpu-1080p.jpg)
 
@@ -53,9 +53,21 @@ WebGL renderer keeps its composed landing, disclosed as such, until WebGPU becom
   The night sides are unlit: the Moon's far side never faces the Earth, so no earthshine reaches it,
   and moonlight on the Earth's night side is a few millionths of sunlight at most.
 - **Removed for this view**: the Earth material's hand-set tilt that turned the Mediterranean to the
-  camera (it now samples in the globe's own frame), its warm twilight terms, which made the
+  camera (it samples in the globe's own frame), its warm twilight terms, which made the
   terminator brighter than the day side, its blue fill of the night side and the atmosphere shell's
   glow around the night side; the bodies' spin; and the observer-hemisphere flip.
+
+## Angular resolution and screen sampling
+
+At the landing camera's 26 deg vertical field of view, screen angular density is 41.5 screen px / deg at 1920x1080 and 83.1 screen px / deg at 3840x2160.
+
+| Layer | Asset & dimensions | Angular resolution | Screen sampling at 1080p | Screen sampling at 4K |
+|---|---|---|---|---|
+| Sky diffuse panorama | `eso_milkyway_diffuse_6k.webp`, 6000x3000 | 16.7 texels / deg (216 arcsec / texel) | 0.40 texels / px (2.49x magnified) [measured] | 0.20 texels / px (4.99x magnified) [computed] |
+| Catalog stars | Gaia DR3 and Hipparcos tiles to G 12 (256 tiles) | Sub-arcsecond ICRS directions | Analytic-PSF sprites evaluated per screen pixel [tested] | Analytic-PSF sprites evaluated per screen pixel [tested] |
+| Moon colour | `moon_lroc_color_poles_8k.jpg`, 8192x4096 | 22.8 texels / deg | 8.5 texels / px at disk centre (11.6 deg disk = 482 px, minified) [computed] | 4.3 texels / px at disk centre (964 px disk, minified) [computed] |
+| Moon LOLA normals | `moon_lola_normal_5k.png`, 5760x2880 | 16.0 texels / deg | 6.0 texels / px at disk centre (minified) [computed] | 3.0 texels / px at disk centre (minified) [computed] |
+| Earth day and night | 8192x4096 maps (clouds 2048x1024, height 4096x2048) | 22.8 texels / deg (5.7 clouds, 11.4 height) | 53.2 texels / px at disk centre (1.85 deg disk = 77 px, minified) [computed] | 26.6 texels / px at disk centre (154 px disk, minified) [computed] |
 
 ## Checks
 
@@ -81,9 +93,8 @@ data URL [tested].
   March month would match the season's snow cover), and the cloud layer is not that day's weather
   and has no recorded provenance (data-5a brings NASA's cloud layer). With most clouds missing, the
   Earth is darker than its albedo of about 0.3.
-- **Sky resolution** [open]: at this field of view one panorama texel (216 arcsec) spans 2.48 px at
-  1080p [tested, the sky dome check] and about 5 px at 2160p, so the sky looks soft at 4K.
-- **The anamorphic streak**: render-6e replaced its copies of bright pixels at fixed offsets with one
-  continuous horizontal Gaussian carrying the same energy. Spread out, that energy adds less than one
+- **Sky resolution** [open]: removing resolved point stars from `eso_milkyway_diffuse_6k.webp` and drawing catalog stars to G 12 eliminates magnified star blocks, while the diffuse Milky Way background itself spans 2.49 px per texel at 1080p [tested] and 4.99 px per texel at 2160p [computed].
+- **The anamorphic streak**: replacing copies of bright pixels at fixed offsets with one
+  continuous horizontal Gaussian carrying the same energy adds less than one
   code value per pixel along a star's streak at 1080p, so the landing shows no streak [tested]; a
   visible line would need about ten times the energy [inference], a look choice.

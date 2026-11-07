@@ -13,9 +13,9 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Sky panorama',
     evidenceClass: 'simulated',
     disclosure:
-      "ESO's Milky Way photograph, registered to the catalog stars and graded for display. It also shows two planets, Venus and Jupiter, where its 2008 to 2009 shoot photographed them.",
+      "ESO's Milky Way photograph with its stars removed so every star drawn is a catalog star, registered to the catalog and graded for display. It also shows two planets, Venus and Jupiter, where its 2008 to 2009 shoot photographed them.",
     sources: [
-      'ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0',
+      'ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0, modified: stars removed by scripts/bake_starless_panorama.py (eso_milkyway_diffuse_6k.webp)',
       'Registration fitted to Gaia DR3 and Hipparcos 2007 stars (eso0932a_registration.json)',
       'Provenance: apps/web/public/textures/PROVENANCE.json',
     ],
@@ -26,9 +26,9 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Catalog stars',
     evidenceClass: 'simulated',
     disclosure:
-      'Gaia DR3 and Hipparcos 2007 positions, magnitudes and colours; each star image is a modeled telescope point-spread function.',
+      'Gaia DR3 and Hipparcos 2007 positions, magnitudes and colours to G 12; each star image is a modeled telescope point-spread function.',
     sources: [
-      'Gaia DR3 (Gaia Collaboration 2023)',
+      'Gaia DR3 to G 12 (Gaia Collaboration 2023)',
       'Hipparcos 2007 (van Leeuwen 2007)',
       'Colour: Gaia DR3 documentation section 5.5.1 and Ballesteros (2012)',
     ],

@@ -21,8 +21,13 @@ describe('WebGL renderer: cislunar render layers', () => {
     expect(CISLUNAR_WEBGL_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
   });
 
-  it('shares the WebGPU disclosures where both renderers draw the same data', () => {
-    expect(layer('cislunar.sky')).toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky'));
+  it('keeps the unmodified ESO sky photograph while the WebGPU landing draws the star-removed diffuse map', () => {
+    const sky = layer('cislunar.sky');
+    expect(sky).not.toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky'));
+    expect(sky?.disclosure).toMatch(/ESO's Milky Way photograph, registered to the catalog stars/);
+    expect(sky?.disclosure).not.toMatch(/stars removed/i);
+    expect(sky?.sources.join(' ')).toContain('ESO/S. Brunier, The Milky Way panorama (eso0932a), CC BY 4.0');
+    expect(sky?.sources.join(' ')).not.toContain('eso_milkyway_diffuse_6k.webp');
   });
 
   it('keeps its composed Earth and atmosphere, which the WebGPU landing has moved to the real moment', () => {

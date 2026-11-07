@@ -16,6 +16,7 @@ import {
 import { tileRadiance, DEFAULT_CATALOG_STAR_EXPOSURE } from '../stars/CatalogStarSpriteField.js';
 import { CISLUNAR_RENDER_LAYERS } from '../cislunar/cislunarLayers.js';
 import { MOON_GEOMETRIC_ALBEDO } from '../cislunar/bodyMaterials.js';
+import { LANDING_LIMITING_MAGNITUDE } from '../CislunarWebGpuRenderer.js';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 
 function integrate2d(f: (x: number, y: number) => number, extent: number, h: number): number {
@@ -134,10 +135,28 @@ describe('WebGPU host: cislunar render layers', () => {
     expect(CISLUNAR_RENDER_LAYERS.every((l) => l.evidenceClass === 'simulated')).toBe(true);
   });
 
-  it('cites the ESO panorama and its registration for the sky, and no plotted star map', () => {
+  it('cites the ESO panorama with its stars removed and its registration for the sky, and no plotted star map', () => {
     const sky = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.sky');
+    expect(sky?.disclosure).toMatch(/stars removed/i);
+    expect(sky?.disclosure).toMatch(/every star drawn is a catalog star/i);
     expect(sky?.sources.join(' ')).toContain('eso0932a');
+    expect(sky?.sources.join(' ')).toMatch(/modified: stars removed.*eso_milkyway_diffuse_6k\.webp/);
     expect(`${sky?.disclosure} ${sky?.sources.join(' ')}`).not.toMatch(/star map|plot of catalog stars/i);
+  });
+
+  it('draws the catalog stars to the release limit G 12 over the star-removed diffuse panorama', () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(fileURLToPath(new URL('../../../../public/catalog/stars/gaia-dr3/manifest.json', import.meta.url)), 'utf8')
+    ) as { magnitudeLimit: number };
+    expect(LANDING_LIMITING_MAGNITUDE).toBe(12);
+    expect(LANDING_LIMITING_MAGNITUDE).toBe(manifest.magnitudeLimit);
+    const stars = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.catalog-stars');
+    expect(stars?.disclosure).toMatch(/\bG 12\b/);
+    expect(stars?.sources.join(' ')).toMatch(/\bG 12\b/);
+    const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    expect(host).toMatch(/'\/textures\/eso_milkyway_diffuse_6k\.webp', SRGBColorSpace/);
+    expect(host).not.toMatch(/eso_milkyway_panorama\.jpg/);
+    expect(host).toMatch(/limitingMagnitude:\s*LANDING_LIMITING_MAGNITUDE/);
   });
 
   it("names the Moon's maps and carries SVS's caveat that they were made for appearance", () => {

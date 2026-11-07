@@ -55,6 +55,11 @@ const MIN_FOV_DEG = 6;
  */
 const LANDING_EXPOSURE = 3.0;
 const LANDING_SKY_GAIN = 0.3;
+/**
+ * The catalog's magnitude limit on the landing: every star in the release (Gaia DR3 to G 12,
+ * Hipparcos 2007 at the bright end) is drawn as a sprite over the star-removed Milky Way map.
+ */
+export const LANDING_LIMITING_MAGNITUDE = 12;
 /** Sharpens the 8k colour and the normal map toward the limb, where the sphere is seen edge-on. */
 const MOON_MAP_ANISOTROPY = 8;
 /** Per-frame easing of 0.14 at 60 Hz, applied as 1 - 0.86^(60 dt). */
@@ -120,7 +125,10 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
   private readonly rig = new Group();
   private readonly world = new Group();
   /** The catalog stars belong to the sky, so they take its display gain under the landing's exposure */
-  private readonly stars = new CatalogStarSpriteField({ exposure: DEFAULT_CATALOG_STAR_EXPOSURE * LANDING_SKY_GAIN });
+  private readonly stars = new CatalogStarSpriteField({
+    exposure: DEFAULT_CATALOG_STAR_EXPOSURE * LANDING_SKY_GAIN,
+    limitingMagnitude: LANDING_LIMITING_MAGNITUDE,
+  });
   /** The catalog star sphere, centred on the camera every frame so the stars sit at infinity. */
   private readonly starMount: Group;
   private readonly optics = createCinemaOpticsUniforms();
@@ -149,8 +157,8 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.placeRig();
     this.scene.add(this.world);
 
-    // ESO eso0932a; provenance in textures/PROVENANCE.json
-    const milkyWay = this.loadTexture('/textures/eso_milkyway_panorama.jpg', SRGBColorSpace, true);
+    // ESO eso0932a with its stars removed by scripts/bake_starless_panorama.py; provenance in textures/PROVENANCE.json
+    const milkyWay = this.loadTexture('/textures/eso_milkyway_diffuse_6k.webp', SRGBColorSpace, true);
     // The dome is drawn only with the panorama's fitted registration, never misaligned
     this.pending.push(
       loadPanoramaRegistration().then(
