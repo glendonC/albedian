@@ -498,7 +498,7 @@
           "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
           "wcsSolutionId": "sol-primary",
           "limitations": [
-            "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
+            "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -515,7 +515,7 @@
       }
     ],
     "warnings": [
-      "1 sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
+      "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
     ],
     "wcs": {
       "projection": "TAN",
@@ -792,7 +792,7 @@
           "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
           "wcsSolutionId": "sol-primary",
           "limitations": [
-            "Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate."
+            "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -809,7 +809,7 @@
       }
     ],
     "warnings": [
-      "1 sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
+      "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
     ],
     "wcs": {
       "projection": "TAN",

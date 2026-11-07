@@ -552,7 +552,10 @@ def solve_and_verify_field(
 
     findings_list: list[CelestialFindingRecord] = []
     warnings: list[str] = []
-    rejected_outlier_count = 0
+    paired_by_id = {id(det): (st, res_px) for det, st, res_px, _ in verification.associations}
+    impulse_count = 0
+    outside_gate_count = 0
+    no_catalog_star_count = 0
 
     has_time_and_place = (
         obs_utc_iso is not None and observer_lat is not None and observer_lon is not None
@@ -584,7 +587,25 @@ def solve_and_verify_field(
                 )
             )
         elif passed_verification:
-            rejected_outlier_count += 1
+            if det.is_hot_pixel_impulse:
+                impulse_count += 1
+                unmatched_reason = (
+                    f"Skipped by catalog matching as a hot-pixel impulse "
+                    f"(FWHM {det.fwhm_px:.2f} px, peak-to-total flux ratio {det.peak_to_total_ratio:.2f})."
+                )
+            elif id(det) in paired_by_id:
+                outside_gate_count += 1
+                paired_star, res_px = paired_by_id[id(det)]
+                unmatched_reason = (
+                    f"Paired with {paired_star.common_name} at {res_px:.2f} px residual, "
+                    f"outside the {verification.inlier_gate_px:.2f} px inlier gate."
+                )
+            else:
+                no_catalog_star_count += 1
+                unmatched_reason = (
+                    f"No star of the {len(catalog)}-star catalog sits within {ASSOCIATION_RADIUS_PX:g} px "
+                    f"of where the WCS puts one."
+                )
             ra_est, dec_est = refined_wcs.pixel_to_world(det.x_px, det.y_px)
             arcsec_per_px = refined_wcs.scale_deg_per_px * 3600.0
             findings_list.append(
@@ -597,7 +618,7 @@ def solve_and_verify_field(
                     ra_deg=ra_est, dec_deg=dec_est,
                     uncertainty_arcsec=math.hypot(median_residual_arcsec, det.centroid_uncertainty_px * arcsec_per_px),
                     source_detection=det, catalog_star=None, verified_by_holdout=False,
-                    limitations=("Rejected from catalog matching by 3-sigma residual / hot-pixel impulse gate.",),
+                    limitations=(unmatched_reason,),
                     source_sha256=source_sha256,
                 )
             )
@@ -609,10 +630,22 @@ def solve_and_verify_field(
                 )
             )
 
-    if rejected_outlier_count > 0 and passed_verification:
-        warnings.append(
-            f"{rejected_outlier_count} sensor detection(s) rejected from catalog matching via 3-sigma outlier gate."
-        )
+    unmatched_total = impulse_count + outside_gate_count + no_catalog_star_count
+    if unmatched_total > 0 and passed_verification:
+        unmatched_parts: list[str] = []
+        if impulse_count > 0:
+            unmatched_parts.append(f"{impulse_count} skipped as hot-pixel impulse(s)")
+        if outside_gate_count > 0:
+            unmatched_parts.append(
+                f"{outside_gate_count} paired within {ASSOCIATION_RADIUS_PX:g} px "
+                f"but outside the {verification.inlier_gate_px:.2f} px inlier gate"
+            )
+        if no_catalog_star_count > 0:
+            unmatched_parts.append(
+                f"{no_catalog_star_count} with no star of the {len(catalog)}-star catalog "
+                f"within {ASSOCIATION_RADIUS_PX:g} px"
+            )
+        warnings.append(f"{unmatched_total} unmatched sensor detection(s): {', '.join(unmatched_parts)}.")
     if not passed_verification:
         warnings.append("WCS solution did not pass independent held-out calibration gate.")
 

@@ -366,6 +366,19 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
                 f"Hot pixel at ({hx}, {hy}) was falsely assigned catalog_matched ({finding.title})"
             )
 
+    # Every injected hot pixel that was detected as an observed source is explicitly named a hot-pixel impulse
+    hot_findings = [
+        f
+        for f in solution.findings
+        if f.evidence_class == "observed"
+        and f.source_detection is not None
+        and any(math.hypot(f.source_detection.x_px - hx, f.source_detection.y_px - hy) <= 2.0 for hx, hy in hot_pixel_coords)
+    ]
+    assert len(hot_findings) >= 6
+    for f in hot_findings:
+        assert f.limitations[0].startswith("Skipped by catalog matching as a hot-pixel impulse (")
+    assert any("skipped as hot-pixel impulse(s)" in w for w in solution.warnings)
+
 
 # ---------------------------------------------------------------------------
 # EXP-04: Astronomy-Aware Point Protection vs. Conventional Denoise

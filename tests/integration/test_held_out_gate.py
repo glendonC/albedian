@@ -119,6 +119,40 @@ def test_the_same_fit_calibrates_when_its_misses_stay_within_bounds() -> None:
     assert len(matched) == 12 and matched.isdisjoint(misses)
 
 
+def test_calibrated_solve_names_each_unmatched_detections_own_reason() -> None:
+    # Start from a field where Sirius is displaced by 5.0 px (paired within 8 px, outside the inlier gate),
+    # add one optical PSF detection at (60, 60) px far from every catalog star, and one hot-pixel impulse at (90, 90) px.
+    base_dets = _field({"Sirius": (5.0, 0.3)})
+    far_det = SourceDetection(
+        x_px=60.0, y_px=60.0, flux=850.0, snr=8.5, fwhm_px=2.6, centroid_uncertainty_px=0.12, peak_to_total_ratio=0.25
+    )
+    impulse_det = SourceDetection(
+        x_px=90.0, y_px=90.0, flux=920.0, snr=9.2, fwhm_px=0.85, centroid_uncertainty_px=0.10, peak_to_total_ratio=0.82
+    )
+    detections = base_dets + [far_det, impulse_det]
+    sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
+    assert sol.status == "calibrated"
+
+    unmatched = [f for f in sol.findings if f.evidence_class == "observed"]
+    assert len(unmatched) == 3
+    by_det = {id(f.source_detection): f.limitations[0] for f in unmatched}
+
+    sirius_det = base_dets[NAMES.index("Sirius")]
+    assert "Paired with Sirius at 5.00 px residual, outside the " in by_det[id(sirius_det)]
+    assert " px inlier gate." in by_det[id(sirius_det)]
+    assert by_det[id(far_det)] == "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+    assert by_det[id(impulse_det)] == (
+        "Skipped by catalog matching as a hot-pixel impulse (FWHM 0.85 px, peak-to-total flux ratio 0.82)."
+    )
+
+    assert len(sol.warnings) == 1
+    warning = sol.warnings[0]
+    assert warning.startswith("3 unmatched sensor detection(s): ")
+    assert "1 skipped as hot-pixel impulse(s)" in warning
+    assert "1 paired within 8 px but outside the " in warning
+    assert "1 with no star of the 18-star catalog within 8 px" in warning
+
+
 def test_a_fit_with_nothing_held_out_reports_no_residual() -> None:
     # Four stars to fit and two detections at least 260 px from every pinned star, so nothing is held out
     full = _field({})
