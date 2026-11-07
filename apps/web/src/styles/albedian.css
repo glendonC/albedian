@@ -2841,6 +2841,122 @@
 }
 
 /* ============================================================================
+   SIMULATED VIEWPOINT, OVERLAY & EPOCH DISCLOSURE HUD (Experience-8)
+   ============================================================================ */
+.albedian-epoch-disclosure-hud {
+  position: absolute;
+  top: 76px;
+  right: 32px;
+  z-index: 29;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(440px, calc(100vw - 64px));
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(10, 12, 22, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(196, 155, 255, 0.36);
+  color: #f4f2ed;
+  pointer-events: auto;
+}
+
+.albedian-epoch-disclosure-hud__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.albedian-epoch-disclosure-hud__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(196, 155, 255, 0.16);
+  border: 1px solid rgba(196, 155, 255, 0.5);
+  color: #e4cfff;
+}
+
+.albedian-epoch-disclosure-hud__disclosure {
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  color: #b8c2d2;
+}
+
+.albedian-epoch-disclosure-hud__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.albedian-epoch-disclosure-hud__btn {
+  appearance: none;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: rgba(240, 240, 250, 0.07);
+  border: 1px solid rgba(200, 206, 216, 0.22);
+  color: #e4e8ef;
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.albedian-epoch-disclosure-hud__btn.is-active {
+  background: rgba(196, 155, 255, 0.22);
+  border-color: rgba(196, 155, 255, 0.65);
+  color: #f4ebff;
+}
+
+.albedian-epoch-disclosure-hud__btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.albedian-epoch-disclosure-hud__epoch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(196, 155, 255, 0.22);
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  color: #f5d896;
+}
+
+.albedian-epoch-disclosure-hud__reset-btn {
+  appearance: none;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 4px;
+  background: rgba(245, 196, 81, 0.16);
+  border: 1px solid rgba(245, 196, 81, 0.48);
+  color: #f7e6bd;
+  font-family: var(--alb-font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .albedian-epoch-disclosure-hud {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+  }
+}
+
+/* ============================================================================
    @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
    ============================================================================ */
 .alb-zzzz-optics-drawer {
