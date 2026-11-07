@@ -29,8 +29,10 @@ import pytest
 from services.api import app
 from services.contracts.ingest import IngestReceipt, SolveJob
 from services.ingest import router as ingest_router
+from research.benchmarks.phone_photos import render as phone_render, stars as phone_stars, suite as phone_suite
 from services.ingest.jobs import job_id_for_sha256, run_solve_job
 from services.ingest.store import IngestStore
+from services.science.phone_photo_solver import PHONE_SOLVER_IDENTITY
 from services.science.solver import (
     SourceDetection,
     detect_point_sources,
@@ -316,3 +318,150 @@ def test_pbt_recorded_job_history_obeys_solve_job_contract_at_every_step(
             for stage_entry in snap["stages"]:
                 assert stage_entry["total"] is not None and stage_entry["total"] > 0
                 assert 0 <= stage_entry["done"] <= stage_entry["total"]
+
+
+_CI00_FRAME: phone_render.RenderedFrame | None = None
+
+
+def _deg_to_dms(val: float) -> tuple[float, float, float]:
+    a = abs(val)
+    d = math.floor(a)
+    m_full = (a - d) * 60.0
+    m = math.floor(m_full)
+    s = round((m_full - m) * 60.0, 4)
+    return (float(d), float(m), float(s))
+
+
+def _phone_photo_png_bytes(*, include_camera_exif: bool) -> bytes:
+    global _CI00_FRAME
+    if _CI00_FRAME is None:
+        _CI00_FRAME = phone_render.render_frame(
+            phone_suite.build_suite("ci")[0], phone_stars.TileCatalog()
+        )
+    spec = _CI00_FRAME.spec
+    exif = Image.Exif()
+    if include_camera_exif:
+        exif[0x010F] = "Apple"
+        exif[0x0110] = "iPhone 18 Pro, 24 mm f/1.78"
+    exif_ifd = exif.get_ifd(0x8769)
+    exif_ifd[0x9003] = spec.utc[:19].replace("-", ":").replace("T", " ")
+    exif_ifd[0x9011] = "+00:00"
+    if include_camera_exif:
+        exif_ifd[0xA405] = 24
+    gps_ifd = exif.get_ifd(0x8825)
+    gps_ifd[1] = "N" if spec.lat_deg >= 0 else "S"
+    gps_ifd[2] = _deg_to_dms(spec.lat_deg)
+    gps_ifd[3] = "E" if spec.lon_deg >= 0 else "W"
+    gps_ifd[4] = _deg_to_dms(spec.lon_deg)
+    buf = io.BytesIO()
+    Image.fromarray(_CI00_FRAME.rgb, mode="RGB").save(buf, format="PNG", exif=exif.tobytes(), compress_level=1)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize("include_camera_exif", [True, False])
+def test_ingest_solve_job_calibrates_uploaded_phone_photo_against_g12_tiles(
+    client: TestClient, include_camera_exif: bool
+) -> None:
+    png_bytes = _phone_photo_png_bytes(include_camera_exif=include_camera_exif)
+    sha = hashlib.sha256(png_bytes).hexdigest()
+
+    upload_resp = client.post(
+        "/api/ingest",
+        content=png_bytes,
+        headers={"content-type": "image/png", "x-albedian-filename": "orion_phone_photo.png"},
+    )
+    assert upload_resp.status_code == 201, upload_resp.text
+    receipt = upload_resp.json()
+    IngestReceipt.model_validate(receipt)
+    assert ("cameraMetadata" in receipt["sourceAsset"]) == include_camera_exif
+
+    solve_resp = client.post(f"/api/ingest/{sha}/solve")
+    assert solve_resp.status_code == 201, solve_resp.text
+    job = solve_resp.json()
+    SolveJob.model_validate(job)
+    assert job["state"] == "succeeded"
+
+    stages = {entry["stage"]: entry for entry in job["stages"]}
+    assert list(stages.keys()) == ["store", "decode", "detect", "solve", "verify"]
+    assert stages["store"] == {"stage": "store", "unit": "bytes", "done": len(png_bytes), "total": len(png_bytes)}
+    assert stages["decode"] == {"stage": "decode", "unit": "frames", "done": 1, "total": 1}
+    assert stages["detect"] == {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
+    assert stages["solve"]["unit"] == "candidates"
+    assert 0 < stages["solve"]["done"] <= stages["solve"]["total"]
+    assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
+
+    solution = client.get(f"/api/ingest/{sha}/solution").json()
+    assert solution["status"] == "calibrated"
+    assert solution["solver"]["name"] == PHONE_SOLVER_IDENTITY.name
+    assert solution["observedAtUTC"] == receipt["sourceAsset"]["capturedAtUTC"]
+    assert solution["observerLocation"] == receipt["sourceAsset"]["observerLocation"]
+    assert solution["quality"]["passedIndependentVerification"] is True
+    assert solution["quality"]["heldOutInliers"] >= 12
+    matched = [f for f in solution["findings"] if f["evidenceClass"] == "catalog_matched"]
+    assert len(matched) >= 20
+
+
+@settings(max_examples=8, deadline=None)
+@given(
+    has_camera_meta=st.booleans(),
+    star_count=st.integers(min_value=0, max_value=7),
+)
+@example(has_camera_meta=True, star_count=0)
+@example(has_camera_meta=True, star_count=6)
+@example(has_camera_meta=False, star_count=6)
+def test_pbt_solve_job_with_or_without_camera_metadata_preserves_stage_denominators(
+    has_camera_meta: bool,
+    star_count: int,
+) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        store = IngestStore(Path(tmp) / f"store_{has_camera_meta}_{star_count}", max_bytes=10_000_000)
+        rgb = np.zeros((120, 160, 3), dtype=np.uint8)
+        yy, xx = np.mgrid[0:120, 0:160]
+        luma = np.zeros((120, 160), dtype=np.float64)
+        for idx in range(star_count):
+            cx = 18.0 + (idx * 21) % 124
+            cy = 16.0 + (idx * 17) % 88
+            luma += 210.0 * np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2.0 * 1.3**2))
+        clipped = np.clip(np.round(luma), 0.0, 255.0).astype(np.uint8)
+        rgb[:, :, 0] = clipped
+        rgb[:, :, 1] = clipped
+        rgb[:, :, 2] = clipped
+
+        exif = Image.Exif()
+        if has_camera_meta:
+            exif[0x010F] = "Apple"
+            exif[0x0110] = "iPhone 18 Pro, 24 mm f/1.78"
+        buf = io.BytesIO()
+        Image.fromarray(rgb, mode="RGB").save(
+            buf, format="PNG", exif=exif.tobytes() if has_camera_meta else b"", compress_level=1
+        )
+        png_bytes = buf.getvalue()
+        sha = hashlib.sha256(png_bytes).hexdigest()
+
+        app.dependency_overrides[ingest_router.get_ingest_store] = lambda: store
+        try:
+            test_client = TestClient(app)
+            resp = test_client.post("/api/ingest", content=png_bytes, headers={"content-type": "image/png"})
+            assert resp.status_code == 201
+            receipt = resp.json()
+            assert ("cameraMetadata" in receipt["sourceAsset"]) == has_camera_meta
+            solve_resp = test_client.post(f"/api/ingest/{sha}/solve")
+            assert solve_resp.status_code == 201
+            job = solve_resp.json()
+            SolveJob.model_validate(job)
+            stages = {s["stage"]: s for s in job["stages"]}
+            assert list(stages.keys()) == ["store", "decode", "detect", "solve", "verify"]
+            assert stages["store"] == {"stage": "store", "unit": "bytes", "done": len(png_bytes), "total": len(png_bytes)}
+            assert stages["decode"] == {"stage": "decode", "unit": "frames", "done": 1, "total": 1}
+            assert stages["detect"] == {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
+            assert 0 <= stages["solve"]["done"] <= stages["solve"]["total"]
+            assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
+            sol = test_client.get(f"/api/ingest/{sha}/solution").json()
+            assert sol["sourceSha256"] == sha
+            assert sol["status"] in ("unresolved", "ambiguous")
+            assert sol["quality"]["passedIndependentVerification"] is False
+            assert all(f["evidenceClass"] == "observed" for f in sol["findings"])
+        finally:
+            app.dependency_overrides.pop(ingest_router.get_ingest_store, None)
+
+

@@ -15,6 +15,7 @@ import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
 import {
   DiscoveredMediaItem,
   fetchDiscoveredMedia,
+  uploadAndSolveMedia,
 } from './services/apiClient.js';
 import { applyVoiceBackendReply, askVoiceBackend, backendMayResolve } from './voice/voiceBackend.js';
 import './styles/albedian.css';
@@ -22,6 +23,45 @@ import './styles/albedian.css';
 async function sha256HexOfFile(file: File): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function ingestAndSolveUploadedFile(
+  file: File,
+  localObjectUrl: string,
+  onSessionUpdate: (session: ObservationSession) => void
+): Promise<ObservationSession> {
+  const isVideo = file.type.startsWith('video/');
+  const sha256 = await sha256HexOfFile(file);
+  const imported = createSessionForSourceAsset(
+    {
+      ...createEmptyObservationSession().sourceAsset,
+      id: `src_${sha256.slice(0, 16)}`,
+      title: file.name,
+      mediaKind: isVideo ? 'video' : 'image',
+      sha256,
+      uri: localObjectUrl,
+    },
+    'importing'
+  );
+  const initialSession: ObservationSession = {
+    ...imported,
+    lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Starting upload and sky calibration…`,
+  };
+  onSessionUpdate(initialSession);
+
+  try {
+    return await uploadAndSolveMedia(file, file.name, {
+      localObjectUrl,
+      onSessionUpdate,
+    });
+  } catch {
+    const offlineSession: ObservationSession = {
+      ...imported,
+      lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Not yet decoded or calibrated.`,
+    };
+    onSessionUpdate(offlineSession);
+    return offlineSession;
+  }
 }
 
 export const App: React.FC = () => {
@@ -192,28 +232,9 @@ export const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith('video/');
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
-
-    void sha256HexOfFile(file).then((sha256) => {
-      // Dimensions, duration and audio streams stay placeholders until the file is decoded
-      const imported = createSessionForSourceAsset(
-        {
-          ...createEmptyObservationSession().sourceAsset,
-          id: `src_upload_${Date.now()}`,
-          title: file.name,
-          mediaKind: isVideo ? 'video' : 'image',
-          sha256,
-          uri: url,
-        },
-        'importing'
-      );
-      setSession({
-        ...imported,
-        lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Not yet decoded or calibrated.`,
-      });
-    });
+    void ingestAndSolveUploadedFile(file, url, setSession);
   };
 
   return (

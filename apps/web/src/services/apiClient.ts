@@ -1,8 +1,15 @@
 import {
   CalibrationMachineState,
   CelestialFinding,
+  IngestReceipt,
+  IngestReceiptSchema,
   ObservationSession,
+  ObservationSessionSchema,
+  ObservationSolution,
+  ObservationSolutionSchema,
   SolutionStatus,
+  SolveJob,
+  SolveJobSchema,
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
 import { raDecToUnitVector } from '@albedian/camera-rig';
@@ -81,6 +88,18 @@ function frameRateOf(item: DiscoveredMediaItem): { fpsNumerator?: number; fpsDen
 function toCartesian(raDeg: number, decDeg: number, distPc: number): [number, number, number] {
   const u = raDecToUnitVector(raDeg, decDeg);
   return [u[0] * distPc, u[1] * distPc, u[2] * distPc];
+}
+
+/** Distances and sky positions are never assumed: findings without both keep no 3D position. */
+function withDerivedCartesianCoords(findings: CelestialFinding[]): CelestialFinding[] {
+  return findings.map((f) => ({
+    ...f,
+    cartesianParsecICRS:
+      f.cartesianParsecICRS ??
+      (f.inferredDistancePc && f.skyPosition
+        ? toCartesian(f.skyPosition.raDeg, f.skyPosition.decDeg, f.inferredDistancePc.median)
+        : undefined),
+  }));
 }
 
 export function formatObserverCoords(latDeg: number, lonDeg: number, decimals = 2): string {
@@ -220,15 +239,7 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
     };
   }
 
-  // Distances and sky positions are never assumed: findings without both keep no 3D position
-  const findings: CelestialFinding[] = item.solution.findings.map((f) => ({
-    ...f,
-    cartesianParsecICRS:
-      f.cartesianParsecICRS ??
-      (f.inferredDistancePc && f.skyPosition
-        ? toCartesian(f.skyPosition.raDeg, f.skyPosition.decDeg, f.inferredDistancePc.median)
-        : undefined),
-  }));
+  const findings = withDerivedCartesianCoords(item.solution.findings);
 
   return {
     ...session,
@@ -238,3 +249,150 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
     lastStatusBanner: `Loaded "${item.filename}" (${shaLabel}). Sky solution: ${item.solution.status}.`,
   };
 }
+
+/**
+ * Format a `SolveJob`'s stage progress using its real work denominators (`done/total unit`),
+ * or elapsed state when `total` is `null`, without inventing percentages.
+ */
+export function formatSolveJobProgressBanner(
+  filename: string,
+  job: SolveJob,
+  solution?: ObservationSolution
+): string {
+  const parsedJob = SolveJobSchema.parse(job);
+  const stageParts = parsedJob.stages.map((entry) =>
+    entry.total !== null
+      ? `${entry.stage}: ${entry.done}/${entry.total} ${entry.unit}`
+      : `${entry.stage}: ${entry.done} ${entry.unit} (elapsed)`
+  );
+  const stageSummary = stageParts.join(' · ');
+  if (parsedJob.state === 'failed') {
+    return `Solve job ${parsedJob.id} failed for "${filename}": ${parsedJob.error ?? 'unknown error'} (${stageSummary}).`;
+  }
+  if (solution) {
+    return `Loaded "${filename}" (${parsedJob.id}, ${stageSummary}). Sky solution: ${solution.status}.`;
+  }
+  return `Solving "${filename}" (${parsedJob.id}, ${parsedJob.state}): ${stageSummary}.`;
+}
+
+/**
+ * Build a contract-validated `ObservationSession` from a backend `IngestReceipt` and optional
+ * `SolveJob` and `ObservationSolution`.
+ */
+export function buildSessionFromIngestReceipt(
+  receipt: IngestReceipt,
+  options?: {
+    localObjectUrl?: string;
+    job?: SolveJob;
+    solution?: ObservationSolution;
+  }
+): ObservationSession {
+  const parsedReceipt = IngestReceiptSchema.parse(receipt);
+  const asset = {
+    ...parsedReceipt.sourceAsset,
+    uri: options?.localObjectUrl ?? parsedReceipt.sourceAsset.uri,
+  };
+  const baseSession = createSessionForSourceAsset(asset, 'ready');
+  const parsedJob = options?.job ? SolveJobSchema.parse(options.job) : undefined;
+
+  if (parsedJob?.state === 'failed') {
+    return ObservationSessionSchema.parse({
+      ...baseSession,
+      machines: { ...baseSession.machines, media: 'ready', calibration: 'unresolved' },
+      observationSolution: {
+        ...baseSession.observationSolution,
+        status: 'unresolved',
+        warnings: [parsedJob.error ?? 'Solve job failed.'],
+      },
+      lastStatusBanner: formatSolveJobProgressBanner(asset.title, parsedJob),
+    });
+  }
+
+  if (!options?.solution) {
+    const byteCount = asset.byteSize ?? 0;
+    return ObservationSessionSchema.parse({
+      ...baseSession,
+      machines: { ...baseSession.machines, media: 'ready', calibration: 'solving' },
+      lastStatusBanner: parsedJob
+        ? formatSolveJobProgressBanner(asset.title, parsedJob)
+        : `Stored "${asset.title}" (store: ${byteCount}/${byteCount} bytes). Starting sky calibration…`,
+    });
+  }
+
+  const parsedSolution = ObservationSolutionSchema.parse(options.solution);
+  const findings = withDerivedCartesianCoords(parsedSolution.findings);
+  const shaLabel = `SHA-256 ${asset.sha256.slice(0, 12)}…`;
+
+  return ObservationSessionSchema.parse({
+    ...baseSession,
+    machines: {
+      ...baseSession.machines,
+      media: 'ready',
+      calibration: calibrationStateForSolution(parsedSolution.status),
+    },
+    observationSolution: { ...parsedSolution, findings },
+    lastStatusBanner: parsedJob
+      ? formatSolveJobProgressBanner(asset.title, parsedJob, parsedSolution)
+      : `Loaded "${asset.title}" (${shaLabel}). Sky solution: ${parsedSolution.status}.`,
+  });
+}
+
+/**
+ * Upload a photo or clip to `POST /api/ingest`, run `POST /api/ingest/{sha256}/solve`, and load
+ * `GET /api/ingest/{sha256}/solution` into a contract-validated `ObservationSession`.
+ */
+export async function uploadAndSolveMedia(
+  file: Blob,
+  filename: string,
+  options?: {
+    localObjectUrl?: string;
+    onSessionUpdate?: (session: ObservationSession) => void;
+  }
+): Promise<ObservationSession> {
+  const bytes = await file.arrayBuffer();
+  const ingestRes = await fetch('/api/ingest', {
+    method: 'POST',
+    headers: {
+      'content-type': file.type || 'application/octet-stream',
+      'x-albedian-filename': encodeURIComponent(filename),
+    },
+    body: bytes,
+  });
+  if (!ingestRes.ok) {
+    throw new Error(`Upload to /api/ingest failed with HTTP ${ingestRes.status}`);
+  }
+  const receipt = IngestReceiptSchema.parse(await ingestRes.json());
+  const ingestedSession = buildSessionFromIngestReceipt(receipt, {
+    localObjectUrl: options?.localObjectUrl,
+  });
+  options?.onSessionUpdate?.(ingestedSession);
+
+  const sha256 = receipt.sourceAsset.sha256;
+  const solveRes = await fetch(`/api/ingest/${sha256}/solve`, { method: 'POST' });
+  if (!solveRes.ok) {
+    throw new Error(`Solve job request for ${sha256} failed with HTTP ${solveRes.status}`);
+  }
+  const job = SolveJobSchema.parse(await solveRes.json());
+  if (job.state === 'failed') {
+    const failedSession = buildSessionFromIngestReceipt(receipt, {
+      localObjectUrl: options?.localObjectUrl,
+      job,
+    });
+    options?.onSessionUpdate?.(failedSession);
+    return failedSession;
+  }
+
+  const solRes = await fetch(`/api/ingest/${sha256}/solution`);
+  if (!solRes.ok) {
+    throw new Error(`Reading solution for ${sha256} failed with HTTP ${solRes.status}`);
+  }
+  const solution = ObservationSolutionSchema.parse(await solRes.json());
+  const finalSession = buildSessionFromIngestReceipt(receipt, {
+    localObjectUrl: options?.localObjectUrl,
+    job,
+    solution,
+  });
+  options?.onSessionUpdate?.(finalSession);
+  return finalSession;
+}
+

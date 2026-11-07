@@ -26,6 +26,7 @@ from PIL import Image, UnidentifiedImageError
 from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
 from services.ingest.store import IngestStore, _fsync_dir
 from services.science.detector import _to_luma_2d, detect_point_sources, stack_video_frames_for_calibration
+from services.science.phone_photo_solver import solve_phone_photo
 from services.science.solver import solve_and_verify_field
 
 MAX_VIDEO_SOLVE_FRAMES = 8
@@ -144,26 +145,26 @@ def _decode_luma_frames(
     width: int,
     height: int,
     on_progress: Callable[[int, int | None], None],
-) -> list[np.ndarray]:
+) -> tuple[list[np.ndarray], np.ndarray | None]:
     if media_kind == "image":
         on_progress(0, 1)
         try:
             with Image.open(original) as image:
-                rgb = np.asarray(image.convert("RGB"), dtype=np.float64)
-                luma = _to_luma_2d(rgb)
+                rgb_u8 = np.asarray(image.convert("RGB"), dtype=np.uint8)
+                luma = _to_luma_2d(rgb_u8.astype(np.float64))
         except (UnidentifiedImageError, OSError, ValueError):
             frames = _decode_with_ffmpeg(original, width, height, 1)
             on_progress(1, 1)
-            return frames
+            return frames, None
         on_progress(1, 1)
-        return [luma]
+        return [luma], rgb_u8
 
     on_progress(0, None)
     frames = _decode_with_ffmpeg(original, width, height, MAX_VIDEO_SOLVE_FRAMES)
     total = len(frames)
     for idx in range(1, total + 1):
         on_progress(idx, total)
-    return frames
+    return frames, None
 
 
 def run_solve_job(
@@ -234,7 +235,7 @@ def run_solve_job(
         emit("running", started_dt=started_dt, persist=done == total)
 
     try:
-        frames = _decode_luma_frames(original, media_kind, width, height, on_decode_progress)
+        frames, rgb_u8 = _decode_luma_frames(original, media_kind, width, height, on_decode_progress)
         frame_count = len(frames)
         stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": 0, "total": frame_count}
         emit("running", started_dt=started_dt, persist=False)
@@ -245,10 +246,12 @@ def run_solve_job(
                 stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": idx, "total": frame_count}
                 emit("running", started_dt=started_dt, persist=False)
             detections = detect_point_sources(composite, snr_threshold=4.0, asset_id=asset["id"])
+            solve_image: np.ndarray = composite
             stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count}
             emit("running", started_dt=started_dt)
         else:
             detections = detect_point_sources(frames[0], snr_threshold=4.0, asset_id=asset["id"])
+            solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
             stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)
 
@@ -258,22 +261,72 @@ def run_solve_job(
             nonlocal candidate_reported
             candidate_reported = True
             stage_map["solve"] = {"stage": "solve", "unit": "candidates", "done": done, "total": total}
-            emit("running", started_dt=started_dt, persist=done in (0, total))
+            if done in (0, total) or on_transition is not None:
+                emit("running", started_dt=started_dt, persist=done in (0, total))
 
         location = asset.get("observerLocation") or {}
+        camera_meta = asset.get("cameraMetadata") or {}
+        camera_label = camera_meta.get("model") if isinstance(camera_meta, dict) else None
+        obs_utc_iso = asset.get("capturedAtUTC")
+        lat_deg = location.get("latDeg")
+        lon_deg = location.get("lonDeg")
         solution_id = f"sol_{sha256[:16]}"
-        solution = solve_and_verify_field(
-            detections,
-            width,
-            height,
-            obs_utc_iso=asset.get("capturedAtUTC"),
-            observer_lat=location.get("latDeg"),
-            observer_lon=location.get("lonDeg"),
-            source_asset_id=asset["id"],
-            source_sha256=sha256,
-            solution_id=solution_id,
-            on_candidate=on_candidate,
-        )
+
+        if camera_meta:
+            solution = solve_phone_photo(
+                solve_image,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                camera_label=camera_label,
+                source_asset_id=asset["id"],
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+            )
+            if solution.status != "calibrated":
+                plate_sol = solve_and_verify_field(
+                    detections,
+                    width,
+                    height,
+                    obs_utc_iso=obs_utc_iso,
+                    observer_lat=lat_deg,
+                    observer_lon=lon_deg,
+                    source_asset_id=asset["id"],
+                    source_sha256=sha256,
+                    solution_id=solution_id,
+                    on_candidate=on_candidate,
+                )
+                if plate_sol.status == "calibrated":
+                    solution = plate_sol
+        else:
+            solution = solve_and_verify_field(
+                detections,
+                width,
+                height,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                source_asset_id=asset["id"],
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+            )
+            if solution.status != "calibrated" and len(detections) >= 10:
+                phone_sol = solve_phone_photo(
+                    solve_image,
+                    obs_utc_iso=obs_utc_iso,
+                    observer_lat=lat_deg,
+                    observer_lon=lon_deg,
+                    camera_label=camera_label,
+                    source_asset_id=asset["id"],
+                    source_sha256=sha256,
+                    solution_id=solution_id,
+                    on_candidate=on_candidate,
+                )
+                if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
+                    solution = phone_sol
+
         if not candidate_reported:
             stage_map["solve"] = {"stage": "solve", "unit": "steps", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)

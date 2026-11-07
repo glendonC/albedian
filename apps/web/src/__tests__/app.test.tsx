@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import fc from 'fast-check';
 import { dispatchAlbedianAction, executeVoiceOrTextCommand } from '@albedian/observation';
 import {
   createSyntheticCalibratedSession,
@@ -11,9 +12,20 @@ import {
   querySightlineCone,
   raDecToUnitVector,
 } from '@albedian/camera-rig';
-import { ObservationSolution } from '@albedian/contracts';
+import {
+  IngestReceipt,
+  ObservationSessionSchema,
+  ObservationSolution,
+  SolveJob,
+} from '@albedian/contracts';
 import { computeAudioBusGains } from '@albedian/design-system';
-import { buildSessionFromDiscoveredMedia } from '../services/apiClient';
+import {
+  buildSessionFromDiscoveredMedia,
+  buildSessionFromIngestReceipt,
+  formatSolveJobProgressBanner,
+  uploadAndSolveMedia,
+} from '../services/apiClient';
+import { ingestAndSolveUploadedFile } from '../App';
 import { createOriginCameraFrustumIndicator } from '../spatial/referenceFrameContinuity';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
@@ -207,5 +219,247 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     expect(rendererSrc).toContain('transitionToShowcaseScene(');
     expect(rendererSrc).toContain('this.originFrustumGroup.visible = false;');
     expect(rendererSrc).toContain('sampleBrunetonAtmoLut');
+  });
+
+  it('uploads a file through /api/ingest, runs /api/ingest/{sha256}/solve with real denominators, and loads /api/ingest/{sha256}/solution into the session', async () => {
+    const samples = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/python_contract_solutions.json'), 'utf8')
+    ) as Record<string, ObservationSolution>;
+    const baseSolution = samples['plate_calibrated']!;
+    const fileBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4]);
+    const digest = await crypto.subtle.digest('SHA-256', fileBytes.buffer);
+    const sha256 = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+    const assetId = `src_${sha256.slice(0, 16)}`;
+    const solutionId = `sol_${sha256.slice(0, 16)}`;
+
+    const receipt: IngestReceipt = {
+      sourceAsset: {
+        id: assetId,
+        title: 'orion_phone.png',
+        mediaKind: 'image',
+        sha256,
+        uri: `/api/ingest/${sha256}/original`,
+        byteSize: fileBytes.byteLength,
+        mimeType: 'image/png',
+        width: 960,
+        height: 540,
+        durationMs: 0,
+        videoCodec: 'png',
+        audioStreams: [],
+        capturedAtUTC: '2026-01-19T05:30:00Z',
+        observerLocation: { latDeg: 31.9583, lonDeg: -111.5967 },
+        cameraMetadata: { make: 'Apple', model: 'iPhone 18 Pro' },
+        metadataSources: {
+          capturedAtUTC: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] },
+          observerLocation: { container: 'exif', tags: ['GPSLatitude', 'GPSLongitude'] },
+          cameraMetadata: { container: 'exif', tags: ['Make', 'Model'] },
+        },
+        privacyClass: 'private',
+        immutable: true,
+      },
+      hints: {
+        captureTime: {
+          localDateTime: '2026-01-19T05:30:00',
+          utcOffsetMinutes: 0,
+          utc: '2026-01-19T05:30:00Z',
+          marks: 'recorded',
+          source: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] },
+        },
+        location: {
+          latDeg: 31.9583,
+          lonDeg: -111.5967,
+          source: { container: 'exif', tags: ['GPSLatitude', 'GPSLongitude'] },
+        },
+        camera: {
+          make: 'Apple',
+          model: 'iPhone 18 Pro',
+          source: { container: 'exif', tags: ['Make', 'Model'] },
+        },
+      },
+      alreadyStored: false,
+    };
+
+    const job: SolveJob = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      state: 'succeeded',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      finishedAtUTC: '2026-01-19T05:31:02Z',
+      stages: [
+        { stage: 'store', unit: 'bytes', done: fileBytes.byteLength, total: fileBytes.byteLength },
+        { stage: 'decode', unit: 'frames', done: 1, total: 1 },
+        { stage: 'detect', unit: 'frames', done: 1, total: 1 },
+        { stage: 'solve', unit: 'candidates', done: 48, total: 220 },
+        { stage: 'verify', unit: 'steps', done: 1, total: 1 },
+      ],
+      solutionId,
+    };
+
+    const solution: ObservationSolution = {
+      ...baseSolution,
+      id: solutionId,
+      sourceAssetId: assetId,
+      sourceSha256: sha256,
+      observedAtUTC: '2026-01-19T05:30:00Z',
+      observerLocation: { latDeg: 31.9583, lonDeg: -111.5967 },
+      findings: baseSolution.findings.map((f) => ({
+        ...f,
+        observationSolutionId: solutionId,
+        cartesianParsecICRS: undefined,
+        sourceDetection: f.sourceDetection ? { ...f.sourceDetection, assetId } : undefined,
+        evidence: { ...f.evidence, sourceAssetSha256: sha256, wcsSolutionId: solutionId },
+      })),
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url === '/api/ingest' && init?.method === 'POST') {
+        return new Response(JSON.stringify(receipt), { status: 201 });
+      }
+      if (url === `/api/ingest/${sha256}/solve` && init?.method === 'POST') {
+        return new Response(JSON.stringify(job), { status: 201 });
+      }
+      if (url === `/api/ingest/${sha256}/solution`) {
+        return new Response(JSON.stringify(solution), { status: 200 });
+      }
+      return new Response('Not found', { status: 404 });
+    });
+
+    try {
+      const file = new File([fileBytes], 'orion_phone.png', { type: 'image/png' });
+      const updates: ReturnType<typeof buildSessionFromIngestReceipt>[] = [];
+      const finalSession = await ingestAndSolveUploadedFile(file, 'blob:local-orion', (s) => updates.push(s));
+
+      expect(updates.length).toBeGreaterThanOrEqual(3);
+      expect(updates[0]!.machines.media).toBe('importing');
+      expect(updates[1]!.machines.media).toBe('ready');
+      expect(updates[1]!.machines.calibration).toBe('solving');
+
+      ObservationSessionSchema.parse(finalSession);
+      expect(finalSession.sourceAsset.sha256).toBe(sha256);
+      expect(finalSession.sourceAsset.uri).toBe('blob:local-orion');
+      expect(finalSession.sourceAsset.width).toBe(960);
+      expect(finalSession.sourceAsset.height).toBe(540);
+      expect(finalSession.machines.media).toBe('ready');
+      expect(finalSession.machines.calibration).toBe('calibrated');
+      expect(finalSession.observationSolution.id).toBe(solutionId);
+      expect(finalSession.observationSolution.status).toBe('calibrated');
+      expect(finalSession.lastStatusBanner).toContain(`store: ${fileBytes.byteLength}/${fileBytes.byteLength} bytes`);
+      expect(finalSession.lastStatusBanner).toContain('solve: 48/220 candidates');
+      expect(finalSession.lastStatusBanner).toContain('verify: 1/1 steps');
+      const matched = finalSession.observationSolution.findings.filter((f) => f.evidenceClass === 'catalog_matched');
+      expect(matched.length).toBeGreaterThan(0);
+      expect(matched.every((f) => f.cartesianParsecICRS !== undefined)).toBe(true);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('honestly reports failed solve jobs and falls back to local importing session when backend is offline', async () => {
+    const fileBytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    const file = new File([fileBytes], 'offline.png', { type: 'image/png' });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network unreachable'));
+    try {
+      const updates: ReturnType<typeof buildSessionFromIngestReceipt>[] = [];
+      const fallback = await ingestAndSolveUploadedFile(file, 'blob:offline', (s) => updates.push(s));
+      ObservationSessionSchema.parse(fallback);
+      expect(fallback.machines.media).toBe('importing');
+      expect(fallback.machines.calibration).toBe('not_requested');
+      expect(fallback.lastStatusBanner).toContain('Not yet decoded or calibrated.');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+
+    const sha256 = 'b'.repeat(64);
+    const assetId = `src_${sha256.slice(0, 16)}`;
+    const receipt: IngestReceipt = {
+      sourceAsset: {
+        id: assetId,
+        title: 'corrupt.png',
+        mediaKind: 'image',
+        sha256,
+        uri: `/api/ingest/${sha256}/original`,
+        byteSize: 8,
+        mimeType: 'image/png',
+        width: 64,
+        height: 48,
+        durationMs: 0,
+        videoCodec: 'png',
+        audioStreams: [],
+        privacyClass: 'private',
+        immutable: true,
+      },
+      hints: {},
+      alreadyStored: false,
+    };
+    const failedJob: SolveJob = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      state: 'failed',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      finishedAtUTC: '2026-01-19T05:31:02Z',
+      stages: [
+        { stage: 'store', unit: 'bytes', done: 8, total: 8 },
+        { stage: 'decode', unit: 'frames', done: 0, total: 1 },
+      ],
+      error: 'The decoder could not read the file: corrupt stream',
+    };
+    const failFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url === '/api/ingest') return new Response(JSON.stringify(receipt), { status: 201 });
+      if (url === `/api/ingest/${sha256}/solve`) return new Response(JSON.stringify(failedJob), { status: 201 });
+      return new Response('Not found', { status: 404 });
+    });
+    try {
+      const failedSession = await uploadAndSolveMedia(file, 'corrupt.png', { localObjectUrl: 'blob:corrupt' });
+      ObservationSessionSchema.parse(failedSession);
+      expect(failedSession.machines.media).toBe('ready');
+      expect(failedSession.machines.calibration).toBe('unresolved');
+      expect(failedSession.observationSolution.status).toBe('unresolved');
+      expect(failedSession.observationSolution.warnings).toContain('The decoder could not read the file: corrupt stream');
+      expect(failedSession.lastStatusBanner).toContain('The decoder could not read the file: corrupt stream');
+      expect(failedSession.lastStatusBanner).toContain('store: 8/8 bytes · decode: 0/1 frames');
+    } finally {
+      failFetchSpy.mockRestore();
+    }
+  });
+
+  it('PBT: formatSolveJobProgressBanner reports exact stage denominators without fake percentages', () => {
+    const sha256 = 'a'.repeat(64);
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 10_000_000 }),
+        fc.integer({ min: 1, max: 8 }),
+        fc.integer({ min: 1, max: 500 }),
+        fc.boolean(),
+        (bytes, frames, totalCandidates, indeterminateDecode) => {
+          const doneCandidates = Math.min(totalCandidates, Math.max(0, Math.floor(totalCandidates / 2)));
+          const job: SolveJob = {
+            id: `job_${sha256.slice(0, 16)}`,
+            sourceAssetSha256: sha256,
+            state: 'running',
+            createdAtUTC: '2026-01-19T05:31:00Z',
+            startedAtUTC: '2026-01-19T05:31:01Z',
+            stages: [
+              { stage: 'store', unit: 'bytes', done: bytes, total: bytes },
+              { stage: 'decode', unit: 'frames', done: frames, total: indeterminateDecode ? null : frames },
+              { stage: 'solve', unit: 'candidates', done: doneCandidates, total: totalCandidates },
+            ],
+          };
+          const banner = formatSolveJobProgressBanner('capture.png', job);
+          expect(banner).toContain(`store: ${bytes}/${bytes} bytes`);
+          expect(banner).toContain(`solve: ${doneCandidates}/${totalCandidates} candidates`);
+          if (indeterminateDecode) {
+            expect(banner).toContain(`decode: ${frames} frames (elapsed)`);
+          } else {
+            expect(banner).toContain(`decode: ${frames}/${frames} frames`);
+          }
+          expect(banner).not.toContain('%');
+        }
+      ),
+      { numRuns: 25, ...(process.env.FC_SEED ? { seed: Number(process.env.FC_SEED) } : {}) }
+    );
   });
 });
