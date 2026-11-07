@@ -5,7 +5,7 @@ row; and a sky brightness predicted for a stated target instead of a limiting ma
 measured.
 
 Covers:
-- No output lists the hand-typed deep-sky objects or a canned note
+- No output lists the hand-typed deep-sky objects, 3D nearest neighbours among the 71 bright stars, or a canned note
 - A Hipparcos-only star carries no temperature, luminosity or radius
 - A Gaia DR3 star's temperature and luminosity are its astro tile row's, with the row's percentiles and citations,
   and its radius is derived from them by Stefan-Boltzmann and says so
@@ -53,10 +53,14 @@ def _astro_row(source_id: int) -> dict[str, np.ndarray]:
 
 
 def test_no_output_lists_hand_typed_objects_or_canned_notes() -> None:
+    import services.science as science_pkg
+
     body = _sky_context()
     text = json.dumps(body)
     assert "deepSkyObjects" not in body
-    for canned in ("Helix Nebula", "debris disk", "core-collapse", "systemNotes", "evolutionaryStage"):
+    assert all("nearestNeighbors3D" not in star for star in body["stars"])
+    assert not hasattr(science_pkg, "compute_3d_nearest_neighbors")
+    for canned in ("Helix Nebula", "debris disk", "core-collapse", "systemNotes", "evolutionaryStage", "nearestNeighbors3D"):
         assert canned not in text, canned
 
 

@@ -15,7 +15,6 @@ from services.science.catalog import (
     compute_light_travel_time_description,
     icrs_to_altaz,
 )
-from services.science.deep_sky import compute_3d_nearest_neighbors
 from services.science.ephemeris import (
     EphemerisOutOfRange,
     compute_solar_system_ephemerides,
@@ -129,7 +128,6 @@ def get_science_sky_context(
             },
             "cartesianParsecICRS": [float(cx), float(cy), float(cz)],
             "lightTravel": light_travel,
-            "nearestNeighbors3D": compute_3d_nearest_neighbors(st.id, k=3),
         }
         if st.bp_rp is not None:
             star_entry["bpRp"] = float(st.bp_rp)

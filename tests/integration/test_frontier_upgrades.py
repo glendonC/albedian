@@ -2,7 +2,6 @@
 - `services/media/silhouette.py`: `compute_2d_sky_silhouette_mask` & `deband_shadow_macroblocks`
 - `services/science/optical_flow.py`: `compute_video_pose_trajectory` (`beacon_lock` & `silhouette_flow`)
 - `services/science/radiometry.py`: Krisciunas & Schaefer (1991) lunar sky brightness at a stated target
-- `services/science/deep_sky.py`: `compute_3d_nearest_neighbors`
 - `services/science/coherent_stack.py`: `subtract_lunar_scattering_veil`, `integrate_wcs_coherent_star_trajectories`
 """
 
@@ -22,7 +21,6 @@ from services.science.coherent_stack import (
     integrate_wcs_coherent_star_trajectories,
     subtract_lunar_scattering_veil,
 )
-from services.science.deep_sky import compute_3d_nearest_neighbors
 from services.science.optical_flow import compute_video_pose_trajectory
 from services.science.radiometry import (
     compute_krisciunas_schaefer_sky_brightness,
@@ -159,8 +157,8 @@ def test_frontier_discovery_gives_each_clip_a_pose_trajectory_radiometry_and_dee
         assert not lists_deep_sky, "a real clip lists deep-sky objects"
 
 
-def test_deep_engines_sky_brightness_nearest_neighbors_and_coherent_stack() -> None:
-    """Verify Krisciunas & Schaefer (1991) lunar sky brightness, 3D nearest neighbors, lunar veil
+def test_deep_engines_sky_brightness_and_coherent_stack() -> None:
+    """Verify Krisciunas & Schaefer (1991) lunar sky brightness, lunar veil
     subtraction, and WCS-coherent trajectory stacking.
     """
     # 1. Radiometry (`services/science/radiometry.py`)
@@ -192,12 +190,7 @@ def test_deep_engines_sky_brightness_nearest_neighbors_and_coherent_stack() -> N
     assert ks_moonlit["skyBrightnessMagArcsec2"] < ks_moonless["skyBrightnessMagArcsec2"]
     assert ks_moonlit["lunarVeilDeltaMag"] > 1.5
 
-    # 2. 3D Nearest Neighbors (`services/science/deep_sky.py`)
-    nn_fomalhaut = compute_3d_nearest_neighbors("star-fomalhaut", k=3)
-    assert len(nn_fomalhaut) == 3
-    assert nn_fomalhaut[0]["distanceFromTargetPc"] <= nn_fomalhaut[1]["distanceFromTargetPc"]
-
-    # 3. Lunar Scattering Veil Subtraction & WCS Coherent Trajectory Photometry (`services/science/coherent_stack.py`)
+    # 2. Lunar Scattering Veil Subtraction & WCS Coherent Trajectory Photometry (`services/science/coherent_stack.py`)
     h, w = 180, 240
     yy, xx = np.mgrid[0:h, 0:w]
     moon_x, moon_y = 180.0, 40.0

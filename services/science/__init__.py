@@ -1,5 +1,5 @@
 """Albedian Scientific Astrometry, Plate Solving, Catalog, Ephemeris, Radiometry,
-Deep-Sky Astrophysics, and Coherent Trajectory Photometry Package.
+and Coherent Trajectory Photometry Package.
 """
 
 from services.science.catalog import (
@@ -26,7 +26,6 @@ from services.science.coherent_stack import (
     integrate_wcs_coherent_star_trajectories,
     subtract_lunar_scattering_veil,
 )
-from services.science.deep_sky import compute_3d_nearest_neighbors
 from services.science.ephemeris import (
     EphemerisFinding,
     compute_solar_system_ephemerides,
@@ -74,7 +73,6 @@ __all__ = [
     "altaz_to_icrs",
     "angular_separation_deg",
     "catalog_cartesian_pc",
-    "compute_3d_nearest_neighbors",
     "compute_krisciunas_schaefer_sky_brightness",
     "compute_light_travel_time_description",
     "compute_lunar_phase_and_illumination",
