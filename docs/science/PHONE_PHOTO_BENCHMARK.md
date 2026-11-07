@@ -167,6 +167,43 @@ code], so the larger list adds few triangles to a frame; and the horizon and Moo
 held-out verification by design, so the benchmark would score every frame as no claim [inference].
 On the CI subset, `today-api` solved 0 of 4 positives and claimed nothing on its 4 negatives.
 
+## Results: G 12 tile-backed phone-photo solver (simulated)
+
+Adapter `phone-photo` (`services/science/phone_photo_solver.py`, roadmap Track 1 M2) replaces the
+18-star list with the local Gaia DR3 and Hipparcos 2007 `L0` and `L1` star tiles, normalizes local
+background noise in a 6x6 tile grid to counteract corner lens-shading amplification, downweights
+dark-silhouette ground lamps and integer-locked Bayer hot-pixel impulses, searches visible horizon
+pairs via a vectorized triad attitude voter when capture time and observer location are present (with
+scale-invariant ICRS 3D triangle matching when time or place is unknown), refines 3D attitude, focal
+scale, and `BrownConrady` or `KannalaBrandt` radial distortion (`PhoneCameraWCS`), and gates every
+claim on both the Bayesian coincidence log-odds model of Lang et al. (2010, AJ 139, 1782) and
+agreement between independent training and held-out refits [tested, on simulated frames only]:
+
+| Subset | Positives (`correct` / total) | False claims | Hard negatives (`false-solve` / total) | Match precision on claims |
+|---|---|---|---|---|
+| CI suite (`ci-00..07`) | 3 / 4 (`ci-00`, `ci-01`, `ci-02`) | 0 | 0 / 4 | 1.00 |
+| Stratified full sample (24 positives, 20 negatives) | 18 / 24 (75.0 %) | 0 | 0 / 20 | 1.00 |
+
+What it shows [tested, on simulated frames only]:
+
+- **CI phone positives (`ci-00`, `ci-01`, `ci-02`) all solve `correct`.** `ci-00` (iPhone 18 Pro
+  Main, Orion) solves with 56 held-out inliers and 0.15 px median field error; `ci-01` (Pixel 11 Pro
+  ultrawide, 123 deg field, suburban sky with hill silhouette) solves with 16 held-out inliers; and
+  `ci-02` (Galaxy S25 Ultra wide, Cygnus) solves with 57 held-out inliers and 0.08 px median field
+  error. `ci-03` (a single `1/30 s` head-worn video frame with a 0.63 mm pupil where the brightest
+  star deposits fewer than 5 electrons in green against 8.8 e read noise) honestly returns
+  `unresolved`.
+- **Frame `pos-063` (where `today-api` certified a wrong sky) solves `correct`.** On `pos-063`
+  (Pixel 11 Pro wide, 30 s exposure of Cassiopeia with 10,357 detections), `phone-photo` recovers
+  Cassiopeia with 58 held-out inliers, 0.18 px median field error (0.43 px 95th percentile), and
+  100 % match precision, while rejecting dense random-dot fields (`evaluate_coincidence_gate`).
+- **Rectilinear and fisheye ultra-wide lenses.** On the stratified full-resolution sample,
+  `phone-photo` solves 11 of 11 iPhone 18 Pro Main frames (median field error 0.09 to 0.28 px), 4 of
+  4 Pixel 11 Pro Wide frames (median field error 0.14 to 0.24 px), and 3 of 9 iPhone 18 Pro Ultra
+  Wide frames including uncorrected 120 deg `KannalaBrandt` fisheye frames (`pos-032`, `pos-034`,
+  `pos-035`, with median field errors of 0.62 px, 0.31 px, and 0.08 px), with zero false claims and
+  zero false solves across all tested positives and hard negatives.
+
 ## Real clips (no ground truth)
 
 The baseline 18-star solver on the three local real-clip captures (`real_clips.py`): six single

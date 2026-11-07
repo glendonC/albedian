@@ -31,6 +31,11 @@ from services.science.detector import (
     stack_video_frames_for_calibration,
 )
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
+from services.science.phone_photo_solver import (
+    PhoneCameraWCS,
+    evaluate_coincidence_gate,
+    solve_phone_photo,
+)
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
@@ -669,11 +674,12 @@ def solve_and_verify_field(
 
 
 __all__ = [
-    "CelestialFindingRecord", "HeldOutVerification", "ObservationSolution", "SolutionQuality",
-    "SourceDetection", "VideoStackCalibrationResult", "WCSModel",
+    "CelestialFindingRecord", "HeldOutVerification", "ObservationSolution", "PhoneCameraWCS",
+    "SolutionQuality", "SourceDetection", "VideoStackCalibrationResult", "WCSModel",
     "_build_gaussian_psf_kernel", "_estimate_background_and_noise",
     "_estimate_initial_wcs_from_triplet", "_estimate_subpixel_shift_phase_corr",
     "_extract_registration_signal", "_refine_wcs_least_squares", "_to_luma_2d",
-    "detect_point_sources", "render_synthetic_starfield", "solve_and_verify_field",
-    "solve_horizon_and_beacon_pose", "stack_video_frames_for_calibration", "verify_held_out",
+    "detect_point_sources", "evaluate_coincidence_gate", "render_synthetic_starfield",
+    "solve_and_verify_field", "solve_horizon_and_beacon_pose", "solve_phone_photo",
+    "stack_video_frames_for_calibration", "verify_held_out",
 ]

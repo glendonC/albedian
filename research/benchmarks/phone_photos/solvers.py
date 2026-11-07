@@ -12,6 +12,9 @@ Adapters:
 - `today-allsky`: the same on the 71-star all-sky list, to separate catalog coverage from the
   algorithm.
 - `horizon-moon`: today's horizon and Moon pose solver, which never claims held-out verification.
+- `phone-photo`: the G 12 tile-backed phone-photo solver with attitude triad voting, blind ICRS
+  triangle matching, Brown-Conrady / Kannala-Brandt lens distortion refinement, and coincidence-weighed
+  held-out verification.
 """
 
 from __future__ import annotations
@@ -49,6 +52,8 @@ class _ScalarWcs:
         self.wcs = wcs
 
     def world_to_pixel(self, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if hasattr(self.wcs, "world_to_pixel_batch"):
+            return self.wcs.world_to_pixel_batch(np.atleast_1d(ra_deg), np.atleast_1d(dec_deg))
         pairs = [self.wcs.world_to_pixel(float(r), float(d)) for r, d in zip(np.atleast_1d(ra_deg), np.atleast_1d(dec_deg))]
         out = np.array(pairs, dtype=np.float64).reshape(-1, 2)
         return out[:, 0], out[:, 1]
@@ -138,10 +143,43 @@ def _horizon_moon(inp: SolverInput) -> SolverOutcome:
     )
 
 
+def _phone_photo(inp: SolverInput) -> SolverOutcome:
+    from services.science.phone_photo_solver import solve_phone_photo
+
+    start = time.perf_counter()
+    sha = hashlib.sha256(np.ascontiguousarray(inp.rgb).tobytes()).hexdigest()
+    solution = solve_phone_photo(
+        inp.rgb,
+        obs_utc_iso=inp.metadata.get("utc"),
+        observer_lat=inp.metadata.get("latDeg"),
+        observer_lon=inp.metadata.get("lonDeg"),
+        camera_label=inp.metadata.get("camera"),
+        source_asset_id=f"frame-{sha[:12]}",
+        source_sha256=sha,
+    )
+    claimed = solution.has_verified_wcs
+    matches = [
+        (f.source_detection.x_px, f.source_detection.y_px, f.catalog_star.ra_deg, f.catalog_star.dec_deg)
+        for f in solution.findings
+        if f.evidence_class == "catalog_matched" and f.source_detection is not None and f.catalog_star is not None
+    ]
+    return SolverOutcome(
+        status=solution.status,
+        claimed=claimed,
+        wcs=_ScalarWcs(solution.wcs) if solution.wcs is not None else None,
+        matches=matches,
+        detections=solution.quality.detected_candidate_count,
+        held_out_inliers=solution.quality.held_out_inliers,
+        self_median_residual_px=solution.quality.median_residual_px,
+        elapsed_s=time.perf_counter() - start,
+    )
+
+
 SOLVERS: dict[str, Callable[[SolverInput], SolverOutcome]] = {
     "today-api": _today("pinned"),
     "today-allsky": _today("all-sky"),
     "horizon-moon": _horizon_moon,
+    "phone-photo": _phone_photo,
 }
 
 
