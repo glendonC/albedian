@@ -72,8 +72,8 @@ export function dispatchAlbedianAction(
 
   switch (action.type) {
     case 'media.restore': {
-      if (action.sourceAssetId !== base.sourceAsset.id) {
-        return rejectAction(session, action.requestId, 'missing_source', `SourceAsset "${action.sourceAssetId}" does not match active session asset "${base.sourceAsset.id}".`, ['Dispatch media.restore with the active SourceAsset ID']);
+      if (!base.sourceAsset || action.sourceAssetId !== base.sourceAsset.id) {
+        return rejectAction(session, action.requestId, 'missing_source', `SourceAsset "${action.sourceAssetId}" does not match active session asset "${base.sourceAsset?.id ?? 'none'}".`, ['Dispatch media.restore with the active SourceAsset ID']);
       }
       if ((action.constraints as { allowSyntheticSky?: boolean }).allowSyntheticSky !== false) {
         return rejectAction(session, action.requestId, 'unsafe_synthetic_edit', 'Synthetic sky generation is forbidden by Albedian fidelity policy.', ['Use star_protected or temporal restoration profiles']);
@@ -110,6 +110,9 @@ export function dispatchAlbedianAction(
     }
 
     case 'media.seek': {
+      if (!base.sourceAsset) {
+        return rejectAction(session, action.requestId, 'missing_source', 'Cannot seek when no SourceAsset is loaded.', ['Import a recording first']);
+      }
       const clampedSec = Math.min(Math.max(0, action.sourceTimeSec), base.sourceAsset.durationMs / 1000);
       const status = `Seeked to ${clampedSec.toFixed(2)}s (audio stream synchronized).`;
       return completeAction(
@@ -122,7 +125,7 @@ export function dispatchAlbedianAction(
     }
 
     case 'sky.show': {
-      if (base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
+      if (!base.observationSolution || base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
         return rejectAction(session, action.requestId, 'unresolved_sky', 'Sky registration is unresolved: insufficient star detections and no timestamp/location fallback.', ['Provide capture timestamp and location for predicted sky model']);
       }
       if (action.mode === 'measured' && (base.machines.calibration !== 'calibrated' || base.observationSolution.status !== 'calibrated')) {
@@ -159,7 +162,7 @@ export function dispatchAlbedianAction(
     }
 
     case 'finding.select': {
-      const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
+      const finding = base.observationSolution?.findings.find((f) => f.id === action.findingId);
       if (!finding) {
         return rejectAction(session, action.requestId, 'ambiguous_target', `CelestialFinding "${action.findingId}" does not exist in active ObservationSolution.`, ['Select a visible star or planet marker']);
       }
@@ -183,7 +186,7 @@ export function dispatchAlbedianAction(
     }
 
     case 'finding.describe': {
-      const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
+      const finding = base.observationSolution?.findings.find((f) => f.id === action.findingId);
       if (!finding) {
         return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot describe unknown finding "${action.findingId}".`, ['Select a finding first']);
       }
@@ -223,7 +226,7 @@ export function dispatchAlbedianAction(
     }
 
     case 'space.enter': {
-      if (base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
+      if (!base.observationSolution || base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
         return rejectAction(session, action.requestId, 'unresolved_sky', 'Cannot enter 3D catalog space from an unresolved sky.', ['Calibrate sky first']);
       }
       const finding = base.observationSolution.findings.find((f) => f.id === action.findingId);
@@ -266,7 +269,7 @@ export function dispatchAlbedianAction(
     }
 
     case 'space.viewpoint': {
-      const finding = base.observationSolution.findings.find((f) => f.id === action.targetFindingId);
+      const finding = base.observationSolution?.findings.find((f) => f.id === action.targetFindingId);
       if (!finding) {
         return rejectAction(session, action.requestId, 'ambiguous_target', `Cannot shift viewpoint around unknown finding "${action.targetFindingId}".`, ['Select a catalog-matched star first']);
       }

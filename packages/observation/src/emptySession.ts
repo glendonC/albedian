@@ -16,17 +16,14 @@ import {
 
 export const EMPTY_SOURCE_ASSET_ID = 'src_none';
 export const EMPTY_MEDIA_VARIANT_ID = 'variant_none';
-const EMPTY_SHA256 = '0'.repeat(64);
 
 /**
  * Returns a schema-valid `ObservationSession` for the `media: 'empty'` state.
  *
- * The contracts require a `SourceAsset`, an `ObservationSolution` and an anchor
- * checkpoint even before anything is imported, so those are explicit placeholders:
- * no observer location, no capture time, no findings, `calibration: 'not_requested'`
- * and solution `status: 'pending'`. `simulationEpochISO` carries `createdAtISO`,
- * the modeled sky's initial setting, while `observedAtUTC` and `observationEpochISO`
- * stay absent until a recording supplies a capture time.
+ * Before anything is imported, the session carries no `SourceAsset` and no
+ * `ObservationSolution`, with `calibration: 'not_requested'`. `simulationEpochISO`
+ * carries `createdAtISO`, the modeled sky's initial setting, while `observationEpochISO`
+ * stays absent until a recording supplies a capture time.
  */
 export function createEmptyObservationSession(
   createdAtISO: string = new Date().toISOString()
@@ -49,23 +46,9 @@ export function createEmptyObservationSession(
   return ObservationSessionSchema.parse({
     id: 'session_empty', title: 'No observation yet', viewRevision: 0,
     machines: { media: 'empty', restoration: 'idle', calibration: 'not_requested', navigation: 'source', voice: 'off' },
-    sourceAsset: {
-      id: EMPTY_SOURCE_ASSET_ID, title: 'No observation yet', mediaKind: 'image', sha256: EMPTY_SHA256,
-      uri: 'albedian://none', width: 1, height: 1, durationMs: 0,
-      videoCodec: 'none', audioStreams: [],
-      privacyClass: 'private', immutable: true,
-    },
     activeVariantId: EMPTY_MEDIA_VARIANT_ID, compareWipePosition: 0.5,
     currentSourceTimeSec: 0, isPlaying: false, audioGain: 1, cropTransform: { zoom: 1, panX: 0, panY: 0 },
     processingGraphs: [], processingAttempts: [], mediaVariants: [],
-    observationSolution: {
-      // Nothing has been solved, so the pending solution names no recording and no capture time
-      id: 'sol_none', sourceAssetId: EMPTY_SOURCE_ASSET_ID, frameTimeSec: 0,
-      revision: 1, status: 'pending',
-      solver: { name: 'none', version: '0', catalogRelease: 'none' },
-      quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
-      findings: [], warnings: [],
-    },
     selectedFindingId: null, focusedFindingId: null, spatialView,
     navigationHistory: { anchorMomentCheckpoint: anchorCheckpoint, checkpoints: [anchorCheckpoint], cursorIndex: 0 },
     voiceActions: [], exportArtifacts: [], reducedMotion: false,
@@ -105,14 +88,26 @@ export function createSessionForSourceAsset(
     machines: { ...empty.machines, media: mediaState },
     sourceAsset,
     observationSolution: {
-      ...empty.observationSolution,
       id: `sol_${sourceAsset.id}`,
       sourceAssetId: sourceAsset.id,
       sourceSha256: sourceAsset.sha256,
+      frameTimeSec: 0,
+      revision: 1,
+      status: 'pending',
       ...(capturedAtUTC !== undefined ? { observedAtUTC: capturedAtUTC } : {}),
       observerLocation: location
         ? { latDeg: location.latDeg, lonDeg: location.lonDeg, placeName: location.placeName }
         : undefined,
+      solver: { name: 'none', version: '0', catalogRelease: 'none' },
+      quality: {
+        detectedCandidateCount: 0,
+        matchedInlierCount: 0,
+        heldOutPairCount: 0,
+        heldOutInliers: 0,
+        passedIndependentVerification: false,
+      },
+      findings: [],
+      warnings: [],
     },
     spatialView,
     navigationHistory: { anchorMomentCheckpoint: anchorCheckpoint, checkpoints: [anchorCheckpoint], cursorIndex: 0 },

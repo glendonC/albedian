@@ -262,7 +262,7 @@ describe('CatalogStarTileLoader', () => {
     evidenceKind: 'catalog-derived',
     source: 'iau-csn',
     sourceUpdated: '2022-04-04',
-    sourceSha256: '0'.repeat(64),
+    sourceSha256: 'f9bd5c237841e096a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718',
     names: [],
   };
   const files = () => ({
@@ -274,6 +274,8 @@ describe('CatalogStarTileLoader', () => {
   const towardFixture = tileCenter(3, 0);
 
   it('asks for deeper layers only once the limiting magnitude reaches them', async () => {
+    expect(names.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(names.sourceSha256).not.toBe('0'.repeat(64));
     const loader = await CatalogStarTileLoader.open('/stars', { fetch: mockFetch(files()) });
     expect(loader.layersFor(6.5).map((l) => l.layer)).toEqual([0]);
     expect(loader.layersFor(9.6).map((l) => l.layer)).toEqual([0, 1, 2]);

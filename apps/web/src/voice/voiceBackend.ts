@@ -44,9 +44,9 @@ export async function askVoiceBackend(
       utterance,
       context: {
         ...buildActionContext(session, pointer),
-        observerLat: session.sourceAsset.observerLocation?.latDeg ?? null,
-        observerLon: session.sourceAsset.observerLocation?.lonDeg ?? null,
-        observedAtUTC: session.sourceAsset.capturedAtUTC ?? null,
+        observerLat: session.sourceAsset?.observerLocation?.latDeg ?? null,
+        observerLon: session.sourceAsset?.observerLocation?.lonDeg ?? null,
+        observedAtUTC: session.sourceAsset?.capturedAtUTC ?? null,
       },
     };
     if (!VoiceCommandRequestSchema.safeParse(payload).success) return null;

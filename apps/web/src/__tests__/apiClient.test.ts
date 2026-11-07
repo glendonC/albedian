@@ -91,7 +91,7 @@ describe('discovered media keeps what discovery probed and guesses nothing', () 
     const asset = SourceAssetSchema.parse(buildSessionFromDiscoveredMedia(timed).sourceAsset);
     expect(asset.metadataSources?.capturedAtUTC).toEqual({ container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] });
     // Without a capture time, no source is cited for one
-    expect(buildSessionFromDiscoveredMedia(stillItem(null)).sourceAsset.metadataSources?.capturedAtUTC).toBeUndefined();
+    expect(buildSessionFromDiscoveredMedia(stillItem(null)).sourceAsset?.metadataSources?.capturedAtUTC).toBeUndefined();
   });
 
   it('PBT: an item is kept exactly when its kind is known and, for a clip, its rate and duration are', async () => {

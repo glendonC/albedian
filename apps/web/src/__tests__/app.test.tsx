@@ -44,13 +44,13 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     let session = createSyntheticCalibratedSession();
     const initialTimeSec = session.currentSourceTimeSec;
     const initialAudioGain = session.audioGain;
-    const initialSourceHash = session.sourceAsset.sha256;
+    const initialSourceHash = session.sourceAsset!.sha256;
 
     // 1. User says: "Make the sky clearer"
     const r1 = executeVoiceOrTextCommand(session, 'Make the sky clearer', 'voice');
     expect(r1.outcome.status).toBe('completed');
     session = r1.session;
-    expect(session.sourceAsset.sha256).toBe(initialSourceHash);
+    expect(session.sourceAsset!.sha256).toBe(initialSourceHash);
 
     // 2. User says: "What were we looking at?"
     const r2 = executeVoiceOrTextCommand(session, 'What were we looking at?', 'voice');
@@ -65,7 +65,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     expect(session.selectedFindingId).toBe('finding_betelgeuse');
 
     // Verify Phase A off-axis anchor lock math on Betelgeuse
-    const betelgeuse = session.observationSolution.findings.find(
+    const betelgeuse = session.observationSolution!.findings.find(
       (f) => f.id === 'finding_betelgeuse'
     )!;
     const betelgeuseSky = betelgeuse.skyPosition!;
@@ -103,7 +103,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
 
     // 5. Sightline cone query ("What's behind it?")
     const cone = querySightlineCone(
-      session.observationSolution.findings,
+      session.observationSolution!.findings,
       [0, 0, 0],
       betelgeuse,
       25
@@ -135,7 +135,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     expect(session.machines.navigation).toBe('source');
     expect(session.currentSourceTimeSec).toBe(initialTimeSec);
     expect(session.audioGain).toBe(initialAudioGain);
-    expect(session.sourceAsset.sha256).toBe(initialSourceHash);
+    expect(session.sourceAsset!.sha256).toBe(initialSourceHash);
   });
 
   it('loads backend detections without a sky position and gives them no 3D position', () => {
@@ -151,7 +151,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
         latDeg: solution.observerLocation?.latDeg ?? null, lonDeg: solution.observerLocation?.lonDeg ?? null,
         cameraModel: 'Unknown camera', urls: { origUrl: `/media/${name}.png`, v1Url: '', v2Url: '' }, solution,
       });
-      const unplaced = session.observationSolution.findings.filter((f) => f.skyPosition === undefined);
+      const unplaced = session.observationSolution!.findings.filter((f) => f.skyPosition === undefined);
       expect(unplaced.length).toBeGreaterThan(0);
       for (const finding of unplaced) {
         expect(finding.evidenceClass).toBe('observed');
@@ -163,7 +163,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
 
   it('prevents 3D space transition on unresolved / predicted-only observations and reports renderer benchmark', () => {
     const unresolvedSession = createSyntheticUnresolvedSession();
-    expect(unresolvedSession.observationSolution.status).not.toBe('calibrated');
+    expect(unresolvedSession.observationSolution!.status).not.toBe('calibrated');
 
     const bench = benchmarkRendererAdapters(10000);
     expect(bench.recommendedPrimaryEngine).toBe('custom_wcs_three_rig');
@@ -337,18 +337,18 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       expect(updates[1]!.machines.calibration).toBe('solving');
 
       ObservationSessionSchema.parse(finalSession);
-      expect(finalSession.sourceAsset.sha256).toBe(sha256);
-      expect(finalSession.sourceAsset.uri).toBe('blob:local-orion');
-      expect(finalSession.sourceAsset.width).toBe(960);
-      expect(finalSession.sourceAsset.height).toBe(540);
+      expect(finalSession.sourceAsset!.sha256).toBe(sha256);
+      expect(finalSession.sourceAsset!.uri).toBe('blob:local-orion');
+      expect(finalSession.sourceAsset!.width).toBe(960);
+      expect(finalSession.sourceAsset!.height).toBe(540);
       expect(finalSession.machines.media).toBe('ready');
       expect(finalSession.machines.calibration).toBe('calibrated');
-      expect(finalSession.observationSolution.id).toBe(solutionId);
-      expect(finalSession.observationSolution.status).toBe('calibrated');
+      expect(finalSession.observationSolution!.id).toBe(solutionId);
+      expect(finalSession.observationSolution!.status).toBe('calibrated');
       expect(finalSession.lastStatusBanner).toContain(`store: ${fileBytes.byteLength}/${fileBytes.byteLength} bytes`);
       expect(finalSession.lastStatusBanner).toContain('solve: 48/220 candidates');
       expect(finalSession.lastStatusBanner).toContain('verify: 1/1 steps');
-      const matched = finalSession.observationSolution.findings.filter((f) => f.evidenceClass === 'catalog_matched');
+      const matched = finalSession.observationSolution!.findings.filter((f) => f.evidenceClass === 'catalog_matched');
       expect(matched.length).toBeGreaterThan(0);
       expect(matched.every((f) => f.cartesianParsecICRS !== undefined)).toBe(true);
     } finally {
@@ -417,8 +417,8 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       ObservationSessionSchema.parse(failedSession);
       expect(failedSession.machines.media).toBe('ready');
       expect(failedSession.machines.calibration).toBe('unresolved');
-      expect(failedSession.observationSolution.status).toBe('unresolved');
-      expect(failedSession.observationSolution.warnings).toContain('The decoder could not read the file: corrupt stream');
+      expect(failedSession.observationSolution!.status).toBe('unresolved');
+      expect(failedSession.observationSolution!.warnings).toContain('The decoder could not read the file: corrupt stream');
       expect(failedSession.lastStatusBanner).toContain('The decoder could not read the file: corrupt stream');
       expect(failedSession.lastStatusBanner).toContain('store: 8/8 bytes · decode: 0/1 frames');
     } finally {

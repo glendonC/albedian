@@ -594,7 +594,7 @@ describe('@albedian/evidence: licence and source strings', () => {
   const solution: ObservationSolution = ObservationSolutionSchema.parse({
     id: 'sol_03', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status: 'predicted_only',
     observedAtUTC: '2030-01-01T02:00:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 },
-    solver: { name: 'AlbedianGeometricQuadSolver', version: '1.0.0', catalogRelease: 'Gaia DR3 / Hipparcos Pinned Bright Subset' },
+    solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
     quality: { detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
     findings: [], warnings: [],
   });
@@ -617,6 +617,9 @@ describe('@albedian/evidence: licence and source strings', () => {
   const lastRecord = (finding: CelestialFinding) => buildFindingEvidenceRecords(sourceAsset, solution, finding).at(-1);
 
   it('gives each catalog provider the licence its archive states, or says what Albedian uses it for', () => {
+    expect(
+      JSON.stringify(buildFindingEvidenceRecords(sourceAsset, solution, predicted(rigel('Gaia DR3'))))
+    ).not.toContain('AlbedianGeometricQuadSolver');
     expect(lastRecord(predicted(rigel('Gaia DR3')))?.license).toBe('CC BY-NC 3.0 IGO (ESA archive terms); credit ESA/Gaia/DPAC');
     expect(lastRecord(predicted(rigel('Hipparcos')))?.license).toBe('CC BY-NC 3.0 IGO (ESA archive terms); credit ESA');
     expect(lastRecord(predicted(rigel('JPL Horizons')))?.license).toBe(

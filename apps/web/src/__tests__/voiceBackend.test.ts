@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
 import type { ActionContext, AlbedianAction, ObservationSession, VoiceCommandResponse } from '@albedian/contracts';
 import { VoiceCommandResponseSchema } from '@albedian/contracts';
-import { buildActionContext, dispatchAlbedianAction } from '@albedian/observation';
+import { buildActionContext, createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { applyVoiceBackendReply, askVoiceBackend, BACKEND_MAY_RESOLVE } from '../voice/voiceBackend';
 
@@ -18,8 +18,8 @@ const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED)
 const NUM_RUNS = 200;
 
 const base = createSyntheticCalibratedSession();
-const findingIds = base.observationSolution.findings.map((finding) => finding.id);
-const catalogStar = base.observationSolution.findings.find((finding) => finding.evidenceClass === 'catalog_matched')!;
+const findingIds = base.observationSolution!.findings.map((finding) => finding.id);
+const catalogStar = base.observationSolution!.findings.find((finding) => finding.evidenceClass === 'catalog_matched')!;
 
 type Pointer = ActionContext['recentPointer'];
 
@@ -83,13 +83,24 @@ describe('@albedian/web voice backend: asking', () => {
       utterance: 'what is that one?',
       context: {
         ...buildActionContext(base, pointer),
-        observerLat: base.sourceAsset.observerLocation?.latDeg ?? null,
-        observerLon: base.sourceAsset.observerLocation?.lonDeg ?? null,
-        observedAtUTC: base.sourceAsset.capturedAtUTC ?? null,
+        observerLat: base.sourceAsset!.observerLocation?.latDeg ?? null,
+        observerLon: base.sourceAsset!.observerLocation?.lonDeg ?? null,
+        observedAtUTC: base.sourceAsset!.capturedAtUTC ?? null,
       },
     };
     expect(body).toEqual(JSON.parse(JSON.stringify(expected)));
     expect(body.context.recentPointer).toEqual(pointer);
+  });
+
+  it('posts null place and capture time when the session is empty and has no SourceAsset', async () => {
+    const empty = createEmptyObservationSession('2030-01-01T02:00:00Z');
+    const fetchMock = answering(rejected());
+    await askVoiceBackend('what is that one?', empty);
+    const body = postedBody(fetchMock);
+    expect(body.context.sourceAssetId).toBe('src_none');
+    expect(body.context.observerLat).toBeNull();
+    expect(body.context.observerLon).toBeNull();
+    expect(body.context.observedAtUTC).toBeNull();
   });
 
   it('sends a pointer only when the parser itself would use it', async () => {

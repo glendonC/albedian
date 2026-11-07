@@ -588,7 +588,7 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
         calibration: 'unresolved' as const,
       },
       observationSolution: {
-        ...unresolvedBase.observationSolution,
+        ...unresolvedBase.observationSolution!,
         status: 'unresolved' as const,
       },
     };

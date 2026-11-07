@@ -22,9 +22,10 @@ export function useCameraFlightAnimation(
 
   const animatePhaseAToPhaseBSpaceFlight = useCallback(
     (targetFindingId: string) => {
+      const findings = session.observationSolution?.findings ?? [];
       const target =
-        session.observationSolution.findings.find((f) => f.id === targetFindingId) ??
-        session.observationSolution.findings[0];
+        findings.find((f) => f.id === targetFindingId) ??
+        findings[0];
       if (!target) return;
 
       // The flight needs a measured 3D position: no direction or distance is assumed
@@ -41,12 +42,13 @@ export function useCameraFlightAnimation(
         Number((targetParsec[2] * 0.45).toFixed(3)),
       ];
 
-      const anchorNdc: [number, number] = target.sourceDetection
-        ? [
-            (target.sourceDetection.xPx / session.sourceAsset.width) * 2 - 1,
-            1 - (target.sourceDetection.yPx / session.sourceAsset.height) * 2,
-          ]
-        : [0, 0];
+      const anchorNdc: [number, number] =
+        target.sourceDetection && session.sourceAsset
+          ? [
+              (target.sourceDetection.xPx / session.sourceAsset.width) * 2 - 1,
+              1 - (target.sourceDetection.yPx / session.sourceAsset.height) * 2,
+            ]
+          : [0, 0];
 
       if (session.reducedMotion) {
         setSession((prev) => ({

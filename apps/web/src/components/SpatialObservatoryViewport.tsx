@@ -195,11 +195,11 @@ export const SpatialObservatoryViewport: React.FC<
 
   // Location is unknown until the capture's metadata or the user supplies it
   const observerLat =
-    session.sourceAsset.observerLocation?.latDeg ??
+    session.sourceAsset?.observerLocation?.latDeg ??
     activeDiscoveredItem?.latDeg ??
     null;
   const observerLon =
-    session.sourceAsset.observerLocation?.lonDeg ??
+    session.sourceAsset?.observerLocation?.lonDeg ??
     activeDiscoveredItem?.lonDeg ??
     null;
 

@@ -12,6 +12,7 @@ import {
   deterministicHexDigest,
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
+import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
 
 /**
  * ============================================================================
@@ -180,7 +181,7 @@ export function buildActionContext(
 ): ActionContext {
   return ActionContextSchema.parse({
     sessionId: session.id,
-    sourceAssetId: session.sourceAsset.id,
+    sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
     sourceTimeSec: session.currentSourceTimeSec,
     navigationState: session.machines.navigation,
     calibrationState: session.machines.calibration,
@@ -210,7 +211,7 @@ function findNamedFindingInUtterance(
   normalizedUtterance: string,
   session: ObservationSession
 ): CelestialFinding | undefined {
-  for (const finding of session.observationSolution.findings) {
+  for (const finding of session.observationSolution?.findings ?? []) {
     if (namesWholeWord(normalizedUtterance, finding.title)) return finding;
     const idShort = finding.id.replace(/^finding_/, '');
     if (idShort.length >= 3 && namesWholeWord(normalizedUtterance, idShort)) return finding;
@@ -242,7 +243,7 @@ function resolveTargetFinding(
   const pointerFresh = isPointerFreshAndMatchingRevision(context.recentPointer, context);
 
   if (pointerFresh && context.recentPointer?.overlappingCandidateIds && context.recentPointer.overlappingCandidateIds.length > 1) {
-    const findingMap = new Map(session.observationSolution.findings.map((f) => [f.id, f]));
+    const findingMap = new Map((session.observationSolution?.findings ?? []).map((f) => [f.id, f]));
     const choices = context.recentPointer.overlappingCandidateIds.map((id) => ({
       id,
       label: findingMap.get(id)?.title ?? id,
@@ -362,7 +363,7 @@ export function parseUtteranceToAction(
         type: 'media.restore',
         requestId,
         expectedViewRevision: context.viewRevision,
-        sourceAssetId: session.sourceAsset.id,
+        sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
         profile,
         constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
       }),
@@ -389,7 +390,7 @@ export function parseUtteranceToAction(
         requestId,
         expectedViewRevision: context.viewRevision,
         mode: context.calibrationState === 'calibrated' ? 'measured' : 'predicted',
-        observationSolutionId: session.observationSolution.id,
+        ...(session.observationSolution ? { observationSolutionId: session.observationSolution.id } : {}),
       }),
     };
   }

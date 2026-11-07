@@ -34,12 +34,18 @@ export async function ingestAndSolveUploadedFile(
   const sha256 = await sha256HexOfFile(file);
   const imported = createSessionForSourceAsset(
     {
-      ...createEmptyObservationSession().sourceAsset,
       id: `src_${sha256.slice(0, 16)}`,
       title: file.name,
       mediaKind: isVideo ? 'video' : 'image',
       sha256,
       uri: localObjectUrl,
+      width: 1,
+      height: 1,
+      durationMs: 0,
+      videoCodec: 'none',
+      audioStreams: [],
+      privacyClass: 'private',
+      immutable: true,
     },
     'importing'
   );
@@ -119,12 +125,13 @@ export const App: React.FC = () => {
     [discoveredMedia, activeDiscoveredId]
   );
 
+  const findings = session.observationSolution?.findings ?? [];
   const selectedFinding = useMemo(
     () =>
-      session.observationSolution.findings.find((f) => f.id === session.selectedFindingId) ??
-      session.observationSolution.findings[0] ??
+      findings.find((f) => f.id === session.selectedFindingId) ??
+      findings[0] ??
       null,
-    [session.observationSolution.findings, session.selectedFindingId]
+    [findings, session.selectedFindingId]
   );
 
   const runUtterance = (

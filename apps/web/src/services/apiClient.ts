@@ -300,7 +300,7 @@ export function buildSessionFromIngestReceipt(
       ...baseSession,
       machines: { ...baseSession.machines, media: 'ready', calibration: 'unresolved' },
       observationSolution: {
-        ...baseSession.observationSolution,
+        ...baseSession.observationSolution!,
         status: 'unresolved',
         warnings: [parsedJob.error ?? 'Solve job failed.'],
       },

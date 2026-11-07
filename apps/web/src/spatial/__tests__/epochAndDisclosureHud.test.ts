@@ -89,7 +89,7 @@ describe('EpochAndDisclosureHud (moment 05/06: alternative 3D viewpoint, marker 
 
   it('renders simulated badge and disclosure in 3D space and dispatches space.viewpoint, finding.describe, and marker filter toggles', async () => {
     const base = createSyntheticCalibratedSession();
-    const finding = base.observationSolution.findings.find(
+    const finding = base.observationSolution!.findings.find(
       (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
     )!;
     let latestSession = dispatchAlbedianAction(base, {
@@ -259,7 +259,7 @@ describe('EpochAndDisclosureHud (moment 05/06: alternative 3D viewpoint, marker 
 
   it('wires EpochAndDisclosureHud in SpatialObservatoryViewport and defines scoped CSS rules in albedian.css', async () => {
     const base = createSyntheticCalibratedSession();
-    const finding = base.observationSolution.findings.find(
+    const finding = base.observationSolution!.findings.find(
       (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
     )!;
     let latestSession = dispatchAlbedianAction(base, {

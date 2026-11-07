@@ -95,7 +95,7 @@ describe('CelestialTargetCard (experience-5, Moment 05 Apple Maps Place Card)', 
       ...base,
       machines: { ...base.machines, navigation: 'sky_registered' },
     };
-    const baseBetelgeuse = session.observationSolution.findings.find(
+    const baseBetelgeuse = session.observationSolution!.findings.find(
       (f) => f.id === 'finding_betelgeuse'
     )!;
     const betelgeuse: CelestialFinding = {
@@ -192,7 +192,7 @@ describe('CelestialTargetCard (experience-5, Moment 05 Apple Maps Place Card)', 
     // A predicted planet without sourceDetection, without inferredDistancePc, and without spectralType/BP-RP/properMotion
     const predictedPlanet: CelestialFinding = {
       id: 'finding_jupiter_prd',
-      observationSolutionId: session.observationSolution.id,
+      observationSolutionId: session.observationSolution!.id,
       evidenceClass: 'predicted',
       title: 'Jupiter',
       subtitle: 'Solar System Planet',
@@ -265,7 +265,7 @@ describe('CelestialTargetCard (experience-5, Moment 05 Apple Maps Place Card)', 
 
   it('wires CelestialTargetCard into SpatialObservatoryViewport once past the landing overlay', () => {
     const base = createSyntheticCalibratedSession();
-    const betelgeuse = base.observationSolution.findings.find(
+    const betelgeuse = base.observationSolution!.findings.find(
       (f) => f.id === 'finding_betelgeuse'
     )!;
     const onRunUtterance = vi.fn();

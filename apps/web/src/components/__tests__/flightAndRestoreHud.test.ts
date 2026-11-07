@@ -158,7 +158,7 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
 
   it('dispatches source.return on Back to moment click and on Escape key outside text inputs', async () => {
     const base = createSyntheticCalibratedSession();
-    const finding = base.observationSolution.findings.find(
+    const finding = base.observationSolution!.findings.find(
       (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
     )!;
     const inSpace = dispatchAlbedianAction(base, {
@@ -235,7 +235,7 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
 
   it('renders live parsec and light-year distance, Powers of Ten scale rung, and simulated disclosure in 3D space', async () => {
     const base = createSyntheticCalibratedSession();
-    const finding = base.observationSolution.findings.find(
+    const finding = base.observationSolution!.findings.find(
       (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
     )!;
     const inSpace = dispatchAlbedianAction(base, {

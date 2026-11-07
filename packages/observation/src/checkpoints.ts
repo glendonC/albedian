@@ -7,6 +7,7 @@ import {
   SourceAsset,
   SpatialViewState,
 } from '@albedian/contracts';
+import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
 
 /**
  * ============================================================================
@@ -45,7 +46,7 @@ export function createCameraCheckpoint(
     id: `chk_${session.id}_rev_${session.viewRevision}_${session.navigationHistory.checkpoints.length}`,
     label,
     createdAtMs: Math.round(session.currentSourceTimeSec * 1000),
-    sourceAssetId: session.sourceAsset.id,
+    sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
     sourceTimeSec: session.currentSourceTimeSec,
     playbackWasPlaying: session.isPlaying,
     audioGain: session.audioGain,
@@ -88,7 +89,7 @@ export function syncAnchorCheckpointIfInitial(session: ObservationSession): Obse
   ) {
     const syncedAnchor: CameraCheckpoint = {
       ...anchor,
-      sourceAssetId: session.sourceAsset.id,
+      sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
       sourceTimeSec: session.currentSourceTimeSec,
       playbackWasPlaying: session.isPlaying,
       audioGain: session.audioGain,
@@ -181,9 +182,9 @@ export function restoreSessionToCheckpoint(
  */
 export function computeStarAnchorNdc(
   finding: CelestialFinding,
-  sourceAsset: SourceAsset
+  sourceAsset: SourceAsset | undefined
 ): [number, number] {
-  if (!finding.sourceDetection) {
+  if (!finding.sourceDetection || !sourceAsset) {
     return [0, 0];
   }
   const ndcX = Number(((finding.sourceDetection.xPx / sourceAsset.width) * 2 - 1).toFixed(4));

@@ -8,10 +8,12 @@ import {
   MediaVariant,
 } from '@albedian/contracts';
 import {
+  createCameraCheckpoint,
   createEmptyObservationSession,
   createSessionForSourceAsset,
   dispatchAlbedianAction,
   epochIsoForYear,
+  executeVoiceOrTextCommand,
   transitionOrthogonalMachine,
   validateMediaTimelineSync,
 } from '../index';
@@ -22,15 +24,15 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     const session = createSyntheticCalibratedSession();
     const parsed = ObservationSessionSchema.parse(session);
     expect(parsed.title).toBe('Synthetic calibrated field (test data)');
-    expect(parsed.sourceAsset.capturedAtUTC).toBe('2030-01-01T02:00:00Z');
-    expect(parsed.sourceAsset.observerLocation?.latDeg).toBe(30.0);
-    expect(parsed.sourceAsset.observerLocation?.lonDeg).toBe(-40.0);
-    expect(parsed.sourceAsset.width).toBe(1920);
-    expect(parsed.sourceAsset.height).toBe(1080);
-    expect(parsed.sourceAsset.durationMs).toBe(12000);
-    expect(parsed.sourceAsset.fpsNumerator).toBe(30);
-    expect(parsed.sourceAsset.audioStreams).toHaveLength(1);
-    expect(parsed.sourceAsset.audioStreams[0]?.codec).toBe('aac');
+    expect(parsed.sourceAsset?.capturedAtUTC).toBe('2030-01-01T02:00:00Z');
+    expect(parsed.sourceAsset?.observerLocation?.latDeg).toBe(30.0);
+    expect(parsed.sourceAsset?.observerLocation?.lonDeg).toBe(-40.0);
+    expect(parsed.sourceAsset?.width).toBe(1920);
+    expect(parsed.sourceAsset?.height).toBe(1080);
+    expect(parsed.sourceAsset?.durationMs).toBe(12000);
+    expect(parsed.sourceAsset?.fpsNumerator).toBe(30);
+    expect(parsed.sourceAsset?.audioStreams).toHaveLength(1);
+    expect(parsed.sourceAsset?.audioStreams[0]?.codec).toBe('aac');
 
     expect(parsed.processingGraphs).toHaveLength(3);
     expect(parsed.processingAttempts).toHaveLength(3);
@@ -49,19 +51,19 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(temporalAttempt?.metrics?.pointSourceRetentionRatio).toBe(0.99);
     expect(temporalAttempt?.metrics?.falsePointArtifactCount).toBe(0);
 
-    expect(parsed.observationSolution.status).toBe('calibrated');
-    expect(parsed.observationSolution.quality.heldOutInliers).toBe(10);
-    expect(parsed.observationSolution.quality.medianResidualPx).toBe(0.42);
-    expect(parsed.observationSolution.quality.p95ResidualPx).toBe(0.89);
-    expect(parsed.observationSolution.wcs?.crvalRaDeg).toBe(83.8);
-    expect(parsed.observationSolution.wcs?.crvalDecDeg).toBe(4.0);
-    expect(parsed.observationSolution.wcs?.crpixX).toBe(960);
-    expect(parsed.observationSolution.wcs?.crpixY).toBe(540);
-    expect(parsed.observationSolution.wcs?.scaleDegPerPx).toBe(0.035);
-    expect(parsed.observationSolution.wcs?.fovHorizontalDeg).toBe(67.2);
-    expect(parsed.observationSolution.wcs?.fovVerticalDeg).toBe(37.8);
+    expect(parsed.observationSolution?.status).toBe('calibrated');
+    expect(parsed.observationSolution?.quality.heldOutInliers).toBe(10);
+    expect(parsed.observationSolution?.quality.medianResidualPx).toBe(0.42);
+    expect(parsed.observationSolution?.quality.p95ResidualPx).toBe(0.89);
+    expect(parsed.observationSolution?.wcs?.crvalRaDeg).toBe(83.8);
+    expect(parsed.observationSolution?.wcs?.crvalDecDeg).toBe(4.0);
+    expect(parsed.observationSolution?.wcs?.crpixX).toBe(960);
+    expect(parsed.observationSolution?.wcs?.crpixY).toBe(540);
+    expect(parsed.observationSolution?.wcs?.scaleDegPerPx).toBe(0.035);
+    expect(parsed.observationSolution?.wcs?.fovHorizontalDeg).toBe(67.2);
+    expect(parsed.observationSolution?.wcs?.fovVerticalDeg).toBe(37.8);
 
-    const findings = parsed.observationSolution.findings;
+    const findings = parsed.observationSolution?.findings ?? [];
     expect(findings).toHaveLength(14);
     expect(findings.filter((f) => f.evidenceClass === 'catalog_matched')).toHaveLength(10);
     expect(findings.filter((f) => f.evidenceClass === 'predicted')).toHaveLength(2);
@@ -84,18 +86,18 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     const session = createSyntheticUnresolvedSession();
     const parsed = ObservationSessionSchema.parse(session);
     expect(parsed.machines.calibration).toBe('predicted_only');
-    expect(parsed.observationSolution.status).toBe('predicted_only');
-    expect(parsed.observationSolution.quality.heldOutInliers).toBe(2);
-    expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
+    expect(parsed.observationSolution?.status).toBe('predicted_only');
+    expect(parsed.observationSolution?.quality.heldOutInliers).toBe(2);
+    expect(parsed.observationSolution?.quality.passedIndependentVerification).toBe(false);
     expect(
-      parsed.observationSolution.findings.filter((f) => f.evidenceClass === 'catalog_matched')
+      parsed.observationSolution?.findings.filter((f) => f.evidenceClass === 'catalog_matched')
     ).toHaveLength(0);
     // Its two detections are listed at their pixels and placed nowhere on the sky
-    const observed = parsed.observationSolution.findings.filter((f) => f.evidenceClass === 'observed');
+    const observed = parsed.observationSolution?.findings.filter((f) => f.evidenceClass === 'observed') ?? [];
     expect(observed).toHaveLength(2);
     expect(observed.every((f) => f.sourceDetection !== undefined && f.skyPosition === undefined)).toBe(true);
     expect(
-      parsed.observationSolution.findings.every(
+      parsed.observationSolution?.findings.every(
         (f) => f.evidenceClass === 'predicted' || f.evidenceClass === 'observed'
       )
     ).toBe(true);
@@ -106,41 +108,122 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     const parsed = ObservationSessionSchema.parse(createEmptyObservationSession(createdAtISO));
     expect(parsed.machines.media).toBe('empty');
     expect(parsed.machines.calibration).toBe('not_requested');
-    expect(parsed.sourceAsset.observerLocation).toBeUndefined();
-    expect(parsed.sourceAsset.capturedAtUTC).toBeUndefined();
-    expect(parsed.observationSolution.status).toBe('pending');
-    expect(parsed.observationSolution.observerLocation).toBeUndefined();
-    expect(parsed.observationSolution.wcs).toBeUndefined();
-    expect(parsed.observationSolution.findings).toHaveLength(0);
-    expect(parsed.observationSolution.quality.passedIndependentVerification).toBe(false);
-    expect(parsed.observationSolution.quality.medianResidualPx).toBeUndefined();
-    // Nothing solved yet, so no recording is named (the placeholder asset's own hash goes with integrity-4d)
-    expect(parsed.observationSolution.sourceSha256).toBeUndefined();
-    expect(parsed.observationSolution.quality.heldOutPairCount).toBe(0);
-    expect(parsed.observationSolution.observedAtUTC).toBeUndefined();
+    expect(parsed.sourceAsset).toBeUndefined();
+    expect(parsed.observationSolution).toBeUndefined();
     expect(parsed.spatialView.observationEpochISO).toBeUndefined();
     expect(parsed.spatialView.simulationEpochISO).toBe(createdAtISO);
+    expect(parsed.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe('src_none');
     expect(parsed.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBeUndefined();
     expect(parsed.navigationHistory.anchorMomentCheckpoint.spatialView.simulationEpochISO).toBe(createdAtISO);
+
+    const checkpoint = createCameraCheckpoint(parsed, 'Empty session checkpoint');
+    expect(checkpoint.sourceAssetId).toBe('src_none');
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'media.restore',
+        requestId: 'req_empty_restore',
+        expectedViewRevision: parsed.viewRevision,
+        sourceAssetId: 'src_none',
+        profile: 'star_protected',
+        constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
+      }).outcome
+    ).toMatchObject({
+      status: 'rejected',
+      reason: 'missing_source',
+      explanation: 'SourceAsset "src_none" does not match active session asset "none".',
+    });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'media.seek',
+        requestId: 'req_empty_seek',
+        expectedViewRevision: parsed.viewRevision,
+        sourceTimeSec: 1.5,
+        preserveAudioSync: true,
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'missing_source' });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'sky.show',
+        requestId: 'req_empty_sky',
+        expectedViewRevision: parsed.viewRevision,
+        mode: 'predicted',
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'unresolved_sky' });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'finding.select',
+        requestId: 'req_empty_select',
+        expectedViewRevision: parsed.viewRevision,
+        findingId: 'finding_betelgeuse',
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'ambiguous_target' });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'finding.describe',
+        requestId: 'req_empty_describe',
+        expectedViewRevision: parsed.viewRevision,
+        findingId: 'finding_betelgeuse',
+        fields: ['distance'],
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'ambiguous_target' });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'space.enter',
+        requestId: 'req_empty_space',
+        expectedViewRevision: parsed.viewRevision,
+        findingId: 'finding_betelgeuse',
+        distancePolicy: 'measured_or_estimated',
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'unresolved_sky' });
+    expect(
+      dispatchAlbedianAction(parsed, {
+        type: 'space.viewpoint',
+        requestId: 'req_empty_viewpoint',
+        expectedViewRevision: parsed.viewRevision,
+        targetFindingId: 'finding_betelgeuse',
+        units: 'pc',
+        offsetParsec: [1, 1, 1],
+        trajectory: 'orbit',
+      }).outcome
+    ).toMatchObject({ status: 'rejected', reason: 'ambiguous_target' });
+    expect(executeVoiceOrTextCommand(parsed, 'What were we looking at?', 'voice').outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'unresolved_sky',
+    });
+    expect(executeVoiceOrTextCommand(parsed, 'Make the sky clearer', 'voice').outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'missing_source',
+    });
+    expect(executeVoiceOrTextCommand(parsed, 'Select Betelgeuse', 'voice').outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'ambiguous_target',
+    });
   });
 
   it('re-anchors the empty session to an imported asset without inventing location or findings', () => {
     const createdAtISO = '2026-11-03T08:00:00.000Z';
     const asset: SourceAsset = {
-      ...createEmptyObservationSession(createdAtISO).sourceAsset,
       id: 'src_upload_1',
       title: 'backyard.jpg',
+      mediaKind: 'image',
       sha256: 'ab'.repeat(32),
       uri: 'blob:backyard',
+      width: 1,
+      height: 1,
+      durationMs: 0,
+      videoCodec: 'none',
+      audioStreams: [],
+      privacyClass: 'private',
+      immutable: true,
     };
     const session = createSessionForSourceAsset(asset, 'importing', createdAtISO);
     expect(session.machines.media).toBe('importing');
     expect(session.machines.calibration).toBe('not_requested');
-    expect(session.observationSolution.sourceAssetId).toBe('src_upload_1');
-    expect(session.observationSolution.sourceSha256).toBe(asset.sha256);
-    expect(session.observationSolution.observedAtUTC).toBeUndefined();
-    expect(session.observationSolution.observerLocation).toBeUndefined();
-    expect(session.observationSolution.findings).toHaveLength(0);
+    expect(session.observationSolution?.sourceAssetId).toBe('src_upload_1');
+    expect(session.observationSolution?.sourceSha256).toBe(asset.sha256);
+    expect(session.observationSolution?.observedAtUTC).toBeUndefined();
+    expect(session.observationSolution?.observerLocation).toBeUndefined();
+    expect(session.observationSolution?.findings).toHaveLength(0);
     expect(session.spatialView.observationEpochISO).toBeUndefined();
     expect(session.spatialView.simulationEpochISO).toBe(createdAtISO);
     expect(session.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe('src_upload_1');
@@ -151,7 +234,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     const located = createSessionForSourceAsset(
       {
         ...asset,
-        capturedAtUTC: '2030-11-01T22:32:00Z',
+        capturedAtUTC: '2030-06-15T04:00:00Z',
         observerLocation: { latDeg: -43.99, lonDeg: 170.46 },
         metadataSources: {
           capturedAtUTC: { container: 'synthetic', tags: ['test-fixture'] },
@@ -161,16 +244,30 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       'ready',
       createdAtISO
     );
-    expect(located.observationSolution.observerLocation).toEqual({ latDeg: -43.99, lonDeg: 170.46, placeName: undefined });
-    expect(located.observationSolution.observedAtUTC).toBe('2030-11-01T22:32:00Z');
-    expect(located.spatialView.observationEpochISO).toBe('2030-11-01T22:32:00Z');
-    expect(located.spatialView.simulationEpochISO).toBe('2030-11-01T22:32:00Z');
-    expect(located.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBe('2030-11-01T22:32:00Z');
+    expect(located.observationSolution?.observerLocation).toEqual({ latDeg: -43.99, lonDeg: 170.46, placeName: undefined });
+    expect(located.observationSolution?.observedAtUTC).toBe('2030-06-15T04:00:00Z');
+    expect(located.spatialView.observationEpochISO).toBe('2030-06-15T04:00:00Z');
+    expect(located.spatialView.simulationEpochISO).toBe('2030-06-15T04:00:00Z');
+    expect(located.navigationHistory.anchorMomentCheckpoint.spatialView.observationEpochISO).toBe('2030-06-15T04:00:00Z');
   });
 
-  it('leaves the empty session still and a clip nothing has probed without a frame rate', () => {
+  it('leaves the empty session without an asset and a clip nothing has probed without a frame rate', () => {
     const createdAtISO = '2026-11-03T08:00:00.000Z';
-    const still = createEmptyObservationSession(createdAtISO).sourceAsset;
+    expect(createEmptyObservationSession(createdAtISO).sourceAsset).toBeUndefined();
+    const still: SourceAsset = {
+      id: 'src_upload_still',
+      title: 'night.jpg',
+      mediaKind: 'image',
+      sha256: 'ab'.repeat(32),
+      uri: 'blob:night-still',
+      width: 1,
+      height: 1,
+      durationMs: 0,
+      videoCodec: 'none',
+      audioStreams: [],
+      privacyClass: 'private',
+      immutable: true,
+    };
     expect(still.mediaKind).toBe('image');
     expect(still).not.toHaveProperty('fpsNumerator');
     expect(still).not.toHaveProperty('fpsDenominator');
@@ -180,7 +277,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       'importing',
       createdAtISO
     );
-    expect(unprobed.sourceAsset.mediaKind).toBe('video');
+    expect(unprobed.sourceAsset?.mediaKind).toBe('video');
     expect(unprobed.sourceAsset).not.toHaveProperty('fpsNumerator');
     expect(unprobed.sourceAsset).not.toHaveProperty('fpsDenominator');
   });
@@ -424,7 +521,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
         type: 'media.restore',
         requestId: 'req_stale',
         expectedViewRevision: rev,
-        sourceAssetId: baseSession.sourceAsset.id,
+        sourceAssetId: baseSession.sourceAsset!.id,
         profile: 'star_protected',
         constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
       }),
@@ -490,7 +587,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
 
   it('PBT-SYNC-1: Media timeline synchronization property test verifying monotonic frame timestamps and bounded audio drift', () => {
     const baseSession = createSyntheticCalibratedSession();
-    const source: SourceAsset = baseSession.sourceAsset;
+    const source: SourceAsset = baseSession.sourceAsset!;
 
     // 1. All golden variants pass timeline sync
     for (const variant of baseSession.mediaVariants) {

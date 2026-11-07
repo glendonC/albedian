@@ -75,8 +75,8 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
 
   it('renders calibrated solve receipt with held-out verification metrics, solver provenance, and dispatches sky.show (measured)', async () => {
     let latestSession = createSyntheticCalibratedSession();
-    const q = latestSession.observationSolution.quality;
-    const solver = latestSession.observationSolution.solver;
+    const q = latestSession.observationSolution!.quality;
+    const solver = latestSession.observationSolution!.solver;
 
     await act(async () => {
       root.render(
@@ -189,7 +189,7 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
         calibration: 'unresolved',
       },
       observationSolution: {
-        ...base.observationSolution,
+        ...base.observationSolution!,
         status: 'unresolved',
       },
     };
@@ -212,7 +212,7 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
       '[data-testid="solve-receipt-warnings"]'
     );
     expect(warningsEl).not.toBeNull();
-    for (const w of unresolved.observationSolution.warnings) {
+    for (const w of unresolved.observationSolution!.warnings) {
       expect(warningsEl?.textContent).toContain(w);
     }
   });
@@ -251,7 +251,7 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
       '[data-testid="solve-source-asset-pill"]'
     );
     expect(assetEl?.textContent).toContain(
-      latestSession.sourceAsset.sha256.slice(0, 12)
+      latestSession.sourceAsset!.sha256.slice(0, 12)
     );
     expect(assetEl?.textContent).toContain('Immutable SourceAsset');
 

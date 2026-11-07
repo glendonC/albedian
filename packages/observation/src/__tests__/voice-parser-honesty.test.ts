@@ -23,7 +23,7 @@ const NUM_RUNS = 300;
 const YEAR = 2101; // a clock year no code path may assume
 const NOW = new Date(Date.UTC(YEAR, 5, 1, 12, 0, 0));
 const base = createSyntheticCalibratedSession();
-const NAMES = base.observationSolution.findings
+const NAMES = base.observationSolution!.findings
   .filter((finding) => finding.evidenceClass === 'catalog_matched')
   .map((finding) => finding.title);
 
@@ -288,7 +288,7 @@ describe('@albedian/observation voice parser: epochs', () => {
 describe('@albedian/observation voice parser: targets', () => {
   const lone = {
     ...base,
-    observationSolution: { ...base.observationSolution, findings: base.observationSolution.findings.slice(0, 1) },
+    observationSolution: { ...base.observationSolution!, findings: base.observationSolution!.findings.slice(0, 1) },
   };
 
   it('takes no target from a solution with one finding when nothing names or points at it', () => {
@@ -310,8 +310,8 @@ describe('@albedian/observation voice parser: targets', () => {
     const withMoon = {
       ...base,
       observationSolution: {
-        ...base.observationSolution,
-        findings: base.observationSolution.findings.map((finding, index) => (index === 0 ? { ...finding, title: 'Moon' } : finding)),
+        ...base.observationSolution!,
+        findings: base.observationSolution!.findings.map((finding, index) => (index === 0 ? { ...finding, title: 'Moon' } : finding)),
       },
     };
     expect(parse('select the honeymoon suite', withMoon).reason).toBe('ambiguous_target');
@@ -319,7 +319,7 @@ describe('@albedian/observation voice parser: targets', () => {
   });
 
   it('resolves a deictic target from a fresh pointer before selectedFindingId and focusedFindingId, and ignores a stale pointer', () => {
-    const [first, second, third] = base.observationSolution.findings;
+    const [first, second, third] = base.observationSolution!.findings;
     const session: ObservationSession = {
       ...base,
       selectedFindingId: first!.id,
@@ -342,7 +342,7 @@ describe('@albedian/observation voice parser: targets', () => {
     'take me to', 'fly to', 'what is that', 'select', 'focus on', 'how far', "what's behind", 'another viewpoint',
     'orbit', 'tell me about', 'look at', 'the', 'andromeda', 'galaxy', 'please', 'honeymoon', 'bright', 'now',
   ];
-  const IDS = base.observationSolution.findings.map((finding) => finding.id);
+  const IDS = base.observationSolution!.findings.map((finding) => finding.id);
 
   it('PBT: a target is one the request names or the view holds, and a named one wins', () => {
     fc.assert(
@@ -356,7 +356,7 @@ describe('@albedian/observation voice parser: targets', () => {
           const utterance = words.join(' ');
           const parsed = parse(utterance, session, pointed ? freshPointer(session, pointed) : undefined);
           const named = new Set(
-            session.observationSolution.findings.filter((finding) => wholeWord(finding.title, utterance)).map((finding) => finding.id)
+            session.observationSolution!.findings.filter((finding) => wholeWord(finding.title, utterance)).map((finding) => finding.id)
           );
           const inView = new Set([selected, focused, pointed].filter((id): id is string => Boolean(id)));
           const action = parsed.action as { findingId?: string; targetFindingId?: string } | undefined;
@@ -417,7 +417,7 @@ describe('@albedian/observation voice parser: refusals', () => {
   });
 
   it('describes evidence without an em dash', () => {
-    const star = base.observationSolution.findings[0]!;
+    const star = base.observationSolution!.findings[0]!;
     const described = dispatchAlbedianAction(base, {
       type: 'finding.describe',
       requestId: 'req-made-up',

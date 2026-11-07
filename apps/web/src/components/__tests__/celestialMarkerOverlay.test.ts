@@ -75,8 +75,8 @@ afterEach(() => {
 });
 
 function buildFourClassFindings(baseSession: ObservationSession): CelestialFinding[] {
-  const sha = baseSession.sourceAsset.sha256;
-  const solId = baseSession.observationSolution.id;
+  const sha = baseSession.sourceAsset!.sha256;
+  const solId = baseSession.observationSolution!.id;
   return [
     {
       id: 'f_obs',
@@ -85,7 +85,7 @@ function buildFourClassFindings(baseSession: ObservationSession): CelestialFindi
       title: 'Centroid #1',
       subtitle: 'SNR 18.4',
       sourceDetection: {
-        assetId: baseSession.sourceAsset.id,
+        assetId: baseSession.sourceAsset!.id,
         frameTimeSec: 0,
         xPx: 480,
         yPx: 270,
@@ -111,7 +111,7 @@ function buildFourClassFindings(baseSession: ObservationSession): CelestialFindi
       title: 'Betelgeuse',
       subtitle: 'Alpha Orionis · Orion',
       sourceDetection: {
-        assetId: baseSession.sourceAsset.id,
+        assetId: baseSession.sourceAsset!.id,
         frameTimeSec: 0,
         xPx: 960,
         yPx: 540,
@@ -177,9 +177,9 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
     const findings = buildFourClassFindings(base);
     const session: ObservationSession = {
       ...base,
-      sourceAsset: { ...base.sourceAsset, width: 1920, height: 1080 },
+      sourceAsset: { ...base.sourceAsset!, width: 1920, height: 1080 },
       spatialView: { ...base.spatialView, mode: 'source_2d' },
-      observationSolution: { ...base.observationSolution, findings },
+      observationSolution: { ...base.observationSolution!, findings },
     };
 
     // f_obs at (480, 270) on 1920x1080 -> u=0.25, v=0.25 -> (360, 225) on 1440x900
@@ -230,7 +230,7 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
         },
       },
       observationSolution: {
-        ...base.observationSolution,
+        ...base.observationSolution!,
         findings: findings.map((f, idx) => ({
           ...f,
           skyPosition: { raDeg: 0, decDeg: -90 + idx * 2, uncertaintyArcsec: 1 },
@@ -244,7 +244,7 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
       root.render(
         createElement(CelestialMarkerOverlay, {
           session,
-          selectedFinding: session.observationSolution.findings[1]!,
+          selectedFinding: session.observationSolution!.findings[1]!,
           onSelectFinding,
           viewportWidthPx: 1440,
           viewportHeightPx: 900,
@@ -308,7 +308,7 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
           predictedEphemerides: false,
         },
       },
-      observationSolution: { ...base.observationSolution, findings },
+      observationSolution: { ...base.observationSolution!, findings },
     };
 
     act(() => {
@@ -337,7 +337,7 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
         createElement(SpatialObservatoryViewport, {
           session: base,
           setSession: noop,
-          selectedFinding: base.observationSolution.findings[0] ?? null,
+          selectedFinding: base.observationSolution!.findings[0] ?? null,
           discoveredMedia: [],
           activeDiscoveredId: null,
           setActiveDiscoveredId: noop,

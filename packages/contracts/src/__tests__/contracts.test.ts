@@ -4,6 +4,7 @@ import {
   AttemptEvaluationMetricsSchema,
   ExportArtifactSchema,
   MediaVariantSchema,
+  ObservationSessionSchema,
   ProcessingAttemptSchema,
   ProcessingGraph,
   ProcessingGraphSchema,
@@ -409,6 +410,140 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
     expect(ExportArtifactSchema.safeParse({ ...exportWithoutAudioOffset, audioSyncOffsetMs: 0.2 }).success).toBe(true);
     expect(
       ExportArtifactSchema.safeParse({ ...exportWithoutAudioOffset, audioSyncOffsetMs: null }).success
+    ).toBe(false);
+  });
+
+  it('requires ObservationSession to omit sourceAsset and observationSolution when media is empty and include both otherwise', () => {
+    const spatialView = {
+      mode: 'source_2d' as const,
+      transitionPhase: 'at_source' as const,
+      transitionProgress: 0,
+      observerOriginParsec: [0, 0, 0] as [number, number, number],
+      cameraQuaternion: [0, 0, 0, 1] as [number, number, number, number],
+      fovVerticalDeg: 60,
+      frustumShiftNdc: [0, 0] as [number, number],
+      simulationEpochISO: '2030-01-01T02:00:00Z',
+      sceneScalePolicy: 'physical_euclidean' as const,
+      activeOverlays: {
+        observedMarkers: false,
+        catalogMatchedLabels: false,
+        predictedEphemerides: false,
+        constellationLines: false,
+        earthDirectionVector: false,
+        residualVectors: false,
+        sightlineCone: false,
+      },
+    };
+    const anchorMomentCheckpoint = {
+      id: 'chk_none',
+      label: 'No observation yet',
+      createdAtMs: 0,
+      sourceAssetId: 'src_none',
+      sourceTimeSec: 0,
+      playbackWasPlaying: false,
+      audioGain: 1,
+      mediaVariantId: 'variant_none',
+      cropTransform: { zoom: 1, panX: 0, panY: 0 },
+      selectedFindingId: null,
+      navigationState: 'source' as const,
+      spatialView,
+      viewRevision: 0,
+    };
+    const emptySession = {
+      id: 'session_empty',
+      title: 'No observation yet',
+      viewRevision: 0,
+      machines: {
+        media: 'empty' as const,
+        restoration: 'idle' as const,
+        calibration: 'not_requested' as const,
+        navigation: 'source' as const,
+        voice: 'off' as const,
+      },
+      activeVariantId: 'variant_none',
+      compareWipePosition: 0.5,
+      currentSourceTimeSec: 0,
+      isPlaying: false,
+      audioGain: 1,
+      cropTransform: { zoom: 1, panX: 0, panY: 0 },
+      processingGraphs: [],
+      processingAttempts: [],
+      mediaVariants: [],
+      selectedFindingId: null,
+      focusedFindingId: null,
+      spatialView,
+      navigationHistory: {
+        anchorMomentCheckpoint,
+        checkpoints: [anchorMomentCheckpoint],
+        cursorIndex: 0,
+      },
+      voiceActions: [],
+      exportArtifacts: [],
+      reducedMotion: false,
+    };
+    const sourceAsset = {
+      id: 'src_upload_01',
+      title: 'night.jpg',
+      mediaKind: 'image' as const,
+      sha256: 'a8f5c2d9104e8b771234567890abcdefa8f5c2d9104e8b771234567890abcdef',
+      uri: 'blob:night',
+      width: 1920,
+      height: 1080,
+      durationMs: 0,
+      videoCodec: 'none',
+      audioStreams: [],
+      privacyClass: 'private' as const,
+      immutable: true as const,
+    };
+    const observationSolution = {
+      id: 'sol_upload_01',
+      sourceAssetId: sourceAsset.id,
+      sourceSha256: sourceAsset.sha256,
+      frameTimeSec: 0,
+      revision: 1,
+      status: 'pending' as const,
+      solver: { name: 'none', version: '0', catalogRelease: 'none' },
+      quality: {
+        detectedCandidateCount: 0,
+        matchedInlierCount: 0,
+        heldOutPairCount: 0,
+        heldOutInliers: 0,
+        passedIndependentVerification: false,
+      },
+      findings: [],
+      warnings: [],
+    };
+
+    const parsedEmpty = ObservationSessionSchema.safeParse(emptySession);
+    expect(parsedEmpty.error?.issues ?? []).toEqual([]);
+    expect(parsedEmpty.success).toBe(true);
+
+    expect(ObservationSessionSchema.safeParse({ ...emptySession, sourceAsset }).success).toBe(false);
+    expect(ObservationSessionSchema.safeParse({ ...emptySession, observationSolution }).success).toBe(false);
+    expect(
+      ObservationSessionSchema.safeParse({ ...emptySession, sourceAsset, observationSolution }).success
+    ).toBe(false);
+
+    const importedSession = {
+      ...emptySession,
+      machines: { ...emptySession.machines, media: 'importing' as const },
+      sourceAsset,
+      observationSolution,
+    };
+    expect(ObservationSessionSchema.safeParse(importedSession).success).toBe(true);
+    expect(
+      ObservationSessionSchema.safeParse({
+        ...emptySession,
+        machines: { ...emptySession.machines, media: 'importing' as const },
+        sourceAsset,
+      }).success
+    ).toBe(false);
+    expect(
+      ObservationSessionSchema.safeParse({
+        ...emptySession,
+        machines: { ...emptySession.machines, media: 'importing' as const },
+        observationSolution,
+      }).success
     ).toBe(false);
   });
 });

@@ -342,36 +342,70 @@ export const ActionOutcomeSchema = z.discriminatedUnion('status', [
 ]);
 export type ActionOutcome = z.infer<typeof ActionOutcomeSchema>;
 
-export const ObservationSessionSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  viewRevision: z.number().int().nonnegative(),
-  machines: z.object({
-    media: MediaMachineStateSchema,
-    restoration: RestorationMachineStateSchema,
-    calibration: CalibrationMachineStateSchema,
-    navigation: NavigationMachineStateSchema,
-    voice: VoiceMachineStateSchema,
-  }),
-  sourceAsset: SourceAssetSchema,
-  activeVariantId: z.string().min(1),
-  compareVariantId: z.string().optional(),
-  compareWipePosition: z.number().min(0).max(1),
-  currentSourceTimeSec: z.number().nonnegative(),
-  isPlaying: z.boolean(),
-  audioGain: z.number().min(0).max(1),
-  cropTransform: CropTransformSchema,
-  processingGraphs: z.array(ProcessingGraphSchema),
-  processingAttempts: z.array(ProcessingAttemptSchema),
-  mediaVariants: z.array(MediaVariantSchema),
-  observationSolution: ObservationSolutionSchema,
-  selectedFindingId: z.string().nullable(),
-  focusedFindingId: z.string().nullable(),
-  spatialView: SpatialViewStateSchema,
-  navigationHistory: NavigationHistorySchema,
-  voiceActions: z.array(VoiceActionSchema),
-  exportArtifacts: z.array(ExportArtifactSchema),
-  reducedMotion: z.boolean(),
-  lastStatusBanner: z.string().optional(),
-});
+export const ObservationSessionSchema = z
+  .object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    viewRevision: z.number().int().nonnegative(),
+    machines: z.object({
+      media: MediaMachineStateSchema,
+      restoration: RestorationMachineStateSchema,
+      calibration: CalibrationMachineStateSchema,
+      navigation: NavigationMachineStateSchema,
+      voice: VoiceMachineStateSchema,
+    }),
+    sourceAsset: SourceAssetSchema.optional(),
+    activeVariantId: z.string().min(1),
+    compareVariantId: z.string().optional(),
+    compareWipePosition: z.number().min(0).max(1),
+    currentSourceTimeSec: z.number().nonnegative(),
+    isPlaying: z.boolean(),
+    audioGain: z.number().min(0).max(1),
+    cropTransform: CropTransformSchema,
+    processingGraphs: z.array(ProcessingGraphSchema),
+    processingAttempts: z.array(ProcessingAttemptSchema),
+    mediaVariants: z.array(MediaVariantSchema),
+    observationSolution: ObservationSolutionSchema.optional(),
+    selectedFindingId: z.string().nullable(),
+    focusedFindingId: z.string().nullable(),
+    spatialView: SpatialViewStateSchema,
+    navigationHistory: NavigationHistorySchema,
+    voiceActions: z.array(VoiceActionSchema),
+    exportArtifacts: z.array(ExportArtifactSchema),
+    reducedMotion: z.boolean(),
+    lastStatusBanner: z.string().optional(),
+  })
+  .superRefine((session, ctx) => {
+    if (session.machines.media === 'empty') {
+      if (session.sourceAsset !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'An empty ObservationSession must not carry a placeholder SourceAsset.',
+          path: ['sourceAsset'],
+        });
+      }
+      if (session.observationSolution !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'An empty ObservationSession must not carry a placeholder ObservationSolution.',
+          path: ['observationSolution'],
+        });
+      }
+    } else {
+      if (session.sourceAsset === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A non-empty ObservationSession must carry a SourceAsset.',
+          path: ['sourceAsset'],
+        });
+      }
+      if (session.observationSolution === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A non-empty ObservationSession must carry an ObservationSolution.',
+          path: ['observationSolution'],
+        });
+      }
+    }
+  });
 export type ObservationSession = z.infer<typeof ObservationSessionSchema>;
