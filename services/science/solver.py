@@ -21,14 +21,18 @@ from services.science.catalog import (
     unit_vector_to_ra_dec,
 )
 from services.science.detector import (
+    InjectionRecoveryBin,
+    InjectionRecoveryReport,
     _build_gaussian_psf_kernel,
     _estimate_background_and_noise,
     _estimate_subpixel_shift_phase_corr,
     _extract_registration_signal,
     _to_luma_2d,
     detect_point_sources,
+    evaluate_injection_recovery,
     render_synthetic_starfield,
     stack_video_frames_for_calibration,
+    verify_candidates_on_original_pixels,
 )
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 from services.science.phone_photo_solver import (

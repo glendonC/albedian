@@ -4,6 +4,7 @@ and synthetic starfield rendering.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import math
 from typing import Sequence
 
@@ -78,6 +79,117 @@ def _build_gaussian_psf_kernel(sigma_px: float = 1.15, radius: int = 3) -> np.nd
     return kernel / max(norm, 1e-12)
 
 
+@dataclass(frozen=True)
+class InjectionRecoveryBin:
+    """Completeness measured in one injected-SNR bin."""
+
+    snr_min: float
+    snr_max: float
+    injected_count: int
+    recovered_count: int
+    completeness: float
+
+
+@dataclass(frozen=True)
+class InjectionRecoveryReport:
+    """Completeness, false-positive rate, and centroid accuracy from synthetic PSF injection-recovery."""
+
+    injected_count: int
+    recovered_count: int
+    baseline_detection_count: int
+    spurious_count: int
+    completeness: float
+    false_positive_rate: float
+    median_centroid_error_px: float | None
+    bins: tuple[InjectionRecoveryBin, ...]
+
+
+def _measure_peak_photometry(
+    residual: np.ndarray,
+    snr_map: np.ndarray,
+    sigma_eff: float,
+    psf_core3: np.ndarray,
+    psf_core3_norm: float,
+    y0: int,
+    x0: int,
+    snr_threshold: float,
+    asset_id: str | None,
+    frame_time_sec: float,
+    *,
+    allow_bright_impulse: bool = True,
+) -> SourceDetection | None:
+    """Measure forced aperture and PSF-coherence photometry at `(y0, x0)` on `residual`."""
+    patch3 = residual[y0 - 1 : y0 + 2, x0 - 1 : x0 + 2]
+    patch5 = residual[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
+
+    peak_raw_snr = float(residual[y0, x0] / sigma_eff)
+    matched_snr = float(snr_map[y0, x0])
+    signed_ap3_snr = float(np.sum(patch3) / (3.0 * sigma_eff))
+
+    cardinal_vals = [
+        residual[y0 - 1, x0],
+        residual[y0 + 1, x0],
+        residual[y0, x0 - 1],
+        residual[y0, x0 + 1],
+    ]
+    cardinal_pos = sum(1 for v in cardinal_vals if v > 0.65 * sigma_eff)
+    cardinal_strong = sum(1 for v in cardinal_vals if v > 1.25 * sigma_eff)
+
+    patch3_pos = np.maximum(0.0, patch3)
+    patch3_norm = float(np.linalg.norm(patch3_pos))
+    psf_corr = (
+        float(np.sum(patch3_pos * psf_core3)) / (patch3_norm * psf_core3_norm)
+        if patch3_norm > 1e-9
+        else 0.0
+    )
+
+    is_real_psf = (
+        peak_raw_snr >= max(2.3, 0.58 * snr_threshold)
+        and signed_ap3_snr >= max(3.6, 0.92 * snr_threshold)
+        and cardinal_pos == 4
+        and cardinal_strong >= 3
+        and psf_corr >= 0.84
+    )
+    is_bright_impulse = allow_bright_impulse and (peak_raw_snr >= 14.0)
+    if not (is_real_psf or is_bright_impulse):
+        return None
+
+    weights = np.maximum(0.0, patch5 - 0.75 * sigma_eff)
+    total_w = float(np.sum(weights))
+    if total_w <= 1e-9:
+        weights = np.maximum(0.0, patch5)
+        total_w = float(np.sum(weights))
+    if total_w <= 1e-9:
+        return None
+
+    pos_patch5 = np.maximum(0.0, patch5)
+    flux = float(np.sum(weights))
+    peak_val = float(np.max(pos_patch5))
+    peak_ratio = peak_val / max(float(np.sum(pos_patch5)), 1e-9)
+
+    yy, xx = np.mgrid[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
+    cx = float(np.sum(xx * weights) / total_w)
+    cy = float(np.sum(yy * weights) / total_w)
+
+    r2_moment = float(np.sum(weights * ((xx - cx) ** 2 + (yy - cy) ** 2)) / total_w)
+    fwhm_px = 1.6651092223153954 * math.sqrt(max(0.0, r2_moment))
+
+    snr_final = matched_snr
+    centroid_unc = max(0.03, min(1.5, fwhm_px / max(snr_final, 1.0)))
+
+    return SourceDetection(
+        x_px=cx,
+        y_px=cy,
+        flux=flux,
+        snr=snr_final,
+        fwhm_px=fwhm_px,
+        centroid_uncertainty_px=centroid_unc,
+        asset_id=asset_id,
+        frame_time_sec=frame_time_sec,
+        peak_to_total_ratio=peak_ratio,
+    )
+
+
 def detect_point_sources(
     image_luma: np.ndarray,
     sky_mask: np.ndarray | None = None,
@@ -134,80 +246,115 @@ def detect_point_sources(
 
     detections: list[SourceDetection] = []
     for y0, x0 in zip(peak_ys.tolist(), peak_xs.tolist()):
-        patch3 = residual[y0 - 1 : y0 + 2, x0 - 1 : x0 + 2]
-        patch5 = residual[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
-
-        peak_raw_snr = float(residual[y0, x0] / sigma_eff)
-        matched_snr = float(snr_map[y0, x0])
-        signed_ap3_snr = float(np.sum(patch3) / (3.0 * sigma_eff))
-
-        cardinal_vals = [
-            residual[y0 - 1, x0],
-            residual[y0 + 1, x0],
-            residual[y0, x0 - 1],
-            residual[y0, x0 + 1],
-        ]
-        cardinal_pos = sum(1 for v in cardinal_vals if v > 0.65 * sigma_eff)
-        cardinal_strong = sum(1 for v in cardinal_vals if v > 1.25 * sigma_eff)
-
-        patch3_pos = np.maximum(0.0, patch3)
-        patch3_norm = float(np.linalg.norm(patch3_pos))
-        psf_corr = (
-            float(np.sum(patch3_pos * psf_core3)) / (patch3_norm * psf_core3_norm)
-            if patch3_norm > 1e-9
-            else 0.0
+        det = _measure_peak_photometry(
+            residual,
+            snr_map,
+            sigma_eff,
+            psf_core3,
+            psf_core3_norm,
+            y0,
+            x0,
+            snr_threshold,
+            asset_id,
+            frame_time_sec,
+            allow_bright_impulse=True,
         )
-
-        is_real_psf = (
-            peak_raw_snr >= max(2.3, 0.58 * snr_threshold)
-            and signed_ap3_snr >= max(3.6, 0.92 * snr_threshold)
-            and cardinal_pos == 4
-            and cardinal_strong >= 3
-            and psf_corr >= 0.84
-        )
-        is_bright_impulse = peak_raw_snr >= 14.0
-        if not (is_real_psf or is_bright_impulse):
-            continue
-
-        weights = np.maximum(0.0, patch5 - 0.75 * sigma_eff)
-        total_w = float(np.sum(weights))
-        if total_w <= 1e-9:
-            weights = np.maximum(0.0, patch5)
-            total_w = float(np.sum(weights))
-        if total_w <= 1e-9:
-            continue
-
-        pos_patch5 = np.maximum(0.0, patch5)
-        flux = float(np.sum(weights))
-        peak_val = float(np.max(pos_patch5))
-        peak_ratio = peak_val / max(float(np.sum(pos_patch5)), 1e-9)
-
-        yy, xx = np.mgrid[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
-        cx = float(np.sum(xx * weights) / total_w)
-        cy = float(np.sum(yy * weights) / total_w)
-
-        r2_moment = float(np.sum(weights * ((xx - cx) ** 2 + (yy - cy) ** 2)) / total_w)
-        fwhm_px = 1.6651092223153954 * math.sqrt(max(0.0, r2_moment))
-
-        snr_final = matched_snr
-        centroid_unc = max(0.03, min(1.5, fwhm_px / max(snr_final, 1.0)))
-
-        detections.append(
-            SourceDetection(
-                x_px=cx,
-                y_px=cy,
-                flux=flux,
-                snr=snr_final,
-                fwhm_px=fwhm_px,
-                centroid_uncertainty_px=centroid_unc,
-                asset_id=asset_id,
-                frame_time_sec=frame_time_sec,
-                peak_to_total_ratio=peak_ratio,
-            )
-        )
+        if det is not None:
+            detections.append(det)
 
     detections.sort(key=lambda d: d.snr, reverse=True)
     return detections
+
+
+def verify_candidates_on_original_pixels(
+    original_image: np.ndarray,
+    proposed_candidates: Sequence[SourceDetection | tuple[float, float]],
+    *,
+    sky_mask: np.ndarray | None = None,
+    snr_threshold: float = 3.5,
+    asset_id: str | None = None,
+    frame_time_sec: float = 0.0,
+) -> list[SourceDetection]:
+    """Verify candidate positions proposed by a processed `MediaVariant` via forced photometry on `original_image`.
+
+    A source seen only in a denoised or sharpened variant is rejected and never becomes `observed`.
+    Every surviving `SourceDetection` takes its sub-pixel centroid, flux, FWHM, and SNR strictly from
+    `original_image`.
+    """
+    luma = _to_luma_2d(original_image)
+    h, w = luma.shape
+    if h < 12 or w < 12 or not proposed_candidates:
+        return []
+
+    bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask)
+    residual = luma - bg
+    max_res = float(np.max(residual))
+    if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
+        return []
+
+    sigma_eff = max(sigma_bg, 1e-3)
+    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
+    matched = ndimage.convolve(residual, kernel, mode="nearest")
+    snr_map = matched / sigma_eff
+    effective_snr_gate = max(float(snr_threshold), 4.75)
+
+    mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
+    psf_core3 = kernel[2:5, 2:5]
+    psf_core3_norm = float(np.linalg.norm(psf_core3))
+    margin = 4
+
+    seen_peaks: set[tuple[int, int]] = set()
+    verified: list[SourceDetection] = []
+
+    for cand in proposed_candidates:
+        if isinstance(cand, SourceDetection):
+            cand_x, cand_y = float(cand.x_px), float(cand.y_px)
+            resolved_asset_id = asset_id if asset_id is not None else cand.asset_id
+        else:
+            cand_x, cand_y = float(cand[0]), float(cand[1])
+            resolved_asset_id = asset_id
+
+        xc, yc = int(round(cand_x)), int(round(cand_y))
+        if not (margin <= xc < w - margin and margin <= yc < h - margin):
+            continue
+
+        y_lo, y_hi = max(margin, yc - 2), min(h - margin, yc + 3)
+        x_lo, x_hi = max(margin, xc - 2), min(w - margin, xc + 3)
+        win = snr_map[y_lo:y_hi, x_lo:x_hi]
+        if win.size == 0:
+            continue
+        wy, wx = np.unravel_index(int(np.argmax(win)), win.shape)
+        y0, x0 = y_lo + int(wy), x_lo + int(wx)
+
+        if (y0, x0) in seen_peaks:
+            continue
+        if mask_bool is not None and not bool(mask_bool[y0, x0]):
+            continue
+        if float(snr_map[y0, x0]) < effective_snr_gate or float(residual[y0, x0]) <= 0.0:
+            continue
+        # Require `(y0, x0)` to be a genuine 3x3 peak on the original SNR map
+        if float(snr_map[y0, x0]) < float(np.max(snr_map[y0 - 1 : y0 + 2, x0 - 1 : x0 + 2])):
+            continue
+
+        det = _measure_peak_photometry(
+            residual,
+            snr_map,
+            sigma_eff,
+            psf_core3,
+            psf_core3_norm,
+            y0,
+            x0,
+            snr_threshold,
+            resolved_asset_id,
+            frame_time_sec,
+            allow_bright_impulse=False,
+        )
+        if det is not None and not det.is_hot_pixel_impulse:
+            seen_peaks.add((y0, x0))
+            verified.append(det)
+
+    verified.sort(key=lambda d: d.snr, reverse=True)
+    return verified
 
 
 def _extract_registration_signal(
@@ -429,3 +576,176 @@ def render_synthetic_starfield(
         image = np.where(mask_bool, image, background_level * 0.35)
 
     return np.clip(image, 0.0, None), wcs, projected_in_frame
+
+
+def evaluate_injection_recovery(
+    base_image: np.ndarray,
+    *,
+    variant_image: np.ndarray | None = None,
+    injected_snrs: Sequence[float] = (3.0, 4.5, 6.0, 8.0, 12.0, 18.0),
+    n_per_snr: int = 8,
+    psf_sigma_px: float = 1.15,
+    snr_threshold: float = 3.5,
+    match_radius_px: float = 2.0,
+    seed: int = 42,
+    sky_mask: np.ndarray | None = None,
+) -> InjectionRecoveryReport:
+    """Measure point-source completeness and false-positive rate via synthetic PSF injection-recovery.
+
+    When `variant_image` is provided, candidates are proposed on the variant with injected sources and must
+    pass `verify_candidates_on_original_pixels` on the original image with the same injected sources, so any
+    variant-only artifact present only in `variant_image` is tested against forced photometry on the original.
+    """
+    luma = _to_luma_2d(base_image)
+    h, w = luma.shape
+    bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask)
+    sigma_eff = max(sigma_bg, 1e-3)
+    res_base = luma - bg
+
+    baseline_dets = detect_point_sources(luma, sky_mask=sky_mask, snr_threshold=snr_threshold)
+    mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
+
+    rng = np.random.default_rng(seed)
+    total_needed = len(injected_snrs) * n_per_snr
+    margin = 12
+    chosen_sites: list[tuple[float, float]] = []
+
+    for _ in range(total_needed * 80):
+        if len(chosen_sites) >= total_needed:
+            break
+        cx = float(rng.uniform(margin, w - margin - 1))
+        cy = float(rng.uniform(margin, h - margin - 1))
+        ix, iy = int(round(cx)), int(round(cy))
+        if mask_bool is not None and not bool(mask_bool[iy, ix]):
+            continue
+        if any(math.hypot(cx - d.x_px, cy - d.y_px) < 10.0 for d in baseline_dets):
+            continue
+        if any(math.hypot(cx - sx, cy - sy) < 11.0 for sx, sy in chosen_sites):
+            continue
+        patch = np.abs(res_base[iy - 3 : iy + 4, ix - 3 : ix + 4])
+        if patch.size > 0 and float(np.max(patch)) > 3.2 * sigma_eff:
+            continue
+        chosen_sites.append((cx, cy))
+
+    # Fallback without quiet-patch restriction if frame is crowded
+    for _ in range(total_needed * 80):
+        if len(chosen_sites) >= total_needed:
+            break
+        cx = float(rng.uniform(margin, w - margin - 1))
+        cy = float(rng.uniform(margin, h - margin - 1))
+        ix, iy = int(round(cx)), int(round(cy))
+        if mask_bool is not None and not bool(mask_bool[iy, ix]):
+            continue
+        if any(math.hypot(cx - d.x_px, cy - d.y_px) < 8.0 for d in baseline_dets):
+            continue
+        if any(math.hypot(cx - sx, cy - sy) < 9.0 for sx, sy in chosen_sites):
+            continue
+        chosen_sites.append((cx, cy))
+
+    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
+    grid = np.arange(-3, 4, dtype=np.float64)
+    gxx, gyy = np.meshgrid(grid, grid)
+    unit_psf = np.exp(-(gxx * gxx + gyy * gyy) / (2.0 * psf_sigma_px * psf_sigma_px))
+    unit_psf /= max(float(np.sum(unit_psf)), 1e-12)
+    coupling = max(float(np.sum(unit_psf * kernel)), 1e-6)
+
+    injected_orig = luma.copy()
+    injected_var = _to_luma_2d(variant_image).copy() if variant_image is not None else None
+
+    injected_records: list[tuple[int, float, float, float]] = []
+    site_idx = 0
+    for bin_idx, snr_val in enumerate(injected_snrs):
+        star_flux = float(snr_val) * sigma_eff / coupling
+        for _ in range(n_per_snr):
+            if site_idx >= len(chosen_sites):
+                break
+            sx, sy = chosen_sites[site_idx]
+            site_idx += 1
+            x0, y0 = int(round(sx)), int(round(sy))
+            r_win = 6
+            y_slice = slice(max(0, y0 - r_win), min(h, y0 + r_win + 1))
+            x_slice = slice(max(0, x0 - r_win), min(w, x0 + r_win + 1))
+            yy, xx = np.mgrid[y_slice, x_slice]
+            psf = np.exp(-((xx - sx) ** 2 + (yy - sy) ** 2) / (2.0 * psf_sigma_px * psf_sigma_px))
+            psf /= max(float(np.sum(psf)), 1e-12)
+            injected_orig[y_slice, x_slice] += star_flux * psf
+            if injected_var is not None:
+                injected_var[y_slice, x_slice] += star_flux * psf
+            injected_records.append((bin_idx, float(snr_val), sx, sy))
+
+    if injected_var is not None:
+        proposals = detect_point_sources(injected_var, sky_mask=sky_mask, snr_threshold=snr_threshold)
+        post_dets = verify_candidates_on_original_pixels(
+            injected_orig, proposals, sky_mask=sky_mask, snr_threshold=snr_threshold
+        )
+    else:
+        post_dets = detect_point_sources(injected_orig, sky_mask=sky_mask, snr_threshold=snr_threshold)
+
+    used_det_indices: set[int] = set()
+    # Mark pre-existing baseline detections first
+    for b_det in baseline_dets:
+        best_d: int | None = None
+        best_dist = match_radius_px
+        for d_idx, p_det in enumerate(post_dets):
+            if d_idx in used_det_indices:
+                continue
+            dist = math.hypot(p_det.x_px - b_det.x_px, p_det.y_px - b_det.y_px)
+            if dist <= best_dist:
+                best_dist = dist
+                best_d = d_idx
+        if best_d is not None:
+            used_det_indices.add(best_d)
+
+    bin_injected = [0 for _ in injected_snrs]
+    bin_recovered = [0 for _ in injected_snrs]
+    centroid_errors: list[float] = []
+
+    for bin_idx, _, sx, sy in injected_records:
+        bin_injected[bin_idx] += 1
+        best_d = None
+        best_dist = match_radius_px
+        for d_idx, p_det in enumerate(post_dets):
+            if d_idx in used_det_indices:
+                continue
+            dist = math.hypot(p_det.x_px - sx, p_det.y_px - sy)
+            if dist <= best_dist:
+                best_dist = dist
+                best_d = d_idx
+        if best_d is not None:
+            used_det_indices.add(best_d)
+            bin_recovered[bin_idx] += 1
+            centroid_errors.append(best_dist)
+
+    total_injected = sum(bin_injected)
+    total_recovered = sum(bin_recovered)
+    spurious_count = sum(1 for d_idx in range(len(post_dets)) if d_idx not in used_det_indices)
+    non_baseline_total = total_recovered + spurious_count
+    false_positive_rate = float(spurious_count / non_baseline_total) if non_baseline_total > 0 else 0.0
+    completeness = float(total_recovered / total_injected) if total_injected > 0 else 0.0
+    median_err = float(np.median(centroid_errors)) if centroid_errors else None
+
+    bins_out: list[InjectionRecoveryBin] = []
+    for idx, snr_val in enumerate(injected_snrs):
+        inj_c = bin_injected[idx]
+        rec_c = bin_recovered[idx]
+        bins_out.append(
+            InjectionRecoveryBin(
+                snr_min=float(snr_val),
+                snr_max=float(snr_val),
+                injected_count=inj_c,
+                recovered_count=rec_c,
+                completeness=float(rec_c / inj_c) if inj_c > 0 else 0.0,
+            )
+        )
+
+    return InjectionRecoveryReport(
+        injected_count=total_injected,
+        recovered_count=total_recovered,
+        baseline_detection_count=len(baseline_dets),
+        spurious_count=spurious_count,
+        completeness=completeness,
+        false_positive_rate=false_positive_rate,
+        median_centroid_error_px=median_err,
+        bins=tuple(bins_out),
+    )
+
