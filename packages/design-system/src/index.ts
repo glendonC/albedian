@@ -425,13 +425,6 @@ export type CoordinateSpaceBadgeLabel =
   | 'SPACE: EXPLANATORY SPECIMEN'
   | 'SPACE: GEODESIC MODEL';
 
-export type OperationalInstrumentStatusLabel =
-  | 'MATCHED'
-  | 'REGISTERED'
-  | 'PROPAGATED'
-  | 'RECONSTRUCTED'
-  | 'NO COVERAGE';
-
 /**
  * Resolves the active Coordinate Space Badge per Track 1 & Track 14 of the Master Brief.
  */
@@ -449,54 +442,5 @@ export function resolveCoordinateSpaceBadge(params: {
     return 'SPACE: GEODESIC MODEL';
   }
   return 'SPACE: ASTRONOMICAL (SKY / ICRS)';
-}
-
-/**
- * Resolves the SpaceX / Mielke Operational Instrument Status Badge per Track 3 of the Master Brief.
- */
-export function resolveOperationalInstrumentStatus(params: {
-  solutionStatus:
-    | 'pending'
-    | 'calibrated'
-    | 'approximate'
-    | 'predicted_only'
-    | 'unresolved'
-    | 'ambiguous';
-  selectedEvidenceClass?: EvidenceClass;
-  hasCatalogMatch?: boolean;
-  spatialViewMode: 'source_2d' | 'registered_sky' | 'sky_2d' | 'catalog_3d' | 'modeled_epoch';
-  lensMode: 'clean_aperture' | 'isometric_strata' | 'geodesic_exploded';
-  simulationYear: number;
-  captureYear: number;
-}): { label: OperationalInstrumentStatusLabel; colorHex: string } {
-  if (
-    params.solutionStatus === 'predicted_only' ||
-    params.solutionStatus === 'unresolved' ||
-    params.solutionStatus === 'pending' ||
-    params.solutionStatus === 'ambiguous'
-  ) {
-    return { label: 'NO COVERAGE', colorHex: ALBEDIAN_COLORS.semanticDanger };
-  }
-  if (
-    params.spatialViewMode === 'catalog_3d' ||
-    params.lensMode === 'isometric_strata'
-  ) {
-    return { label: 'RECONSTRUCTED', colorHex: ALBEDIAN_COLORS.accentSimulated };
-  }
-  if (
-    params.solutionStatus === 'approximate' ||
-    params.spatialViewMode === 'modeled_epoch' ||
-    params.simulationYear !== params.captureYear
-  ) {
-    return { label: 'PROPAGATED', colorHex: ALBEDIAN_COLORS.accentPredicted };
-  }
-  if (
-    params.solutionStatus === 'calibrated' &&
-    params.selectedEvidenceClass === 'observed' &&
-    !params.hasCatalogMatch
-  ) {
-    return { label: 'REGISTERED', colorHex: ALBEDIAN_COLORS.starlightBone };
-  }
-  return { label: 'MATCHED', colorHex: ALBEDIAN_COLORS.accentCatalog };
 }
 

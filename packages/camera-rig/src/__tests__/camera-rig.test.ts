@@ -138,13 +138,33 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
           });
 
           expect(state.anchorDriftPx).toBeLessThan(1e-5);
-          expect(state.anchorDriftPx).toBeLessThan(0.01);
           expect(Math.abs(state.projectedAnchorNdc[0] - targetNdcX)).toBeLessThan(
             1e-12
           );
           expect(Math.abs(state.projectedAnchorNdc[1] - targetNdcY)).toBeLessThan(
             1e-12
           );
+
+          const easedProgress = progress * progress * (3 - 2 * progress);
+          const expectedQuat = slerpQuaternion(qStart, qEnd, easedProgress);
+          const expectedFov = interpolateLogTanFov(fovStartDeg, fovEndDeg, easedProgress);
+          expect(state.fovVerticalDeg).toBeCloseTo(expectedFov, 12);
+          for (let k = 0; k < 4; k++) {
+            expect(state.quaternion[k]).toBeCloseTo(expectedQuat[k]!, 12);
+          }
+
+          const anchorDir = raDecToUnitVector(anchorRaDeg, anchorDecDeg);
+          const independentProj = projectWorldPointWithCamera(
+            anchorDir,
+            [0, 0, 0],
+            state.quaternion,
+            state.fovVerticalDeg,
+            16 / 9,
+            state.frustumShiftNdc
+          );
+          expect(independentProj.visible).toBe(true);
+          expect(Math.abs(independentProj.ndcX - targetNdcX)).toBeLessThan(1e-12);
+          expect(Math.abs(independentProj.ndcY - targetNdcY)).toBeLessThan(1e-12);
         }
       ),
       { numRuns: 200 }
@@ -257,7 +277,7 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
     );
   });
 
-  it('propagates catalog proper motion and radial velocity across epochs and queries sightline cones', () => {
+  it('propagates catalog proper motion and radial velocity from coordinateEpoch and refuses rows without a distance', () => {
     const siriusRef: CatalogReference = {
       id: 'cat-sirius',
       provider: 'Hipparcos',
@@ -267,7 +287,7 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
       bayerDesignation: 'Alpha CMa',
       constellation: 'Canis Major',
       objectType: 'star',
-      coordinateEpoch: 'J2026.0',
+      coordinateEpoch: 'J1991.25',
       raDeg: 101.287,
       decDeg: -16.716,
       apparentMagnitude: -1.46,
@@ -283,20 +303,67 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
       citation: 'Hipparcos New Reduction (van Leeuwen 2007)',
     };
 
-    const atRef = propagateCatalogPositionToYear(siriusRef, 2026, 2026);
-    expect(atRef.raDeg).toBeCloseTo(siriusRef.raDeg, 8);
-    expect(atRef.decDeg).toBeCloseTo(siriusRef.decDeg, 8);
+    const atEpoch = propagateCatalogPositionToYear(siriusRef, 1991.25);
+    expect(atEpoch).not.toBeNull();
+    expect(atEpoch!.raDeg).toBeCloseTo(siriusRef.raDeg, 8);
+    expect(atEpoch!.decDeg).toBeCloseTo(siriusRef.decDeg, 8);
+    expect(Math.hypot(...atEpoch!.cartesianParsec)).toBeCloseTo(2.64, 9);
 
-    const future = propagateCatalogPositionToYear(siriusRef, 5026, 2026);
+    const at2026 = propagateCatalogPositionToYear(siriusRef, 2026);
+    expect(at2026).not.toBeNull();
+    // Sirius has negative proper motion in RA and Dec and negative radial velocity (-5.5 km/s)
+    expect(at2026!.raDeg).toBeLessThan(siriusRef.raDeg);
+    expect(at2026!.decDeg).toBeLessThan(siriusRef.decDeg);
+    expect(Math.hypot(...at2026!.cartesianParsec)).toBeLessThan(2.64);
+    const sepFrom1991Deg = angularSeparationDeg(
+      siriusRef.raDeg,
+      siriusRef.decDeg,
+      at2026!.raDeg,
+      at2026!.decDeg
+    );
+    // ~1.339 arcsec/yr * 34.75 yr ≈ 46.5 arcsec ≈ 0.0129 deg
+    expect(sepFrom1991Deg).toBeGreaterThan(0.012);
+    expect(sepFrom1991Deg).toBeLessThan(0.014);
+
+    const future = propagateCatalogPositionToYear(siriusRef, 4991.25);
+    expect(future).not.toBeNull();
     const sepDeg = angularSeparationDeg(
       siriusRef.raDeg,
       siriusRef.decDeg,
-      future.raDeg,
-      future.decDeg
+      future!.raDeg,
+      future!.decDeg
     );
     // ~1.34 arcsec/yr * 3000 yr ≈ 4020 arcsec ≈ 1.116 deg
     expect(sepDeg).toBeGreaterThan(1.0);
     expect(sepDeg).toBeLessThan(1.25);
+
+    const { bailerJonesDistancePc: _omitBj, ...withoutDistance } = siriusRef;
+    expect(propagateCatalogPositionToYear(withoutDistance, 2026)).toBeNull();
+    expect(
+      propagateCatalogPositionToYear({ ...withoutDistance, parallaxMas: 0 }, 2026)
+    ).toBeNull();
+    expect(
+      propagateCatalogPositionToYear(
+        { ...withoutDistance, parallaxMas: -1000, radialVelocityKmS: 200 },
+        12000
+      )
+    ).toBeNull();
+    expect(
+      propagateCatalogPositionToYear(
+        { ...siriusRef, coordinateEpoch: 'unrecorded' },
+        2026
+      )
+    ).toBeNull();
+
+    const fromParallax = propagateCatalogPositionToYear(
+      { ...withoutDistance, coordinateEpoch: 'J2016.0', parallaxMas: 379.21 },
+      2016
+    );
+    expect(fromParallax).not.toBeNull();
+    expect(Math.hypot(...fromParallax!.cartesianParsec)).toBeCloseTo(
+      1000 / 379.21,
+      9
+    );
 
     const makeFinding = (
       id: string,
@@ -356,6 +423,61 @@ describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
     );
     expect(cone[1]!.distanceFromObserverPc).toBeLessThan(
       cone[2]!.distanceFromObserverPc
+    );
+  });
+
+  it('PBT-PROPAGATE-1: propagateCatalogPositionToYear uses coordinateEpoch and refuses rows without a distance', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(
+          { label: 'J1991.25', year: 1991.25 },
+          { label: 'J2000.0', year: 2000.0 },
+          { label: 'J2016.0', year: 2016.0 }
+        ),
+        fc.double({ min: 0, max: 359.999, noNaN: true }),
+        fc.double({ min: -85, max: 85, noNaN: true }),
+        fc.double({ min: 1.5, max: 2000, noNaN: true }),
+        fc.double({ min: -500, max: 500, noNaN: true }),
+        fc.double({ min: -500, max: 500, noNaN: true }),
+        fc.double({ min: -100, max: 100, noNaN: true }),
+        (epoch, raDeg, decDeg, distPc, pmRa, pmDec, rvKmS) => {
+          const ref: CatalogReference = {
+            id: 'cat-pbt',
+            provider: 'Gaia DR3',
+            releaseVersion: 'DR3',
+            catalogSourceId: 'Gaia DR3 1',
+            commonName: 'Test Star',
+            constellation: 'Ori',
+            objectType: 'star',
+            coordinateEpoch: epoch.label,
+            raDeg,
+            decDeg,
+            apparentMagnitude: 5.0,
+            properMotionRaMasYr: pmRa,
+            properMotionDecMasYr: pmDec,
+            radialVelocityKmS: rvKmS,
+            bailerJonesDistancePc: {
+              lower: distPc * 0.9,
+              median: distPc,
+              upper: distPc * 1.1,
+              method: 'photogeometric_bailer_jones_edr3',
+            },
+            citation: 'Gaia Collaboration (2023)',
+          };
+
+          const atEpoch = propagateCatalogPositionToYear(ref, epoch.year);
+          expect(atEpoch).not.toBeNull();
+          const sepArcsec =
+            angularSeparationDeg(raDeg, decDeg, atEpoch!.raDeg, atEpoch!.decDeg) *
+            3600;
+          expect(sepArcsec).toBeLessThan(1e-6);
+          expect(Math.hypot(...atEpoch!.cartesianParsec)).toBeCloseTo(distPc, 9);
+
+          const { bailerJonesDistancePc: _omit, ...noDist } = ref;
+          expect(propagateCatalogPositionToYear(noDist, epoch.year)).toBeNull();
+        }
+      ),
+      { numRuns: 150 }
     );
   });
 });

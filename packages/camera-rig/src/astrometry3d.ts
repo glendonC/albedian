@@ -30,26 +30,57 @@ export interface RendererAdapterBenchmark {
   surveyFallbackAdapter: 'aladin_wwt_bridge';
 }
 
+function parseCoordinateEpochYear(coordinateEpoch: string): number | null {
+  const match = /^J?([+-]?\d+(?:\.\d+)?)$/i.exec(coordinateEpoch.trim());
+  if (!match) {
+    return null;
+  }
+  const year = Number(match[1]);
+  return Number.isFinite(year) ? year : null;
+}
+
 /**
  * Propagates a catalog object's 3D ICRS position and apparent sky coordinates
- * from `referenceYearCE` (default 2026) to `targetYearCE` using proper motion
- * (`properMotionRaMasYr`, `properMotionDecMasYr`) and radial velocity (`radialVelocityKmS`).
+ * from its `coordinateEpoch` (or an explicit `referenceYearCE`) to `targetYearCE`
+ * using proper motion (`properMotionRaMasYr`, `properMotionDecMasYr`) and radial
+ * velocity (`radialVelocityKmS`). Returns `null` when the reference epoch cannot
+ * be read or when the row has no positive distance estimate (`bailerJonesDistancePc.median`
+ * or positive `parallaxMas`): a missing distance is not 100 pc, and a missing
+ * reference epoch is not 2026.
  */
 export function propagateCatalogPositionToYear(
   catalogRef: CatalogReference,
   targetYearCE: number,
-  referenceYearCE = 2026
+  referenceYearCE?: number
 ): {
   raDeg: number;
   decDeg: number;
   cartesianParsec: Vec3;
-} {
-  const dtYears = targetYearCE - referenceYearCE;
+} | null {
+  if (!Number.isFinite(targetYearCE)) {
+    return null;
+  }
+  const refYear =
+    referenceYearCE !== undefined
+      ? referenceYearCE
+      : parseCoordinateEpochYear(catalogRef.coordinateEpoch);
+  if (refYear === null || !Number.isFinite(refYear)) {
+    return null;
+  }
+
+  const bjMedian = catalogRef.bailerJonesDistancePc?.median;
+  const parallaxMas = catalogRef.parallaxMas;
   const r0Pc =
-    catalogRef.bailerJonesDistancePc?.median ??
-    (catalogRef.parallaxMas && catalogRef.parallaxMas > 0
-      ? 1000 / catalogRef.parallaxMas
-      : 100);
+    bjMedian !== undefined && Number.isFinite(bjMedian) && bjMedian > 0
+      ? bjMedian
+      : parallaxMas !== undefined && Number.isFinite(parallaxMas) && parallaxMas > 0
+        ? 1000 / parallaxMas
+        : null;
+  if (r0Pc === null) {
+    return null;
+  }
+
+  const dtYears = targetYearCE - refYear;
 
   const { e0: uRadial, eEast: uAlpha, eNorth: uDelta } = getTangentBasis(
     catalogRef.raDeg,
@@ -61,6 +92,9 @@ export function propagateCatalogPositionToYear(
   const vrPcYr = (catalogRef.radialVelocityKmS ?? 0) * KM_S_TO_PC_YR;
 
   const radialDispPc = r0Pc + vrPcYr * dtYears;
+  if (radialDispPc <= 0) {
+    return null;
+  }
   const eastDispPc = r0Pc * pmRaRadYr * dtYears;
   const northDispPc = r0Pc * pmDecRadYr * dtYears;
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as designSystem from '../index.js';
 import {
   ALBEDIAN_COLORS,
   ALBEDIAN_SPACING,
@@ -107,5 +108,9 @@ describe('@albedian/design-system — Tokens, Contrast, Markers, Motion & Audio 
     });
     expect(spacePaused.sourceMonitorGain).toBe(0);
     expect(spacePaused.sourcePlaybackAllowed).toBe(false);
+  });
+
+  it('does not export the unused operational instrument status helper', () => {
+    expect('resolveOperationalInstrumentStatus' in designSystem).toBe(false);
   });
 });
