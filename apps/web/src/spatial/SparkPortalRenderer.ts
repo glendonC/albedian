@@ -2,36 +2,38 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import {
-  PackedSplats,
-  SparkControls,
-  SparkRenderer,
-  SparkXr,
-  SplatMesh,
-} from '@sparkjsdev/spark';
+import { SparkControls, SparkRenderer, SparkXr, type SplatMesh } from '@sparkjsdev/spark';
 import type { RenderLayerSet } from '@albedian/contracts';
 import { cameraSkyPose } from './cameraSkyPose.js';
 import type { CameraSkyPose } from './cosmosRenderer.js';
-import {
-  CatalogStarField,
-  DEFAULT_LIMITING_MAGNITUDE,
-  type CatalogStarFieldStats,
-} from './catalogStars/index.js';
+import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStats } from './catalogStars/index.js';
 import { webglRenderLayersFor } from './webglRenderLayers.js';
-import {
-  createOriginCameraFrustumIndicator,
-  updateOriginFrustumContinuity,
-} from './referenceFrameContinuity.js';
-import { loadPanoramaRegistration, sceneToPanoramaRows } from './sky/skyRegistration.js';
+import { createOriginCameraFrustumIndicator } from './referenceFrameContinuity.js';
 import { centreOnCamera } from './skyMounts.js';
 import {
-  BRUNETON_ATMO_GLSL_CHUNK,
-  BRUNETON_ATMO_LUT_URL,
-  buildAnisotropicLocalBubbleSplatMesh,
-} from './volumetricSplatsAndLut.js';
+  createSkyDomeUniforms, createCinemaOpticsUniforms, createCinemaOpticsPass,
+  createGlobalPhotorealisticSkyDomeMesh, loadAstronomicalSceneTextures,
+  type SkyDomeUniforms, type CinemaOpticsUniforms,
+} from './webgl/skyDomeAndCinemaShader.js';
+import {
+  createEarthUniforms, createMoonUniforms, buildCislunarRegimeGroup,
+  type EarthUniforms, type MoonUniforms,
+} from './webgl/cislunarRegime.js';
+import {
+  createLocalBubbleUniforms, buildSolarNeighborhoodRegimeGroup, applyTargetAppearanceToUniforms,
+  type LocalBubbleUniforms,
+} from './webgl/solarNeighborhoodRegime.js';
+import { createNebulaUniforms, buildDeepSkyRegimeGroup, type NebulaUniforms } from './webgl/deepSkyRegime.js';
+import {
+  createPlanetarySkyUniforms, buildPlanetarySurfaceRegimeGroup, createPlanetaryTerrainSplatMesh,
+  type PlanetarySkyUniforms, type PlanetaryTerrainPalette,
+} from './webgl/planetarySurfaceRegime.js';
+import {
+  resolveSkyTargetPosition, projectCatalogDirectionToScreen,
+  projectSkyWorldPointToScreen, computeCameraTelemetrySnapshot,
+} from './webgl/skyTargets.js';
 
 export type SpatialScaleRegime =
   | 'earth_capture'
@@ -41,16 +43,9 @@ export type SpatialScaleRegime =
   | 'planetary_surface';
 
 export const SCALE_REGIME_ORDER: SpatialScaleRegime[] = [
-  'earth_capture',
-  'cislunar',
-  'solar_neighborhood',
-  'deep_sky',
-  'planetary_surface',
+  'earth_capture', 'cislunar', 'solar_neighborhood', 'deep_sky', 'planetary_surface',
 ];
 
-/**
- * Continuous 3D positions along the Earth -> Cislunar -> Solar Neighborhood -> Deep-Sky -> Planetary Surface flight corridor.
- */
 const REGIME_CAMERA_ANCHORS: Record<SpatialScaleRegime, THREE.Vector3> = {
   earth_capture: new THREE.Vector3(0, 0, 0),
   cislunar: new THREE.Vector3(0, 42, -160),
@@ -59,14 +54,6 @@ const REGIME_CAMERA_ANCHORS: Record<SpatialScaleRegime, THREE.Vector3> = {
   planetary_surface: new THREE.Vector3(0, 210, -880),
 };
 
-type PlanetaryTerrainPalette = 'lunar_regolith' | 'exoplanet_terminator' | 'titan_methane';
-
-/**
- * SparkPortalRenderer
- *
- * Full-screen photorealistic WebGL2 + `@sparkjsdev/spark` 3D Gaussian Splatting (`SparkRenderer` + `SplatMesh`)
- * & WebXR Space Observatory Engine.
- */
 export class SparkPortalRenderer {
   private renderer: THREE.WebGLRenderer | null = null;
   private sparkRenderer: SparkRenderer | null = null;
@@ -77,8 +64,8 @@ export class SparkPortalRenderer {
   private localFrame: THREE.Group;
   private sparkControls: SparkControls | null = null;
   private sparkXr: SparkXr | null = null;
-  private textureLoader: THREE.TextureLoader;
-  private gltfLoader: GLTFLoader;
+  private textureLoader = new THREE.TextureLoader();
+  private gltfLoader = new GLTFLoader();
 
   private regimeGroups: Record<SpatialScaleRegime, THREE.Group> = {
     earth_capture: new THREE.Group(),
@@ -88,111 +75,45 @@ export class SparkPortalRenderer {
     planetary_surface: new THREE.Group(),
   };
 
-  private skyDomeUniforms: {
-    uMilkyWayTex: { value: THREE.Texture | null };
-    uSceneToPanorama: { value: THREE.Matrix3 };
-    uPanoramaOffsets: { value: THREE.Texture | null };
-    uPanoramaGeometry: { value: THREE.Vector3 };
-    uPanoramaOffsetDecode: { value: THREE.Vector2 };
-    uRestoration: { value: number };
-    uTime: { value: number };
-  };
-  private earthUniforms: {
-    uDayTex: { value: THREE.Texture | null };
-    uNightTex: { value: THREE.Texture | null };
-    uNormalTex: { value: THREE.Texture | null };
-    uSpecTex: { value: THREE.Texture | null };
-    uCloudsTex: { value: THREE.Texture | null };
-    uBrunetonLutTex: { value: THREE.Texture | null };
-    uSunDir: { value: THREE.Vector3 };
-    uTime: { value: number };
-  };
-  private moonUniforms: {
-    uAlbedoTex: { value: THREE.Texture | null };
-    uDispTex: { value: THREE.Texture | null };
-    uSunDir: { value: THREE.Vector3 };
-  };
-  private nebulaUniforms: {
-    uLupus3Tex: { value: THREE.Texture | null };
-    uTime: { value: number };
-    uIsBlackHole: { value: number };
-  };
-  private localBubbleUniforms: {
-    uTime: { value: number };
-    uWarpFactor: { value: number };
-    uCoolColor: { value: THREE.Vector3 };
-    uWarmColor: { value: THREE.Vector3 };
-    uHotColor: { value: THREE.Vector3 };
-  };
-  private planetarySkyUniforms: {
-    uTime: { value: number };
-    uAtmoZenith: { value: THREE.Vector3 };
-    uAtmoHorizon: { value: THREE.Vector3 };
-    uSunColor: { value: THREE.Vector3 };
-    uSunAngularRadius: { value: number };
-    uHasRings: { value: number };
-    uPaletteId: { value: number };
-    uBrunetonLutTex: { value: THREE.Texture | null };
-  };
-  private cinemaOpticsUniforms: {
-    tDiffuse: { value: THREE.Texture | null };
-    uTime: { value: number };
-    uWarpFactor: { value: number };
-  };
+  private skyDomeUniforms: SkyDomeUniforms = createSkyDomeUniforms();
+  private earthUniforms: EarthUniforms = createEarthUniforms();
+  private moonUniforms: MoonUniforms = createMoonUniforms();
+  private nebulaUniforms: NebulaUniforms = createNebulaUniforms();
+  private localBubbleUniforms: LocalBubbleUniforms = createLocalBubbleUniforms();
+  private planetarySkyUniforms: PlanetarySkyUniforms = createPlanetarySkyUniforms();
+  private cinemaOpticsUniforms: CinemaOpticsUniforms = createCinemaOpticsUniforms();
 
   private skyMoonMesh: THREE.Mesh | null = null;
   private cislunarMoonMesh: THREE.Mesh | null = null;
   private cislunarEarthMesh: THREE.Mesh | null = null;
   private betelgeuseMesh: THREE.Mesh | null = null;
   private localBubbleCavityGroup: THREE.Group | null = null;
-  /** The black hole's plane, drawn only in the black hole view. */
   private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
   private captureHorizonSplatMesh: SplatMesh | null = null;
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
-  private planetaryRingMesh: THREE.Mesh | null = null;
   private originFrustumGroup: THREE.Group | null = null;
-  // Gaia DR3 / Hipparcos 2007 catalog stars shared by every regime's sky sphere
   private catalogStars: CatalogStarField | null = null;
-  /** One star mount per regime; each is centred on the camera every frame, so the stars sit at infinity. */
   private readonly catalogStarMounts: THREE.Group[] = [];
 
-  // Unknown until a capture or the user supplies a location
   private observerLatDeg: number | null = null;
   private observerLonDeg: number | null = null;
-
   private activeRegime: SpatialScaleRegime = 'earth_capture';
   private flightState: {
-    active: boolean;
-    startPos: THREE.Vector3;
-    endPos: THREE.Vector3;
-    progress: number;
-    targetRegime: SpatialScaleRegime;
+    active: boolean; startPos: THREE.Vector3; endPos: THREE.Vector3;
+    progress: number; targetRegime: SpatialScaleRegime;
   } | null = null;
 
-  private lookTarget = {
-    yaw: 0,
-    pitch: 0,
-    curYaw: 0,
-    curPitch: 0,
-    velYaw: 0,
-    velPitch: 0,
-  };
+  private lookTarget = { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0, velYaw: 0, velPitch: 0 };
   private targetFov = 56;
   private curFov = 56;
   private showcaseMode = false;
   private onRegimeChange?: (regime: SpatialScaleRegime) => void;
   private rafId = 0;
-  // Timer replaces the Clock deprecated in r183; connected to the document so a hidden tab
-  // does not come back with one huge time step
   private timer = new THREE.Timer();
-  // Scene clock held at a fixed time for matched snapshots across renderers; null runs the timer
   private heldClockSec: number | null = null;
 
-  constructor(
-    container: HTMLElement,
-    onRegimeChange?: (regime: SpatialScaleRegime) => void
-  ) {
+  constructor(container: HTMLElement, onRegimeChange?: (regime: SpatialScaleRegime) => void) {
     this.onRegimeChange = onRegimeChange;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x010205);
@@ -209,85 +130,19 @@ export class SparkPortalRenderer {
       this.scene.add(this.regimeGroups[r]);
     }
 
-    this.textureLoader = new THREE.TextureLoader();
-    this.gltfLoader = new GLTFLoader();
-
-    this.skyDomeUniforms = {
-      uMilkyWayTex: { value: null },
-      // Set from eso0932a_registration.json before the panorama is bound (sky/skyRegistration.ts)
-      uSceneToPanorama: { value: new THREE.Matrix3() },
-      uPanoramaOffsets: { value: null },
-      // Image width and height in pixels, vertical offset in pixels
-      uPanoramaGeometry: { value: new THREE.Vector3(1, 1, 0) },
-      // Offset table codes per texel and bias
-      uPanoramaOffsetDecode: { value: new THREE.Vector2(1, 0) },
-      uRestoration: { value: 1.0 },
-      uTime: { value: 0.0 },
-    };
-    this.earthUniforms = {
-      uDayTex: { value: null },
-      uNightTex: { value: null },
-      uNormalTex: { value: null },
-      uSpecTex: { value: null },
-      uCloudsTex: { value: null },
-      uBrunetonLutTex: { value: null },
-      uSunDir: { value: new THREE.Vector3(0.68, 0.28, -0.58).normalize() },
-      uTime: { value: 0.0 },
-    };
-    this.moonUniforms = {
-      uAlbedoTex: { value: null },
-      uDispTex: { value: null },
-      uSunDir: { value: new THREE.Vector3(0.58, 0.22, 0.78).normalize() },
-    };
-    this.nebulaUniforms = {
-      uLupus3Tex: { value: null },
-      uTime: { value: 0.0 },
-      uIsBlackHole: { value: 0.0 },
-    };
-    this.localBubbleUniforms = {
-      uTime: { value: 0.0 },
-      uWarpFactor: { value: 0.0 },
-      uCoolColor: { value: new THREE.Vector3(0.28, 0.03, 0.005) },
-      uWarmColor: { value: new THREE.Vector3(0.92, 0.24, 0.03) },
-      uHotColor: { value: new THREE.Vector3(1.38, 0.78, 0.28) },
-    };
-    this.planetarySkyUniforms = {
-      uTime: { value: 0.0 },
-      uAtmoZenith: { value: new THREE.Vector3(0.01, 0.03, 0.08) },
-      uAtmoHorizon: { value: new THREE.Vector3(0.78, 0.28, 0.12) },
-      uSunColor: { value: new THREE.Vector3(1.25, 0.52, 0.22) },
-      uSunAngularRadius: { value: 0.095 },
-      uHasRings: { value: 0.0 },
-      uPaletteId: { value: 1.0 },
-      uBrunetonLutTex: { value: null },
-    };
-    this.cinemaOpticsUniforms = {
-      tDiffuse: { value: null },
-      uTime: { value: 0.0 },
-      uWarpFactor: { value: 0.0 },
-    };
-
     try {
       this.renderer = new THREE.WebGLRenderer({
-        antialias: false,
-        powerPreference: 'high-performance',
-        preserveDrawingBuffer: true,
+        antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true,
       });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.12;
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-      this.renderer.domElement.style.width = '100%';
-      this.renderer.domElement.style.height = '100%';
-      this.renderer.domElement.style.display = 'block';
+      Object.assign(this.renderer.domElement.style, { width: '100%', height: '100%', display: 'block' });
       container.appendChild(this.renderer.domElement);
 
-      // Instantiate true @sparkjsdev/spark 3D Gaussian Splatting Renderer
       this.sparkRenderer = new SparkRenderer({
-        renderer: this.renderer,
-        maxStdDev: Math.sqrt(8),
-        premultipliedAlpha: true,
-        sortRadial: true,
+        renderer: this.renderer, maxStdDev: Math.sqrt(8), premultipliedAlpha: true, sortRadial: true,
       });
       this.sparkRenderer.frustumCulled = false;
       this.localFrame.add(this.sparkRenderer);
@@ -295,73 +150,21 @@ export class SparkPortalRenderer {
       const width = container.clientWidth || 1600;
       const height = container.clientHeight || 1000;
       this.composer = new EffectComposer(this.renderer);
-      const renderPass = new RenderPass(this.scene, this.camera);
-      this.composer.addPass(renderPass);
-
-      this.bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(width, height),
-        0.64,
-        0.72,
-        0.60
-      );
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(width, height), 0.64, 0.72, 0.60);
       this.composer.addPass(this.bloomPass);
+      this.composer.addPass(createCinemaOpticsPass(this.cinemaOpticsUniforms));
+      this.composer.addPass(new OutputPass());
 
-      const cinemaPass = new ShaderPass({
-        uniforms: this.cinemaOpticsUniforms,
-        vertexShader: /* glsl */ `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          uniform sampler2D tDiffuse;
-          uniform float uTime;
-          uniform float uWarpFactor;
-          varying vec2 vUv;
-
-          void main() {
-            vec2 centered = vUv - 0.5;
-            float r2 = dot(centered, centered);
-
-            float caStrength = 0.0018 + uWarpFactor * 0.018;
-            vec2 caOffset = centered * r2 * caStrength;
-            float rCh = texture2D(tDiffuse, vUv + caOffset).r;
-            float gCh = texture2D(tDiffuse, vUv).g;
-            float bCh = texture2D(tDiffuse, vUv - caOffset).b;
-            vec3 baseCol = vec3(rCh, gCh, bCh);
-
-            vec3 anamorphicAccum = vec3(0.0);
-            for (int i = -4; i <= 4; i++) {
-              if (i == 0) continue;
-              float offset = float(i) * 0.018;
-              vec3 samp = texture2D(tDiffuse, vUv + vec2(offset, 0.0)).rgb;
-              float lum = dot(samp, vec3(0.299, 0.587, 0.114));
-              float brightMask = smoothstep(0.76, 1.35, lum);
-              float weight = exp(-abs(float(i)) * 0.55);
-              anamorphicAccum += samp * brightMask * weight;
-            }
-            vec3 anamorphicTint = anamorphicAccum * vec3(0.32, 0.58, 1.0) * 0.085;
-
-            float vignette = smoothstep(0.92, 0.18, r2);
-            vec3 finalCol = (baseCol + anamorphicTint) * mix(0.76, 1.0, vignette);
-            gl_FragColor = vec4(finalCol, 1.0);
-          }
-        `,
-      });
-      this.composer.addPass(cinemaPass);
-
-      const outputPass = new OutputPass();
-      this.composer.addPass(outputPass);
-
-      this.sparkControls = new SparkControls({
-        canvas: this.renderer.domElement,
-      });
-
+      this.sparkControls = new SparkControls({ canvas: this.renderer.domElement });
       this.catalogStars = new CatalogStarField();
-      this.loadAstronomicalTextures();
-      this.buildGlobalPhotorealisticSkyDome();
+      // Binds sky, body, and Bruneton LUT (sampleBrunetonAtmoLut) textures
+      loadAstronomicalSceneTextures(
+        this.textureLoader, this.skyDomeUniforms, this.earthUniforms,
+        this.moonUniforms, this.nebulaUniforms, this.planetarySkyUniforms,
+        '/textures/eso1804a.jpg'
+      );
+      this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
       this.buildSolarNeighborhoodWorld();
@@ -376,1410 +179,99 @@ export class SparkPortalRenderer {
     }
   }
 
-  private loadAstronomicalTextures(): void {
-    const loadTex = (
-      url: string,
-      onLoad: (tex: THREE.Texture) => void,
-      srgb = true
-    ) => {
-      this.textureLoader.load(
-        url,
-        (tex) => {
-          tex.wrapS = THREE.RepeatWrapping;
-          tex.wrapT = THREE.ClampToEdgeWrapping;
-          tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-          tex.needsUpdate = true;
-          onLoad(tex);
-        },
-        undefined,
-        () => {}
-      );
-    };
-
-    // ESO eso0932a; provenance in textures/PROVENANCE.json.
-    // The panorama is bound only with its fitted registration, so it is never drawn misaligned.
-    const panorama = new Promise<THREE.Texture>((resolve) => loadTex('/textures/eso_milkyway_panorama.jpg', resolve));
-    void Promise.all([loadPanoramaRegistration(), panorama]).then(
-      ([registration, tex]) => {
-        const sky = this.skyDomeUniforms;
-        const { width, height, scale, bias, codes } = registration.offsetTable;
-        const offsets = new THREE.DataTexture(codes, width, height, THREE.RGFormat, THREE.UnsignedByteType);
-        offsets.wrapS = THREE.RepeatWrapping;
-        offsets.wrapT = THREE.ClampToEdgeWrapping;
-        offsets.minFilter = THREE.LinearFilter;
-        offsets.magFilter = THREE.LinearFilter;
-        offsets.generateMipmaps = false;
-        offsets.unpackAlignment = 1;
-        offsets.needsUpdate = true;
-        sky.uPanoramaOffsets.value = offsets;
-        sky.uPanoramaOffsetDecode.value.set(scale, bias);
-        sky.uPanoramaGeometry.value.set(registration.imageWidth, registration.imageHeight, registration.yOffsetPx);
-        sky.uSceneToPanorama.value.set(...sceneToPanoramaRows(registration));
-        sky.uMilkyWayTex.value = tex;
-      },
-      (error: unknown) => console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
-    );
-    // NASA Blue Marble (March 2004 base), Black Marble 2016, ETOPO 2022 heights, Natural Earth water, and 2002 clouds
-    loadTex('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', (t) => {
-      this.earthUniforms.uDayTex.value = t;
-    });
-    loadTex('/textures/earth_night_blackmarble_2016_8k.jpg', (t) => {
-      this.earthUniforms.uNightTex.value = t;
-    });
-    loadTex(
-      '/textures/earth_height_etopo2022_4k.png',
-      (t) => {
-        t.minFilter = THREE.NearestFilter;
-        t.magFilter = THREE.NearestFilter;
-        t.generateMipmaps = false;
-        t.needsUpdate = true;
-        this.earthUniforms.uNormalTex.value = t;
-      },
-      false
-    );
-    loadTex(
-      '/textures/earth_water_natural_earth_4k.png',
-      (t) => {
-        this.earthUniforms.uSpecTex.value = t;
-      },
-      false
-    );
-    loadTex('/textures/earth_clouds_bluemarble2002_2k.jpg', (t) => {
-      this.earthUniforms.uCloudsTex.value = t;
-    });
-    loadTex('/textures/lro_moon_2k.jpg', (t) => {
-      this.moonUniforms.uAlbedoTex.value = t;
-    });
-    loadTex(
-      '/textures/lro_moon_disp.jpg',
-      (t) => {
-        this.moonUniforms.uDispTex.value = t;
-      },
-      false
-    );
-    // ESO eso1804a, the Lupus 3 star formation region (ESO/R. Colombari), behind the black hole
-    loadTex('/textures/eso1804a.jpg', (t) => {
-      this.nebulaUniforms.uLupus3Tex.value = t;
-    });
-    this.textureLoader.load(
-      BRUNETON_ATMO_LUT_URL,
-      (lutTex) => {
-        lutTex.wrapS = THREE.ClampToEdgeWrapping;
-        lutTex.wrapT = THREE.ClampToEdgeWrapping;
-        lutTex.minFilter = THREE.LinearFilter;
-        lutTex.magFilter = THREE.LinearFilter;
-        lutTex.colorSpace = THREE.NoColorSpace;
-        lutTex.needsUpdate = true;
-        this.earthUniforms.uBrunetonLutTex.value = lutTex;
-        this.planetarySkyUniforms.uBrunetonLutTex.value = lutTex;
-      },
-      undefined,
-      () => {}
-    );
-  }
-
-  /**
-   * All-sky dome around the camera (in the camera's localFrame): ESO's Milky Way panorama
-   * (eso0932a), sampled by view direction so it sits at infinity and lines up with the catalog
-   * stars, through its fitted rotation and offset table (sky/skyRegistration.ts).
-   */
-  private buildGlobalPhotorealisticSkyDome(): void {
-    const skyGeo = new THREE.SphereGeometry(900, 96, 64);
-    const skyMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      uniforms: this.skyDomeUniforms,
-      vertexShader: /* glsl */ `
-        varying vec3 vSkyDir;
-        void main() {
-          vec4 worldPos = modelMatrix * vec4(position, 1.0);
-          // Only the direction from the camera matters for a sky at infinity
-          vSkyDir = worldPos.xyz - cameraPosition;
-          gl_Position = projectionMatrix * viewMatrix * worldPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform sampler2D uMilkyWayTex;
-        uniform mat3 uSceneToPanorama;
-        uniform sampler2D uPanoramaOffsets;
-        uniform vec3 uPanoramaGeometry;
-        uniform vec2 uPanoramaOffsetDecode;
-        uniform float uRestoration;
-        uniform float uTime;
-        varying vec3 vSkyDir;
-
-        // Plate carree coordinates of a unit vector: longitude 0 at u = 0.5, increasing to the left; north at v = 1
-        vec2 plateCarree(vec3 d) {
-          return vec2(fract(0.5 - atan(d.y, d.x) * 0.15915494309189535), 0.5 + asin(clamp(d.z, -1.0, 1.0)) * 0.3183098861837907);
-        }
-
-        // Screen-space gradients of plate carree coordinates, wrapped where u jumps across the seam
-        void seamlessGrad(vec2 uv, out vec2 gradX, out vec2 gradY) {
-          gradX = dFdx(uv);
-          gradY = dFdy(uv);
-          gradX.x = fract(gradX.x + 0.5) - 0.5;
-          gradY.x = fract(gradY.x + 0.5) - 0.5;
-        }
-
-        void main() {
-          vec3 dir = normalize(vSkyDir);
-
-          // ESO panorama: its fitted frame, then the (east, north) offset table in texels
-          vec3 p = normalize(uSceneToPanorama * dir);
-          vec2 frameUv = plateCarree(p);
-          vec2 offset = (texture2D(uPanoramaOffsets, frameUv).rg * 255.0 - uPanoramaOffsetDecode.y) / uPanoramaOffsetDecode.x;
-          float cosLat = max(length(p.xy), 1e-3);
-          vec2 mwUv = frameUv + vec2(
-            -offset.x / (uPanoramaGeometry.x * cosLat),
-            (offset.y - uPanoramaGeometry.z) / uPanoramaGeometry.y
-          );
-          vec2 mwGradX, mwGradY;
-          seamlessGrad(frameUv, mwGradX, mwGradY);
-
-          vec3 mwCol = textureGrad(uMilkyWayTex, mwUv, mwGradX, mwGradY).rgb;
-          vec3 cleanMw = max(vec3(0.0), mwCol - vec3(0.042));
-
-          // Deep velvet-obsidian cosmos + smooth Galactic Core dust-lane warmth (zero grainy JPEG noise)
-          vec3 galacticBulge = pow(cleanMw, vec3(1.52)) * vec3(1.22, 1.04, 0.90) * 1.32;
-          vec3 deepSpaceBase = vec3(0.002, 0.003, 0.008);
-          vec3 opticalSky = deepSpaceBase + galacticBulge;
-
-          vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030);
-          gl_FragColor = vec4(mix(rawSensorVeil, opticalSky, uRestoration), 1.0);
-        }
-      `,
-    });
-
-    const skyDome = new THREE.Mesh(skyGeo, skyMat);
-    this.localFrame.add(skyDome);
-  }
-
-  /**
-   * Adds a sky sphere of catalog stars (Gaia DR3 to G 12, bright end from Hipparcos 2007) at
-   * `radius`. Stars stream by view and limiting magnitude; with no catalog the sky stays empty.
-   */
   private addCatalogStarMount(group: THREE.Group, radius: number): void {
-    if (this.catalogStars) {
-      const mount = this.catalogStars.createMount(radius);
-      group.add(mount);
-      this.catalogStarMounts.push(mount);
-    }
+    if (!this.catalogStars) return;
+    const mount = this.catalogStars.createMount(radius);
+    group.add(mount);
+    this.catalogStarMounts.push(mount);
   }
 
-  /**
-   * The Moon: NASA SVS's colour map (from LRO's camera) and LOLA relief map, bump-lit with
-   * Lommel-Seeliger shading, an opposition surge and a faint earthshine (the same shading as the
-   * WebGPU port, webgpu/cislunar/bodyMaterials.ts). Only the mapped relief is drawn.
-   */
-  private createPhotorealisticMoonMesh(radius: number): THREE.Mesh {
-    const geo = new THREE.SphereGeometry(radius, 160, 160);
-    const mat = new THREE.ShaderMaterial({
-      uniforms: this.moonUniforms,
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        varying vec3 vObjPos;
-        void main() {
-          vUv = uv;
-          vObjPos = normalize(position);
-          vNormal = normalize(normalMatrix * normal);
-          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-          vViewDir = normalize(-mvPos.xyz);
-          gl_Position = projectionMatrix * mvPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform sampler2D uAlbedoTex;
-        uniform sampler2D uDispTex;
-        uniform vec3 uSunDir;
-        varying vec2 vUv;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        varying vec3 vObjPos;
-
-        void main() {
-          vec3 albedo = texture2D(uAlbedoTex, vUv).rgb;
-
-          vec2 texel = vec2(1.0 / 2048.0, 1.0 / 1024.0);
-          float hL = texture2D(uDispTex, vUv - vec2(texel.x, 0.0)).r;
-          float hR = texture2D(uDispTex, vUv + vec2(texel.x, 0.0)).r;
-          float hD = texture2D(uDispTex, vUv - vec2(0.0, texel.y)).r;
-          float hU = texture2D(uDispTex, vUv + vec2(0.0, texel.y)).r;
-
-          vec3 bumpOffset = vec3((hL - hR) * 3.8, (hD - hU) * 3.8, 0.0);
-          vec3 N = normalize(vNormal + bumpOffset * 0.62);
-
-          vec3 L = normalize(uSunDir);
-          vec3 V = normalize(vViewDir);
-          float rawNdotL = dot(vNormal, L);
-          float NdotL = max(0.0, dot(N, L));
-          float NdotV = max(0.05, dot(N, V));
-
-          // Hapke / Lommel-Seeliger lunar regolith backscatter with dramatic grazing terminator relief
-          float lommelSeeliger = NdotL / (NdotL + NdotV * 0.62 + 0.001);
-          float oppositionSurge = 1.0 + 0.32 * pow(max(0.0, dot(V, L)), 6.0);
-          float terminatorMask = smoothstep(-0.08, 0.12, rawNdotL + (hL - hR) * 0.45);
-          float regolithReflectance = lommelSeeliger * terminatorMask * oppositionSurge * 1.68;
-
-          // Subtle cobalt Earthshine illuminating the dark lunar nightside
-          float rimFresnel = pow(1.0 - max(0.0, dot(vNormal, V)), 2.4);
-          vec3 earthshine = pow(albedo, vec3(1.1)) * vec3(0.024, 0.046, 0.088) * (1.0 - terminatorMask * 0.85) * (0.7 + 0.6 * rimFresnel);
-
-          vec3 sunlitMoon = pow(albedo, vec3(1.22)) * vec3(1.06, 1.01, 0.93) * regolithReflectance;
-          vec3 lunarColor = sunlitMoon + earthshine;
-          gl_FragColor = vec4(lunarColor, 1.0);
-        }
-      `,
-    });
-
-    return new THREE.Mesh(geo, mat);
-  }
-
-  /**
-   * Builds a subtle atmospheric horizon mist layer (`SplatMesh`) in `earth_capture`
-   * and updates the Earthly Horizon Landscape Dome hemisphere uniform (`uIsSouthern`).
-   */
-  private rebuildCaptureHorizonSplatMesh(latDeg: number, _lonDeg: number): void {
+  private rebuildCaptureHorizonSplatMesh(latDeg: number): void {
     const group = this.regimeGroups.earth_capture;
     if (this.captureHorizonSplatMesh) {
       group.remove(this.captureHorizonSplatMesh);
       this.captureHorizonSplatMesh.dispose();
       this.captureHorizonSplatMesh = null;
     }
-
-    const isSouthern = latDeg < 0;
     const horizonDome = group.getObjectByName('captureHorizonLandscapeDome') as THREE.Mesh | undefined;
-    if (horizonDome) {
-      const mat = horizonDome.material as THREE.ShaderMaterial;
-      if (mat.uniforms?.uIsSouthern) {
-        mat.uniforms.uIsSouthern.value = isSouthern ? 1.0 : 0.0;
-      }
-    }
+    const mat = horizonDome?.material as THREE.ShaderMaterial | undefined;
+    if (mat?.uniforms?.uIsSouthern) mat.uniforms.uIsSouthern.value = latDeg < 0 ? 1.0 : 0.0;
   }
 
-  /**
-   * REGIME 0: Night Sky. Catalog stars at their catalog directions; catalog data, not the user's recording.
-   */
   private buildEarthCaptureWorld(): void {
     this.addCatalogStarMount(this.regimeGroups.earth_capture, 58.0);
   }
 
-  /**
-   * Updates the observer's geographic coordinates (`latDeg`, `lonDeg`) across all 3D regimes:
-   * - Updates the Earthly Horizon Landscape Dome for the capture site
-   * - Rotates Planet Earth in Cislunar space so the observer's hemisphere faces the sightline
-   * - Inverts Lunar orientation when observing from the Southern Hemisphere (`latDeg < 0`)
-   */
   public setObserverCoordinates(latDeg: number, lonDeg: number): void {
     if (
-      this.observerLatDeg !== null &&
-      this.observerLonDeg !== null &&
-      Math.abs(latDeg - this.observerLatDeg) < 0.01 &&
-      Math.abs(lonDeg - this.observerLonDeg) < 0.01
-    ) {
-      return;
-    }
+      this.observerLatDeg !== null && this.observerLonDeg !== null &&
+      Math.abs(latDeg - this.observerLatDeg) < 0.01 && Math.abs(lonDeg - this.observerLonDeg) < 0.01
+    ) return;
     this.observerLatDeg = latDeg;
     this.observerLonDeg = lonDeg;
-    this.rebuildCaptureHorizonSplatMesh(latDeg, lonDeg);
+    this.rebuildCaptureHorizonSplatMesh(latDeg);
 
     const isSouthern = latDeg < 0;
-    if (this.skyMoonMesh) {
-      this.skyMoonMesh.rotation.z = isSouthern ? Math.PI : 0.0;
-    }
-    if (this.cislunarMoonMesh) {
-      this.cislunarMoonMesh.rotation.z = isSouthern ? Math.PI * 0.85 : 0.0;
-    }
+    if (this.skyMoonMesh) this.skyMoonMesh.rotation.z = isSouthern ? Math.PI : 0.0;
+    if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.z = isSouthern ? Math.PI * 0.85 : 0.0;
     if (this.cislunarEarthMesh) {
-      // Orient Earth's 3D globe so the observer's continent faces the camera without exposing the UV seam or polar pinch
-      if (isSouthern) {
-        this.cislunarEarthMesh.rotation.set(-0.88, -1.15, 0.18);
-      } else {
-        this.cislunarEarthMesh.rotation.set(-0.55, 1.68, -0.24);
-      }
+      if (isSouthern) this.cislunarEarthMesh.rotation.set(-0.88, -1.15, 0.18);
+      else this.cislunarEarthMesh.rotation.set(-0.55, 1.68, -0.24);
     }
   }
 
-  /**
-   * REGIME 1: Cislunar Orbital Space (384,400 km — Orbital Sunrise over Earth's Rayleigh Limb + High-Relief LRO Moon)
-   */
   private buildCislunarWorld(): void {
     const group = this.regimeGroups.cislunar;
-
     this.addCatalogStarMount(group, 85.0);
-
-    const earthRadius = 13.5;
-    const earthCenter = new THREE.Vector3(-11.8, -16.8, -28.0);
-
-    const earthGeo = new THREE.SphereGeometry(earthRadius, 160, 160);
-    const earthMat = new THREE.ShaderMaterial({
-      uniforms: this.earthUniforms,
-      vertexShader: /* glsl */ `
-        varying vec3 vObjPos;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        void main() {
-          vObjPos = normalize(position);
-          vNormal = normalize(normalMatrix * normal);
-          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-          vViewDir = normalize(-mvPos.xyz);
-          gl_Position = projectionMatrix * mvPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform sampler2D uDayTex;
-        uniform sampler2D uNightTex;
-        uniform sampler2D uNormalTex;
-        uniform sampler2D uSpecTex;
-        uniform sampler2D uCloudsTex;
-        uniform sampler2D uBrunetonLutTex;
-        uniform vec3 uSunDir;
-        varying vec3 vObjPos;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-
-        ${BRUNETON_ATMO_GLSL_CHUNK}
-
-        // Brightness of Black Marble city light relative to the shader's other night-side terms
-        const float CITY_LIGHT_GAIN = 1.25;
-
-        void main() {
-          // Rotate local sampling coordinates so the Mediterranean / Sahara / Atlantic equatorial belt faces the camera
-          // and the equirectangular polar pinch is tucked away on the far limb
-          vec3 rawP = normalize(vObjPos);
-          mat3 globeTilt = mat3(
-             0.866,  0.250, -0.433,
-             0.000,  0.866,  0.500,
-             0.500, -0.433,  0.750
-          );
-          vec3 p = normalize(globeTilt * rawP);
-          float u = atan(p.z, -p.x) / (2.0 * 3.14159265359) + 0.5;
-          float v = asin(clamp(p.y, -1.0, 1.0)) / 3.14159265359 + 0.5;
-          vec2 eqUv = vec2(u, v);
-          // atan wraps at the texture seam; wrapping the u derivative keeps full mip detail there
-          vec2 uvDx = dFdx(eqUv);
-          vec2 uvDy = dFdy(eqUv);
-          uvDx.x = fract(uvDx.x + 0.5) - 0.5;
-          uvDy.x = fract(uvDy.x + 0.5) - 0.5;
-
-          vec3 daySample = textureGrad(uDayTex, eqUv, uvDx, uvDy).rgb;
-          vec3 dayCol = pow(daySample, vec3(1.32));
-          vec3 nightLights = textureGrad(uNightTex, eqUv, uvDx, uvDy).rgb;
-          float waterMask = textureGrad(uSpecTex, eqUv, uvDx, uvDy).r;
-          float iceShelf = smoothstep(0.15, 0.35, min(daySample.r, daySample.g));
-          float specMask = waterMask * (1.0 - iceShelf);
-          float clouds = textureGrad(uCloudsTex, eqUv, uvDx, uvDy).r;
-          float cloudsShadow = textureGrad(uCloudsTex, eqUv - vec2(0.0018, 0.0012), uvDx, uvDy).r;
-
-          // ETOPO 2022 surface elevation (metres above EGM2008) decoded from (R, G) at true slopes on land
-          vec2 hStep = vec2(1.0 / 4096.0, 1.0 / 2048.0);
-          vec2 hW = texture2D(uNormalTex, vec2(fract(eqUv.x - hStep.x), eqUv.y)).rg;
-          vec2 hE = texture2D(uNormalTex, vec2(fract(eqUv.x + hStep.x), eqUv.y)).rg;
-          vec2 hS = texture2D(uNormalTex, vec2(eqUv.x, clamp(eqUv.y - hStep.y, 0.0, 1.0))).rg;
-          vec2 hN = texture2D(uNormalTex, vec2(eqUv.x, clamp(eqUv.y + hStep.y, 0.0, 1.0))).rg;
-          float hWestM = hW.r * 65280.0 + hW.g * 255.0 - 11000.0;
-          float hEastM = hE.r * 65280.0 + hE.g * 255.0 - 11000.0;
-          float hSouthM = hS.r * 65280.0 + hS.g * 255.0 - 11000.0;
-          float hNorthM = hN.r * 65280.0 + hN.g * 255.0 - 11000.0;
-          float land = 1.0 - waterMask;
-          float cosLat = max(0.05, sqrt(max(0.0, 1.0 - p.y * p.y)));
-          float slopeE = ((hEastM - hWestM) / (19546.0 * cosLat)) * land;
-          float slopeN = ((hNorthM - hSouthM) / 19546.0) * land;
-          vec3 eastTilt = normalize(cross(vec3(0.0, 1.0, 0.0), p) + vec3(1e-7, 0.0, 0.0));
-          vec3 northTilt = cross(p, eastTilt);
-          vec3 tiltedN = normalize(p - eastTilt * slopeE - northTilt * slopeN);
-          vec3 localN = normalize(vec3(
-            dot(vec3(0.866, 0.000, 0.500), tiltedN),
-            dot(vec3(0.250, 0.866, -0.433), tiltedN),
-            dot(vec3(-0.433, 0.500, 0.750), tiltedN)
-          ));
-
-          vec3 N = normalize(vNormal);
-          vec3 surfaceN = normalize((modelViewMatrix * vec4(localN, 0.0)).xyz);
-          vec3 L = normalize(uSunDir);
-          vec3 V = normalize(vViewDir);
-
-          float sunDot = dot(N, L);
-          float surfaceSunDot = dot(surfaceN, L);
-          float dayFactor = smoothstep(-0.08, 0.22, sunDot);
-          // Tight stratospheric Rayleigh/Mie sunset band along the orbital terminator
-          float twilightFactor = exp(-pow((sunDot + 0.02) * 9.0, 2.0));
-
-          vec3 H = normalize(L + V);
-          float spec = pow(max(0.0, dot(N, H)), 72.0) * specMask * max(0.0, sunDot) * (1.0 - clouds * 0.85);
-
-          // Deep cobalt ocean & rich continental albedo under directional sunlight
-          vec3 oceanTint = mix(dayCol, vec3(0.025, 0.095, 0.24), specMask * 0.55);
-          vec3 surfaceAlbedo = oceanTint * (1.0 - cloudsShadow * 0.48);
-          vec3 cloudLayer = vec3(0.92, 0.95, 1.0) * clouds * (0.85 + 0.25 * twilightFactor);
-          vec3 litSurface = surfaceAlbedo * max(0.03, surfaceSunDot * 1.05);
-          vec3 litClouds = cloudLayer * max(0.03, sunDot * 1.05);
-          vec3 litEarth = mix(litSurface, litClouds, clamp(clouds * 0.84, 0.0, 1.0))
-                        + vec3(0.42, 0.68, 0.98) * spec * 0.65;
-
-          vec3 twilightGlow = vec3(0.92, 0.36, 0.10) * twilightFactor * (0.20 + 0.32 * clouds);
-
-          // NASA Black Marble 2016 city light (dim base layer removed at bake time), dimmed under cloud
-          vec3 cityGlow = nightLights * CITY_LIGHT_GAIN * (1.0 - clouds * 0.72);
-
-          vec3 darkContinents = oceanTint * vec3(0.015, 0.034, 0.075) + vec3(0.005, 0.014, 0.032) * (1.0 - specMask * 0.5);
-          vec3 nightEarth = darkContinents + cityGlow + vec3(0.012, 0.026, 0.055) * clouds;
-
-          float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.8);
-          vec4 brunetonSample = sampleBrunetonAtmoLut(uBrunetonLutTex, dot(N, V), sunDot);
-          vec3 atmoTint = mix(vec3(0.06, 0.24, 0.64), brunetonSample.rgb * 1.25, 0.68) * fresnel * (0.42 + 0.52 * dayFactor);
-          vec3 lutTwilight = brunetonSample.rgb * twilightFactor * (0.28 + 0.36 * clouds);
-
-          vec3 rawEarth = mix(nightEarth, litEarth, dayFactor) + mix(twilightGlow, lutTwilight, 0.65) + atmoTint;
-          // Filmic tone-mapping so sunlit clouds & ocean never clip to flat white
-          vec3 finalEarth = rawEarth / (vec3(1.0) + rawEarth * 0.56);
-          gl_FragColor = vec4(finalEarth, 1.0);
-        }
-      `,
-    });
-
-    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
-    earthMesh.position.copy(earthCenter);
-    earthMesh.rotation.y = -1.52;
-    earthMesh.rotation.x = 0.12;
-    earthMesh.rotation.z = -0.18;
-    group.add(earthMesh);
+    const { earthMesh, moonMesh } = buildCislunarRegimeGroup(group, this.earthUniforms, this.moonUniforms, this.gltfLoader);
     this.cislunarEarthMesh = earthMesh;
-
-    const atmoGeo = new THREE.SphereGeometry(earthRadius * 1.022, 160, 160);
-    const atmoMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uSunDir: this.earthUniforms.uSunDir,
-        uBrunetonLutTex: this.earthUniforms.uBrunetonLutTex,
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-          vViewDir = normalize(-mvPos.xyz);
-          gl_Position = projectionMatrix * mvPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform vec3 uSunDir;
-        uniform sampler2D uBrunetonLutTex;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-
-        ${BRUNETON_ATMO_GLSL_CHUNK}
-
-        void main() {
-          float viewDot = dot(vNormal, vViewDir);
-          float limbIntensity = exp(-pow((viewDot + 0.14) * 5.2, 2.0));
-          float sunAlign = dot(-vNormal, normalize(uSunDir));
-          float sunOrient = 0.22 + 0.78 * smoothstep(-0.20, 0.65, sunAlign);
-          float sunriseArc = exp(-pow(sunAlign - 0.32, 2.0) * 6.5) * 0.38;
-          vec4 lutLimb = sampleBrunetonAtmoLut(uBrunetonLutTex, clamp(viewDot + 0.16, -0.35, 1.0), sunAlign);
-          vec3 baseRayleigh = mix(vec3(0.14, 0.50, 0.96), vec3(0.52, 0.78, 1.0), sunriseArc);
-          vec3 rayleighCol = mix(baseRayleigh, lutLimb.rgb * 1.35, 0.62) * limbIntensity * sunOrient * 0.98;
-          gl_FragColor = vec4(rayleighCol, clamp(limbIntensity * 0.86, 0.0, 0.84));
-        }
-      `,
-    });
-    const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-    atmoMesh.position.copy(earthCenter);
-    group.add(atmoMesh);
-
-    const moonRadius = 1.98;
-    const moonCenter = new THREE.Vector3(2.45, 1.25, -8.2);
-    const moonMesh = this.createPhotorealisticMoonMesh(moonRadius);
-    moonMesh.position.copy(moonCenter);
-    moonMesh.rotation.y = -0.85;
-    group.add(moonMesh);
     this.cislunarMoonMesh = moonMesh;
-
-    this.gltfLoader.load(
-      '/models/nasa_lro_moon_3d.glb',
-      (gltf) => {
-        gltf.scene.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const m = child as THREE.Mesh;
-            moonMesh.geometry.dispose();
-            moonMesh.geometry = m.geometry.clone();
-            moonMesh.geometry.scale(moonRadius / 10.0, moonRadius / 10.0, moonRadius / 10.0);
-          }
-        });
-      },
-      undefined,
-      () => {}
-    );
   }
 
-  /**
-   * REGIME 2: solar neighbourhood (landing scene 03): a modelled star and 14,281 Spark splats
-   * (`lb_splats.json`) on
-   * a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024), all placed around the camera for composition, not at
-   * their sizes or distances; see SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS in webglRenderLayers.ts.
-   */
   private buildSolarNeighborhoodWorld(): void {
     const group = this.regimeGroups.solar_neighborhood;
-
-    this.addCatalogStarMount(group, 56.0);
-
-    const starRadius = 2.62;
-    const starCenter = new THREE.Vector3(-0.35, 0.12, -9.2);
-    const starGeo = new THREE.SphereGeometry(starRadius, 160, 160);
-    const starMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: this.localBubbleUniforms.uTime,
-        uCoolColor: this.localBubbleUniforms.uCoolColor,
-        uWarmColor: this.localBubbleUniforms.uWarmColor,
-        uHotColor: this.localBubbleUniforms.uHotColor,
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        varying vec3 vObjPos;
-        void main() {
-          vObjPos = normalize(position);
-          vNormal = normalize(normalMatrix * normal);
-          vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-          vViewDir = normalize(-mvPos.xyz);
-          gl_Position = projectionMatrix * mvPos;
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        uniform vec3 uCoolColor;
-        uniform vec3 uWarmColor;
-        uniform vec3 uHotColor;
-        varying vec3 vNormal;
-        varying vec3 vViewDir;
-        varying vec3 vObjPos;
-
-        float hash(vec3 p) {
-          p = fract(p * 0.3183099 + 0.1);
-          p *= 17.0;
-          return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-        }
-
-        float noise3D(vec3 x) {
-          vec3 i = floor(x);
-          vec3 f = fract(x);
-          f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
-                mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-            mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-                mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
-            f.z
-          );
-        }
-
-        float fbm(vec3 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 6; i++) {
-            v += a * noise3D(p);
-            p = p * 2.12 + vec3(2.1, 4.7, 1.3);
-            a *= 0.5;
-          }
-          return v;
-        }
-
-        float ridgedFbm(vec3 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 5; i++) {
-            float n = 1.0 - abs(noise3D(p) * 2.0 - 1.0);
-            v += a * (n * n);
-            p = p * 2.18 + vec3(1.4, 3.2, 2.7);
-            a *= 0.5;
-          }
-          return v;
-        }
-
-        void main() {
-          vec3 N = normalize(vNormal);
-          vec3 V = normalize(vViewDir);
-          float mu = clamp(dot(N, V), 0.0, 1.0);
-
-          vec3 flow = vec3(uTime * 0.028, -uTime * 0.019, uTime * 0.015);
-          vec3 warp = vec3(
-            fbm(vObjPos * 4.2 + flow),
-            fbm(vObjPos * 4.2 + flow + vec3(5.2, 1.3, 2.8)),
-            fbm(vObjPos * 4.2 + flow + vec3(1.7, 9.2, 4.1))
-          );
-
-          float mesoCells = ridgedFbm(vObjPos * 14.5 + warp * 1.45 - flow * 1.5);
-          float microGranules = noise3D(vObjPos * 34.0 + warp * 2.2 + flow * 2.5);
-          float microLanes = ridgedFbm(vObjPos * 26.0 + warp * 1.8);
-
-          float convection = clamp(
-            warp.x * 0.32 + mesoCells * 0.44 + microGranules * 0.14 + microLanes * 0.22,
-            0.0,
-            1.0
-          );
-
-          float spotField = fbm(vObjPos * 5.8 - flow * 0.6);
-          float umbra = smoothstep(0.24, 0.14, spotField);
-          float penumbra = smoothstep(0.33, 0.22, spotField) * (1.0 - umbra);
-
-          float flareRibbon = pow(clamp(mesoCells * smoothstep(0.24, 0.34, spotField) * smoothstep(0.46, 0.33, spotField) * 2.1, 0.0, 1.0), 3.2);
-
-          vec3 surfaceCol = mix(uCoolColor * 0.25, uWarmColor * 0.88, smoothstep(0.22, 0.68, convection));
-          surfaceCol = mix(surfaceCol, uHotColor * 0.92, smoothstep(0.68, 0.98, convection));
-          surfaceCol = mix(surfaceCol, uCoolColor * 0.08, umbra * 0.92 + penumbra * 0.55);
-          surfaceCol += uHotColor * flareRibbon * 1.15;
-
-          float limbDarkening = pow(mu, 0.48);
-          surfaceCol *= (0.34 + 0.66 * limbDarkening);
-
-          float rim = pow(1.0 - mu, 3.2);
-          float rimFibrils = ridgedFbm(vObjPos * 24.0 + flow * 2.0);
-          surfaceCol += mix(uWarmColor, uHotColor, 0.45) * rim * (0.65 + 0.65 * rimFibrils);
-
-          gl_FragColor = vec4(surfaceCol, 1.0);
-        }
-      `,
-    });
-    const betelgeuse = new THREE.Mesh(starGeo, starMat);
-    betelgeuse.position.copy(starCenter);
-    group.add(betelgeuse);
-    this.betelgeuseMesh = betelgeuse;
-
-    // Spark splats (`lb_splats.json`) on a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024)
-    const cavityGroup = new THREE.Group();
-    cavityGroup.position.set(0.0, 0.0, -9.8);
-    group.add(cavityGroup);
+    this.addCatalogStarMount(group, 85.0);
+    const { betelgeuseMesh, cavityGroup } = buildSolarNeighborhoodRegimeGroup(group, this.localBubbleUniforms);
+    this.betelgeuseMesh = betelgeuseMesh;
     this.localBubbleCavityGroup = cavityGroup;
-
-    if (typeof fetch !== 'undefined') {
-      fetch('/models/lb_splats.json')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((raw: number[][] | null) => {
-          if (!Array.isArray(raw) || raw.length === 0) return;
-          const lbSplatMesh = buildAnisotropicLocalBubbleSplatMesh(raw);
-          cavityGroup.add(lbSplatMesh);
-        })
-        .catch(() => {});
-    }
-  }
-
-  /**
-   * REGIME 3: deep sky: the registered sky and the catalog stars and, for Sagittarius A*, a
-   * hand-tuned black hole composition (an approximate Schwarzschild ray march around a hand-set
-   * disk, over ESO's Lupus 3 photograph); see webglRenderLayers.ts for the disclosures. The plane
-   * is hidden otherwise.
-   */
-  private buildDeepSkyWorld(): void {
-    const group = this.regimeGroups.deep_sky;
-
-    this.addCatalogStarMount(group, 38.0);
-
-    const volGeo = new THREE.PlaneGeometry(31, 19.5);
-    const volMat = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.NormalBlending,
-      uniforms: this.nebulaUniforms,
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        varying vec3 vLocalPos;
-        void main() {
-          vUv = uv;
-          vLocalPos = position;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform sampler2D uLupus3Tex;
-        uniform float uTime;
-        uniform float uIsBlackHole;
-        varying vec2 vUv;
-        varying vec3 vLocalPos;
-
-        float hash21(vec2 p) {
-          p = fract(p * vec2(123.34, 456.21));
-          p += dot(p, p + 45.32);
-          return fract(p.x * p.y);
-        }
-
-        float noise2(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          float a = hash21(i);
-          float b = hash21(i + vec2(1.0, 0.0));
-          float c = hash21(i + vec2(0.0, 1.0));
-          float d = hash21(i + vec2(1.0, 1.0));
-          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-        }
-
-        float fbmDisk(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 5; i++) {
-            v += a * noise2(p);
-            p *= 2.07;
-            a *= 0.5;
-          }
-          return v;
-        }
-
-        void main() {
-          vec2 p = (vUv * 2.0 - 1.0) * vec2(1.58, 1.0);
-
-          if (uIsBlackHole > 0.5) {
-            // Approximate Schwarzschild ray march (non-rotating hole, 120 steps); not a model of Sgr A*
-            vec3 ro = vec3(0.0, 0.0, 15.5);
-            vec3 rd = normalize(vec3(p * 0.62, -1.0));
-
-            // Tilt accretion disk by 9.5 deg so we see the upper & lower gravitationally lensed halos
-            float tilt = 0.165;
-            float ct = cos(tilt), st = sin(tilt);
-            mat3 diskRot = mat3(
-              1.0, 0.0, 0.0,
-              0.0, ct, -st,
-              0.0, st, ct
-            );
-            // Slight 6-deg roll for cinema framing
-            float cr = cos(-0.10), sr = sin(-0.10);
-            mat3 rollRot = mat3(
-              cr, -sr, 0.0,
-              sr, cr, 0.0,
-              0.0, 0.0, 1.0
-            );
-            ro = diskRot * (rollRot * ro);
-            rd = normalize(diskRot * (rollRot * rd));
-
-            float rs = 1.0; // Schwarzschild radius r_s = 2GM/c^2
-            vec3 pos = ro;
-            vec3 vel = rd;
-            vec3 hVec = cross(pos, vel);
-            float h2 = dot(hVec, hVec);
-
-            vec3 accumDisk = vec3(0.0);
-            float trans = 1.0;
-            bool captured = false;
-            float minR = 100.0;
-
-            for (int i = 0; i < 120; i++) {
-              float r = length(pos);
-              minR = min(minR, r);
-              if (r < rs * 1.02) {
-                captured = true;
-                break;
-              }
-              if (r > 28.0) break;
-
-              float dt = clamp(0.042 * r, 0.022, 0.26);
-              // Schwarzschild photon bending, d^2x/dlambda^2 = -1.5 * rs * h^2 * x / r^5; renormalizing the
-              // direction each step makes the bending approximate
-              vec3 accel = -1.5 * rs * h2 * pos / pow(r, 5.0);
-              vec3 nextVel = normalize(vel + accel * dt);
-              vec3 nextPos = pos + 0.5 * (vel + nextVel) * dt;
-
-              // Check equatorial accretion disk plane crossing (pos.y * nextPos.y <= 0.0)
-              if (pos.y * nextPos.y <= 0.0) {
-                float frac = abs(pos.y) / max(0.0001, abs(pos.y - nextPos.y));
-                vec3 hit = mix(pos, nextPos, clamp(frac, 0.0, 1.0));
-                float diskR = length(hit.xz);
-                // Hand-set disk from 2.62 r_s to 9.2 r_s (a non-rotating hole's innermost stable orbit is 3 r_s)
-                if (diskR > 2.62 * rs && diskR < 9.2 * rs) {
-                  float rNorm = (diskR - 2.62 * rs) / (6.58 * rs);
-                  float radialEnv = smoothstep(0.0, 0.08, rNorm) * exp(-rNorm * 3.4);
-
-                  float phi = atan(hit.z, hit.x);
-                  float omega = 1.65 / pow(diskR, 1.25);
-                  float spiralPhase = phi + uTime * omega + 11.0 / (diskR + 0.25);
-
-                  // Noise rings and spiral streaks for texture, not a simulation
-                  float rings = 0.52 + 0.48 * sin(diskR * 32.0 + fbmDisk(vec2(diskR * 3.8, phi * 2.0)) * 5.5);
-                  float streaks = fbmDisk(vec2(diskR * 5.5, spiralPhase * 2.0));
-                  float density = radialEnv * mix(rings, streaks, 0.52);
-
-                  // Doppler factor D = 1 / (gamma * (1 - beta * cos(theta))) at Keplerian speed, used to shift the hand-picked colours
-                  vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
-                  float beta = clamp(sqrt(0.5 * rs / diskR), 0.0, 0.58);
-                  float gamma = inversesqrt(1.0 - beta * beta);
-                  float cosTheta = dot(tangent, -vel);
-                  float doppler = 1.0 / (gamma * (1.0 - beta * cosTheta));
-                  float gravRedshift = sqrt(max(0.12, 1.0 - rs / diskR));
-                  float shift = clamp(doppler * gravRedshift, 0.48, 1.85);
-
-                  // Three hand-picked colours blended by the shift, not a blackbody spectrum
-                  vec3 coldRed = vec3(0.88, 0.18, 0.03);
-                  vec3 warmGold = vec3(1.42, 0.82, 0.30);
-                  vec3 hotWhiteBlue = vec3(1.75, 1.60, 1.42);
-                  vec3 diskCol = mix(coldRed, warmGold, smoothstep(0.55, 1.05, shift));
-                  diskCol = mix(diskCol, hotWhiteBlue, smoothstep(1.05, 1.65, shift));
-
-                  float stepAlpha = clamp(density * 0.92, 0.0, 0.95);
-                  accumDisk += trans * diskCol * pow(shift, 2.1) * stepAlpha * 1.65;
-                  trans *= (1.0 - stepAlpha * 0.82);
-                }
-              }
-
-              pos = nextPos;
-              vel = nextVel;
-            }
-
-            // A hand-set glow where a ray passes near the photon sphere (r = 1.5 r_s), not computed emission
-            float photonRing = exp(-pow((minR - 1.52 * rs) / 0.065, 2.0)) * (captured ? 0.35 : 1.55);
-            accumDisk += vec3(1.65, 1.22, 0.72) * photonRing;
-
-            // Rays that escape sample ESO's Lupus 3 photograph (eso1804a) by their final direction; Lupus 3
-            // is a nearby cloud, so this backdrop is not what lies behind Sgr A*
-            if (!captured) {
-              vec2 lensedUv = vec2(atan(vel.z, vel.x) / 6.28318 + 0.5, asin(clamp(vel.y, -1.0, 1.0)) / 3.14159 + 0.5);
-              vec3 bgNeb = texture2D(uLupus3Tex, lensedUv).rgb;
-              // Hand-set brightening near the photon sphere, not a magnification from the geodesics
-              float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
-              accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;
-            }
-
-            // Anamorphic horizontal cinema flare across the bright approaching wing
-            float anamorphic = exp(-abs(p.y + 0.02) * 26.0) * exp(-abs(p.x + 0.18) * 2.4) * 0.38;
-            accumDisk += vec3(1.15, 0.78, 0.42) * anamorphic;
-
-            // Tone-map while preserving deep black shadow inside the event horizon
-            vec3 finalBh = accumDisk / (vec3(1.0) + accumDisk * 0.42);
-            float vignette = smoothstep(1.45, 0.25, length(p * vec2(0.72, 0.95)));
-            float outAlpha = clamp((captured ? 0.98 : length(finalBh) * 1.65) * vignette, 0.0, 0.98);
-            gl_FragColor = vec4(finalBh * vignette, outAlpha);
-            return;
-          }
-
-          // Outside the black hole view the plane is hidden and draws nothing
-          discard;
-        }
-      `,
-    });
-
-    const blackHoleMesh = new THREE.Mesh(volGeo, volMat);
-    blackHoleMesh.position.set(0, 0.3, -15.8);
-    group.add(blackHoleMesh);
-
-    this.deepSkyBlackHoleMeshes = [blackHoleMesh];
-    this.showDeepSkyBlackHole(this.nebulaUniforms.uIsBlackHole.value > 0.5);
   }
 
   private showDeepSkyBlackHole(visible: boolean): void {
-    for (const mesh of this.deepSkyBlackHoleMeshes) mesh.visible = visible;
+    for (const m of this.deepSkyBlackHoleMeshes) m.visible = visible;
   }
 
-  /**
-   * REGIME 4 (`planetary_surface` — `4 · Surface World`):
-   * Full-Viewport Analytical GPU Ray-Marched Planetary Worlds:
-   * - Palette 0 (`lunar_regolith`): Ray-marched Shackleton Crater regolith & boulders + 3D Blue Marble Earth in sky
-   * - Palette 1 (`exoplanet_terminator`): Ray-marched glacial canyons, slope-sorted ice & M-Dwarf + binary suns
-   * - Palette 2 (`titan_methane`): Ray-marched coastal cliffs & specular liquid methane waves reflecting Ringed Saturn
-   */
+  private buildDeepSkyWorld(): void {
+    const group = this.regimeGroups.deep_sky;
+    this.addCatalogStarMount(group, 95.0);
+    this.deepSkyBlackHoleMeshes = buildDeepSkyRegimeGroup(group, this.nebulaUniforms).blackHoleMeshes;
+    this.showDeepSkyBlackHole(this.nebulaUniforms.uIsBlackHole.value > 0.5);
+  }
+
   private buildPlanetarySurfaceWorld(): void {
     const group = this.regimeGroups.planetary_surface;
-
-    // 1. Catalog stars visible through the upper planetary atmosphere
-    this.addCatalogStarMount(group, 72.0);
-
-    // 2. Full-Viewport 360° GPU Ray-Marched Planetary World & Relativistic Sky Sphere
-    const worldGeo = new THREE.SphereGeometry(85, 128, 96);
-    const worldMat = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uTime: this.planetarySkyUniforms.uTime,
-        uAtmoZenith: this.planetarySkyUniforms.uAtmoZenith,
-        uAtmoHorizon: this.planetarySkyUniforms.uAtmoHorizon,
-        uSunColor: this.planetarySkyUniforms.uSunColor,
-        uPaletteId: this.planetarySkyUniforms.uPaletteId,
-        uBrunetonLutTex: this.planetarySkyUniforms.uBrunetonLutTex,
-        uEarthDayTex: this.earthUniforms.uDayTex,
-        uEarthNightTex: this.earthUniforms.uNightTex,
-        uEarthCloudsTex: this.earthUniforms.uCloudsTex,
-        uEarthSpecTex: this.earthUniforms.uSpecTex,
-        uMoonAlbedoTex: this.moonUniforms.uAlbedoTex,
-      },
-      vertexShader: /* glsl */ `
-        varying vec3 vWorldDir;
-        void main() {
-          vWorldDir = normalize(position);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        uniform float uTime;
-        uniform vec3 uAtmoZenith;
-        uniform vec3 uAtmoHorizon;
-        uniform vec3 uSunColor;
-        uniform float uPaletteId;
-        uniform sampler2D uBrunetonLutTex;
-        uniform sampler2D uEarthDayTex;
-        uniform sampler2D uEarthNightTex;
-        uniform sampler2D uEarthCloudsTex;
-        uniform sampler2D uEarthSpecTex;
-        uniform sampler2D uMoonAlbedoTex;
-        varying vec3 vWorldDir;
-
-        ${BRUNETON_ATMO_GLSL_CHUNK}
-
-        // High-precision procedural hash & analytical-derivative multi-fractal noise
-        float hash2(vec2 p) {
-          p = fract(p * vec2(127.1, 311.7));
-          p += dot(p, p + 34.5);
-          return fract(p.x * p.y);
-        }
-
-        // Returns vec3(value, df/dx, df/dz)
-        vec3 noised(vec2 x) {
-          vec2 i = floor(x);
-          vec2 f = fract(x);
-          vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-          vec2 du = 30.0 * f * f * (f * (f - 2.0) + 1.0);
-
-          float a = hash2(i + vec2(0.0, 0.0));
-          float b = hash2(i + vec2(1.0, 0.0));
-          float c = hash2(i + vec2(0.0, 1.0));
-          float d = hash2(i + vec2(1.0, 1.0));
-
-          float k0 = a;
-          float k1 = b - a;
-          float k2 = c - a;
-          float k3 = a - b - c + d;
-
-          return vec3(
-            k0 + k1 * u.x + k2 * u.y + k3 * u.x * u.y,
-            du * (vec2(k1, k2) + k3 * u.yx)
-          );
-        }
-
-        const mat2 m2 = mat2(0.80, -0.60, 0.60, 0.80);
-
-        // Multi-octave ridged & eroded canyon/crater heightfield
-        float terrainHeight(vec2 p, out vec2 grad) {
-          vec2 pos = p * 0.085;
-          float a = 0.0;
-          float b = 1.0;
-          vec2 d = vec2(0.0);
-
-          float dist = length(p);
-          float valleyChannel = smoothstep(2.2, 11.5, abs(p.x + sin(p.y * 0.08) * 4.5));
-          float bankSmooth = smoothstep(0.0, 0.42, valleyChannel);
-
-          for (int i = 0; i < 8; i++) {
-            vec3 n = noised(pos);
-            d += b * n.yz;
-            // Slope-dependent erosion (flattens valleys, sharpens alpine/crater ridges)
-            float ridge = 1.0 - abs(n.x * 2.0 - 1.0);
-            ridge = ridge * ridge;
-            // Smooth alluvial river banks: suppress high-frequency micro-bumps near the shoreline so no jagged noise islands appear
-            float octaveMask = (i >= 3) ? mix(0.12, 1.0, bankSmooth) : 1.0;
-            a += b * octaveMask * mix(n.x, ridge, 0.52) / (1.0 + dot(d, d) * 0.85);
-            b *= 0.49;
-            pos = m2 * pos * 2.04;
-          }
-
-          // Distant monumental mountain range / crater wall framing the horizon
-          float horizonWall = smoothstep(12.0, 58.0, dist) * (1.8 + 1.4 * valleyChannel);
-
-          if (uPaletteId < 0.5) {
-            // 0: Lunar Shackleton Crater Rim & Bowl
-            float cDist = length(p - vec2(-2.0, -24.0));
-            float craterRim = exp(-pow((cDist - 12.5) / 3.8, 2.0)) * 3.8;
-            float craterBowl = cDist < 12.0 ? -1.8 * (1.0 - cDist / 12.0) : 0.0;
-            grad = d * 0.65;
-            return -2.4 + a * 2.4 + craterRim + craterBowl + horizonWall * 0.75;
-          }
-
-          grad = d;
-          float riverBed = -2.48 + 0.55 * valleyChannel;
-          return riverBed + a * (2.65 + horizonWall * 1.55) * (0.08 + 0.92 * valleyChannel);
-        }
-
-        // Evaluates the sky & primary celestial body along any ray direction rd (used for both direct sky and ocean reflections!)
-        vec3 evaluateCelestialSky(vec3 rd, bool isReflection) {
-          float elev = clamp(rd.y, -0.15, 1.0);
-          float horizonGlow = exp(-abs(rd.y - 0.01) * 6.5);
-          vec3 primaryDir = normalize(vec3(-0.18, 0.22, -0.958));
-          vec4 brunetonSky = sampleBrunetonAtmoLut(uBrunetonLutTex, elev, dot(rd, primaryDir) * 0.38);
-          vec3 baseSky = mix(uAtmoHorizon * 0.78, uAtmoZenith, smoothstep(-0.02, 0.52, elev));
-          baseSky += uAtmoHorizon * horizonGlow * 0.65;
-          vec3 sky = (uPaletteId < 0.5)
-            ? baseSky
-            : mix(baseSky, baseSky * 0.72 + brunetonSky.rgb * uAtmoHorizon * 0.85, 0.42);
-
-          if (uPaletteId < 0.5) {
-            // PALETTE 0: Lunar South Pole Sky -> Photorealistic 3D Ray-Traced Blue Marble Earth in the Vacuum Sky
-            float b = dot(rd, primaryDir);
-            float rEarth = 0.145;
-            float disc = b * b - (1.0 - rEarth * rEarth);
-            float limbGlow = exp(-max(0.0, acos(clamp(b, -1.0, 1.0)) - rEarth * 0.92) * 32.0);
-            sky += vec3(0.18, 0.48, 0.96) * limbGlow * 0.55;
-
-            if (disc > 0.0 && b > 0.0) {
-              float tHit = b - sqrt(disc);
-              vec3 hitPos = rd * tHit - primaryDir;
-              vec3 N = normalize(hitPos);
-              vec2 uv = vec2(atan(N.x, N.z) / 6.28318 + 0.5 + uTime * 0.0015, asin(clamp(N.y, -1.0, 1.0)) / 3.14159 + 0.5);
-
-              vec3 daySample = texture2D(uEarthDayTex, uv).rgb;
-              vec3 dayCol = pow(daySample, vec3(1.15));
-              vec3 nightCol = texture2D(uEarthNightTex, uv).rgb;
-              vec3 clouds = texture2D(uEarthCloudsTex, uv + vec2(uTime * 0.002, 0.0)).rgb;
-              float waterMask = texture2D(uEarthSpecTex, uv).r;
-              float specMask = waterMask * (1.0 - smoothstep(0.15, 0.35, min(daySample.r, daySample.g)));
-
-              vec3 sunL = normalize(vec3(0.78, 0.32, 0.54));
-              float ndl = dot(N, sunL);
-              float dayFactor = smoothstep(-0.12, 0.22, ndl);
-              float twilight = exp(-pow(ndl * 4.5, 2.0)) * 0.55;
-              vec3 H = normalize(sunL - rd);
-              float oceanSpec = pow(max(0.0, dot(N, H)), 48.0) * specMask * max(0.0, ndl);
-
-              vec3 lit = dayCol * max(0.04, ndl * 1.2) + vec3(0.45, 0.72, 1.0) * oceanSpec * 0.75;
-              lit = mix(lit, vec3(0.96, 0.98, 1.0) * max(0.1, ndl * 1.25), clouds.r * 0.74);
-              vec3 cities = nightCol * vec3(1.3, 0.9, 0.45) * (1.0 - smoothstep(-0.18, 0.06, ndl)) * 1.35;
-              vec3 earthSurf = mix(cities, lit, dayFactor) + vec3(0.95, 0.42, 0.16) * twilight;
-              float mu = clamp(dot(N, -rd), 0.0, 1.0);
-              earthSurf += vec3(0.24, 0.62, 1.0) * pow(1.0 - mu, 2.6) * (0.35 + 0.65 * dayFactor);
-              return earthSurf;
-            }
-            return sky;
-          }
-
-          if (uPaletteId < 1.5) {
-            // PALETTE 1: Proxima Centauri b Sky -> M5.5V Red Dwarf Sun + Coronal Loops + Alpha Centauri A/B Binary Pair
-            float cosAng = dot(rd, primaryDir);
-            float ang = acos(clamp(cosAng, -1.0, 1.0));
-            float rStar = 0.105;
-            float corona = exp(-max(0.0, ang - rStar * 0.75) * 14.0);
-            float godRays = (0.65 + 0.35 * sin(atan(rd.y - primaryDir.y, rd.x - primaryDir.x) * 14.0 + uTime * 0.2)) * exp(-ang * 5.5);
-            sky += vec3(1.25, 0.38, 0.12) * corona * 0.68 + vec3(1.05, 0.45, 0.18) * godRays * 0.28;
-
-            if (ang < rStar) {
-              float mu = sqrt(max(0.0, 1.0 - pow(ang / rStar, 2.0)));
-              vec2 granUv = (rd.xy - primaryDir.xy) * 32.0;
-              float gran = noised(granUv + vec2(uTime * 0.15, -uTime * 0.1)).x;
-              vec3 photosphere = mix(vec3(0.55, 0.06, 0.01), vec3(1.45, 0.48, 0.12), gran * 0.55 + mu * 0.45);
-              photosphere = mix(photosphere, vec3(1.75, 1.15, 0.55), pow(mu, 1.6) * 0.65);
-              return photosphere * (0.42 + 0.58 * pow(mu, 0.45));
-            }
-
-            // Alpha Centauri A & B bright double star gleaming in the upper right twilight sky
-            vec3 cenA = normalize(vec3(0.28, 0.34, -0.897));
-            vec3 cenB = normalize(vec3(0.305, 0.332, -0.892));
-            float dA = acos(clamp(dot(rd, cenA), -1.0, 1.0));
-            float dB = acos(clamp(dot(rd, cenB), -1.0, 1.0));
-            sky += vec3(1.4, 1.32, 1.05) * exp(-dA * 180.0) * 1.4 + vec3(1.35, 0.92, 0.55) * exp(-dB * 210.0) * 1.1;
-            return sky;
-          }
-
-          if (uPaletteId < 2.5) {
-            // PALETTE 2: Titan Sky -> Giant Ringed Saturn & Cassini Division Arching Across the Sky
-            vec3 satCenter = normalize(vec3(-0.14, 0.25, -0.958));
-            float rSat = 0.135;
-            float b = dot(rd, satCenter);
-            float disc = b * b - (1.0 - rSat * rSat);
-
-            // Ring plane normal tilted at 26.7 degrees
-            vec3 ringN = normalize(vec3(0.32, 0.84, 0.44));
-            float denom = dot(rd, ringN);
-            vec3 ringCol = vec3(0.0);
-            float ringAlpha = 0.0;
-            float tRing = 1e5;
-            if (abs(denom) > 0.001) {
-              tRing = dot(satCenter, ringN) / denom;
-              if (tRing > 0.0) {
-                vec3 rHit = rd * tRing - satCenter;
-                float rDist = length(rHit) / rSat;
-                if (isReflection) {
-                  float softBand = exp(-pow((rDist - 1.86) / 0.52, 2.0));
-                  ringCol = vec3(0.95, 0.78, 0.48) * softBand;
-                  ringAlpha = softBand * 0.48;
-                } else if (rDist > 1.28 && rDist < 2.45) {
-                  float cassini = smoothstep(0.015, 0.045, abs(rDist - 1.95));
-                  float encke = smoothstep(0.008, 0.022, abs(rDist - 2.26));
-                  float ringlets = 0.62 + 0.38 * sin(rDist * 140.0 + sin(rDist * 38.0) * 2.0);
-                  // Planet shadow on back of rings
-                  vec3 sunDir = normalize(vec3(0.68, 0.28, 0.67));
-                  float inShadow = (dot(rHit, sunDir) < 0.0 && length(cross(rHit, sunDir)) < rSat * 0.96) ? 0.12 : 1.0;
-                  ringCol = mix(vec3(0.68, 0.56, 0.38), vec3(1.08, 0.92, 0.68), ringlets) * cassini * encke * inShadow;
-                  ringAlpha = clamp(ringlets * cassini * encke * 0.88, 0.0, 0.92);
-                }
-              }
-            }
-
-            if (isReflection) {
-              float angSat = acos(clamp(b, -1.0, 1.0));
-              float satGlow = exp(-max(0.0, angSat - rSat * 0.4) * 12.0);
-              vec3 reflSat = mix(sky, vec3(0.96, 0.78, 0.46), clamp(satGlow * 0.65 + ringAlpha * 0.55, 0.0, 0.85));
-              return reflSat;
-            }
-
-            if (disc > 0.0 && b > 0.0) {
-              float tSphere = b - sqrt(disc);
-              vec3 hitPos = rd * tSphere - satCenter;
-              vec3 N = normalize(hitPos);
-              vec3 sunDir = normalize(vec3(0.68, 0.28, 0.67));
-              float ndl = max(0.06, dot(N, sunDir));
-              float lat = dot(N, ringN);
-              float belts = 0.5 + 0.5 * sin(lat * 28.0 + sin(lat * 9.0) * 1.5);
-              vec3 satSurf = mix(vec3(0.72, 0.58, 0.36), vec3(1.02, 0.86, 0.58), belts) * ndl * 1.25;
-              if (ringAlpha > 0.0 && tRing < tSphere) {
-                satSurf = mix(satSurf, ringCol, ringAlpha);
-              }
-              return mix(sky, satSurf, 0.92);
-            }
-            if (ringAlpha > 0.0) {
-              return mix(sky, ringCol, ringAlpha * 0.88);
-            }
-            return sky;
-          }
-
-          return sky;
-        }
-
-        void main() {
-          vec3 rd = normalize(vWorldDir);
-          vec3 skyCol = evaluateCelestialSky(rd, false);
-
-          // Above the maximum mountain elevation, return pure sky
-          if (rd.y > 0.22) {
-            float zenithAlpha = clamp(1.0 - smoothstep(0.08, 0.58, rd.y) * 0.72, 0.22, 0.96);
-            gl_FragColor = vec4(skyCol, zenithAlpha);
-            return;
-          }
-
-          // Ray-march the planetary surface & ocean from camera origin ro = (0, 0.35, 0)
-          vec3 ro = vec3(0.0, 0.35, 0.0);
-          float t = 1.6;
-          float prevT = 1.6;
-          float prevDiff = 0.35;
-          float tMax = 68.0;
-          bool hit = false;
-          vec2 hitGrad = vec2(0.0);
-          float h = 0.0;
-
-          for (int i = 0; i < 96; i++) {
-            vec3 pos = ro + rd * t;
-            h = terrainHeight(pos.xz, hitGrad);
-            float diff = pos.y - h;
-            if (diff <= 0.0) {
-              // Exact secant root interpolation + 2-step bisection for zero step-banding
-              float frac = clamp(prevDiff / max(1e-5, prevDiff - diff), 0.0, 1.0);
-              float tSec = mix(prevT, t, frac);
-              vec3 midPos = ro + rd * tSec;
-              float midH = terrainHeight(midPos.xz, hitGrad);
-              if (midPos.y - midH <= 0.0) {
-                t = mix(prevT, tSec, 0.5);
-              } else {
-                t = mix(tSec, t, 0.5);
-              }
-              hit = true;
-              break;
-            }
-            if (t > tMax) break;
-            prevT = t;
-            prevDiff = diff;
-            t += max(0.07, diff * 0.40);
-          }
-
-          float waterLevel = uPaletteId > 1.5 ? -1.88 : (uPaletteId > 0.5 ? -1.94 : -99.0);
-          float tWater = (uPaletteId > 0.5 && rd.y < -0.001) ? (waterLevel - ro.y) / rd.y : 1e5;
-          vec3 wPos = ro + rd * tWater;
-          vec2 wGrad = vec2(0.0);
-          float bedH = (tWater > 1.2 && tWater < tMax) ? terrainHeight(wPos.xz, wGrad) : 99.0;
-          float waterDepth = waterLevel - bedH;
-          bool hitWater = (tWater > 1.2 && tWater < (hit ? t : tMax) && waterDepth > 0.0);
-
-          if (!hit && !hitWater) {
-            gl_FragColor = vec4(skyCol, 0.94);
-            return;
-          }
-
-          vec3 sunL = normalize(vec3(-0.18, 0.26, -0.948));
-          vec3 V = -rd;
-          vec3 surfCol = skyCol;
-          float finalT = hit ? t : tWater;
-
-          if (hit) {
-            vec3 pos = ro + rd * t;
-            vec2 g1, g2;
-            float eps = 0.06;
-            h = terrainHeight(pos.xz, hitGrad);
-            float hx = terrainHeight(pos.xz + vec2(eps, 0.0), g1);
-            float hz = terrainHeight(pos.xz + vec2(0.0, eps), g2);
-            vec3 N = normalize(vec3(h - hx, eps, h - hz));
-
-            vec3 microN = noised(pos.xz * 3.8);
-            N = normalize(N + vec3(microN.y, 0.0, microN.z) * 0.15);
-
-            float ndl = max(0.0, dot(N, sunL));
-            float ndv = max(0.0, dot(N, V));
-            float lommel = ndl / max(0.14, ndl + ndv);
-            vec3 H = normalize(sunL + V);
-            float spec = pow(max(0.0, dot(N, H)), 38.0);
-
-            float strata = 0.85 + 0.15 * sin(pos.y * 5.2 + microN.x * 6.0);
-            float slope = clamp(N.y, 0.0, 1.0);
-
-            if (uPaletteId < 0.5) {
-              vec3 regolith = vec3(0.52, 0.55, 0.60) * strata * (0.72 + 0.28 * microN.x);
-              vec3 earthshine = vec3(0.04, 0.08, 0.16) * (0.35 + 0.65 * slope);
-              surfCol = regolith * (lommel * 1.55) + earthshine + vec3(0.85, 0.92, 1.0) * spec * 0.18;
-            } else if (uPaletteId < 1.5) {
-              float snowMask = smoothstep(0.56, 0.78, slope + (microN.x - 0.5) * 0.22);
-              vec3 basaltRock = vec3(0.12, 0.08, 0.08) * strata;
-              vec3 glacierIce = vec3(0.64, 0.83, 0.98) * (0.84 + 0.16 * microN.x);
-              vec3 albedo = mix(basaltRock, glacierIce, snowMask);
-              vec3 skyAmbient = vec3(0.08, 0.05, 0.07) * (0.35 + 0.65 * slope);
-              surfCol = albedo * uSunColor * (lommel * 1.55) + skyAmbient + vec3(0.80, 0.92, 1.0) * spec * (0.10 + snowMask * 0.72);
-            } else {
-              float duneMask = smoothstep(0.60, 0.84, slope);
-              vec3 cliffRock = vec3(0.20, 0.12, 0.07) * strata;
-              vec3 tholinSand = vec3(0.66, 0.42, 0.17) * (0.82 + 0.18 * microN.x);
-              vec3 albedo = mix(cliffRock, tholinSand, duneMask);
-              surfCol = albedo * uSunColor * (lommel * 1.40 + 0.08) + uSunColor * spec * 0.24;
-            }
-          }
-
-          if (hitWater) {
-            // Exact Analytical Liquid Plane with 100% Continuous Analytical Water Depth & Fresnel Reflections
-            vec2 waveUv = wPos.xz * 1.55 + vec2(uTime * 0.35, -uTime * 0.22);
-            vec3 wn1 = noised(waveUv);
-            vec3 wn2 = noised(waveUv * 2.6 - vec2(uTime * 0.48, uTime * 0.31));
-            vec3 waterN = normalize(vec3(
-              (wn1.y + wn2.y * 0.45) * 0.028,
-              1.0,
-              (wn1.z + wn2.z * 0.45) * 0.028
-            ));
-
-            vec3 reflDir = reflect(rd, waterN);
-            reflDir.y = max(0.02, reflDir.y);
-            vec3 reflSky = evaluateCelestialSky(normalize(reflDir), true);
-
-            float cosTheta = clamp(dot(waterN, V), 0.0, 1.0);
-            float fresnel = 0.08 + 0.92 * pow(1.0 - cosTheta, 4.0);
-
-            vec3 deepLiquid = uPaletteId > 1.5 ? vec3(0.028, 0.036, 0.024) : vec3(0.018, 0.042, 0.068);
-            vec3 waterCol = mix(deepLiquid, reflSky * 1.16, fresnel);
-
-            float shoreBlend = smoothstep(0.0, 0.22, waterDepth);
-            float shoreFoam = exp(-waterDepth * 14.0) * smoothstep(0.42, 0.88, wn1.x) * 0.18;
-            surfCol = mix(surfCol * 0.72, waterCol + uSunColor * shoreFoam, shoreBlend);
-            finalT = tWater;
-          }
-
-          // Physically based exponential distance haze & subtle canyon mist
-          float mistDensity = uPaletteId < 0.5 ? 0.006 : 0.013;
-          float fogFactor = 1.0 - exp(-finalT * mistDensity);
-          vec3 finalPos = ro + rd * finalT;
-          float valleyMist = uPaletteId < 0.5 ? 0.0 : exp(-max(0.0, finalPos.y + 2.15) * 2.2) * smoothstep(10.0, 42.0, finalT) * 0.20;
-          vec3 finalCol = mix(surfCol, skyCol, clamp(fogFactor + valleyMist, 0.0, 0.88));
-
-          gl_FragColor = vec4(finalCol, 0.99);
-        }
-      `,
-    });
-    const worldDome = new THREE.Mesh(worldGeo, worldMat);
-    group.add(worldDome);
-
-    // 3. Invisible anchor mesh for camera telemetry projection
-    const anchorGeo = new THREE.SphereGeometry(0.1, 8, 8);
-    const anchorMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 });
-    const parentBody = new THREE.Mesh(anchorGeo, anchorMat);
-    parentBody.position.set(-3.6, 4.2, -19.0);
-    group.add(parentBody);
-    this.planetaryParentBodyMesh = parentBody;
-
-    // 4. Real @sparkjsdev/spark SplatMesh Exospheric Dust & Volumetric Surface Mist
-    this.rebuildPlanetaryTerrainSplats('exoplanet_terminator');
+    this.addCatalogStarMount(group, 95.0);
+    const { parentBodyMesh, terrainSplatMesh } = buildPlanetarySurfaceRegimeGroup(
+      group, this.planetarySkyUniforms, this.earthUniforms, this.moonUniforms
+    );
+    this.planetaryParentBodyMesh = parentBodyMesh;
+    this.planetaryTerrainSplatMesh = terrainSplatMesh;
   }
 
-  /**
-   * Rebuilds the `@sparkjsdev/spark` 3D Gaussian Splat exospheric dust/mist (`SplatMesh`) and atmospheric shader uniforms
-   * to match the astrophysical class of the selected celestial target.
-   */
-  private rebuildPlanetaryTerrainSplats(
-    palette: PlanetaryTerrainPalette
-  ): void {
+  private rebuildPlanetaryTerrainSplats(palette: PlanetaryTerrainPalette): void {
     const group = this.regimeGroups.planetary_surface;
     if (this.planetaryTerrainSplatMesh) {
       group.remove(this.planetaryTerrainSplatMesh);
       this.planetaryTerrainSplatMesh.dispose();
       this.planetaryTerrainSplatMesh = null;
     }
-
-    if (palette === 'lunar_regolith') {
-      this.planetarySkyUniforms.uAtmoZenith.value.set(0.001, 0.002, 0.006);
-      this.planetarySkyUniforms.uAtmoHorizon.value.set(0.05, 0.11, 0.22);
-      this.planetarySkyUniforms.uSunColor.value.set(0.95, 0.98, 1.05);
-      this.planetarySkyUniforms.uSunAngularRadius.value = 0.085;
-      this.planetarySkyUniforms.uHasRings.value = 0.0;
-      this.planetarySkyUniforms.uPaletteId.value = 0.0;
-    } else if (palette === 'titan_methane') {
-      this.planetarySkyUniforms.uAtmoZenith.value.set(0.05, 0.03, 0.012);
-      this.planetarySkyUniforms.uAtmoHorizon.value.set(0.84, 0.48, 0.16);
-      this.planetarySkyUniforms.uSunColor.value.set(1.12, 0.80, 0.42);
-      this.planetarySkyUniforms.uSunAngularRadius.value = 0.11;
-      this.planetarySkyUniforms.uHasRings.value = 1.0;
-      this.planetarySkyUniforms.uPaletteId.value = 2.0;
-    } else {
-      // exoplanet_terminator (glacial canyon world)
-      this.planetarySkyUniforms.uAtmoZenith.value.set(0.008, 0.018, 0.052);
-      this.planetarySkyUniforms.uAtmoHorizon.value.set(0.48, 0.18, 0.10);
-      this.planetarySkyUniforms.uSunColor.value.set(1.18, 0.58, 0.36);
-      this.planetarySkyUniforms.uSunAngularRadius.value = 0.105;
-      this.planetarySkyUniforms.uHasRings.value = 0.0;
-      this.planetarySkyUniforms.uPaletteId.value = 1.0;
-    }
-
-    const terrainSplatMesh = new SplatMesh({
-      constructSplats: (splats: PackedSplats) => {
-        const center = new THREE.Vector3();
-        const scales = new THREE.Vector3();
-        const quat = new THREE.Quaternion();
-        const color = new THREE.Color();
-
-        const count = 1800;
-        for (let i = 0; i < count; i++) {
-          const seed1 = Math.sin(i * 12.9898) * 43758.5453;
-          const seed2 = Math.sin(i * 78.233) * 43758.5453;
-          const u = (seed1 - Math.floor(seed1)) - 0.5;
-          const v = seed2 - Math.floor(seed2);
-          const z = -12.0 - v * 26.0;
-          const x = u * (24.0 + v * 34.0);
-          const y = -0.8 + Math.sin(x * 0.25 + z * 0.2) * 0.8 + (i % 7) * 0.35;
-          center.set(x, y, z);
-
-          const s = 0.012 + (i % 4) * 0.003;
-          scales.set(s * 1.5, s * 0.8, s * 1.5);
-
-          if (palette === 'lunar_regolith') {
-            color.setRGB(0.65, 0.78, 0.96);
-          } else if (palette === 'titan_methane') {
-            color.setRGB(0.95, 0.62, 0.24);
-          } else {
-            color.setRGB(0.92, 0.56, 0.42);
-          }
-
-          splats.pushSplat(center, scales, quat, 0.016, color);
-        }
-      },
-    });
-
+    const terrainSplatMesh = createPlanetaryTerrainSplatMesh(palette, this.planetarySkyUniforms);
     group.add(terrainSplatMesh);
     this.planetaryTerrainSplatMesh = terrainSplatMesh;
   }
 
   private syncRegimeVisibility(): void {
     for (const r of SCALE_REGIME_ORDER) {
-      const isVisible =
-        r === this.activeRegime || this.flightState?.targetRegime === r;
-      this.regimeGroups[r].visible = isVisible;
+      this.regimeGroups[r].visible = r === this.activeRegime || this.flightState?.targetRegime === r;
     }
   }
 
@@ -1798,23 +290,12 @@ export class SparkPortalRenderer {
       this.planetarySkyUniforms.uTime.value = elapsed;
       this.cinemaOpticsUniforms.uTime.value = elapsed;
 
-      // A held clock also holds the per-frame spin, so the pose depends on the time alone
       const rotMult = this.heldClockSec !== null ? 0 : this.showcaseMode ? 3.2 : 1.0;
-      if (this.cislunarMoonMesh) {
-        this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
-      }
-      if (this.cislunarEarthMesh) {
-        this.cislunarEarthMesh.rotation.y += 0.00018 * rotMult;
-      }
-      if (this.betelgeuseMesh) {
-        this.betelgeuseMesh.rotation.y += 0.0006 * rotMult;
-      }
-      if (this.localBubbleCavityGroup) {
-        this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
-      }
-      if (this.planetaryParentBodyMesh) {
-        this.planetaryParentBodyMesh.rotation.y += 0.0005 * rotMult;
-      }
+      if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
+      if (this.cislunarEarthMesh) this.cislunarEarthMesh.rotation.y += 0.00018 * rotMult;
+      if (this.betelgeuseMesh) this.betelgeuseMesh.rotation.y += 0.0006 * rotMult;
+      if (this.localBubbleCavityGroup) this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
+      if (this.planetaryParentBodyMesh) this.planetaryParentBodyMesh.rotation.y += 0.0005 * rotMult;
 
       if (this.showcaseMode && !this.flightState?.active) {
         this.lookTarget.yaw = Math.sin(elapsed * 0.42) * 0.095;
@@ -1825,23 +306,15 @@ export class SparkPortalRenderer {
       const prevYaw = this.lookTarget.curYaw;
       const prevPitch = this.lookTarget.curPitch;
       this.lookTarget.curYaw += (this.lookTarget.yaw - this.lookTarget.curYaw) * 0.14;
-      this.lookTarget.curPitch +=
-        (this.lookTarget.pitch - this.lookTarget.curPitch) * 0.14;
-      this.lookTarget.velYaw =
-        this.lookTarget.velYaw * 0.82 + (this.lookTarget.curYaw - prevYaw) * 18.0;
-      this.lookTarget.velPitch =
-        this.lookTarget.velPitch * 0.82 + (this.lookTarget.curPitch - prevPitch) * 18.0;
+      this.lookTarget.curPitch += (this.lookTarget.pitch - this.lookTarget.curPitch) * 0.14;
+      this.lookTarget.velYaw = this.lookTarget.velYaw * 0.82 + (this.lookTarget.curYaw - prevYaw) * 18.0;
+      this.lookTarget.velPitch = this.lookTarget.velPitch * 0.82 + (this.lookTarget.curPitch - prevPitch) * 18.0;
       this.curFov += (this.targetFov - this.curFov) * 0.14;
 
       if (this.flightState?.active) {
         this.flightState.progress = Math.min(1, this.flightState.progress + 0.048);
         const t = this.flightState.progress;
-        const smoothT = t * t * (3 - 2 * t);
-        this.localFrame.position.lerpVectors(
-          this.flightState.startPos,
-          this.flightState.endPos,
-          smoothT
-        );
+        this.localFrame.position.lerpVectors(this.flightState.startPos, this.flightState.endPos, t * t * (3 - 2 * t));
         const warpArc = Math.sin(t * Math.PI);
         this.camera.fov = this.curFov + warpArc * 16;
         this.camera.updateProjectionMatrix();
@@ -1878,89 +351,34 @@ export class SparkPortalRenderer {
       } else {
         this.renderer.render(this.scene, this.camera);
       }
-
       this.rafId = window.requestAnimationFrame(tick);
     };
     this.rafId = window.requestAnimationFrame(tick);
   }
 
-  public getCameraTelemetry(
-    viewportWidth: number,
-    viewportHeight: number
-  ): {
-    yawDeg: number;
-    pitchDeg: number;
-    fovDeg: number;
-    velYaw: number;
-    velPitch: number;
-    warpFactor: number;
-    subjectScreen: { x: number; y: number; visible: boolean };
-  } {
-    const rawAz = ((-this.lookTarget.curYaw * 180) / Math.PI + 210) % 360;
-    const yawDeg = (rawAz + 360) % 360;
-    const pitchDeg = Math.round(((this.lookTarget.curPitch * 180) / Math.PI + 24) * 10) / 10;
-    const fovDeg = Math.round(this.curFov);
-
-    let subjectWorld = new THREE.Vector3(0, 0, -10);
-    if (this.activeRegime === 'cislunar' && this.cislunarMoonMesh) {
-      subjectWorld = this.cislunarMoonMesh.getWorldPosition(new THREE.Vector3());
-    } else if (this.activeRegime === 'solar_neighborhood' && this.betelgeuseMesh) {
-      subjectWorld = this.betelgeuseMesh.getWorldPosition(new THREE.Vector3());
-    } else if (this.activeRegime === 'deep_sky') {
-      subjectWorld = new THREE.Vector3(0, 0.3, -13.5).add(
-        REGIME_CAMERA_ANCHORS.deep_sky
-      );
-    } else if (this.activeRegime === 'planetary_surface' && this.planetaryParentBodyMesh) {
-      subjectWorld = this.planetaryParentBodyMesh.getWorldPosition(new THREE.Vector3());
-    }
-
-    this.camera.updateMatrixWorld();
-    const camSpace = subjectWorld.clone().applyMatrix4(this.camera.matrixWorldInverse);
-    let subjectScreen = { x: viewportWidth * 0.5, y: viewportHeight * 0.5, visible: false };
-    if (this.activeRegime !== 'earth_capture' && camSpace.z < -0.5) {
-      const ndc = subjectWorld.clone().project(this.camera);
-      subjectScreen = {
-        x: (ndc.x * 0.5 + 0.5) * viewportWidth,
-        y: (-ndc.y * 0.5 + 0.5) * viewportHeight,
-        visible: true,
-      };
-    }
-
-    return {
-      yawDeg,
-      pitchDeg,
-      fovDeg,
-      velYaw: this.lookTarget.velYaw,
-      velPitch: this.lookTarget.velPitch,
-      warpFactor: this.cinemaOpticsUniforms.uWarpFactor.value,
-      subjectScreen,
-    };
+  public getCameraTelemetry(viewportWidth: number, viewportHeight: number) {
+    return computeCameraTelemetrySnapshot({
+      camera: this.camera, activeRegime: this.activeRegime, deepSkyAnchor: REGIME_CAMERA_ANCHORS.deep_sky,
+      cislunarMoonMesh: this.cislunarMoonMesh, betelgeuseMesh: this.betelgeuseMesh,
+      planetaryParentBodyMesh: this.planetaryParentBodyMesh,
+      curYaw: this.lookTarget.curYaw, curPitch: this.lookTarget.curPitch, curFov: this.curFov,
+      velYaw: this.lookTarget.velYaw, velPitch: this.lookTarget.velPitch,
+      warpFactor: this.cinemaOpticsUniforms.uWarpFactor.value, viewportWidth, viewportHeight,
+    });
   }
 
   public dragLook(deltaPixelsX: number, deltaPixelsY: number): void {
-    const fovScale = this.curFov / 56;
-    const sensitivity = 0.0032 * fovScale;
+    const sensitivity = 0.0032 * (this.curFov / 56);
     this.lookTarget.yaw -= deltaPixelsX * sensitivity;
-    this.lookTarget.pitch = Math.max(
-      -1.15,
-      Math.min(1.15, this.lookTarget.pitch - deltaPixelsY * sensitivity)
-    );
+    this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch - deltaPixelsY * sensitivity));
     if (this.activeRegime === 'cislunar' && this.cislunarMoonMesh) {
       this.cislunarMoonMesh.rotation.y += deltaPixelsX * 0.004;
-      this.cislunarMoonMesh.rotation.x = Math.max(
-        -0.6,
-        Math.min(0.6, this.cislunarMoonMesh.rotation.x + deltaPixelsY * 0.003)
-      );
+      this.cislunarMoonMesh.rotation.x = Math.max(-0.6, Math.min(0.6, this.cislunarMoonMesh.rotation.x + deltaPixelsY * 0.003));
     } else if (this.activeRegime === 'solar_neighborhood') {
-      if (this.betelgeuseMesh) {
-        this.betelgeuseMesh.rotation.y += deltaPixelsX * 0.004;
-      }
+      if (this.betelgeuseMesh) this.betelgeuseMesh.rotation.y += deltaPixelsX * 0.004;
       if (this.localBubbleCavityGroup) {
         this.localBubbleCavityGroup.rotation.y += deltaPixelsX * 0.0035;
-        this.localBubbleCavityGroup.rotation.x = Math.max(
-          -0.6,
-          Math.min(0.6, this.localBubbleCavityGroup.rotation.x + deltaPixelsY * 0.0025)
-        );
+        this.localBubbleCavityGroup.rotation.x = Math.max(-0.6, Math.min(0.6, this.localBubbleCavityGroup.rotation.x + deltaPixelsY * 0.0025));
       }
     }
   }
@@ -1974,73 +392,32 @@ export class SparkPortalRenderer {
     }
   }
 
-  public getFovDeg(): number {
-    return Math.round(this.targetFov);
-  }
+  public getFovDeg(): number { return Math.round(this.targetFov); }
+  public setLimitingMagnitude(mag: number): void { this.catalogStars?.setLimitingMagnitude(mag); }
+  public getLimitingMagnitude(): number { return this.catalogStars?.getLimitingMagnitude() ?? DEFAULT_LIMITING_MAGNITUDE; }
+  public getCatalogStarField(): CatalogStarField | null { return this.catalogStars; }
+  public getCatalogStarStats(): CatalogStarFieldStats | null { return this.catalogStars?.getStats() ?? null; }
 
-  /** Limiting magnitude of the catalog star field, the axis of the Unveil gesture. */
-  public setLimitingMagnitude(mag: number): void {
-    this.catalogStars?.setLimitingMagnitude(mag);
-  }
-
-  public getLimitingMagnitude(): number {
-    return this.catalogStars?.getLimitingMagnitude() ?? DEFAULT_LIMITING_MAGNITUDE;
-  }
-
-  /** Catalog star field: manifest (sources, citations, disclosure), names and star records. */
-  public getCatalogStarField(): CatalogStarField | null {
-    return this.catalogStars;
-  }
-
-  public getCatalogStarStats(): CatalogStarFieldStats | null {
-    return this.catalogStars?.getStats() ?? null;
-  }
-
-  /** The camera's pose against the catalog star sphere drawn now, for the audio listener. */
   public getCameraSkyPose(): CameraSkyPose | null {
     const sky = this.catalogStarMounts.find((m) => m.parent?.visible !== false);
     if (!sky || !this.catalogStars) return null;
     return cameraSkyPose(this.camera, sky, this.catalogStars.getLimitingMagnitude());
   }
 
-  /**
-   * Screen position of a catalog direction (ICRS RA/Dec at the catalog epoch), matching where
-   * the catalog star field draws it. Used to anchor labels to catalog stars.
-   */
-  public projectCatalogPositionToScreen(
-    raDeg: number,
-    decDeg: number,
-    viewportWidth: number,
-    viewportHeight: number
-  ): { x: number; y: number; visible: boolean } {
+  public projectCatalogPositionToScreen(raDeg: number, decDeg: number, viewportWidth: number, viewportHeight: number) {
     if (!this.catalogStars) return { x: -999, y: -999, visible: false };
-    this.camera.updateMatrixWorld();
-    const dir = this.catalogStars.sceneDirection(raDeg, decDeg);
-    const camPos = this.camera.getWorldPosition(new THREE.Vector3());
-    const worldPos = camPos.addScaledVector(dir, 100);
-    const camSpace = worldPos.clone().applyMatrix4(this.camera.matrixWorldInverse);
-    if (camSpace.z >= 0) return { x: -999, y: -999, visible: false };
-    const ndc = worldPos.project(this.camera);
-    const x = (ndc.x * 0.5 + 0.5) * viewportWidth;
-    const y = (-ndc.y * 0.5 + 0.5) * viewportHeight;
-    return { x, y, visible: x >= 0 && x <= viewportWidth && y >= 0 && y <= viewportHeight };
+    return projectCatalogDirectionToScreen(this.camera, this.catalogStars.sceneDirection(raDeg, decDeg), viewportWidth, viewportHeight);
   }
 
   public nudgeMovement(dx: number, dy: number, dz: number): void {
     if (this.activeRegime === 'earth_capture') {
       this.lookTarget.yaw -= dx * 0.14;
-      this.lookTarget.pitch = Math.max(
-        -1.15,
-        Math.min(1.15, this.lookTarget.pitch - dz * 0.14 + dy * 0.14)
-      );
+      this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch - dz * 0.14 + dy * 0.14));
       return;
     }
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    const up = new THREE.Vector3(0, 1, 0);
-    this.localFrame.position.addScaledVector(right, dx);
-    this.localFrame.position.addScaledVector(up, dy);
-    this.localFrame.position.addScaledVector(forward, dz);
+    this.localFrame.position.addScaledVector(new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion), dx);
+    this.localFrame.position.addScaledVector(new THREE.Vector3(0, 1, 0), dy);
+    this.localFrame.position.addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(this.camera.quaternion), dz);
   }
 
   public nudgeLook(dYaw: number, dPitch: number): void {
@@ -2048,187 +425,36 @@ export class SparkPortalRenderer {
     this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch + dPitch));
   }
 
-  public getSkyTargetPosition(
-    id: string,
-    title: string,
-    raDeg: number,
-    decDeg: number
-  ): THREE.Vector3 {
-    const lowerId = id.toLowerCase();
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('moon')) {
-      return new THREE.Vector3(5.4, 2.8, -26.0);
-    }
-    if (lowerId.includes('alpha_centauri') || lowerTitle.includes('alpha centauri')) {
-      return new THREE.Vector3(-3.8, 4.4, -25.4);
-    }
-    if (lowerId.includes('carina') || lowerTitle.includes('carina')) {
-      return new THREE.Vector3(2.8, 3.6, -25.6);
-    }
-    if (lowerId.includes('acrux') || lowerTitle.includes('acrux') || lowerTitle.includes('southern cross')) {
-      return new THREE.Vector3(-0.6, 5.1, -25.4);
-    }
-    if (lowerId.includes('canopus') || lowerTitle.includes('canopus')) {
-      return new THREE.Vector3(6.8, 1.4, -25.8);
-    }
-    if (lowerId.includes('altair') || lowerTitle.includes('altair')) {
-      return new THREE.Vector3(-6.4, 4.6, -25.0);
-    }
-    if (lowerId.includes('tarazed') || lowerTitle.includes('tarazed')) {
-      return new THREE.Vector3(-8.8, 6.2, -25.2);
-    }
-    if (lowerId.includes('alshain') || lowerTitle.includes('alshain')) {
-      return new THREE.Vector3(-4.2, 2.8, -25.2);
-    }
-    if (lowerId.includes('albireo') || lowerTitle.includes('albireo')) {
-      return new THREE.Vector3(-10.5, 8.2, -24.8);
-    }
-    if (lowerId.includes('deneb_algedi') || lowerTitle.includes('deneb algedi')) {
-      return new THREE.Vector3(1.8, 0.2, -25.8);
-    }
-    if (lowerId.includes('sadalsuud') || lowerTitle.includes('sadalsuud')) {
-      return new THREE.Vector3(0.4, 4.2, -25.6);
-    }
-    if (lowerId.includes('dabih') || lowerTitle.includes('dabih')) {
-      return new THREE.Vector3(-2.6, -1.2, -25.8);
-    }
-    if (lowerId.includes('algedi') || lowerTitle.includes('algedi')) {
-      return new THREE.Vector3(-4.8, -0.2, -25.8);
-    }
-    if (lowerId.includes('nashira') || lowerTitle.includes('nashira')) {
-      return new THREE.Vector3(0.2, -1.6, -25.8);
-    }
-    if (lowerId.includes('fomalhaut') || lowerTitle.includes('fomalhaut')) {
-      return new THREE.Vector3(4.2, -3.4, -26.2);
-    }
-    if (lowerId.includes('saturn') || lowerTitle.includes('saturn')) {
-      return new THREE.Vector3(3.1, 5.4, -25.8);
-    }
-    if (lowerId.includes('uranus') || lowerTitle.includes('uranus')) {
-      return new THREE.Vector3(8.8, 3.6, -25.5);
-    }
-    if (lowerId.includes('vega') || lowerTitle.includes('vega')) {
-      return new THREE.Vector3(-10.2, 7.4, -24.5);
-    }
-    if (lowerId.includes('betelgeuse') || lowerTitle.includes('betelgeuse')) {
-      return new THREE.Vector3(-4.2, 3.8, -25.5);
-    }
-    if (lowerId.includes('rigel') || lowerTitle.includes('rigel')) {
-      return new THREE.Vector3(-1.4, -2.1, -26.0);
-    }
-    if (lowerId.includes('aldebaran') || lowerTitle.includes('aldebaran')) {
-      return new THREE.Vector3(4.6, 5.6, -25.2);
-    }
-    if (lowerId.includes('sirius') || lowerTitle.includes('sirius')) {
-      return new THREE.Vector3(-7.6, -3.2, -25.5);
-    }
-    if (lowerId.includes('jupiter') || lowerTitle.includes('jupiter')) {
-      return new THREE.Vector3(2.4, 6.4, -25.4);
-    }
-    if (lowerId.includes('sgr_a') || lowerTitle.includes('sagittarius') || lowerTitle.includes('black hole')) {
-      return new THREE.Vector3(0.8, 3.2, -25.4);
-    }
-    const normRa = (((raDeg - 80 + 540) % 360) - 180) / 180;
-    const normDec = Math.max(-45, Math.min(65, decDeg)) / 65;
-    return new THREE.Vector3(normRa * 11.5, normDec * 6.5 + 1.2, -26.0);
+  public getSkyTargetPosition(id: string, title: string, raDeg: number, decDeg: number): THREE.Vector3 {
+    return resolveSkyTargetPosition(id, title, raDeg, decDeg);
   }
 
-  public projectSkyTargetToScreen(
-    id: string,
-    title: string,
-    raDeg: number,
-    decDeg: number,
-    viewportWidth: number,
-    viewportHeight: number
-  ): { x: number; y: number; visible: boolean } {
-    if (
-      viewportWidth > 0 &&
-      viewportHeight > 0 &&
-      Math.abs(this.camera.aspect - viewportWidth / viewportHeight) > 0.001
-    ) {
+  public projectSkyTargetToScreen(id: string, title: string, raDeg: number, decDeg: number, viewportWidth: number, viewportHeight: number) {
+    if (viewportWidth > 0 && viewportHeight > 0 && Math.abs(this.camera.aspect - viewportWidth / viewportHeight) > 0.001) {
       this.resize(viewportWidth, viewportHeight);
     }
-    const worldPos = this.getSkyTargetPosition(id, title, raDeg, decDeg);
-    this.camera.updateMatrixWorld();
-    const camSpace = worldPos.clone().applyMatrix4(this.camera.matrixWorldInverse);
-    if (camSpace.z >= -0.2) {
-      return { x: -999, y: -999, visible: false };
-    }
-    const ndc = worldPos.clone().project(this.camera);
-    const x = (ndc.x * 0.5 + 0.5) * viewportWidth;
-    const y = (-ndc.y * 0.5 + 0.5) * viewportHeight;
-    const visible =
-      x >= 32 &&
-      x <= viewportWidth - 32 &&
-      y >= 56 &&
-      y <= viewportHeight - 64;
-    return { x, y, visible };
+    return projectSkyWorldPointToScreen(this.camera, this.getSkyTargetPosition(id, title, raDeg, decDeg), viewportWidth, viewportHeight);
   }
 
-  public focusSkyTarget(
-    id: string,
-    title: string,
-    raDeg: number,
-    decDeg: number
-  ): void {
-    const pos = this.getSkyTargetPosition(id, title, raDeg, decDeg);
-    const dir = pos.clone().normalize();
+  public focusSkyTarget(id: string, title: string, raDeg: number, decDeg: number): void {
+    const dir = this.getSkyTargetPosition(id, title, raDeg, decDeg).clone().normalize();
     this.lookTarget.yaw = Math.atan2(-dir.x, -dir.z);
     this.lookTarget.pitch = Math.asin(Math.max(-0.85, Math.min(0.85, dir.y)));
   }
 
-  public setTargetAppearance(
-    title: string,
-    bpRp?: number,
-    objectType?: string
-  ): void {
-    const lower = title.toLowerCase();
-    const isBh =
-      lower.includes('sagittarius') ||
-      lower.includes('sgr a') ||
-      lower.includes('black hole');
+  public setTargetAppearance(title: string, bpRp?: number, objectType?: string): void {
+    const isBh = applyTargetAppearanceToUniforms(title, bpRp, objectType, this.localBubbleUniforms);
     this.nebulaUniforms.uIsBlackHole.value = isBh ? 1.0 : 0.0;
     this.showDeepSkyBlackHole(isBh);
-
-    if (lower.includes('uranus')) {
-      this.localBubbleUniforms.uCoolColor.value.set(0.08, 0.38, 0.52);
-      this.localBubbleUniforms.uWarmColor.value.set(0.24, 0.72, 0.88);
-      this.localBubbleUniforms.uHotColor.value.set(0.58, 0.92, 1.0);
-      return;
-    }
-    if (lower.includes('saturn') || lower.includes('jupiter') || objectType === 'planet') {
-      this.localBubbleUniforms.uCoolColor.value.set(0.42, 0.28, 0.12);
-      this.localBubbleUniforms.uWarmColor.value.set(0.88, 0.68, 0.36);
-      this.localBubbleUniforms.uHotColor.value.set(1.18, 0.96, 0.64);
-      return;
-    }
-    const colorIdx = bpRp ?? (lower.includes('betelgeuse') || lower.includes('aldebaran') ? 1.85 : 0.1);
-    if (colorIdx >= 1.2) {
-      this.localBubbleUniforms.uCoolColor.value.set(0.28, 0.03, 0.005);
-      this.localBubbleUniforms.uWarmColor.value.set(0.92, 0.24, 0.03);
-      this.localBubbleUniforms.uHotColor.value.set(1.38, 0.78, 0.28);
-    } else if (colorIdx < -0.02) {
-      this.localBubbleUniforms.uCoolColor.value.set(0.14, 0.28, 0.68);
-      this.localBubbleUniforms.uWarmColor.value.set(0.48, 0.72, 1.25);
-      this.localBubbleUniforms.uHotColor.value.set(0.95, 1.15, 1.55);
-    } else {
-      this.localBubbleUniforms.uCoolColor.value.set(0.32, 0.42, 0.65);
-      this.localBubbleUniforms.uWarmColor.value.set(0.82, 0.92, 1.18);
-      this.localBubbleUniforms.uHotColor.value.set(1.32, 1.38, 1.52);
-    }
   }
 
   public stepThroughPortal(direction: 1 | -1 = 1): void {
     const curIdx = SCALE_REGIME_ORDER.indexOf(this.activeRegime);
-    const nextIdx =
-      direction > 0 ? (curIdx + 1) % SCALE_REGIME_ORDER.length : Math.max(0, curIdx - 1);
+    const nextIdx = direction > 0 ? (curIdx + 1) % SCALE_REGIME_ORDER.length : Math.max(0, curIdx - 1);
     const targetRegime = SCALE_REGIME_ORDER[nextIdx]!;
     this.flightState = {
-      active: true,
-      startPos: this.localFrame.position.clone(),
-      endPos: REGIME_CAMERA_ANCHORS[targetRegime].clone(),
-      progress: 0,
-      targetRegime,
+      active: true, startPos: this.localFrame.position.clone(),
+      endPos: REGIME_CAMERA_ANCHORS[targetRegime].clone(), progress: 0, targetRegime,
     };
     this.syncRegimeVisibility();
   }
@@ -2236,13 +462,9 @@ export class SparkPortalRenderer {
   public jumpToRegime(regime: SpatialScaleRegime): void {
     this.activeRegime = regime;
     this.flightState = null;
-    const anchor = REGIME_CAMERA_ANCHORS[regime];
-    this.localFrame.position.copy(anchor);
+    this.localFrame.position.copy(REGIME_CAMERA_ANCHORS[regime]);
     this.localFrame.rotation.set(0, 0, 0);
-    this.lookTarget.yaw = 0;
-    this.lookTarget.pitch = 0;
-    this.lookTarget.curYaw = 0;
-    this.lookTarget.curPitch = 0;
+    Object.assign(this.lookTarget, { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0 });
     this.camera.rotation.set(0, 0, 0);
     this.targetFov = 56;
     this.curFov = 56;
@@ -2250,46 +472,25 @@ export class SparkPortalRenderer {
     this.camera.updateProjectionMatrix();
     this.localFrame.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
-
     this.syncRegimeVisibility();
     this.onRegimeChange?.(regime);
   }
 
-  public setSkyRestorationActive(active: boolean): void {
-    const val = active ? 1.0 : 0.0;
-    this.skyDomeUniforms.uRestoration.value = val;
-  }
+  public setSkyRestorationActive(active: boolean): void { this.skyDomeUniforms.uRestoration.value = active ? 1.0 : 0.0; }
+  public holdClock(seconds: number | null): void { this.heldClockSec = seconds; }
 
-  /**
-   * Holds the scene clock at `seconds` (showcase motion evaluated there, no spin) or releases it
-   * with null. Used for matched snapshots of the same scene on both renderers.
-   */
-  public holdClock(seconds: number | null): void {
-    this.heldClockSec = seconds;
-  }
-
-  /** Layers drawn in the current regime with their evidence class and disclosure; null where not declared yet. */
   public getRenderLayers(): RenderLayerSet | null {
     return webglRenderLayersFor({ regime: this.activeRegime, blackHole: this.nebulaUniforms.uIsBlackHole.value > 0.5 });
   }
 
   public setShowcaseMode(enabled: boolean): void {
     this.showcaseMode = enabled;
-    if (!enabled) {
-      this.lookTarget.yaw = 0;
-      this.lookTarget.pitch = 0;
-      this.targetFov = 56;
-    }
+    if (!enabled) { this.lookTarget.yaw = 0; this.lookTarget.pitch = 0; this.targetFov = 56; }
   }
 
-  public transitionToShowcaseScene(
-    sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon',
-    instant = false
-  ): void {
+  public transitionToShowcaseScene(sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon', instant = false): void {
     let targetRegime: SpatialScaleRegime = 'cislunar';
-    if (sceneKey === 'cislunar') {
-      targetRegime = 'cislunar';
-    } else if (sceneKey === 'black_hole') {
+    if (sceneKey === 'black_hole') {
       targetRegime = 'deep_sky';
       this.setTargetAppearance('Sagittarius A* (Galactic Center)', 1.85, 'deep_sky');
     } else if (sceneKey === 'supergiant') {
@@ -2300,7 +501,6 @@ export class SparkPortalRenderer {
       this.setTargetAppearance('Saturn', 0.9, 'planet');
       this.rebuildPlanetaryTerrainSplats('titan_methane');
     }
-
     this.jumpToRegime(targetRegime);
     if (!instant) {
       this.curFov = 61;
@@ -2312,24 +512,15 @@ export class SparkPortalRenderer {
   public async enterWebXRSession(): Promise<boolean> {
     if (!this.renderer) return false;
     try {
-      if (!this.sparkXr) {
-        this.sparkXr = new SparkXr({
-          renderer: this.renderer,
-          mode: 'vr',
-          enableHands: true,
-        });
-      }
+      if (!this.sparkXr) this.sparkXr = new SparkXr({ renderer: this.renderer, mode: 'vr', enableHands: true });
       await this.sparkXr.toggleXr();
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
   public resize(width: number, height: number): void {
     if (!this.renderer || width <= 0 || height <= 0) return;
-    const aspect = width / height;
-    this.camera.aspect = aspect;
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
     this.composer?.setSize(width, height);
@@ -2337,9 +528,7 @@ export class SparkPortalRenderer {
   }
 
   public dispose(): void {
-    if (typeof window !== 'undefined' && this.rafId) {
-      window.cancelAnimationFrame(this.rafId);
-    }
+    if (typeof window !== 'undefined' && this.rafId) window.cancelAnimationFrame(this.rafId);
     this.timer.dispose();
     this.captureHorizonSplatMesh?.dispose();
     this.planetaryTerrainSplatMesh?.dispose();

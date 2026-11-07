@@ -1,125 +1,57 @@
 import {
-  ClampToEdgeWrapping,
   Group,
-  LinearFilter,
-  Mesh,
-  NearestFilter,
-  NoColorSpace,
   PerspectiveCamera,
   Quaternion,
-  RepeatWrapping,
-  SRGBColorSpace,
   Scene,
-  SphereGeometry,
   TextureLoader,
   Timer,
   Vector3,
-  type ColorSpace,
-  type Texture,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import type { RenderLayerSet } from '@albedian/contracts';
 import { cameraSkyPose } from '../cameraSkyPose.js';
 import type { CameraSkyPose, CosmosRenderer, ShowcaseSceneKey } from '../cosmosRenderer.js';
 import type { SpatialScaleRegime } from '../SparkPortalRenderer.js';
-import { loadPanoramaRegistration } from '../sky/skyRegistration.js';
 import { centreOnCamera } from '../skyMounts.js';
-import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from './brunetonAtmosphere.js';
 import { createCinemaOpticsUniforms } from './cinemaOptics.js';
-import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './cislunar/bodyMaterials.js';
 import { CISLUNAR_RENDER_LAYERS } from './cislunar/cislunarLayers.js';
 import {
-  EARTH_RADIUS_KM,
-  KM_PER_UNIT,
-  MOON_RADIUS_KM,
-  landingCameraPositionAt,
-  landingPose,
-} from './cislunar/landingScene.js';
-import { createSkyBackgroundNode } from './cislunar/skyBackground.js';
+  CATALOG_STAR_MOUNT_RADIUS,
+  LANDING_EXPOSURE,
+  LANDING_FOV_DEG,
+  LANDING_LIMITING_MAGNITUDE,
+  LANDING_SKY_GAIN,
+  MIN_FOV_DEG,
+  populateCislunarWorld,
+} from './cislunar/cislunarSceneNodes.js';
+import { createCosmosAutomation, type CosmosAutomation } from './cislunar/cosmosAutomation.js';
+import { landingCameraPositionAt, landingPose } from './cislunar/landingScene.js';
 import { buildCosmosPostChain, DEFAULT_COSMOS_POST, type CosmosPostChain, type CosmosPostOptions } from './postChain.js';
 import { CatalogStarSpriteField, DEFAULT_CATALOG_STAR_EXPOSURE } from './stars/CatalogStarSpriteField.js';
-import type { FrameTimeBenchOptions, FrameTimeBenchRun } from './frameTimeBench.js';
-import { WebGpuHost, captureToPngBlob, type HostCapture, type WebGpuHostBackend } from './WebGpuHost.js';
+import { WebGpuHost, type HostCapture, type WebGpuHostBackend } from './WebGpuHost.js';
+
+export { LANDING_LIMITING_MAGNITUDE };
+export type { CosmosAutomation };
 
 /**
  * The landing at one real moment, at true scale (cislunar/landingScene.ts): the Earth at the
  * origin and the Moon where JPL Horizons puts them at 2025-03-07 11:00 UTC, turned by their IAU
- * rotation models and lit by that moment's Sun, with the camera rig beyond the Moon on the line
- * from the galactic centre through the Earth. One scene unit is 1000 km. The moment is held: the
- * bodies do not spin, and nothing the viewer does turns them.
+ * rotation models and lit by that moment's Sun. One scene unit is 1000 km.
  */
 const LANDING = landingPose();
-const ATMOSPHERE_RADIUS_FACTOR = 1.022;
-const CATALOG_STAR_MOUNT_RADIUS = 85.0;
-/** Vertical field of view of the landing: the Moon fills about 11.6 deg of it, the Earth 1.85. */
-const LANDING_FOV_DEG = 26;
-/** The narrowest wheel zoom, wide enough to keep the Moon's relief at the map's resolution. */
-const MIN_FOV_DEG = 6;
-/**
- * Exposure of the landing and the display gain of the sky panorama. With the Moon at its true
- * albedo, the camera exposes for the sunlit bodies; the Milky Way is then shown far brighter than
- * one exposure could record it, and dimmed from its usual grade so the bodies stay brightest.
- */
-const LANDING_EXPOSURE = 3.0;
-const LANDING_SKY_GAIN = 0.3;
-/**
- * The catalog's magnitude limit on the landing: every star in the release (Gaia DR3 to G 12,
- * Hipparcos 2007 at the bright end) is drawn as a sprite over the star-removed Milky Way map.
- */
-export const LANDING_LIMITING_MAGNITUDE = 12;
-/** Sharpens the 8k colour and the normal map toward the limb, where the sphere is seen edge-on. */
-const MOON_MAP_ANISOTROPY = 8;
-/** Per-frame easing of 0.14 at 60 Hz, applied as 1 - 0.86^(60 dt). */
 const LOOK_EASING_PER_60HZ_FRAME = 0.14;
 const WARP_DECAY_PER_60HZ_FRAME = 0.85;
 
 export interface CislunarWebGpuRendererOptions {
   forceWebGL?: boolean;
-  /** Called on every scene jump with the regime shown, as SparkPortalRenderer does. */
   onRegimeChange?: (regime: SpatialScaleRegime) => void;
-  /**
-   * Publishes `window.__albedianCosmos` for automated captures and benchmarks, once the host runs.
-   * A renderer disposed before then never publishes, so a disposed one cannot replace or delete
-   * the live one's hook (React StrictMode builds the viewport's renderer twice in development).
-   */
   exposeForAutomation?: boolean;
 }
 
-export interface CosmosAutomation {
-  readonly backend: WebGpuHostBackend | null;
-  ready: Promise<void>;
-  /** Resolves when every texture, the Moon mesh and the catalog tiles for the view are loaded. */
-  whenSettled(timeoutMs?: number): Promise<boolean>;
-  capture(): Promise<HostCapture>;
-  capturePngDataUrl(): Promise<string>;
-  describePost(): string;
-  /** Frame times with the spike harness's method (frameTimeBench.ts). */
-  runBench(options?: Partial<FrameTimeBenchOptions>): Promise<FrameTimeBenchRun>;
-  layers: RenderLayerSet;
-  renderer: CislunarWebGpuRenderer;
-}
-
-declare global {
-  interface Window {
-    __albedianCosmos?: CosmosAutomation;
-  }
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
-}
-
 /**
- * The cislunar landing scene on three's WebGPURenderer with TSL (migration step 5 of
- * docs/architecture/RENDERER_WEBGPU_SPIKE.md): the sky dome as a background node, Gaia DR3 and
- * Hipparcos 2007 tiles as analytic-PSF sprites, the Earth, its atmosphere shell and the Moon
- * as node materials, and the HDR post chain with AgX. Construction is synchronous; WebGPU
- * starts asynchronously, and calls made before it is up only set state.
+ * The cislunar landing scene on three's WebGPURenderer with TSL: the sky dome as a background
+ * node, Gaia DR3 and Hipparcos 2007 tiles as analytic-PSF sprites, the Earth, its atmosphere
+ * shell and the Moon as node materials, and the HDR post chain with AgX.
  */
 export class CislunarWebGpuRenderer implements CosmosRenderer {
   readonly ready: Promise<void>;
@@ -141,8 +73,6 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
   private readonly optics = createCinemaOpticsUniforms();
   private readonly textureLoader = new TextureLoader();
   private readonly pending: Promise<unknown>[] = [];
-  private readonly earth: Mesh;
-  private readonly moon: Mesh;
   private readonly timer = new Timer();
   private cssSize = { width: 1600, height: 1000 };
   private heldClockSec: number | null = null;
@@ -164,74 +94,10 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.placeRig();
     this.scene.add(this.world);
 
-    // ESO eso0932a with its stars removed by scripts/bake_starless_panorama.py; provenance in textures/PROVENANCE.json
-    const milkyWay = this.loadTexture('/textures/eso_milkyway_diffuse_6k.webp', SRGBColorSpace, true);
-    // The dome is drawn only with the panorama's fitted registration, never misaligned
-    this.pending.push(
-      loadPanoramaRegistration().then(
-        (registration) => {
-          this.scene.backgroundNode = createSkyBackgroundNode(milkyWay, registration, LANDING_SKY_GAIN);
-        },
-        (error: unknown) => console.warn('[webgpu host] sky panorama registration failed; no sky dome', error)
-      )
-    );
-
     this.starMount = this.stars.createMount(CATALOG_STAR_MOUNT_RADIUS);
     this.world.add(this.starMount);
 
-    const lutReady = uniform(0);
-    const lutTexture = this.loadTexture(BRUNETON_ATMO_LUT_URL, NoColorSpace, false, () => (lutReady.value = 1));
-    lutTexture.minFilter = LinearFilter;
-    lutTexture.magFilter = LinearFilter;
-    lutTexture.generateMipmaps = false;
-    const lut = createBrunetonLut(lutTexture, lutReady);
-
-    const earthSun = this.earthSunView;
-    const earthHeight = this.loadTexture('/textures/earth_height_etopo2022_4k.png', NoColorSpace, true);
-    earthHeight.minFilter = NearestFilter;
-    earthHeight.magFilter = NearestFilter;
-    earthHeight.generateMipmaps = false;
-    this.earth = new Mesh(
-      new SphereGeometry(EARTH_RADIUS_KM / KM_PER_UNIT, 160, 160),
-      createEarthMaterial(
-        {
-          // NASA Blue Marble (March 2004 base), Black Marble 2016, Natural Earth water, ETOPO 2022 heights, and 2002 clouds
-          day: this.loadTexture('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', SRGBColorSpace, true),
-          night: this.loadTexture('/textures/earth_night_blackmarble_2016_8k.jpg', SRGBColorSpace, true),
-          water: this.loadTexture('/textures/earth_water_natural_earth_4k.png', NoColorSpace, true),
-          height: earthHeight,
-          clouds: this.loadTexture('/textures/earth_clouds_bluemarble2002_2k.jpg', SRGBColorSpace, true),
-        },
-        lut,
-        earthSun
-      )
-    );
-    this.earth.name = 'cislunarEarth';
-    this.earth.position.copy(LANDING.earth.position);
-    this.earth.quaternion.copy(LANDING.earth.quaternion);
-    this.world.add(this.earth);
-
-    const atmosphere = new Mesh(
-      new SphereGeometry((EARTH_RADIUS_KM / KM_PER_UNIT) * ATMOSPHERE_RADIUS_FACTOR, 160, 160),
-      createAtmosphereShellMaterial(lut, earthSun)
-    );
-    atmosphere.name = 'cislunarAtmosphereShell';
-    atmosphere.position.copy(LANDING.earth.position);
-    this.world.add(atmosphere);
-
-    // NASA SVS 4720 colour and LOLA normals, baked by scripts/bake_moon_maps.py
-    const moonColour = this.loadTexture('/textures/moon_svs4720_color_8k.jpg', SRGBColorSpace, true);
-    const moonNormal = this.loadTexture('/textures/moon_svs4720_lola_normal_16ppd.webp', NoColorSpace, true);
-    moonColour.anisotropy = MOON_MAP_ANISOTROPY;
-    moonNormal.anisotropy = MOON_MAP_ANISOTROPY;
-    this.moon = new Mesh(
-      new SphereGeometry(MOON_RADIUS_KM / KM_PER_UNIT, 256, 128),
-      createMoonMaterial({ colour: moonColour, normal: moonNormal }, uniform(LANDING.moon.sunDirection.clone()))
-    );
-    this.moon.name = 'cislunarMoon';
-    this.moon.position.copy(LANDING.moon.position);
-    this.moon.quaternion.copy(LANDING.moon.quaternion);
-    this.world.add(this.moon);
+    populateCislunarWorld(this.world, this.scene, this.textureLoader, this.pending, this.earthSunView, LANDING);
 
     this.onRegimeChange = options.onRegimeChange;
     this.ready = this.start(container, options);
@@ -439,7 +305,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     if (typeof document !== 'undefined') this.timer.connect(document);
     this.resumeLoop();
     if (options.exposeForAutomation && typeof window !== 'undefined') {
-      window.__albedianCosmos = this.automation();
+      window.__albedianCosmos = createCosmosAutomation(this);
     }
     console.info(`[webgpu host] cislunar scene on ${host.backend}; post: ${this.post.describe()}`);
   }
@@ -482,60 +348,9 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     this.earthSunView.value.copy(LANDING.earth.sunDirection).transformDirection(this.camera.matrixWorldInverse);
   }
 
-  /**
-   * Starts loading a texture and returns it at once; materials bind it now and three uploads the
-   * image when it arrives. `wrapU` repeats across the u seam of equirectangular maps.
-   */
-  private loadTexture(url: string, colorSpace: ColorSpace, wrapU: boolean, onLoad?: () => void): Texture {
-    let resolveLoad!: () => void;
-    let rejectLoad!: (error: unknown) => void;
-    this.pending.push(
-      new Promise<void>((resolve, reject) => {
-        resolveLoad = resolve;
-        rejectLoad = reject;
-      })
-    );
-    const tex = this.textureLoader.load(
-      url,
-      () => {
-        onLoad?.();
-        resolveLoad();
-      },
-      undefined,
-      (error) => {
-        console.warn(`[webgpu host] texture ${url} failed`, error);
-        rejectLoad(error);
-      }
-    );
-    tex.colorSpace = colorSpace;
-    tex.wrapS = wrapU ? RepeatWrapping : ClampToEdgeWrapping;
-    tex.wrapT = ClampToEdgeWrapping;
-    return tex;
-  }
-
   private warnOnce(key: string, message: string): void {
     if (this.warned.has(key)) return;
     this.warned.add(key);
     console.warn(`[webgpu host] ${message}`);
-  }
-
-  private automation(): CosmosAutomation {
-    const renderer = this;
-    return {
-      get backend() {
-        return renderer.backend;
-      },
-      ready: this.ready,
-      whenSettled: (timeoutMs?: number) => this.whenSettled(timeoutMs),
-      capture: () => this.capture(),
-      capturePngDataUrl: async () => blobToDataUrl(await captureToPngBlob(await this.capture())),
-      describePost: () => this.describePost(),
-      runBench: async (options) => {
-        const bench = await import('./frameTimeBench.js');
-        return bench.runFrameTimeBench(this, { ...bench.DEFAULT_FRAME_TIME_BENCH, ...options });
-      },
-      layers: CISLUNAR_RENDER_LAYERS,
-      renderer,
-    };
   }
 }

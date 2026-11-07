@@ -65,6 +65,13 @@ describe('Earth map sampling against the sphere layout', () => {
     expect(nzLand).toBeGreaterThan(0.99);
     expect(Math.hypot(nxLand, nyLand, nzLand)).toBeCloseTo(1, 9);
 
+    // At sinLat = 0.6 (cosLat = 0.8), an eastward and northward rise tilts the normal west and south, with the east-west slope scaled by 1 / cosLat
+    const [nxMid, nyMid, nzMid] = earthTangentNormal(0, 1954.6, 0, 1954.6, 0.6, 0);
+    expect(nxMid / nzMid).toBeCloseTo((nxLand / nzLand) / 0.8, 6);
+    expect(nyMid / nzMid).toBeCloseTo(nxLand / nzLand, 6);
+    expect(nyMid).toBeLessThan(-0.09);
+    expect(Math.hypot(nxMid, nyMid, nzMid)).toBeCloseTo(1, 9);
+
     const [nxSea, nySea, nzSea] = earthTangentNormal(-5000, -1000, -4000, -2000, 0, 1);
     expect(nxSea).toBeCloseTo(0, 9);
     expect(nySea).toBeCloseTo(0, 9);

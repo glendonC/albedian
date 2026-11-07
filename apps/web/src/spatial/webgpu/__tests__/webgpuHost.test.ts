@@ -153,7 +153,10 @@ describe('WebGPU host: cislunar render layers', () => {
     const stars = CISLUNAR_RENDER_LAYERS.find((l) => l.id === 'cislunar.catalog-stars');
     expect(stars?.disclosure).toMatch(/\bG 12\b/);
     expect(stars?.sources.join(' ')).toMatch(/\bG 12\b/);
-    const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    const renderer = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    const sceneNodes = fs.readFileSync(fileURLToPath(new URL('../cislunar/cislunarSceneNodes.ts', import.meta.url)), 'utf8');
+    const host = `${renderer}\n${sceneNodes}`;
+    expect(renderer.split('\n').length).toBeLessThan(360);
     expect(host).toMatch(/'\/textures\/eso_milkyway_diffuse_6k\.webp', SRGBColorSpace/);
     expect(host).not.toMatch(/eso_milkyway_panorama\.jpg/);
     expect(host).toMatch(/limitingMagnitude:\s*LANDING_LIMITING_MAGNITUDE/);
@@ -207,7 +210,9 @@ describe('WebGPU host: cislunar render layers', () => {
   });
 
   it("loads the Moon's baked maps, the colour as sRGB and the normals as linear data", () => {
-    const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    const renderer = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
+    const sceneNodes = fs.readFileSync(fileURLToPath(new URL('../cislunar/cislunarSceneNodes.ts', import.meta.url)), 'utf8');
+    const host = `${renderer}\n${sceneNodes}`;
     expect(host).toMatch(/'\/textures\/moon_svs4720_color_8k\.jpg', SRGBColorSpace/);
     expect(host).toMatch(/'\/textures\/moon_svs4720_lola_normal_16ppd\.webp', NoColorSpace/);
     expect(host).toMatch(/'\/textures\/earth_day_bluemarble_2004-03_base_8k\.jpg', SRGBColorSpace/);

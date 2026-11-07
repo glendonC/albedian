@@ -24,7 +24,18 @@ const REMOVED_PHRASES = [
   'MHD',
 ];
 
-const source = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
+const WEBGL_SOURCES = [
+  '../SparkPortalRenderer.ts',
+  '../webgl/skyDomeAndCinemaShader.ts',
+  '../webgl/cislunarRegime.ts',
+  '../webgl/solarNeighborhoodRegime.ts',
+  '../webgl/deepSkyRegime.ts',
+  '../webgl/planetarySurfaceRegime.ts',
+  '../webgl/skyTargets.ts',
+];
+const source = WEBGL_SOURCES.map((rel) =>
+  fs.readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
+).join('\n');
 
 describe('no false physics labels in the WebGL renderer', () => {
   it('names none of the removed claims', () => {

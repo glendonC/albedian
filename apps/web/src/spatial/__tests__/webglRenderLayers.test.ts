@@ -147,25 +147,33 @@ describe('WebGL renderer: Betelgeuse view (landing scene 03)', () => {
 });
 
 describe('WebGL renderer: scene 03 draws no invented structure', () => {
-  it('builds no corona plane, ring or decorative particles around the star', () => {
+  const readWebglSources = () => {
     const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
-    const start = renderer.indexOf('  private buildSolarNeighborhoodWorld(): void {');
-    const body = renderer.slice(start, renderer.indexOf('\n  }\n', start));
+    const solar = fs.readFileSync(fileURLToPath(new URL('../webgl/solarNeighborhoodRegime.ts', import.meta.url)), 'utf8');
+    const deepSky = fs.readFileSync(fileURLToPath(new URL('../webgl/deepSkyRegime.ts', import.meta.url)), 'utf8');
+    const planetary = fs.readFileSync(fileURLToPath(new URL('../webgl/planetarySurfaceRegime.ts', import.meta.url)), 'utf8');
+    return { renderer, solar, combined: `${renderer}\n${solar}\n${deepSky}\n${planetary}` };
+  };
+
+  it('builds no corona plane, ring or decorative particles around the star', () => {
+    const { solar, combined } = readWebglSources();
+    const start = solar.indexOf('export function buildSolarNeighborhoodRegimeGroup(');
+    const body = solar.slice(start, solar.indexOf('\nexport function ', start));
     expect(start).toBeGreaterThan(0);
     expect(body).not.toMatch(/RingGeometry|coronaMesh|plasmaRing|createDecorativeParticles/);
-    expect(renderer).not.toMatch(/uCoronaInner/);
+    expect(combined).not.toMatch(/uCoronaInner/);
   });
 
   it('draws no decorative particles in any view, and keeps no colour only they read', () => {
-    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
-    expect(renderer).not.toMatch(/createDecorativeParticles|DecorativeParticles/);
+    const { combined } = readWebglSources();
+    expect(combined).not.toMatch(/createDecorativeParticles|DecorativeParticles/);
     // uCoronaOuter tinted only the particles' outer shell; the star's rim mixes uWarmColor and uHotColor
-    expect(renderer).not.toMatch(/uCoronaOuter/);
+    expect(combined).not.toMatch(/uCoronaOuter/);
   });
 
   it('deletes the uncalled derivePlanetaryWorldDescriptor, descendToPlanetarySurface and the invented Sgr A* tidal ocean world', () => {
-    const renderer = fs.readFileSync(fileURLToPath(new URL('../SparkPortalRenderer.ts', import.meta.url)), 'utf8');
-    expect(renderer).not.toMatch(
+    const { combined } = readWebglSources();
+    expect(combined).not.toMatch(
       /derivePlanetaryWorldDescriptor|PlanetaryWorldDescriptor|descendToPlanetarySurface|gargantua_tidal_ocean|supergiant_silicate|Miller's Planet|Miller Analog|Kerr Metric|Time Dilation 1\.7/
     );
   });
