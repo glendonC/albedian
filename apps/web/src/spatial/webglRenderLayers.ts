@@ -57,11 +57,14 @@ const WEBGL_EARTH: RenderLayer = {
   kind: 'solar_system_body',
   title: 'Earth',
   evidenceClass: 'simulated',
-  disclosure: 'NASA day and night imagery on a globe placed, turned and lit for composition, not at an ephemeris position.',
+  disclosure:
+    "NASA's March 2004 base map, ETOPO 2022 relief at true slopes, Natural Earth water, 2002 clouds and 2016 city lights on a globe placed, turned and lit for composition, not at an ephemeris position; no sea ice is drawn.",
   sources: [
-    'NASA Blue Marble Next Generation, November 2004',
-    'NASA Black Marble 2016',
-    'Cloud and ocean masks (earth_clouds.png, earth_specular.jpg; provenance not recorded)',
+    'NASA Blue Marble Next Generation, March 2004 base map without relief shading (earth_day_bluemarble_2004-03_base_8k.jpg)',
+    'NOAA ETOPO 2022 60 arc-second surface elevation above EGM2008 (earth_height_etopo2022_4k.png)',
+    'Natural Earth 1:10m ocean and lakes (earth_water_natural_earth_4k.png), with Ross and Ronne-Filchner ice-shelf glint suppressed from the base map',
+    'NASA The Blue Marble (2002) cloud layer (earth_clouds_bluemarble2002_2k.jpg)',
+    'NASA Black Marble 2016 (earth_night_blackmarble_2016_8k.jpg)',
   ],
 };
 const WEBGL_ATMOSPHERE: RenderLayer = {

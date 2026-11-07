@@ -10,7 +10,9 @@ import {
   float,
   fract,
   max,
+  min,
   mix,
+  modelViewMatrix,
   modelWorldMatrix,
   normalViewGeometry,
   normalize,
@@ -19,6 +21,7 @@ import {
   positionWorld,
   pow,
   smoothstep,
+  sqrt,
   texture,
   uv,
   vec2,
@@ -40,14 +43,76 @@ type Vec3Node = Node<'vec3'>;
  * post chain is the only tone mapping.
  */
 
+export const EARTH_RADIUS_M = 6_371_000;
+export const EARTH_HEIGHT_OFFSET_M = 11_000;
+const EARTH_HEIGHT_TEX_WIDTH = 4096;
+const EARTH_HEIGHT_TEX_HEIGHT = 2048;
+const EARTH_NORTH_STEP_M = (Math.PI / EARTH_HEIGHT_TEX_HEIGHT) * EARTH_RADIUS_M;
+
+/**
+ * Decodes a normalized `[0, 1]` `(r, g)` sample from `earth_height_etopo2022_4k.png`
+ * (`round(height_m + 11000)` split across high byte `R` and low byte `G`) to metres above the
+ * EGM2008 geoid: `r * 65280 + g * 255 - 11000`.
+ */
+export function decodeEtopoHeightMetres(r: number, g: number): number {
+  return r * 65280 + g * 255 - EARTH_HEIGHT_OFFSET_M;
+}
+
+/**
+ * Computes the open-water fraction from `earth_water_natural_earth_4k.png` and the linear RGB
+ * sample of `earth_day_bluemarble_2004-03_base_8k.jpg`. Natural Earth's ocean polygon covers the
+ * water beneath Antarctica's floating ice shelves (Ross, Ronne-Filchner), which the March 2004
+ * base map draws as bright white ice (`linear R, G > 0.57`) while open water is dark blue
+ * (`linear R < 0.025`). Suppressing water where `min(r, g)` is bright keeps sun glint and ocean
+ * tint on open water only.
+ */
+export function openWaterFraction(
+  waterMask: number,
+  dayLinearR: number,
+  dayLinearG: number,
+  _dayLinearB: number
+): number {
+  const minRg = Math.min(dayLinearR, dayLinearG);
+  const t = Math.max(0, Math.min(1, (minRg - 0.15) / (0.35 - 0.15)));
+  const iceShelf = t * t * (3 - 2 * t);
+  return waterMask * (1 - iceShelf);
+}
+
+/**
+ * Computes the tangent-space unit normal `(east, north, up)` at true slopes from four cardinal
+ * ETOPO 2022 height samples (in metres) on the `4096x2048` equirectangular grid. Where
+ * `earth_water_natural_earth_4k.png` marks water (`waterMask > 0`), ETOPO stores the lake or sea
+ * floor rather than the water surface, so the slope is scaled by `1 - waterMask`.
+ */
+export function earthTangentNormal(
+  hWestM: number,
+  hEastM: number,
+  hSouthM: number,
+  hNorthM: number,
+  sinLat: number,
+  waterMask: number
+): [number, number, number] {
+  const land = Math.max(0, Math.min(1, 1 - waterMask));
+  const cosLat = Math.max(0.05, Math.sqrt(Math.max(0, 1 - sinLat * sinLat)));
+  const twoDEastM = 2 * EARTH_NORTH_STEP_M * cosLat;
+  const twoDNorthM = 2 * EARTH_NORTH_STEP_M;
+  const nx = -((hEastM - hWestM) / twoDEastM) * land;
+  const ny = -((hNorthM - hSouthM) / twoDNorthM) * land;
+  const nz = 1;
+  const len = Math.hypot(nx, ny, nz);
+  return [nx / len, ny / len, nz / len];
+}
+
 export interface EarthTextures {
-  /** NASA Blue Marble Next Generation, November 2004 (sRGB) */
+  /** NASA Blue Marble Next Generation, March 2004 base map without relief shading (sRGB) */
   day: Texture;
   /** NASA Black Marble 2016 city lights (sRGB) */
   night: Texture;
-  /** Ocean mask (linear) */
-  specular: Texture;
-  /** Cloud cover (sRGB, red channel used) */
+  /** Natural Earth 1:10m ocean and lakes water fraction (linear) */
+  water: Texture;
+  /** NOAA ETOPO 2022 surface elevation encoded as round(h + 11000) in R and G (linear, NearestFilter) */
+  height: Texture;
+  /** NASA Blue Marble 2002 cloud layer (sRGB, red channel used) */
   clouds: Texture;
 }
 
@@ -59,7 +124,8 @@ const viewDirection = () => normalize(vertexStage(normalize(positionView.negate(
 export function createEarthMaterial(textures: EarthTextures, lut: BrunetonLut, sunDirView: { value: unknown }): NodeMaterial {
   const day = texture(textures.day);
   const night = texture(textures.night);
-  const specular = texture(textures.specular);
+  const water = texture(textures.water);
+  const height = texture(textures.height);
   const clouds = texture(textures.clouds);
   const sunDir = sunDirView as unknown as Vec3Node;
   const objectDir = vertexStage(normalize(positionLocal));
@@ -81,26 +147,53 @@ export function createEarthMaterial(textures: EarthTextures, lut: BrunetonLut, s
     const gradX = vec2(fract(rawDx.x.add(0.5)).sub(0.5), rawDx.y).toVar('earthGradX');
     const gradY = vec2(fract(rawDy.x.add(0.5)).sub(0.5), rawDy.y).toVar('earthGradY');
 
-    const dayCol = pow(day.sample(eqUv).grad(gradX, gradY).rgb, vec3(1.32));
+    const daySample = day.sample(eqUv).grad(gradX, gradY).rgb.toVar('earthDaySample');
+    const dayCol = pow(daySample, vec3(1.32));
     const nightLights = night.sample(eqUv).grad(gradX, gradY).rgb;
-    const specMask = specular.sample(eqUv).grad(gradX, gradY).r.toVar('earthSpecMask');
+    const waterMask = water.sample(eqUv).grad(gradX, gradY).r.toVar('earthWaterMask');
+    // Natural Earth's ocean polygon covers the water under Antarctica's floating ice shelves
+    // (Ross, Ronne-Filchner), which the March 2004 base map draws white; open water is dark blue
+    const iceShelf = smoothstep(0.15, 0.35, min(daySample.r, daySample.g));
+    const openWater = waterMask.mul(float(1).sub(iceShelf)).toVar('earthOpenWater');
     const cloud = clouds.sample(eqUv).grad(gradX, gradY).r.toVar('earthClouds');
     const cloudShadow = clouds.sample(eqUv.sub(vec2(0.0018, 0.0012))).grad(gradX, gradY).r;
 
-    const N = viewNormal().toVar('earthN');
+    // ETOPO 2022 surface elevation (metres above EGM2008) decoded from (R, G) at true slopes on land
+    const du = float(1 / EARTH_HEIGHT_TEX_WIDTH);
+    const dv = float(1 / EARTH_HEIGHT_TEX_HEIGHT);
+    const hW = height.sample(vec2(fract(eqUv.x.sub(du)), eqUv.y));
+    const hE = height.sample(vec2(fract(eqUv.x.add(du)), eqUv.y));
+    const hS = height.sample(vec2(eqUv.x, clamp(eqUv.y.sub(dv), 0.0, 1.0)));
+    const hN = height.sample(vec2(eqUv.x, clamp(eqUv.y.add(dv), 0.0, 1.0)));
+    const hWestM = hW.r.mul(65280).add(hW.g.mul(255)).sub(EARTH_HEIGHT_OFFSET_M);
+    const hEastM = hE.r.mul(65280).add(hE.g.mul(255)).sub(EARTH_HEIGHT_OFFSET_M);
+    const hSouthM = hS.r.mul(65280).add(hS.g.mul(255)).sub(EARTH_HEIGHT_OFFSET_M);
+    const hNorthM = hN.r.mul(65280).add(hN.g.mul(255)).sub(EARTH_HEIGHT_OFFSET_M);
+    const land = float(1).sub(waterMask);
+    const cosLat = max(0.05, sqrt(max(0.0, float(1).sub(p.y.mul(p.y)))));
+    const slopeE = hEastM.sub(hWestM).div(cosLat.mul(2 * EARTH_NORTH_STEP_M)).mul(land);
+    const slopeN = hNorthM.sub(hSouthM).div(2 * EARTH_NORTH_STEP_M).mul(land);
+    const eastLocal = normalize(cross(vec3(0, 1, 0), p).add(vec3(1e-7, 0, 0)));
+    const northLocal = cross(p, eastLocal);
+    const localNormal = normalize(p.sub(eastLocal.mul(slopeE)).sub(northLocal.mul(slopeN)));
+
+    const sphereN = viewNormal().toVar('earthSphereN');
+    const N = normalize(modelViewMatrix.mul(vec4(localNormal, 0)).xyz).toVar('earthN');
     const L = normalize(sunDir);
     const V = viewDirection().toVar('earthV');
-    const sunDot = dot(N, L).toVar('earthSunDot');
+    const sunDot = dot(sphereN, L).toVar('earthSunDot');
+    const surfaceSunDot = dot(N, L).toVar('earthSurfaceSunDot');
     const dayFactor = smoothstep(-0.08, 0.22, sunDot);
 
     const H = normalize(L.add(V));
-    const spec = pow(max(0.0, dot(N, H)), 72.0).mul(specMask).mul(max(0.0, sunDot)).mul(float(1).sub(cloud.mul(0.85)));
+    const spec = pow(max(0.0, dot(N, H)), 72.0).mul(openWater).mul(max(0.0, sunDot)).mul(float(1).sub(cloud.mul(0.85)));
 
-    const oceanTint = mix(dayCol, vec3(0.025, 0.095, 0.24), specMask.mul(0.55)).toVar('earthOcean');
+    const oceanTint = mix(dayCol, vec3(0.025, 0.095, 0.24), openWater.mul(0.55)).toVar('earthOcean');
     const surfaceAlbedo = oceanTint.mul(float(1).sub(cloudShadow.mul(0.48)));
     const cloudLayer = vec3(0.92, 0.95, 1.0).mul(cloud).mul(0.85);
-    const litEarth = mix(surfaceAlbedo, cloudLayer, clamp(cloud.mul(0.84), 0.0, 1.0))
-      .mul(max(0.03, sunDot.mul(1.05)))
+    const litSurface = surfaceAlbedo.mul(max(0.03, surfaceSunDot.mul(1.05)));
+    const litClouds = cloudLayer.mul(max(0.03, sunDot.mul(1.05)));
+    const litEarth = mix(litSurface, litClouds, clamp(cloud.mul(0.84), 0.0, 1.0))
       .add(vec3(0.42, 0.68, 0.98).mul(spec).mul(0.65));
 
     // NASA Black Marble 2016 city light (dim base layer removed at bake time), dimmed under cloud.
@@ -110,7 +203,7 @@ export function createEarthMaterial(textures: EarthTextures, lut: BrunetonLut, s
     const cityLightGain = 1.25 / 3;
     const nightEarth = nightLights.mul(cityLightGain).mul(float(1).sub(cloud.mul(0.72)));
 
-    const viewDot = dot(N, V).toVar('earthViewDot');
+    const viewDot = dot(sphereN, V).toVar('earthViewDot');
     const fresnel = pow(float(1).sub(max(0.0, viewDot)), 3.8);
     const lutSample = lut.sample(viewDot, sunDot).toVar('earthLut');
     // Sunlit air only. The port's warm twilight terms added more light along the terminator than

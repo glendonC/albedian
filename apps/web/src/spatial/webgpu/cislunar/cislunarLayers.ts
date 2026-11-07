@@ -39,11 +39,13 @@ export const CISLUNAR_RENDER_LAYERS: RenderLayerSet = RenderLayerSetSchema.parse
     title: 'Earth',
     evidenceClass: 'simulated',
     disclosure:
-      "NASA day and night imagery on the Earth as it was turned and lit at 2025-03-07 11:00 UTC, at true scale; the clouds are not that day's, and city lights are drawn far brighter than an exposure for the day side shows them.",
+      "NASA's March 2004 base map, ETOPO 2022 relief at true slopes, Natural Earth water and 2016 city lights at 2025-03-07 11:00 UTC, at true scale; no sea ice is drawn, clouds are from 2002, and night lights are brightened.",
     sources: [
-      'NASA Blue Marble Next Generation, November 2004',
-      'NASA Black Marble 2016',
-      'Cloud and ocean masks (earth_clouds.png, earth_specular.jpg; provenance not recorded)',
+      'NASA Blue Marble Next Generation, March 2004 base map without relief shading (earth_day_bluemarble_2004-03_base_8k.jpg)',
+      'NOAA ETOPO 2022 60 arc-second surface elevation above EGM2008 (earth_height_etopo2022_4k.png)',
+      'Natural Earth 1:10m ocean and lakes (earth_water_natural_earth_4k.png), with Ross and Ronne-Filchner ice-shelf glint suppressed from the base map',
+      'NASA The Blue Marble (2002) cloud layer (earth_clouds_bluemarble2002_2k.jpg)',
+      'NASA Black Marble 2016 (earth_night_blackmarble_2016_8k.jpg)',
       'Sun and Moon: JPL Horizons API, DE441 (landingMoment.json)',
       'Rotation: GMST (IAU 1982) after IAU 1976 precession (bodyOrientation.ts)',
     ],

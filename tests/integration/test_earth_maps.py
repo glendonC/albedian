@@ -327,6 +327,8 @@ def test_height_map_record_cites_etopo_under_cc0():
 # =============================================================================================
 
 NOVEMBER_BASE_NAME = "earth_day_bluemarble_2004-11_base_8k.jpg"
+NOVEMBER_SHADED_NAME = "earth_day_bluemarble_2004-11_8k.jpg"
+LEGACY_UNRECORDED_EARTH = ("earth_clouds.png", "earth_specular.jpg", "earth_normal.jpg")
 
 
 def test_day_map_is_the_march_2004_base_map():
@@ -339,9 +341,14 @@ def test_the_november_base_map_is_gone_with_its_record_entry_and_source():
     from services.contracts.provenance import AssetProvenanceRecord
 
     record = AssetProvenanceRecord.model_validate_json((TEXTURES / "PROVENANCE.json").read_text(encoding="utf-8"))
-    assert not (TEXTURES / NOVEMBER_BASE_NAME).exists()
-    assert NOVEMBER_BASE_NAME not in {entry.path for entry in record.files}
+    gaps = json.loads((ROOT / "scripts" / "provenance_gaps.json").read_text(encoding="utf-8"))["gaps"]
+    gap_paths = {entry["path"] for entry in gaps}
+    for old_name in (NOVEMBER_BASE_NAME, NOVEMBER_SHADED_NAME, *LEGACY_UNRECORDED_EARTH):
+        assert not (TEXTURES / old_name).exists(), old_name
+        assert old_name not in {entry.path for entry in record.files}, old_name
+        assert f"apps/web/public/textures/{old_name}" not in gap_paths, old_name
     assert "nasa-bmng-2004-11-base" not in {source.id for source in record.sources}
+    assert "nasa-bmng-2004-11-topo-bathy" not in {source.id for source in record.sources}
 
 
 def test_committed_day_map_is_8k_rgb():

@@ -527,28 +527,32 @@ export class SparkPortalRenderer {
       },
       (error: unknown) => console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
     );
-    // NASA Blue Marble (Nov 2004) and Black Marble 2016 lights; provenance in textures/PROVENANCE.json
-    loadTex('/textures/earth_day_bluemarble_2004-11_8k.jpg', (t) => {
+    // NASA Blue Marble (March 2004 base), Black Marble 2016, ETOPO 2022 heights, Natural Earth water, and 2002 clouds
+    loadTex('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', (t) => {
       this.earthUniforms.uDayTex.value = t;
     });
     loadTex('/textures/earth_night_blackmarble_2016_8k.jpg', (t) => {
       this.earthUniforms.uNightTex.value = t;
     });
     loadTex(
-      '/textures/earth_normal.jpg',
+      '/textures/earth_height_etopo2022_4k.png',
       (t) => {
+        t.minFilter = THREE.NearestFilter;
+        t.magFilter = THREE.NearestFilter;
+        t.generateMipmaps = false;
+        t.needsUpdate = true;
         this.earthUniforms.uNormalTex.value = t;
       },
       false
     );
     loadTex(
-      '/textures/earth_specular.jpg',
+      '/textures/earth_water_natural_earth_4k.png',
       (t) => {
         this.earthUniforms.uSpecTex.value = t;
       },
       false
     );
-    loadTex('/textures/earth_clouds.png', (t) => {
+    loadTex('/textures/earth_clouds_bluemarble2002_2k.jpg', (t) => {
       this.earthUniforms.uCloudsTex.value = t;
     });
     loadTex('/textures/lro_moon_2k.jpg', (t) => {
@@ -867,17 +871,45 @@ export class SparkPortalRenderer {
           uvDx.x = fract(uvDx.x + 0.5) - 0.5;
           uvDy.x = fract(uvDy.x + 0.5) - 0.5;
 
-          vec3 dayCol = pow(textureGrad(uDayTex, eqUv, uvDx, uvDy).rgb, vec3(1.32));
+          vec3 daySample = textureGrad(uDayTex, eqUv, uvDx, uvDy).rgb;
+          vec3 dayCol = pow(daySample, vec3(1.32));
           vec3 nightLights = textureGrad(uNightTex, eqUv, uvDx, uvDy).rgb;
-          float specMask = textureGrad(uSpecTex, eqUv, uvDx, uvDy).r;
+          float waterMask = textureGrad(uSpecTex, eqUv, uvDx, uvDy).r;
+          float iceShelf = smoothstep(0.15, 0.35, min(daySample.r, daySample.g));
+          float specMask = waterMask * (1.0 - iceShelf);
           float clouds = textureGrad(uCloudsTex, eqUv, uvDx, uvDy).r;
           float cloudsShadow = textureGrad(uCloudsTex, eqUv - vec2(0.0018, 0.0012), uvDx, uvDy).r;
 
+          // ETOPO 2022 surface elevation (metres above EGM2008) decoded from (R, G) at true slopes on land
+          vec2 hStep = vec2(1.0 / 4096.0, 1.0 / 2048.0);
+          vec2 hW = texture2D(uNormalTex, vec2(fract(eqUv.x - hStep.x), eqUv.y)).rg;
+          vec2 hE = texture2D(uNormalTex, vec2(fract(eqUv.x + hStep.x), eqUv.y)).rg;
+          vec2 hS = texture2D(uNormalTex, vec2(eqUv.x, clamp(eqUv.y - hStep.y, 0.0, 1.0))).rg;
+          vec2 hN = texture2D(uNormalTex, vec2(eqUv.x, clamp(eqUv.y + hStep.y, 0.0, 1.0))).rg;
+          float hWestM = hW.r * 65280.0 + hW.g * 255.0 - 11000.0;
+          float hEastM = hE.r * 65280.0 + hE.g * 255.0 - 11000.0;
+          float hSouthM = hS.r * 65280.0 + hS.g * 255.0 - 11000.0;
+          float hNorthM = hN.r * 65280.0 + hN.g * 255.0 - 11000.0;
+          float land = 1.0 - waterMask;
+          float cosLat = max(0.05, sqrt(max(0.0, 1.0 - p.y * p.y)));
+          float slopeE = ((hEastM - hWestM) / (19546.0 * cosLat)) * land;
+          float slopeN = ((hNorthM - hSouthM) / 19546.0) * land;
+          vec3 eastTilt = normalize(cross(vec3(0.0, 1.0, 0.0), p) + vec3(1e-7, 0.0, 0.0));
+          vec3 northTilt = cross(p, eastTilt);
+          vec3 tiltedN = normalize(p - eastTilt * slopeE - northTilt * slopeN);
+          vec3 localN = normalize(vec3(
+            dot(vec3(0.866, 0.000, 0.500), tiltedN),
+            dot(vec3(0.250, 0.866, -0.433), tiltedN),
+            dot(vec3(-0.433, 0.500, 0.750), tiltedN)
+          ));
+
           vec3 N = normalize(vNormal);
+          vec3 surfaceN = normalize((modelViewMatrix * vec4(localN, 0.0)).xyz);
           vec3 L = normalize(uSunDir);
           vec3 V = normalize(vViewDir);
 
           float sunDot = dot(N, L);
+          float surfaceSunDot = dot(surfaceN, L);
           float dayFactor = smoothstep(-0.08, 0.22, sunDot);
           // Tight stratospheric Rayleigh/Mie sunset band along the orbital terminator
           float twilightFactor = exp(-pow((sunDot + 0.02) * 9.0, 2.0));
@@ -889,7 +921,9 @@ export class SparkPortalRenderer {
           vec3 oceanTint = mix(dayCol, vec3(0.025, 0.095, 0.24), specMask * 0.55);
           vec3 surfaceAlbedo = oceanTint * (1.0 - cloudsShadow * 0.48);
           vec3 cloudLayer = vec3(0.92, 0.95, 1.0) * clouds * (0.85 + 0.25 * twilightFactor);
-          vec3 litEarth = mix(surfaceAlbedo, cloudLayer, clamp(clouds * 0.84, 0.0, 1.0)) * max(0.03, sunDot * 1.05)
+          vec3 litSurface = surfaceAlbedo * max(0.03, surfaceSunDot * 1.05);
+          vec3 litClouds = cloudLayer * max(0.03, sunDot * 1.05);
+          vec3 litEarth = mix(litSurface, litClouds, clamp(clouds * 0.84, 0.0, 1.0))
                         + vec3(0.42, 0.68, 0.98) * spec * 0.65;
 
           vec3 twilightGlow = vec3(0.92, 0.36, 0.10) * twilightFactor * (0.20 + 0.32 * clouds);
@@ -1507,10 +1541,12 @@ export class SparkPortalRenderer {
               vec3 N = normalize(hitPos);
               vec2 uv = vec2(atan(N.x, N.z) / 6.28318 + 0.5 + uTime * 0.0015, asin(clamp(N.y, -1.0, 1.0)) / 3.14159 + 0.5);
 
-              vec3 dayCol = pow(texture2D(uEarthDayTex, uv).rgb, vec3(1.15));
+              vec3 daySample = texture2D(uEarthDayTex, uv).rgb;
+              vec3 dayCol = pow(daySample, vec3(1.15));
               vec3 nightCol = texture2D(uEarthNightTex, uv).rgb;
               vec3 clouds = texture2D(uEarthCloudsTex, uv + vec2(uTime * 0.002, 0.0)).rgb;
-              float specMask = texture2D(uEarthSpecTex, uv).r;
+              float waterMask = texture2D(uEarthSpecTex, uv).r;
+              float specMask = waterMask * (1.0 - smoothstep(0.15, 0.35, min(daySample.r, daySample.g)));
 
               vec3 sunL = normalize(vec3(0.78, 0.32, 0.54));
               float ndl = dot(N, sunL);

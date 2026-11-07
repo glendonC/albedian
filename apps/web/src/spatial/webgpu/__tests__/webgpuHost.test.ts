@@ -179,8 +179,15 @@ describe('WebGPU host: cislunar render layers', () => {
       expect(`${layer(id).disclosure} ${layer(id).sources.join(' ')}`).toMatch(/IAU/);
       expect(layer(id).disclosure).not.toMatch(/for composition|not at an ephemeris position/);
     }
-    expect(layer('cislunar.earth').disclosure).toMatch(/clouds are not that day's/);
-    expect(layer('cislunar.earth').disclosure).toMatch(/city lights are drawn far brighter/);
+    expect(layer('cislunar.earth').disclosure).toMatch(/March 2004 base map/);
+    expect(layer('cislunar.earth').disclosure).toMatch(/ETOPO 2022 relief at true slopes/);
+    expect(layer('cislunar.earth').disclosure).toMatch(/no sea ice/);
+    expect(layer('cislunar.earth').disclosure).toMatch(/city lights/);
+    expect(layer('cislunar.earth').sources.join(' ')).toMatch(/earth_day_bluemarble_2004-03_base_8k\.jpg/);
+    expect(layer('cislunar.earth').sources.join(' ')).toMatch(/earth_height_etopo2022_4k\.png/);
+    expect(layer('cislunar.earth').sources.join(' ')).toMatch(/earth_water_natural_earth_4k\.png/);
+    expect(layer('cislunar.earth').sources.join(' ')).toMatch(/earth_clouds_bluemarble2002_2k\.jpg/);
+    expect(layer('cislunar.earth').sources.join(' ')).not.toMatch(/provenance not recorded|earth_clouds\.png|earth_specular\.jpg/);
     expect(layer('cislunar.moon').sources.join(' ')).toMatch(/geometric albedo 0\.12/);
     expect(layer('cislunar.atmosphere').disclosure).toMatch(/2025-03-07 11:00 UTC/);
     const optics = layer('post.camera-optics').disclosure;
@@ -203,7 +210,11 @@ describe('WebGPU host: cislunar render layers', () => {
     const host = fs.readFileSync(fileURLToPath(new URL('../CislunarWebGpuRenderer.ts', import.meta.url)), 'utf8');
     expect(host).toMatch(/'\/textures\/moon_svs4720_color_8k\.jpg', SRGBColorSpace/);
     expect(host).toMatch(/'\/textures\/moon_svs4720_lola_normal_16ppd\.webp', NoColorSpace/);
-    expect(host).not.toMatch(/nasa_lro_moon_3d\.glb|lro_moon_2k|lro_moon_disp/);
+    expect(host).toMatch(/'\/textures\/earth_day_bluemarble_2004-03_base_8k\.jpg', SRGBColorSpace/);
+    expect(host).toMatch(/'\/textures\/earth_water_natural_earth_4k\.png', NoColorSpace/);
+    expect(host).toMatch(/'\/textures\/earth_height_etopo2022_4k\.png', NoColorSpace/);
+    expect(host).toMatch(/'\/textures\/earth_clouds_bluemarble2002_2k\.jpg', SRGBColorSpace/);
+    expect(host).not.toMatch(/nasa_lro_moon_3d\.glb|lro_moon_2k|lro_moon_disp|earth_day_bluemarble_2004-11_8k|earth_specular\.jpg|earth_clouds\.png/);
     for (const file of ['moon_svs4720_color_8k.jpg', 'moon_svs4720_lola_normal_16ppd.webp']) {
       expect(fs.existsSync(fileURLToPath(new URL(`../../../../public/textures/${file}`, import.meta.url)))).toBe(true);
     }

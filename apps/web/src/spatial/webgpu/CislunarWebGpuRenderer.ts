@@ -3,6 +3,7 @@ import {
   Group,
   LinearFilter,
   Mesh,
+  NearestFilter,
   NoColorSpace,
   PerspectiveCamera,
   Quaternion,
@@ -186,15 +187,20 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     const lut = createBrunetonLut(lutTexture, lutReady);
 
     const earthSun = this.earthSunView;
+    const earthHeight = this.loadTexture('/textures/earth_height_etopo2022_4k.png', NoColorSpace, true);
+    earthHeight.minFilter = NearestFilter;
+    earthHeight.magFilter = NearestFilter;
+    earthHeight.generateMipmaps = false;
     this.earth = new Mesh(
       new SphereGeometry(EARTH_RADIUS_KM / KM_PER_UNIT, 160, 160),
       createEarthMaterial(
         {
-          // NASA Blue Marble (Nov 2004) and Black Marble 2016; provenance in textures/PROVENANCE.json
-          day: this.loadTexture('/textures/earth_day_bluemarble_2004-11_8k.jpg', SRGBColorSpace, true),
+          // NASA Blue Marble (March 2004 base), Black Marble 2016, Natural Earth water, ETOPO 2022 heights, and 2002 clouds
+          day: this.loadTexture('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', SRGBColorSpace, true),
           night: this.loadTexture('/textures/earth_night_blackmarble_2016_8k.jpg', SRGBColorSpace, true),
-          specular: this.loadTexture('/textures/earth_specular.jpg', NoColorSpace, true),
-          clouds: this.loadTexture('/textures/earth_clouds.png', SRGBColorSpace, true),
+          water: this.loadTexture('/textures/earth_water_natural_earth_4k.png', NoColorSpace, true),
+          height: earthHeight,
+          clouds: this.loadTexture('/textures/earth_clouds_bluemarble2002_2k.jpg', SRGBColorSpace, true),
         },
         lut,
         earthSun

@@ -45,22 +45,6 @@
       "note": "Colour from the Lunar Reconnaissance Orbiter Camera's WAC mosaic and elevation from its laser altimeter, LOLA. The page says the maps are optimized for aesthetics, not science, and states no licence, so NASA's media guidelines apply."
     },
     {
-      "id": "nasa-bmng-2004-11-topo-bathy",
-      "title": "Blue Marble: Next Generation, November 2004, with topography and bathymetry",
-      "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/",
-      "version": "November 2004, 21600x10800 JPEG",
-      "license": {
-        "spdx": "LicenseRef-NASA-Media-Guidelines",
-        "name": "NASA Images and Media Usage Guidelines",
-        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
-        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
-      },
-      "credit": "NASA Earth Observatory",
-      "acknowledgement": "Blue Marble: Next Generation was produced by Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center).",
-      "sha256": "dbe2977b539562c4555b7df1fbc5b3313cdc4a0685fd8d5fe63dca2e1486ea21",
-      "note": "Input file https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/november/world.topo.bathy.200411.3x21600x10800.jpg, linked from that page (checked 2026-11-04). NASA asks anyone republishing Blue Marble: Next Generation to credit NASA Earth Observatory. A cloud-free surface composite for November 2004, not current conditions."
-    },
-    {
       "id": "nasa-black-marble-2016",
       "title": "Earth at Night: Black Marble 2016 color map",
       "url": "https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/",
@@ -216,19 +200,6 @@
     }
   ],
   "files": [
-    {
-      "path": "earth_day_bluemarble_2004-11_8k.jpg",
-      "sha256": "c50eefebb0355549bb9a6cf5085730e842af56faaaec54457b0b2ff6ea0bdc90",
-      "sources": [
-        "nasa-bmng-2004-11-topo-bathy"
-      ],
-      "producedBy": {
-        "method": "script",
-        "script": "scripts/lookdev/bake_earth_textures.py",
-        "command": "uv run python scripts/lookdev/bake_earth_textures.py"
-      },
-      "note": "A Lanczos resample of the input to 8192x4096, JPEG quality 90. The input is kept in data/lookdev/sources, outside git, and pinned by its SHA-256 in the source. Rebaked byte for byte on 2026-11-04 with this repository's locked dependencies."
-    },
     {
       "path": "earth_night_blackmarble_2016_8k.jpg",
       "sha256": "b1fd4623e2cbb28ca4bfaa8012adeaaf92c46acaf073c21ae5504bde5f6066be",

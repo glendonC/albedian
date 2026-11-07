@@ -204,9 +204,10 @@ def test_the_grain_filter_removes_points_and_keeps_a_smooth_field(bake):
 
 
 def test_the_grain_filter_wraps_in_longitude(bake):
-    """The panorama's left and right edges meet: a point on the seam is removed like any other."""
+    """The panorama's left and right edges meet: a cluster at the seam wraps to columns 78..79 rather than clamping column 0."""
     image = np.full((40, 80, 3), 0.05, dtype=np.float32)
-    image[20, 0] += 0.6
+    image[18:23, 0] += 0.6
+    image[18:22, 1] += 0.6
     smoothed = bake.smooth_grain(image)
     assert abs(float(smoothed[20, 0, 0]) - 0.05) < 0.005
     assert abs(float(smoothed[20, 79, 0]) - 0.05) < 0.005

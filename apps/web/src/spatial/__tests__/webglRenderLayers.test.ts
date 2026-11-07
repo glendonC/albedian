@@ -30,11 +30,20 @@ describe('WebGL renderer: cislunar render layers', () => {
     expect(sky?.sources.join(' ')).not.toContain('eso_milkyway_diffuse_6k.webp');
   });
 
-  it('keeps its composed Earth and atmosphere, which the WebGPU landing has moved to the real moment', () => {
+  it('keeps its composed Earth and atmosphere while citing the recorded March 2004 base map, ETOPO relief, Natural Earth water and 2002 clouds', () => {
     for (const id of ['cislunar.earth', 'cislunar.atmosphere']) {
       expect(layer(id)).not.toEqual(CISLUNAR_RENDER_LAYERS.find((l) => l.id === id));
     }
-    expect(layer('cislunar.earth')?.disclosure).toMatch(/placed, turned and lit for composition/);
+    const earth = layer('cislunar.earth');
+    expect(earth?.disclosure).toMatch(/placed, turned and lit for composition/);
+    expect(earth?.disclosure).toMatch(/March 2004 base map/);
+    expect(earth?.disclosure).toMatch(/ETOPO 2022 relief at true slopes/);
+    expect(earth?.disclosure).toMatch(/no sea ice is drawn/);
+    expect(earth?.sources.join(' ')).toMatch(/earth_day_bluemarble_2004-03_base_8k\.jpg/);
+    expect(earth?.sources.join(' ')).toMatch(/earth_height_etopo2022_4k\.png/);
+    expect(earth?.sources.join(' ')).toMatch(/earth_water_natural_earth_4k\.png/);
+    expect(earth?.sources.join(' ')).toMatch(/earth_clouds_bluemarble2002_2k\.jpg/);
+    expect(earth?.sources.join(' ')).not.toMatch(/provenance not recorded|earth_clouds\.png|earth_specular\.jpg/);
     expect(layer('cislunar.atmosphere')?.disclosure).toMatch(/tuned for appearance/);
   });
 

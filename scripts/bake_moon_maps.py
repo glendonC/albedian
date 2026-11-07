@@ -219,13 +219,30 @@ def record_files(outputs: dict[str, bytes]) -> list[dict]:
     ]
 
 
+def _replace_or_append(existing_list: list[dict], new_list: list[dict], key: str) -> list[dict]:
+    by_key = {item[key]: item for item in new_list}
+    seen: set[str] = set()
+    out: list[dict] = []
+    for item in existing_list:
+        k = item[key]
+        if k in by_key:
+            if k not in seen:
+                out.append(by_key[k])
+                seen.add(k)
+        else:
+            out.append(item)
+    for item in new_list:
+        if item[key] not in seen:
+            out.append(item)
+            seen.add(item[key])
+    return out
+
+
 def updated_record(record_text: str, sources: list[dict], files: list[dict]) -> str:
-    """The folder's record with this bake's sources and files replaced and every other entry kept."""
+    """The folder's record with this bake's sources and files replaced in place and every other entry kept."""
     record = json.loads(record_text)
-    ids = {source["id"] for source in sources}
-    paths = {entry["path"] for entry in files}
-    record["sources"] = [s for s in record["sources"] if s["id"] not in ids] + sources
-    record["files"] = [f for f in record["files"] if f["path"] not in paths] + files
+    record["sources"] = _replace_or_append(record["sources"], sources, "id")
+    record["files"] = _replace_or_append(record["files"], files, "path")
     return dumps_record(AssetProvenanceRecord.model_validate(record))
 
 

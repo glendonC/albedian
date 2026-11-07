@@ -424,9 +424,20 @@ def record_file(data: bytes, measured: dict) -> dict:
 
 
 def updated_record(record_text: str, entry: dict) -> str:
-    """The folder's record with this bake's file entry replaced and every other entry kept."""
+    """The folder's record with this bake's file entry replaced in place and every other entry kept."""
     record = json.loads(record_text)
-    record["files"] = [f for f in record["files"] if f["path"] != entry["path"]] + [entry]
+    replaced = False
+    files: list[dict] = []
+    for existing in record["files"]:
+        if existing["path"] == entry["path"]:
+            if not replaced:
+                files.append(entry)
+                replaced = True
+        else:
+            files.append(existing)
+    if not replaced:
+        files.append(entry)
+    record["files"] = files
     return dumps_record(AssetProvenanceRecord.model_validate(record))
 
 

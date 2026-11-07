@@ -69,9 +69,9 @@ At the landing camera's 26 deg vertical field of view, screen angular density is
 |---|---|---|---|---|
 | Sky diffuse panorama | `eso_milkyway_diffuse_6k.webp`, 6000x3000 | 16.7 texels / deg (216 arcsec / texel) | 0.40 texels / px (2.49x magnified) [measured] | 0.20 texels / px (4.99x magnified) [computed] |
 | Catalog stars | Gaia DR3 and Hipparcos tiles to G 12 (256 tiles) | Sub-arcsecond ICRS directions | Analytic-PSF sprites evaluated per screen pixel [tested] | Analytic-PSF sprites evaluated per screen pixel [tested] |
-| Moon colour | `moon_lroc_color_poles_8k.jpg`, 8192x4096 | 22.8 texels / deg | 8.5 texels / px at disk centre (11.6 deg disk = 482 px, minified) [computed] | 4.3 texels / px at disk centre (964 px disk, minified) [computed] |
-| Moon LOLA normals | `moon_lola_normal_5k.png`, 5760x2880 | 16.0 texels / deg | 6.0 texels / px at disk centre (minified) [computed] | 3.0 texels / px at disk centre (minified) [computed] |
-| Earth day and night | 8192x4096 maps (clouds 2048x1024, height 4096x2048) | 22.8 texels / deg (5.7 clouds, 11.4 height) | 53.2 texels / px at disk centre (1.85 deg disk = 77 px, minified) [computed] | 26.6 texels / px at disk centre (154 px disk, minified) [computed] |
+| Moon colour | `moon_svs4720_color_8k.jpg`, 8192x4096 | 22.8 texels / deg | 8.5 texels / px at disk centre (11.6 deg disk = 482 px, minified) [computed] | 4.3 texels / px at disk centre (964 px disk, minified) [computed] |
+| Moon LOLA normals | `moon_svs4720_lola_normal_16ppd.webp`, 5760x2880 | 16.0 texels / deg | 6.0 texels / px at disk centre (minified) [computed] | 3.0 texels / px at disk centre (minified) [computed] |
+| Earth day, night, water, relief and clouds | `earth_day_bluemarble_2004-03_base_8k.jpg` and `earth_night_blackmarble_2016_8k.jpg`, 8192x4096 (`earth_water_natural_earth_4k.png` and `earth_height_etopo2022_4k.png`, 4096x2048; `earth_clouds_bluemarble2002_2k.jpg`, 2048x1024) | 22.8 texels / deg (11.4 water and height, 5.7 clouds) | 53.2 texels / px at disk centre (1.85 deg disk = 77 px, minified) [computed] | 26.6 texels / px at disk centre (154 px disk, minified) [computed] |
 
 ## Checks
 
@@ -93,10 +93,13 @@ data URL [tested].
 
 - **Cast shadows** [open]: the Moon's relief is in its normals only; crater rims cast no shadows along
   the terminator. Horizon maps baked from the LOLA heights would add them.
-- **The Earth's surface and clouds** [open]: the day map is NASA's Blue Marble for November 2004 (its
-  March month would match the season's snow cover), and the cloud layer is not that day's weather
-  and has no recorded provenance (data-5a brings NASA's cloud layer). With most clouds missing, the
-  Earth is darker than its albedo of about 0.3.
+- **The Earth's surface and clouds** [open]: the Earth draws NASA's March 2004 Blue Marble base map
+  (matching the March season's northern snow cover, without relief shading of its own), NOAA ETOPO 2022
+  surface elevation at true slopes on land, Natural Earth 1:10m ocean and lake water cover (with
+  Antarctica's floating Ross and Ronne-Filchner ice shelves suppressed from ocean glint and tint), and
+  NASA's 2002 Blue Marble cloud layer [tested]. The March 2004 base map draws no sea ice, and the 2002
+  cloud composite is not the weather of 2025-03-07; both limits are stated in the Earth layer's
+  disclosure.
 - **Sky resolution** [open]: removing resolved point stars from `eso_milkyway_diffuse_6k.webp` and drawing catalog stars to G 12 eliminates magnified star blocks, while the diffuse Milky Way background itself spans 2.49 px per texel at 1080p [tested] and 4.99 px per texel at 2160p [computed].
 - **The anamorphic streak**: replacing copies of bright pixels at fixed offsets with one
   continuous horizontal Gaussian carrying the same energy adds less than one

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Bake the web app's Earth textures from the NASA sources used for look-dev.
+"""Bake the web app's Earth night-lights texture from the NASA Black Marble source used for look-dev.
 
-Writes 8192x4096 equirectangular JPEGs to `apps/web/public/textures/`:
-- day: NASA Blue Marble Next Generation, November 2004, topography and bathymetry;
+Writes an 8192x4096 equirectangular JPEG to `apps/web/public/textures/`:
 - night: NASA Black Marble 2016 color composite with its dim base layer removed, so only the
   city lights remain (the same luminance mask the Blender look-dev shader applies).
+
+(The Earth day base map, ETOPO 2022 relief, Natural Earth water mask, and 2002 clouds are baked
+and recorded by `scripts/bake_earth_maps.py`.)
 
 Download the sources first (see `data/lookdev/sources/SHA256SUMS`), then from the repo root:
     uv run python scripts/lookdev/bake_earth_textures.py
@@ -35,11 +37,7 @@ def smoothstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     Image.MAX_IMAGE_PIXELS = None
-    day_src = SOURCES / "earth_bluemarble_2004-11_21600.jpg"
     night_src = SOURCES / "earth_blackmarble_2016_3km.jpg"
-
-    day_out = OUT / "earth_day_bluemarble_2004-11_8k.jpg"
-    Image.open(day_src).convert("RGB").resize(SIZE, Image.Resampling.LANCZOS).save(day_out, quality=90, optimize=True)
 
     night = np.asarray(Image.open(night_src).convert("RGB").resize(SIZE, Image.Resampling.LANCZOS), dtype=np.float32) / 255.0
     luminance = night @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
@@ -47,8 +45,7 @@ def main() -> None:
     night_out = OUT / "earth_night_blackmarble_2016_8k.jpg"
     Image.fromarray(np.round(lights * 255.0).astype(np.uint8)).save(night_out, quality=92, optimize=True)
 
-    for path in (day_out, night_out):
-        print(f"{path.name}: {path.stat().st_size / 1e6:.1f} MB")
+    print(f"{night_out.name}: {night_out.stat().st_size / 1e6:.1f} MB")
 
 
 if __name__ == "__main__":

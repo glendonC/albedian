@@ -21,18 +21,6 @@
     {
       "path": "apps/web/public/textures/bruneton_atmo_lut.png",
       "reason": "Made by scripts/bake_bruneton_lut_and_splats.py: hand-set single scattering with no outside data, to be replaced by a real Bruneton precomputation. A record needs at least one source."
-    },
-    {
-      "path": "apps/web/public/textures/earth_clouds.png",
-      "reason": "Origin unidentified; data-5 proposes a replacement from NASA's Blue Marble cloud layer."
-    },
-    {
-      "path": "apps/web/public/textures/earth_normal.jpg",
-      "reason": "Byte-identical to three.js's example texture earth_normal_2048.jpg, which states no source, author or licence; data-5 proposes a replacement from NOAA ETOPO 2022 relief."
-    },
-    {
-      "path": "apps/web/public/textures/earth_specular.jpg",
-      "reason": "Byte-identical to three.js's example texture earth_specular_2048.jpg, which states no source, author or licence; data-5 proposes a water mask from Natural Earth."
     }
   ]
 }
