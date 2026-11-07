@@ -2362,6 +2362,172 @@
 }
 
 /* ============================================================================
+   MOMENT 05 CELESTIAL TARGET CARD (Apple Maps Place Card Inspector)
+   ============================================================================ */
+.alb-target-card {
+  position: fixed;
+  top: 88px;
+  right: 32px;
+  width: 356px;
+  max-height: calc(100vh - 210px);
+  overflow-y: auto;
+  background: rgba(9, 12, 18, 0.9);
+  border: 1px solid rgba(200, 206, 216, 0.24);
+  border-radius: 8px;
+  padding: 18px 20px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 29;
+  pointer-events: auto;
+}
+
+.alb-target-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alb-target-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(136, 192, 208, 0.5);
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alb-target-card-shortcode {
+  font-weight: 600;
+}
+
+.alb-target-card-title {
+  margin: 4px 0 0;
+  font-family: var(--alb-font-sans);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f4f2ed;
+}
+
+.alb-target-card-subtitle {
+  font-family: var(--alb-font-mono);
+  font-size: 11px;
+  color: #9ea8b8;
+}
+
+.alb-target-card-disclosure {
+  margin: 2px 0 0;
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #a8b2c2;
+}
+
+.alb-target-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alb-target-card-btn-primary {
+  flex: 1 1 auto;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: #f0f0fa;
+  color: #06080d;
+  border: 1px solid #f0f0fa;
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.alb-target-card-btn-primary:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.alb-target-card-btn-secondary {
+  flex: 1 1 auto;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: rgba(240, 240, 250, 0.08);
+  color: #e4e8ef;
+  border: 1px solid rgba(240, 240, 250, 0.24);
+  font-family: var(--alb-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.alb-target-card-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(200, 206, 216, 0.16);
+  padding-top: 12px;
+}
+
+.alb-target-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alb-target-card-row-label {
+  font-family: var(--alb-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8ab4d8;
+}
+
+.alb-target-card-row-value {
+  font-family: var(--alb-font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #f4f2ed;
+}
+
+.alb-target-card-row-meta {
+  font-family: var(--alb-font-sans);
+  font-size: 11.5px;
+  color: #9ea8b8;
+}
+
+.alb-target-card-limits-list {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  font-size: 11.5px;
+  color: #9ea8b8;
+}
+
+@media (max-width: 720px) {
+  .alb-target-card {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 76px;
+    width: auto;
+    max-height: 44vh;
+  }
+}
+
+/* ============================================================================
    @ZZZZSHAWN 4-SLIDER COALESCING OPTICAL & AUDIO DRAWER (Sharp 2px Architecture)
    ============================================================================ */
 .alb-zzzz-optics-drawer {

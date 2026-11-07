@@ -26,6 +26,7 @@ import {
 } from './CoalescingBar.js';
 import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
 import { CelestialMarkerOverlay } from './CelestialMarkerOverlay.js';
+import { CelestialTargetCard } from './CelestialTargetCard.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
 import '../styles/albedian.css';
 
@@ -502,6 +503,12 @@ export const SpatialObservatoryViewport: React.FC<
             session={session}
             selectedFinding={selectedFinding}
             onSelectFinding={onSelectFinding}
+          />
+          <CelestialTargetCard
+            session={session}
+            selectedFinding={selectedFinding}
+            onRunUtterance={onRunUtterance}
+            onPushToTalk={onPushToTalk}
           />
           <VoiceCommandHud
             voiceState={session.machines?.voice ?? 'off'}
