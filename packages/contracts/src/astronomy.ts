@@ -69,7 +69,7 @@ export const SourceDetectionSchema = z.object({
   yPx: z.number().nonnegative(),
   flux: z.number().positive(),
   snr: z.number().positive(),
-  fwhmPx: z.number().positive(),
+  fwhmPx: z.number().nonnegative(),
   centroidUncertaintyPx: z.number().positive(),
 });
 export type SourceDetection = z.infer<typeof SourceDetectionSchema>;
@@ -89,7 +89,9 @@ function celestialFindingVariant<C extends EvidenceClass, P extends z.ZodTypeAny
 ) {
   return z.object({
     id: z.string().min(1),
-    observationSolutionId: z.string().min(1),
+    // Absent only for a standalone prediction or simulation made for a time and place with no ObservationSolution;
+    // observed and catalog-matched findings, and every finding inside an ObservationSolution, name theirs.
+    observationSolutionId: z.string().min(1).optional(),
     evidenceClass: z.literal(evidenceClass),
     title: z.string().min(1),
     subtitle: z.string().min(1),
@@ -128,6 +130,13 @@ export const CelestialFindingSchema = z
         code: z.ZodIssueCode.custom,
         path: ['sourceDetection'],
         message: 'An observed finding without a sky position needs the source detection that locates it in pixels.',
+      });
+    }
+    if ((finding.evidenceClass === 'observed' || finding.evidenceClass === 'catalog_matched') && !finding.observationSolutionId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['observationSolutionId'],
+        message: 'Observed and catalog-matched findings belong to an ObservationSolution and name its id.',
       });
     }
     if ((finding.evidenceClass === 'observed' || finding.evidenceClass === 'catalog_matched') && !finding.evidence.sourceAssetSha256) {
@@ -266,6 +275,13 @@ export const ObservationSolutionSchema = z
     // sky position exactly when there is one, and a catalog match needs one
     const verified = hasVerifiedWcs(solution);
     solution.findings.forEach((finding, index) => {
+      if (!finding.observationSolutionId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['findings', index, 'observationSolutionId'],
+          message: 'A finding inside an ObservationSolution must name its ObservationSolution id.',
+        });
+      }
       if (finding.evidenceClass === 'catalog_matched' && !verified) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

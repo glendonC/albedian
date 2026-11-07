@@ -64,13 +64,21 @@ def test_no_output_names_horizons_or_de440_or_states_a_magnitude() -> None:
     items = ephemeris.compute_solar_system_ephemerides("2030-11-01T22:32:00Z", 30.0, -40.0, bodies=(*PLANETS, "Moon"))
     payloads = [item.to_contract_dict(source_sha256=None) for item in items]
     text = json.dumps(payloads)
-    assert "Horizons" not in text and "DE440" not in text and "JPL-" not in text
-    assert all("catalogRef" not in p and "apparentMagnitude" not in json.dumps(p) for p in payloads)
+    assert "Horizons" not in text and "DE440" not in text and "JPL-" not in text and "sol-ephemeris" not in text
+    assert all(
+        "catalogRef" not in p and "observationSolutionId" not in p and "apparentMagnitude" not in json.dumps(p)
+        for p in payloads
+    )
     response = TestClient(app).post(
         "/api/science/ephemeris", json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0}
     )
     assert response.status_code == 200
-    assert "Horizons" not in response.text and "DE440" not in response.text and "apparentMagnitude" not in response.text
+    assert (
+        "Horizons" not in response.text
+        and "DE440" not in response.text
+        and "apparentMagnitude" not in response.text
+        and "sol-ephemeris" not in response.text
+    )
 
 
 @settings(max_examples=100, deadline=None)

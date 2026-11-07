@@ -200,10 +200,64 @@ describe('@albedian/contracts: the recording behind the evidence', () => {
     const { sourceAssetSha256: _omitted, ...evidence } = f.evidence;
     return { ...f, evidence };
   };
+  const withoutSolutionId = (f: Record<string, unknown>) => {
+    const { observationSolutionId: _omitted, ...rest } = f;
+    return rest;
+  };
 
   it('accepts a prediction for a time and place that no recording stands behind', () => {
     const parsed = CelestialFindingSchema.safeParse(withoutHash(finding('moon', 'predicted', { sky: SKY })));
     expect(parsed.error?.issues ?? []).toEqual([]);
+  });
+
+  it('accepts a standalone predicted or simulated finding that names no ObservationSolution and requires observationSolutionId on observed and catalog_matched findings and inside a solution', () => {
+    const standalonePred = CelestialFindingSchema.safeParse(
+      withoutSolutionId(withoutHash(finding('moon', 'predicted', { sky: SKY })))
+    );
+    const standaloneSim = CelestialFindingSchema.safeParse(
+      withoutSolutionId(withoutHash(finding('sim', 'simulated', { sky: SKY })))
+    );
+    expect(standalonePred.error?.issues ?? []).toEqual([]);
+    expect(standaloneSim.error?.issues ?? []).toEqual([]);
+
+    const observed = CelestialFindingSchema.safeParse(
+      withoutSolutionId(finding('obs', 'observed', { detection: true }))
+    );
+    const matched = CelestialFindingSchema.safeParse(
+      withoutSolutionId(finding('rigel', 'catalog_matched', { sky: SKY }))
+    );
+    expect(observed.error?.issues.map((i) => i.path.join('.'))).toEqual(['observationSolutionId']);
+    expect(matched.error?.issues.map((i) => i.path.join('.'))).toEqual(['observationSolutionId']);
+
+    const pred = finding('moon', 'predicted', { sky: SKY });
+    expect(CelestialFindingSchema.safeParse({ ...pred, observationSolutionId: null }).success).toBe(false);
+    expect(CelestialFindingSchema.safeParse({ ...pred, observationSolutionId: '' }).success).toBe(false);
+
+    // A single-pixel impulse detection with zero second moment has fwhmPx 0; negative fwhmPx is rejected
+    const obsWithZeroFwhm = finding('obs0', 'observed', { detection: true });
+    expect(
+      CelestialFindingSchema.safeParse({
+        ...obsWithZeroFwhm,
+        sourceDetection: { ...obsWithZeroFwhm.sourceDetection!, fwhmPx: 0 },
+      }).success
+    ).toBe(true);
+    expect(
+      CelestialFindingSchema.safeParse({
+        ...obsWithZeroFwhm,
+        sourceDetection: { ...obsWithZeroFwhm.sourceDetection!, fwhmPx: -0.01 },
+      }).success
+    ).toBe(false);
+
+    // Inside an ObservationSolution, every finding must carry observationSolutionId
+    const solWithoutFindingSolId = ObservationSolutionSchema.safeParse({
+      ...solution({ wcs: false, passed: false, findings: [withoutSolutionId(pred) as ReturnType<typeof finding>] }),
+      status: 'predicted_only',
+      observedAtUTC: '2030-01-01T02:00:00Z',
+      observerLocation: { latDeg: 30.0, lonDeg: -40.0 },
+    });
+    expect(solWithoutFindingSolId.error?.issues.map((i) => i.path.join('.'))).toContain(
+      'findings.0.observationSolutionId'
+    );
   });
 
   it('rejects observed and catalog-matched evidence that names no recording', () => {

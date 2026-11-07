@@ -189,7 +189,7 @@ class EphemerisFinding:
     """
 
     id: str
-    observation_solution_id: str
+    observation_solution_id: str | None
     name: str
     object_type: str
     evidence_class: str
@@ -215,11 +215,15 @@ class EphemerisFinding:
 
         `source_sha256` is the SHA-256 of the recording the prediction was made for, or None when it was made
         for a time and place alone; there is no default, and None leaves the key out rather than invent one.
+        `observationSolutionId` is included only when `observation_solution_id` is not None.
         """
+        solution_id = (
+            {} if self.observation_solution_id is None else {"observationSolutionId": self.observation_solution_id}
+        )
         evidence_source = {} if source_sha256 is None else {"sourceAssetSha256": require_source_sha256(source_sha256)}
         return {
             "id": self.id,
-            "observationSolutionId": self.observation_solution_id,
+            **solution_id,
             "evidenceClass": "predicted",
             "title": self.title,
             "subtitle": self.subtitle,
@@ -423,7 +427,7 @@ def compute_solar_system_ephemerides(
     lat_deg: float,
     lon_deg: float,
     bodies: tuple[str, ...] = ("Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"),
-    observation_solution_id: str = "sol-ephemeris",
+    observation_solution_id: str | None = None,
 ) -> list[EphemerisFinding]:
     """Predicted positions of the requested bodies at `obs_utc_iso`, with each one's error bounds for the moment.
 

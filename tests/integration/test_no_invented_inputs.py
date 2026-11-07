@@ -87,12 +87,15 @@ def test_routes_require_the_asset_id_and_its_hash() -> None:
 
 def test_a_prediction_names_a_recording_only_when_one_stands_behind_it() -> None:
     assert inspect.signature(EphemerisFinding.to_contract_dict).parameters["source_sha256"].default is inspect.Parameter.empty
+    assert inspect.signature(compute_solar_system_ephemerides).parameters["observation_solution_id"].default is None
     moments = {"obs_utc_iso": MOON_MOMENT["obs_utc_iso"], "lat_deg": 30.0, "lon_deg": -40.0}
     moon = next(b for b in compute_solar_system_ephemerides(**moments) if b.name == "Moon")
+    assert moon.observation_solution_id is None
+    assert "observationSolutionId" not in moon.to_contract_dict(source_sha256=None)
     with pytest.raises(ValueError, match="placeholder"):
         moon.to_contract_dict(source_sha256="0" * 64)
     assert moon.to_contract_dict(source_sha256="ab" * 32)["evidence"]["sourceAssetSha256"] == "ab" * 32
-    # The two routes answer for a time and place, with no recording behind the answer: no hash, never zeros
+    # The two routes answer for a time and place, with no recording or solution behind the answer: no hash or solution id
     client = TestClient(app)
     ephemeris = client.post(
         "/api/science/ephemeris", json={"observedAtUTC": moments["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0}
@@ -100,7 +103,7 @@ def test_a_prediction_names_a_recording_only_when_one_stands_behind_it() -> None
     context = client.get("/api/science/sky-context", params=moments)
     predictions = ephemeris.json()["findings"] + context.json()["ephemerides"]
     assert len(predictions) == 12
-    assert all("sourceAssetSha256" not in p["evidence"] for p in predictions)
+    assert all("sourceAssetSha256" not in p["evidence"] and "observationSolutionId" not in p for p in predictions)
 
 
 def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatch) -> None:
@@ -127,6 +130,18 @@ def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatc
     assert items[0].sha256 == hashlib.sha256(clip.read_bytes()).hexdigest()
     assert len(items[0].ephemerides) >= 6
     assert {e["evidence"]["sourceAssetSha256"] for e in items[0].ephemerides} == {items[0].sha256}
+    assert items[0].observation_solution is not None
+    assert {e["observationSolutionId"] for e in items[0].ephemerides} == {items[0].observation_solution.id}
+
+    def _raise_decode_error(path, width, height):
+        raise discovery.FrameDecodeError("no frame")
+
+    discovery._DISCOVERY_CACHE.clear()
+    monkeypatch.setattr(discovery, "_extract_representative_luma", _raise_decode_error)
+    items_no_frame = discovery.discover_uploaded_media(uploads, tmp_path / "public", tmp_path / "artifacts")
+    assert items_no_frame[0].observation_solution is None
+    assert len(items_no_frame[0].ephemerides) >= 6
+    assert all("observationSolutionId" not in e for e in items_no_frame[0].ephemerides)
 
 
 def test_solve_takes_the_image_size_from_its_pixels() -> None:
