@@ -100,6 +100,16 @@
       "licence": "LicenseRef-NASA-Eclipse-Permission",
       "licenceUrl": "https://eclipse.gsfc.nasa.gov/LEcat5/LEcatkey.html",
       "source": "Fred Espenak and Jean Meeus, Five Millennium Catalog of Lunar Eclipses: -1999 to +3000 (NASA GSFC, NASA/TP-2009-214173; credit: Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC))"
+    },
+    {
+      "path": ".cache/m2/pscomppars.csv",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+pscomppars&format=csv",
+      "bytes": 82923300,
+      "sha256": "17862c7b7df4a9de1813367071b312523f7f42ed1a2284ce879cd8ee2a707386",
+      "licence": "LicenseRef-NASA-Exoplanet-Archive-Acknowledgement",
+      "licenceUrl": "https://exoplanetarchive.ipac.caltech.edu/docs/acknowledge.html",
+      "source": "NASA Exoplanet Archive Planetary Systems Composite Parameters (PSCompPars) table, doi:10.26133/NEA13 (companion to Planetary Systems table, doi:10.26133/NEA12), frozen TAP snapshot (select * from pscomppars, retrieved 2026-11-05T00:36:15Z; upstream TAP query results change as new planets and solutions are ingested, so bytes and sha256 pin the 2026-11-05T00:36:15Z snapshot; cite Christiansen et al. 2025, PSJ, doi:10.3847/PSJ/ade3c2, table DOI doi:10.26133/NEA13, and each value's literature reference)"
     }
   ]
 }

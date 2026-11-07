@@ -1,0 +1,41 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "nasa-exoplanet-archive-pscomppars",
+      "title": "NASA Exoplanet Archive Planetary Systems Composite Parameters (PSCompPars) Table",
+      "url": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+pscomppars&format=csv",
+      "version": "Frozen TAP snapshot (select * from pscomppars, retrieved 2026-11-05T00:36:15Z, 6,451 rows)",
+      "retrieved": "2026-11-05",
+      "license": {
+        "spdx": "LicenseRef-NASA-Exoplanet-Archive-Acknowledgement",
+        "name": "NASA Exoplanet Archive Acknowledgement and Citation Policy",
+        "url": "https://exoplanetarchive.ipac.caltech.edu/docs/acknowledge.html",
+        "conditions": "Publications and applications using the NASA Exoplanet Archive must include the standard archive acknowledgement verbatim, cite the archive overview paper (Christiansen et al. 2025, PSJ, doi:10.3847/PSJ/ade3c2) and table DOI (doi:10.26133/NEA13 for PSCompPars; companion Planetary Systems table is doi:10.26133/NEA12), and cite the original literature references for individual parameter values."
+      },
+      "credit": "NASA Exoplanet Archive / Caltech / IPAC",
+      "citation": "Christiansen, J. L., et al. 2025, The NASA Exoplanet Archive and Exoplanet Follow-up Observing Program: Data, Tools, and Usage, PSJ, doi:10.3847/PSJ/ade3c2; NASA Exoplanet Archive Planetary Systems Composite Parameters (PSCompPars) table, doi:10.26133/NEA13 (companion to Planetary Systems table, doi:10.26133/NEA12).",
+      "doi": "10.26133/NEA13",
+      "acknowledgement": "This research has made use of the NASA Exoplanet Archive, which is operated by the California Institute of Technology, under contract with the National Aeronautics and Space Administration under the Exoplanet Exploration Program.",
+      "sha256": "17862c7b7df4a9de1813367071b312523f7f42ed1a2284ce879cd8ee2a707386",
+      "note": "Frozen TAP query snapshot retrieved at 2026-11-05T00:36:15Z via `https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+pscomppars&format=csv` (82,923,300 bytes, SHA-256 `17862c7b7df4a9de1813367071b312523f7f42ed1a2284ce879cd8ee2a707386`). Upstream TAP queries against `pscomppars` change over time as new planets and parameter solutions are ingested. PSCompPars is a composite table whose columns are drawn from multiple published references and archive calculations and are therefore not self-consistent across a row. Values citing `CALCULATED_VALUE` resolve `/docs/pscp_calc.html` to `https://exoplanetarchive.ipac.caltech.edu/docs/pscp_calc.html`: planetary radius (`radiusEarth`) and mass (`massEarth`) use the Chen and Kipping (2017, ApJ 834, 17) probabilistic mass-radius relation (recorded with basis `modelled`), while orbital semi-major axis, equilibrium temperature (assuming zero Bond albedo and full heat redistribution), and other calculated quantities use standard astrophysical relations (recorded with basis `calculated`). Note that 863 of the 1,090 `Calculated Value` `pl_eqt` (`Teq`) rows in `pscomppars.csv` carry non-null uncertainties (`err1`, `err2`) despite `pscp_calc.html` stating that calculated values do not report uncertainties. Numeric limit flags `-1`, `0`, `1` are preserved from `*_lim` on populated value cells (raw `*_lim` columns also contain `'9'` when the value cell is blank); the exact mapping of `-1` and `1` to lower vs. upper limits is not defined in `API_PS_columns.html` [open]. Legacy plain `http://` reference URLs on `www.cfa.harvard.edu`, `vizier.u-strasbg.fr`, and `www.nature.com` are normalized to `https://`."
+    }
+  ],
+  "files": [
+    {
+      "path": "pscomppars.json",
+      "sha256": "94a6102d2e692ba87a1dbb935268684a83484e683084842298e28d6e70bf3557",
+      "sources": [
+        "nasa-exoplanet-archive-pscomppars"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_exoplanets.py",
+        "command": "uv run python scripts/bake_exoplanets.py"
+      },
+      "note": "All 6,451 rows and 21 columns (8 identity columns and 13 value columns) of the 2026-11-05T00:36:15Z PSCompPars snapshot, with 1,838 deduplicated literature and calculation references and `evidenceKind: 'catalog-derived'` (distinguishing this static catalog table from `catalog_matched` observation findings). Each value cell carries `[value, err1, err2, limit, ref, basis]` with `basis` in `{'measured', 'calculated', 'modelled'}`."
+    }
+  ],
+  "fileSets": []
+}
