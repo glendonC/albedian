@@ -5,6 +5,7 @@ honest evaluation metrics, and FFmpeg audio-preserving remux export (`EXP-04`, `
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -33,6 +34,10 @@ from services.science.solver import (
     detect_point_sources,
     stack_video_frames_for_calibration,
 )
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _build_star_protection_mask(
@@ -81,10 +86,10 @@ def _measure_star_peak_fluxes(
 
 def _compute_temporal_flicker_index(
     frames: Sequence[np.ndarray], sky_mask: np.ndarray | None = None
-) -> float:
+) -> float | None:
     """Compute frame-to-frame pixel temporal standard deviation across background regions."""
     if len(frames) < 2:
-        return 0.0
+        return None
     lumas = [_to_luma_2d(f) for f in frames]
     diffs: list[float] = []
     for i in range(1, len(lumas)):
@@ -97,7 +102,83 @@ def _compute_temporal_flicker_index(
             med = float(np.median(valid))
             mad = float(np.median(np.abs(valid - med)))
             diffs.append(1.4826 * mad)
-    return float(np.mean(diffs)) if diffs else 0.0
+    return float(np.mean(diffs)) if diffs else None
+
+
+def _stream_packet_pts_and_md5(
+    path: Path, stream_spec: str
+) -> tuple[float | None, list[tuple[float, str]]]:
+    """Read each packet's PTS (in seconds) and payload MD5 digest for `stream_spec` via `ffmpeg -f framemd5`."""
+    proc = subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-map",
+            stream_spec,
+            "-c",
+            "copy",
+            "-f",
+            "framemd5",
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None, []
+    tb = 1.0
+    packets: list[tuple[float, str]] = []
+    for raw in proc.stdout.splitlines():
+        line = raw.strip()
+        if line.startswith("#tb "):
+            num_str, den_str = line.split(":", 1)[1].strip().split("/")
+            tb = float(num_str) / float(den_str)
+        elif line and not line.startswith("#"):
+            cols = [c.strip() for c in line.split(",")]
+            if len(cols) >= 6 and cols[2] != "N/A":
+                pts_sec = float(cols[2]) * tb
+                md5_hex = cols[5]
+                packets.append((pts_sec, md5_hex))
+    if not packets:
+        return None, []
+    return min(pts for pts, _ in packets), packets
+
+
+def _verify_copied_audio_packets_and_offset_ms(
+    source_path: Path, exported_path: Path
+) -> tuple[bool, float | None]:
+    """Verify exported audio packets are a bit-identical contiguous slice of the source's audio packets
+    and measure the maximum relative audio-to-video PTS offset in milliseconds across all copied packets.
+    """
+    src_v_start, _ = _stream_packet_pts_and_md5(source_path, "0:v:0")
+    _, src_a_pkts = _stream_packet_pts_and_md5(source_path, "0:a:0")
+    out_v_start, _ = _stream_packet_pts_and_md5(exported_path, "0:v:0")
+    _, out_a_pkts = _stream_packet_pts_and_md5(exported_path, "0:a:0")
+    if not src_a_pkts or not out_a_pkts or out_v_start is None:
+        return False, None
+
+    src_md5s = [md5 for _, md5 in src_a_pkts]
+    out_md5s = [md5 for _, md5 in out_a_pkts]
+    n_out = len(out_md5s)
+    match_idx: int | None = None
+    for idx in range(len(src_md5s) - n_out + 1):
+        if src_md5s[idx : idx + n_out] == out_md5s:
+            match_idx = idx
+            break
+    if match_idx is None:
+        return False, None
+
+    src_v0 = src_v_start if src_v_start is not None else 0.0
+    max_offset_ms = max(
+        abs((out_pts - out_v_start) - (src_a_pkts[match_idx + i][0] - src_v0)) * 1000.0
+        for i, (out_pts, _) in enumerate(out_a_pkts)
+    )
+    return True, float(max_offset_ms)
 
 
 class MediaExperimentRuntime:
@@ -133,7 +214,9 @@ class MediaExperimentRuntime:
                 f"Unsupported restoration profile '{profile}'. Expected one of {valid_profiles}."
             )
 
+        started_at_utc = _utc_now_iso()
         t0 = time.perf_counter()
+        cpu_t0 = time.thread_time()
         self._attempt_counter += 1
 
         src_frames = [np.asarray(f, dtype=np.float64).copy() for f in frames]
@@ -262,11 +345,11 @@ class MediaExperimentRuntime:
 
         src_peaks = _measure_star_peak_fluxes(ref_luma, src_detections, sky_mask)
         out_peaks = _measure_star_peak_fluxes(out_luma, src_detections, sky_mask)
+        retention_ratio: float | None = None
         if src_peaks and out_peaks:
             ratios = [o / max(s, 1e-6) for s, o in zip(src_peaks, out_peaks) if s > 1e-3]
-            retention_ratio = float(np.median(ratios)) if ratios else 1.0
-        else:
-            retention_ratio = 1.0
+            if ratios:
+                retention_ratio = float(np.median(ratios))
 
         ref_pool = list(src_detections)
         if profile == "temporal" and len(src_frames) > 1:
@@ -293,34 +376,39 @@ class MediaExperimentRuntime:
 
         src_flicker = _compute_temporal_flicker_index(src_frames, sky_mask)
         out_flicker = _compute_temporal_flicker_index(restored_frames, sky_mask)
-        if len(restored_frames) == 1:
-            out_flicker = sigma_out
 
+        fg_stability: float | None = None
         if foreground_mask is not None and np.any(fg_bool):
             fg_diff = float(np.mean(np.abs(out_luma[fg_bool] - ref_luma[fg_bool])))
             fg_stability = max(0.0, min(1.0, 1.0 - fg_diff / 64.0))
-        else:
-            fg_stability = 1.0
 
         output_sha256 = compute_frames_sha256(restored_frames)
         cache_payload = f"{source_sha256}:{profile}:preserve_stars={preserve_stars}"
         cache_key = hashlib.sha256(cache_payload.encode("utf-8")).hexdigest()[:32]
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        cpu_ms = max(0.0, (time.thread_time() - cpu_t0) * 1000.0)
+        completed_at_utc = _utc_now_iso()
+
+        if src_flicker is not None and out_flicker is not None:
+            flicker_note = f"Temporal flicker index changed from {src_flicker:.3f} to {out_flicker:.3f}."
+        else:
+            flicker_note = "Single-frame input: temporal flicker index is not measured."
 
         metrics = RestorationMetrics(
             evaluation_method="Source-Referenced PSF Core Retention & Background MAD Noise Floor",
-            has_paired_reference=True,
+            has_paired_reference=False,
             shadow_snr_gain_db=snr_gain_db,
             estimated_noise_reduction_pct=noise_red_pct,
             point_source_retention_ratio=retention_ratio,
             false_point_artifact_count=false_artifacts,
             temporal_flicker_index=out_flicker,
-            audio_sync_offset_ms=0.0,
+            audio_sync_offset_ms=None,
             face_region_stability_score=fg_stability,
             validity_notes=[
                 f"Input sky noise sigma={sigma_in:.3f}, output sky noise sigma={sigma_out:.3f}.",
                 f"Evaluated on {len(src_detections)} source-detected point sources; allowSyntheticSky=False.",
-                f"Temporal flicker index changed from {src_flicker:.3f} to {out_flicker:.3f}.",
+                flicker_note,
+                f"CPU time {cpu_ms:.3f} ms measured with time.thread_time() on the restoration thread.",
             ],
         )
 
@@ -335,6 +423,9 @@ class MediaExperimentRuntime:
             restored_detections=out_detections,
             metrics=metrics,
             elapsed_ms=elapsed_ms,
+            cpu_ms=cpu_ms,
+            started_at_utc=started_at_utc,
+            completed_at_utc=completed_at_utc,
             allow_synthetic_sky=False,
         )
 
@@ -374,26 +465,74 @@ class MediaExperimentRuntime:
         raw_video_bytes = b"".join(f.tobytes() for f in rgb_frames)
         expected_duration_sec = len(rgb_frames) / float(fps)
 
+        src_audio: Path | None = None
         if audio_source_path is not None:
             src_audio = Path(audio_source_path)
             if not src_audio.exists():
-                raise FileNotFoundError(f"Audio source file not found: {src_audio}")
+                raise FileNotFoundError("Audio source file not found.")
             source_sha256 = compute_file_sha256(src_audio)
+            src_v_start, _ = _stream_packet_pts_and_md5(src_audio, "0:v:0")
+            itsoffset_sec = -(src_v_start if src_v_start is not None else 0.0)
             cmd = [
-                "ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
-                "-s", f"{w_out}x{h_out}", "-r", str(fps), "-i", "pipe:0",
-                "-i", str(src_audio), "-map", "0:v:0", "-map", "1:a:0",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
-                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-                "-t", f"{expected_duration_sec:.6f}", str(out_file),
+                "ffmpeg",
+                "-y",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                f"{w_out}x{h_out}",
+                "-r",
+                str(fps),
+                "-i",
+                "pipe:0",
+                "-itsoffset",
+                f"{itsoffset_sec:.6f}",
+                "-i",
+                str(src_audio),
+                "-map",
+                "0:v:0",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-crf",
+                "18",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "copy",
+                "-t",
+                f"{expected_duration_sec:.6f}",
+                str(out_file),
             ]
         else:
             source_sha256 = compute_frames_sha256(frames)
             cmd = [
-                "ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
-                "-s", f"{w_out}x{h_out}", "-r", str(fps), "-i", "pipe:0",
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18",
-                "-pix_fmt", "yuv420p", "-t", f"{expected_duration_sec:.6f}",
+                "ffmpeg",
+                "-y",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                f"{w_out}x{h_out}",
+                "-r",
+                str(fps),
+                "-i",
+                "pipe:0",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-crf",
+                "18",
+                "-pix_fmt",
+                "yuv420p",
+                "-t",
+                f"{expected_duration_sec:.6f}",
                 str(out_file),
             ]
 
@@ -404,22 +543,34 @@ class MediaExperimentRuntime:
             err_msg = proc.stderr.decode("utf-8", errors="replace")
             raise RuntimeError(f"ffmpeg export failed (code {proc.returncode}): {err_msg}")
 
+        exported_at_utc = _utc_now_iso()
+
         probe_cmd = [
-            "ffprobe", "-v", "error",
-            "-show_entries", "stream=index,codec_type,codec_name,duration",
-            "-show_entries", "format=duration", "-of", "json", str(out_file),
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=index,codec_type,codec_name,duration",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
+            str(out_file),
         ]
         probe_proc = subprocess.run(
-            probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True
+            probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
         )
+        if probe_proc.returncode != 0:
+            err_msg = probe_proc.stderr.decode("utf-8", errors="replace")
+            raise RuntimeError(f"ffprobe failed on exported file (code {probe_proc.returncode}): {err_msg}")
         probe_data = json.loads(probe_proc.stdout.decode("utf-8"))
         streams = probe_data.get("streams", [])
-        fmt_duration = float(probe_data.get("format", {}).get("duration", expected_duration_sec))
+        fmt_dur_raw = probe_data.get("format", {}).get("duration")
 
         stream_types: list[str] = []
         video_codec = "unknown"
         audio_codec: str | None = None
-        video_duration = fmt_duration
+        video_duration: float | None = float(fmt_dur_raw) if fmt_dur_raw is not None else None
         audio_duration: float | None = None
 
         for st in streams:
@@ -434,13 +585,19 @@ class MediaExperimentRuntime:
                 if st.get("duration") is not None:
                     audio_duration = float(st["duration"])
 
-        audio_preserved = "audio" in stream_types if audio_source_path is not None else False
-        duration_drift_ms = abs(video_duration - expected_duration_sec) * 1000.0
-        audio_sync_offset_ms = (
+        duration_drift_ms = (
             abs(video_duration - expected_duration_sec) * 1000.0
-            if audio_duration is not None
-            else 0.0
+            if video_duration is not None
+            else None
         )
+
+        if src_audio is not None and "audio" in stream_types:
+            audio_preserved, audio_sync_offset_ms = _verify_copied_audio_packets_and_offset_ms(
+                src_audio, out_file
+            )
+        else:
+            audio_preserved = False
+            audio_sync_offset_ms = None
 
         output_sha256 = compute_file_sha256(out_file)
 
@@ -459,7 +616,7 @@ class MediaExperimentRuntime:
             stream_types=stream_types,
             frame_count=len(rgb_frames),
             fps=fps,
-            strict_fidelity_enforced=True,
+            exported_at_utc=exported_at_utc,
         )
 
 

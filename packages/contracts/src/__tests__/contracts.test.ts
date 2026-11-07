@@ -318,6 +318,15 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
       }).success
     ).toBe(true);
     expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, pointSourceRetentionRatio: -0.01 }).success
+    ).toBe(false);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, pointSourceRetentionRatio: 1.51 }).success
+    ).toBe(false);
+    expect(
+      AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, temporalFlickerIndex: -0.01 }).success
+    ).toBe(false);
+    expect(
       AttemptEvaluationMetricsSchema.safeParse({ ...metricsWithoutUnmeasured, pointSourceRetentionRatio: null }).success
     ).toBe(false);
     expect(
@@ -345,6 +354,12 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
     expect(
       ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: 67108864 }).success
     ).toBe(true);
+    expect(
+      ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: -1 }).success
+    ).toBe(false);
+    expect(
+      ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: 1024.5 }).success
+    ).toBe(false);
     expect(
       ProcessingAttemptSchema.safeParse({ ...attemptWithoutPeakMemory, peakMemoryBytes: null }).success
     ).toBe(false);

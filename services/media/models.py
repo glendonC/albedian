@@ -7,11 +7,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
 from services.science.solver import SourceDetection
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 @dataclass(frozen=True)
@@ -22,32 +26,37 @@ class RestorationMetrics:
     has_paired_reference: bool
     shadow_snr_gain_db: float
     estimated_noise_reduction_pct: float
-    point_source_retention_ratio: float
+    point_source_retention_ratio: float | None
     false_point_artifact_count: int
-    temporal_flicker_index: float
-    audio_sync_offset_ms: float = 0.0
-    face_region_stability_score: float = 1.0
+    temporal_flicker_index: float | None
+    audio_sync_offset_ms: float | None = None
+    face_region_stability_score: float | None = None
     validity_notes: list[str] = field(default_factory=list)
 
-    def to_contract_dict(self) -> dict:
-        return {
+    def to_contract_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "evaluationMethod": self.evaluation_method,
             "hasPairedReference": bool(self.has_paired_reference),
             "shadowSnrGainDb": float(self.shadow_snr_gain_db),
             "estimatedNoiseReductionPct": float(
                 max(0.0, min(100.0, self.estimated_noise_reduction_pct))
             ),
-            "pointSourceRetentionRatio": float(
-                max(0.0, min(1.5, self.point_source_retention_ratio))
-            ),
             "falsePointArtifactCount": int(max(0, self.false_point_artifact_count)),
-            "faceRegionStabilityScore": float(
-                max(0.0, min(1.0, self.face_region_stability_score))
-            ),
-            "temporalFlickerIndex": float(max(0.0, self.temporal_flicker_index)),
-            "audioSyncOffsetMs": float(max(0.0, self.audio_sync_offset_ms)),
             "validityNotes": list(self.validity_notes),
         }
+        if self.point_source_retention_ratio is not None:
+            payload["pointSourceRetentionRatio"] = float(
+                max(0.0, min(1.5, self.point_source_retention_ratio))
+            )
+        if self.face_region_stability_score is not None:
+            payload["faceRegionStabilityScore"] = float(
+                max(0.0, min(1.0, self.face_region_stability_score))
+            )
+        if self.temporal_flicker_index is not None:
+            payload["temporalFlickerIndex"] = float(max(0.0, self.temporal_flicker_index))
+        if self.audio_sync_offset_ms is not None:
+            payload["audioSyncOffsetMs"] = float(self.audio_sync_offset_ms)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -64,6 +73,9 @@ class RestorationBranchResult:
     restored_detections: list[SourceDetection]
     metrics: RestorationMetrics
     elapsed_ms: float
+    cpu_ms: float = 0.0
+    started_at_utc: str = field(default_factory=_utc_now_iso)
+    completed_at_utc: str = field(default_factory=_utc_now_iso)
     allow_synthetic_sky: bool = False
 
     @property
@@ -75,7 +87,7 @@ class RestorationBranchResult:
         return self.metrics.shadow_snr_gain_db
 
     @property
-    def point_source_retention_ratio(self) -> float:
+    def point_source_retention_ratio(self) -> float | None:
         return self.metrics.point_source_retention_ratio
 
     @property
@@ -83,12 +95,11 @@ class RestorationBranchResult:
         return self.metrics.false_point_artifact_count
 
     @property
-    def temporal_flicker_index(self) -> float:
+    def temporal_flicker_index(self) -> float | None:
         return self.metrics.temporal_flicker_index
 
-    def to_contract_dict(self, *, source_asset_id: str) -> dict:
+    def to_contract_dict(self, *, source_asset_id: str) -> dict[str, Any]:
         """The ProcessingAttempt record, for the recording the caller names: the runtime cannot know it."""
-        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         return {
             "id": self.attempt_id,
             "sourceAssetId": source_asset_id,
@@ -96,14 +107,12 @@ class RestorationBranchResult:
             "label": f"Restoration ({self.profile})",
             "status": "ready",
             "cacheKey": self.cache_key,
-            "startedAtUTC": now_iso,
-            "completedAtUTC": now_iso,
+            "startedAtUTC": self.started_at_utc,
+            "completedAtUTC": self.completed_at_utc,
             "elapsedMs": float(self.elapsed_ms),
-            "cpuMs": float(self.elapsed_ms),
+            "cpuMs": float(self.cpu_ms),
+            # No GPU execution path exists in the Python restoration runtime; all array work runs on the CPU.
             "gpuMs": 0.0,
-            "peakMemoryBytes": int(
-                sum(f.nbytes for f in self.restored_frames) * 2
-            ),
             "outputVariantId": f"variant-{self.attempt_id}",
             "metrics": self.metrics.to_contract_dict(),
         }
@@ -120,14 +129,14 @@ class ExportRemuxResult:
     video_codec: str
     audio_preserved: bool
     audio_codec: str | None
-    video_duration_sec: float
+    video_duration_sec: float | None
     audio_duration_sec: float | None
-    duration_drift_ms: float
-    audio_sync_offset_ms: float
+    duration_drift_ms: float | None
+    audio_sync_offset_ms: float | None
     stream_types: list[str]
     frame_count: int
     fps: int
-    strict_fidelity_enforced: bool = True
+    exported_at_utc: str = field(default_factory=_utc_now_iso)
 
     def to_contract_dict(
         self,
@@ -137,12 +146,23 @@ class ExportRemuxResult:
         variant_id: str,
         graph_id: str,
         catalog_citations: Sequence[str],
-    ) -> dict:
+        epistemic_summary: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """The ExportArtifact record. The session, asset, variant and graph come from the caller, which knows
         them, and so do the citations of the catalog content the export shows: none for a remux of restored
         frames."""
-        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        return {
+        summary = (
+            dict(epistemic_summary)
+            if epistemic_summary is not None
+            else {
+                "observedCount": 0,
+                "catalogMatchedCount": 0,
+                "predictedCount": 0,
+                "simulatedViewsIncluded": False,
+                "strictFidelityEnforced": True,
+            }
+        )
+        payload: dict[str, Any] = {
             "id": self.id,
             "sessionId": session_id,
             "sourceAssetId": source_asset_id,
@@ -157,18 +177,14 @@ class ExportRemuxResult:
             "videoCodec": self.video_codec,
             "audioPreserved": bool(self.audio_preserved),
             "audioCodec": self.audio_codec,
-            "audioSyncOffsetMs": float(self.audio_sync_offset_ms),
             "processingGraphId": graph_id,
             "catalogCitations": list(catalog_citations),
-            "epistemicSummary": {
-                "observedCount": 0,
-                "catalogMatchedCount": 0,
-                "predictedCount": 0,
-                "simulatedViewsIncluded": False,
-                "strictFidelityEnforced": bool(self.strict_fidelity_enforced),
-            },
-            "exportedAtUTC": now_iso,
+            "epistemicSummary": summary,
+            "exportedAtUTC": self.exported_at_utc,
         }
+        if self.audio_sync_offset_ms is not None:
+            payload["audioSyncOffsetMs"] = float(self.audio_sync_offset_ms)
+        return payload
 
 
 def compute_frames_sha256(frames: Sequence[np.ndarray]) -> str:

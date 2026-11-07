@@ -103,7 +103,9 @@ def post_media_restore(req: RestoreRequest) -> dict[str, Any]:
     contract_dict["outputSha256"] = res.output_sha256
     contract_dict["allowSyntheticSky"] = False
     contract_dict["shadow_snr_gain_db"] = res.shadow_snr_gain_db
-    contract_dict["point_source_retention_ratio"] = res.point_source_retention_ratio
+    if res.point_source_retention_ratio is not None:
+        contract_dict["point_source_retention_ratio"] = res.point_source_retention_ratio
     contract_dict["false_point_artifact_count"] = res.false_point_artifact_count
-    contract_dict["temporal_flicker_index"] = res.temporal_flicker_index
+    if res.temporal_flicker_index is not None:
+        contract_dict["temporal_flicker_index"] = res.temporal_flicker_index
     return contract_dict

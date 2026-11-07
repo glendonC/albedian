@@ -534,8 +534,8 @@ def test_exp10_video_restoration_and_ffmpeg_audio_preserving_export(tmp_path: Pa
     assert export_manifest.audio_preserved is True
     assert "video" in export_manifest.stream_types
     assert "audio" in export_manifest.stream_types
-    assert export_manifest.duration_drift_ms <= 35.0
-    assert export_manifest.audio_sync_offset_ms <= 35.0
+    assert export_manifest.duration_drift_ms is not None and export_manifest.duration_drift_ms <= 35.0
+    assert export_manifest.audio_sync_offset_ms is not None and export_manifest.audio_sync_offset_ms < 1.0
 
     # Independently verify the exported MP4 with ffprobe
     probe_out = subprocess.run(
