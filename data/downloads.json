@@ -12,6 +12,16 @@
       "source": "Edenhofer, Zucker, Frank, Saydjari, Speagle, Finkbeiner and Ensslin 2024, A parsec-scale Galactic 3D dust map out to 1.25 kpc from the Sun, A&A, doi:10.1051/0004-6361/202347628; dataset v1.0 (2023-08-01), doi:10.5281/zenodo.8187943"
     },
     {
+      "path": ".cache/dust/oneill2024/ONeill2024_LocalBubble_ShellProperties_A0.5.fits",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://dataverse.harvard.edu/api/access/datafile/8943783",
+      "bytes": 138421440,
+      "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
+      "licence": "CC0-1.0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "O'Neill, T. J., Zucker, C., Goodman, A. A., and Edenhofer, G. 2024, The Local Bubble Is a Magnetized, Multi-temperature Superbubble, ApJ, 973, 136, doi:10.3847/1538-4357/ad47b5; dataset V1 (2024-05-06), Harvard Dataverse, doi:10.7910/DVN/INB1RB"
+    },
+    {
       "path": ".cache/earth-maps/ne_10m_ocean.zip",
       "fetch": "scripts/fetch_download.py",
       "url": "https://naciscdn.org/naturalearth/10m/physical/ne_10m_ocean.zip",

@@ -1,0 +1,38 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "oneill-2024-local-bubble",
+      "title": "The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
+      "url": "https://doi.org/10.7910/DVN/INB1RB",
+      "version": "V1 (2024-05-06)",
+      "retrieved": "2026-11-04",
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons Zero v1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "credit": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. (2024, ApJ 973, 136); Harvard Dataverse doi:10.7910/DVN/INB1RB",
+      "citation": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, ApJ, 973, 136 (doi:10.3847/1538-4357/ad47b5)",
+      "doi": "10.7910/DVN/INB1RB",
+      "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
+      "note": "Derived from ONeill2024_LocalBubble_ShellProperties_A0.5.fits (786,432 HEALPix nside=256 directions derived from the Edenhofer et al. 2024 3D dust map). Aggregated onto a closed nside=48 HEALPix 2-manifold (27,648 vertices, 55,292 outward triangles) in heliocentric Galactic Cartesian coordinates scaled to 1 unit = 100 pc."
+    }
+  ],
+  "files": [
+    {
+      "path": "local_bubble_oneill2024.glb",
+      "sha256": "aecab153587b4ba7723c5e753155a2717837c663f714ee27e1ccc64b13b03ed9",
+      "sources": [
+        "oneill-2024-local-bubble"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_local_bubble_mesh.py",
+        "command": "uv run python scripts/bake_local_bubble_mesh.py"
+      }
+    }
+  ],
+  "fileSets": []
+}

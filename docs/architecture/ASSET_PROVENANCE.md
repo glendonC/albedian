@@ -72,6 +72,9 @@ next bake deletes it.
   files of the release; the record names its six sources (Gaia DR3 and its astrophysical
   parameters, Bailer-Jones et al. 2021 distances, Hipparcos 2007, the Gaia to Hipparcos
   crossmatch and the IAU Catalog of Star Names), each with its credit and licence.
+- **`models/PROVENANCE.json`**, written by `scripts/bake_local_bubble_mesh.py` on every bake and
+  compared by its `--verify`, covers `local_bubble_oneill2024.glb` from O'Neill et al. (2024,
+  ApJ 973, 136; Harvard Dataverse `doi:10.7910/DVN/INB1RB`, `CC0-1.0`).
 - **`textures/PROVENANCE.json`** covers the ESO panorama (eso0932a) and the ESO image behind the
   black hole (eso1804a), downloaded as is and byte-identical to ESO's downloads; the two 1k
   SVS 4720 Moon maps, likewise; the 8k Moon colour map and the LOLA normal map, whose entries
@@ -119,9 +122,9 @@ that still lack a provenance record, and an entry fails when:
 - its file has a record now, or is gone (remove the entry);
 - its bytes changed (a changed asset needs a record).
 
-`BASELINE_GAPS` pins nine entries: four textures (the atmosphere lookup table, which a script
+`BASELINE_GAPS` pins eight entries: four textures (the atmosphere lookup table, which a script
 makes from hand-set parameters with no outside data, and three legacy Earth maps that match
-three.js example textures or are unidentified), three files in `models/`, and the two tracked
+three.js example textures or are unidentified), two files in `models/`, and the two tracked
 sample splats. Any deleted legacy asset is removed from `BASELINE_GAPS` at the same time so it
 can return only with a provenance record.
 

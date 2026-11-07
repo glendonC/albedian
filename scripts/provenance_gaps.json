@@ -4,11 +4,7 @@
   "gaps": [
     {
       "path": "apps/web/public/models/lb_splats.json",
-      "reason": "Made by scripts/bake_bruneton_lut_and_splats.py from the vertices of local_bubble_oneill2024.glb, which has no record."
-    },
-    {
-      "path": "apps/web/public/models/local_bubble_oneill2024.glb",
-      "reason": "No source, licence or credit recorded; the name points to O'Neill et al. (2024)."
+      "reason": "Made by scripts/bake_bruneton_lut_and_splats.py from the legacy local_bubble_oneill2024.glb mesh; to be replaced or retired by the 3D dust splat pipeline."
     },
     {
       "path": "apps/web/public/models/nasa_lro_moon_3d.glb",
