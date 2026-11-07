@@ -27,6 +27,7 @@ import {
 import { RenderLayerDisclosure } from './RenderLayerDisclosure.js';
 import { CelestialMarkerOverlay } from './CelestialMarkerOverlay.js';
 import { CelestialTargetCard } from './CelestialTargetCard.js';
+import { FlightAndRestoreHud } from './FlightAndRestoreHud.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
 import '../styles/albedian.css';
 
@@ -109,6 +110,7 @@ export const SpatialObservatoryViewport: React.FC<
   SpatialObservatoryViewportProps
 > = ({
   session,
+  setSession,
   selectedFinding,
   discoveredMedia,
   activeDiscoveredId,
@@ -509,6 +511,10 @@ export const SpatialObservatoryViewport: React.FC<
             selectedFinding={selectedFinding}
             onRunUtterance={onRunUtterance}
             onPushToTalk={onPushToTalk}
+          />
+          <FlightAndRestoreHud
+            session={session}
+            setSession={setSession}
           />
           <VoiceCommandHud
             voiceState={session.machines?.voice ?? 'off'}
