@@ -376,7 +376,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
             }
 
             const res = dispatchAlbedianAction(session, action);
-            // space.epoch is refused until a unit wires star propagation, and leaves the session as it was
+            // space.epoch is refused because the view does not move the stars to a chosen year, and leaves the session as it was
             if (action.type === 'space.epoch') {
               expect(res.outcome).toMatchObject({ status: 'rejected', reason: 'not_connected' });
               expect(res.session).toBe(session);
@@ -677,5 +677,18 @@ describe('@albedian/observation: detections without a sky position', () => {
     if (entered.outcome.status === 'rejected') {
       expect(entered.outcome.reason).toBe('no_distance_estimate');
     }
+
+    const calibrated = createSyntheticCalibratedSession();
+    const sightline = dispatchAlbedianAction(calibrated, {
+      type: 'finding.describe',
+      requestId: 'desc_cal_sightline',
+      expectedViewRevision: calibrated.viewRevision,
+      findingId: 'finding_betelgeuse',
+      fields: ['behind_sightline'],
+    });
+    expect(sightline.outcome.status).toBe('completed');
+    expect(sightline.session.lastStatusBanner).toContain('(the view does not draw a sightline cone yet)');
+    expect(sightline.session.lastStatusBanner).not.toContain('Sightline cone queried');
+    expect(sightline.session.spatialView.activeOverlays.sightlineCone).toBe(false);
   });
 });

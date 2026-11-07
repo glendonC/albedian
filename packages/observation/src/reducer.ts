@@ -196,24 +196,23 @@ export function dispatchAlbedianAction(
         segments.push(`Proper motion: (${finding.catalogRef.properMotionRaMasYr}, ${finding.catalogRef.properMotionDecMasYr ?? 0}) mas/yr`);
       }
       if (action.fields.includes('evidence')) segments.push(`Evidence: ${badge.label}. ${badge.disclosure}`);
-      // A finding without a sky position has no line of sight, so no cone is drawn for it
+      // The view does not draw a sightline cone yet, so behind_sightline reports the sky direction without
+      // turning on activeOverlays.sightlineCone; a pixel-only detection has no sky direction to report
       const sky = finding.skyPosition;
       if (action.fields.includes('behind_sightline')) {
         segments.push(
           sky
-            ? `Sightline cone active along RA ${sky.raDeg.toFixed(2)}°, Dec ${sky.decDeg.toFixed(2)}° showing deeper catalog background.`
+            ? `Sightline along RA ${sky.raDeg.toFixed(2)}°, Dec ${sky.decDeg.toFixed(2)}° (the view does not draw a sightline cone yet).`
             : `No sightline: ${finding.title} has a pixel position only, with no verified WCS to place it on the sky.`
         );
       }
       const text = segments.join(' · ');
-      const sightlineCone = (action.fields.includes('behind_sightline') && sky !== undefined) || base.spatialView.activeOverlays.sightlineCone;
       return completeAction(
         {
           ...base,
           viewRevision: nextRev,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          spatialView: { ...base.spatialView, activeOverlays: { ...base.spatialView.activeOverlays, sightlineCone } },
           lastStatusBanner: text,
         },
         action.requestId,
@@ -377,22 +376,6 @@ export function dispatchAlbedianAction(
       };
     }
 
-    case 'ui.overlay': {
-      const status = `${action.enabled ? 'Enabled' : 'Disabled'} overlay: ${action.overlay}.`;
-      return completeAction(
-        {
-          ...base,
-          viewRevision: nextRev,
-          spatialView: { ...base.spatialView, activeOverlays: { ...base.spatialView.activeOverlays, [action.overlay]: action.enabled } },
-          lastStatusBanner: status,
-        },
-        action.requestId,
-        nextRev,
-        status,
-        status
-      );
-    }
-
     case 'source.return': {
       const all = [base.navigationHistory.anchorMomentCheckpoint, ...base.navigationHistory.checkpoints];
       const target = action.checkpointId
@@ -409,6 +392,7 @@ export function dispatchAlbedianAction(
     }
 
     // Each turns into a real action in the unit that wires it to the viewport or the audio engine
+    case 'ui.overlay':
     case 'space.regime':
     case 'scene.show':
     case 'audio.set':

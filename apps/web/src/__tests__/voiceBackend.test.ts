@@ -167,6 +167,15 @@ describe('@albedian/web voice backend: applying a reply', () => {
       lastStatusBanner: `${byTheReducer.session.lastStatusBanner} ${description}`,
     });
     expect(applied.flyToFindingId).toBeUndefined();
+
+    const byTheModel = applyVoiceBackendReply(
+      base,
+      proposed(select(catalogStar.id), { scientificExplanation: description, interpretation: model })
+    );
+    expect(byTheModel.outcome).toEqual(byTheReducer.outcome);
+    expect(byTheModel.session.lastStatusBanner).toBe(
+      `${byTheReducer.session.lastStatusBanner} ${description} Interpreted by model-made-up.`
+    );
   });
 
   it('refuses a proposal that went stale while the request was out, and shows only the refusal', () => {

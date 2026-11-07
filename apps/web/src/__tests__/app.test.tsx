@@ -27,7 +27,7 @@ import {
 import fs from 'node:fs';
 import path from 'node:path';
 
-describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voice Integration', () => {
+describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice Integration', () => {
   it('executes the complete defining experience: Import -> Reveal -> Calibrated Sky -> Select Star -> 3D Space -> Sightline -> Epoch refused -> Back to Moment', () => {
     let session = createSyntheticCalibratedSession();
     const initialTimeSec = session.currentSourceTimeSec;
@@ -98,8 +98,8 @@ describe('@albedian/web — End-to-End Observation-to-Space Journey & Audio/Voic
     ) ?? [];
     expect(cone.length).toBeGreaterThan(0);
 
-    // 6. User says: "Show me this sky a thousand years ago". Nothing propagates star positions yet, so the
-    // epoch is refused and the view keeps its moment
+    // 6. User says: "Show me this sky a thousand years ago". The view does not move the stars to a chosen
+    // year, so the epoch is refused and the view keeps its moment
     const epochBefore = session.spatialView.simulationEpochISO;
     const r5 = executeVoiceOrTextCommand(
       session,

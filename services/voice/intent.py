@@ -39,6 +39,7 @@ from services.voice.claude import (
     PREDICTED_BODY_KEYS,
     PREDICTED_FINDING_IDS,
     epoch_iso,
+    fresh_pointer,
     historical_year,
     propose_action_with_claude,
 )
@@ -48,6 +49,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_REQUEST_ID = "req-voice-1"
 # What the reducer answers for each action the app cannot do yet (packages/observation/src/reducer.ts)
 NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
+    "ui.overlay": ("not_connected", "Voice cannot do this in the app yet."),
     "space.regime": ("not_connected", "Voice cannot do this in the app yet."),
     "scene.show": ("not_connected", "Voice cannot do this in the app yet."),
     "audio.set": ("not_connected", "Voice cannot do this in the app yet."),
@@ -212,14 +214,27 @@ def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | 
     named = _named_finding_id(utterance)
     if named is not None:
         return named
-    if context.recent_pointer and context.recent_pointer.nearest_finding_id:
-        return context.recent_pointer.nearest_finding_id
+    pointer = fresh_pointer(context)
+    if pointer is not None:
+        if pointer.nearest_finding_id:
+            return pointer.nearest_finding_id
+        if len(pointer.overlapping_candidate_ids) == 1:
+            return pointer.overlapping_candidate_ids[0]
     return context.selected_finding_id or context.focused_finding_id or None
 
 
 # Years are read as packages/observation/src/voiceParser.ts reads them, so both parsers read the same phrases:
 # ASCII digits and word boundaries (re.ASCII), and JavaScript's whitespace in place of Python's \s.
 _S = "[" + "".join(re.escape(char) for char in sorted(JAVASCRIPT_SPACES)) + "]"
+_UNSAFE_SYNTHETIC = re.compile(
+    r"\b(?:fake|synthetic|hallucinate|invent|replace the sky|add a moon|add a nebula|generate a galaxy)\b",
+    re.ASCII | re.IGNORECASE,
+)
+
+
+def _is_unsafe_synthetic(utterance: str) -> bool:
+    lower = utterance.lower()
+    return bool(_UNSAFE_SYNTHETIC.search(lower)) or any(phrase in lower for phrase in UNSAFE_PHRASES)
 # A number may not continue another: no digit, and no digit and separator, before it or after it
 _NUMBER = r"(?<!\d)(?<!\d[,.])(\d{1,3}(?:,\d{3})+|\d+)"
 _NOT_CONTINUED = r"(?!\d|[,.]\d)"
@@ -327,6 +342,24 @@ _NO_TARGET = (
     "The request names no object the catalog or the ephemeris holds, and none is pointed at, selected "
     "or focused."
 )
+_SPACE_ENTER = re.compile(
+    r"\b(?:take me (?:there|to)|fly (?:there|to)|go (?:there|to)|travel(?:\b| to)|"
+    r"enter(?: (?:space|3d))?|3d space|into space|zoom into space|explore|fly|beyond)\b",
+    re.ASCII,
+)
+_DESCRIBE = re.compile(
+    r"\b(?:what is|how far|where is|describe|tell me about|identify)\b",
+    re.ASCII,
+)
+_SELECT = re.compile(r"\b(?:select|focus|lock|point|show me)\b", re.ASCII)
+_SKY_PREDICTED = re.compile(r"\b(?:predicted|planet|ephemeris)\b", re.ASCII)
+_SKY_MEASURED = re.compile(
+    r"\b(?:what were we looking at|what was overhead|show me what was overhead|"
+    r"identify the stars|calibrate|register the sky|show (?:the )?sky|"
+    r"what is in the sky|match the sky|constellation)\b",
+    re.ASCII,
+)
+_HOW_MANY = re.compile(rf"\bhow{_S}+many\b", re.ASCII)
 
 
 def _parse_with_rules(
@@ -372,27 +405,26 @@ def _parse_with_rules(
         )
 
     target = _resolve_target_finding_id(utterance, ctx)
-    if any(kw in text for kw in ("3d", "space", "fly", "travel", "go to", "take me to", "enter", "beyond")):
+    if _SPACE_ENTER.search(text):
         if target is None:
             return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
         return formed("space.enter", findingId=target, distancePolicy="measured_or_estimated")
 
-    describe_kws = ("what is", "what were we", "how far", "where is", "describe", "tell me about", "identify")
-    if any(kw in text for kw in describe_kws):
+    if _DESCRIBE.search(text):
         if target is None:
             return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
         return formed("finding.describe", findingId=target, fields=["distance", "type", "motion", "evidence"])
 
-    if target is not None and any(kw in text for kw in ("select", "focus", "lock", "point", "show me")):
+    if target is not None and _SELECT.search(text):
         return formed("finding.select", findingId=target)
 
-    if "predicted" in text or "planet" in text or "ephemeris" in text:
+    if _SKY_PREDICTED.search(text):
         return formed("sky.show", mode="predicted")
 
-    if "sky" in text or "calibrate" in text or "constellation" in text:
+    if _SKY_MEASURED.search(text):
         return formed("sky.show", mode="measured")
 
-    if target is not None:
+    if target is not None and not _HOW_MANY.search(text):
         return formed("finding.select", findingId=target)
 
     question = utterance.strip()
@@ -428,6 +460,13 @@ def parse_voice_intent(
     if all(char.isspace() or char in JAVASCRIPT_SPACES for char in utterance):
         return _rules_intent(
             request_id, None, "no_grounded_answer", "The request is empty, so there is nothing to act on."
+        )
+    if _is_unsafe_synthetic(utterance):
+        return _rules_intent(
+            request_id,
+            None,
+            "unsafe_synthetic_edit",
+            "Albedian never fabricates or replaces sky observations with synthetic stars.",
         )
 
     proposal = propose_action_with_claude(utterance, ctx, request_id, rev, current_year=current_year)
@@ -560,8 +599,7 @@ def _check(
     that fails the contract, a pointer over several findings, a flight the reducer would refuse, an action
     the app cannot do yet. An action that passes all of them is proposed as the contract parses it.
     """
-    lower_utt = utterance.lower()
-    if any(phrase in lower_utt for phrase in UNSAFE_PHRASES):
+    if _is_unsafe_synthetic(utterance):
         return {
             **_rejected(
                 action_id,
@@ -617,15 +655,16 @@ def _check(
             "issues": issues,
         }
 
+    pointer = fresh_pointer(ctx)
     if (
-        ctx.recent_pointer is not None
-        and len(ctx.recent_pointer.overlapping_candidate_ids) > 1
+        pointer is not None
+        and len(pointer.overlapping_candidate_ids) > 1
         and action_type in FINDING_ACTION_TYPES
         and _named_finding_id(utterance) is None
     ):
         choices = [
             {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
-            for cid in ctx.recent_pointer.overlapping_candidate_ids
+            for cid in pointer.overlapping_candidate_ids
         ]
         return {
             "status": "needs_input",

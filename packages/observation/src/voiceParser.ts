@@ -255,13 +255,13 @@ function resolveTargetFinding(
     };
   }
 
-  if (context.selectedFindingId) return { findingId: context.selectedFindingId };
-  if (context.focusedFindingId) return { findingId: context.focusedFindingId };
-
   if (pointerFresh && context.recentPointer) {
     if (context.recentPointer.nearestFindingId) return { findingId: context.recentPointer.nearestFindingId };
     if (context.recentPointer.overlappingCandidateIds?.length === 1) return { findingId: context.recentPointer.overlappingCandidateIds[0] };
   }
+
+  if (context.selectedFindingId) return { findingId: context.selectedFindingId };
+  if (context.focusedFindingId) return { findingId: context.focusedFindingId };
 
   // Nothing else stands in: not the solution's only finding, and not any default star
   if (context.calibrationState === 'unresolved') {
@@ -441,7 +441,7 @@ export function parseUtteranceToAction(
     };
   }
 
-  if (/\b(take me there|fly there|go there|explore|fly to|travel to|enter space|enter 3d|zoom into space|take me to)\b/i.test(norm)) {
+  if (/\b(take me there|fly there|go there|go to|explore|fly to|travel to|enter space|enter 3d|zoom into space|take me to)\b/i.test(norm)) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
     if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
@@ -456,7 +456,7 @@ export function parseUtteranceToAction(
     };
   }
 
-  if (/\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i.test(norm) || Boolean(findNamedFindingInUtterance(norm, session))) {
+  if (/\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i.test(norm) || (!/\bhow\s+many\b/i.test(norm) && Boolean(findNamedFindingInUtterance(norm, session)))) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
     if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };

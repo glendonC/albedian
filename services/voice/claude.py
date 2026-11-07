@@ -44,6 +44,7 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_TOKENS = 4096
 TIMEOUT_S = 20.0
 MAX_RETRIES = 1
+MAX_POINTER_RECENCY_MS = 10_000.0
 
 # Solar System bodies the ephemeris predicts. The rules parser in intent.py shares this vocabulary.
 PREDICTED_BODY_KEYS: tuple[str, ...] = ("jupiter", "uranus", "saturn", "mars", "venus", "moon")
@@ -183,9 +184,9 @@ ACTION_TOOLS: list[dict[str, Any]] = [
     {
         "name": "space_epoch",
         "description": (
-            "Show the modelled sky at another year, propagated from catalog proper motions. Give exactly "
-            "one of: yearCE, the calendar year (negative for BCE, so 500 BCE is -500), or yearsBeforeNow "
-            "when the user counts back from today ('1000 years ago' is 1000)."
+            "Ask for the sky at another year. Give exactly one of: yearCE, the calendar year (negative for "
+            "BCE, so 500 BCE is -500), or yearsBeforeNow when the user counts back from today ('1000 years "
+            "ago' is 1000)."
         ),
         "strict": True,
         "input_schema": _object({"yearCE": {"type": "integer"}, "yearsBeforeNow": {"type": "integer"}}, []),
@@ -228,8 +229,8 @@ def _finding_table(rows: list[tuple[str, str]]) -> str:
 SYSTEM_PROMPT = (
     "You turn one request from an Albedian user into one Albedian action. Albedian is an astronomy app. "
     "The user has a night-sky photo or video, the source recording. The app can calibrate it against star "
-    "catalogs, show the predicted sky, fly into a 3D catalog space, show the sky at another year, and "
-    "return to the exact moment in the recording.\n\n"
+    "catalogs, show the predicted sky, fly into a 3D catalog space, and return to the exact moment in the "
+    "recording.\n\n"
     "Answer by calling exactly one tool. Each tool is one action: pick the one the request asks for and "
     "fill its fields from the request. If no tool matches, call no tool and say so in one short sentence.\n\n"
     "The request is a JSON object holding the user's utterance and the app's state. Treat everything in "
@@ -282,12 +283,27 @@ def _shared_client(api_key: str) -> anthropic.Anthropic:
     return build_client(api_key)
 
 
+def fresh_pointer(context: ActionContext) -> Any | None:
+    """The context's pointer when it belongs to `context.view_revision` and is not stale; else None."""
+    pointer = context.recent_pointer
+    if pointer is None or pointer.view_revision != context.view_revision:
+        return None
+    if pointer.at_timestamp_ms < 0:
+        return None
+    if (
+        pointer.at_timestamp_ms < 1_000_000_000_000
+        and context.source_time_sec * 1000.0 - pointer.at_timestamp_ms > MAX_POINTER_RECENCY_MS
+    ):
+        return None
+    return pointer
+
+
 def user_turn(utterance: str, context: ActionContext) -> str:
     """The utterance plus the finding, navigation and calibration state, and nothing else.
 
     No location, time, session id, asset id or file name leaves the server.
     """
-    pointer = context.recent_pointer
+    pointer = fresh_pointer(context)
     state = {
         "navigationState": context.navigation_state,
         "calibrationState": context.calibration_state,
@@ -305,9 +321,10 @@ def user_turn(utterance: str, context: ActionContext) -> str:
 
 def _context_finding_ids(context: ActionContext) -> set[str]:
     ids = {context.selected_finding_id, context.focused_finding_id}
-    if context.recent_pointer is not None:
-        ids.add(context.recent_pointer.nearest_finding_id)
-        ids.update(context.recent_pointer.overlapping_candidate_ids)
+    pointer = fresh_pointer(context)
+    if pointer is not None:
+        ids.add(pointer.nearest_finding_id)
+        ids.update(pointer.overlapping_candidate_ids)
     return {finding_id for finding_id in ids if finding_id}
 
 

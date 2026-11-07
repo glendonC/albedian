@@ -262,6 +262,41 @@ def test_user_turn_carries_no_location_time_or_identifiers() -> None:
     assert payload["state"]["pointer"]["nearestFindingId"] == "finding-obs-9"
 
 
+def test_claude_prompt_and_space_epoch_tool_claim_no_epoch_view_or_propagation() -> None:
+    assert "propagated" not in json.dumps(claude.ACTION_TOOLS).lower()
+    assert "show the sky at another year" not in claude.SYSTEM_PROMPT.lower()
+    space_epoch_tool = next(tool for tool in claude.ACTION_TOOLS if tool["name"] == "space_epoch")
+    assert "Ask for the sky at another year" in space_epoch_tool["description"]
+
+
+def test_a_stale_pointer_is_omitted_from_the_claude_user_turn_and_allowed_ids() -> None:
+    stale_ctx = ActionContext.from_dict(
+        {
+            "sessionId": "s-private-session",
+            "sourceAssetId": "src_synthetic-clip-01.mov",
+            "viewRevision": 5,
+            "selectedFindingId": "finding-obs-7",
+            "recentPointer": {
+                "xPx": 640.0,
+                "yPx": 210.0,
+                "atTimestampMs": 1000.0,
+                "viewRevision": 3,
+                "nearestFindingId": "finding-obs-stale-99",
+                "overlappingCandidateIds": ["finding-obs-stale-99"],
+            },
+        }
+    )
+    payload = json.loads(claude.user_turn("what is that one?", stale_ctx))
+    assert payload["state"]["pointer"] is None
+    assert "finding-obs-stale-99" not in json.dumps(payload)
+    assert (
+        claude.compose_action(
+            "finding_select", {"findingId": "finding-obs-stale-99"}, stale_ctx, "req-1", 5, current_year=2026
+        )
+        is None
+    )
+
+
 BASE = {"requestId": "req-1", "expectedViewRevision": 3}
 
 TOOL_CALLS = [
@@ -468,6 +503,16 @@ def test_a_blank_request_reaches_no_model(monkeypatch: pytest.MonkeyPatch) -> No
     contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
     assert api.requests == []
     assert (outcome["status"], outcome["reason"]) == ("rejected", "no_grounded_answer")
+    assert outcome["interpretation"] == {"parser": "rules"}
+
+
+def test_an_unsafe_synthetic_request_reaches_no_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    api = _Api()
+    _live(monkeypatch, api)
+    outcome = check_voice_command("show me a fake sky 500 years ago", CONTEXT)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
+    assert api.requests == []
+    assert (outcome["status"], outcome["reason"]) == ("rejected", "unsafe_synthetic_edit")
     assert outcome["interpretation"] == {"parser": "rules"}
 
 

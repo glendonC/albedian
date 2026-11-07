@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
 import re
 import time
@@ -200,7 +201,6 @@ CHECKED_ACTIONS = [
     _action("sky.show", mode="measured"),
     _action("history.back", mode="checkpoint"),
     _action("navigation.cancel"),
-    _action("ui.overlay", overlay="constellationLines", enabled=True),
 ]
 
 
@@ -345,8 +345,29 @@ def test_a_predicted_body_is_described_by_the_model_that_computed_it(body: str, 
     assert ("Geocentric" in text) == (body == "moon")
     # Said to be at the recording's capture time, which the text never writes: the moment stays in its field
     assert "at the recording's capture time" in text
-    for part_of_the_moment in (MOMENT["observedAtUTC"], "2001-01-01", "T00:00", "00:00"):
+    for part_of_the_moment in (
+        MOMENT["observedAtUTC"],
+        "2001-01-01",
+        "T00:00",
+        "00:00",
+        str(MOMENT["observerLat"]),
+        str(MOMENT["observerLon"]),
+    ):
         assert part_of_the_moment not in text
+
+
+def test_an_out_of_range_capture_time_logs_only_the_error_kind_never_the_timestamp_or_place(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    describe = _action("finding.describe", findingId="finding-predicted-saturn", fields=["distance"])
+    out_of_range = {**BARE, **MOMENT, "observedAtUTC": "1700-01-01T00:00:00Z"}
+    with caplog.at_level(logging.WARNING):
+        reply = _reply("where is Saturn?", out_of_range, describe)
+    assert reply["status"] == "proposed"
+    assert "scientificExplanation" not in reply
+    assert "EphemerisOutOfRange" in caplog.text
+    for secret in ("1700", "1700-01-01", str(MOMENT["observerLat"]), str(MOMENT["observerLon"])):
+        assert secret not in caplog.text
 
 
 @pytest.mark.parametrize("body", ["saturn", "moon"])
@@ -373,6 +394,9 @@ def test_the_observation_moment_is_the_capture_time_and_place() -> None:
     epoch_only = {**BARE, "simulationEpochISO": "2001-01-01T00:00:00Z", "observerLat": 12.5, "observerLon": 45.25}
     assert not ActionContext.from_dict(epoch_only).has_observation_moment
     assert not ActionContext.from_dict({**BARE, "observedAtUTC": "2001-01-01T00:00:00Z"}).has_observation_moment
+    for dropped in ("observedAtUTC", "observerLat", "observerLon"):
+        partial = {k: v for k, v in {**BARE, **MOMENT}.items() if k != dropped}
+        assert not ActionContext.from_dict(partial).has_observation_moment
 
 
 def test_a_predicted_body_without_a_moment_has_no_position() -> None:
@@ -542,7 +566,77 @@ def test_both_parsers_refuse_the_same_word_counts_in_the_same_words() -> None:
 def test_a_question_about_how_many_years_ago_is_left_to_the_other_rules(utterance: str) -> None:
     intent = parse_voice_intent(utterance, BARE, current_year=YEAR)
     assert intent.reason != "invalid_epoch"
-    assert intent.action is None or intent.action["type"] != "space.epoch"
+    assert intent.action is not None and intent.action["type"] == "question.ask"
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "show me a fake sky 500 years ago",
+        "add a moon to the sky",
+        "add a nebula behind Orion",
+        "generate a galaxy",
+        "replace the sky",
+        "hallucinate stars",
+        "invent a star",
+        "synthetic sky",
+    ],
+)
+def test_unsafe_synthetic_phrases_are_refused_in_both_parse_and_check_even_with_a_year(utterance: str) -> None:
+    intent = parse_voice_intent(utterance, BARE, current_year=YEAR)
+    assert (intent.action, intent.reason) == (None, "unsafe_synthetic_edit")
+    reply = _reply(utterance, BARE)
+    assert (reply["status"], reply["reason"]) == ("rejected", "unsafe_synthetic_edit")
+    assert "proposedAction" not in reply
+
+
+def test_a_fresh_pointer_wins_over_selected_and_focused_and_a_stale_pointer_is_ignored() -> None:
+    ctx = {
+        **BARE,
+        "selectedFindingId": "finding-star-vega",
+        "focusedFindingId": "finding-star-sirius",
+        "recentPointer": _pointer("finding-star-rigel"),
+    }
+    fresh = parse_voice_intent("what is that one?", ctx, current_year=YEAR)
+    assert fresh.action is not None and fresh.action["findingId"] == "finding-star-rigel"
+
+    stale_rev = {
+        **ctx,
+        "recentPointer": {**_pointer("finding-star-rigel", "finding-star-aldebaran"), "viewRevision": 3},
+    }
+    by_selected = parse_voice_intent("what is that one?", stale_rev, current_year=YEAR)
+    assert by_selected.action is not None and by_selected.action["findingId"] == "finding-star-vega"
+    checked = _reply("what is that one?", stale_rev)
+    assert checked["status"] == "proposed"
+    assert checked["proposedAction"]["findingId"] == "finding-star-vega"
+
+    stale_time = {
+        **BARE,
+        "sourceTimeSec": 20.0,
+        "focusedFindingId": "finding-star-sirius",
+        "recentPointer": {**_pointer("finding-star-rigel"), "atTimestampMs": 1_000.0},
+    }
+    by_focused = parse_voice_intent("what is that one?", stale_time, current_year=YEAR)
+    assert by_focused.action is not None and by_focused.action["findingId"] == "finding-star-sirius"
+
+
+@pytest.mark.parametrize(
+    "utterance, expected_type, expected_reason",
+    [
+        ("space 500", "question.ask", None),
+        ("go to 1.5 ad!", None, "ambiguous_target"),
+        ("go\tto\t1.500\tad!", "question.ask", None),
+        ("show me the sky ١٥٠٠ years ago", "question.ask", None),
+        ("the sky in 1.5 bc please", "question.ask", None),
+        ("what did the sky look like ١٥٠٠ years ago?", "question.ask", None),
+    ],
+)
+def test_non_year_phrases_near_epoch_words_match_the_typescript_parser(
+    utterance: str, expected_type: str | None, expected_reason: str | None
+) -> None:
+    intent = parse_voice_intent(utterance, BARE, current_year=YEAR)
+    assert (intent.action["type"] if intent.action else None) == expected_type
+    assert intent.reason == expected_reason
 
 
 @pytest.mark.parametrize(
@@ -791,6 +885,7 @@ def test_pbt_epoch_iso_is_iso_8601_in_astronomical_numbering(year_ce: int) -> No
 @pytest.mark.parametrize(
     "action, reason",
     [
+        (_action("ui.overlay", overlay="constellationLines", enabled=True), "not_connected"),
         (_action("space.regime", regime="deep_sky"), "not_connected"),
         (_action("scene.show", scene="black_hole"), "not_connected"),
         (_action("audio.set", gain=0.5), "not_connected"),

@@ -260,6 +260,11 @@ describe('@albedian/observation voice parser: epochs', () => {
     for (const utterance of ['fly into space 1500', 'what changed since 1990', 'show the epoch', 'the distance is 1500 light years']) {
       expect(parse(utterance).action?.type).not.toBe('space.epoch');
     }
+    expect(parse('space 500').action?.type).toBe('question.ask');
+    expect(parse('go to 1.5 ad!').reason).toBe('ambiguous_target');
+    expect(parse('show me a fake sky 500 years ago').reason).toBe('unsafe_synthetic_edit');
+    expect(parse('how many years ago did the light leave Vega?').action?.type).toBe('question.ask');
+    expect(parse('how many years ago did the light leave Betelgeuse?').action?.type).toBe('question.ask');
   });
 
   it('refuses space.epoch in the reducer, since the view does not move the stars to a chosen year', () => {
@@ -311,6 +316,26 @@ describe('@albedian/observation voice parser: targets', () => {
     };
     expect(parse('select the honeymoon suite', withMoon).reason).toBe('ambiguous_target');
     expect(parse('select the Moon', withMoon).action).toMatchObject({ type: 'finding.select', findingId: withMoon.observationSolution.findings[0]!.id });
+  });
+
+  it('resolves a deictic target from a fresh pointer before selectedFindingId and focusedFindingId, and ignores a stale pointer', () => {
+    const [first, second, third] = base.observationSolution.findings;
+    const session: ObservationSession = {
+      ...base,
+      selectedFindingId: first!.id,
+      focusedFindingId: second!.id,
+    };
+    const pointed = parse('what is that one?', session, freshPointer(session, third!.id));
+    expect(pointed.action).toMatchObject({ type: 'finding.select', findingId: third!.id });
+
+    const singleCandidate = parse('what is that one?', session, freshPointer(session, undefined, third!.id));
+    expect(singleCandidate.action).toMatchObject({ type: 'finding.select', findingId: third!.id });
+
+    const staleRevision = { ...freshPointer(session, third!.id)!, viewRevision: session.viewRevision - 1 };
+    expect(parse('what is that one?', session, staleRevision).action).toMatchObject({
+      type: 'finding.select',
+      findingId: first!.id,
+    });
   });
 
   const WORDS = [
@@ -403,5 +428,17 @@ describe('@albedian/observation voice parser: refusals', () => {
     expect(described.outcome.status).toBe('completed');
     expect(JSON.stringify(described.outcome)).not.toContain('\u2014');
     expect(described.session.lastStatusBanner ?? '').not.toContain('\u2014');
+  });
+
+  it('refuses ui.overlay in the reducer as not_connected until the renderer reads activeOverlays', () => {
+    const overlayAction = parse('show constellation lines').action;
+    expect(overlayAction).toMatchObject({ type: 'ui.overlay', overlay: 'constellationLines', enabled: true });
+    const dispatched = dispatchAlbedianAction(base, overlayAction!);
+    expect(dispatched.outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'not_connected',
+      explanation: 'Voice cannot do this in the app yet.',
+    });
+    expect(dispatched.session).toBe(base);
   });
 });
