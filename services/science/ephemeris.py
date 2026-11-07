@@ -392,9 +392,10 @@ def moon_parallax_shift_arcsec(distance_au: float, alt_deg: float) -> tuple[floa
 def _planet_error_bound_au(
     body: str, planet_au: np.ndarray, earth_au: np.ndarray, geocentric_au: np.ndarray, t_centuries: float
 ) -> float:
-    """The most the planet's geocentric position can be off, in AU: the published heliocentric errors of the planet
-    and of the Earth-Moon barycentre (angular errors as displacements at their distances, plus the distance
-    errors), the barycentre's offset from the Earth's centre, and the light time the model leaves out."""
+    """The most the planet's position for an observer on the Earth's surface can be off, in AU: the published
+    heliocentric errors of the planet and of the Earth-Moon barycentre (angular errors as displacements at their
+    distances, plus the distance errors), the barycentre's offset from the Earth's centre, the observer's
+    topocentric offset from the Earth's centre, and the light time the model leaves out."""
     lon_p, lat_p, dist_p = PUBLISHED_ERRORS_1800_2050[body]
     lon_e, lat_e, dist_e = PUBLISHED_ERRORS_1800_2050["Earth"]
     planet = float(np.linalg.norm(planet_au)) * math.hypot(lon_p, lat_p) / ARCSEC_PER_RAD + dist_p * 1000.0 / AU_KM
@@ -402,7 +403,7 @@ def _planet_error_bound_au(
     tau_centuries = float(np.linalg.norm(geocentric_au)) / C_AU_PER_DAY / 36525.0
     earlier = np.array(_heliocentric_ecliptic_xyz_au(PLANET_ELEMENTS[body], t_centuries - tau_centuries))
     light_time = float(np.linalg.norm(planet_au - earlier))
-    return planet + earth + BARYCENTRE_OFFSET_KM / AU_KM + light_time
+    return planet + earth + (BARYCENTRE_OFFSET_KM + EARTH_EQUATORIAL_RADIUS_KM) / AU_KM + light_time
 
 
 class EphemerisOutOfRange(ValueError):
@@ -469,6 +470,12 @@ def compute_solar_system_ephemerides(
             limitations += (
                 f"Geocentric: from this place the Moon appears about {shift_arcsec:,.0f} arcsec lower than this "
                 f"position (its horizontal parallax, {parallax_arcsec:,.0f} arcsec, times the cosine of its altitude).",
+            )
+        else:
+            limitations += (
+                f"Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes "
+                f"up to {BARYCENTRE_OFFSET_KM:,.0f} km for the barycentre-to-geocentre offset and "
+                f"{EARTH_EQUATORIAL_RADIUS_KM:,.3f} km for the observer's offset from the geocentre.",
             )
         dist_pc = max(1e-9, dist_au / AU_PER_PARSEC)
         ux, uy, uz = ra_dec_to_unit_vector(ra_deg, dec_deg)

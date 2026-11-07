@@ -104,6 +104,7 @@ def test_pbt_planet_uncertainty_covers_the_published_error_and_the_omitted_light
         + float(np.linalg.norm(earth)) * math.radians(math.hypot(e_lon, e_lat) / 3600.0)
         + e_dist * 1000.0 / AU_KM
         + BARYCENTRE_TO_GEOCENTRE_KM / AU_KM
+        + ephemeris.EARTH_EQUATORIAL_RADIUS_KM / AU_KM
     )
     published_arcsec = math.degrees(displacement_au / delta) * 3600.0
     assert item.uncertainty_arcsec >= published_arcsec + light_time_arcsec - 1e-9
@@ -112,6 +113,8 @@ def test_pbt_planet_uncertainty_covers_the_published_error_and_the_omitted_light
     payload = item.to_contract_dict(source_sha256=None)
     assert payload["skyPosition"]["uncertaintyArcsec"] == item.uncertainty_arcsec
     assert "Standish and Williams (1992)" in payload["evidence"]["verificationMethod"]
+    limitations_text = " ".join(payload["evidence"]["limitations"])
+    assert "5,000 km" in limitations_text and "6,378.137 km" in limitations_text
 
 
 @settings(max_examples=100, deadline=None)

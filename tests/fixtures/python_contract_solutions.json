@@ -1087,7 +1087,7 @@
         "skyPosition": {
           "raDeg": 81.24564475180148,
           "decDeg": 23.2782684956807,
-          "uncertaintyArcsec": 133.55494397371538,
+          "uncertaintyArcsec": 134.0322607813228,
           "altDeg": 1.5010050031862963,
           "azDeg": 63.77908581171432
         },
@@ -1098,7 +1098,8 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image."
+            "Predicted from the given time and place with a low-precision model; not measured in any image.",
+            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1112,7 +1113,7 @@
         "skyPosition": {
           "raDeg": 65.59186555566932,
           "decDeg": 19.420393989022187,
-          "uncertaintyArcsec": 929.5384975785149,
+          "uncertaintyArcsec": 930.6120591121576,
           "altDeg": 12.272688461188292,
           "azDeg": 74.41387150088843
         },
@@ -1123,7 +1124,8 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image."
+            "Predicted from the given time and place with a low-precision model; not measured in any image.",
+            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
           ],
           "verifiedByIndependentHoldout": false
         }
