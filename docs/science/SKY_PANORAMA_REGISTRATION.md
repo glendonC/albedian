@@ -58,7 +58,7 @@ A table built from one half of the stars predicts the other half's residuals, so
 - **WebGL**, `skyMat` in [`SparkPortalRenderer.ts`](../../apps/web/src/spatial/SparkPortalRenderer.ts): the vertex shader passes the direction from the camera, and the dome mesh has no rotation. The panorama texture is bound only once its solution has loaded.
 - **WebGPU host**, [`skyBackground.ts`](../../apps/web/src/spatial/webgpu/cislunar/skyBackground.ts): the background node uses `positionWorldDirection` and is attached only once the solution has loaded.
 - Both apply the rotation as one `mat3`, sample the offset table (RG8, bilinear, repeating in u), and sample the image with screen-space gradients wrapped at the longitude seam. [`skyRegistration.ts`](../../apps/web/src/spatial/sky/skyRegistration.ts) is the CPU version of the same math; its tests reproduce the Python model's position for all 81 bright named check stars to 0.01 pixels.
-- The colour grade is unchanged, apart from the red boost removed since (finding 3).
+- The colour grade is unchanged, without the red boost (finding 3).
 
 ### Check on screen [measured]
 

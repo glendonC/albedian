@@ -1,13 +1,13 @@
 {
   "name": "Pre-Release Judge Readiness Audit",
   "version": "1.0.0",
-  "description": "One-click Kiroween 2026 judge-readiness check: runs the full TypeScript + Python test suites and both verification scripts. All four commands must exit 0 before submission.",
+  "description": "Runs the full TypeScript and Python test suites and the contract, documentation, and provenance verification scripts.",
   "when": {
     "type": "userTriggered"
   },
   "then": {
     "type": "runCommand",
-    "command": "pnpm test:all && pnpm verify:contracts && pnpm verify:docs",
+    "command": "pnpm test:all && pnpm verify:contracts && pnpm verify:docs && pnpm verify:provenance",
     "timeout": 180000
   }
 }

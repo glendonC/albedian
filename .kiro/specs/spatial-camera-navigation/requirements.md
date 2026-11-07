@@ -1,7 +1,7 @@
 # Requirements: Spatial Camera & Scene Navigation
 
 ## Introduction
-Defines the `ObservationCamera` rig, WCS pixel↔world projection math, off-axis anchor lock, quaternion SLERP, $\log(\tan(\text{FOV}/2))$ zoom interpolation, double-precision floating-origin 3D rendering, and the two-phase signature transition.
+Defines the `ObservationCamera` rig, WCS pixel-to-world and world-to-pixel projection math, off-axis anchor lock, quaternion SLERP, $\log(\tan(\text{FOV}/2))$ zoom interpolation, double-precision floating-origin 3D rendering, and the two-phase signature transition.
 
 ## Requirements
 
@@ -15,6 +15,6 @@ Defines the `ObservationCamera` rig, WCS pixel↔world projection math, off-axis
 ### REQ-SCN-2: Disclosed Phase B 3D Flight & Floating Origin (`Registered Sky -> 3D Space`)
 **User Story:** As a user saying "Take me there," I want to fly through catalog-backed 3D stellar space, inspect alternate viewpoints and sightlines, and see clearly what is measured vs. simulated.
 - **Acceptance Criteria:**
-  1. Entering Phase B SHALL display the `Catalog Geometry · Distance Estimates` disclosure and enable 3D parsec translation using a double-precision (`Float64Array`) floating origin.
+  1. Entering Phase B SHALL display the `Simulated` badge and `"Drawn or computed by the app; not measured in the source recording."` disclosure (with each layer naming its own source and limits) and enable 3D parsec translation using a double-precision (`Float64Array`) floating origin.
   2. Rotating the viewpoint around a target star SHALL recompute 3D catalog star projections in real time while preserving an explicit `Earth Direction` reference vector.
   3. WHEN a `CatalogReference` carries a negative `parallaxMas` (Gaia quality flag for objects too faint/extended for a reliable geometric solution), THE system SHALL NOT derive a distance via `1000 / parallaxMas`; it SHALL fall back to `bailerJonesDistancePc.median` if present, or mark the finding as having `distancePolicy: 'unavailable'`.

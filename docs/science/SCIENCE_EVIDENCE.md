@@ -9,7 +9,7 @@ Every `CelestialFinding` in Albedian carries one of four mutually exclusive evid
 | `observed` | Point or streak extracted from immutable `SourceAsset` pixels with `snr >= 3.5` | Solid center dot (`#D1E9EF`) with hairline tick at measured `(xPx, yPx)` | Naming the star from pixel brightness alone, or giving it a sky position, without verified WCS |
 | `catalog_matched` | `observed` detection linked to a pinned catalog entry via verified WCS (`heldOutInliers >= 6`, `medianResidualPx <= 3.0`) | Concentric precision ring (`#81C5CC`) around observed centroid + elbow-connected label | Claiming zero distance uncertainty or phone-measured depth |
 | `predicted` | Computed from observer UTC timestamp, GPS coordinates, and ephemeris/catalog | Dashed open circle (`#D9AE75`) + `Predicted` badge | Rendering as synthetic camera pixels or claiming sensor detection |
-| `simulated` | 3D catalog-geometry rendering, alternate viewpoint, or non-observation epoch (`simulationEpoch != observationUTC`) | Bracketed reticle (`#ABB0D6`) + `Catalog Geometry` / `Modeled Sky` banner | Presenting artistic star surfaces or unmarked non-Euclidean warps |
+| `simulated` | 3D catalog-geometry rendering, modeled bodies and scenes, alternate viewpoint, or non-observation epoch (`simulationEpoch != observationUTC`) | Bracketed reticle (`#ABB0D6`) + `Simulated` badge and `"Drawn or computed by the app; not measured in the source recording."` disclosure, with each layer naming its own source and limits | Presenting artistic star surfaces or unmarked non-Euclidean warps |
 
 ---
 
@@ -29,10 +29,10 @@ Every `CelestialFinding` in Albedian carries one of four mutually exclusive evid
 
 ## 3. Anchor-Locked Signature Transition Math
 
-During **Phase A (`Photo → Registered Sky`)**, for a selected star $P$ at initial normalized device coordinates $\text{NDC}_0 = (s_x, s_y) \in [-1, 1]^2$:
+During **Phase A (`Photo to Registered Sky`)**, for a selected star $P$ at initial normalized device coordinates $\text{NDC}_0 = (s_x, s_y) \in [-1, 1]^2$:
 - Orientation interpolates via unit quaternion SLERP: $q(t) = \text{slerp}(q_0, q_1, \sigma(t))$.
 - Field of view interpolates in logarithmic tangent half-angle space so apparent zoom rate is constant:
   $$\theta(t) = 2 \arctan\left( \exp\left( (1 - \sigma(t)) \ln\tan\frac{\theta_0}{2} + \sigma(t) \ln\tan\frac{\theta_1}{2} \right) \right)$$
 - Off-axis frustum shift $(\Delta_x(t), \Delta_y(t))$ is solved at each frame $t \in [0, 1]$ so that:
   $$\Pi(q(t), \theta(t), \Delta(t), \hat{r}_{\text{sky}}(P)) \equiv \text{NDC}_0$$
-  preserving the anchor star's screen coordinate to within $< 10^{-6}\text{ NDC}$ ($< 0.01\text{ px}$).
+  preserving the anchor star's screen coordinate to within $< 10^{-6}\text{ NDC}$ ($< 0.01\text{ px}$; `anchorDriftPx` in `packages/camera-rig/src/projection3d.ts` measures the IEEE-754 floating-point round-trip residual of `rawNdc + (anchorTargetNdc - rawNdc)`).

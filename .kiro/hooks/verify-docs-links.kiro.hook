@@ -6,7 +6,9 @@
     "type": "fileEdited",
     "patterns": [
       "README.md",
+      "AGENTS.md",
       "docs/**/*.md",
+      "research/experiments/EXPERIMENT_REGISTRY.md",
       ".kiro/specs/**/*.md"
     ]
   },
