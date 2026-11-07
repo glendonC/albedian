@@ -19,7 +19,8 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
 
-from services.contracts.ingest import IngestReceipt
+from services.contracts.ingest import JOB_ID_PATTERN, IngestReceipt
+from services.ingest.jobs import read_solution, read_solve_job, read_solve_job_by_id, run_solve_job
 from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
 from services.ingest.store import DECLARABLE, IngestStore, Received, Refused
@@ -28,6 +29,13 @@ router = APIRouter()
 
 def _sha256_path() -> Any:
     return Path(pattern=r"^[0-9a-f]{64}$", description="The file's SHA-256, 64 lowercase hex characters")
+
+
+def _job_id_path() -> Any:
+    return Path(
+        pattern=JOB_ID_PATTERN,
+        description="The solve job's id, job_ followed by 16 to 64 lowercase hex characters",
+    )
 
 
 UPLOAD_TYPES = sorted(name for names in DECLARABLE.values() for name in names)
@@ -176,6 +184,9 @@ async def ingest_upload(request: Request, store: IngestStore = Depends(get_inges
         record = store.read_record(received.sha256)
         if record is not None:
             store.discard(received)
+            job = read_solve_job(store, received.sha256)
+            if job is not None:
+                record = {**record, "solveJobId": job["id"]}
             return JSONResponse(_receipt(record, True), status_code=200)
         facts = await run_in_threadpool(probe_media, received.partial, received.file_type)
         hints = await run_in_threadpool(_hints, received, facts)
@@ -199,6 +210,9 @@ def get_ingest_receipt(sha256: str = _sha256_path(), store: IngestStore = Depend
     record = store.read_record(sha256)
     if record is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
+    job = read_solve_job(store, sha256)
+    if job is not None:
+        record = {**record, "solveJobId": job["id"]}
     return _receipt(record, True)
 
 
@@ -218,3 +232,41 @@ def get_ingest_original(sha256: str = _sha256_path(), store: IngestStore = Depen
             "Content-Disposition": "inline",
         },
     )
+
+
+@router.post("/api/ingest/{sha256}/solve", status_code=201)
+async def start_ingest_solve_job(
+    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
+) -> JSONResponse:
+    """Run or return the solve job for a stored upload, reporting real byte, frame and candidate denominators."""
+    if store.read_record(sha256) is None or store.original(sha256) is None:
+        raise HTTPException(status_code=404, detail="no file with that hash is stored")
+    existing = read_solve_job(store, sha256)
+    if existing is not None and existing.get("state") == "succeeded" and read_solution(store, sha256) is not None:
+        return JSONResponse(existing, status_code=200)
+    job = await run_in_threadpool(run_solve_job, store, sha256)
+    return JSONResponse(job, status_code=201)
+
+
+@router.get("/api/ingest/jobs/{job_id}")
+def get_ingest_solve_job(
+    job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)
+  ) -> dict[str, Any]:
+    """The state and stage progress of a solve job."""
+    job = read_solve_job_by_id(store, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="no solve job with that id is stored")
+    return job
+
+
+@router.get("/api/ingest/{sha256}/solution")
+def get_ingest_solution(
+    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
+) -> dict[str, Any]:
+    """The contract ObservationSolution produced for a stored upload."""
+    if store.read_record(sha256) is None or store.original(sha256) is None:
+        raise HTTPException(status_code=404, detail="no file with that hash is stored")
+    solution = read_solution(store, sha256)
+    if solution is None:
+        raise HTTPException(status_code=404, detail="no solution is stored for that file")
+    return solution

@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import itertools
 import math
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 from scipy import optimize
@@ -349,9 +349,9 @@ def _build_unresolved_solution(
     source_asset_id: str,
     source_sha256: str,
     frame_time_sec: float,
-    obs_utc_iso: str,
-    observer_lat: float,
-    observer_lon: float,
+    obs_utc_iso: str | None,
+    observer_lat: float | None,
+    observer_lon: float | None,
     warning_msg: str,
     limitation: str,
     solver: SolverIdentity,
@@ -393,9 +393,9 @@ def solve_and_verify_field(
     width: int,
     height: int,
     *,
-    obs_utc_iso: str,
-    observer_lat: float,
-    observer_lon: float,
+    obs_utc_iso: str | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
     catalog_stars: list[CatalogStar] | None = None,
     hint_ra_deg: float | None = None,
     hint_dec_deg: float | None = None,
@@ -403,13 +403,17 @@ def solve_and_verify_field(
     source_sha256: str,
     frame_time_sec: float = 0.0,
     solution_id: str = "sol-primary",
+    on_candidate: Callable[[int, int], None] | None = None,
 ) -> ObservationSolution:
     """Blind / hint-assisted geometric plate solver with held-out WCS verification (`verify_held_out`).
 
     `source_asset_id` and `source_sha256` name the recording the detections were measured in; there is no
-    default, because the solver cannot know them.
+    default, because the solver cannot know them. `obs_utc_iso`, `observer_lat` and `observer_lon` are
+    optional: when present, catalog matches also carry topocentric altitude and azimuth.
     """
     require_source_sha256(source_sha256)
+    if (observer_lat is None) != (observer_lon is None):
+        raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
     catalog = list(catalog_stars) if catalog_stars is not None else get_catalog_stars()
     if hint_ra_deg is not None and hint_dec_deg is not None:
         filtered = [
@@ -453,8 +457,12 @@ def solve_and_verify_field(
     det_pool = sorted(psf_detections, key=lambda d: d.snr, reverse=True)[:14]
     best_consensus_pairs: list[tuple[SourceDetection, CatalogStar]] = []
     best_initial_wcs: WCSModel | None = None
+    triplets = list(itertools.combinations(range(len(det_pool)), 3))
+    candidate_total = len(triplets)
+    if on_candidate is not None:
+        on_candidate(0, candidate_total)
 
-    for a, b, c in itertools.combinations(range(len(det_pool)), 3):
+    for evaluated, (a, b, c) in enumerate(triplets, start=1):
         da, db, dc = det_pool[a], det_pool[b], det_pool[c]
         p_ab = math.hypot(da.x_px - db.x_px, da.y_px - db.y_px)
         p_bc = math.hypot(db.x_px - dc.x_px, db.y_px - dc.y_px)
@@ -462,6 +470,8 @@ def solve_and_verify_field(
         px_pairs = [((a, b), p_ab), ((b, c), p_bc), ((a, c), p_ac)]
         px_pairs.sort(key=lambda p: p[1], reverse=True)
         if px_pairs[2][1] < 25.0:
+            if on_candidate is not None:
+                on_candidate(evaluated, candidate_total)
             continue
 
         longest_set, second_set = set(px_pairs[0][0]), set(px_pairs[1][0])
@@ -505,6 +515,8 @@ def solve_and_verify_field(
                 best_consensus_pairs = [(d, s) for d, s, _ in matched_pairs]
                 best_initial_wcs = cand_wcs
 
+        if on_candidate is not None:
+            on_candidate(evaluated, candidate_total)
         if len(best_consensus_pairs) >= max(11, len(cat_pool) - 3):
             break
 
@@ -542,10 +554,18 @@ def solve_and_verify_field(
     warnings: list[str] = []
     rejected_outlier_count = 0
 
+    has_time_and_place = (
+        obs_utc_iso is not None and observer_lat is not None and observer_lon is not None
+    )
+
     for idx, det in enumerate(detections):
         if passed_verification and id(det) in verified_matches:
             st, res_px, is_train = verified_matches[id(det)]
-            alt_deg, az_deg = icrs_to_altaz(st.ra_deg, st.dec_deg, observer_lat, observer_lon, obs_utc_iso)
+            alt_deg, az_deg = (
+                icrs_to_altaz(st.ra_deg, st.dec_deg, observer_lat, observer_lon, obs_utc_iso)
+                if has_time_and_place
+                else (None, None)
+            )
             ang_res_arcsec = res_px * refined_wcs.scale_deg_per_px * 3600.0
             findings_list.append(
                 CelestialFindingRecord(

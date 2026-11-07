@@ -584,6 +584,137 @@
             }
           }
         }
+      },
+      "/api/ingest/{sha256}/solve": {
+        "post": {
+          "summary": "Start Ingest Solve Job",
+          "description": "Run or return the solve job for a stored upload, reporting real byte, frame and candidate denominators.",
+          "operationId": "start_ingest_solve_job_api_ingest__sha256__solve_post",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "The file's SHA-256, 64 lowercase hex characters",
+                "title": "Sha256"
+              },
+              "description": "The file's SHA-256, 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/ingest/jobs/{job_id}": {
+        "get": {
+          "summary": "Get Ingest Solve Job",
+          "description": "The state and stage progress of a solve job.",
+          "operationId": "get_ingest_solve_job_api_ingest_jobs__job_id__get",
+          "parameters": [
+            {
+              "name": "job_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^job_[0-9a-f]{16,64}$",
+                "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters",
+                "title": "Job Id"
+              },
+              "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Solve Job Api Ingest Jobs  Job Id  Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/ingest/{sha256}/solution": {
+        "get": {
+          "summary": "Get Ingest Solution",
+          "description": "The contract ObservationSolution produced for a stored upload.",
+          "operationId": "get_ingest_solution_api_ingest__sha256__solution_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "The file's SHA-256, 64 lowercase hex characters",
+                "title": "Sha256"
+              },
+              "description": "The file's SHA-256, 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Solution Api Ingest  Sha256  Solution Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "components": {
@@ -1032,6 +1163,33 @@
       ],
       "name": "get_ingest_original",
       "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/solve",
+      "methods": [
+        "POST"
+      ],
+      "name": "start_ingest_solve_job",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/jobs/{job_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_solve_job",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/solution",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_solution",
+      "responseModel": "dict[str, typing.Any]",
       "includeInSchema": true
     }
   ],
