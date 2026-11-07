@@ -80,6 +80,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA's Scientific Visualization Studio, CGI Moon Kit (SVS 4720): LOLA elevation, 16 samples per degree, unsigned half-metres above 1727.4 km"
+    },
+    {
+      "path": ".cache/m2/5MKSEcatalog.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://eclipse.gsfc.nasa.gov/5MCSE/5MKSEcatalog.txt",
+      "bytes": 1380993,
+      "sha256": "c07e7b5e13af61a1d74eb3bee1a1824a197dc1ca393a3ac2a91c9e73bc2e0c58",
+      "licence": "LicenseRef-NASA-Eclipse-Permission",
+      "licenceUrl": "https://eclipse.gsfc.nasa.gov/SEcat5/SEcatkey.html",
+      "source": "Fred Espenak and Jean Meeus, Five Millennium Catalog of Solar Eclipses: -1999 to +3000 (NASA GSFC, NASA/TP-2008-214170 in file header, NASA/TP-2009-214174 on web page; credit: Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC))"
+    },
+    {
+      "path": ".cache/m2/5MKLEcatalog.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://eclipse.gsfc.nasa.gov/5MCLE/5MKLEcatalog.txt",
+      "bytes": 1400382,
+      "sha256": "d47586fc9c1c59338f234b3c6634c31744739887169f58d411ac766f3861fcf2",
+      "licence": "LicenseRef-NASA-Eclipse-Permission",
+      "licenceUrl": "https://eclipse.gsfc.nasa.gov/LEcat5/LEcatkey.html",
+      "source": "Fred Espenak and Jean Meeus, Five Millennium Catalog of Lunar Eclipses: -1999 to +3000 (NASA GSFC, NASA/TP-2009-214173; credit: Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC))"
     }
   ]
 }

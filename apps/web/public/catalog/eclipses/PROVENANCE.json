@@ -1,0 +1,71 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "nasa-gsfc-5mkse",
+      "title": "Five Millennium Catalog of Solar Eclipses: -1999 to +3000",
+      "url": "https://eclipse.gsfc.nasa.gov/5MCSE/5MKSEcatalog.txt",
+      "version": "2008 Oct 07 (header NASA/TP-2008-214170; web page NASA/TP-2009-214174, 2009 Jan)",
+      "retrieved": "2026-11-05",
+      "license": {
+        "spdx": "LicenseRef-NASA-Eclipse-Permission",
+        "name": "NASA Eclipse Web Site Reproduction Permission",
+        "url": "https://eclipse.gsfc.nasa.gov/SEcat5/SEcatkey.html",
+        "conditions": "NASA's catalog key states: 'Permission is freely granted to reproduce this data when accompanied by an acknowledgment: \"Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)\"'."
+      },
+      "credit": "Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)",
+      "citation": "Espenak, F. and Meeus, J., Five Millennium Catalog of Solar Eclipses: -1999 to +3000 (2000 BCE to 3000 CE), NASA/TP-2009-214174 (file header: NASA/TP-2008-214170), Goddard Space Flight Center, Greenbelt, MD, 2009.",
+      "acknowledgement": "Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)",
+      "sha256": "c07e7b5e13af61a1d74eb3bee1a1824a197dc1ca393a3ac2a91c9e73bc2e0c58",
+      "note": "The ASCII file header names NASA/TP-2008-214170 (dated 2008 Oct 07), whereas the NASA publication page https://eclipse.gsfc.nasa.gov/SEpubs/5MKSE.html names NASA/TP-2009-214174 (published 2009 January). The errata page https://eclipse.gsfc.nasa.gov/5MCSE/5MKSEerrata.html notes that tabulated values of delta T and longitude on pages A-56 to A-150 were incorrect in the hard copy only and corrected in the PDF. Sun coordinates use VSOP87 (Bretagnon and Francou, 1988) and Moon coordinates use ELP-2000/82 (Chapront-Touze and Chapront, 1983) with lunar secular acceleration n-dot = -25.858 arcsec/cy^2 (Chapront, Chapront-Touze, and Francou, 2002). The largest uncertainty in the eclipse predictions is fluctuations in Earth's rotation expressed as delta T: pre-1950s from empirical fits to historical records by Morrison and Stephenson (2004), 1955-present from published observations, and future values extrapolated from the long-term tidal trend."
+    },
+    {
+      "id": "nasa-gsfc-5mkle",
+      "title": "Five Millennium Catalog of Lunar Eclipses: -1999 to +3000",
+      "url": "https://eclipse.gsfc.nasa.gov/5MCLE/5MKLEcatalog.txt",
+      "version": "2011 May 23 (NASA/TP-2009-214173, published 2009 Jan)",
+      "retrieved": "2026-11-05",
+      "license": {
+        "spdx": "LicenseRef-NASA-Eclipse-Permission",
+        "name": "NASA Eclipse Web Site Reproduction Permission",
+        "url": "https://eclipse.gsfc.nasa.gov/LEcat5/LEcatkey.html",
+        "conditions": "NASA's catalog key states: 'Permission is freely granted to reproduce this data when accompanied by an acknowledgment: \"Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)\"'."
+      },
+      "credit": "Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)",
+      "citation": "Espenak, F. and Meeus, J., Five Millennium Catalog of Lunar Eclipses: -1999 to +3000 (2000 BCE to 3000 CE), NASA/TP-2009-214173, Goddard Space Flight Center, Greenbelt, MD, 2009.",
+      "acknowledgement": "Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)",
+      "sha256": "d47586fc9c1c59338f234b3c6634c31744739887169f58d411ac766f3861fcf2",
+      "note": "Earth's penumbral and umbral shadow sizes are calculated with Danjon's enlargement method; Sun and Moon coordinates use VSOP87 and ELP-2000/82 with n-dot = -25.858 arcsec/cy^2. Where the catalog key lists '*' for a total penumbral lunar eclipse, the ASCII catalog file writes 'x' (141 rows, all with penumbral magnitude >= 1). As for solar eclipses, the largest uncertainty is delta T: pre-1950s from Morrison and Stephenson (2004), 1955-2006 from published observations, and post-2006 extrapolated from the tidal trend."
+    }
+  ],
+  "files": [
+    {
+      "path": "solar.json",
+      "sha256": "957bb7ee36942c1a8c350f9d955675956bf10abbc611890baa260bf119896f0d",
+      "sources": [
+        "nasa-gsfc-5mkse"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_eclipses.py",
+        "command": "uv run python scripts/bake_eclipses.py"
+      },
+      "note": "All 11,898 solar eclipses from -1999 to +3000 across all 21 columns of 5MKSEcatalog.txt, with evidenceClass 'predicted'. Dates use the Julian calendar through 1582 October 4 and the Gregorian calendar from 1582 October 15, with astronomical year numbering (year 0 = 1 BCE)."
+    },
+    {
+      "path": "lunar.json",
+      "sha256": "bee7887a80902792be237a4949829202a2778201734f6ac0f5a4a149e2cd5c9d",
+      "sources": [
+        "nasa-gsfc-5mkle"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_eclipses.py",
+        "command": "uv run python scripts/bake_eclipses.py"
+      },
+      "note": "All 12,064 lunar eclipses from -1999 to +3000 across all 20 columns of 5MKLEcatalog.txt, with evidenceClass 'predicted'. Dates use the Julian calendar through 1582 October 4 and the Gregorian calendar from 1582 October 15, with astronomical year numbering (year 0 = 1 BCE)."
+    }
+  ],
+  "fileSets": []
+}
