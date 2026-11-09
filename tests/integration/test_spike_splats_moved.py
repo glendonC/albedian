@@ -50,7 +50,6 @@ def test_baseline_pins_exactly_the_open_gaps_and_cached_copies_keep_their_bytes(
     gaps = {g["path"] for g in json.loads((ROOT / "scripts" / "provenance_gaps.json").read_text(encoding="utf-8"))["gaps"]}
     assert set(vp.BASELINE_GAPS) == gaps
     assert gaps == {
-        "apps/web/public/models/lb_splats.json",
         "apps/web/public/models/nasa_lro_moon_3d.glb",
         "apps/web/public/textures/bruneton_atmo_lut.png",
     }
@@ -69,5 +68,5 @@ def test_baseline_pins_exactly_the_open_gaps_and_cached_copies_keep_their_bytes(
 def test_the_provenance_doc_says_where_the_splats_went_and_that_history_keeps_them() -> None:
     doc = (ROOT / "docs" / "architecture" / "ASSET_PROVENANCE.md").read_text(encoding="utf-8")
     assert "\u2014" not in doc
-    for required in (".cache/splats", "git history", "three entries"):
+    for required in (".cache/splats", "git history", "two entries"):
         assert required in doc

@@ -11,19 +11,13 @@ Offline Physical Asset Baker for Albedian Spatial Observatory (Track 2):
      transitioning through golden-amber and crimson ozone/Rayleigh extinction at the terminator limb).
    - Alpha stores normalized optical depth transmittance.
 
-2. Enriched Anisotropic 3D Gaussian Splats:
-   - `apps/web/public/models/lb_splats.json` (14,281 splats, Harvard CfA Local Bubble Chimney)
-   Each splat is enriched to a 14-tuple rounded to 4 decimal places:
-     [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity]
-   Positions come from the source models; orientation and footprint from the local 3D k-NN
-   PCA frame. Colours and opacities are presentation values, not measured emission.
+The Local Bubble splats, apps/web/public/models/lb_splats.json, are baked by scripts/bake_local_bubble_splats.py
+from the O'Neill et al. (2024) shell table (data-8); this script makes only the LUT.
 """
 
 from __future__ import annotations
 
 import glob
-import json
-import os
 from pathlib import Path
 import struct
 import sys
@@ -250,161 +244,12 @@ def bake_bruneton_atmo_lut(out_path: Path, width: int = 256, height: int = 128) 
     write_rgba_png(out_path, rgba_u8)
 
 
-def rotmat_to_quat_batch(rot: np.ndarray) -> np.ndarray:
-    """
-    Vectorized conversion of (N, 3, 3) proper rotation matrices (det = +1)
-    to normalized (N, 4) quaternions [qx, qy, qz, qw] with qw >= 0.
-    """
-    n = rot.shape[0]
-    q = np.zeros((n, 4), dtype=np.float64)
-    tr = rot[:, 0, 0] + rot[:, 1, 1] + rot[:, 2, 2]
-
-    m0 = tr > 0.0
-    if np.any(m0):
-        s = np.sqrt(tr[m0] + 1.0) * 2.0
-        q[m0, 3] = 0.25 * s
-        q[m0, 0] = (rot[m0, 2, 1] - rot[m0, 1, 2]) / s
-        q[m0, 1] = (rot[m0, 0, 2] - rot[m0, 2, 0]) / s
-        q[m0, 2] = (rot[m0, 1, 0] - rot[m0, 0, 1]) / s
-
-    m1 = (~m0) & (rot[:, 0, 0] > rot[:, 1, 1]) & (rot[:, 0, 0] > rot[:, 2, 2])
-    if np.any(m1):
-        s = np.sqrt(1.0 + rot[m1, 0, 0] - rot[m1, 1, 1] - rot[m1, 2, 2]) * 2.0
-        q[m1, 3] = (rot[m1, 2, 1] - rot[m1, 1, 2]) / s
-        q[m1, 0] = 0.25 * s
-        q[m1, 1] = (rot[m1, 0, 1] + rot[m1, 1, 0]) / s
-        q[m1, 2] = (rot[m1, 0, 2] + rot[m1, 2, 0]) / s
-
-    m2 = (~m0) & (~m1) & (rot[:, 1, 1] > rot[:, 2, 2])
-    if np.any(m2):
-        s = np.sqrt(1.0 + rot[m2, 1, 1] - rot[m2, 0, 0] - rot[m2, 2, 2]) * 2.0
-        q[m2, 3] = (rot[m2, 0, 2] - rot[m2, 2, 0]) / s
-        q[m2, 0] = (rot[m2, 0, 1] + rot[m2, 1, 0]) / s
-        q[m2, 1] = 0.25 * s
-        q[m2, 2] = (rot[m2, 1, 2] + rot[m2, 2, 1]) / s
-
-    m3 = (~m0) & (~m1) & (~m2)
-    if np.any(m3):
-        s = np.sqrt(1.0 + rot[m3, 2, 2] - rot[m3, 0, 0] - rot[m3, 1, 1]) * 2.0
-        q[m3, 3] = (rot[m3, 1, 0] - rot[m3, 0, 1]) / s
-        q[m3, 0] = (rot[m3, 0, 2] + rot[m3, 2, 0]) / s
-        q[m3, 1] = (rot[m3, 1, 2] + rot[m3, 2, 1]) / s
-        q[m3, 2] = 0.25 * s
-
-    norms = np.linalg.norm(q, axis=1, keepdims=True)
-    q = np.where(norms > 1e-8, q / np.maximum(norms, 1e-8), np.array([0.0, 0.0, 0.0, 1.0]))
-    # Canonical hemisphere qw >= 0
-    neg_w = q[:, 3] < 0.0
-    q[neg_w] = -q[neg_w]
-    return q
-
-
-def compute_local_pca_frame(xyz: np.ndarray, k: int = 16) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Computes 3D k-NN local neighborhood spacing, eigenvalues (N, 3), and eigenvectors (N, 3, 3)
-    for point cloud xyz (N, 3).
-    """
-    n = xyz.shape[0]
-    if cKDTree is not None:
-        tree = cKDTree(xyz)
-        dists, idx = tree.query(xyz, k=min(k, n))
-        mean_spacing = np.mean(dists[:, 1:], axis=1)
-        neighbors = xyz[idx]  # (N, k, 3)
-    else:
-        # Fast contiguous window fallback if scipy is unavailable
-        half = k // 2
-        indices = (np.arange(n)[:, None] + np.arange(-half, half)[None, :]) % n
-        neighbors = xyz[indices]
-        diffs = neighbors - xyz[:, None, :]
-        mean_spacing = np.mean(np.linalg.norm(diffs[:, 1:], axis=2), axis=1)
-
-    centered = neighbors - np.mean(neighbors, axis=1, keepdims=True)
-    cov = np.einsum("nki,nkj->nij", centered, centered) / max(1, k - 1)
-    cov += np.eye(3)[None, :, :] * 1e-6
-    evals, evecs = np.linalg.eigh(cov)  # evals ascending: lambda_0 <= lambda_1 <= lambda_2
-    return mean_spacing, evals, evecs
-
-
-# The Local Bubble model gives the shape of the bubble's surface but no dust density or emission
-# point by point, so every splat gets one presentation colour (the average of the palette this
-# replaced) and an opacity Spark's 8-bit encoding stores as its smallest step, 1/255.
-LOCAL_BUBBLE_RGB = (0.87, 0.61, 0.43)
-LOCAL_BUBBLE_OPACITY = 0.0039
-
-
-def enrich_local_bubble_splats(lb_path: Path) -> int:
-    """
-    Rebuilds the attributes of `lb_splats.json` (14,281 splats) from its positions alone, as
-    14-tuples: [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity].
-
-    The positions are every other vertex of `local_bubble_oneill2024.glb`, a Local Bubble mesh of unrecorded origin, named for O'Neill et al. (2024),
-    y up, at about 2.2x. Each splat lies in the surface, oriented
-    by the local k-NN PCA frame and sized by the local sample spacing so the splats tile it;
-    colour and opacity are the uniform presentation values above.
-    """
-    raw = json.loads(lb_path.read_text(encoding="utf-8"))
-    xyz = np.array(raw, dtype=np.float64)[:, :3]
-    n = xyz.shape[0]
-
-    mean_spacing, evals, evecs = compute_local_pca_frame(xyz, k=16)
-
-    # Sample density normalized to [0, 1]; denser samples get smaller footprints
-    inv_spacing = 1.0 / np.maximum(0.02, mean_spacing)
-    p5, p95 = np.percentile(inv_spacing, [5.0, 95.0])
-    density_norm = np.clip((inv_spacing - p5) / max(1e-6, p95 - p5), 0.0, 1.0)
-
-    x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
-    r_3d = np.maximum(1e-4, np.linalg.norm(xyz, axis=1))
-    radial_unit = xyz / r_3d[:, None]
-
-    # Frame per splat: u_z is the surface normal (the minor PCA axis turned outward, blended toward
-    # radial to steady noisy normals), u_x the major PCA axis projected into the surface
-    t_pca = evecs[:, :, 2]
-    n_pca = evecs[:, :, 0]
-    dot_nr = np.sum(n_pca * radial_unit, axis=1, keepdims=True)
-    n_out = np.where(dot_nr >= 0.0, n_pca, -n_pca)
-    u_z = 0.65 * n_out + 0.35 * radial_unit
-    u_z /= np.maximum(1e-8, np.linalg.norm(u_z, axis=1, keepdims=True))
-
-    u_x = t_pca - np.sum(t_pca * u_z, axis=1, keepdims=True) * u_z
-    ux_norm = np.linalg.norm(u_x, axis=1, keepdims=True)
-    # Fallback tangent if the major axis was parallel to u_z
-    swirl = np.stack([-y, x, np.zeros_like(z)], axis=1)
-    swirl /= np.maximum(1e-8, np.linalg.norm(swirl, axis=1, keepdims=True))
-    u_x = np.where(ux_norm > 1e-5, u_x / np.maximum(1e-8, ux_norm), swirl)
-    u_y = np.cross(u_z, u_x)
-    u_y /= np.maximum(1e-8, np.linalg.norm(u_y, axis=1, keepdims=True))
-
-    rot = np.stack([u_x, u_y, u_z], axis=2)  # Columns are basis vectors (N, 3, 3)
-    quats = rotmat_to_quat_batch(rot)
-
-    # Footprints: elongated along the major axis by the local anisotropy, thin across the surface
-    aniso = np.clip(np.sqrt(evals[:, 2] / np.maximum(1e-5, evals[:, 0])), 1.25, 3.20)
-    base_scale = 0.095 + 0.045 * (1.0 - 0.55 * density_norm)
-    sx = np.clip(base_scale * (1.35 + 0.28 * (aniso - 1.25)), 0.105, 0.245)
-    sy = np.clip(base_scale, 0.075, 0.165)
-    sz = np.clip(base_scale * (0.48 + 0.12 * (1.0 - density_norm)), 0.042, 0.092)
-
-    rgb = np.tile(np.array(LOCAL_BUBBLE_RGB), (n, 1))
-    opacity = np.full(n, LOCAL_BUBBLE_OPACITY)
-
-    enriched = np.column_stack([xyz, rgb, sx, sy, sz, quats, opacity])
-    rounded = np.round(enriched, 4).tolist()
-    lb_path.write_text(json.dumps(rounded, separators=(",", ":")), encoding="utf-8")
-    return n
-
-
 def main() -> None:
     lut_path = REPO_ROOT / "apps" / "web" / "public" / "textures" / "bruneton_atmo_lut.png"
-    lb_path = REPO_ROOT / "apps" / "web" / "public" / "models" / "lb_splats.json"
-
     bake_bruneton_atmo_lut(lut_path, width=256, height=128)
-    lb_count = enrich_local_bubble_splats(lb_path)
-
     print(
         f"[bake_bruneton_lut_and_splats] Wrote {lut_path.relative_to(REPO_ROOT)} "
-        f"(256x128 RGBA PNG, {lut_path.stat().st_size:,} bytes), "
-        f"and enriched {lb_path.relative_to(REPO_ROOT)} ({lb_count:,}x14 splats)."
+        f"(256x128 RGBA PNG, {lut_path.stat().st_size:,} bytes)."
     )
 
 

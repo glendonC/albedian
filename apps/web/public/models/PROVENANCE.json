@@ -22,6 +22,19 @@
   ],
   "files": [
     {
+      "path": "lb_splats.json",
+      "sha256": "6f73cbe4d38282b3867c707977bad9ef8065c37ee41c6e7c3879dd016c62e801",
+      "sources": [
+        "oneill-2024-local-bubble"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_local_bubble_splats.py",
+        "command": "uv run python scripts/bake_local_bubble_splats.py"
+      },
+      "note": "One Gaussian splat per vertex of local_bubble_oneill2024.glb (27,648; rows [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity], 1 unit = 100 pc), from the same O'Neill et al. (2024) shell table, averaged per HEALPix nside 48 cell over 19 to 36 rows. Measured: the centre (the mesh vertex, at the peak distance d, where the slab is centred), the orientation (the table's shell normal, turned outward), the thickness along the normal (the table's line-of-sight thickness times |n . r|, drawn as a uniform slab's sigma, width / sqrt(12)). Grid geometry, a presentation value: the footprint across the normal (the cell's side as a slab sigma). Presentation mapping of a measured quantity: opacity = 1 - 10^(-0.4 A_G), the fraction of G-band light the shell absorbs along the line of sight from the Sun. Simulated: the colour, one neutral grey for every splat; dust extinction is not emission, so no colour stands for an emission line."
+    },
+    {
       "path": "local_bubble_oneill2024.glb",
       "sha256": "aecab153587b4ba7723c5e753155a2717837c663f714ee27e1ccc64b13b03ed9",
       "sources": [

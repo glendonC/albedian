@@ -46,8 +46,8 @@ describe('webgpu spike: Local Bubble loader port', () => {
   const arrays = parseLocalBubbleSplats(raw);
 
   it('keeps every row of lb_splats.json at its own scaled position', () => {
-    expect(raw.length).toBe(14281);
-    expect(arrays.count).toBe(14281);
+    expect(raw.length).toBe(27648);
+    expect(arrays.count).toBe(27648);
     const C = LOCAL_BUBBLE_LOADER_CONSTANTS;
     for (let i = 0; i < arrays.count; i++) {
       for (let k = 0; k < 3; k++) {
@@ -175,7 +175,7 @@ describe('webgpu spike: voxelization', () => {
   it('voxelizes the Local Bubble splat set with mostly empty bricks', () => {
     const arrays = parseLocalBubbleSplats(JSON.parse(readFileSync(LB_PATH, 'utf8')));
     const volume = voxelizeSplats(arrays, { voxelSize: 0.2 });
-    expect(volume.stats.splats).toBe(14281);
+    expect(volume.stats.splats).toBe(27648);
     expect(volume.stats.nonEmptyBrickFraction).toBeLessThan(0.5);
     expect(volume.maxSigma).toBeGreaterThan(0);
   });

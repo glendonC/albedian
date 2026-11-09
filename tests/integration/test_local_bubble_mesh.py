@@ -389,7 +389,7 @@ def test_committed_local_bubble_glb_and_provenance_are_valid():
 
     vp = _load_module("verify_provenance_for_lb", ROOT / "scripts" / "verify_provenance.py")
     assert "apps/web/public/models/local_bubble_oneill2024.glb" not in vp.BASELINE_GAPS
-    assert len(vp.BASELINE_GAPS) == 3
+    assert len(vp.BASELINE_GAPS) == 2
 
     # data/downloads.json registers the Harvard Dataverse FITS input with matching size & sha256.
     downloads = json.loads((ROOT / "data" / "downloads.json").read_text("utf-8"))["downloads"]

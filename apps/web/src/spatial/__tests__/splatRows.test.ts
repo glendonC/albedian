@@ -8,7 +8,7 @@ const readRows = (rel: string): number[][] => JSON.parse(fs.readFileSync(repoFil
 
 describe('splat rows', () => {
   it('draws every row of apps/web/public/models/lb_splats.json at its own position', () => {
-    const [scale, rowCount] = [1.24, 14281];
+    const [scale, rowCount] = [1.24, 27648];
     const raw = readRows('apps/web/public/models/lb_splats.json');
     const rows = parseSplatRows(raw, scale, 0.005);
     expect(raw).toHaveLength(rowCount);
