@@ -308,6 +308,15 @@ export const ObservationSolutionSchema = z
           message: 'Held-out verification passes only with a WCS and the held-out residuals it was judged on.',
         });
       }
+      // A passed verification places catalog matches and deep-sky findings through the WCS: only a calibrated
+      // solution passed it, never an approximate, ambiguous, unresolved or predicted-only one
+      if (quality.passedIndependentVerification && solution.status !== 'calibrated') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quality', 'passedIndependentVerification'],
+          message: `Only a calibrated solution passes held-out verification, not a ${solution.status} one.`,
+        });
+      }
     }
     if (solution.sourceSha256 === undefined && !(solution.status === 'pending' && solution.findings.length === 0)) {
       ctx.addIssue({

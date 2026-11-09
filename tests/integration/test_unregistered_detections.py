@@ -335,6 +335,19 @@ def test_quality_and_solver_follow_the_solution_status() -> None:
     assert not unverified.has_verified_wcs
 
 
+def test_only_a_calibrated_solution_passes_held_out_verification() -> None:
+    """A solution marked as passed places catalog matches and deep-sky findings through its WCS, so only a
+    calibrated one may be: an approximate, ambiguous, unresolved or predicted-only solution did not pass (integrity-27)."""
+    calibrated = _quality_rule_solution("calibrated", has_quality=True, has_solver=True)
+    assert calibrated.has_verified_wcs
+    for status in ("approximate", "ambiguous", "unresolved", "predicted_only"):
+        with pytest.raises(ValueError, match="Only a calibrated solution passes held-out verification"):
+            replace(
+                calibrated, status=status, observed_at_utc=MOMENT["obs_utc_iso"],
+                observer_lat=MOMENT["observer_lat"], observer_lon=MOMENT["observer_lon"],
+            )
+
+
 @settings(max_examples=60, deadline=None)
 @given(
     status=st.sampled_from(["pending", "calibrated", "approximate", "predicted_only", "unresolved", "ambiguous"]),

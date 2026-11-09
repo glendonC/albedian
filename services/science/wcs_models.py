@@ -480,6 +480,12 @@ class ObservationSolution:
             )
         if self.quality is not None and self.quality.passed_independent_verification and self.wcs is None:
             raise ValueError("Held-out verification passes only with a WCS.")
+        # A passed verification places catalog matches and deep-sky findings through the WCS: only a calibrated
+        # solution passed it, never an approximate, ambiguous, unresolved or predicted-only one
+        if self.quality is not None and self.quality.passed_independent_verification and self.status != "calibrated":
+            raise ValueError(
+                f"Only a calibrated solution passes held-out verification, not a {self.status} one."
+            )
         # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
         # sky position exactly when there is one, and a catalog match needs one
         verified = self.has_verified_wcs

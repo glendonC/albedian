@@ -144,8 +144,12 @@ def test_only_a_calibrated_solution_with_a_verified_wcs_gives_findings(solved_ci
         solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
     )
     assert dsf.predict_deep_sky_findings(unverified, width, height).findings == ()
-    # The models do not yet refuse an approximate solution marked as passed (integrity-27): the module does
-    approximate = replace(solution, id="sol-approximate", status="approximate", findings=[])
+    # The models refuse an approximate solution marked as passed (integrity-27)
+    with pytest.raises(ValueError, match="Only a calibrated solution passes held-out verification"):
+        replace(solution, id="sol-approximate", status="approximate", findings=[])
+    # The module's own gate stays: a record forced past the model, as one built before that rule, gives nothing
+    approximate = replace(solution, id="sol-approximate", findings=[])
+    object.__setattr__(approximate, "status", "approximate")
     assert approximate.has_verified_wcs
     empty = dsf.predict_deep_sky_findings(approximate, width, height)
     assert empty.findings == () and empty.not_included == 0 and empty.warning is None

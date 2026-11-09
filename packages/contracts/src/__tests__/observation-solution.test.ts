@@ -319,6 +319,15 @@ describe('@albedian/contracts: held-out pairs, residuals and verification', () =
     };
     expect(issuePaths(ObservationSolutionSchema.safeParse(withoutResiduals))).toContain('quality.passedIndependentVerification');
   });
+
+  it('passes held-out verification only on a calibrated solution (integrity-27)', () => {
+    const verified = solution({ wcs: true, passed: true, findings: [] });
+    expect(verified.status).toBe('calibrated');
+    for (const status of ['approximate', 'ambiguous', 'unresolved', 'predicted_only'] as const) {
+      const marked = ObservationSolutionSchema.safeParse(asStatus(verified, status));
+      expect(issuePaths(marked), status).toContain('quality.passedIndependentVerification');
+    }
+  });
 });
 
 describe('@albedian/contracts: the hashes a solution and its evidence name', () => {
