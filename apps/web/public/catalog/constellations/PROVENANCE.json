@@ -1,0 +1,68 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "d3-celestial-constellation-lines",
+      "title": "d3-celestial data/constellations.lines.json",
+      "url": "https://raw.githubusercontent.com/ofrohn/d3-celestial/d2e20e104b86429d90ac8227a5b021262b45d75a/data/constellations.lines.json",
+      "version": "git commit d2e20e104b86429d90ac8227a5b021262b45d75a (2020-03-20)",
+      "retrieved": "2026-11-09",
+      "license": {
+        "spdx": "BSD-3-Clause",
+        "name": "BSD 3-Clause License",
+        "url": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
+        "conditions": "Keep this notice with the data and in the documentation (docs/science/CONSTELLATIONS.md carries it too): Copyright (c) 2015, Olaf Frohn\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\n3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+      },
+      "credit": "d3-celestial, Olaf Frohn (github.com/ofrohn/d3-celestial)",
+      "sha256": "294f66bef5d5cf50b1e17f16d2efa1d97a15131612c68dd935adef6e7373e13c",
+      "note": "27,136 bytes. The IAU constellation figures with name positions and some line modifications by the d3-celestial author (readme source note 3): one person's edits of the IAU figures, not an IAU product. Vertices are star positions at equinox J2000. 89 features (Serpens twice), GeoJSON MultiLineString, longitude -180 to 180. Repository: https://github.com/ofrohn/d3-celestial."
+    },
+    {
+      "id": "d3-celestial-constellation-bounds",
+      "title": "d3-celestial data/constellations.bounds.json",
+      "url": "https://raw.githubusercontent.com/ofrohn/d3-celestial/d2e20e104b86429d90ac8227a5b021262b45d75a/data/constellations.bounds.json",
+      "version": "git commit d2e20e104b86429d90ac8227a5b021262b45d75a (2020-03-20)",
+      "retrieved": "2026-11-09",
+      "license": {
+        "spdx": "BSD-3-Clause",
+        "name": "BSD 3-Clause License",
+        "url": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
+        "conditions": "Keep this notice with the data and in the documentation (docs/science/CONSTELLATIONS.md carries it too): Copyright (c) 2015, Olaf Frohn\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.\n\n3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+      },
+      "credit": "d3-celestial, Olaf Frohn (github.com/ofrohn/d3-celestial)",
+      "citation": "Davenhall, A. C. and Leggett, S. K. (1989), Catalogue of Constellation Boundary Data, VizieR catalogue VI/49.",
+      "sha256": "f2e2687af6b20b24567879f838c21874d412efcc93ecc1966be07e78431cc196",
+      "note": "40,714 bytes. Davenhall and Leggett (1989), Catalogue of Constellation Boundary Data, VizieR VI/49 (readme source note 4): the Delporte boundaries the IAU adopted, drawn at equinox B1875. Vertices here are their J2000 positions; each edge follows a constant B1875 right ascension or declination. 89 closed Polygon rings. Repository: https://github.com/ofrohn/d3-celestial."
+    }
+  ],
+  "files": [
+    {
+      "path": "lines.json",
+      "sha256": "e24a27d399b1e112ddf8d4a6612c437d9a57de7a248ae1d66336adad6d76ac84",
+      "sources": [
+        "d3-celestial-constellation-lines"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_constellations_d3celestial.py",
+        "command": "uv run python scripts/bake_constellations_d3celestial.py"
+      },
+      "note": "All 89 constellation figures, evidenceKind 'catalog-derived': the IAU figures as edited by the d3-celestial author, not an IAU product. Changed from the source: right ascension wrapped from -180..180 into 0..360 at 4 decimals, rank as an integer, the two Serpens features named Se1 (Caput) and Se2 (Cauda) by right ascension; nothing else."
+    },
+    {
+      "path": "bounds.json",
+      "sha256": "feeb672a53d1984c82501ed9b126b7025db0cff70b38dacc514a603449cc0c44",
+      "sources": [
+        "d3-celestial-constellation-bounds"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_constellations_d3celestial.py",
+        "command": "uv run python scripts/bake_constellations_d3celestial.py"
+      },
+      "note": "All 89 IAU constellation boundaries, evidenceKind 'catalog-derived'. Vertices are J2000 positions of B1875 corners; each edge follows a constant B1875 right ascension or declination, so a layer must densify edges along B1875 right ascension or declination, never draw them straight. Changed from the source: right ascension wrapped from -180..180 into 0..360 at 4 decimals, rank as an integer, the two Serpens features named Se1 (Caput) and Se2 (Cauda) by right ascension; nothing else."
+    }
+  ],
+  "fileSets": []
+}

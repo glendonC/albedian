@@ -140,6 +140,26 @@
       "licence": "CC-BY-SA-4.0",
       "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
       "source": "OpenNGC v20260501 (github.com/mattiaverga/OpenNGC, git tag v20260501), database_files/addendum.csv: 64 objects outside NGC and IC (among them the Large Magellanic Cloud and the Coalsack), credit Mattia Verga; CC-BY-SA-4.0 for every file per the repository's .reuse/dep5"
+    },
+    {
+      "path": ".cache/d3celestial/constellations.lines.json",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/ofrohn/d3-celestial/d2e20e104b86429d90ac8227a5b021262b45d75a/data/constellations.lines.json",
+      "bytes": 27136,
+      "sha256": "294f66bef5d5cf50b1e17f16d2efa1d97a15131612c68dd935adef6e7373e13c",
+      "licence": "BSD-3-Clause",
+      "licenceUrl": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
+      "source": "d3-celestial (github.com/ofrohn/d3-celestial, git commit d2e20e104b86429d90ac8227a5b021262b45d75a, 2020-03-20), Copyright (c) 2015 Olaf Frohn, BSD-3-Clause per the repository's LICENSE (keep the notice with any redistribution), data/constellations.lines.json: the IAU constellation figures with the d3-celestial author's edits, not an IAU product"
+    },
+    {
+      "path": ".cache/d3celestial/constellations.bounds.json",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/ofrohn/d3-celestial/d2e20e104b86429d90ac8227a5b021262b45d75a/data/constellations.bounds.json",
+      "bytes": 40714,
+      "sha256": "f2e2687af6b20b24567879f838c21874d412efcc93ecc1966be07e78431cc196",
+      "licence": "BSD-3-Clause",
+      "licenceUrl": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
+      "source": "d3-celestial (github.com/ofrohn/d3-celestial, git commit d2e20e104b86429d90ac8227a5b021262b45d75a, 2020-03-20), Copyright (c) 2015 Olaf Frohn, BSD-3-Clause per the repository's LICENSE (keep the notice with any redistribution), data/constellations.bounds.json: the IAU constellation boundaries from Davenhall and Leggett (1989), VizieR VI/49, vertices at J2000 of B1875 corners"
     }
   ]
 }
