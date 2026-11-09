@@ -660,7 +660,26 @@ describe('@albedian/evidence: licence and source strings', () => {
     const record = lastRecord(predicted(m31));
     expect(record?.license).toBe('CC BY-SA 4.0; credit OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)');
     expect(record?.coverageDescription).toBe('And (deep_sky)');
-    expect(lastRecord(predicted({ ...m31, apparentMagnitude: 3.44 }))?.coverageDescription).toBe('And (deep_sky, m=3.44)');
+    // An OpenNGC magnitude is V, and the record names the band
+    expect(lastRecord(predicted({ ...m31, apparentMagnitude: 3.44 }))?.coverageDescription).toBe('And (deep_sky, V=3.44)');
+  });
+
+  it("words an OpenNGC position as the precision its coordinates are printed to, never plus or minus", () => {
+    const m31: CatalogRef = {
+      id: 'openngc-NGC0224', provider: 'OpenNGC', releaseVersion: 'OpenNGC v20260501', catalogSourceId: 'NGC0224',
+      commonName: 'Andromeda Galaxy', constellation: 'And', objectType: 'deep_sky', coordinateEpoch: 'J2000.0',
+      raDeg: 10.684792, decDeg: 41.269056, citation: 'OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0',
+    };
+    // services/science/deep_sky_findings.py gives a deep-sky finding the printed precision, 0.15 arcsec
+    const finding: CelestialFinding = {
+      ...predicted(m31),
+      skyPosition: { raDeg: 10.684792, decDeg: 41.269056, uncertaintyArcsec: 0.15 },
+    };
+    const record = lastRecord(finding);
+    expect(record?.uncertaintyDescription).toBe('Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row');
+    expect(record?.uncertaintyDescription).not.toContain('±');
+    // Other catalogs keep their wording
+    expect(lastRecord(predicted(rigel('Gaia DR3')))?.uncertaintyDescription).toBe('Angular uncertainty ±14.2 arcsec');
   });
 
   it('titles a catalog record by provider, release, name and catalog id', () => {

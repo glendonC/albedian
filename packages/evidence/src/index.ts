@@ -636,11 +636,15 @@ export function buildFindingEvidenceRecords(
         ? `${describeCatalogDistance(dist)}${cat.parallaxMas !== undefined && cat.parallaxErrorMas !== undefined ? `; parallax ${cat.parallaxMas.toFixed(2)} ± ${cat.parallaxErrorMas.toFixed(2)} mas` : ''}`
         : finding.evidence.distanceUncertaintyNote ??
           (sky
-            ? `Angular uncertainty ±${sky.uncertaintyArcsec.toFixed(1)} arcsec`
+            ? // OpenNGC gives no accuracy per row: its position is worded as the precision it is printed to
+              cat.provider === 'OpenNGC'
+              ? `Coordinates printed to ${sky.uncertaintyArcsec.toFixed(2)} arcsec in OpenNGC; it gives no accuracy per row`
+              : `Angular uncertainty ±${sky.uncertaintyArcsec.toFixed(1)} arcsec`
             : 'No sky position, so no angular uncertainty'),
       processingDescription: `Citation: ${cat.citation}`,
       // A deep-sky reference may give no magnitude, and none is shown in its place
-      coverageDescription: `${cat.constellation} (${cat.objectType}${cat.apparentMagnitude !== undefined ? `, m=${cat.apparentMagnitude.toFixed(2)}` : ''})`,
+      // An OpenNGC magnitude is always V (services/science/deep_sky_findings.py), so its band is named
+      coverageDescription: `${cat.constellation} (${cat.objectType}${cat.apparentMagnitude !== undefined ? `, ${cat.provider === 'OpenNGC' ? 'V' : 'm'}=${cat.apparentMagnitude.toFixed(2)}` : ''})`,
     };
 
     return [...records, catalogRecord];
