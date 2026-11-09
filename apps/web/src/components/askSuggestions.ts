@@ -11,7 +11,7 @@ export function findingCanEnterSpace(finding: CelestialFinding | null | undefine
 }
 
 const HOW_FAR = 'How far away is it?';
-const TAKE_ME_THERE = 'Take me there';
+export const TAKE_ME_THERE = 'Take me there';
 const NONE: readonly string[] = [];
 const DISTANCE_ONLY: readonly string[] = [HOW_FAR];
 const DISTANCE_AND_FLIGHT: readonly string[] = [HOW_FAR, TAKE_ME_THERE];

@@ -587,6 +587,43 @@ describe('session selection (hud-5 fix)', () => {
   });
 });
 
+describe('closing from the viewport (hud-5b)', () => {
+  it('clears the session selection when the sheet is closed', () => {
+    const base = createSyntheticCalibratedSession();
+    const betelgeuse = betelgeuseIn(base);
+    const session: ObservationSession = { ...base, selectedFindingId: betelgeuse.id };
+    const setSession = vi.fn();
+    const noop = () => {};
+    act(() => {
+      root.render(
+        createElement(SpatialObservatoryViewport, {
+          session,
+          setSession,
+          selectedFinding: betelgeuse,
+          discoveredMedia: [],
+          activeDiscoveredId: null,
+          setActiveDiscoveredId: noop,
+          activeDiscoveredItem: null,
+          uploadedMediaUrl: null,
+          setUploadedMediaUrl: noop,
+          commandText: '',
+          setCommandText: noop,
+          onRunUtterance: noop,
+          onSelectFinding: noop,
+          onPushToTalk: noop,
+          onTriggerUpload: noop,
+        })
+      );
+    });
+    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    setSession.mockClear();
+    act(() => q<HTMLButtonElement>('target-card-close')!.click());
+    expect(setSession).toHaveBeenCalledTimes(1);
+    const update = setSession.mock.calls[0]![0] as (prev: ObservationSession) => ObservationSession;
+    expect(update(session).selectedFindingId).toBeNull();
+  });
+});
+
 describe('landing overlay (hud-5)', () => {
   it('keeps the card hidden on the landing overlay until Launch Albedian', () => {
     const base = createSyntheticCalibratedSession();

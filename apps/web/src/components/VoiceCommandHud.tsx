@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CelestialFinding, VoiceMachineState } from '@albedian/contracts';
-import { askSuggestionsFor } from './askSuggestions.js';
+import { TAKE_ME_THERE, askSuggestionsFor } from './askSuggestions.js';
+import { CAPTIONS_CHANGE_EVENT, runAfterSheetSettles } from './phoneSheet.js';
 
 export interface VoiceCommandHudProps {
   voiceState: VoiceMachineState;
@@ -57,6 +58,7 @@ export const VoiceCommandHud: React.FC<VoiceCommandHudProps> = ({
   setCommandTextRef.current = setCommandText;
   const pushToTalkRef = useRef(onPushToTalk);
   pushToTalkRef.current = onPushToTalk;
+  const captionsRef = useRef<HTMLDivElement>(null);
 
   const isListening = voiceState === 'listening';
   const trimmedBanner = lastStatusBanner?.trim() ?? '';
@@ -83,7 +85,9 @@ export const VoiceCommandHud: React.FC<VoiceCommandHudProps> = ({
   }, []);
 
   const ask = (utterance: string) => {
-    onRunUtterance(utterance, 'text');
+    // A flight anchors on the star's own pixel, so the phone photo settles back before it starts
+    if (utterance === TAKE_ME_THERE) runAfterSheetSettles(() => onRunUtterance(utterance, 'text'));
+    else onRunUtterance(utterance, 'text');
     closePalette();
   };
 
@@ -106,6 +110,24 @@ export const VoiceCommandHud: React.FC<VoiceCommandHudProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [openPalette]);
+
+  // Publish the captions' height, so a phone sheet can keep the selected star clear of them
+  useLayoutEffect(() => {
+    const publish = () => {
+      const height = captionsRef.current?.getBoundingClientRect().height ?? 0;
+      document.documentElement.style.setProperty('--alb-captions-h', height > 0 ? `${height.toFixed(1)}px` : '0px');
+      window.dispatchEvent(new Event(CAPTIONS_CHANGE_EVENT));
+    };
+    publish();
+    const node = captionsRef.current;
+    const observer = node && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
+    if (node) observer?.observe(node);
+    return () => {
+      observer?.disconnect();
+      document.documentElement.style.setProperty('--alb-captions-h', '0px');
+      window.dispatchEvent(new Event(CAPTIONS_CHANGE_EVENT));
+    };
+  }, [trimmedBanner, trimmedUtterance]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -219,7 +241,7 @@ export const VoiceCommandHud: React.FC<VoiceCommandHudProps> = ({
       )}
       <div className="alb-voice-hud" data-hud-interactive="true" data-testid="voice-command-hud">
         {trimmedBanner.length > 0 && (
-          <div className="alb-voice-captions" role="status" aria-live="polite" data-testid="voice-status-banner">
+          <div className="alb-voice-captions" ref={captionsRef} role="status" aria-live="polite" data-testid="voice-status-banner">
             {trimmedUtterance.length > 0 && (
               <p className="alb-voice-caption alb-voice-caption--you">
                 <span className="alb-voice-speaker">You</span>{' '}

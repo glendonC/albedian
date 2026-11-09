@@ -2635,6 +2635,57 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
+.alb-scan-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--hud-radius-item);
+  background: transparent;
+  color: var(--hud-ink);
+  font: 500 12.5px/1 var(--hud-font-sans);
+  cursor: pointer;
+}
+
+.alb-scan-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alb-scan-close:focus-visible {
+  outline: 2px solid var(--hud-highlight);
+  outline-offset: 2px;
+}
+
+/* The evidence line wraps whole beside Close instead of running under it */
+.alb-scan-close + .alb-scan-head .alb-scan-kicker {
+  padding-right: 92px;
+}
+
+.alb-scan-close kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 2px 5px;
+  border-radius: var(--hud-radius-key);
+  background: var(--hud-key-fill);
+  color: var(--hud-key-ink);
+  font: 500 10.5px/1.3 var(--hud-font-mono);
+}
+
+/* The photo's solve in one line: shown on a phone, where the receipt steps aside for the sheet */
+.alb-scan-solve {
+  display: none;
+  margin: 8px 0 0;
+  font: 400 11px/1.4 var(--hud-font-mono);
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
 .alb-scan-name {
   margin: 12px 0 0;
   font: 500 40px/1 var(--hud-font-sans);
@@ -2968,17 +3019,15 @@
   text-align: center;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 720px) and (min-height: 501px) {
   .alb-target-card {
     top: auto;
     left: 0;
     right: 0;
     bottom: 0;
     width: auto;
-    max-height: 62vh;
-    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    padding: 14px 18px;
     border-radius: var(--hud-radius-palette) var(--hud-radius-palette) 0 0;
-    z-index: 35;
   }
 
   .alb-scan-name {
@@ -3418,6 +3467,182 @@
     left: 12px;
     right: 12px;
     max-width: none;
+  }
+}
+
+/* ============================================================================
+   PHONE LAYOUT: ONE SHEET AT A TIME
+   (Apple Maps on iPhone: one bottom sheet at a medium height, the view moves so the
+   selected pin stays above it, and everything else shrinks to pills along the top)
+   ============================================================================ */
+/* The safe-area insets resolved for the card's script (phoneSheet.ts): sideways the sheet and the voice element sit
+   inside them, so the selected star's clear lines move in by the same amount */
+:root {
+  --alb-safe-area-right: env(safe-area-inset-right, 0px);
+  --alb-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Upright only: a sideways phone (an iPhone SE is 667 by 375) takes the landscape block below instead, so exactly one
+   layout applies to any screen, the same one the card's script picks (phoneSheet.ts) */
+@media (max-width: 720px) and (min-height: 501px) {
+  /* The selected star's sheet: medium height, above the receipt, clear of the home indicator */
+  .alb-target-card {
+    max-height: 48vh;
+    z-index: 33;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  /* The photo image and its markers lift together, so the selected star sits above the sheet on its own pixel;
+     the photo's layer label stays where it is */
+  .alb-source-stage > img,
+  .alb-source-stage > video,
+  .alb-marker-overlay {
+    translate: calc(-1 * var(--alb-sheet-shift-x, 0px)) calc(-1 * var(--alb-sheet-lift, 0px));
+    transition: translate var(--hud-dur-base) var(--hud-ease-standard);
+  }
+
+  .alb-scan-solve {
+    display: block;
+  }
+
+  .alb-voice-hud {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* One sheet at a time: with a star sheet open, or in 3D, the solve receipt steps aside whole (the star's own
+     evidence is on its sheet); the top already holds the layer label and, with sound on, the audio notes */
+  .alb-root:has(.alb-target-card) .albedian-solve-compare-hud,
+  .alb-root:has(.alb-restore-hud-shell) .albedian-solve-compare-hud {
+    display: none;
+  }
+
+  /* In 3D the panels stack from the top without covering one another: the layer label at 84 px, the flight panel
+     under it, the epoch HUD and the star sheet at the bottom (measured at 390 by 844: 813 of 844 px with sound on) */
+  .alb-restore-hud-shell {
+    top: calc(152px + env(safe-area-inset-top));
+    gap: 6px;
+  }
+
+  /* The checkpoint note is detail; on a phone the Back pill alone carries the way home */
+  .alb-restore-hud-pill {
+    display: none;
+  }
+
+  /* Sound on in 3D: the audio notes, then the layer label right under them, then the flight panel */
+  .alb-root:has(.alb-restore-hud-shell):has(.alb-audio-notes) .alb-layer-disclosure {
+    top: calc(180px + env(safe-area-inset-top));
+  }
+
+  .alb-root:has(.alb-audio-notes) .alb-restore-hud-shell {
+    top: calc(248px + env(safe-area-inset-top));
+  }
+
+  .alb-flight-scale-rungs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  /* In 3D the star sheet is a short peek, leaving room for the epoch toggles to wrap above it */
+  .alb-root:has(.alb-restore-hud-shell) .alb-target-card {
+    max-height: 26vh;
+  }
+
+  .alb-root:has(.alb-restore-hud-shell) .albedian-epoch-disclosure-hud {
+    top: auto;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .alb-root:has(.alb-restore-hud-shell):has(.alb-target-card) .albedian-epoch-disclosure-hud {
+    bottom: calc(26vh + 8px);
+  }
+
+  /* The toggles keep their whole labels (Observed Markers: Off): the row wraps onto more lines, and nothing scrolls
+     or clips a label at the row's edge */
+  .alb-root:has(.alb-restore-hud-shell) .albedian-epoch-disclosure-hud__actions {
+    flex-wrap: wrap;
+  }
+
+  .alb-root:has(.alb-restore-hud-shell) .albedian-epoch-disclosure-hud__btn {
+    white-space: nowrap;
+  }
+
+  /* Disclosures stay whole and wrap; they are never clipped, clamped or hidden */
+  .albedian-epoch-disclosure-hud__disclosure,
+  .alb-flight-scale-disclosure,
+  .alb-audio-disclosure {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Sound on: a strip under the header, the disclosure whole and the credits one tap away behind Notices */
+  .alb-root .alb-audio-notes {
+    padding: 8px 10px;
+    border-radius: var(--hud-radius-item);
+    background: var(--hud-glass-fill);
+    backdrop-filter: var(--hud-glass-filter);
+    -webkit-backdrop-filter: var(--hud-glass-filter);
+  }
+
+  .alb-root .alb-audio-credits {
+    display: none;
+  }
+
+  .alb-root .alb-audio-notices {
+    display: inline-block;
+  }
+}
+
+/* A landscape phone (short and touch-driven; a short desktop window keeps its layout): the star sheet runs the
+   height on the right, the photo shifts so the selected star clears it, and the rest keeps to the left */
+@media (max-height: 500px) and (pointer: coarse) {
+  .alb-source-stage > img,
+  .alb-source-stage > video,
+  .alb-marker-overlay {
+    translate: calc(-1 * var(--alb-sheet-shift-x, 0px)) calc(-1 * var(--alb-sheet-lift, 0px));
+    transition: translate var(--hud-dur-base) var(--hud-ease-standard);
+  }
+
+  .alb-scan-solve {
+    display: block;
+  }
+
+  .alb-target-card {
+    top: calc(64px + env(safe-area-inset-top));
+    right: calc(12px + env(safe-area-inset-right));
+    max-height: calc(100vh - 76px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  /* The photo's layer label spans the left column, clear of the sheet, so it runs to as few lines as it can */
+  .alb-root:has(.alb-target-card) .alb-layer-disclosure {
+    right: calc(416px + env(safe-area-inset-right));
+    max-width: none;
+  }
+
+  /* With a sheet open the left column is narrow (251 px on an iPhone SE): smaller captions leave room for the
+     selected star between the layer label and them (measured at 667 by 375: 126 px tall, down from 159) */
+  .alb-root:has(.alb-target-card) .alb-voice-caption {
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 5px 10px 6px;
+  }
+
+  /* The voice element keeps to the left column: it stops at the sheet's span (LANDSCAPE_SHEET_SPAN_PX) and, like the
+     sheet, moves in by the right inset; phoneSheet.ts copies these numbers and a test holds them equal */
+  .alb-root:has(.alb-target-card) .alb-voice-hud {
+    left: calc(12px + env(safe-area-inset-left));
+    right: calc(404px + env(safe-area-inset-right));
+    width: auto;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .alb-root:has(.alb-target-card) .albedian-solve-compare-hud {
+    display: none;
   }
 }
 

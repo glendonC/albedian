@@ -549,6 +549,7 @@ export const SpatialObservatoryViewport: React.FC<
             onRunUtterance={onRunUtterance}
             onPushToTalk={onPushToTalk}
             sourceImageUrl={uploadedMediaUrl}
+            onClose={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
           />
           <FlightAndRestoreHud
             session={session}

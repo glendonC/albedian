@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { CelestialFinding, EvidenceClass, ObservationSession } from '@albedian/contracts';
+import { hasVerifiedWcs, type CelestialFinding, type EvidenceClass, type ObservationSession } from '@albedian/contracts';
 import {
   formatDistanceWithUncertainty,
   getEpistemicBadgeDescriptor,
@@ -24,7 +24,20 @@ import {
   type ScanInterval,
 } from './scanScales.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
-import { decodedFrameMatches, orientedSize } from './sourcePhotoRect.js';
+import { decodedFrameMatches, orientedSize, useViewportSize } from './sourcePhotoRect.js';
+import { projectFindingToViewport } from './CelestialMarkerOverlay.js';
+import {
+  CAPTIONS_CHANGE_EVENT,
+  LANDSCAPE_PHONE_QUERY,
+  PHONE_QUERY,
+  cancelSheetSettles,
+  readCaptionsHeightPx,
+  readSafeAreaInsetsPx,
+  runAfterSheetSettles,
+  setSheetShift,
+  sheetShiftPx,
+  type PhoneLayout,
+} from './phoneSheet.js';
 
 export interface CelestialTargetCardProps {
   session: ObservationSession;
@@ -36,10 +49,46 @@ export interface CelestialTargetCardProps {
   onPushToTalk: () => void;
   /** The uploaded photo as shown, for the pixel crop; a clip or no photo draws no crop. */
   sourceImageUrl?: string | null;
+  /** Closes the sheet by clearing the selection: its Close button, Esc in the photo view, or a tap on empty sky. */
+  onClose?: () => void;
 }
 
 const CROP_BOX_PX = 72;
 const CROP_SOURCE_PX = 12;
+
+/** Which phone layout applies, upright or sideways, kept current as the screen rotates or resizes. */
+function usePhoneLayout(): PhoneLayout | null {
+  const query = (q: string) =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(q) : null;
+  const read = (): PhoneLayout | null =>
+    query(PHONE_QUERY)?.matches ? 'portrait' : query(LANDSCAPE_PHONE_QUERY)?.matches ? 'landscape' : null;
+  const [layout, setLayout] = useState<PhoneLayout | null>(read);
+  useEffect(() => {
+    const lists = [query(PHONE_QUERY), query(LANDSCAPE_PHONE_QUERY)].filter((m): m is MediaQueryList => m !== null);
+    const onChange = () => setLayout(read());
+    setLayout(read());
+    lists.forEach((m) => m.addEventListener('change', onChange));
+    return () => lists.forEach((m) => m.removeEventListener('change', onChange));
+  }, []);
+  return layout;
+}
+
+/** A pointer that went down and up within this distance is a tap, not a drag. */
+const TAP_SLOP_PX = 6;
+
+/** One line for the photo's solve, as the receipt words it: its status, its class, and verified or not. */
+function solveStatusLine(session: ObservationSession): string | null {
+  const solution = session.observationSolution;
+  if (!solution) return null;
+  const verified = solution.status === 'calibrated' && hasVerifiedWcs(solution);
+  const predictedCapable = solution.status === 'predicted_only' || solution.status === 'approximate';
+  const code = getEpistemicBadgeDescriptor(verified ? 'catalog_matched' : predictedCapable ? 'predicted' : 'observed').shortCode;
+  const status = solution.status.replace(/_/g, ' ');
+  const q = solution.quality;
+  return verified && q
+    ? `Photo solve: ${status} · ${code} · verified on ${q.heldOutInliers} of ${q.heldOutPairCount} held-out stars`
+    : `Photo solve: ${status} · ${code} · not verified`;
+}
 
 const formatNumber = (value: number, digits: number) =>
   value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -164,15 +213,74 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
   onRunUtterance,
   onPushToTalk,
   sourceImageUrl,
+  onClose,
 }) => {
   const distInfo = formatDistanceWithUncertainty(selectedFinding?.inferredDistancePc);
   const canEnterSpace = findingCanEnterSpace(selectedFinding);
   const [cropFailedUrl, setCropFailedUrl] = useState<string | null>(null);
   const [cropMismatchUrl, setCropMismatchUrl] = useState<string | null>(null);
   const goThere = useRef<() => void>(() => {});
+  const flightPending = useRef(false);
   goThere.current = () => {
-    if (selectedFinding && canEnterSpace) onRunUtterance(`Take me to ${selectedFinding.title}`, 'pointer');
+    if (!selectedFinding || !canEnterSpace) return;
+    // One flight per press: a second press while the photo settles does nothing
+    if (flightPending.current) return;
+    flightPending.current = true;
+    // The flight anchors on the marker's own pixel: the photo settles back first, so the flight starts where the star is seen
+    const title = selectedFinding.title;
+    runAfterSheetSettles(() => {
+      flightPending.current = false;
+      onRunUtterance(`Take me to ${title}`, 'pointer');
+    });
   };
+  const closeRef = useRef(onClose);
+  // Closing while the photo settles cancels the pending Go there: no flight starts once the sheet is closed
+  closeRef.current = onClose
+    ? () => {
+        cancelSheetSettles();
+        flightPending.current = false;
+        onClose();
+      }
+    : undefined;
+  const inSourceView = (session.machines?.navigation ?? 'source') === 'source';
+
+  // Esc closes the sheet in the photo view; in 3D Esc belongs to Back to Moment
+  useEffect(() => {
+    if (!selectedFinding || !inSourceView || !onClose) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable) return;
+      event.preventDefault();
+      closeRef.current?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedFinding, inSourceView, onClose]);
+
+  // A tap on empty sky (not a marker, not any HUD element, not the end of a drag) closes the sheet
+  useEffect(() => {
+    if (!selectedFinding || !inSourceView || !onClose) return undefined;
+    let down: { x: number; y: number } | null = null;
+    const onDown = (event: PointerEvent) => {
+      down = { x: event.clientX, y: event.clientY };
+    };
+    const onUp = (event: PointerEvent) => {
+      const start = down;
+      down = null;
+      if (!start || Math.hypot(event.clientX - start.x, event.clientY - start.y) > TAP_SLOP_PX) return;
+      const target = event.target as Element | null;
+      if (target?.closest?.('[data-hud-interactive="true"], button, a, input, textarea, select')) return;
+      closeRef.current?.();
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [selectedFinding, inSourceView, onClose]);
 
   useEffect(() => {
     if (!canEnterSpace) return undefined;
@@ -188,6 +296,39 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [canEnterSpace]);
+
+  // On a phone the sheet covers part of the photo: move the photo so the selected star stays visible beside it
+  const phoneLayout = usePhoneLayout();
+  const view = useViewportSize();
+  // Sideways the captions stack over the voice element in the left column: the star stays clear of them too
+  const [captionsHeightPx, setCaptionsHeightPx] = useState(readCaptionsHeightPx);
+  useEffect(() => {
+    const onChange = () => setCaptionsHeightPx(readCaptionsHeightPx());
+    onChange();
+    window.addEventListener(CAPTIONS_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(CAPTIONS_CHANGE_EVENT, onChange);
+  }, []);
+  const projected =
+    phoneLayout && selectedFinding && inSourceView
+      ? projectFindingToViewport(selectedFinding, session, view.widthPx, view.heightPx)
+      : null;
+  const shift =
+    phoneLayout && projected?.visible
+      ? sheetShiftPx(
+          projected.xPx,
+          projected.yPx,
+          view.widthPx,
+          view.heightPx,
+          phoneLayout,
+          phoneLayout === 'landscape' ? captionsHeightPx : 0,
+          // Sideways the sheet and the voice element sit inside the safe area, beside a notch or above the home bar
+          phoneLayout === 'landscape' ? readSafeAreaInsetsPx() : undefined
+        )
+      : { x: 0, y: 0 };
+  useEffect(() => {
+    setSheetShift({ x: shift.x, y: shift.y });
+    return () => setSheetShift({ x: 0, y: 0 });
+  }, [shift.x, shift.y]);
 
   if (!selectedFinding) return null;
 
@@ -245,6 +386,11 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
       aria-label={`Selected target: ${selectedFinding.title}`}
     >
       <div className="alb-scan-body">
+      {onClose && (
+        <button type="button" className="alb-scan-close" data-testid="target-card-close" aria-label="Close" onClick={() => closeRef.current?.()}>
+          Close <kbd className="alb-key-only">Esc</kbd>
+        </button>
+      )}
       <header className="alb-scan-head">
         <span className="alb-scan-kicker">
           <ScanGlyph evidenceClass={evidenceClass} testId="target-card-glyph" />
@@ -266,6 +412,11 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
         <p className="alb-scan-disclosure" data-testid="target-card-disclosure">
           {badge.disclosure}
         </p>
+        {solveStatusLine(session) && (
+          <p className="alb-scan-solve" data-testid="target-card-solve-status">
+            {solveStatusLine(session)}
+          </p>
+        )}
       </header>
 
       {det && (
