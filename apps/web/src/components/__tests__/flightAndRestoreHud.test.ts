@@ -145,7 +145,9 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
       '[data-testid="checkpoint-summary-pill"]'
     );
     expect(pill).not.toBeNull();
-    expect(pill?.textContent).toContain('Original Night Sky Clip');
+    // Leaving for the sky saved the moment you left (experience-9j): its label, time, gain and playback
+    expect(pill?.textContent).toContain('Departure from Source to Registered Sky');
+    expect(pill?.textContent).not.toContain('Original Night Sky Clip');
     expect(pill?.textContent).toContain('3.45s');
     expect(pill?.textContent).toContain('78%');
     expect(pill?.textContent).toContain('playing');
@@ -228,6 +230,139 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
     )!;
     await act(async () => {
       backBtn.click();
+    });
+    expect(latestSession.machines.navigation).toBe('source');
+    expect(latestSession.spatialView.mode).toBe('source_2d');
+  });
+
+  it('returns to the moment you left, with the star you had selected, not the session start (experience-9j)', async () => {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
+    )!;
+    // Pick the star on the photo, then fly to it: the flight saves the moment with the selection
+    const selected = dispatchAlbedianAction(base, {
+      type: 'finding.select',
+      requestId: 'req-select',
+      expectedViewRevision: base.viewRevision,
+      findingId: finding.id,
+    }).session;
+    expect(selected.selectedFindingId).toBe(finding.id);
+    expect(base.navigationHistory.anchorMomentCheckpoint.selectedFindingId).toBeNull();
+    const inSpace = dispatchAlbedianAction(selected, {
+      type: 'space.enter',
+      requestId: 'req-enter-space',
+      expectedViewRevision: selected.viewRevision,
+      findingId: finding.id,
+      distancePolicy: 'measured_or_estimated',
+    }).session;
+
+    for (const press of ['button', 'escape'] as const) {
+      let latestSession = inSpace;
+      await act(async () => {
+        root.render(
+          React.createElement(FlightAndRestoreHud, {
+            session: latestSession,
+            setSession: (updater) => {
+              latestSession = typeof updater === 'function' ? updater(latestSession) : updater;
+            },
+          })
+        );
+      });
+      // The pill names the moment it will return to
+      const pill = container.querySelector<HTMLElement>('[data-testid="checkpoint-summary-pill"]')!;
+      expect(pill.textContent).toContain(`Checkpoint before entering 3D space toward ${finding.title}`);
+      await act(async () => {
+        if (press === 'button') container.querySelector<HTMLButtonElement>('[data-testid="back-to-moment-btn"]')!.click();
+        else window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+      expect(latestSession.machines.navigation, press).toBe('source');
+      expect(latestSession.spatialView.mode, press).toBe('source_2d');
+      expect(latestSession.selectedFindingId, press).toBe(finding.id);
+    }
+  });
+
+  it('returns to the photo, not the sky, after leaving in two steps (experience-9j)', async () => {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
+    )!;
+    const onSky = dispatchAlbedianAction(base, {
+      type: 'sky.show',
+      requestId: 'req-sky-show',
+      expectedViewRevision: base.viewRevision,
+      mode: 'measured',
+    }).session;
+    // From the sky into 3D saves a second checkpoint, taken in the sky, not on the photo
+    const inSpace = dispatchAlbedianAction(onSky, {
+      type: 'space.enter',
+      requestId: 'req-enter-space',
+      expectedViewRevision: onSky.viewRevision,
+      findingId: finding.id,
+      distancePolicy: 'measured_or_estimated',
+    }).session;
+    const saved = inSpace.navigationHistory.checkpoints;
+    expect(saved[saved.length - 1]!.navigationState).toBe('sky_registered');
+    let latestSession = inSpace;
+    await act(async () => {
+      root.render(
+        React.createElement(FlightAndRestoreHud, {
+          session: latestSession,
+          setSession: (updater) => {
+            latestSession = typeof updater === 'function' ? updater(latestSession) : updater;
+          },
+        })
+      );
+    });
+    const pill = container.querySelector<HTMLElement>('[data-testid="checkpoint-summary-pill"]')!;
+    expect(pill.textContent).toContain('Departure from Source to Registered Sky');
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="back-to-moment-btn"]')!.click();
+    });
+    expect(latestSession.machines.navigation).toBe('source');
+    expect(latestSession.spatialView.mode).toBe('source_2d');
+  });
+
+  it('falls back to the session start when no moment was saved on the source (experience-9j)', async () => {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
+    )!;
+    const onSky = dispatchAlbedianAction(base, {
+      type: 'sky.show',
+      requestId: 'req-sky-show',
+      expectedViewRevision: base.viewRevision,
+      mode: 'measured',
+    }).session;
+    const entered = dispatchAlbedianAction(onSky, {
+      type: 'space.enter',
+      requestId: 'req-enter-space',
+      expectedViewRevision: onSky.viewRevision,
+      findingId: finding.id,
+      distancePolicy: 'measured_or_estimated',
+    }).session;
+    // A history that kept only the checkpoint taken in the sky: nothing saved on the photo but the anchor
+    const skyOnly = entered.navigationHistory.checkpoints.slice(-1);
+    expect(skyOnly[0]!.navigationState).toBe('sky_registered');
+    const inSpace: ObservationSession = {
+      ...entered,
+      navigationHistory: { ...entered.navigationHistory, checkpoints: skyOnly, cursorIndex: 0 },
+    };
+    let latestSession: ObservationSession = inSpace;
+    await act(async () => {
+      root.render(
+        React.createElement(FlightAndRestoreHud, {
+          session: latestSession,
+          setSession: (updater) => {
+            latestSession = typeof updater === 'function' ? updater(latestSession) : updater;
+          },
+        })
+      );
+    });
+    const pill = container.querySelector<HTMLElement>('[data-testid="checkpoint-summary-pill"]')!;
+    expect(pill.textContent).toContain(inSpace.navigationHistory.anchorMomentCheckpoint.label);
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="back-to-moment-btn"]')!.click();
     });
     expect(latestSession.machines.navigation).toBe('source');
     expect(latestSession.spatialView.mode).toBe('source_2d');

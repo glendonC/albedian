@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import type { ObservationSession } from '@albedian/contracts';
+import type { CameraCheckpoint, ObservationSession } from '@albedian/contracts';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import {
   getEpistemicBadgeDescriptor,
@@ -47,6 +47,21 @@ function formatTransitionPhaseLabel(
 }
 
 /**
+ * The moment Back to Moment returns to: the latest checkpoint saved while on the source recording
+ * (AGENTS.md: leaving the source saves the moment, and Back to Moment restores it, selection included),
+ * else the session's anchor.
+ */
+export function returnCheckpointOf(session: ObservationSession): CameraCheckpoint | undefined {
+  const history = session.navigationHistory;
+  if (!history) return undefined;
+  for (let i = Math.min(history.cursorIndex, history.checkpoints.length - 1); i >= 0; i--) {
+    const checkpoint = history.checkpoints[i];
+    if (checkpoint && checkpoint.navigationState === 'source') return checkpoint;
+  }
+  return history.anchorMomentCheckpoint;
+}
+
+/**
  * Moments 06 & 08:
  * - Moment 08 (Outer Wilds Ship Log & CameraCheckpoint Return): Persistent
  *   Back to moment (Esc) button and saved CameraCheckpoint summary pill
@@ -65,7 +80,7 @@ export const FlightAndRestoreHud: React.FC<FlightAndRestoreHudProps> = ({
 
   const handleReturnToMoment = useCallback(() => {
     setSession((cur) => {
-      const checkpoint = cur.navigationHistory?.anchorMomentCheckpoint;
+      const checkpoint = returnCheckpointOf(cur);
       return dispatchAlbedianAction(cur, {
         type: 'source.return',
         requestId: `ui-return-${cur.viewRevision}`,
@@ -116,7 +131,7 @@ export const FlightAndRestoreHud: React.FC<FlightAndRestoreHudProps> = ({
     return null;
   }
 
-  const checkpoint = session.navigationHistory?.anchorMomentCheckpoint;
+  const checkpoint = returnCheckpointOf(session);
   const spatialView = session.spatialView;
   const transitionPhase = spatialView?.transitionPhase ?? 'at_source';
   const transitionProgress = spatialView?.transitionProgress ?? 1;
