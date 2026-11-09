@@ -61,8 +61,14 @@ UNBAKED_OBJECTS: dict[str, tuple[str, ...]] = {
 
 
 def whole_word(name: str) -> re.Pattern[str]:
-    """Match `name` only as a whole word, so the Moon is not found in "honeymoon"."""
-    return re.compile(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])")
+    """Match `name` only as a whole word, so the Moon is not found in "honeymoon".
+
+    The name comes first and the check on the character before it follows as a look-behind over the name, so
+    the regex engine can skip straight to where the name occurs. With the look-behind first it tests every
+    position, and with hundreds of names a long utterance took seconds.
+    """
+    literal = re.escape(name.lower())
+    return re.compile(rf"{literal}(?<![a-z0-9]{literal})(?![a-z0-9])")
 
 
 @dataclass(frozen=True)

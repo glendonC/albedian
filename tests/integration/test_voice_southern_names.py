@@ -7,9 +7,11 @@ matched to Hipparcos 2007 and Gaia DR3), in the form the phone-photo solver give
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 import pytest
+from hypothesis import example, given, settings, strategies as st
 
 from services.voice import claude, names
 from services.voice.intent import check_voice_command, parse_voice_intent
@@ -186,3 +188,44 @@ def test_the_typescript_parser_holds_the_same_aliases_unbaked_objects_and_cross_
     source = VOICE_PARSER_TS.read_text(encoding="utf-8")
     cross = re.search(r"export const SOUTHERN_CROSS_STARS = \[([^\]]*)\]", source)
     assert cross is not None and tuple(re.findall(r"'([^']+)'", cross.group(1))) == names.SOUTHERN_CROSS_STARS
+
+
+# The names a whole-word search tries: every star the parsers know, with "a" and "a b" for the shortest cases.
+WHOLE_WORD_NAMES = sorted({spoken for spoken, _ in names.spoken_names()} | {"moon", "a", "a b", "47 tucanae"})
+
+
+def _whole_word_reference(name: str, text: str) -> bool:
+    """The plain reading of a whole word: the name, with no letter or digit just before or just after it."""
+    start = text.find(name)
+    while start != -1:
+        end = start + len(name)
+        before = text[start - 1] if start > 0 else ""
+        after = text[end] if end < len(text) else ""
+        if not (before.isascii() and before.isalnum()) and not (after.isascii() and after.isalnum()):
+            return True
+        start = text.find(name, start + 1)
+    return False
+
+
+@settings(max_examples=2000, deadline=None)
+@given(
+    name=st.sampled_from(WHOLE_WORD_NAMES),
+    prefix=st.text(alphabet="ab9 -'.,é", max_size=6),
+    suffix=st.text(alphabet="ab9 -'.,é", max_size=6),
+    embed=st.booleans(),
+)
+@example(name="moon", prefix="honey", suffix="", embed=True)
+@example(name="a b", prefix="", suffix="a b", embed=True)
+def test_whole_word_matches_exactly_where_the_name_stands_alone(name: str, prefix: str, suffix: str, embed: bool) -> None:
+    text = prefix + (name if embed else "") + suffix
+    assert (names.whole_word(name).search(text) is not None) == _whole_word_reference(name, text)
+
+
+def test_a_long_utterance_is_scanned_for_every_name_quickly() -> None:
+    # Every name over 1,000,000 characters takes about 0.1 s with the name first and took about 3 s with the
+    # look-behind first; the bound leaves room for a loaded machine without letting the per-position scan back in.
+    patterns = [names.whole_word(name) for name in WHOLE_WORD_NAMES]
+    text = "9" * 1_000_000
+    start = time.perf_counter()
+    assert not any(pattern.search(text) for pattern in patterns)
+    assert time.perf_counter() - start < 1.0

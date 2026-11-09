@@ -49,6 +49,7 @@ from services.voice.names import (
     spoken_names,
     unbaked_object,
     unbaked_refusal,
+    whole_word,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,20 +72,15 @@ NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
 UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
 
 
-def _whole_word(name: str) -> re.Pattern[str]:
-    """Match `name` only as a whole word, so the Moon is not found in "honeymoon"."""
-    return re.compile(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])")
-
-
 # Every star name the pinned catalog and the baked IAU name table hold (services/voice/names.py), then the
 # ephemeris bodies; longest first so "Deneb Algedi" wins over "Deneb" and "Alpha Centauri" over nothing shorter
 _STAR_NAMES: dict[str, str] = {star.common_name.lower(): f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
 for _spoken, _finding_id in spoken_names():
     _STAR_NAMES.setdefault(_spoken, _finding_id)
 _NAMED_FINDINGS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
-    (_whole_word(name), finding_id)
+    (whole_word(name), finding_id)
     for name, finding_id in sorted(_STAR_NAMES.items(), key=lambda item: len(item[0]), reverse=True)
-) + tuple((_whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
+) + tuple((whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
 
 
 @dataclass(frozen=True)
