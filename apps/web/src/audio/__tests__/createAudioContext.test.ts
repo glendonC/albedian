@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { glideParam, setParamNow } from '../engine/createAudioContext';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createBrowserAudioContext, glideParam, setParamNow } from '../engine/createAudioContext';
 
 /**
  * An AudioParam timeline that follows the Web Audio specification's rules for the three calls the
@@ -86,5 +86,52 @@ describe('parameter glides start where the engine set them', () => {
     glideParam(param, 0, 1, 0.1);
     expect(model.valueAt(1)).toBeCloseTo(at1, 12);
     expect(model.valueAt(3)).toBeLessThan(0.01);
+  });
+});
+
+/** Stands in for a browser's context constructor, keeping what it was made with. */
+function contextClass(name: string) {
+  return class {
+    readonly kind = name;
+    constructor(readonly options: unknown) {}
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('createBrowserAudioContext', () => {
+  it('makes no context outside a browser', () => {
+    vi.stubGlobal('window', undefined);
+    expect(createBrowserAudioContext()).toBeNull();
+  });
+
+  it('makes a standard AudioContext with an interactive latency hint', () => {
+    const Standard = contextClass('standard');
+    vi.stubGlobal('window', { AudioContext: Standard, webkitAudioContext: contextClass('webkit') });
+    const ctx = createBrowserAudioContext() as unknown as { kind: string; options: unknown };
+    expect(ctx.kind).toBe('standard');
+    expect(ctx.options).toEqual({ latencyHint: 'interactive' });
+  });
+
+  it("falls back to webkitAudioContext, as older iOS Safari has only that", () => {
+    vi.stubGlobal('window', { webkitAudioContext: contextClass('webkit') });
+    const ctx = createBrowserAudioContext() as unknown as { kind: string; options: unknown };
+    expect(ctx.kind).toBe('webkit');
+    expect(ctx.options).toEqual({ latencyHint: 'interactive' });
+  });
+
+  it('makes none where the browser has no Web Audio, or refuses to make a context', () => {
+    vi.stubGlobal('window', {});
+    expect(createBrowserAudioContext()).toBeNull();
+    vi.stubGlobal('window', {
+      AudioContext: class {
+        constructor() {
+          throw new DOMException('too many contexts', 'NotSupportedError');
+        }
+      },
+    });
+    expect(createBrowserAudioContext()).toBeNull();
   });
 });

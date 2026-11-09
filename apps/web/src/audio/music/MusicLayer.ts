@@ -252,6 +252,9 @@ export class MusicLayer {
   private starsArrived: (() => void) | null = null;
   private readonly pieces: readonly SoundtrackPiece[];
   private readonly director: SoundtrackDirector;
+  /** Resolves when the context runs again, while it does not (a phone's lifecycle suspended it). */
+  private resumed: Promise<void> | null = null;
+  private stopWaitingToRun: (() => void) | null = null;
 
   constructor(private readonly options: MusicLayerOptions) {
     this.pieces = options.pieces ?? SOUNDTRACK;
@@ -326,6 +329,7 @@ export class MusicLayer {
     this.run += 1;
     this.passToken += 1;
     this.disarm();
+    this.stopWaitingToRun?.();
     this.director.stop();
     this.pass = null;
     const output = this.output;
@@ -357,13 +361,22 @@ export class MusicLayer {
     await Promise.all(plays);
   }
 
-  /** Wakes the director when it next has something to do, timed from the context's clock. */
+  /**
+   * Wakes the director when it next has something to do, timed from the context's clock. While the
+   * context is not running its clock stands still, so no timer runs; the layer waits for it to run.
+   */
   private arm(): void {
     this.disarm();
     const ctx = this.ctx;
     const wake = this.director.nextWakeSec();
     if (!ctx || !this.output || wake === null) return;
     const run = this.run;
+    if (ctx.state !== 'running') {
+      void this.untilRunning(ctx).then(() => {
+        if (run === this.run) this.arm();
+      });
+      return;
+    }
     this.timer = setTimeout(() => {
       this.timer = null;
       if (run === this.run) void this.answer(this.director.tick(ctx.currentTime));
@@ -373,6 +386,27 @@ export class MusicLayer {
   private disarm(): void {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
+  }
+
+  /** Resolves when the context runs: at once if it does, else on its next statechange to running. */
+  private untilRunning(ctx: BaseAudioContext): Promise<void> {
+    if (ctx.state === 'running') return Promise.resolve();
+    this.resumed ??= new Promise<void>((resolve) => {
+      const done = () => {
+        ctx.removeEventListener('statechange', listener);
+        this.resumed = null;
+        this.stopWaitingToRun = null;
+      };
+      const listener = () => {
+        if (ctx.state !== 'running') return;
+        done();
+        resolve();
+      };
+      ctx.addEventListener('statechange', listener);
+      // Audio off while waiting: let go of the context; whatever waited is stale and stays waiting
+      this.stopWaitingToRun = done;
+    });
+    return this.resumed;
   }
 
   /** Fades the pass that sounds; a pass still loading is dropped. */
@@ -413,6 +447,8 @@ export class MusicLayer {
       await this.bank!.load(neededZones(arrangement));
       const room = await this.roomFor(ctx, arrangement.room);
       const recording = arrangement.recording ? await this.recordingFor(ctx, base, arrangement.recording.file) : null;
+      // Nothing is scheduled on a context that is not running: it waits until it runs
+      await this.untilRunning(ctx);
       if (token !== this.passToken || run !== this.run) return;
       const t0 = Math.max(atSec, ctx.currentTime + this.lead);
       const gain = ctx.createGain();

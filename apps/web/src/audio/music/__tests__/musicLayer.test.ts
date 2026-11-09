@@ -54,6 +54,16 @@ function fakeBuffer(seconds: number, sampleRate = 48_000) {
 
 class FakeContext {
   currentTime = 10;
+  /** A running context; a phone's lifecycle may suspend it, and its clock then stands still. */
+  state: AudioContextState | 'interrupted' = 'running';
+  private readonly listeners = new Set<() => void>();
+  addEventListener(_type: 'statechange', listener: () => void) { this.listeners.add(listener); }
+  removeEventListener(_type: 'statechange', listener: () => void) { this.listeners.delete(listener); }
+  setState(state: AudioContextState | 'interrupted') {
+    this.state = state;
+    for (const listener of [...this.listeners]) listener();
+  }
+  listening() { return this.listeners.size; }
   readonly sampleRate = 48_000;
   readonly destination = new FakeNode('destination');
   readonly nodes: FakeNode[] = [];
@@ -432,3 +442,71 @@ describe('MusicLayer playing the soundtrack', () => {
     expect(layer.getStatus()).toMatchObject({ setting: 'ambient-beats', piece: 'ambient-beats', state: 'playing', passes: 2 });
   });
 });
+
+describe('MusicLayer on a phone, while the context is not running', () => {
+  it('wakes no timer while the context is suspended, and carries on from the same point when it runs again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'ambient-beats', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    const end = 10.25 + ambientBeats(STARS.slice(0, 2)).durationSec;
+    await clockTo(ctx, 20);
+
+    // The page is hidden: the lifecycle suspends the context and its clock stands still
+    ctx.setState('suspended');
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(vi.getTimerCount()).toBe(0);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', passes: 1 });
+
+    // Shown again: the piece ends and the next comes after its gap, on the context's clock
+    ctx.setState('running');
+    await clockTo(ctx, end + 19.8);
+    expect(layer.getStatus()).toMatchObject({ state: 'gap', passes: 1 });
+    await clockTo(ctx, end + 20.2);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', passes: 2 });
+    expect(ctx.listening()).toBe(0);
+  });
+
+  it('starts no pass while the context is not running, and plays it once the context runs', async () => {
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    // A phone that has not let the context run yet (or an iOS interruption)
+    ctx.setState('interrupted');
+    const started = layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    await flushAll();
+    expect(ctx.sources().filter((s) => s.starts.length > 0)).toEqual([]);
+    expect(layer.getStatus()).toMatchObject({ state: 'loading', passes: 0 });
+    ctx.currentTime = 12;
+    ctx.setState('running');
+    await started;
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', passes: 1 });
+    const starts = ctx.sources().flatMap((s) => s.starts);
+    expect(Math.min(...starts)).toBeGreaterThanOrEqual(12.25);
+  });
+
+  it('lets go of the context when Audio goes off while it waits to run', async () => {
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    ctx.setState('suspended');
+    void layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    await flushAll();
+    expect(ctx.listening()).toBeGreaterThan(0);
+    layer.stop();
+    expect(ctx.listening()).toBe(0);
+    ctx.setState('running');
+    await flushAll();
+    expect(ctx.sources().filter((s) => s.starts.length > 0)).toEqual([]);
+    expect(layer.getStatus()).toMatchObject({ state: 'off', passes: 0 });
+  });
+});
+
+/** Lets every pending fetch and decode in the fakes settle. */
+async function flushAll(): Promise<void> {
+  for (let i = 0; i < 50; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+}

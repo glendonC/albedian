@@ -32,6 +32,7 @@ import {
 } from './SkyglowBed.js';
 import { VoicePool } from './VoicePool.js';
 import { createBrowserAudioContext, type AudioContextFactory } from './createAudioContext.js';
+import { AudioLifecycle, browserLifecycleHost, type LifecycleHost } from './audioLifecycle.js';
 
 export interface SpatialAudioEngineOptions {
   readonly contextFactory?: AudioContextFactory;
@@ -46,6 +47,11 @@ export interface SpatialAudioEngineOptions {
    * hear what the high harmonics add; the app keeps the default.
    */
   readonly harmonicCeilingHz?: number;
+  /**
+   * The page the context lives on, for its lifecycle on phones (audioLifecycle.ts): hidden, shown,
+   * interrupted. The browser's document by default; null attaches none.
+   */
+  readonly lifecycleHost?: LifecycleHost | null;
 }
 
 export type SilentOutcome = Extract<PlanOutcome, { status: 'silent' }>;
@@ -90,6 +96,8 @@ const SUSPEND_AFTER_FADE_MS = 1200;
  */
 export class SpatialAudioEngine {
   private readonly contextFactory: AudioContextFactory;
+  private readonly lifecycleHost: LifecycleHost | null | undefined;
+  private lifecycle: AudioLifecycle | null = null;
   private readonly impulseResponseUrl: string | null;
   private readonly capacity: number;
   private readonly fetchImpl: typeof fetch | undefined;
@@ -123,6 +131,7 @@ export class SpatialAudioEngine {
 
   constructor(options: SpatialAudioEngineOptions = {}) {
     this.contextFactory = options.contextFactory ?? createBrowserAudioContext;
+    this.lifecycleHost = options.lifecycleHost;
     this.impulseResponseUrl =
       options.impulseResponseUrl === undefined ? DEFAULT_IMPULSE_RESPONSE_URL : options.impulseResponseUrl;
     this.capacity = Math.max(1, Math.floor(options.capacity ?? DEFAULT_VOICE_CAPACITY));
@@ -157,9 +166,16 @@ export class SpatialAudioEngine {
       if (!ctx) return false;
       this.ctx = ctx;
       this.build(ctx);
+      // Hidden, shown, locked or interrupted: the lifecycle keeps the context in step with the page
+      const host = this.lifecycleHost === undefined ? browserLifecycleHost() : this.lifecycleHost;
+      if (host) {
+        this.lifecycle = new AudioLifecycle(ctx, host, () => this.enabledValue);
+        this.lifecycle.attach();
+      }
     }
     this.clearSuspendTimer();
-    if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => undefined);
+    // Suspended, or iOS's 'interrupted': this call comes from the user's gesture, so it may resume
+    if ((this.ctx.state as string) !== 'running') void this.ctx.resume().catch(() => undefined);
     this.enabledValue = true;
     this.master?.fadeIn();
     this.refresh();
@@ -324,6 +340,8 @@ export class SpatialAudioEngine {
 
   dispose(): void {
     this.clearSuspendTimer();
+    this.lifecycle?.detach();
+    this.lifecycle = null;
     this.pool?.dispose();
     this.bed?.dispose();
     this.master?.dispose();

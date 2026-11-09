@@ -956,3 +956,60 @@ moments of a visit, a piece plays through, a silence follows, then another piece
   composed pieces, Scott Buckley's credit with VCSL's for Signal to Noise (`[tested]` against the
   instruments each arrangement plays). Section 5 of `THIRD_PARTY_NOTICES.txt` carries their
   licences and sources.
+
+## 14. Phones: gestures, the background, locks and the silent switch
+
+Status: **Locally implemented and tested capability** for the logic (`[tested]` in Vitest against
+stand-in contexts and pages that behave as the phone browsers are documented to); how real phones
+behave is `[open]` until the checklist below is run on an iPhone and an Android phone.
+
+- **Audio starts only after a gesture.** No `AudioContext` exists until the Audio control's click
+  or key handler calls `enable()`; `createBrowserAudioContext` uses `AudioContext`, or
+  `webkitAudioContext` where only that exists, with `latencyHint: 'interactive'`, and returns null
+  where the browser has neither or refuses (`[tested]`). The Audio control is a gesture, so turning
+  Audio on again also resumes a context the browser stopped, `suspended` or iOS's `interrupted`
+  (`[tested]`).
+- **The lifecycle.** [`apps/web/src/audio/engine/audioLifecycle.ts`](../../apps/web/src/audio/engine/audioLifecycle.ts)
+  is attached once, when the engine makes its context, and removed on `dispose()` (`[tested]`):
+  - the page hidden (`visibilitychange`, or `pagehide` into the back-forward cache) suspends a
+    running context, so a hidden tab plays nothing and costs no CPU;
+  - the page shown again (`visibilitychange` or `pageshow`) resumes it when Audio is on;
+  - a context the browser stops while the page is visible (iOS's `interrupted` when the phone locks
+    or a call comes in) is resumed, and where the browser refuses a resume outside a gesture, the
+    next tap, click or key (`pointerdown`, `touchend`, `keydown`) resumes it; those listeners go
+    once the context runs;
+  - audio the user turned off is never resumed, through any of the above.
+- **The music on a suspended context.** While the context is not running its clock stands still:
+  the soundtrack's director wakes no timer and no pass is scheduled; when it runs again the music
+  carries on from the same point of its piece or gap (`[tested]`). Turning Audio off while the layer
+  waits lets go of the context.
+- **The silent switch.** Where the browser has `navigator.audioSession` (the W3C Audio Session API),
+  the lifecycle sets its type to `ambient`, which the specification defines as mixable with other
+  audio (`[verified]` in the W3C Audio Session draft). Neither the specification nor WebKit's notes
+  say whether iOS then silences the page with the ring/silent switch, so that is on the checklist
+  (`[open]`).
+- **Music in the field run** (`[inference]` from `scripts/field.mjs` and 13.7; not run). Plain
+  `pnpm field` runs the dev server on the laptop's localhost: with `serveSources.mjs` running, the
+  music plays there, on the laptop only. `pnpm field --lan` builds the app without
+  `VITE_ALBEDIAN_MUSIC_SOURCES` and serves that build with `vite preview`, so no music plays on a
+  `--lan` run, on the phone or on the laptop; the disclosure says so and the Music control is not
+  shown. The platform lane's unit 11 is to serve the music in the field run, through the web app's
+  own origin at `/music-sources/`, so that both the laptop and the phone play it once it lands
+  (`[proposed]`).
+
+**Real-phone checklist** (`[open]` until run; record the phone, the OS and browser versions, and
+what was heard):
+
+1. iOS Safari and Android Chrome: no sound before the first tap on Audio; sound at once after it.
+2. iPhone with the silent switch on: does Albedian stay silent under `ambient`? With it off, does
+   it play?
+3. Lock the phone while the music plays, then unlock: does the sound come back by itself, or on
+   the next tap?
+4. A call or Siri during the music, then back: the same question.
+5. Switch to another app and back (both phones): silent while away, back on return.
+6. Android Chrome, the tab in the background: silent while hidden, back on return.
+7. Another app playing music: does Albedian mix with it (`ambient`) rather than stop it?
+8. Volume at zero, then up: nothing plays at zero, and the music is where it should be after.
+9. Audio off, then hide and show the page and tap: it stays silent.
+10. Leave the page and come back with the browser's Back (the back-forward cache): sound returns
+    when Audio was on.
