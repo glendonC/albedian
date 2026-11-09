@@ -13,6 +13,7 @@ import {
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
 import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
+import { CATALOG_STAR_NAMES } from './generated/catalogStarNames.js';
 
 /**
  * ============================================================================
@@ -252,10 +253,24 @@ export const UNBAKED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
   'the Coalsack': ['coalsack', 'coal sack'],
 };
 
-/** IAU names of the bright southern stars the parser knows even when the sky solution does not hold them. */
-const SOUTHERN_STAR_NAMES = [
-  ...new Set([...Object.values(SPOKEN_STAR_ALIASES), ...SOUTHERN_CROSS_STARS, 'Rigil Kentaurus', 'Toliman', 'Hadar']),
-];
+/**
+ * Every star name the backend knows (generated/catalogStarNames.ts, from services/voice/names.py), longest first so
+ * "Polaris Australis" is read before "Polaris". The name comes first in each pattern and the check on the character
+ * before it follows, so the regex engine skips straight to where the name occurs.
+ */
+const CATALOG_STARS_LONGEST_FIRST = [...CATALOG_STAR_NAMES]
+  .sort((a, b) => b[0].length - a[0].length || (a[0] < b[0] ? -1 : 1))
+  .map(([spoken, findingId, shown]) => {
+    const literal = spoken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return { pattern: new RegExp(`${literal}(?<![a-z0-9]${literal})(?![a-z0-9])`), findingId, shown };
+  });
+
+const UNRESOLVED_SKY = 'The sky is unresolved, so no finding in it can be named, selected or pointed at yet.';
+
+/** The catalog star the request names, by the finding id the solver gives it and the name to show. */
+function catalogStarNamedIn(normalizedUtterance: string): { findingId: string; shown: string } | undefined {
+  return CATALOG_STARS_LONGEST_FIRST.find((star) => star.pattern.test(normalizedUtterance));
+}
 
 function unbakedObjectIn(normalizedUtterance: string): string | undefined {
   return Object.entries(UNBAKED_OBJECTS).find(([, spoken]) =>
@@ -290,16 +305,16 @@ export function unbakedRefusal(label: string): string {
 }
 
 /** The IAU name of a known southern star the utterance names, by that name or a spoken alias. */
-function southernStarNamedIn(normalizedUtterance: string): string | undefined {
-  const alias = Object.entries(SPOKEN_STAR_ALIASES).find(([spoken]) => namesWholeWord(normalizedUtterance, spoken));
-  if (alias) return alias[1];
-  return SOUTHERN_STAR_NAMES.find((name) => namesWholeWord(normalizedUtterance, name));
-}
-
 function findNamedFindingInUtterance(
   normalizedUtterance: string,
   session: ObservationSession
 ): CelestialFinding | undefined {
+  // By the finding id the solver gives the named star, so a title that differs from the IAU name still resolves
+  const catalogStar = catalogStarNamedIn(normalizedUtterance);
+  if (catalogStar) {
+    const finding = (session.observationSolution?.findings ?? []).find((f) => f.id === catalogStar.findingId);
+    if (finding) return finding;
+  }
   const aliased = Object.entries(SPOKEN_STAR_ALIASES).find(([spoken]) => namesWholeWord(normalizedUtterance, spoken));
   if (aliased) {
     const finding = (session.observationSolution?.findings ?? []).find((f) => f.title === aliased[1]);
@@ -463,9 +478,12 @@ function resolveTargetFinding(
       reason: 'ambiguous_target',
     };
   }
-  const southernStar = southernStarNamedIn(normalizedUtterance);
-  if (southernStar) {
-    return { error: `${southernStar} is not among the findings in this sky solution.`, reason: 'ambiguous_target' };
+  // A catalog star the request names but the sky solution does not hold is refused, never swapped for another;
+  // on an unresolved sky the reason is that no star is placed yet
+  const catalogStar = catalogStarNamedIn(normalizedUtterance);
+  if (catalogStar) {
+    if (context.calibrationState === 'unresolved') return { error: UNRESOLVED_SKY, reason: 'unresolved_sky' };
+    return { error: `${catalogStar.shown} is not among the findings in this sky solution.`, reason: 'ambiguous_target' };
   }
 
   const pointerFresh = isPointerFreshAndMatchingRevision(context.recentPointer, context);
@@ -493,12 +511,7 @@ function resolveTargetFinding(
   if (context.focusedFindingId) return { findingId: context.focusedFindingId };
 
   // Nothing else stands in: not the solution's only finding, and not any default star
-  if (context.calibrationState === 'unresolved') {
-    return {
-      error: 'The sky is unresolved, so no finding in it can be named, selected or pointed at yet.',
-      reason: 'unresolved_sky',
-    };
-  }
+  if (context.calibrationState === 'unresolved') return { error: UNRESOLVED_SKY, reason: 'unresolved_sky' };
   return {
     error: 'No finding in the sky solution is named in the request, and none is selected, focused or pointed at.',
     reason: 'ambiguous_target',
@@ -621,7 +634,8 @@ function parseWithRules(
     !findNamedFindingInUtterance(norm, session) &&
     (unbakedObjectIn(norm) !== undefined ||
       SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(norm, name)) ||
-      southernStarNamedIn(norm) !== undefined)
+      // a "how many" question naming a star stays a question, as the select rule and the backend read it
+      (catalogStarNamedIn(norm) !== undefined && !/\bhow\s+many\b/i.test(norm)))
   ) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
