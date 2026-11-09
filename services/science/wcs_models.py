@@ -4,9 +4,11 @@ solution quality metrics, epistemic findings, and video calibration stacking.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 import math
 import re
+from typing import Any
 
 import numpy as np
 
@@ -306,6 +308,11 @@ class CelestialFindingRecord:
     uncertainty_arcsec: float | None = None
     source_detection: SourceDetection | None = None
     catalog_star: CatalogStar | None = None
+    # A deep-sky object's contract CatalogReference (services/science/deep_sky_findings.py), in place of a
+    # catalog star; left out of the hash, since a dict cannot be hashed
+    deep_sky_reference: Mapping[str, Any] | None = field(default=None, hash=False)
+    # How this finding was reached, when the evidence class's general wording does not say it
+    verification_method: str | None = None
     pixel_residual_px: float | None = None
     angular_residual_arcsec: float | None = None
     verified_by_holdout: bool = False
@@ -316,6 +323,8 @@ class CelestialFindingRecord:
     def __post_init__(self) -> None:
         if self.evidence_class not in EVIDENCE_CLASSES:
             raise ValueError(f"Finding {self.id} has unknown evidence class {self.evidence_class!r}.")
+        if self.catalog_star is not None and self.deep_sky_reference is not None:
+            raise ValueError(f"Finding {self.id} stands on one catalog row: a star or a deep-sky object, not both.")
         if len(self.limitations) == 0 or any(not isinstance(lim, str) or not lim.strip() for lim in self.limitations):
             raise ValueError(f"Finding {self.id} requires at least one non-empty limitation string in limitations.")
         sky = (self.ra_deg, self.dec_deg, self.uncertainty_arcsec)
@@ -337,7 +346,9 @@ class CelestialFindingRecord:
 
     @property
     def common_name(self) -> str | None:
-        return self.catalog_star.common_name if self.catalog_star else None
+        if self.catalog_star is not None:
+            return self.catalog_star.common_name
+        return str(self.deep_sky_reference["commonName"]) if self.deep_sky_reference is not None else None
 
     def to_contract_dict(self, *, source_asset_id: str | None = None) -> dict:
         """The contract's CelestialFinding. `source_asset_id` is the recording of the solution it belongs to: a
@@ -364,10 +375,14 @@ class CelestialFindingRecord:
         evidence: dict = {
             "id": f"ev-{self.id}",
             "evidenceClass": self.evidence_class,
-            "verificationMethod": VERIFICATION_METHODS[self.evidence_class],
+            "verificationMethod": self.verification_method or VERIFICATION_METHODS[self.evidence_class],
             "sourceAssetSha256": self.source_sha256,
             "wcsSolutionId": self.observation_solution_id,
-            "catalogReferenceId": self.catalog_star.id if self.catalog_star else None,
+            "catalogReferenceId": (
+                self.catalog_star.id
+                if self.catalog_star
+                else (str(self.deep_sky_reference["id"]) if self.deep_sky_reference is not None else None)
+            ),
             "angularResidualArcsec": (
                 float(self.angular_residual_arcsec)
                 if self.angular_residual_arcsec is not None
@@ -401,6 +416,8 @@ class CelestialFindingRecord:
             }
             cx, cy, cz = catalog_cartesian_pc(self.catalog_star)
             payload["cartesianParsecICRS"] = [float(cx), float(cy), float(cz)]
+        elif self.deep_sky_reference is not None:
+            payload["catalogRef"] = dict(self.deep_sky_reference)
         return payload
 
 
