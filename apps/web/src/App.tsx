@@ -18,6 +18,7 @@ import {
   uploadAndSolveMedia,
 } from './services/apiClient.js';
 import { applyVoiceBackendReply, askVoiceBackend, backendMayResolve } from './voice/voiceBackend.js';
+import { SPEECH_LISTENING, startSpeechCapture, type SpeechRecognitionLike } from './voice/speechInput.js';
 import './styles/albedian.css';
 
 async function sha256HexOfFile(file: File): Promise<string> {
@@ -188,51 +189,29 @@ export const App: React.FC = () => {
 
   const handlePushToTalk = () => {
     type SpeechRecWindow = {
-      SpeechRecognition?: new () => {
-        lang: string;
-        interimResults: boolean;
-        onresult: (ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
-        onerror: () => void;
-        start: () => void;
-      };
-      webkitSpeechRecognition?: SpeechRecWindow['SpeechRecognition'];
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
     };
     const w = window as unknown as SpeechRecWindow;
-    const SpeechRec = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      setSession((prev) => ({
-        ...prev,
-        lastStatusBanner:
-          'Browser speech recognition unavailable in this environment; use the typed command bar below.',
-      }));
-      return;
-    }
-
-    setSession((prev) => ({
-      ...prev,
-      machines: { ...prev.machines, voice: 'listening' },
-      lastStatusBanner: 'Listening (Push-to-Talk active)… Speak a command.',
-    }));
-
-    const rec = new SpeechRec();
-    rec.lang = 'en-US';
-    rec.interimResults = false;
-    rec.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript ?? '';
-      if (transcript) {
+    startSpeechCapture(w.SpeechRecognition ?? w.webkitSpeechRecognition, {
+      onListening: () =>
+        setSession((prev) => ({
+          ...prev,
+          machines: { ...prev.machines, voice: 'listening' },
+          lastStatusBanner: SPEECH_LISTENING,
+        })),
+      onTranscript: (transcript) => {
         setCommandText(transcript);
         runUtterance(transcript, 'voice');
-      }
-    };
-    rec.onerror = () => {
-      setSession((prev) => ({
-        ...prev,
-        machines: { ...prev.machines, voice: 'off' },
-        lastStatusBanner: 'Microphone capture ended.',
-      }));
-    };
-    rec.start();
+      },
+      // Every ending returns voice to off, which also lifts the listening duck on the source audio
+      onStopped: (banner) =>
+        setSession((prev) => ({
+          ...prev,
+          machines: { ...prev.machines, voice: 'off' },
+          ...(banner === null ? {} : { lastStatusBanner: banner }),
+        })),
+    });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

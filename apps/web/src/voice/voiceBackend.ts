@@ -27,15 +27,25 @@ export function backendMayResolve(reason: RejectionReason): boolean {
 }
 
 /**
+ * How long the app waits for the backend before it counts as unreachable. With the model on, the backend
+ * makes at most two tries with a 20 s bound on each step and a short backoff between (services/voice/claude.py),
+ * so this sits above the usual worst case: a slow model still answers, and a backend that never answers, or
+ * trickles bytes past every step bound, stops the wait here.
+ */
+export const VOICE_BACKEND_TIMEOUT_MS = 45_000;
+
+/**
  * Asks the backend to read `utterance` against the parser's own context, plus the recording's place and
  * capture time, which the backend needs to place a planet. The pointer goes along only when the parser
  * itself would use it. Returns null when the backend is unreachable, answers with an error status, or
- * answers anything the contract refuses: nothing stands in for a reply.
+ * answers anything the contract refuses: nothing stands in for a reply. A backend that has not answered
+ * after `timeoutMs` counts as unreachable, so a stalled request never leaves the command waiting.
  */
 export async function askVoiceBackend(
   utterance: string,
   session: ObservationSession,
-  recentPointer?: ActionContext['recentPointer']
+  recentPointer?: ActionContext['recentPointer'],
+  { timeoutMs = VOICE_BACKEND_TIMEOUT_MS }: { timeoutMs?: number } = {}
 ): Promise<VoiceCommandResponse | null> {
   try {
     const unpointed = buildActionContext(session);
@@ -54,6 +64,7 @@ export async function askVoiceBackend(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) return null;
     const reply = VoiceCommandResponseSchema.safeParse(await res.json());

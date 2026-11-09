@@ -4,7 +4,7 @@ import type { ActionContext, AlbedianAction, ObservationSession, VoiceCommandRes
 import { VoiceCommandResponseSchema } from '@albedian/contracts';
 import { buildActionContext, createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
-import { applyVoiceBackendReply, askVoiceBackend, BACKEND_MAY_RESOLVE } from '../voice/voiceBackend';
+import { applyVoiceBackendReply, askVoiceBackend, BACKEND_MAY_RESOLVE, VOICE_BACKEND_TIMEOUT_MS } from '../voice/voiceBackend';
 
 /**
  * The app asks the backend only after a local refusal the backend may resolve, and the backend applies
@@ -145,6 +145,27 @@ describe('@albedian/web voice backend: asking', () => {
       answering(reply);
       expect(await askVoiceBackend('what is that', base)).toEqual(reply);
     }
+  });
+
+  it('gives up on a backend that never answers and counts it as no reply', async () => {
+    const fetchMock = stubFetch(
+      (...args: unknown[]) =>
+        new Promise((_, reject) => {
+          const signal = (args[1] as { signal?: AbortSignal } | undefined)?.signal;
+          signal?.addEventListener('abort', () => reject(signal.reason));
+        })
+    );
+    const started = Date.now();
+    expect(await askVoiceBackend('what is that', base, undefined, { timeoutMs: 20 })).toBeNull();
+    expect(Date.now() - started).toBeLessThan(2_000);
+    const init = (fetchMock.mock.calls[0] as unknown as [string, { signal?: AbortSignal }])[1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("waits longer than the backend's own worst case before giving up", () => {
+    // services/voice/claude.py: two tries of at most 20 s each, with one backoff of under a second between
+    expect(VOICE_BACKEND_TIMEOUT_MS).toBeGreaterThan(2 * 20_000 + 1_000);
+    expect(VOICE_BACKEND_TIMEOUT_MS).toBeLessThanOrEqual(60_000);
   });
 
   it('asks only after a refusal the backend may resolve', () => {
