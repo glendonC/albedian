@@ -62,6 +62,8 @@ jobs:
           python-version: ${{ matrix.python }}
       # EXP-10 synthesizes and probes a clip with ffmpeg and ffprobe, which the runner image does not include
       - run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      # The versions and library builds go in the log, so a test that differs between platforms can be traced to them
+      - run: ffmpeg -hide_banner -version && ffprobe -hide_banner -version
       - run: uv sync --frozen
       - run: uv run --frozen python scripts/verify_provenance.py
       # data/uploads and .cache are not in git: tests marked owner_media or local_dataset skip with their marker's own
