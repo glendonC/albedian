@@ -29,10 +29,90 @@ def _to_luma_2d(image: np.ndarray) -> np.ndarray:
     raise ValueError(f"Expected 2D or 3D image array, got shape {arr.shape}")
 
 
+# Rec. 709 luma weights, as _to_luma_2d uses them
+LUMA_WEIGHTS = (0.2126, 0.7152, 0.0722)
+# Values sampled to measure the value step; np.unique on a million values takes a fraction of a second
+STEP_SAMPLE = 1_000_000
+# How far a gap between neighbouring values may sit from a whole number of steps: limited-range video codes widened
+# to 16 bits land 299 or 300 apart (0.3 %), while continuous values give gaps of no common step at all
+STEP_TOLERANCE = 0.05
+# The smallest step, relative to the largest value, that is the data's and not float rounding: the smallest gap in a
+# sub-pixel-shifted stack is float rounding, 1e-16 of its values or less, while 16-bit data averaged over a thousand
+# frames still steps 1.5e-8 of its range
+STEP_RELATIVE_MIN = 1e-9
+# The old code's absolute floor on the noise, kept so the floor never falls below it on any scale
+ABSOLUTE_NOISE_FLOOR = 1e-3
+
+
+def _value_step(values: np.ndarray) -> float | None:
+    """The grid the values sit on, measured, or None when they sit on no grid.
+
+    The smallest positive gap between the sorted unique sampled values, accepted only when it is at least
+    STEP_RELATIVE_MIN of the largest absolute value and every gap between neighbouring values is a whole number of
+    steps within STEP_TOLERANCE: 1 for 8-bit integers, 257 or 256 for 8-bit data widened to 16 bits, 1/255 for 8-bit
+    data scaled to 0..1, and about 299 for a video's limited-range luma widened to full-range 16 bits (its codes land
+    299 or 300 apart). An average of N frames sits on a grid N times finer; an interpolated frame sits on none.
+    """
+    flat = np.asarray(values, dtype=np.float64).ravel()
+    flat = flat[np.isfinite(flat)]
+    if flat.size > STEP_SAMPLE:
+        flat = flat[:: flat.size // STEP_SAMPLE]
+    unique = np.unique(flat)
+    if unique.size < 2:
+        return None
+    gaps = np.diff(unique)
+    step = float(np.min(gaps))
+    if not step > STEP_RELATIVE_MIN * max(abs(float(unique[0])), abs(float(unique[-1]))):
+        return None
+    multiples = gaps / step
+    if float(np.max(np.abs(multiples - np.rint(multiples)))) > STEP_TOLERANCE:
+        return None
+    return step
+
+
+def _quantization_sigma(image: np.ndarray) -> float:
+    """The rounding noise of the luma the detector sees: its value step / sqrt(12), 0 when it sits on no grid.
+
+    For RGB the step is measured on the channels; a grey RGB frame's luma is its channel, and a colour frame's luma
+    mixes three rounded channels, whose rounding noise the luma weights scale.
+    """
+    arr = np.asarray(image)
+    if arr.ndim == 3 and arr.shape[2] >= 3:
+        channels = arr[:, :, :3]
+        step = _value_step(channels)
+        if step is None:
+            return 0.0
+        grey = np.array_equal(channels[:, :, 0], channels[:, :, 1]) and np.array_equal(channels[:, :, 1], channels[:, :, 2])
+        weight = 1.0 if grey else float(np.sqrt(sum(w * w for w in LUMA_WEIGHTS)))
+        return step * weight / float(np.sqrt(12.0))
+    step = _value_step(arr)
+    return 0.0 if step is None else step / float(np.sqrt(12.0))
+
+
+def _effective_sigma(sigma_bg: float, image: np.ndarray, floor: float = 0.0) -> float:
+    """The noise to divide by: never below the rounding noise of the data's own value step, nor below the old code's
+    absolute floor.
+
+    A dark 8-bit frame's MAD is 0 (over half its pixels share one value), so its rounding noise carries it. A frame
+    on no grid, such as a stack or the Rec. 709 luma of a colour photo on the 0..1 scale that solve_phone_photo hands
+    the detector, keeps the old floor of ABSOLUTE_NOISE_FLOOR. Since `sigma_bg` from _estimate_background_and_noise is
+    never below the old code's estimate, this is never below the old code's max(estimate, ABSOLUTE_NOISE_FLOOR).
+    `floor` carries a rounding noise from elsewhere: injection recovery adds synthetic stars that move pixels off
+    the frame's grid, and passes the frame's own rounding noise so the injected image is measured as the frame was.
+    """
+    return max(float(sigma_bg), _quantization_sigma(image), ABSOLUTE_NOISE_FLOOR, float(floor))
+
+
 def _estimate_background_and_noise(
-    luma: np.ndarray, sky_mask: np.ndarray | None = None
+    luma: np.ndarray, sky_mask: np.ndarray | None = None, *, interquartile_only: bool = False
 ) -> tuple[np.ndarray, float]:
-    """Estimate smooth local background via fast strided median filtering and MAD noise floor."""
+    """Estimate smooth local background via fast strided median filtering and MAD noise floor.
+
+    When the MAD is 0 (over half the residuals share one value, as on a dark 8-bit frame), the noise is the larger of
+    the interquartile range / 1.349, the old code's fallback, and the spread of the residuals without their top
+    percent, so it is never below the old code's estimate. `interquartile_only` keeps the old fallback alone: frame
+    registration in stack_video_frames_for_calibration uses it, so a stack and its shifts stay as they were.
+    """
     h, w = luma.shape
     mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
     if mask_bool is not None and np.any(mask_bool):
@@ -61,11 +141,20 @@ def _estimate_background_and_noise(
         return bg, 0.0
 
     med = float(np.median(valid))
-    mad = float(np.median(np.abs(valid - med)))
+    deviation = np.abs(valid - med)
+    mad = float(np.median(deviation))
     sigma_bg = 1.4826 * mad
     if sigma_bg < 1e-7:
         q75, q25 = np.percentile(valid, [75.0, 25.0])
         sigma_bg = float((q75 - q25) / 1.349)
+        if not interquartile_only:
+            # On flat integer data the interquartile range is 0 when the middle half of the residuals share one value,
+            # and a whole level when over a quarter sit a level above the rest. The spread of the residuals without
+            # their top percent, where the stars are, carries the first case; taking the larger keeps the old estimate
+            # wherever it was higher
+            kept = valid[deviation <= np.percentile(deviation, 99.0)]
+            spread = float(np.std(kept)) if kept.size > 1 else 0.0
+            sigma_bg = max(sigma_bg, spread)
     return bg, float(sigma_bg)
 
 
@@ -196,6 +285,7 @@ def detect_point_sources(
     snr_threshold: float = 3.5,
     asset_id: str | None = None,
     frame_time_sec: float = 0.0,
+    noise_floor: float = 0.0,
 ) -> list[SourceDetection]:
     """Extract astronomical point sources above local sky background noise.
 
@@ -218,7 +308,7 @@ def detect_point_sources(
     if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
         return []
 
-    sigma_eff = max(sigma_bg, 1e-3)
+    sigma_eff = _effective_sigma(sigma_bg, image_luma, noise_floor)
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
     matched = ndimage.convolve(residual, kernel, mode="nearest")
     snr_map = matched / sigma_eff
@@ -274,6 +364,7 @@ def verify_candidates_on_original_pixels(
     snr_threshold: float = 3.5,
     asset_id: str | None = None,
     frame_time_sec: float = 0.0,
+    noise_floor: float = 0.0,
 ) -> list[SourceDetection]:
     """Verify candidate positions proposed by a processed `MediaVariant` via forced photometry on `original_image`.
 
@@ -292,7 +383,7 @@ def verify_candidates_on_original_pixels(
     if max_res <= 1e-5 or (sigma_bg <= 1e-6 and max_res <= 1e-3):
         return []
 
-    sigma_eff = max(sigma_bg, 1e-3)
+    sigma_eff = _effective_sigma(sigma_bg, original_image, noise_floor)
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
     matched = ndimage.convolve(residual, kernel, mode="nearest")
     snr_map = matched / sigma_eff
@@ -439,9 +530,11 @@ def stack_video_frames_for_calibration(
     if len(frames) == 0:
         raise ValueError("frames must be a non-empty sequence of 2D/3D arrays.")
 
+    # Every noise here is the old interquartile estimate: frame registration weights each frame's signal by it, and the
+    # spread fallback moved a real clip's shifts by up to 1 px [measured on the owner's clips, outside the tests]
     luma_frames = [_to_luma_2d(f) for f in frames]
     if len(luma_frames) == 1:
-        _, sigma0 = _estimate_background_and_noise(luma_frames[0], sky_mask)
+        _, sigma0 = _estimate_background_and_noise(luma_frames[0], sky_mask, interquartile_only=True)
         return VideoStackCalibrationResult(
             composite_luma=luma_frames[0].copy(),
             shifts_yx=[(0.0, 0.0)],
@@ -459,7 +552,7 @@ def stack_video_frames_for_calibration(
     sigmas: list[float] = []
 
     for frame in luma_frames:
-        bg, sig = _estimate_background_and_noise(frame, mask_bool)
+        bg, sig = _estimate_background_and_noise(frame, mask_bool, interquartile_only=True)
         sig_eff = max(sig, 1e-4)
         res = frame - bg
         res_masked = np.where(mask_bool, res, 0.0) if mask_bool is not None else res
@@ -491,7 +584,7 @@ def stack_video_frames_for_calibration(
     if mask_bool is not None:
         composite_luma = np.where(mask_bool, composite_luma, luma_frames[0])
 
-    _, stacked_sigma = _estimate_background_and_noise(composite_luma, mask_bool)
+    _, stacked_sigma = _estimate_background_and_noise(composite_luma, mask_bool, interquartile_only=True)
     single_sigma = float(np.median(sigmas))
     snr_boost = single_sigma / max(stacked_sigma, 1e-6)
 
@@ -599,7 +692,11 @@ def evaluate_injection_recovery(
     luma = _to_luma_2d(base_image)
     h, w = luma.shape
     bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask)
-    sigma_eff = max(sigma_bg, 1e-3)
+    # The stars are scaled to the noise the detector divides by on this 2D luma (a colour frame's luma sits on no
+    # grid, unlike its channels). Adding them moves pixels off the frame's grid, so the images they are added to
+    # are measured with the frame's own rounding noise as a floor, as the frame was
+    frame_rounding = _quantization_sigma(luma)
+    sigma_eff = _effective_sigma(sigma_bg, luma)
     res_base = luma - bg
 
     baseline_dets = detect_point_sources(luma, sky_mask=sky_mask, snr_threshold=snr_threshold)
@@ -674,12 +771,16 @@ def evaluate_injection_recovery(
             injected_records.append((bin_idx, float(snr_val), sx, sy))
 
     if injected_var is not None:
-        proposals = detect_point_sources(injected_var, sky_mask=sky_mask, snr_threshold=snr_threshold)
+        proposals = detect_point_sources(
+            injected_var, sky_mask=sky_mask, snr_threshold=snr_threshold, noise_floor=frame_rounding
+        )
         post_dets = verify_candidates_on_original_pixels(
-            injected_orig, proposals, sky_mask=sky_mask, snr_threshold=snr_threshold
+            injected_orig, proposals, sky_mask=sky_mask, snr_threshold=snr_threshold, noise_floor=frame_rounding
         )
     else:
-        post_dets = detect_point_sources(injected_orig, sky_mask=sky_mask, snr_threshold=snr_threshold)
+        post_dets = detect_point_sources(
+            injected_orig, sky_mask=sky_mask, snr_threshold=snr_threshold, noise_floor=frame_rounding
+        )
 
     used_det_indices: set[int] = set()
     # Mark pre-existing baseline detections first
