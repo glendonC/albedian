@@ -38,6 +38,8 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'LunarEclipseCatalogSchema',
   'ExoplanetTableSchema',
   'DeepSkyCatalogSchema',
+  'ConstellationLinesSchema',
+  'ConstellationBoundariesSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([

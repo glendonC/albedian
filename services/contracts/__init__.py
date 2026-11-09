@@ -1,5 +1,12 @@
 """Python mirrors of the cross-service schemas in packages/contracts."""
 
+from services.contracts.constellations import (
+    CONSTELLATION_BOUNDARIES_FORMAT,
+    CONSTELLATION_FORMAT_VERSION,
+    CONSTELLATION_LINES_FORMAT,
+    ConstellationBoundaries,
+    ConstellationLines,
+)
 from services.contracts.deep_sky import (
     DEEP_SKY_CATALOG_FORMAT,
     DEEP_SKY_CATALOG_FORMAT_VERSION,
@@ -45,6 +52,9 @@ __all__ = [
     "ASSET_PROVENANCE_FORMAT_VERSION",
     "ASSET_PROVENANCE_RECORD_FILENAME",
     "COMPUTED_ONLY_RENDER_LAYER_KINDS",
+    "CONSTELLATION_BOUNDARIES_FORMAT",
+    "CONSTELLATION_FORMAT_VERSION",
+    "CONSTELLATION_LINES_FORMAT",
     "DEEP_SKY_CATALOG_FORMAT",
     "DEEP_SKY_CATALOG_FORMAT_VERSION",
     "DEEP_SKY_COLUMNS",
@@ -59,6 +69,8 @@ __all__ = [
     "SOLAR_ECLIPSE_COLUMNS",
     "SPDX_LICENSE_IDS",
     "AssetProvenanceRecord",
+    "ConstellationBoundaries",
+    "ConstellationLines",
     "DeepSkyCatalog",
     "ExoplanetTable",
     "LunarEclipseCatalog",
