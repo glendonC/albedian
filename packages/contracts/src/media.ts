@@ -82,6 +82,45 @@ export function invertDisplayOrientation(orientation: DisplayOrientation): Displ
   return { quarterTurnsClockwise: ((turns % 4) + 4) % 4, mirrored: orientation.mirrored };
 }
 
+/**
+ * The size a stored frame is shown at: a quarter or three-quarter turn swaps width and height.
+ * Detections and the WCS stay in stored pixels; only display applies the orientation.
+ */
+export function orientedSize(
+  storedWidthPx: number,
+  storedHeightPx: number,
+  orientation?: DisplayOrientation
+): { widthPx: number; heightPx: number } {
+  const turned = (orientation?.quarterTurnsClockwise ?? 0) % 2 === 1;
+  return turned
+    ? { widthPx: storedHeightPx, heightPx: storedWidthPx }
+    : { widthPx: storedWidthPx, heightPx: storedHeightPx };
+}
+
+/**
+ * Where a point of the stored frame is shown once the frame is oriented as the camera meant it, in the
+ * canonical form: mirror left to right if `mirrored`, then turn clockwise a quarter at a time. Points are
+ * image coordinates: (0, 0) is the top-left corner of the frame and (width, height) its bottom-right.
+ */
+export function orientStoredPoint(
+  xPx: number,
+  yPx: number,
+  storedWidthPx: number,
+  storedHeightPx: number,
+  orientation?: DisplayOrientation
+): { xPx: number; yPx: number } {
+  let x = orientation?.mirrored ? storedWidthPx - xPx : xPx;
+  let y = yPx;
+  let height = storedHeightPx;
+  let width = storedWidthPx;
+  for (let turn = 0; turn < (orientation?.quarterTurnsClockwise ?? 0); turn++) {
+    // A clockwise quarter turn sends (x, y) in a width x height frame to (height - y, x) in height x width
+    [x, y] = [height - y, x];
+    [width, height] = [height, width];
+  }
+  return { xPx: x, yPx: y };
+}
+
 /** Capture metadata a SourceAsset may carry; each one present needs its entry in `metadataSources`. */
 export const SOURCE_ASSET_METADATA_FIELDS = ['capturedAtUTC', 'observerLocation', 'cameraMetadata', 'displayOrientation'] as const;
 

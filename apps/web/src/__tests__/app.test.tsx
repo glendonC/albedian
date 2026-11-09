@@ -28,6 +28,7 @@ import {
   uploadAndSolveMedia,
 } from '../services/apiClient';
 import { ingestAndSolveUploadedFile, selectedFindingOf } from '../App';
+import { computeStarAnchorNdc } from '@albedian/observation';
 import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -312,8 +313,10 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       })),
     };
 
+    const namedRequests: string[] = [];
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString();
+      if (new Headers(init?.headers).has('x-albedian-filename')) namedRequests.push(`${init?.method ?? 'GET'} ${url}`);
       if (url === '/api/ingest' && init?.method === 'POST') {
         return new Response(JSON.stringify(receipt), { status: 201 });
       }
@@ -351,6 +354,8 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       expect(finalSession.lastStatusBanner).toContain(`store: ${fileBytes.byteLength}/${fileBytes.byteLength} bytes`);
       expect(finalSession.lastStatusBanner).toContain('solve: 48/220 candidates');
       expect(finalSession.lastStatusBanner).toContain('verify: 1/1 steps');
+      // The file's name goes to the server once, with the upload itself (experience-9h)
+      expect(namedRequests).toEqual(['POST /api/ingest']);
       const matched = finalSession.observationSolution!.findings.filter((f) => f.evidenceClass === 'catalog_matched');
       expect(matched.length).toBeGreaterThan(0);
       expect(matched.every((f) => f.cartesianParsecICRS !== undefined)).toBe(true);
@@ -700,5 +705,69 @@ describe('the selected finding (experience-9g)', () => {
     // A real id still flies (reduced motion lands at once)
     fly!(first.id);
     expect(setSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('anchors a flight where the reducer anchors a selection: turned and at the pixel centre (experience-9h)', () => {
+    const base = createSyntheticCalibratedSession();
+    const first = base.observationSolution!.findings.find(
+      (f) => f.sourceDetection !== undefined && resolveFindingParsecPosition(f) !== null
+    )!;
+    // A portrait phone photo, so a formula that ignores the turn lands somewhere else
+    const session = {
+      ...base,
+      reducedMotion: false,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } },
+    };
+    const frames: Array<(now: number) => void> = [];
+    vi.stubGlobal('window', {
+      requestAnimationFrame: (step: (now: number) => void) => frames.push(step),
+      cancelAnimationFrame: () => {},
+    });
+    try {
+      const setSession = vi.fn();
+      let fly: ((id: string) => void) | null = null;
+      const Probe = () => {
+        fly = useCameraFlightAnimation(session, setSession).animatePhaseAToPhaseBSpaceFlight;
+        return null;
+      };
+      renderToString(createElement(Probe));
+      fly!(first.id);
+      // The first frame of Phase A locks the anchor
+      frames[0]!(performance.now() + 10);
+      const phaseA = setSession.mock.calls[0]![0](session);
+      expect(phaseA.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
+      expect(phaseA.spatialView.lockedAnchorNdc).toEqual(computeStarAnchorNdc(first, session.sourceAsset));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('claims neither stored nor not stored on a 5xx answer, and Not stored only on a 4xx refusal (experience-9h)', async () => {
+    const file = new File([new Uint8Array([1, 2])], 'night.jpg', { type: 'image/jpeg' });
+    // The dev proxy with no backend answers an empty 500; the router's own crash answers plain text
+    for (const body of ['', 'Internal Server Error']) {
+      const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(body, { status: 500 }));
+      try {
+        const failed = await ingestAndSolveUploadedFile(file, 'blob:night', () => {});
+        expect(failed.lastStatusBanner, JSON.stringify(body)).toBe(
+          'The upload of "night.jpg" did not finish: the server answered HTTP 500.'
+        );
+        expect(failed.lastStatusBanner).not.toMatch(/Not stored|failed while storing|Stored/);
+        expect(failed.sourceAsset).toBeUndefined();
+      } finally {
+        spy.mockRestore();
+      }
+    }
+    const spy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(
+        async () => new Response(JSON.stringify({ detail: 'not a JPEG, PNG, TIFF, HEIC, QuickTime or MP4 file' }), { status: 415 })
+      );
+    try {
+      const refused = await ingestAndSolveUploadedFile(file, 'blob:night', () => {});
+      expect(refused.lastStatusBanner).toBe('Not stored: not a JPEG, PNG, TIFF, HEIC, QuickTime or MP4 file ("night.jpg").');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

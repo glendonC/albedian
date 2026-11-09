@@ -176,6 +176,10 @@ export const SpatialObservatoryViewport: React.FC<
   });
   // Markers are hidden when the browser turned the photo differently from its orientation tag
   const [photoFrameMismatch, setPhotoFrameMismatch] = useState(false);
+  // A new photo has not been decoded yet, so an earlier photo's mismatch says nothing about it
+  useEffect(() => {
+    setPhotoFrameMismatch(false);
+  }, [session.sourceAsset?.uri]);
 
   // Choosing a file to upload leaves the landing, so the upload, its solve and the photo show at once
   useEffect(() => {

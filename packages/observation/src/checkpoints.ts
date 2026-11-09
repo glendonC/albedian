@@ -4,6 +4,8 @@ import {
   CelestialFinding,
   MediaVariant,
   ObservationSession,
+  orientedSize,
+  orientStoredPoint,
   SourceAsset,
   SpatialViewState,
 } from '@albedian/contracts';
@@ -178,7 +180,9 @@ export function restoreSessionToCheckpoint(
 }
 
 /**
- * Computes normalized device coordinates (`[-1, 1]`) for a finding's pixel detection.
+ * Computes normalized device coordinates (`[-1, 1]`) for a finding's pixel detection, in the photo as it is
+ * shown: at the centre of its pixel (the detector's centroids put pixel centres at whole numbers) and turned
+ * by the asset's display orientation, the same point the photo stage draws its marker at.
  */
 export function computeStarAnchorNdc(
   finding: CelestialFinding,
@@ -187,8 +191,17 @@ export function computeStarAnchorNdc(
   if (!finding.sourceDetection || !sourceAsset) {
     return [0, 0];
   }
-  const ndcX = Number(((finding.sourceDetection.xPx / sourceAsset.width) * 2 - 1).toFixed(4));
-  const ndcY = Number((1 - (finding.sourceDetection.yPx / sourceAsset.height) * 2).toFixed(4));
+  const orientation = sourceAsset.displayOrientation;
+  const shown = orientedSize(sourceAsset.width, sourceAsset.height, orientation);
+  const p = orientStoredPoint(
+    finding.sourceDetection.xPx + 0.5,
+    finding.sourceDetection.yPx + 0.5,
+    sourceAsset.width,
+    sourceAsset.height,
+    orientation
+  );
+  const ndcX = Number(((p.xPx / shown.widthPx) * 2 - 1).toFixed(4));
+  const ndcY = Number((1 - (p.yPx / shown.heightPx) * 2).toFixed(4));
   return [Math.max(-1, Math.min(1, ndcX)), Math.max(-1, Math.min(1, ndcY))];
 }
 

@@ -48,7 +48,11 @@ export async function ingestAndSolveUploadedFile(
       ...createEmptyObservationSession(),
       lastStatusBanner:
         err instanceof UploadRefusedError
-          ? `Not stored: ${err.reason} ("${file.name}").`
+          ? err.status >= 500
+            ? // A 5xx proves neither outcome: the dev proxy answers 500 with no backend at all, and a
+              // crash in the router answers 500 too, so say only that the upload did not finish
+              `The upload of "${file.name}" did not finish: ${err.reason}.`
+            : `Not stored: ${err.reason} ("${file.name}").`
           : `The upload of "${file.name}" did not finish: ${failureReason(err)}.`,
     };
     onSessionUpdate(notStored);

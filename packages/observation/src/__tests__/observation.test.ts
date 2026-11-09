@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   AlbedianAction,
+  EXIF_ORIENTATIONS,
   ObservationSession,
   ObservationSessionSchema,
   SourceAsset,
   MediaVariant,
 } from '@albedian/contracts';
 import {
+  computeStarAnchorNdc,
   createCameraCheckpoint,
   createEmptyObservationSession,
   createSessionForSourceAsset,
@@ -754,8 +756,8 @@ describe('@albedian/observation: detections without a sky position', () => {
       findingId: 'finding_obs_overcast_1',
     });
     expect(selected.outcome.status).toBe('completed');
-    // Anchored at its measured pixels: (612.4, 214.9) px in a 1920 x 1080 frame
-    expect(selected.session.spatialView.lockedAnchorNdc).toEqual([-0.3621, 0.602]);
+    // Anchored at its measured pixel's centre: (612.4, 214.9) px in a 1920 x 1080 frame is (612.9, 215.4) on the photo
+    expect(selected.session.spatialView.lockedAnchorNdc).toEqual([-0.3616, 0.6011]);
 
     const described = dispatchAlbedianAction(selected.session, {
       type: 'finding.describe', requestId: 'desc_obs_1', expectedViewRevision: selected.session.viewRevision,
@@ -787,5 +789,24 @@ describe('@albedian/observation: detections without a sky position', () => {
     expect(sightline.session.lastStatusBanner).toContain('(the view does not draw a sightline cone yet)');
     expect(sightline.session.lastStatusBanner).not.toContain('Sightline cone queried');
     expect(sightline.session.spatialView.activeOverlays.sightlineCone).toBe(false);
+  });
+});
+
+describe('@albedian/observation: the anchor of a turned photo (experience-9h)', () => {
+  it('anchors a detection where the upright photo shows it, at the centre of its pixel', () => {
+    const session = createSyntheticUnresolvedSession();
+    const finding = session.observationSolution!.findings.find((f) => f.sourceDetection)!;
+    const asset: SourceAsset = { ...session.sourceAsset!, width: 4, height: 2 };
+    const at = (xPx: number, yPx: number, turned: boolean) =>
+      computeStarAnchorNdc(
+        { ...finding, sourceDetection: { ...finding.sourceDetection!, xPx, yPx } },
+        turned ? { ...asset, displayOrientation: EXIF_ORIENTATIONS[6] } : asset
+      );
+    // Stored pixel (0, 0) of a 4 x 2 photo has its centre at (0.5, 0.5): NDC (-0.75, 0.5)
+    expect(at(0, 0, false)).toEqual([-0.75, 0.5]);
+    // Orientation 6 shows it 2 x 4 with the stored top-left at the top right: centre (1.5, 0.5), NDC (0.5, 0.75)
+    expect(at(0, 0, true)).toEqual([0.5, 0.75]);
+    // The stored bottom-right pixel lands bottom-left
+    expect(at(3, 1, true)).toEqual([-0.5, -0.75]);
   });
 });

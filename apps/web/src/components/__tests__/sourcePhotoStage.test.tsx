@@ -162,8 +162,15 @@ describe('sourcePhotoRect (experience-9a)', () => {
   });
 
   it('maps the photo corners onto the drawn photo corners', () => {
-    expect(sourcePixelToViewport(0, 0, 480, 360, 390, 844)).toEqual({ xPx: 0, yPx: 275.75 });
-    expect(sourcePixelToViewport(480, 360, 480, 360, 390, 844)).toEqual({ xPx: 390, yPx: 568.25 });
+    // Detections are in array indices, pixel centres at whole numbers, so the photo's corners are at -0.5 and size - 0.5
+    expect(sourcePixelToViewport(-0.5, -0.5, 480, 360, 390, 844)).toEqual({ xPx: 0, yPx: 275.75 });
+    expect(sourcePixelToViewport(479.5, 359.5, 480, 360, 390, 844)).toEqual({ xPx: 390, yPx: 568.25 });
+  });
+
+  it('puts a detection at the centre of its pixel, as the scan card crops it (centroid plus 0.5, experience-9h)', () => {
+    // A 4 x 2 photo drawn 100 px to the source pixel in a 400 x 200 screen
+    expect(sourcePixelToViewport(0, 0, 4, 2, 400, 200)).toEqual({ xPx: 50, yPx: 50 });
+    expect(sourcePixelToViewport(3, 1, 4, 2, 400, 200)).toEqual({ xPx: 350, yPx: 150 });
   });
 
   it('keeps every photo pixel inside the drawn photo, which stays on screen and keeps its aspect (property)', () => {
@@ -188,7 +195,8 @@ describe('sourcePhotoRect (experience-9a)', () => {
           expect(fillsWidth || fillsHeight).toBe(true);
           // Same shape as the photo
           expect(rect.widthPx * srcH).toBeCloseTo(rect.heightPx * srcW, 0);
-          const p = sourcePixelToViewport(fu * srcW, fv * srcH, srcW, srcH, viewW, viewH);
+          // Any detection on the photo, from its first pixel's outer edge to its last's
+          const p = sourcePixelToViewport(fu * srcW - 0.5, fv * srcH - 0.5, srcW, srcH, viewW, viewH);
           expect(p.xPx).toBeGreaterThanOrEqual(rect.leftPx - eps);
           expect(p.xPx).toBeLessThanOrEqual(rect.leftPx + rect.widthPx + eps);
           expect(p.yPx).toBeGreaterThanOrEqual(rect.topPx - eps);
@@ -448,8 +456,8 @@ describe('display orientation (experience-9e)', () => {
     expect(img.style.height).toBe('520px');
     expect(img.style.left).toBe('0px');
     expect(img.style.top).toBe('162px');
-    // The browser turns the photo itself (its default from-image orientation); nothing here turns it again
-    expect(img.style.getPropertyValue('image-orientation')).toBe('');
+    // The browser turns the photo itself by its orientation tag, set inline so no stylesheet can undo it
+    expect(img.style.getPropertyValue('image-orientation')).toBe('from-image');
     expect(img.style.transform).toBe('');
 
     const finding = {
@@ -457,8 +465,9 @@ describe('display orientation (experience-9e)', () => {
       sourceDetection: {
         assetId: session.sourceAsset!.id,
         frameTimeSec: 0,
-        xPx: 0,
-        yPx: 0,
+        // The stored photo's top-left corner (pixel centres are at whole numbers)
+        xPx: -0.5,
+        yPx: -0.5,
         flux: 900,
         snr: 30,
         fwhmPx: 3,
@@ -490,8 +499,38 @@ describe('display orientation (experience-9e)', () => {
     act(() => {
       img.dispatchEvent(new Event('load'));
     });
-    expect(container.querySelector('[data-testid="source-photo-orientation-mismatch"]')).not.toBeNull();
+    const notice = container.querySelector('[data-testid="source-photo-orientation-mismatch"]') as HTMLElement;
+    expect(notice).not.toBeNull();
+    expect(notice.textContent).toContain('turned the photo');
     expect(onFrameMismatch).toHaveBeenLastCalledWith(true);
+    // The box takes the shape the browser drew (480 x 360 fitted to 390 wide), not the tag's portrait shape
+    expect(img.style.width).toBe('390px');
+    expect(img.style.height).toBe('292.5px');
+    expect(img.style.top).toBe('275.75px');
+    // The label claims neither the measured orientation nor marker placement while they disagree
+    const label = container.querySelector('[data-testid="source-photo-layer-label"]') as HTMLElement;
+    expect(label.textContent).not.toContain('original pixels');
+    expect(label.textContent).not.toContain('Each marker');
+  });
+
+  it('says clip in the mismatch notice for a clip (experience-9h)', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, mediaKind: 'video', mimeType: 'video/quicktime', durationMs: 12000, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    act(() => {
+      root.render(createElement(SourcePhotoStage, { session, viewportWidthPx: 390, viewportHeightPx: 844 }));
+    });
+    const video = container.querySelector('[data-testid="source-photo-stage"] video') as HTMLVideoElement;
+    Object.defineProperty(video, 'videoWidth', { value: 480 });
+    Object.defineProperty(video, 'videoHeight', { value: 360 });
+    act(() => {
+      video.dispatchEvent(new Event('loadedmetadata'));
+    });
+    const notice = container.querySelector('[data-testid="source-photo-orientation-mismatch"]') as HTMLElement;
+    expect(notice.textContent).toContain('turned the clip');
+    expect(notice.textContent).not.toContain('photo');
   });
 
   it('reports no mismatch when the browser shows the oriented shape', () => {
@@ -514,6 +553,18 @@ describe('display orientation (experience-9e)', () => {
     });
     expect(container.querySelector('[data-testid="source-photo-orientation-mismatch"]')).toBeNull();
     expect(onFrameMismatch).toHaveBeenLastCalledWith(false);
+  });
+
+  it('matches a decoded frame within 1 percent of the shown shape and no further (experience-9h)', () => {
+    // Shown 360 x 480 (aspect 0.75); a frame a pixel off from rounding still matches
+    expect(decodedFrameMatches(360, 481, 360, 480)).toBe(true);
+    // Just inside and just outside 1 percent of 0.75, on both sides
+    expect(decodedFrameMatches(3635, 4800, 360, 480)).toBe(true);
+    expect(decodedFrameMatches(3637, 4800, 360, 480)).toBe(false);
+    expect(decodedFrameMatches(3565, 4800, 360, 480)).toBe(true);
+    expect(decodedFrameMatches(3563, 4800, 360, 480)).toBe(false);
+    // The other shape is far outside
+    expect(decodedFrameMatches(480, 360, 360, 480)).toBe(false);
   });
 
   it('keeps the markers when a clip reports no decoded size yet (0 x 0 metadata)', () => {
@@ -569,6 +620,28 @@ describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () =
     loadAs(360, 480);
     expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
   });
+
+  it('forgets a mismatch when a new photo arrives, before it loads (experience-9h)', () => {
+    const base = uploadedPhotoSession();
+    const turned = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    act(() => renderViewport(turned, 'blob:http://localhost:5189/uploaded-photo'));
+    const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    Object.defineProperty(img, 'naturalWidth', { value: 480, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 360, configurable: true });
+    act(() => {
+      img.dispatchEvent(new Event('load'));
+    });
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
+    const next = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, id: 'src_next_photo', uri: 'blob:http://localhost:5189/next-photo' },
+    } as ObservationSession;
+    act(() => renderViewport(next, 'blob:http://localhost:5189/next-photo'));
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+  });
 });
 
 describe('auditor fixes on the stage (experience-9e)', () => {
@@ -593,7 +666,12 @@ describe('auditor fixes on the stage (experience-9e)', () => {
     };
 
     show(clip);
-    expect(loadedVideo().currentTime).toBe(4.5);
+    const loaded = loadedVideo();
+    expect(loaded.currentTime).toBe(4.5);
+    // A new solve of the same clip on another frame moves the loaded clip there too (experience-9h)
+    Object.defineProperty(loaded, 'readyState', { value: 1, configurable: true });
+    show({ ...clip, observationSolution: { ...clip.observationSolution!, frameTimeSec: 7.25 } } as ObservationSession);
+    expect(loaded.currentTime).toBe(7.25);
     show(away);
     expect(container.querySelector('[data-testid="source-photo-stage"] video')).toBeNull();
     // Back in the source view the clip is a new element, which must land on the solved frame too
@@ -648,9 +726,9 @@ describe('auditor fixes on the stage (experience-9e)', () => {
     expect(marker).not.toBeNull();
     const markerX = (parseFloat(marker.style.left) / 100) * 1440;
     const markerY = (parseFloat(marker.style.top) / 100) * 900;
-    // Where pixel (260, 170) of the 480 x 360 photo is drawn; the overlay rounds to 0.01 % of the screen
-    expect(Math.abs(markerX - (imgLeft + (260 / 480) * imgW))).toBeLessThan(0.15);
-    expect(Math.abs(markerY - (imgTop + (170 / 360) * imgH))).toBeLessThan(0.1);
+    // Where the centre of pixel (260, 170) of the 480 x 360 photo is drawn; the overlay rounds to 0.01 % of the screen
+    expect(Math.abs(markerX - (imgLeft + (260.5 / 480) * imgW))).toBeLessThan(0.15);
+    expect(Math.abs(markerY - (imgTop + (170.5 / 360) * imgH))).toBeLessThan(0.1);
   });
 
   it('draws the stage above the 3D canvas host and under the markers', () => {

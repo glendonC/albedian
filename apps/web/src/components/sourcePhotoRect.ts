@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
+import { orientedSize, orientStoredPoint } from '@albedian/contracts';
 import type { DisplayOrientation, ObservationSession } from '@albedian/contracts';
+
+// One turn for the photo, its markers and the anchor (packages/observation): the contract's
+export { orientedSize, orientStoredPoint };
 
 /** Where the photo is drawn on screen, in CSS pixels from the viewport's top left. */
 export interface PhotoRect {
@@ -14,44 +18,6 @@ export interface PhotoCrop {
   zoom?: number;
   panX?: number;
   panY?: number;
-}
-
-/**
- * The size a stored frame is shown at: a quarter or three-quarter turn swaps width and height.
- * Detections and the WCS stay in stored pixels; only display applies the orientation.
- */
-export function orientedSize(
-  storedWidthPx: number,
-  storedHeightPx: number,
-  orientation?: DisplayOrientation
-): { widthPx: number; heightPx: number } {
-  const turned = (orientation?.quarterTurnsClockwise ?? 0) % 2 === 1;
-  return turned
-    ? { widthPx: storedHeightPx, heightPx: storedWidthPx }
-    : { widthPx: storedWidthPx, heightPx: storedHeightPx };
-}
-
-/**
- * Where a stored pixel is shown once the frame is oriented as the camera meant it, in the contract's
- * canonical form: mirror left to right if `mirrored`, then turn clockwise a quarter at a time.
- */
-export function orientStoredPoint(
-  xPx: number,
-  yPx: number,
-  storedWidthPx: number,
-  storedHeightPx: number,
-  orientation?: DisplayOrientation
-): { xPx: number; yPx: number } {
-  let x = orientation?.mirrored ? storedWidthPx - xPx : xPx;
-  let y = yPx;
-  let height = storedHeightPx;
-  let width = storedWidthPx;
-  for (let turn = 0; turn < (orientation?.quarterTurnsClockwise ?? 0); turn++) {
-    // A clockwise quarter turn sends (x, y) in a width x height frame to (height - y, x) in height x width
-    [x, y] = [height - y, x];
-    [width, height] = [height, width];
-  }
-  return { xPx: x, yPx: y };
 }
 
 /**
@@ -104,8 +70,10 @@ export function sourcePhotoDisplayRect(
 }
 
 /**
- * Where a stored pixel of the photo lands on screen: turned by the photo's display orientation, then
- * placed in the same rectangle the photo is drawn in.
+ * Where a detection in the photo lands on screen: at the centre of its pixel, turned by the photo's
+ * display orientation, then placed in the same rectangle the photo is drawn in. The detector reports
+ * centroids in array indices, pixel centres at whole numbers (services/science/detector.py), so the
+ * point on the photo is half a pixel further right and down, as the scan card's crop also takes it.
  */
 export function sourcePixelToViewport(
   xPx: number,
@@ -118,7 +86,7 @@ export function sourcePixelToViewport(
   orientation?: DisplayOrientation
 ): { xPx: number; yPx: number } {
   const shown = orientedSize(sourceWidthPx, sourceHeightPx, orientation);
-  const p = orientStoredPoint(xPx, yPx, sourceWidthPx, sourceHeightPx, orientation);
+  const p = orientStoredPoint(xPx + 0.5, yPx + 0.5, sourceWidthPx, sourceHeightPx, orientation);
   const rect = sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, viewportWidthPx, viewportHeightPx, crop);
   return {
     xPx: rect.leftPx + (p.xPx / Math.max(1, shown.widthPx)) * rect.widthPx,

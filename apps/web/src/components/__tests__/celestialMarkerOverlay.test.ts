@@ -182,12 +182,12 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
       observationSolution: { ...base.observationSolution!, findings },
     };
 
-    // 1920x1080 fits 1440x900 as 1440x810 from y=45 (shape kept, letterboxed), so
-    // f_obs at (480, 270) -> u=0.25, v=0.25 -> (360, 45 + 0.25 * 810 = 247.5)
+    // 1920x1080 fits 1440x900 as 1440x810 from y=45 (shape kept, letterboxed). f_obs at (480, 270) is the centre of
+    // its pixel, (480.5, 270.5) on the photo -> u=480.5/1920, v=270.5/1080 -> (360.375, 45 + 270.5 * 0.75 = 247.875)
     const pObs = projectFindingToViewport(findings[0]!, session, 1440, 900);
     expect(pObs.visible).toBe(true);
-    expect(pObs.xPct).toBeCloseTo(25, 3);
-    expect(pObs.yPct).toBeCloseTo(27.5, 3);
+    expect(pObs.xPct).toBeCloseTo(25.026, 3);
+    expect(pObs.yPct).toBeCloseTo(27.542, 3);
     expect(pObs.xPx).toBe(360);
     expect(pObs.yPx).toBe(248);
 
@@ -200,11 +200,12 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
       ...session,
       cropTransform: { zoom: 2, panX: 0.1, panY: 0.05 },
     };
-    // u' = (0.25 - 0.5) * 2 + 0.5 + 0.1 = 0.1 -> x = 0.1 * 1440; v' = 0.05 -> y = 45 + 0.05 * 810 = 85.5
+    // u' = (480.5/1920 - 0.5) * 2 + 0.5 + 0.1 = 0.100521 -> 10.052 %; v' = (270.5/1080 - 0.5) * 2 + 0.55 = 0.050926
+    // -> y = 45 + 0.050926 * 810 = 86.25 -> 9.583 %
     const pZoomed = projectFindingToViewport(findings[0]!, zoomedSession, 1440, 900);
     expect(pZoomed.visible).toBe(true);
-    expect(pZoomed.xPct).toBeCloseTo(10, 3);
-    expect(pZoomed.yPct).toBeCloseTo(9.5, 3);
+    expect(pZoomed.xPct).toBeCloseTo(10.052, 3);
+    expect(pZoomed.yPct).toBeCloseTo(9.583, 3);
 
     const offscreenSession: ObservationSession = {
       ...session,

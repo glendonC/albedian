@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
+import { computeStarAnchorNdc } from '@albedian/observation';
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -41,13 +42,8 @@ export function useCameraFlightAnimation(
         Number((targetParsec[2] * 0.45).toFixed(3)),
       ];
 
-      const anchorNdc: [number, number] =
-        target.sourceDetection && session.sourceAsset
-          ? [
-              (target.sourceDetection.xPx / session.sourceAsset.width) * 2 - 1,
-              1 - (target.sourceDetection.yPx / session.sourceAsset.height) * 2,
-            ]
-          : [0, 0];
+      // The same anchor the reducer locks on selection: the detection as the upright photo shows it
+      const anchorNdc = computeStarAnchorNdc(target, session.sourceAsset);
 
       if (session.reducedMotion) {
         setSession((prev) => ({

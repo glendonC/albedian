@@ -61,13 +61,16 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
 
   if (!asset || !shown) return null;
 
-  // The receipt's measured size, turned upright, is the frame the photo is shown in; the decoded
-  // size (already upright) stands in only while the receipt has not arrived
+  // The receipt's measured size, turned upright, is the frame the photo is shown in. The decoded size
+  // (as the browser drew it) stands in while the receipt has not arrived, and when the browser turned the
+  // photo differently from its tag, so the box always has the shape of what is on screen
   const measured = asset.width > 1 && asset.height > 1;
   const naturalForUri = natural && natural.uri === asset.uri ? natural : null;
   const upright = orientedSize(asset.width, asset.height, asset.displayOrientation);
-  const shownW = measured ? upright.widthPx : naturalForUri?.widthPx ?? upright.widthPx;
-  const shownH = measured ? upright.heightPx : naturalForUri?.heightPx ?? upright.heightPx;
+  const mismatched = mismatchUri === asset.uri;
+  const useDecoded = (!measured || mismatched) && naturalForUri !== null;
+  const shownW = useDecoded ? naturalForUri.widthPx : upright.widthPx;
+  const shownH = useDecoded ? naturalForUri.heightPx : upright.heightPx;
   const rect = sourcePhotoDisplayRect(shownW, shownH, viewW, viewH, session.cropTransform);
   const reportDecodedSize = (decodedW: number, decodedH: number) => {
     setNatural({ uri: asset.uri, widthPx: decodedW, heightPx: decodedH });
@@ -83,8 +86,11 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     height: `${rect.heightPx}px`,
     maxWidth: 'none',
     display: 'block',
+    // The browser turns the photo by its tag; set here so no stylesheet can switch that off
+    imageOrientation: 'from-image',
   };
   const failed = failedUri === asset.uri;
+  const kind = asset.mediaKind === 'video' ? 'clip' : 'photo';
   const badge = getEpistemicBadgeDescriptor('observed');
 
   return (
@@ -146,7 +152,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           onLoad={(e) => reportDecodedSize(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
         />
       )}
-      {mismatchUri === asset.uri && !failed && (
+      {mismatched && !failed && (
         <p
           data-testid="source-photo-orientation-mismatch"
           role="status"
@@ -163,7 +169,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          This browser turned the photo differently from its orientation tag, so the markers are hidden
+          This browser turned the {kind} differently from its orientation tag, so the markers are hidden
           rather than shown in the wrong places.
         </p>
       )}
@@ -182,13 +188,15 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          <span title={badge.label}>{badge.shortCode}</span> · Your {asset.mediaKind === 'video' ? 'clip' : 'photo'} ·{' '}
-          {failed ? 'not shown by this browser' : 'original pixels'}
+          <span title={badge.label}>{badge.shortCode}</span> · Your {kind} ·{' '}
+          {failed ? 'not shown by this browser' : mismatched ? 'as this browser turned it' : 'original pixels'}
         </span>
         <p className="alb-layer-credits">
           {failed
             ? 'Each marker sits where its star was measured in the stored file.'
-            : 'Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.'}
+            : mismatched
+              ? 'Not enhanced or retouched. The markers are hidden because this view disagrees with the orientation tag.'
+              : 'Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.'}
         </p>
       </div>
     </div>

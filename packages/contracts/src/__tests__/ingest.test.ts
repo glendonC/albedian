@@ -15,6 +15,8 @@ import {
   JOB_STATES,
   METADATA_CONTAINERS,
   OrientationHintSchema,
+  orientedSize,
+  orientStoredPoint,
   PROGRESS_UNITS,
   SolveJobSchema,
   SourceAssetSchema,
@@ -133,6 +135,26 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
         expect(composeDisplayOrientations(first, undo)).toEqual({ quarterTurnsClockwise: 0, mirrored: false });
       }),
       { seed: SEED, numRuns: 200, examples: [[FORMS[1]!, FORMS[4]!, [[1, 2, 3], [4, 5, 6]]]] }
+    );
+  });
+
+  it('PBT: orientStoredPoint moves each pixel centre to where the orientation moves that pixel (experience-9h)', () => {
+    const size = fc.tuple(fc.integer({ min: 1, max: 6 }), fc.integer({ min: 1, max: 7 }));
+    fc.assert(
+      fc.property(fc.constantFrom(...FORMS), size, (form, [height, width]) => {
+        // Every pixel holds its own index, so a pixel that lands in the wrong place is caught
+        const pixels = Array.from({ length: height }, (_, row) => Array.from({ length: width }, (_, col) => row * width + col));
+        const shown = show(form, pixels);
+        const shownSize = orientedSize(width, height, form);
+        expect([shown[0]!.length, shown.length]).toEqual([shownSize.widthPx, shownSize.heightPx]);
+        for (let row = 0; row < height; row += 1) {
+          for (let col = 0; col < width; col += 1) {
+            const p = orientStoredPoint(col + 0.5, row + 0.5, width, height, form);
+            expect(shown[Math.floor(p.yPx)]![Math.floor(p.xPx)]).toBe(row * width + col);
+          }
+        }
+      }),
+      { seed: SEED, numRuns: 200, examples: [[EXIF_ORIENTATIONS[6], [2, 3]]] }
     );
   });
 
