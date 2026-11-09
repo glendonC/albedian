@@ -6,7 +6,9 @@ Covers:
 - PBT: `CelestialFindingRecord` enforces the contract's sky position rules and emits no nulls
 - `ObservationSolution` ties observed sky positions to a verified WCS in both directions, and
   accepts catalog matches only with one
-- The Python contract fixture that the TypeScript schema tests parse is current
+- The Python contract fixture that the TypeScript schema tests parse is current: numbers within 1e-6, text word for
+  word with each printed decimal within one unit of its last digit, so a last-bit libm difference between platforms
+  passes and a changed word, id or count does not
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -472,7 +475,55 @@ def _matches(actual: Any, stored: Any) -> bool:
         return isinstance(actual, (int, float)) and isinstance(stored, (int, float)) and math.isclose(
             actual, stored, rel_tol=1e-6, abs_tol=1e-9
         )
+    if isinstance(actual, str) and isinstance(stored, str):
+        return _text_matches(actual, stored)
     return actual == stored
+
+
+# A float printed into text: digits with a decimal point or thousands separators, touching no letter, digit or dot,
+# so an id (HIP 27989), an epoch (J2031.66), a version (1.0.0) or a count stays text
+PRINTED_DECIMAL = re.compile(r"(?<![\w.,])[-+]?(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)(?![\w.,]*\d)")
+
+
+def _text_matches(actual: str, stored: str) -> bool:
+    """Word for word, with each printed decimal within one unit of its last printed digit and printed to as many
+    decimals: where another platform's libm differs in the last bits, a rounding may land one digit apart."""
+    if PRINTED_DECIMAL.split(actual) != PRINTED_DECIMAL.split(stored):
+        return False
+    return all(
+        _printed_within_one_last_digit(a, s)
+        for a, s in zip(PRINTED_DECIMAL.findall(actual), PRINTED_DECIMAL.findall(stored))
+    )
+
+
+def _printed_within_one_last_digit(actual: str, stored: str) -> bool:
+    decimals = len(actual.partition(".")[2])
+    if len(stored.partition(".")[2]) != decimals:
+        return False
+    unit = 10.0**-decimals
+    return abs(float(actual.replace(",", "")) - float(stored.replace(",", ""))) <= unit * (1.0 + 1e-9)
+
+
+def test_fixture_text_matches_word_for_word_and_its_printed_decimals_within_one_last_digit() -> None:
+    """A float printed into text (an altitude, a distance, an arcsec count) may round one last digit apart where
+    another platform's libm differs in the last bits; every word, integer, id and version still matches exactly."""
+    assert _matches("Alt +33.0° Az 224.3°", "Alt +33.1° Az 224.2°")
+    assert _matches("about 2,962 arcsec", "about 2,963 arcsec")
+    assert _matches("Alt +0.0°", "Alt -0.1°")
+    assert _matches("Measured at (933.5, 121.5) px", "Measured at (933.4, 121.6) px")
+    # Two last digits apart
+    assert not _matches("Alt +33.0° Az 224.3°", "Alt +33.2° Az 224.3°")
+    assert not _matches("about 2,962 arcsec", "about 2,964 arcsec")
+    # A word, the number of printed digits, the unit
+    assert not _matches("Alt +33.0° Az 224.3°", "Alt +33.0° El 224.3°")
+    assert not _matches("12.3 pc", "12.30 pc")
+    assert not _matches("12.3 pc", "12.3 AU")
+    # Integers, ids, epochs and versions stay text
+    assert not _matches("HIP 27989", "HIP 27990")
+    assert not _matches("Observed Point Source #9", "Observed Point Source #8")
+    assert not _matches("J2031.66", "J2031.67")
+    assert not _matches("1.0.0", "1.0.1")
+    assert not _matches("1.0.0", "1.1.0")
 
 
 def test_python_contract_fixture_is_current() -> None:
