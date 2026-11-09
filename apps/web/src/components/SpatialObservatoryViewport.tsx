@@ -31,6 +31,8 @@ import { FlightAndRestoreHud } from './FlightAndRestoreHud.js';
 import { EpochAndDisclosureHud } from '../spatial/EpochAndDisclosureHud.js';
 import { ObservationSolveAndCompareHud } from '../spatial/ObservationSolveAndCompareHud.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
+import { SourcePhotoStage } from './SourcePhotoStage.js';
+import { isSourcePhotoShown } from './sourcePhotoRect.js';
 import '../styles/albedian.css';
 
 export interface SpatialObservatoryViewportProps {
@@ -117,6 +119,7 @@ export const SpatialObservatoryViewport: React.FC<
   discoveredMedia,
   activeDiscoveredId,
   activeDiscoveredItem: propActiveDiscoveredItem,
+  uploadedMediaUrl,
   commandText,
   setCommandText,
   onRunUtterance,
@@ -168,6 +171,11 @@ export const SpatialObservatoryViewport: React.FC<
     }
     return 0;
   });
+  // Choosing a file to upload leaves the landing, so the upload, its solve and the photo show at once
+  useEffect(() => {
+    if (uploadedMediaUrl) setEntryStageActive(false);
+  }, [uploadedMediaUrl]);
+
   // The showcase scene last started on which renderer; null scene after leaving the landing
   const appliedShowcaseRef = useRef<{ renderer: CosmosRenderer | null; sceneKey: string | null }>({
     renderer: null,
@@ -429,7 +437,10 @@ export const SpatialObservatoryViewport: React.FC<
         data-testid="spark-portal-canvas"
       />
 
-      {renderLayers && <RenderLayerDisclosure layers={renderLayers} />}
+      {/* While the photo covers the canvas, the stage's own label says what is on screen */}
+      {renderLayers && !(!entryStageActive && isSourcePhotoShown(session)) && (
+        <RenderLayerDisclosure layers={renderLayers} />
+      )}
 
       {/* =======================================================================
           SCREEN 1: CLEAN LANDING PAGE
@@ -503,6 +514,7 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && (
         <>
+          <SourcePhotoStage session={session} />
           <CelestialMarkerOverlay
             session={session}
             selectedFinding={selectedFinding}

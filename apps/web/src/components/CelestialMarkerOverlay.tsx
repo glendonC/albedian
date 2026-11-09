@@ -7,6 +7,7 @@ import {
   type Vec3,
 } from '@albedian/camera-rig';
 import { getMarkerVisualSpec, type MarkerVisualSpec } from '@albedian/design-system';
+import { sourcePixelToViewport, useViewportSize } from './sourcePhotoRect.js';
 
 export interface CelestialMarkerOverlayProps {
   session: ObservationSession;
@@ -52,22 +53,17 @@ export function projectFindingToViewport(
     if (!det) {
       return { visible: false, xPct: 0, yPct: 0, xPx: 0, yPx: 0 };
     }
+    // The same rectangle SourcePhotoStage draws the photo in: shape kept, letterboxed, then zoomed and panned
     const srcW = Math.max(1, session.sourceAsset?.width ?? safeW);
     const srcH = Math.max(1, session.sourceAsset?.height ?? safeH);
-    const u = det.xPx / srcW;
-    const v = det.yPx / srcH;
-    const zoom = session.cropTransform?.zoom ?? 1;
-    const panX = session.cropTransform?.panX ?? 0;
-    const panY = session.cropTransform?.panY ?? 0;
-    const uZoomed = (u - 0.5) * zoom + 0.5 + panX;
-    const vZoomed = (v - 0.5) * zoom + 0.5 + panY;
-    const visible = uZoomed >= 0 && uZoomed <= 1 && vZoomed >= 0 && vZoomed <= 1;
+    const p = sourcePixelToViewport(det.xPx, det.yPx, srcW, srcH, safeW, safeH, session.cropTransform);
+    const visible = p.xPx >= 0 && p.xPx <= safeW && p.yPx >= 0 && p.yPx <= safeH;
     return {
       visible,
-      xPct: uZoomed * 100,
-      yPct: vZoomed * 100,
-      xPx: Math.round(uZoomed * safeW),
-      yPx: Math.round(vZoomed * safeH),
+      xPct: (p.xPx / safeW) * 100,
+      yPct: (p.yPx / safeH) * 100,
+      xPx: Math.round(p.xPx),
+      yPx: Math.round(p.yPx),
     };
   }
 
@@ -173,10 +169,14 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
   session,
   selectedFinding,
   onSelectFinding,
-  viewportWidthPx = 1440,
-  viewportHeightPx = 900,
+  viewportWidthPx,
+  viewportHeightPx,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // The overlay covers the window, so the window's size is the frame markers are placed in
+  const windowSize = useViewportSize();
+  const viewW = viewportWidthPx ?? windowSize.widthPx;
+  const viewH = viewportHeightPx ?? windowSize.heightPx;
   const findings = session.observationSolution?.findings ?? [];
   if (findings.length === 0) return null;
 
@@ -193,8 +193,8 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
         const pos = projectFindingToViewport(
           finding,
           session,
-          viewportWidthPx,
-          viewportHeightPx
+          viewW,
+          viewH
         );
         if (!pos.visible) return null;
 
