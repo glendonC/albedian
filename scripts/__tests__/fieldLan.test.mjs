@@ -195,7 +195,7 @@ describe('vite preview with the web app config, as --lan serves it', () => {
     fs.writeFileSync(path.join(sources, 'vcsl/Chimes/C#4.wav'), SAMPLE);
     fs.symlinkSync(path.join(root, 'data/uploads/planted-clip.txt'), path.join(sources, 'escape.txt'));
     fs.symlinkSync(path.join(root, 'data/uploads'), path.join(sources, 'out'));
-    music = createSourcesServer({ sourcesDir: sources, factsFile: path.join(root, '.cache/music/facts.json') });
+    music = createSourcesServer({ sourcesDir: sources, factsFile: path.join(root, '.cache/music/facts.json'), listed: ['vcsl/Chimes/C#4.wav'] });
     const { port: musicPort } = await listenOnLoopback(music, 0);
     process.env.ALBEDIAN_MUSIC_TARGET = `http://127.0.0.1:${musicPort}`;
 

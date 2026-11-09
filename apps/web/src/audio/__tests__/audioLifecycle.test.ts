@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AUDIO_CONTROL_SELECTOR, AudioLifecycle, type LifecycleContext, type LifecycleHost } from '../engine/audioLifecycle';
 import { ObservatoryAudioEngine } from '../ObservatoryAudioEngine';
 
-type Listener = (event?: { readonly target?: unknown }) => void;
+type Listener = (event?: { readonly type?: string; readonly target?: unknown }) => void;
 
 const captureOf = (options?: boolean | { capture?: boolean }) => (typeof options === 'boolean' ? options : (options?.capture ?? false));
 
@@ -20,7 +20,7 @@ class Target {
   removeEventListener(type: string, fn: Listener, options?: boolean | { capture?: boolean }) {
     this.listeners.get(`${type}|${captureOf(options)}`)?.delete(fn);
   }
-  fire(type: string, event?: { readonly target?: unknown }) {
+  fire(type: string, event?: { readonly type?: string; readonly target?: unknown }) {
     for (const capture of [true, false]) for (const fn of [...(this.listeners.get(`${type}|${capture}`) ?? [])]) fn(event);
   }
   count(type: string) {
@@ -77,7 +77,7 @@ class Host extends Target implements LifecycleHost {
   }
   gesture(ctx: PhoneContext, type = 'touchend', target: unknown = null) {
     ctx.inGesture = true;
-    this.fire(type, { target });
+    this.fire(type, { type, target });
     ctx.inGesture = false;
   }
 }
@@ -213,6 +213,7 @@ describe('AudioLifecycle on phones', () => {
     expect(AUDIO_CONTROL_SELECTOR).toBe('[data-audio-control="toggle"]');
     const resumes = ctx.resumes;
     host.gesture(ctx, 'pointerdown', audioButton);
+    host.gesture(ctx, 'touchend', audioButton);
     await flush();
     expect(ctx.resumes).toBe(resumes);
     expect(ctx.state).toBe('interrupted');
@@ -230,6 +231,14 @@ describe('AudioLifecycle on phones', () => {
     other.host.gesture(other.ctx, 'keydown', elsewhere);
     await flush();
     expect(other.ctx.state).toBe('running');
+
+    // A key while the Audio button has focus (an arrow after clicking it) is not a tap on it: it resumes
+    const keyed = setup({ needsGesture: true });
+    keyed.ctx.setState('interrupted');
+    await flush();
+    keyed.host.gesture(keyed.ctx, 'keydown', audioButton);
+    await flush();
+    expect(keyed.ctx.state).toBe('running');
   });
 
   it('stops waiting for a tap on detach, so a later tap resumes nothing', async () => {

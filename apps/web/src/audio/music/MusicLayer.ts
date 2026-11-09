@@ -284,9 +284,12 @@ export class MusicLayer {
     if (!options.sourcesBase) this.status = { ...this.status, state: 'unavailable', reason: NOT_SERVED, why: 'not_served' };
   }
 
-  /** Whether the music wants the stars on screen: only while it can play and is not off. */
+  /**
+   * Whether the music wants the stars on screen: while it can play, or while a try after a missing file
+   * runs (so the pass it recovers with plays them), and never with the music off.
+   */
   wantsStars(): boolean {
-    return this.status.state !== 'unavailable' && this.setting !== 'off';
+    return (this.status.state !== 'unavailable' || this.retrying) && this.setting !== 'off';
   }
 
   get setting(): MusicSetting {

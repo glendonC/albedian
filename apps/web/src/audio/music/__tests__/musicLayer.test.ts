@@ -580,6 +580,33 @@ describe('MusicLayer after a missing file', () => {
     }
   });
 
+  it('wants the stars on screen while a try runs, so the recovered pass plays them', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let missing = true;
+    const { fetch } = sourcesFetch({ fail: (url) => missing && url.includes(ORGAN) });
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    const ctx = new FakeContext();
+    // As the sky feed does: it hands the music the stars on screen each frame, only while the music wants them
+    const frames = async (until: number) => {
+      while (ctx.currentTime < until - 1e-9) {
+        if (layer.wantsStars()) layer.setStars(STARS);
+        const step = Math.min(0.1, until - ctx.currentTime);
+        ctx.currentTime += step;
+        await vi.advanceTimersByTimeAsync(step * 1000);
+      }
+    };
+    // Audio on before the feed has any stars, and the organ missing: the first pass fails fast
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ state: 'unavailable', retryAtSec: 25 });
+    await frames(24.9);
+    expect(layer.wantsStars()).toBe(false);
+    // The organ is served now; the try at 25 s takes the stars again and plays them
+    missing = false;
+    await frames(26);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', piece: 'organ-pulse', starsPlayed: 2 });
+    layer.stop();
+  });
+
   it('starts the waits over once the music has played again', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     let missing = true;

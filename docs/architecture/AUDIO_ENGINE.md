@@ -938,15 +938,21 @@ moments of a visit, a piece plays through, a silence follows, then another piece
 - **Sources.** The samples and the recording are fetched from `VITE_ALBEDIAN_MUSIC_SOURCES`, or in
   development from the app's own origin at `/music-sources/`, which Vite proxies (`vite.config.ts`)
   to [`apps/web/spike/music/serveSources.mjs`](../../apps/web/spike/music/serveSources.mjs) on
-  `127.0.0.1:5199` (`ALBEDIAN_MUSIC_TARGET` overrides); it serves `.cache/music/sources/`
-  (`node apps/web/spike/music/serveSources.mjs`). A production build carries neither address
-  (`[tested]`). The recording piece
+  `127.0.0.1:5199` (`ALBEDIAN_MUSIC_TARGET` overrides); it serves from `.cache/music/sources/` only
+  the files `sources.json` lists, plus the analysis, refuses any other file, any path out of the
+  folder and any symbolic link, and sends no cross-origin header, since everything reaches it through
+  the same-origin proxy (`node apps/web/spike/music/serveSources.mjs`, as `pnpm field` also starts
+  it; `--sources` and `--facts` point it at another folder, the list staying the committed
+  `sources.json`; `[tested]`). A production
+  build made without `VITE_ALBEDIAN_MUSIC_SOURCES` carries neither address (`[tested]`); a build
+  given it, as the field run's `--lan` build is, fetches from that base. The recording piece
   plays inside the beats and chords `analysis.ts` measured from the recording when the demo page was
   rendered, served as `/recording-analysis.json` from `.cache/music/facts.json`. Where a file is
   missing the music stays silent and `getMusicStatus()` names it; nothing stands in for it
   (`[tested]`). While Audio is on the layer then tries again after `15`, `30` and `60 s` and every
   `120 s` after, on the context's clock (so not while it is suspended), fetching only what it still
-  lacks; `retryAtSec` in the status says when. When a try succeeds the music plays, and the Music
+  lacks; `retryAtSec` in the status says when. While a try runs the music takes the stars on screen
+  again, so the pass it recovers with plays them (`[tested]`). When a try succeeds the music plays, and the Music
   control and the disclosure come back by themselves. There is no try with no sources base or with
   Audio off (`[tested]`). How the samples reach a production build (a trimmed, encoded set in the build, or
   hosting) is `[open]`.
@@ -986,9 +992,10 @@ behave is `[open]` until the checklist below is run on an iPhone and an Android 
   - a context the browser stops while the page is visible (iOS's `interrupted` when the phone locks
     or a call comes in) is resumed, and where the browser refuses a resume outside a gesture, the
     next tap, click or key (`pointerdown`, `touchend`, `keydown`) resumes it; those listeners go
-    once the context runs. A tap on the Audio control itself (marked `data-audio-control="toggle"`)
-    is not taken as that gesture, since the control resumes or stops the audio itself: turning Audio
-    off while a tap is awaited then plays no tail (`[tested]`);
+    once the context runs. A pointer or touch tap on the Audio control itself (marked
+    `data-audio-control="toggle"`) is not taken as that gesture, since the control resumes or stops
+    the audio itself: turning Audio off while a tap is awaited then plays no tail. A key is still
+    taken, even with the control focused (`[tested]`);
   - audio the user turned off is never resumed, through any of the above.
 - **The music on a suspended context.** While the context is not running its clock stands still:
   the soundtrack's director wakes no timer and no pass is scheduled; when it runs again the music

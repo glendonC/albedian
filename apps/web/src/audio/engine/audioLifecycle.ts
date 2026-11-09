@@ -16,16 +16,18 @@
  * The engine attaches one lifecycle when it makes its context, inside the user's gesture.
  */
 
-type Listener = (event?: { readonly target?: unknown }) => void;
+type Listener = (event?: { readonly type?: string; readonly target?: unknown }) => void;
 
 /**
- * Marks the Audio control on the page. It resumes or stops the audio itself, so a tap on it is not
- * taken as a gesture to resume: turning Audio off while a tap is awaited then plays no tail.
+ * Marks the Audio control on the page. It resumes or stops the audio itself, so a tap on it (pointer
+ * or touch) is not taken as a gesture to resume: turning Audio off while a tap is awaited then plays no
+ * tail. A key is still taken, even with the control focused (an arrow key after clicking Audio).
  */
 export const AUDIO_CONTROL_SELECTOR = '[data-audio-control="toggle"]';
 
-/** Whether an event's target sits inside the Audio control. */
-function onAudioControl(event?: { readonly target?: unknown }): boolean {
+/** Whether an event is a tap (not a key) whose target sits inside the Audio control. */
+function tapOnAudioControl(event?: { readonly type?: string; readonly target?: unknown }): boolean {
+  if (event?.type === 'keydown') return false;
   const target = event?.target as { closest?: (selector: string) => unknown } | null | undefined;
   return typeof target?.closest === 'function' && target.closest(AUDIO_CONTROL_SELECTOR) != null;
 }
@@ -155,13 +157,13 @@ export class AudioLifecycle {
     if (this.ctx.state !== 'running' && this.isEnabled()) this.waitForGesture();
   }
 
-  private readonly onGesture = (event?: { readonly target?: unknown }): void => {
+  private readonly onGesture = (event?: { readonly type?: string; readonly target?: unknown }): void => {
     if (!this.isEnabled()) {
       this.stopWaiting();
       return;
     }
     // The Audio control resumes or stops the audio itself: a tap there must not resume first
-    if (onAudioControl(event)) return;
+    if (tapOnAudioControl(event)) return;
     void this.ctx.resume().catch(() => undefined);
   };
 
