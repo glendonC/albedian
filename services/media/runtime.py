@@ -504,6 +504,9 @@ class MediaExperimentRuntime:
                 "yuv420p",
                 "-c:a",
                 "copy",
+                # Each frame at its own timestamp, whatever frame rate mode the installed ffmpeg picks for MP4
+                "-fps_mode",
+                "passthrough",
                 "-t",
                 f"{expected_duration_sec:.6f}",
                 str(out_file),
@@ -531,6 +534,8 @@ class MediaExperimentRuntime:
                 "18",
                 "-pix_fmt",
                 "yuv420p",
+                "-fps_mode",
+                "passthrough",
                 "-t",
                 f"{expected_duration_sec:.6f}",
                 str(out_file),

@@ -248,6 +248,56 @@ def test_export_stream_copies_audio_packets_bit_identically_and_preserves_delaye
     assert self_offset_ms < 1.0
 
 
+
+def test_both_exports_pin_frame_timing_and_write_one_video_packet_per_frame(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The export passes `-fps_mode passthrough` as an output option, with audio and without, so each frame is
+    written at its own timestamp whatever frame rate mode the installed ffmpeg picks for MP4 by default (6.1 a
+    constant rate, which fills a gap with duplicated frames; 8.1 a variable rate). Each export holds one video packet
+    per frame, at k/fps."""
+    src_mp4 = tmp_path / "source_with_audio.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-v", "error",
+            "-f", "lavfi", "-i", "color=c=black:s=64x64:r=8:d=1.0",
+            "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1.0",
+            "-map", "0:v:0", "-map", "1:a:0", "-fps_mode", "passthrough",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k",
+            str(src_mp4),
+        ],
+        check=True,
+    )
+    real_run = media_runtime_mod.subprocess.run
+    export_commands: list[list[str]] = []
+
+    def spy(cmd, *args, **kwargs):
+        if cmd and cmd[0] == "ffmpeg" and "pipe:0" in cmd:
+            export_commands.append(list(cmd))
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(media_runtime_mod.subprocess, "run", spy)
+    fps = 8
+    frames = [np.full((64, 64), float(20 * (i + 1)), dtype=np.float64) for i in range(fps)]
+    runtime = MediaExperimentRuntime()
+    for name, audio in (("silent.mp4", None), ("with_audio.mp4", src_mp4)):
+        out = tmp_path / name
+        runtime.export_video_with_audio_remux(frames=frames, fps=fps, output_path=out, audio_source_path=audio)
+        start, packets = _packet_pts_and_md5(out, "0:v:0")
+        assert start is not None and len(packets) == len(frames), name
+        offsets = sorted(pts - start for pts, _ in packets)
+        assert all(abs(offset - k / fps) < 1e-3 for k, offset in enumerate(offsets)), name
+
+    assert len(export_commands) == 2
+    for cmd in export_commands:
+        assert "-fps_mode" in cmd, "the export leaves frame timing to the installed ffmpeg's default"
+        at = cmd.index("-fps_mode")
+        last_input = max(i for i, arg in enumerate(cmd) if arg == "-i")
+        # An output option: after every input, before the output path
+        assert cmd[at + 1] == "passthrough" and last_input < at < len(cmd) - 1
+
+
 def test_export_without_audio_omits_audio_sync_offset_and_refuses_incompatible_audio_stream_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
