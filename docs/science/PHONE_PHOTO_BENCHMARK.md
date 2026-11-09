@@ -151,7 +151,7 @@ What it shows [tested, on simulated frames only]:
   Cassiopeia under a dark sky, 15,555 detections) it returned `calibrated` with 7 held-out inliers
   and a self-reported median residual of 2.4 px, and placed the frame on Orion and Gemini, about
   70 degrees from the truth: it had matched Capella, Elnath, Bellatrix, Mintaka, Alnitak, Rigel,
-  Betelgeuse, Pollux and Hatsya to noise. At that density a random point lies within 3 px of a
+  Betelgeuse, Pollux and Hatysa to noise. At that density a random point lies within 3 px of a
   detection 15 % of the time. The held-out gate (at least 6 inliers, median at most 3 px) does not
   weigh that chance, so a search over thousands of hypotheses finds one that passes.
 - **No false solve on the hard negatives**, but 18 of the 60 hit the time limit before the solver

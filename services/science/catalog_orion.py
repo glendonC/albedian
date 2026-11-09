@@ -66,7 +66,7 @@ PINNED_CATALOG_STARS: tuple[CatalogStar, ...] = (
         337.5872, 386.42804, 464.1803,
     ),
     hipparcos_star(
-        "star-hatsya", "Hatsya", "Iota Orionis", "Orion", 26241,
+        "star-hatysa", "Hatysa", "Iota Orionis", "Orion", 26241,
         83.858258, -5.909900, 2.77, 1.45, -0.60,
         1.4, 0.22,
     ),

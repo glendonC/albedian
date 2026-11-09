@@ -50,7 +50,7 @@ STARS = get_catalog_stars()
 NAMES = tuple(star.common_name for star in STARS)
 OUTLYING = ("Sirius", "Procyon", "Pollux", "Castor", "Capella", "Elnath", "Aldebaran", "Tabit")
 # In these fields the solver trains on these four Orion stars, its consensus matches farthest from the centre
-ORION_TRAINING = ("Rigel", "Saiph", "Hatsya", "Alnitak")
+ORION_TRAINING = ("Rigel", "Saiph", "Hatysa", "Alnitak")
 HELD_OUT = tuple(name for name in NAMES if name not in ORION_TRAINING)
 
 

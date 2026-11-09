@@ -567,8 +567,10 @@ def _epoch_refusal(action: dict[str, Any]) -> tuple[str, str, list[str]] | None:
 def _describe_star(star: CatalogStar) -> str:
     light = compute_light_travel_time_description(star.median_pc)["description"]
     spectral_clause = f", spectral type {star.spectral_type}" if star.spectral_type is not None else ""
+    # A star with no IAU name shows its Bayer designation as its name: not twice
+    designation = "" if star.bayer_designation == star.common_name else f"{star.bayer_designation} "
     return (
-        f"{star.common_name} ({star.bayer_designation} in {star.constellation}{spectral_clause}, "
+        f"{star.common_name} ({designation}in {star.constellation}{spectral_clause}, "
         f"apparent magnitude {star.mag:+.2f}) is {star.median_pc:.1f} pc ({light}) "
         f"away [{star.lower_pc:.1f} to {star.upper_pc:.1f} pc]. Distance: {star.distance_source}. Proper "
         f"motion ({star.pm_ra_mas_yr:+.1f}, {star.pm_dec_mas_yr:+.1f}) mas/yr. Catalog values for "

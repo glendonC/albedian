@@ -278,7 +278,12 @@ def solve_horizon_and_beacon_pose(
                 id=f"finding-predicted-{star.id}",
                 observation_solution_id=solution_id,
                 evidence_class="predicted",
-                title=f"{star.common_name} ({star.bayer_designation})",
+                # A star with no IAU name shows its Bayer designation as its name: not twice
+                title=(
+                    star.common_name
+                    if star.bayer_designation == star.common_name
+                    else f"{star.common_name} ({star.bayer_designation})"
+                ),
                 subtitle=(
                     f"Predicted Star ({star.constellation}) · {star.median_pc:.1f} pc · "
                     f"Alt {alt:+.1f}° Az {az:.1f}°"

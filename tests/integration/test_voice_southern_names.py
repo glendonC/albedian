@@ -89,11 +89,8 @@ def test_a_southern_star_resolves_to_its_row_for_select_describe_and_fly(said: s
 
 
 def test_every_iau_name_in_the_table_resolves_to_its_own_row() -> None:
-    """All but one: the pinned catalog names epsilon Cygni 'Gienah', which the IAU gives gamma Corvi.
-
-    The pinned name keeps its star, as before this table was read; the conflict is listed here so it
-    stays visible.
-    """
+    """Every one: the pinned catalog takes no IAU name from another star (epsilon Cygni is Aljanah, and Gienah
+    is gamma Corvi's), so each name selects its own row."""
     stars = names.named_stars()
     assert len(stars) == len(_rows()) > 400
     conflicts = set()
@@ -102,7 +99,7 @@ def test_every_iau_name_in_the_table_resolves_to_its_own_row() -> None:
         assert intent.action is not None, star.name
         if intent.action["findingId"] != star.finding_id:
             conflicts.add((star.name, intent.action["findingId"]))
-    assert conflicts == {("Gienah", "finding-star-gienah-cygni")}
+    assert conflicts == set()
 
 
 def test_a_pinned_star_keeps_its_own_finding_id() -> None:

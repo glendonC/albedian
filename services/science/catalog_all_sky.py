@@ -131,7 +131,7 @@ ALL_SKY_EXTRA_STARS: tuple[CatalogStar, ...] = (
         7.51, 0.33,
     ),
     hipparcos_star(
-        "star-gienah-cygni", "Gienah", "Epsilon Cygni", "Cygnus", 102488,
+        "star-aljanah", "Aljanah", "Epsilon Cygni", "Cygnus", 102488,
         311.552842, 33.970257, 2.48, 355.66, 330.60,
         44.86, 0.12,
     ),
@@ -256,7 +256,7 @@ ALL_SKY_EXTRA_STARS: tuple[CatalogStar, ...] = (
         59.58, 0.38,
     ),
     hipparcos_star(
-        "star-gamma-cas", "Tsih", "Gamma Cassiopeiae", "Cassiopeia", 4427,
+        "star-gamma-cas", "Gamma Cassiopeiae", "Gamma Cassiopeiae", "Cassiopeia", 4427,
         14.177216, 60.716740, 2.47, 25.17, -3.92,
         5.94, 0.12,
     ),
@@ -283,7 +283,7 @@ CONSTELLATION_EDGES: tuple[tuple[str, str, str], ...] = (
     ("Orion", "star-alnitak", "star-saiph"),
     ("Orion", "star-mintaka", "star-rigel"),
     ("Orion", "star-saiph", "star-rigel"),
-    ("Orion", "star-alnilam", "star-hatsya"),
+    ("Orion", "star-alnilam", "star-hatysa"),
     ("Orion", "star-bellatrix", "star-tabit"),
     # Taurus
     ("Taurus", "star-aldebaran", "star-elnath"),
@@ -330,7 +330,7 @@ CONSTELLATION_EDGES: tuple[tuple[str, str, str], ...] = (
     # Cygnus (Northern Cross)
     ("Cygnus", "star-deneb", "star-sadr"),
     ("Cygnus", "star-sadr", "star-albireo"),
-    ("Cygnus", "star-sadr", "star-gienah-cygni"),
+    ("Cygnus", "star-sadr", "star-aljanah"),
     ("Cygnus", "star-sadr", "star-fawaris"),
     # Lyra
     ("Lyra", "star-vega", "star-sheliak"),
