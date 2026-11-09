@@ -341,4 +341,3 @@ describe('the WebGL renderer wears the observer frame', () => {
     expect(src).toMatch(/observerTime: this\.observer\.frame \? this\.observer\.clock\.kind : null/);
   });
 });
-

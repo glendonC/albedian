@@ -173,13 +173,21 @@ describe("the viewport hands the sky view the recording's place and time", () =>
     expect(horizonRow()).toBeUndefined();
   });
 
-  it("shows neither the recording's place nor its time anywhere in the viewport", () => {
-    renderViewport({ observerLocation: PLACE, capturedAtUTC: CAPTURED_AT });
-    horizonDisclosure();
-    const shown = everythingShown();
-    for (const piece of ['31.2', '31°', '149.0', '149°', '2027', '02-06', '17:00', '17h']) {
-      expect(shown, piece).not.toContain(piece);
+  it("shows and logs neither the recording's place nor its time", () => {
+    const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+    const spies = methods.map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+    try {
+      renderViewport({ observerLocation: PLACE, capturedAtUTC: CAPTURED_AT });
+      horizonDisclosure();
+      const logged = spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(String).join(' '))).join('\n');
+      const shown = everythingShown();
+      for (const piece of ['31.2', '31°', '149.0', '149°', '2027', '02-06', '17:00', '17h']) {
+        expect(shown, piece).not.toContain(piece);
+        expect(logged, piece).not.toContain(piece);
+      }
+      expect(horizonDisclosure()).not.toMatch(/[0-9]/);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
     }
-    expect(horizonDisclosure()).not.toMatch(/[0-9]/);
   });
 });

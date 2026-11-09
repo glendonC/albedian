@@ -12,7 +12,6 @@ import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStat
 import { webglRenderLayersFor } from './webglRenderLayers.js';
 import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, observerHorizonVisible } from './observerPose.js';
 import { canvasCompassLabel, createObserverHorizon, disposeObserverHorizon } from './webgl/observerHorizon.js';
-import { createOriginCameraFrustumIndicator } from './referenceFrameContinuity.js';
 import { centreOnCamera } from './skyMounts.js';
 import {
   createSkyDomeUniforms, createCinemaOpticsUniforms, createCinemaOpticsPass,
@@ -33,8 +32,7 @@ import {
   type PlanetarySkyUniforms, type PlanetaryTerrainPalette,
 } from './webgl/planetarySurfaceRegime.js';
 import {
-  resolveSkyTargetPosition, projectCatalogDirectionToScreen, clampLookPitch,
-  projectSkyWorldPointToScreen, computeCameraTelemetrySnapshot,
+  clampLookPitch,
 } from './webgl/skyTargets.js';
 
 export type SpatialScaleRegime =
@@ -92,7 +90,6 @@ export class SparkPortalRenderer {
   private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
-  private originFrustumGroup: THREE.Group | null = null;
   private catalogStars: CatalogStarField | null = null;
   private readonly catalogStarMounts: THREE.Group[] = [];
 
@@ -129,6 +126,8 @@ export class SparkPortalRenderer {
       this.regimeGroups[r].position.copy(REGIME_CAMERA_ANCHORS[r]);
       this.scene.add(this.regimeGroups[r]);
     }
+    // The horizon needs no drawing context, so it is there even where WebGL is not
+    this.localFrame.add((this.observerHorizon = createObserverHorizon(canvasCompassLabel)));
 
     try {
       this.renderer = new THREE.WebGLRenderer({
@@ -165,19 +164,16 @@ export class SparkPortalRenderer {
         '/textures/eso1804a.jpg'
       );
       this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
-      this.localFrame.add((this.observerHorizon = createObserverHorizon(canvasCompassLabel)));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
       this.buildSolarNeighborhoodWorld();
       this.buildDeepSkyWorld();
       this.buildPlanetarySurfaceWorld();
-      this.originFrustumGroup = createOriginCameraFrustumIndicator();
-      this.localFrame.add(this.originFrustumGroup);
-      this.syncRegimeVisibility();
       this.startLoop();
     } catch {
       this.renderer = null;
     }
+    this.syncRegimeVisibility();
   }
 
   private addCatalogStarMount(group: THREE.Group, radius: number): void {
@@ -344,10 +340,6 @@ export class SparkPortalRenderer {
         }
       }
 
-      if (this.originFrustumGroup) {
-        this.originFrustumGroup.visible = false;
-      }
-
       for (const mount of this.catalogStarMounts) centreOnCamera(mount, this.camera);
       this.catalogStars?.update(this.camera, this.renderer.getPixelRatio());
       this.sparkXr?.updateControllers(this.camera);
@@ -359,17 +351,6 @@ export class SparkPortalRenderer {
       this.rafId = window.requestAnimationFrame(tick);
     };
     this.rafId = window.requestAnimationFrame(tick);
-  }
-
-  public getCameraTelemetry(viewportWidth: number, viewportHeight: number) {
-    return computeCameraTelemetrySnapshot({
-      camera: this.camera, activeRegime: this.activeRegime, deepSkyAnchor: REGIME_CAMERA_ANCHORS.deep_sky,
-      cislunarMoonMesh: this.cislunarMoonMesh, betelgeuseMesh: this.betelgeuseMesh,
-      planetaryParentBodyMesh: this.planetaryParentBodyMesh,
-      curYaw: this.lookTarget.curYaw, curPitch: this.lookTarget.curPitch, curFov: this.curFov,
-      velYaw: this.lookTarget.velYaw, velPitch: this.lookTarget.velPitch,
-      warpFactor: this.cinemaOpticsUniforms.uWarpFactor.value, viewportWidth, viewportHeight,
-    });
   }
 
   public dragLook(deltaPixelsX: number, deltaPixelsY: number): void {
@@ -409,11 +390,6 @@ export class SparkPortalRenderer {
     return cameraSkyPose(this.camera, sky, this.catalogStars.getLimitingMagnitude());
   }
 
-  public projectCatalogPositionToScreen(raDeg: number, decDeg: number, viewportWidth: number, viewportHeight: number) {
-    if (!this.catalogStars) return { x: -999, y: -999, visible: false };
-    return projectCatalogDirectionToScreen(this.camera, this.catalogStars.sceneDirection(raDeg, decDeg), viewportWidth, viewportHeight);
-  }
-
   public nudgeMovement(dx: number, dy: number, dz: number): void {
     if (this.activeRegime === 'earth_capture') {
       this.lookTarget.yaw -= dx * 0.14;
@@ -428,17 +404,6 @@ export class SparkPortalRenderer {
   public nudgeLook(dYaw: number, dPitch: number): void {
     this.lookTarget.yaw += dYaw;
     this.lookTarget.pitch = clampLookPitch(this.lookTarget.pitch + dPitch);
-  }
-
-  public getSkyTargetPosition(id: string, title: string, raDeg: number, decDeg: number): THREE.Vector3 {
-    return resolveSkyTargetPosition(id, title, raDeg, decDeg);
-  }
-
-  public projectSkyTargetToScreen(id: string, title: string, raDeg: number, decDeg: number, viewportWidth: number, viewportHeight: number) {
-    if (viewportWidth > 0 && viewportHeight > 0 && Math.abs(this.camera.aspect - viewportWidth / viewportHeight) > 0.001) {
-      this.resize(viewportWidth, viewportHeight);
-    }
-    return projectSkyWorldPointToScreen(this.camera, this.getSkyTargetPosition(id, title, raDeg, decDeg), viewportWidth, viewportHeight);
   }
 
   public setTargetAppearance(title: string, bpRp?: number, objectType?: string): void {

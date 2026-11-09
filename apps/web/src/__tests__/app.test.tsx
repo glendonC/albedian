@@ -32,7 +32,6 @@ import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { createOriginCameraFrustumIndicator } from '../spatial/referenceFrameContinuity';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
   BRUNETON_ATMO_LUT_URL,
@@ -176,11 +175,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     expect(bench.customRigAnchorDriftPx).toBeLessThan(0.01);
   });
 
-  it('verifies Track 1 (Origin Frustum Continuity) and Track 2 (Bruneton LUT)', () => {
-    // Track 1: Origin Frustum
-    const frustum = createOriginCameraFrustumIndicator();
-    expect(frustum.name).toBe('OriginCameraFrustumIndicator');
-
+  it('verifies Track 2 (Bruneton LUT)', () => {
     // Track 2: Bruneton LUT & GLSL Chunk
     expect(BRUNETON_ATMO_LUT_URL).toBe('/textures/bruneton_atmo_lut.png');
     expect(BRUNETON_ATMO_GLSL_CHUNK).toContain('sampleBrunetonAtmoLut');
@@ -223,7 +218,6 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     );
     expect(rendererSrc).toContain('setShowcaseMode(enabled: boolean)');
     expect(rendererSrc).toContain('transitionToShowcaseScene(');
-    expect(rendererSrc).toContain('this.originFrustumGroup.visible = false;');
     expect(rendererSrc).toContain('sampleBrunetonAtmoLut');
   });
 
