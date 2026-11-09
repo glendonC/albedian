@@ -165,20 +165,31 @@ def test_export_stream_copies_audio_packets_bit_identically_and_preserves_delaye
     out_mp4 = tmp_path / "exported_aligned.mp4"
     unshifted_mp4 = tmp_path / "unshifted_500ms_early.mp4"
 
-    # Source whose video stream starts 500 ms after its audio stream
+    # Source whose video stream starts 500 ms after its audio stream. `-fps_mode passthrough` keeps the ten frames at
+    # their offset timestamps: by default ffmpeg 6.1 picks a constant frame rate for MP4 and fills the 500 ms gap with
+    # five duplicated frames, which leaves no delay at all, while ffmpeg 8.1 picks a variable rate and keeps it.
     subprocess.run(
         [
             "ffmpeg", "-y", "-v", "error",
             "-itsoffset", "0.5",
             "-f", "lavfi", "-i", "color=c=black:s=64x64:r=10:d=1.0",
             "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1.5",
-            "-map", "0:v:0", "-map", "1:a:0",
+            "-map", "0:v:0", "-map", "1:a:0", "-fps_mode", "passthrough",
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "128k",
             str(src_mp4),
         ],
         check=True,
     )
+
+    # Precondition: the fixture holds the delay this test is about, whichever ffmpeg built it. Ten frames, none
+    # duplicated into the gap, the first 500 ms after the audio's first packet, within the one AAC priming frame
+    # (1024 samples at 48 kHz) that a demuxer may or may not place before the first audible sample.
+    fixture_v_start, fixture_v_pkts = _packet_pts_and_md5(src_mp4, "0:v:0")
+    fixture_a_start, _ = _packet_pts_and_md5(src_mp4, "0:a:0")
+    assert fixture_v_start is not None and fixture_a_start is not None
+    assert len(fixture_v_pkts) == 10, f"the fixture holds {len(fixture_v_pkts)} video frames: ffmpeg filled its delay"
+    assert abs((fixture_v_start - fixture_a_start) - 0.5) <= 1024 / 48000 + 1e-3
 
     frames = [np.full((64, 64), float(15 * (i + 1)), dtype=np.float64) for i in range(10)]
     runtime = MediaExperimentRuntime()
