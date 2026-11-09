@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionContext,
+  CelestialFinding,
   ObservationSession,
 } from '@albedian/contracts';
 import {
@@ -53,6 +54,13 @@ export async function ingestAndSolveUploadedFile(
     onSessionUpdate(notStored);
     return notStored;
   }
+}
+
+/** The finding the session selected, or none: a target card shows only for a real selection. */
+export function selectedFindingOf(session: ObservationSession): CelestialFinding | null {
+  const id = session.selectedFindingId;
+  if (!id) return null;
+  return session.observationSolution?.findings.find((f) => f.id === id) ?? null;
 }
 
 export const App: React.FC = () => {
@@ -110,13 +118,9 @@ export const App: React.FC = () => {
     [discoveredMedia, activeDiscoveredId]
   );
 
-  const findings = session.observationSolution?.findings ?? [];
   const selectedFinding = useMemo(
-    () =>
-      findings.find((f) => f.id === session.selectedFindingId) ??
-      findings[0] ??
-      null,
-    [findings, session.selectedFindingId]
+    () => selectedFindingOf(session),
+    [session.observationSolution, session.selectedFindingId]
   );
 
   const runUtterance = (

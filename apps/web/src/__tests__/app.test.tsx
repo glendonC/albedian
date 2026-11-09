@@ -27,7 +27,11 @@ import {
   UploadRefusedError,
   uploadAndSolveMedia,
 } from '../services/apiClient';
-import { ingestAndSolveUploadedFile } from '../App';
+import { ingestAndSolveUploadedFile, selectedFindingOf } from '../App';
+import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation';
+import { createElement } from 'react';
+import { renderToString } from 'react-dom/server';
+import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { createOriginCameraFrustumIndicator } from '../spatial/referenceFrameContinuity';
 import {
   BRUNETON_ATMO_GLSL_CHUNK,
@@ -657,5 +661,50 @@ describe('upload refusals and the state before the receipt (experience-9d)', () 
     } finally {
       fetchSpy.mockRestore();
     }
+  });
+});
+
+describe('the selected finding (experience-9g)', () => {
+  it('is none until the session selects one, even with findings present', () => {
+    const session = createSyntheticCalibratedSession();
+    expect(session.observationSolution!.findings.length).toBeGreaterThan(1);
+    expect(selectedFindingOf({ ...session, selectedFindingId: null })).toBeNull();
+  });
+
+  it('is the finding the session selected', () => {
+    const session = createSyntheticCalibratedSession();
+    const second = session.observationSolution!.findings[1]!;
+    expect(selectedFindingOf({ ...session, selectedFindingId: second.id })?.id).toBe(second.id);
+  });
+
+  it('is none when the selected id names no finding of this solution', () => {
+    const session = createSyntheticCalibratedSession();
+    expect(selectedFindingOf({ ...session, selectedFindingId: 'finding-from-another-photo' })).toBeNull();
+  });
+
+  it('flies nowhere when asked for a finding that is not in the session, instead of to the first one', () => {
+    const base = createSyntheticCalibratedSession();
+    // The first finding has a 3D position, so a fallback to it would start a flight
+    const first = base.observationSolution!.findings.find((f) => resolveFindingParsecPosition(f) !== null)!;
+    const session = {
+      ...base,
+      reducedMotion: true,
+      observationSolution: {
+        ...base.observationSolution!,
+        findings: [first, ...base.observationSolution!.findings.filter((f) => f.id !== first.id)],
+      },
+    };
+    const setSession = vi.fn();
+    let fly: ((id: string) => void) | null = null;
+    const Probe = () => {
+      fly = useCameraFlightAnimation(session, setSession).animatePhaseAToPhaseBSpaceFlight;
+      return null;
+    };
+    renderToString(createElement(Probe));
+    fly!('finding-from-another-photo');
+    expect(setSession).not.toHaveBeenCalled();
+    // A real id still flies (reduced motion lands at once)
+    fly!(first.id);
+    expect(setSession).toHaveBeenCalledTimes(1);
   });
 });

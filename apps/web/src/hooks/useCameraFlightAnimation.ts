@@ -23,9 +23,8 @@ export function useCameraFlightAnimation(
   const animatePhaseAToPhaseBSpaceFlight = useCallback(
     (targetFindingId: string) => {
       const findings = session.observationSolution?.findings ?? [];
-      const target =
-        findings.find((f) => f.id === targetFindingId) ??
-        findings[0];
+      // Only the finding asked for: an id that names none flies nowhere
+      const target = findings.find((f) => f.id === targetFindingId);
       if (!target) return;
 
       // The flight needs a measured 3D position: no direction or distance is assumed
