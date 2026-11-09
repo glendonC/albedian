@@ -240,6 +240,13 @@ def test_export_stream_copies_audio_packets_bit_identically_and_preserves_delaye
     assert unshifted_offset_ms is not None
     assert abs(unshifted_offset_ms - 500.0) < 1.0
 
+    # The measurement reads the exported file's own video start, not only the source's: the delayed-video source
+    # measured against itself is aligned, although its video starts 500 ms after its audio
+    preserved_self, self_offset_ms = media_runtime_mod._verify_copied_audio_packets_and_offset_ms(src_mp4, src_mp4)
+    assert preserved_self is True
+    assert self_offset_ms is not None
+    assert self_offset_ms < 1.0
+
 
 def test_export_without_audio_omits_audio_sync_offset_and_refuses_incompatible_audio_stream_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
