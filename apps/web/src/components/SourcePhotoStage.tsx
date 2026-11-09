@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
-import { isSourcePhotoShown, sourcePhotoDisplayRect, useViewportSize } from './sourcePhotoRect.js';
+import {
+  decodedFrameMatches,
+  isSourcePhotoShown,
+  orientedSize,
+  sourcePhotoDisplayRect,
+  useViewportSize,
+} from './sourcePhotoRect.js';
 
 export interface SourcePhotoStageProps {
   session: ObservationSession;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
+  /** Told after each load whether the browser's frame disagrees with the asset's orientation. */
+  onFrameMismatch?: (mismatch: boolean) => void;
 }
 
 /**
@@ -14,43 +22,59 @@ export interface SourcePhotoStageProps {
  * observation first). It covers the 3D canvas so no modeled scene shows around or through it, and
  * it applies no filter, blend or tone change: the pixels on screen are the file's pixels. Markers
  * use the same rectangle (sourcePhotoRect.ts), so each sits on the pixel it was measured at.
+ *
+ * A phone stores a portrait photo turned on its side with an orientation tag. The browser draws the
+ * photo upright by its default (image-orientation: from-image), reading the same tags the ingest
+ * reads into `displayOrientation`; the box is fitted to that upright shape and the markers are turned
+ * by the same `displayOrientation`. If the decoded frame has the other shape, the two disagree, so the
+ * stage says so and the markers are hidden rather than misplaced.
  */
 export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   session,
   viewportWidthPx,
   viewportHeightPx,
+  onFrameMismatch,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
   const viewH = viewportHeightPx ?? windowSize.heightPx;
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const [natural, setNatural] = useState<{ uri: string; widthPx: number; heightPx: number } | null>(null);
+  const [mismatchUri, setMismatchUri] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const asset = session.sourceAsset;
   const frameTimeSec = session.observationSolution?.frameTimeSec ?? 0;
 
-  // A clip shows the frame the sky was solved on
+  const shown = asset !== undefined && isSourcePhotoShown(session);
+  const seekToSolvedFrame = (video: HTMLVideoElement) => {
+    if (Number.isFinite(frameTimeSec) && frameTimeSec >= 0) video.currentTime = frameTimeSec;
+  };
+
+  // A clip shows the frame the sky was solved on. Each video element seeks when its own metadata
+  // loads (onLoadedMetadata below), so a clip that leaves the source view and comes back lands on
+  // that frame again; one already loaded seeks here when the solved frame changes.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-    const seek = () => {
-      if (Number.isFinite(frameTimeSec) && frameTimeSec >= 0) video.currentTime = frameTimeSec;
-    };
-    if (video.readyState >= 1) seek();
-    video.addEventListener('loadedmetadata', seek);
-    return () => video.removeEventListener('loadedmetadata', seek);
-  }, [asset?.uri, frameTimeSec]);
+    if (video && video.readyState >= 1) seekToSolvedFrame(video);
+  }, [asset?.uri, frameTimeSec, shown]);
 
-  if (!asset || !isSourcePhotoShown(session)) return null;
+  if (!asset || !shown) return null;
 
-  // The receipt's measured size is the frame the detections are in; the decoded size stands in
-  // only while the receipt has not arrived
+  // The receipt's measured size, turned upright, is the frame the photo is shown in; the decoded
+  // size (already upright) stands in only while the receipt has not arrived
   const measured = asset.width > 1 && asset.height > 1;
   const naturalForUri = natural && natural.uri === asset.uri ? natural : null;
-  const srcW = measured ? asset.width : naturalForUri?.widthPx ?? asset.width;
-  const srcH = measured ? asset.height : naturalForUri?.heightPx ?? asset.height;
-  const rect = sourcePhotoDisplayRect(srcW, srcH, viewW, viewH, session.cropTransform);
+  const upright = orientedSize(asset.width, asset.height, asset.displayOrientation);
+  const shownW = measured ? upright.widthPx : naturalForUri?.widthPx ?? upright.widthPx;
+  const shownH = measured ? upright.heightPx : naturalForUri?.heightPx ?? upright.heightPx;
+  const rect = sourcePhotoDisplayRect(shownW, shownH, viewW, viewH, session.cropTransform);
+  const reportDecodedSize = (decodedW: number, decodedH: number) => {
+    setNatural({ uri: asset.uri, widthPx: decodedW, heightPx: decodedH });
+    const mismatch = measured && !decodedFrameMatches(decodedW, decodedH, upright.widthPx, upright.heightPx);
+    setMismatchUri(mismatch ? asset.uri : null);
+    onFrameMismatch?.(mismatch);
+  };
   const mediaStyle: React.CSSProperties = {
     position: 'absolute',
     left: `${rect.leftPx}px`,
@@ -107,13 +131,10 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           aria-label="Your clip as uploaded"
           style={mediaStyle}
           onError={() => setFailedUri(asset.uri)}
-          onLoadedMetadata={(e) =>
-            setNatural({
-              uri: asset.uri,
-              widthPx: e.currentTarget.videoWidth,
-              heightPx: e.currentTarget.videoHeight,
-            })
-          }
+          onLoadedMetadata={(e) => {
+            seekToSolvedFrame(e.currentTarget);
+            reportDecodedSize(e.currentTarget.videoWidth, e.currentTarget.videoHeight);
+          }}
         />
       ) : (
         <img
@@ -122,14 +143,29 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           draggable={false}
           style={mediaStyle}
           onError={() => setFailedUri(asset.uri)}
-          onLoad={(e) =>
-            setNatural({
-              uri: asset.uri,
-              widthPx: e.currentTarget.naturalWidth,
-              heightPx: e.currentTarget.naturalHeight,
-            })
-          }
+          onLoad={(e) => reportDecodedSize(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
         />
+      )}
+      {mismatchUri === asset.uri && !failed && (
+        <p
+          data-testid="source-photo-orientation-mismatch"
+          role="status"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: '16px',
+            transform: 'translateX(-50%)',
+            width: 'min(420px, calc(100vw - 32px))',
+            margin: 0,
+            textAlign: 'center',
+            fontSize: '13px',
+            lineHeight: 1.5,
+            color: 'var(--alb-text-secondary)',
+          }}
+        >
+          This browser turned the photo differently from its orientation tag, so the markers are hidden
+          rather than shown in the wrong places.
+        </p>
       )}
       <div
         className="alb-layer-disclosure"
@@ -146,10 +182,13 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
             color: 'var(--alb-text-secondary)',
           }}
         >
-          <span title={badge.label}>{badge.shortCode}</span> · Your {asset.mediaKind === 'video' ? 'clip' : 'photo'} · original pixels
+          <span title={badge.label}>{badge.shortCode}</span> · Your {asset.mediaKind === 'video' ? 'clip' : 'photo'} ·{' '}
+          {failed ? 'not shown by this browser' : 'original pixels'}
         </span>
         <p className="alb-layer-credits">
-          Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.
+          {failed
+            ? 'Each marker sits where its star was measured in the stored file.'
+            : 'Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.'}
         </p>
       </div>
     </div>

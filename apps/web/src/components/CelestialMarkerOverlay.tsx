@@ -56,7 +56,16 @@ export function projectFindingToViewport(
     // The same rectangle SourcePhotoStage draws the photo in: shape kept, letterboxed, then zoomed and panned
     const srcW = Math.max(1, session.sourceAsset?.width ?? safeW);
     const srcH = Math.max(1, session.sourceAsset?.height ?? safeH);
-    const p = sourcePixelToViewport(det.xPx, det.yPx, srcW, srcH, safeW, safeH, session.cropTransform);
+    const p = sourcePixelToViewport(
+      det.xPx,
+      det.yPx,
+      srcW,
+      srcH,
+      safeW,
+      safeH,
+      session.cropTransform,
+      session.sourceAsset?.displayOrientation
+    );
     const visible = p.xPx >= 0 && p.xPx <= safeW && p.yPx >= 0 && p.yPx <= safeH;
     return {
       visible,

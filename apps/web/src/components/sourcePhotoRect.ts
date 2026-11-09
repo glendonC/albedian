@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ObservationSession } from '@albedian/contracts';
+import type { DisplayOrientation, ObservationSession } from '@albedian/contracts';
 
 /** Where the photo is drawn on screen, in CSS pixels from the viewport's top left. */
 export interface PhotoRect {
@@ -14,6 +14,44 @@ export interface PhotoCrop {
   zoom?: number;
   panX?: number;
   panY?: number;
+}
+
+/**
+ * The size a stored frame is shown at: a quarter or three-quarter turn swaps width and height.
+ * Detections and the WCS stay in stored pixels; only display applies the orientation.
+ */
+export function orientedSize(
+  storedWidthPx: number,
+  storedHeightPx: number,
+  orientation?: DisplayOrientation
+): { widthPx: number; heightPx: number } {
+  const turned = (orientation?.quarterTurnsClockwise ?? 0) % 2 === 1;
+  return turned
+    ? { widthPx: storedHeightPx, heightPx: storedWidthPx }
+    : { widthPx: storedWidthPx, heightPx: storedHeightPx };
+}
+
+/**
+ * Where a stored pixel is shown once the frame is oriented as the camera meant it, in the contract's
+ * canonical form: mirror left to right if `mirrored`, then turn clockwise a quarter at a time.
+ */
+export function orientStoredPoint(
+  xPx: number,
+  yPx: number,
+  storedWidthPx: number,
+  storedHeightPx: number,
+  orientation?: DisplayOrientation
+): { xPx: number; yPx: number } {
+  let x = orientation?.mirrored ? storedWidthPx - xPx : xPx;
+  let y = yPx;
+  let height = storedHeightPx;
+  let width = storedWidthPx;
+  for (let turn = 0; turn < (orientation?.quarterTurnsClockwise ?? 0); turn++) {
+    // A clockwise quarter turn sends (x, y) in a width x height frame to (height - y, x) in height x width
+    [x, y] = [height - y, x];
+    [width, height] = [height, width];
+  }
+  return { xPx: x, yPx: y };
 }
 
 /**
@@ -65,7 +103,10 @@ export function sourcePhotoDisplayRect(
   };
 }
 
-/** Where a pixel of the photo lands on screen: the same rectangle the photo is drawn in. */
+/**
+ * Where a stored pixel of the photo lands on screen: turned by the photo's display orientation, then
+ * placed in the same rectangle the photo is drawn in.
+ */
 export function sourcePixelToViewport(
   xPx: number,
   yPx: number,
@@ -73,13 +114,32 @@ export function sourcePixelToViewport(
   sourceHeightPx: number,
   viewportWidthPx: number,
   viewportHeightPx: number,
-  crop?: PhotoCrop
+  crop?: PhotoCrop,
+  orientation?: DisplayOrientation
 ): { xPx: number; yPx: number } {
-  const rect = sourcePhotoDisplayRect(sourceWidthPx, sourceHeightPx, viewportWidthPx, viewportHeightPx, crop);
+  const shown = orientedSize(sourceWidthPx, sourceHeightPx, orientation);
+  const p = orientStoredPoint(xPx, yPx, sourceWidthPx, sourceHeightPx, orientation);
+  const rect = sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, viewportWidthPx, viewportHeightPx, crop);
   return {
-    xPx: rect.leftPx + (xPx / Math.max(1, sourceWidthPx)) * rect.widthPx,
-    yPx: rect.topPx + (yPx / Math.max(1, sourceHeightPx)) * rect.heightPx,
+    xPx: rect.leftPx + (p.xPx / Math.max(1, shown.widthPx)) * rect.widthPx,
+    yPx: rect.topPx + (p.yPx / Math.max(1, shown.heightPx)) * rect.heightPx,
   };
+}
+
+/**
+ * Whether the frame the browser decoded has the shape the orientation implies. A browser that turns
+ * the photo differently from the ingest (or not at all) shows a frame of the other shape.
+ */
+export function decodedFrameMatches(
+  decodedWidthPx: number,
+  decodedHeightPx: number,
+  shownWidthPx: number,
+  shownHeightPx: number
+): boolean {
+  if (decodedWidthPx <= 0 || decodedHeightPx <= 0) return true;
+  const decoded = decodedWidthPx / decodedHeightPx;
+  const shown = shownWidthPx / Math.max(1, shownHeightPx);
+  return Math.abs(decoded - shown) <= 0.01 * shown;
 }
 
 /** The photo is drawn in the source view of a session that has one; the sky and 3D views draw the renderer. */

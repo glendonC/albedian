@@ -562,3 +562,72 @@ describe('CelestialMarkerOverlay label budget (experience-9b)', () => {
     expect(labelledIds().length).toBe(9);
   });
 });
+
+describe('CelestialMarkerOverlay label budget, auditor gaps (experience-9e)', () => {
+  it('gives the phone budget to predicted objects before any star: 10 predicted and 33 named stars give 8 predicted labels', () => {
+    const base = createSyntheticCalibratedSession();
+    const prdTemplate = buildFourClassFindings(base).find((f) => f.id === 'f_prd')!;
+    const named = buildCrowdedSession(33, 0, 0).observationSolution!.findings;
+    const predicted = Array.from({ length: 10 }, (_, i) => ({ ...prdTemplate, id: `prd_${i}`, title: `Predicted ${i}` }));
+    // Everything sits in front of the camera, spread over the phone screen
+    const placed = [...predicted, ...named].map((f, i) => ({
+      ...f,
+      skyPosition: { raDeg: 0, decDeg: -90 + i * 0.1, uncertaintyArcsec: 1 },
+      cartesianParsecICRS: [(i % 10) * 2 - 9, Math.floor(i / 10) * 4 - 10, -100] as [number, number, number],
+    })) as CelestialFinding[];
+    const session: ObservationSession = {
+      ...base,
+      selectedFindingId: null,
+      focusedFindingId: null,
+      spatialView: {
+        ...base.spatialView,
+        mode: 'registered_sky',
+        observerOriginParsec: [0, 0, 0],
+        activeOverlays: { ...base.spatialView.activeOverlays, observedMarkers: true, predictedEphemerides: true },
+      },
+      observationSolution: { ...base.observationSolution!, findings: placed },
+    };
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: null,
+          onSelectFinding: () => {},
+          viewportWidthPx: 390,
+          viewportHeightPx: 844,
+        })
+      );
+    });
+    // All 43 are on screen, so the budget, not visibility, decides the labels
+    expect(container.querySelectorAll('.alb-marker-hit').length).toBe(43);
+    const labelled = labelledIds();
+    expect(labelled.length).toBe(8);
+    expect(labelled.every((id) => id.startsWith('prd_'))).toBe(true);
+    expect(labelled.some((id) => id.startsWith('named_'))).toBe(false);
+  });
+
+  it('keeps the evidence-class glyph and data on a quiet marker', () => {
+    const session = buildCrowdedSession(33, 30, 705);
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: null,
+          onSelectFinding: () => {},
+          viewportWidthPx: 390,
+          viewportHeightPx: 844,
+        })
+      );
+    });
+    for (const [id, evidenceClass] of [
+      ['obs_0', 'observed'],
+      ['unnamed_0', 'catalog_matched'],
+    ] as const) {
+      const marker = container.querySelector(`[data-testid="celestial-marker-${id}"]`) as HTMLButtonElement;
+      expect(marker.classList.contains('is-quiet')).toBe(true);
+      expect(marker.dataset.evidenceClass).toBe(evidenceClass);
+      expect(marker.dataset.markerShape).toBeTruthy();
+      expect(marker.querySelector('svg')).not.toBeNull();
+    }
+  });
+});

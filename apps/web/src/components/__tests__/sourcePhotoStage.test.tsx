@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { act, createElement } from 'react';
+import { Fragment, act, createElement } from 'react';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
+import { EXIF_ORIENTATIONS, invertDisplayOrientation } from '@albedian/contracts';
 import type { ObservationSession, RenderLayerSet } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 
@@ -54,10 +57,17 @@ vi.mock('../CoalescingBar.js', () => ({
   CoalescingBar: () => null,
 }));
 
-const { fitSourceToViewport, sourcePhotoDisplayRect, sourcePixelToViewport, isSourcePhotoShown } =
-  await import('../sourcePhotoRect.js');
+const {
+  decodedFrameMatches,
+  fitSourceToViewport,
+  sourcePhotoDisplayRect,
+  sourcePixelToViewport,
+  isSourcePhotoShown,
+  orientedSize,
+  orientStoredPoint,
+} = await import('../sourcePhotoRect.js');
 const { SourcePhotoStage } = await import('../SourcePhotoStage.js');
-const { projectFindingToViewport } = await import('../CelestialMarkerOverlay.js');
+const { CelestialMarkerOverlay, projectFindingToViewport } = await import('../CelestialMarkerOverlay.js');
 const { SpatialObservatoryViewport } = await import('../SpatialObservatoryViewport.js');
 
 declare global {
@@ -256,6 +266,11 @@ describe('SourcePhotoStage (experience-9a)', () => {
     expect(video.getAttribute('src')).toBe('blob:http://localhost:5189/uploaded-photo');
     expect(video.muted).toBe(true);
     expect(container.querySelector('[data-testid="source-photo-stage"] img')).toBeNull();
+    // Original pixels: nothing filters, blends or re-tones the clip either
+    expect(video.style.filter).toBe('');
+    expect(video.style.mixBlendMode).toBe('');
+    expect(video.style.opacity).toBe('');
+    expect(video.style.transform).toBe('');
   });
 
   it('says plainly when the browser cannot show the file instead of a broken image', () => {
@@ -272,6 +287,11 @@ describe('SourcePhotoStage (experience-9a)', () => {
     const notice = container.querySelector('[data-testid="source-photo-unavailable"]') as HTMLElement;
     expect(notice).not.toBeNull();
     expect(notice.textContent).toContain('image/heic');
+    // Nothing is on screen, so the layer label does not say the photo is shown as uploaded
+    const label = container.querySelector('[data-testid="source-photo-layer-label"]') as HTMLElement;
+    expect(label.textContent).not.toContain('Shown as uploaded');
+    expect(label.textContent).not.toContain('original pixels');
+    expect(label.textContent).toContain('not shown by this browser');
   });
 
   it('draws nothing outside the source view', () => {
@@ -332,5 +352,322 @@ describe('SpatialObservatoryViewport upload path (experience-9a)', () => {
     act(() => renderViewport(uploadedPhotoSession(), null));
     expect(container.querySelector('[data-testid="enter-observatory-btn"]')).not.toBeNull();
     expect(container.querySelector('.alb-layer-disclosure-toggle')).not.toBeNull();
+  });
+});
+
+describe('display orientation (experience-9e)', () => {
+  it('turns Orientation 6 a quarter clockwise: stored top-left lands top-right and the frame becomes portrait', () => {
+    const o6 = EXIF_ORIENTATIONS[6];
+    expect(orientedSize(4032, 3024, o6)).toEqual({ widthPx: 3024, heightPx: 4032 });
+    expect(orientStoredPoint(0, 0, 4032, 3024, o6)).toEqual({ xPx: 3024, yPx: 0 });
+    expect(orientStoredPoint(0, 3024, 4032, 3024, o6)).toEqual({ xPx: 0, yPx: 0 });
+    expect(orientStoredPoint(4032, 0, 4032, 3024, o6)).toEqual({ xPx: 3024, yPx: 4032 });
+  });
+
+  it('turns Orientation 8 a quarter anticlockwise: stored top-left lands bottom-left', () => {
+    const o8 = EXIF_ORIENTATIONS[8];
+    expect(orientedSize(4032, 3024, o8)).toEqual({ widthPx: 3024, heightPx: 4032 });
+    expect(orientStoredPoint(0, 0, 4032, 3024, o8)).toEqual({ xPx: 0, yPx: 4032 });
+    expect(orientStoredPoint(4032, 0, 4032, 3024, o8)).toEqual({ xPx: 0, yPx: 0 });
+  });
+
+  it('matches the EXIF meaning of all eight orientations in the contract table', () => {
+    // Where the stored top-left (0,0) and top-right (W,0) corners of a 40 x 30 frame are shown
+    const expected: Record<number, [[number, number], [number, number]]> = {
+      1: [[0, 0], [40, 0]], // as stored
+      2: [[40, 0], [0, 0]], // mirrored left to right
+      3: [[40, 30], [0, 30]], // half turn
+      4: [[0, 30], [40, 30]], // mirrored top to bottom
+      5: [[0, 0], [0, 40]], // transposed
+      6: [[30, 0], [30, 40]], // quarter turn clockwise
+      7: [[30, 40], [30, 0]], // transverse
+      8: [[0, 40], [0, 0]], // quarter turn anticlockwise
+    };
+    for (const tag of [1, 2, 3, 4, 5, 6, 7, 8] as const) {
+      const o = EXIF_ORIENTATIONS[tag];
+      const [topLeft, topRight] = expected[tag]!;
+      expect(orientStoredPoint(0, 0, 40, 30, o), `Orientation ${tag} top-left`).toEqual({
+        xPx: topLeft[0],
+        yPx: topLeft[1],
+      });
+      expect(orientStoredPoint(40, 0, 40, 30, o), `Orientation ${tag} top-right`).toEqual({
+        xPx: topRight[0],
+        yPx: topRight[1],
+      });
+      const turned = tag >= 5;
+      expect(orientedSize(40, 30, o)).toEqual(turned ? { widthPx: 30, heightPx: 40 } : { widthPx: 40, heightPx: 30 });
+    }
+  });
+
+  it('returns every pixel to where it was stored when the inverse orientation is applied (property)', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 9000 }),
+        fc.integer({ min: 1, max: 9000 }),
+        fc.integer({ min: 0, max: 3 }),
+        fc.boolean(),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        (w, h, quarterTurnsClockwise, mirrored, fu, fv) => {
+          const o = { quarterTurnsClockwise, mirrored };
+          const shown = orientedSize(w, h, o);
+          const p = orientStoredPoint(fu * w, fv * h, w, h, o);
+          expect(p.xPx).toBeGreaterThanOrEqual(0);
+          expect(p.xPx).toBeLessThanOrEqual(shown.widthPx);
+          expect(p.yPx).toBeGreaterThanOrEqual(0);
+          expect(p.yPx).toBeLessThanOrEqual(shown.heightPx);
+          const back = orientStoredPoint(p.xPx, p.yPx, shown.widthPx, shown.heightPx, invertDisplayOrientation(o));
+          expect(back.xPx).toBeCloseTo(fu * w, 6);
+          expect(back.yPx).toBeCloseTo(fv * h, 6);
+        }
+      ),
+      {
+        seed: SEED,
+        examples: [
+          [4032, 3024, 1, false, 0, 0],
+          [4032, 3024, 3, false, 1, 0],
+          [4032, 3024, 3, true, 0.25, 0.75],
+          [1, 1, 2, true, 0.5, 0.5],
+        ],
+      }
+    );
+  });
+
+  it('draws an Orientation 6 photo in a portrait box and puts its markers through the same turn', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    act(() => {
+      root.render(createElement(SourcePhotoStage, { session, viewportWidthPx: 390, viewportHeightPx: 844 }));
+    });
+    const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    // 480 x 360 stored, shown 360 x 480, fitted to 390 wide: 390 x 520 from y = 162
+    expect(img.style.width).toBe('390px');
+    expect(img.style.height).toBe('520px');
+    expect(img.style.left).toBe('0px');
+    expect(img.style.top).toBe('162px');
+    // The browser turns the photo itself (its default from-image orientation); nothing here turns it again
+    expect(img.style.getPropertyValue('image-orientation')).toBe('');
+    expect(img.style.transform).toBe('');
+
+    const finding = {
+      ...session.observationSolution!.findings[0]!,
+      sourceDetection: {
+        assetId: session.sourceAsset!.id,
+        frameTimeSec: 0,
+        xPx: 0,
+        yPx: 0,
+        flux: 900,
+        snr: 30,
+        fwhmPx: 3,
+        centroidUncertaintyPx: 0.1,
+      },
+    };
+    // Stored top-left is shown top-right
+    const pos = projectFindingToViewport(finding, session, 390, 844);
+    expect(pos.xPx).toBe(390);
+    expect(pos.yPx).toBe(162);
+  });
+
+  it('says so and hides the markers when the browser shows a different frame shape than the orientation implies', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    const onFrameMismatch = vi.fn();
+    act(() => {
+      root.render(
+        createElement(SourcePhotoStage, { session, viewportWidthPx: 390, viewportHeightPx: 844, onFrameMismatch })
+      );
+    });
+    const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    // The browser decoded it landscape (480 x 360) although the asset says it is shown portrait
+    Object.defineProperty(img, 'naturalWidth', { value: 480 });
+    Object.defineProperty(img, 'naturalHeight', { value: 360 });
+    act(() => {
+      img.dispatchEvent(new Event('load'));
+    });
+    expect(container.querySelector('[data-testid="source-photo-orientation-mismatch"]')).not.toBeNull();
+    expect(onFrameMismatch).toHaveBeenLastCalledWith(true);
+  });
+
+  it('reports no mismatch when the browser shows the oriented shape', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    const onFrameMismatch = vi.fn();
+    act(() => {
+      root.render(
+        createElement(SourcePhotoStage, { session, viewportWidthPx: 390, viewportHeightPx: 844, onFrameMismatch })
+      );
+    });
+    const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    Object.defineProperty(img, 'naturalWidth', { value: 360 });
+    Object.defineProperty(img, 'naturalHeight', { value: 480 });
+    act(() => {
+      img.dispatchEvent(new Event('load'));
+    });
+    expect(container.querySelector('[data-testid="source-photo-orientation-mismatch"]')).toBeNull();
+    expect(onFrameMismatch).toHaveBeenLastCalledWith(false);
+  });
+
+  it('keeps the markers when a clip reports no decoded size yet (0 x 0 metadata)', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: {
+        ...base.sourceAsset!,
+        mediaKind: 'video',
+        mimeType: 'video/quicktime',
+        durationMs: 12000,
+        displayOrientation: EXIF_ORIENTATIONS[6],
+      },
+    } as ObservationSession;
+    const onFrameMismatch = vi.fn();
+    act(() => {
+      root.render(
+        createElement(SourcePhotoStage, { session, viewportWidthPx: 390, viewportHeightPx: 844, onFrameMismatch })
+      );
+    });
+    const video = container.querySelector('[data-testid="source-photo-stage"] video') as HTMLVideoElement;
+    Object.defineProperty(video, 'videoWidth', { value: 0 });
+    Object.defineProperty(video, 'videoHeight', { value: 0 });
+    act(() => {
+      video.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(decodedFrameMatches(0, 0, 360, 480)).toBe(true);
+    expect(container.querySelector('[data-testid="source-photo-orientation-mismatch"]')).toBeNull();
+    expect(onFrameMismatch).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () => {
+  it('hides the markers over a photo the browser turned differently, and keeps them when it agrees', () => {
+    const base = uploadedPhotoSession();
+    const session = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
+    } as ObservationSession;
+    act(() => renderViewport(session, 'blob:http://localhost:5189/uploaded-photo'));
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+
+    const loadAs = (w: number, h: number) => {
+      const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+      Object.defineProperty(img, 'naturalWidth', { value: w, configurable: true });
+      Object.defineProperty(img, 'naturalHeight', { value: h, configurable: true });
+      act(() => {
+        img.dispatchEvent(new Event('load'));
+      });
+    };
+    loadAs(480, 360);
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
+    loadAs(360, 480);
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+  });
+});
+
+describe('auditor fixes on the stage (experience-9e)', () => {
+  it('seeks a clip to the solved frame again when the source view comes back', () => {
+    const base = uploadedPhotoSession();
+    const clip = {
+      ...base,
+      sourceAsset: { ...base.sourceAsset!, mediaKind: 'video', mimeType: 'video/mp4', durationMs: 12000 },
+      observationSolution: { ...base.observationSolution!, frameTimeSec: 4.5 },
+    } as ObservationSession;
+    const away = { ...clip, spatialView: { ...clip.spatialView, mode: 'catalog_3d' } } as ObservationSession;
+    const show = (session: ObservationSession) =>
+      act(() => {
+        root.render(createElement(SourcePhotoStage, { session, viewportWidthPx: 1440, viewportHeightPx: 900 }));
+      });
+    const loadedVideo = () => {
+      const video = container.querySelector('[data-testid="source-photo-stage"] video') as HTMLVideoElement;
+      act(() => {
+        video.dispatchEvent(new Event('loadedmetadata'));
+      });
+      return video;
+    };
+
+    show(clip);
+    expect(loadedVideo().currentTime).toBe(4.5);
+    show(away);
+    expect(container.querySelector('[data-testid="source-photo-stage"] video')).toBeNull();
+    // Back in the source view the clip is a new element, which must land on the solved frame too
+    show(clip);
+    expect(loadedVideo().currentTime).toBe(4.5);
+  });
+
+  it('keeps each marker on its photo pixel with the photo zoomed and panned, stage and overlay drawn together', () => {
+    const base = uploadedPhotoSession();
+    const marked = {
+      ...base.observationSolution!.findings[0]!,
+      sourceDetection: {
+        assetId: base.sourceAsset!.id,
+        frameTimeSec: 0,
+        xPx: 260,
+        yPx: 170,
+        flux: 900,
+        snr: 30,
+        fwhmPx: 3,
+        centroidUncertaintyPx: 0.1,
+      },
+    };
+    const session = {
+      ...base,
+      cropTransform: { zoom: 2, panX: 0.1, panY: -0.05 },
+      observationSolution: { ...base.observationSolution!, findings: [marked] },
+    } as ObservationSession;
+    act(() => {
+      root.render(
+        createElement(
+          Fragment,
+          null,
+          createElement(SourcePhotoStage, { session, viewportWidthPx: 1440, viewportHeightPx: 900 }),
+          createElement(CelestialMarkerOverlay, {
+            session,
+            selectedFinding: null,
+            onSelectFinding: () => {},
+            viewportWidthPx: 1440,
+            viewportHeightPx: 900,
+          })
+        )
+      );
+    });
+    const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
+    const imgLeft = parseFloat(img.style.left);
+    const imgTop = parseFloat(img.style.top);
+    const imgW = parseFloat(img.style.width);
+    const imgH = parseFloat(img.style.height);
+    // Zoomed: the drawn photo is larger than the screen
+    expect(imgW).toBeGreaterThan(1440);
+    const marker = container.querySelector(`[data-testid="celestial-marker-${marked.id}"]`) as HTMLElement;
+    expect(marker).not.toBeNull();
+    const markerX = (parseFloat(marker.style.left) / 100) * 1440;
+    const markerY = (parseFloat(marker.style.top) / 100) * 900;
+    // Where pixel (260, 170) of the 480 x 360 photo is drawn; the overlay rounds to 0.01 % of the screen
+    expect(Math.abs(markerX - (imgLeft + (260 / 480) * imgW))).toBeLessThan(0.15);
+    expect(Math.abs(markerY - (imgTop + (170 / 360) * imgH))).toBeLessThan(0.1);
+  });
+
+  it('draws the stage above the 3D canvas host and under the markers', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/albedian.css'), 'utf8');
+    const zIndexOf = (rule: RegExp) => Number(rule.exec(css)?.[1]);
+    const canvasZ = zIndexOf(/\.alb-canvas-host\s*\{[^}]*z-index:\s*(\d+)/);
+    const markersZ = zIndexOf(/\.alb-marker-overlay\s*\{[^}]*z-index:\s*(\d+)/);
+    expect(Number.isFinite(canvasZ)).toBe(true);
+    expect(Number.isFinite(markersZ)).toBe(true);
+    act(() => {
+      root.render(
+        createElement(SourcePhotoStage, { session: uploadedPhotoSession(), viewportWidthPx: 390, viewportHeightPx: 844 })
+      );
+    });
+    const stage = container.querySelector('[data-testid="source-photo-stage"]') as HTMLElement;
+    const stageZ = Number(stage.style.zIndex);
+    expect(stageZ).toBeGreaterThan(canvasZ);
+    expect(stageZ).toBeLessThan(markersZ);
   });
 });

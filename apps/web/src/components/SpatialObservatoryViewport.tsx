@@ -171,6 +171,9 @@ export const SpatialObservatoryViewport: React.FC<
     }
     return 0;
   });
+  // Markers are hidden when the browser turned the photo differently from its orientation tag
+  const [photoFrameMismatch, setPhotoFrameMismatch] = useState(false);
+
   // Choosing a file to upload leaves the landing, so the upload, its solve and the photo show at once
   useEffect(() => {
     if (uploadedMediaUrl) setEntryStageActive(false);
@@ -514,12 +517,14 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && (
         <>
-          <SourcePhotoStage session={session} />
-          <CelestialMarkerOverlay
-            session={session}
-            selectedFinding={selectedFinding}
-            onSelectFinding={onSelectFinding}
-          />
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} />
+          {!(photoFrameMismatch && isSourcePhotoShown(session)) && (
+            <CelestialMarkerOverlay
+              session={session}
+              selectedFinding={selectedFinding}
+              onSelectFinding={onSelectFinding}
+            />
+          )}
           <CelestialTargetCard
             session={session}
             selectedFinding={selectedFinding}
