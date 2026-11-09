@@ -48,6 +48,11 @@ export const HUD_EDGES = {
 export const HUD_INK = '#f8fafc';
 export const HUD_HIGHLIGHT = '#caddff';
 
+/** Keyboard key chips (equipped-test kbd: 12% white, white text) and the halo around a lit listen ring. */
+export const HUD_KEY_FILL = 'rgba(255, 255, 255, 0.12)';
+export const HUD_KEY_INK = '#ffffff';
+export const HUD_HIGHLIGHT_HALO = 'rgba(202, 221, 255, 0.16)';
+
 /** Stroke colour of each evidence glyph. The glyph shape carries the class too, so colour is never the only cue. */
 export const HUD_EVIDENCE_COLORS: Readonly<Record<EvidenceClass, string>> = {
   observed: '#f8fafc',
@@ -117,6 +122,9 @@ export const HUD_CSS_CUSTOM_PROPERTIES = {
   '--hud-font-mono': HUD_FONTS.mono,
   '--hud-ink': HUD_INK,
   '--hud-highlight': HUD_HIGHLIGHT,
+  '--hud-highlight-halo': HUD_HIGHLIGHT_HALO,
+  '--hud-key-fill': HUD_KEY_FILL,
+  '--hud-key-ink': HUD_KEY_INK,
   '--hud-glass-fill': rgba(HUD_GLASS.palette.fill),
   '--hud-glass-filter': glassFilter(HUD_GLASS.palette),
   '--hud-chip-fill': rgba(HUD_GLASS.chip.fill),

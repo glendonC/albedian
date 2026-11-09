@@ -551,6 +551,7 @@ export const SpatialObservatoryViewport: React.FC<
             setCommandText={setCommandText}
             onRunUtterance={onRunUtterance}
             onPushToTalk={onPushToTalk}
+            selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
           />
         </>
       )}

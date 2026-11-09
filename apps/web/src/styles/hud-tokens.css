@@ -5,6 +5,9 @@
   --hud-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --hud-ink: #f8fafc;
   --hud-highlight: #caddff;
+  --hud-highlight-halo: rgba(202, 221, 255, 0.16);
+  --hud-key-fill: rgba(255, 255, 255, 0.12);
+  --hud-key-ink: #ffffff;
 
   --hud-glass-fill: rgba(12, 14, 22, 0.72);
   --hud-glass-filter: blur(40px) saturate(140%);
