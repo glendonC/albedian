@@ -165,6 +165,46 @@ function renderMarkerGlyph(spec: MarkerVisualSpec): React.ReactNode {
   }
 }
 
+/**
+ * How many names fit on screen without burying the photo: about 8 across a phone, 20 across a laptop.
+ */
+export function markerLabelBudget(viewportWidthPx: number): number {
+  if (viewportWidthPx < 600) return 8;
+  if (viewportWidthPx < 1100) return 14;
+  return 20;
+}
+
+/** A proper name (Sirius, Hatsya), not only a catalog number (HIP 23685, Gaia DR3 ...). */
+function hasProperName(finding: CelestialFinding): boolean {
+  const ref = finding.catalogRef;
+  return !!ref && ref.commonName !== ref.catalogSourceId;
+}
+
+/**
+ * The findings that get a text label, up to the budget: predicted and simulated objects first (a
+ * planet, a modeled object: few, and each names one thing), then catalog-matched stars with a
+ * proper name, brightest catalog magnitude first. The selected and focused findings are labelled
+ * whatever they are. Every other finding stays on screen and pickable, unlabelled.
+ */
+export function chooseLabelledFindingIds(
+  findingsInView: readonly CelestialFinding[],
+  viewportWidthPx: number,
+  alwaysLabelledIds: ReadonlyArray<string | null>
+): Set<string> {
+  const objects = findingsInView.filter(
+    (f) => f.evidenceClass === 'predicted' || f.evidenceClass === 'simulated'
+  );
+  const namedStars = findingsInView
+    .filter((f) => f.evidenceClass === 'catalog_matched' && hasProperName(f))
+    .sort((a, b) => a.catalogRef!.apparentMagnitude - b.catalogRef!.apparentMagnitude);
+  const ranked = [...objects, ...namedStars];
+  const ids = new Set(ranked.slice(0, markerLabelBudget(viewportWidthPx)).map((f) => f.id));
+  for (const id of alwaysLabelledIds) {
+    if (id && findingsInView.some((f) => f.id === id)) ids.add(id);
+  }
+  return ids;
+}
+
 export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
   session,
   selectedFinding,
@@ -183,20 +223,28 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
   const selectedId = selectedFinding?.id ?? session.selectedFindingId ?? null;
   const focusedId = session.focusedFindingId ?? null;
 
+  const inView = findings
+    .map((finding) => ({ finding, pos: projectFindingToViewport(finding, session, viewW, viewH) }))
+    .filter(({ pos }) => pos.visible);
+  const labelledIds = chooseLabelledFindingIds(
+    inView.map(({ finding }) => finding),
+    viewW,
+    [selectedId, focusedId]
+  );
+  // Unlabelled markers first, so the labelled ones draw on top of them
+  const ordered = [
+    ...inView.filter(({ finding }) => !labelledIds.has(finding.id)),
+    ...inView.filter(({ finding }) => labelledIds.has(finding.id)),
+  ];
+
   return (
     <div
       className="alb-marker-overlay"
       data-testid="celestial-marker-overlay"
       aria-label="Celestial findings in view"
     >
-      {findings.map((finding) => {
-        const pos = projectFindingToViewport(
-          finding,
-          session,
-          viewW,
-          viewH
-        );
-        if (!pos.visible) return null;
+      {ordered.map(({ finding, pos }) => {
+        const isLabelled = labelledIds.has(finding.id);
 
         const isSelected = selectedId === finding.id;
         const isFocused = focusedId === finding.id;
@@ -213,7 +261,7 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
           <button
             key={finding.id}
             type="button"
-            className={`alb-marker-hit ${isSelected ? 'is-selected' : ''} ${spec.showKeyboardFocusRing ? 'is-focused' : ''}`}
+            className={`alb-marker-hit ${isSelected ? 'is-selected' : ''} ${spec.showKeyboardFocusRing ? 'is-focused' : ''}${isLabelled ? '' : ' is-quiet'}`}
             data-hud-interactive="true"
             data-testid={`celestial-marker-${finding.id}`}
             data-evidence-class={finding.evidenceClass}
@@ -230,15 +278,22 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
             onMouseLeave={() => setHoveredId((prev) => (prev === finding.id ? null : prev))}
             onClick={() => onSelectFinding(finding.id, { xPx: pos.xPx, yPx: pos.yPx })}
           >
-            <svg className="alb-marker-svg" viewBox="0 0 36 36" aria-hidden="true">
+            <svg
+              className="alb-marker-svg"
+              viewBox="0 0 36 36"
+              aria-hidden="true"
+              style={isLabelled ? undefined : { width: '12px', height: '12px' }}
+            >
               {renderMarkerGlyph(spec)}
             </svg>
-            <span className="alb-marker-label">
-              <span className="alb-marker-shortcode" style={{ color: spec.colorHex }}>
-                {spec.shortCode}
+            {isLabelled && (
+              <span className="alb-marker-label">
+                <span className="alb-marker-shortcode" style={{ color: spec.colorHex }}>
+                  {spec.shortCode}
+                </span>
+                <span className="alb-marker-title">{finding.title}</span>
               </span>
-              <span className="alb-marker-title">{finding.title}</span>
-            </span>
+            )}
           </button>
         );
       })}

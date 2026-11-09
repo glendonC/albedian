@@ -380,3 +380,185 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
     expect(cssSource).toMatch(/\.alb-marker-shortcode\s*\{[^}]*font-family:\s*var\(--alb-font-mono\);/);
   });
 });
+
+/** A photo solve the size of the rehearsal's: many named and unnamed catalog stars and many plain detections. */
+function buildCrowdedSession(namedCount: number, unnamedCount: number, observedCount: number): ObservationSession {
+  const base = createSyntheticCalibratedSession();
+  const sha = base.sourceAsset!.sha256;
+  const solId = base.observationSolution!.id;
+  const assetId = base.sourceAsset!.id;
+  const findings: CelestialFinding[] = [];
+  let n = 0;
+  const detection = () => {
+    n += 1;
+    return {
+      assetId,
+      frameTimeSec: 0,
+      xPx: 40 + ((n * 37) % 1840),
+      yPx: 40 + ((n * 53) % 1000),
+      flux: 1000 - n,
+      snr: 20,
+      fwhmPx: 3,
+      centroidUncertaintyPx: 0.1,
+    };
+  };
+  const catalogFinding = (id: string, name: string, sourceId: string, mag: number): CelestialFinding => ({
+    id,
+    observationSolutionId: solId,
+    evidenceClass: 'catalog_matched',
+    title: name,
+    subtitle: 'test row',
+    sourceDetection: detection(),
+    skyPosition: { raDeg: 80, decDeg: 0, uncertaintyArcsec: 10 },
+    catalogRef: {
+      id: `ref_${id}`,
+      provider: 'Hipparcos',
+      releaseVersion: 'Hipparcos 2007',
+      catalogSourceId: sourceId,
+      commonName: name,
+      constellation: 'Orion',
+      objectType: 'star',
+      coordinateEpoch: 'J2000.0',
+      raDeg: 80,
+      decDeg: 0,
+      apparentMagnitude: mag,
+      citation: 'test',
+    },
+    evidence: {
+      id: `ev_${id}`,
+      evidenceClass: 'catalog_matched',
+      verificationMethod: 'test',
+      sourceAssetSha256: sha,
+      limitations: ['test'],
+      verifiedByIndependentHoldout: true,
+    },
+  }) as CelestialFinding;
+  // Named stars get magnitudes out of order so the test sees a sort, not the input order
+  for (let i = 0; i < namedCount; i++) {
+    const mag = ((i * 7) % namedCount) / 4;
+    findings.push(catalogFinding(`named_${i}`, `Star ${String.fromCharCode(65 + (i % 26))}${i}`, `HIP ${1000 + i}`, mag));
+  }
+  for (let i = 0; i < unnamedCount; i++) {
+    const id = `Gaia DR3 ${900000 + i}`;
+    findings.push(catalogFinding(`unnamed_${i}`, id, id, -5 + i * 0.01));
+  }
+  for (let i = 0; i < observedCount; i++) {
+    findings.push({
+      id: `obs_${i}`,
+      observationSolutionId: solId,
+      evidenceClass: 'observed',
+      title: `Observed Point Source #${i}`,
+      subtitle: 'test',
+      sourceDetection: detection(),
+      evidence: {
+        id: `ev_obs_${i}`,
+        evidenceClass: 'observed',
+        verificationMethod: 'test',
+        sourceAssetSha256: sha,
+        limitations: ['test'],
+        verifiedByIndependentHoldout: false,
+      },
+    } as CelestialFinding);
+  }
+  return {
+    ...base,
+    sourceAsset: { ...base.sourceAsset!, width: 1920, height: 1080 },
+    spatialView: { ...base.spatialView, mode: 'source_2d' },
+    observationSolution: { ...base.observationSolution!, findings },
+  } as ObservationSession;
+}
+
+function labelledIds(): string[] {
+  return [...container.querySelectorAll('.alb-marker-hit')]
+    .filter((el) => el.querySelector('.alb-marker-label'))
+    .map((el) => (el as HTMLElement).dataset.testid!.replace('celestial-marker-', ''));
+}
+
+describe('CelestialMarkerOverlay label budget (experience-9b)', () => {
+  it('labels only the brightest named stars: 8 on a phone, 20 on a laptop', () => {
+    const session = buildCrowdedSession(33, 30, 705);
+    const brightestNamed = session
+      .observationSolution!.findings.filter((f) => f.id.startsWith('named_'))
+      .sort((a, b) => a.catalogRef!.apparentMagnitude - b.catalogRef!.apparentMagnitude)
+      .map((f) => f.id);
+
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: null,
+          onSelectFinding: () => {},
+          viewportWidthPx: 390,
+          viewportHeightPx: 844,
+        })
+      );
+    });
+    expect(labelledIds().sort()).toEqual(brightestNamed.slice(0, 8).sort());
+
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: null,
+          onSelectFinding: () => {},
+          viewportWidthPx: 1440,
+          viewportHeightPx: 900,
+        })
+      );
+    });
+    expect(labelledIds().sort()).toEqual(brightestNamed.slice(0, 20).sort());
+  });
+
+  it('keeps every finding on the photo pickable, drawing the unlabelled ones as small dots', () => {
+    const session = buildCrowdedSession(33, 30, 705);
+    const onSelectFinding = vi.fn();
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: null,
+          onSelectFinding,
+          viewportWidthPx: 390,
+          viewportHeightPx: 844,
+        })
+      );
+    });
+    const all = container.querySelectorAll('.alb-marker-hit');
+    expect(all.length).toBe(768);
+    const quiet = container.querySelectorAll('.alb-marker-hit.is-quiet');
+    expect(quiet.length).toBe(768 - 8);
+    // An unnamed catalog star and a plain detection are dots without a label
+    const gaia = container.querySelector('[data-testid="celestial-marker-unnamed_0"]') as HTMLButtonElement;
+    expect(gaia.classList.contains('is-quiet')).toBe(true);
+    expect(gaia.querySelector('.alb-marker-label')).toBeNull();
+    const obs = container.querySelector('[data-testid="celestial-marker-obs_0"]') as HTMLButtonElement;
+    expect(obs.querySelector('.alb-marker-label')).toBeNull();
+    // Still announced by name and still selectable
+    expect(obs.getAttribute('aria-label')).toBeTruthy();
+    act(() => obs.click());
+    expect(onSelectFinding).toHaveBeenCalledWith('obs_0', expect.objectContaining({ xPx: expect.any(Number) }));
+    // Labelled markers come last so they sit above the dots
+    const order = [...all].map((el) => el.classList.contains('is-quiet'));
+    expect(order.indexOf(false)).toBe(768 - 8);
+  });
+
+  it('always labels the selected finding, even a plain detection', () => {
+    const session = buildCrowdedSession(33, 30, 705);
+    const selected = session.observationSolution!.findings.find((f) => f.id === 'obs_100')!;
+    act(() => {
+      root.render(
+        createElement(CelestialMarkerOverlay, {
+          session,
+          selectedFinding: selected,
+          onSelectFinding: () => {},
+          viewportWidthPx: 390,
+          viewportHeightPx: 844,
+        })
+      );
+    });
+    const marker = container.querySelector('[data-testid="celestial-marker-obs_100"]') as HTMLButtonElement;
+    expect(marker.classList.contains('is-quiet')).toBe(false);
+    expect(marker.querySelector('.alb-marker-label')).not.toBeNull();
+    expect(labelledIds().length).toBe(9);
+  });
+});
