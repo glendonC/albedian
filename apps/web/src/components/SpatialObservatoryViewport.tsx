@@ -20,7 +20,10 @@ import {
   observatoryAudio,
 } from '../audio/ObservatoryAudioEngine.js';
 import { skyAudio } from '../audio/SkyAudioFeed.js';
-import { APP_AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
+import { AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
+import { useSoundtrackMoment } from '../audio/music/soundtrackMoment.js';
+import { MusicSettingControl } from '../audio/MusicSettingControl.js';
+import { useAudioCreditLines, useAudioDisclosure } from '../audio/useAudioCreditLines.js';
 import {
   CoalescingBar,
 } from './CoalescingBar.js';
@@ -284,6 +287,11 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     observatoryAudio.setMasterVolume(volumeLevel);
   }, [volumeLevel]);
+
+  // The soundtrack follows the moment of the visit; the credits name each piece once heard
+  useSoundtrackMoment(entryStageActive, session);
+  const audioCreditLines = useAudioCreditLines();
+  const audioDisclosure = useAudioDisclosure();
 
   // While audio is on, the catalog stars in view sound and the camera turns the listener
   useEffect(() => {
@@ -619,7 +627,7 @@ export const SpatialObservatoryViewport: React.FC<
               Audio
             </button>
             <CoalescingBar
-              value={soundEnabled ? volumeLevel : 0.64}
+              value={volumeLevel}
               pattern="slats"
               width={128}
               height={14}
@@ -631,13 +639,14 @@ export const SpatialObservatoryViewport: React.FC<
                 }
               }}
             />
+            {soundEnabled && <MusicSettingControl />}
           </div>
           {/* What the sound is, and the credits and notices of the works the audio engine ships */}
           {soundEnabled && (
             <div className="alb-audio-notes">
-              <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{AUDIO_DISCLOSURE}</p>
+              <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{audioDisclosure}</p>
               <ul className="alb-audio-credits" aria-label="Audio credits">
-                {APP_AUDIO_CREDIT_LINES.map((line) => (
+                {audioCreditLines.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>

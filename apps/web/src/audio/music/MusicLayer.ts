@@ -1,11 +1,12 @@
 /**
- * Plays the chosen music direction (musicDirection.ts) in the live app, through the engine's music
- * input on its master bus, so the volume slider and the Audio control govern it (AUDIO_ENGINE.md
- * section 13). Each pass of the piece is built from the catalog stars on screen when it starts:
- * they play its data part, and a star missing a value plays nothing. When a pass ends the next one
- * is built from the stars then on screen.
+ * Plays the soundtrack (soundtrack.ts) in the live app, through the engine's music input on its
+ * master bus, so the volume slider and the Audio control govern it (AUDIO_ENGINE.md section 13).
+ * The director picks what plays when; this layer carries out its commands on the AudioContext's
+ * clock. Each pass of a piece is arranged from the catalog stars on screen when it starts: they play
+ * its data part, and a star missing a value plays nothing. Each pass has its own gain, so a fade
+ * on a moment change touches only the pass that no longer fits.
  *
- * The samples and C's recording are fetched from `sourcesBase` (in development, the folder
+ * The samples and the recording are fetched from `sourcesBase` (in development, the folder
  * `apps/web/spike/music/serveSources.mjs` serves). Without them the music stays silent and the
  * status says why; nothing stands in for a missing file.
  *
@@ -16,19 +17,18 @@
 import { energyNormalize } from '../dsp';
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../engine/ConvolutionReverb';
 import { compressorMakeupGainDb } from '../engine/MasterBus';
-import {
-  INSTRUMENTS,
-  RECORDING,
-  ambientBeats,
-  organAndPulse,
-  recordingArrangement,
-  type Arrangement,
-  type BusId,
-  type InstrumentDef,
-  type RecordingAnalysis,
-} from './directions';
-import type { MusicDirectionId } from './musicDirection';
+import { INSTRUMENTS, RECORDING, type Arrangement, type BusId, type InstrumentDef, type RecordingAnalysis } from './directions';
+import type { MusicSetting } from './musicSetting';
 import { SampleBank, chooseZone, playSample, type SampleZone } from './sampler';
+import {
+  SOUNDTRACK,
+  SoundtrackDirector,
+  type DirectorCommand,
+  type PieceId,
+  type PieceSources,
+  type SoundtrackMoment,
+  type SoundtrackPiece,
+} from './soundtrack';
 import type { ScreenStar } from './starNotes';
 import { duckUnderKicks, pingPongDelay, playKick, playPad, playRiser, playSub, syntheticHallImpulse } from './synth';
 
@@ -180,30 +180,42 @@ export function scheduleArrangement(
 }
 
 export interface MusicLayerOptions {
-  /** The direction to play (`resolveMusicDirection`); null plays none. */
-  readonly direction: MusicDirectionId | null;
+  /** The Music setting to start with: 'soundtrack' (default), 'off', or a piece id to pin. */
+  readonly setting?: MusicSetting;
+  /** The moment of the visit to start with; 'arrive' by default. */
+  readonly moment?: SoundtrackMoment;
   /** URL prefix of the sources folder, ending in '/'; null when no samples are served. */
   readonly sourcesBase: string | null;
   readonly fetch?: typeof fetch;
   /** Seconds from Audio on (or a pass being ready) to its first note, so it is scheduled ahead. Default 0.25. */
   readonly leadSec?: number;
+  /** The pieces the director picks from; `SOUNDTRACK` by default. */
+  readonly pieces?: readonly SoundtrackPiece[];
+  /** Uniform draws in [0, 1) for the director's gaps and choices; Math.random by default. */
+  readonly random?: () => number;
+  /** Told each time a piece starts playing, for its credits. */
+  readonly onPieceStarted?: (piece: PieceId) => void;
+  /** Told each time the status changes, so the page can say whether music can play. */
+  readonly onStatus?: (status: MusicStatus) => void;
 }
 
-export type MusicState = 'off' | 'loading' | 'playing' | 'unavailable';
+/** off: Audio off, or the setting is off. loading: a piece is being prepared. gap: the silence between pieces. */
+export type MusicState = 'off' | 'loading' | 'playing' | 'gap' | 'unavailable';
 
 export interface MusicStatus {
-  readonly direction: MusicDirectionId | null;
+  readonly setting: MusicSetting;
+  readonly moment: SoundtrackMoment;
+  /** The piece loading, playing or fading out; null otherwise. */
+  readonly piece: PieceId | null;
   readonly state: MusicState;
   /** Why no music plays, when none does for a reason other than Audio being off. */
   readonly reason: string | null;
   /** Distinct stars the current pass plays in its data part. */
   readonly starsPlayed: number;
-  /** Passes of the piece scheduled since the layer was made. */
+  /** Passes scheduled since the layer was made. */
   readonly passes: number;
 }
 
-/** A pass is built and its samples loaded this long before the previous one ends. */
-const PREPARE_SEC = 3;
 /** Audio off fades the music out over this long, then disconnects it. */
 const STOP_FADE_SEC = 0.25;
 /**
@@ -212,6 +224,10 @@ const STOP_FADE_SEC = 0.25;
  * parts' samples meanwhile.
  */
 const FIRST_STARS_WAIT_MS = 8_000;
+/** Why no music plays where no samples are served. */
+const NOT_SERVED = 'the music samples are not served here (VITE_ALBEDIAN_MUSIC_SOURCES is not set), so the music stays silent';
+/** The director's timer never fires sooner than this, so a clock that lags the timer cannot spin it. */
+const MIN_TIMER_MS = 50;
 
 const isComplete = (star: ScreenStar) => star.teffK != null && star.luminositySolar != null && star.distancePc != null;
 
@@ -221,19 +237,42 @@ export class MusicLayer {
   private bank: SampleBank | null = null;
   private readonly rooms = new Map<Arrangement['room'], Promise<AudioBuffer>>();
   private analysis: Promise<RecordingAnalysis> | null = null;
-  private recording: Promise<AudioBuffer> | null = null;
+  private readonly recordings = new Map<string, Promise<AudioBuffer>>();
+  /** The layer's output into the engine's music input, while Audio is on. */
   private output: GainNode | null = null;
-  private token = 0;
+  /** The pass last scheduled, with its own gain under `output`. */
+  private pass: { readonly gain: GainNode; readonly piece: string } | null = null;
+  /** Counts Audio on and off, so work begun before either finds itself stale. */
+  private run = 0;
+  /** Counts passes asked for and fades, so a pass still loading when faded never starts. */
+  private passToken = 0;
+  private firstPass = true;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private status: MusicStatus;
   private starsArrived: (() => void) | null = null;
+  private readonly pieces: readonly SoundtrackPiece[];
+  private readonly director: SoundtrackDirector;
 
   constructor(private readonly options: MusicLayerOptions) {
-    this.status = { direction: options.direction, state: 'off', reason: null, starsPlayed: 0, passes: 0 };
+    this.pieces = options.pieces ?? SOUNDTRACK;
+    this.director = new SoundtrackDirector(this.pieces, {
+      setting: options.setting ?? 'soundtrack',
+      moment: options.moment ?? 'arrive',
+      ...(options.random ? { random: options.random } : {}),
+    });
+    const { setting, moment } = this.director.state;
+    this.status = { setting: setting as MusicSetting, moment, piece: null, state: 'off', reason: null, starsPlayed: 0, passes: 0 };
+    // Known from the start: with no samples served, no music can play here
+    if (!options.sourcesBase) this.status = { ...this.status, state: 'unavailable', reason: NOT_SERVED };
   }
 
-  get direction(): MusicDirectionId | null {
-    return this.options.direction;
+  /** Whether the music wants the stars on screen: only while it can play and is not off. */
+  wantsStars(): boolean {
+    return this.status.state !== 'unavailable' && this.setting !== 'off';
+  }
+
+  get setting(): MusicSetting {
+    return this.director.state.setting as MusicSetting;
   }
 
   /** The catalog stars on screen; only those with a temperature, a luminosity and a distance play. */
@@ -246,44 +285,151 @@ export class MusicLayer {
     return this.status;
   }
 
+  /** The moment of the visit (soundtrackMoment.ts). */
+  setMoment(moment: SoundtrackMoment): void {
+    void this.answer(this.director.setMoment(moment, this.clock()));
+  }
+
+  /** The Music setting: the soundtrack, off, or a pinned piece. */
+  setSetting(setting: MusicSetting): void {
+    void this.answer(this.director.setSetting(setting, this.clock()));
+  }
+
   /**
-   * Starts the piece on `ctx` into `destination`. Call after the engine's context exists (it is
+   * Starts the soundtrack on `ctx` into `destination`. Call after the engine's context exists (it is
    * made in the user's gesture). Resolves once the first pass is scheduled, or the music is silent.
    */
   async start(ctx: BaseAudioContext, destination: AudioNode): Promise<void> {
     if (this.output) return;
-    const direction = this.options.direction;
-    if (direction === null) {
-      this.setStatus({ state: 'off', reason: 'no music direction chosen' });
-      return;
-    }
     const base = this.options.sourcesBase;
     if (!base) {
-      this.setStatus({ state: 'unavailable', reason: 'the music samples are not served here (VITE_ALBEDIAN_MUSIC_SOURCES is not set), so the music stays silent' });
+      this.setStatus({ state: 'unavailable', reason: NOT_SERVED });
       return;
     }
     if (this.ctx !== ctx) {
       this.ctx = ctx;
       this.bank = new SampleBank(ctx, base, this.fetchImpl);
       this.rooms.clear();
-      this.recording = null;
+      this.recordings.clear();
     }
-    const token = ++this.token;
+    this.run += 1;
     const output = ctx.createGain();
     output.connect(destination);
     this.output = output;
-    this.setStatus({ state: 'loading', reason: null });
-    const preload = this.arrangementFor(direction, [], base).then((composed) => this.bank!.load(neededZones(composed)));
-    try {
-      await Promise.all([this.firstStars(), preload]);
-    } catch (error) {
-      // A file the piece needs is missing: say which now rather than after the wait
-      this.starsArrived?.();
-      if (token === this.token) this.fail(error);
-      return;
+    this.firstPass = true;
+    this.setStatus({ state: 'off', reason: null });
+    await this.answer(this.director.start(ctx.currentTime));
+  }
+
+  /** Fades the music out and plays nothing more until `start`. */
+  stop(): void {
+    this.run += 1;
+    this.passToken += 1;
+    this.disarm();
+    this.director.stop();
+    this.pass = null;
+    const output = this.output;
+    this.output = null;
+    if (output && this.ctx) {
+      const now = this.ctx.currentTime;
+      output.gain.cancelScheduledValues(now);
+      output.gain.setValueAtTime(output.gain.value, now);
+      output.gain.linearRampToValueAtTime(0, now + STOP_FADE_SEC);
+      setTimeout(() => output.disconnect(), (STOP_FADE_SEC + 0.1) * 1000);
     }
-    if (token !== this.token) return;
-    await this.schedulePass(token, ctx, output, direction, base, ctx.currentTime + this.lead);
+    this.syncStatus();
+  }
+
+  /** The context's clock while Audio is on; 0 before (the director then takes inputs at once). */
+  private clock(): number {
+    return this.output && this.ctx ? this.ctx.currentTime : 0;
+  }
+
+  /** Carries out the director's commands, re-arms its timer, and resolves once any new pass is scheduled. */
+  private async answer(commands: readonly DirectorCommand[]): Promise<void> {
+    const plays: Promise<void>[] = [];
+    for (const command of commands) {
+      if (command.kind === 'fade') this.fadePass(command.fadeSec);
+      else plays.push(this.playPass(command.piece, command.atSec));
+    }
+    this.arm();
+    this.syncStatus();
+    await Promise.all(plays);
+  }
+
+  /** Wakes the director when it next has something to do, timed from the context's clock. */
+  private arm(): void {
+    this.disarm();
+    const ctx = this.ctx;
+    const wake = this.director.nextWakeSec();
+    if (!ctx || !this.output || wake === null) return;
+    const run = this.run;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      if (run === this.run) void this.answer(this.director.tick(ctx.currentTime));
+    }, Math.max(MIN_TIMER_MS, (wake - ctx.currentTime) * 1000));
+  }
+
+  private disarm(): void {
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  /** Fades the pass that sounds; a pass still loading is dropped. */
+  private fadePass(fadeSec: number): void {
+    this.passToken += 1;
+    const pass = this.pass;
+    this.pass = null;
+    if (!pass || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    pass.gain.gain.cancelScheduledValues(now);
+    pass.gain.gain.setValueAtTime(pass.gain.gain.value, now);
+    pass.gain.gain.linearRampToValueAtTime(0, now + fadeSec);
+    setTimeout(() => pass.gain.disconnect(), (fadeSec + 0.1) * 1000);
+  }
+
+  private async playPass(id: string, atSec: number): Promise<void> {
+    const token = ++this.passToken;
+    const run = this.run;
+    const ctx = this.ctx!;
+    const output = this.output!;
+    const base = this.options.sourcesBase!;
+    try {
+      const piece = this.pieces.find((p) => p.id === id);
+      if (!piece) throw new Error(`the soundtrack has no piece ${id}`);
+      const sources = this.sources(base);
+      if (this.firstPass) {
+        this.firstPass = false;
+        const preload = piece.arrange([], sources).then((composed) => this.bank!.load(neededZones(composed)));
+        try {
+          await Promise.all([this.firstStars(), preload]);
+        } catch (error) {
+          // A file the piece needs is missing: say which now rather than after the wait
+          this.starsArrived?.();
+          throw error;
+        }
+      }
+      const arrangement = await piece.arrange(this.stars, sources);
+      await this.bank!.load(neededZones(arrangement));
+      const room = await this.roomFor(ctx, arrangement.room);
+      const recording = arrangement.recording ? await this.recordingFor(ctx, base, arrangement.recording.file) : null;
+      if (token !== this.passToken || run !== this.run) return;
+      const t0 = Math.max(atSec, ctx.currentTime + this.lead);
+      const gain = ctx.createGain();
+      gain.connect(output);
+      scheduleArrangement(ctx, gain, arrangement, this.bank!, t0, room, recording);
+      // The pass before ended on its own before the gap: let it go
+      this.pass?.gain.disconnect();
+      this.pass = { gain, piece: piece.id };
+      const played = new Set(arrangement.events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
+      this.director.started(piece.id, t0, t0 + arrangement.durationSec);
+      this.setStatus({ starsPlayed: played.size, passes: this.status.passes + 1 });
+      this.options.onPieceStarted?.(piece.id);
+      this.arm();
+      this.syncStatus();
+    } catch (error) {
+      if (token === this.passToken && run === this.run) this.fail(error);
+    }
   }
 
   /** Resolves when a star with all its values is on screen, or after FIRST_STARS_WAIT_MS without one. */
@@ -300,23 +446,6 @@ export class MusicLayer {
     });
   }
 
-  /** Fades the music out and schedules no further pass. */
-  stop(): void {
-    this.token += 1;
-    if (this.timer !== null) clearTimeout(this.timer);
-    this.timer = null;
-    const output = this.output;
-    this.output = null;
-    if (output && this.ctx) {
-      const now = this.ctx.currentTime;
-      output.gain.cancelScheduledValues(now);
-      output.gain.setValueAtTime(output.gain.value, now);
-      output.gain.linearRampToValueAtTime(0, now + STOP_FADE_SEC);
-      setTimeout(() => output.disconnect(), (STOP_FADE_SEC + 0.1) * 1000);
-    }
-    if (this.status.state !== 'unavailable') this.setStatus({ state: 'off', reason: null });
-  }
-
   private get lead(): number {
     return this.options.leadSec ?? 0.25;
   }
@@ -327,41 +456,19 @@ export class MusicLayer {
     return (input, init) => impl(input, init);
   }
 
-  private async schedulePass(token: number, ctx: BaseAudioContext, output: GainNode, direction: MusicDirectionId, base: string, plannedT0: number): Promise<void> {
-    try {
-      const stars = this.stars;
-      const arrangement = await this.arrangementFor(direction, stars, base);
-      await this.bank!.load(neededZones(arrangement));
-      const room = await this.roomFor(ctx, arrangement.room);
-      const recording = arrangement.recording ? await (this.recording ??= loadRecording(ctx, base, arrangement.recording.file, this.fetchImpl)) : null;
-      if (token !== this.token) return;
-      const t0 = Math.max(plannedT0, ctx.currentTime + this.lead);
-      scheduleArrangement(ctx, output, arrangement, this.bank!, t0, room, recording);
-      const played = new Set(arrangement.events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
-      this.setStatus({ state: 'playing', reason: null, starsPlayed: played.size, passes: this.status.passes + 1 });
-      const next = t0 + arrangement.durationSec;
-      this.timer = setTimeout(
-        () => void this.schedulePass(token, ctx, output, direction, base, next),
-        Math.max(0, (next - PREPARE_SEC - ctx.currentTime) * 1000)
-      );
-    } catch (error) {
-      if (token === this.token) this.fail(error);
-    }
-  }
-
   /** No stand-in: a missing file leaves the music silent and says which. */
   private fail(error: unknown): void {
+    this.run += 1;
+    this.disarm();
+    this.director.stop();
     this.output?.disconnect();
     this.output = null;
-    this.setStatus({ state: 'unavailable', reason: errorMessage(error) });
+    this.pass = null;
+    this.setStatus({ state: 'unavailable', reason: errorMessage(error), piece: null });
   }
 
-  private async arrangementFor(direction: MusicDirectionId, stars: readonly ScreenStar[], base: string): Promise<Arrangement> {
-    if (direction === 'organ-pulse') return organAndPulse(stars);
-    if (direction === 'ambient-beats') return ambientBeats(stars);
-    // C plays inside the recording's measured beats and chords (analysis.ts, measured when the demo page was rendered)
-    this.analysis ??= this.fetchAnalysis(base);
-    return recordingArrangement(stars, await this.analysis);
+  private sources(base: string): PieceSources {
+    return { recordingAnalysis: () => (this.analysis ??= this.fetchAnalysis(base)) };
   }
 
   private async fetchAnalysis(base: string): Promise<RecordingAnalysis> {
@@ -378,6 +485,16 @@ export class MusicLayer {
     }
   }
 
+  private recordingFor(ctx: BaseAudioContext, base: string, file: string): Promise<AudioBuffer> {
+    let buffer = this.recordings.get(file);
+    if (!buffer) {
+      buffer = loadRecording(ctx, base, file, this.fetchImpl);
+      buffer.catch(() => this.recordings.delete(file));
+      this.recordings.set(file, buffer);
+    }
+    return buffer;
+  }
+
   private roomFor(ctx: BaseAudioContext, room: Arrangement['room']): Promise<AudioBuffer> {
     let buffer = this.rooms.get(room);
     if (!buffer) {
@@ -387,7 +504,21 @@ export class MusicLayer {
     return buffer;
   }
 
+  /** The status from the director, unless the music is unavailable and Audio has not been turned on again. */
+  private syncStatus(): void {
+    const d = this.director.state;
+    const base = { setting: d.setting as MusicSetting, moment: d.moment };
+    if (this.status.state === 'unavailable' && this.output === null) {
+      this.setStatus(base);
+      return;
+    }
+    const state: MusicState = d.phase === 'starting' ? 'loading' : d.phase === 'playing' || d.phase === 'fading' ? 'playing' : d.phase === 'gap' ? 'gap' : 'off';
+    const reason = d.phase === 'silent' && d.setting === 'off' ? 'the music is off' : null;
+    this.setStatus({ ...base, piece: d.piece as PieceId | null, state, reason });
+  }
+
   private setStatus(change: Partial<MusicStatus>): void {
-    this.status = { ...this.status, direction: this.options.direction, ...change };
+    this.status = { ...this.status, ...change };
+    this.options.onStatus?.(this.status);
   }
 }

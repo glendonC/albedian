@@ -85,6 +85,27 @@ describe('the three directions', () => {
     );
   });
 
+  it("carry each star's own level into its note: a data note's gain is the star's gain plus its part's offset", () => {
+    // The offsets each arrangement gives its data sweeps in directions.ts; nothing else may move a star's level
+    const offsets: Record<string, number[]> = {
+      'organ-pulse': [-13, -10, -8, -14],
+      'ambient-beats': [-11, -12, -9, -15, -10],
+      recording: [-16, -13, -11],
+    };
+    fc.assert(
+      fc.property(anyStars, (stars) => {
+        for (const a of arrangements(stars)) {
+          for (const e of a.events) {
+            if (e.type !== 'sample' || e.kind !== 'data') continue;
+            const offset = e.gainDb - e.star!.gainDb;
+            expect(offsets[a.id]!.some((o) => Math.abs(o - offset) < 1e-9), `${a.id}: ${offset}`).toBe(true);
+          }
+        }
+      }),
+      params([[[]]])
+    );
+  });
+
   it('play nothing for stars with a value missing, and nothing composed is marked as data', () => {
     const missing: ScreenStar[] = [{ id: 'm', teffK: null, luminositySolar: 1, distancePc: 10, screenX: 0, screenY: 0 }];
     for (const a of arrangements(missing)) {

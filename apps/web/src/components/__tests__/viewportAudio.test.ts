@@ -3,7 +3,19 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, RenderLayerSet } from '@albedian/contracts';
-import { AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../../audio/audioCredits.js';
+import {
+  AUDIO_CREDIT_LINES,
+  AUDIO_DISCLOSURE,
+  AUDIO_DISCLOSURE_WITHOUT_MUSIC,
+  AUDIO_NOTICES_URL,
+  appHeardMusic,
+  appMusicAvailability,
+  audioCreditLines,
+  audioDisclosure,
+} from '../../audio/audioCredits.js';
+import { RECORDING } from '../../audio/music/directions.js';
+import { appMusicSetting } from '../../audio/music/musicSetting.js';
+import { appSoundtrackMoment } from '../../audio/music/soundtrackMoment.js';
 import type { CameraSkyPose } from '../../spatial/cosmosRenderer.js';
 import { webglRenderLayersFor } from '../../spatial/webglRenderLayers.js';
 
@@ -26,6 +38,7 @@ const stub = vi.hoisted(() => ({
   layers: null as unknown,
   soundOn: false,
   onRegimeChange: null as ((regime: string) => void) | null,
+  barValue: null as number | null,
 }));
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
@@ -65,9 +78,12 @@ vi.mock('../../audio/SkyAudioFeed.js', () => ({
   skyAudio: { follow: vi.fn(), setEvidenceClass: vi.fn() },
 }));
 
-// The volume bar draws on a 2D canvas, which jsdom lacks; nothing here depends on it
+// The volume bar draws on a 2D canvas, which jsdom lacks; the stand-in keeps the value it is given
 vi.mock('../CoalescingBar.js', () => ({
-  CoalescingBar: () => null,
+  CoalescingBar: (props: { value: number }) => {
+    stub.barValue = props.value;
+    return null;
+  },
 }));
 
 const { SpatialObservatoryViewport } = await import('../SpatialObservatoryViewport.js');
@@ -130,6 +146,7 @@ beforeEach(() => {
   stub.soundOn = false;
   vi.mocked(skyAudio.follow).mockClear();
   vi.mocked(skyAudio.setEvidenceClass).mockClear();
+  stub.barValue = null;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -207,5 +224,76 @@ describe('the viewport while audio is on', () => {
     expect(stub.layers).not.toBeNull();
     act(() => stub.onRegimeChange?.('earth_capture'));
     expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith('simulated');
+  });
+});
+
+describe('the music beside the Audio control', () => {
+  it('shows the stored volume on the Audio bar whether audio is on or off', () => {
+    renderViewport();
+    expect(stub.barValue).toBe(0.42);
+    clickAudio();
+    expect(stub.barValue).toBe(0.42);
+    clickAudio();
+    expect(stub.barValue).toBe(0.42);
+  });
+
+  it("gives the soundtrack the moment, which the app's engine follows: arriving on the landing page, then looking around after Launch", () => {
+    act(() => appSoundtrackMoment.set('travel'));
+    renderViewport();
+    expect(appSoundtrackMoment.get()).toBe('arrive');
+    const launch = container.querySelector<HTMLButtonElement>('[data-testid="enter-observatory-btn"]');
+    expect(launch).not.toBeNull();
+    act(() => launch!.click());
+    expect(appSoundtrackMoment.get()).toBe('look_around');
+  });
+
+  it('shows the Music setting beside Audio while audio is on', () => {
+    renderViewport();
+    expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
+    clickAudio();
+    expect(container.querySelector('.alb-zzzz-inline-control select[aria-label="Music"]')).not.toBeNull();
+    clickAudio();
+    expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
+  });
+
+  it('says what the sound is for the Music setting: the soundtrack, a pinned piece, or no music', () => {
+    renderViewport();
+    clickAudio();
+    const note = () => document.getElementById('alb-audio-disclosure')!.textContent;
+    expect(appMusicSetting.get()).toBe('soundtrack');
+    expect(note()).toBe(audioDisclosure('soundtrack'));
+    try {
+      act(() => appMusicSetting.set('recording'));
+      expect(note()).toBe(audioDisclosure('recording'));
+      act(() => appMusicSetting.set('off'));
+      expect(note()).toBe(audioDisclosure('off'));
+    } finally {
+      act(() => appMusicSetting.set('soundtrack'));
+    }
+  });
+
+  it('says no music plays and shows no Music control where none can play', () => {
+    renderViewport();
+    clickAudio();
+    try {
+      act(() => appMusicAvailability.set(false));
+      expect(document.getElementById('alb-audio-disclosure')!.textContent).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+      expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
+    } finally {
+      act(() => appMusicAvailability.set(true));
+    }
+    expect(container.querySelector('select[aria-label="Music"]')).not.toBeNull();
+  });
+
+  it('credits each piece once it has been heard, and keeps it', () => {
+    renderViewport();
+    clickAudio();
+    act(() => appHeardMusic.add('recording'));
+    const credits = () => Array.from(container.querySelectorAll('.alb-audio-credits li'), (li) => li.textContent);
+    expect(credits()).toEqual([...audioCreditLines(appHeardMusic.get())]);
+    expect(credits()).toContain(RECORDING.credit);
+    clickAudio();
+    clickAudio();
+    expect(credits()).toContain(RECORDING.credit);
   });
 });

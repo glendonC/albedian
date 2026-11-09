@@ -33,6 +33,8 @@ export interface SkyAudioTarget {
 /** Where the stars on screen go for the music's data part (`observatoryAudio` provides it). */
 export interface SkyMusicTarget {
   setMusicStars(stars: readonly ScreenStar[]): void;
+  /** False while no music can play (no samples served, a file missing, or the music off): no tile is loaded for it. */
+  wantsMusicStars(): boolean;
 }
 
 export type SkyCatalogStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
@@ -143,9 +145,9 @@ export class SkyAudioFeed {
     return this.options.voices !== false;
   }
 
-  /** Whether the feed hands the stars on screen to a music target. */
+  /** Whether the feed hands the stars on screen to a music target: only while that music can play. */
   get musicEnabled(): boolean {
-    return this.options.music !== undefined;
+    return this.options.music?.wantsMusicStars() ?? false;
   }
 
   /**
@@ -280,7 +282,7 @@ export class SkyAudioFeed {
     };
 
     // Screen positions move with the camera, so the music gets every update
-    this.options.music?.setMusicStars(screenStars(result.sources, view));
+    if (this.musicEnabled) this.options.music?.setMusicStars(screenStars(result.sources, view));
     if (!this.voicesEnabled) return;
 
     // A star's catalog values never change within a release, so its id stands for its values
@@ -330,10 +332,8 @@ export class SkyAudioFeed {
  * The feed the viewport drives, sounding through the app's audio engine. Its continuous star
  * voices are off (`voices: false`): under the music-first architecture (AUDIO_ENGINE.md sections 8
  * and 13), the stars in view play inside the musical score rather than as continuous sustained
- * drones. When a music direction plays, the feed hands it the stars on screen; when none does, it
- * only turns the listener with the camera and loads nothing.
+ * drones. The feed hands the soundtrack the stars on screen while music can play: it asks the engine
+ * each frame, since the viewer can change the Music setting while the page is open, and where no
+ * samples are served (or the music is off) it loads no tile for the music.
  */
-export const skyAudio = new SkyAudioFeed(observatoryAudio, {
-  voices: false,
-  ...(observatoryAudio.getMusicDirection() !== null ? { music: observatoryAudio } : {}),
-});
+export const skyAudio = new SkyAudioFeed(observatoryAudio, { voices: false, music: observatoryAudio });

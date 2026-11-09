@@ -129,7 +129,7 @@ describe('SkyAudioFeed with the star voices off (the app singleton configuration
       baseUrl: BASE_URL,
       now: () => clock.t,
       voices: false,
-      music: { setMusicStars: (stars) => musicStars.push([...stars]) },
+      music: { setMusicStars: (stars) => musicStars.push([...stars]), wantsMusicStars: () => true },
     });
     await settle(feed, CASSIOPEIA, clock);
     expect(sourceLists).toEqual([]);
@@ -151,10 +151,53 @@ describe('SkyAudioFeed with the star voices off (the app singleton configuration
     expect(played.has(idOf('Caph'))).toBe(false);
   });
 
-  it('is built with the music as its music target only when a direction plays', async () => {
+  it('loads no catalog or astro tile for a music target that can play no music, and starts once it can', async () => {
+    const { fetchImpl, requests } = releaseFetch();
+    const { target } = recordingTarget();
+    const musicStars: ScreenStar[][] = [];
+    let canPlay = false;
+    const clock = { t: 0 };
+    const feed = new SkyAudioFeed(target, {
+      fetch: fetchImpl,
+      baseUrl: BASE_URL,
+      now: () => clock.t,
+      voices: false,
+      music: { setMusicStars: (stars) => musicStars.push([...stars]), wantsMusicStars: () => canPlay },
+    });
+    for (let i = 0; i < 20; i++) {
+      clock.t += 120;
+      feed.follow(CASSIOPEIA);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(feed.musicEnabled).toBe(false);
+    expect(requests).toEqual([]);
+    expect(musicStars).toEqual([]);
+    canPlay = true;
+    await settle(feed, CASSIOPEIA, clock);
+    expect(feed.musicEnabled).toBe(true);
+    expect(musicStars.at(-1)!.length).toBeGreaterThan(0);
+  });
+
+  it('with the voices on, still hands no stars to music that cannot play', async () => {
+    const { fetchImpl } = releaseFetch();
+    const { target, sourceLists } = recordingTarget();
+    const musicStars: ScreenStar[][] = [];
+    const clock = { t: 0 };
+    const feed = new SkyAudioFeed(target, {
+      fetch: fetchImpl,
+      baseUrl: BASE_URL,
+      now: () => clock.t,
+      music: { setMusicStars: (stars) => musicStars.push([...stars]), wantsMusicStars: () => false },
+    });
+    await settle(feed, CASSIOPEIA, clock);
+    expect(sourceLists.length).toBeGreaterThan(0);
+    expect(musicStars).toEqual([]);
+  });
+
+  it('is built with the app engine as its music target, wanting stars only while music can play', async () => {
     const { skyAudio } = await import('../SkyAudioFeed');
     const { observatoryAudio } = await import('../ObservatoryAudioEngine');
-    expect(skyAudio.musicEnabled).toBe(observatoryAudio.getMusicDirection() !== null);
+    expect(skyAudio.musicEnabled).toBe(observatoryAudio.wantsMusicStars());
   });
 });
 

@@ -47,6 +47,7 @@ class FakeNode {
   [key: string]: unknown;
   started = 0;
   stopped = 0;
+  readonly outputs: unknown[] = [];
   constructor(readonly kind: string) {
     return new Proxy(this, {
       get(target, prop, receiver) {
@@ -58,6 +59,7 @@ class FakeNode {
     });
   }
   connect(destination: unknown) {
+    this.outputs.push(destination);
     return destination;
   }
   disconnect() {}
@@ -221,47 +223,129 @@ describe('ObservatoryAudioEngine music', () => {
   const flush = async () => {
     for (let i = 0; i < 20; i++) await new Promise((resolve) => setTimeout(resolve, 0));
   };
-  function musicEngine(musicDirection: 'ambient-beats' | null) {
+  function musicEngine(musicSetting?: 'ambient-beats' | 'off', sourcesBase: string | null = SOURCES) {
     const requests: string[] = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       requests.push(String(input));
       return new Response(new Uint8Array(16));
     }) as unknown as typeof fetch;
     const factory = vi.fn(() => new FakeAudioContext() as unknown as AudioContext);
+    const heard: string[] = [];
+    const states: string[] = [];
     const engine = new ObservatoryAudioEngine({
       contextFactory: factory,
       impulseResponseUrl: null,
       bedPreference: 'stereo-diffuse',
-      musicDirection,
-      musicSourcesBase: SOURCES,
+      ...(musicSetting ? { musicSetting } : {}),
+      musicSourcesBase: sourcesBase,
       fetchImpl,
+      onMusicPieceStarted: (piece) => heard.push(piece),
+      onMusicStatus: (status) => states.push(status.state),
     });
-    // A made-up complete star, so the direction has a data part to play
+    // A made-up complete star, so the piece has a data part to play
     engine.setMusicStars([{ id: 'test-a', teffK: 5_000, luminositySolar: 1, distancePc: 10, screenX: 0.2, screenY: 0.1 }]);
-    return { engine, factory, requests };
+    return { engine, factory, requests, heard, states };
   }
 
-  it('makes and fetches nothing before Audio on, plays the direction on Audio on, and stops it on Audio off', async () => {
-    const { engine, factory, requests } = musicEngine('ambient-beats');
-    expect(engine.getMusicDirection()).toBe('ambient-beats');
+  it('makes and fetches nothing before Audio on, plays the pinned piece on Audio on, and stops it on Audio off', async () => {
+    const { engine, factory, requests, heard } = musicEngine('ambient-beats');
+    expect(engine.getMusicSetting()).toBe('ambient-beats');
     expect(factory).not.toHaveBeenCalled();
     expect(requests).toEqual([]);
     engine.enable();
     await flush();
     expect(factory).toHaveBeenCalledTimes(1);
     expect(requests.some((url) => url.startsWith(`${SOURCES}vcsl/`))).toBe(true);
-    expect(engine.getMusicStatus()).toMatchObject({ direction: 'ambient-beats', state: 'playing', reason: null, passes: 1, starsPlayed: 1 });
+    expect(engine.getMusicStatus()).toMatchObject({ setting: 'ambient-beats', piece: 'ambient-beats', state: 'playing', reason: null, passes: 1, starsPlayed: 1 });
+    expect(heard).toEqual(['ambient-beats']);
     engine.disable();
     expect(engine.getMusicStatus()).toMatchObject({ state: 'off', passes: 1 });
   });
 
-  it('plays no music and fetches no sample when no direction is chosen', async () => {
-    const { engine, requests } = musicEngine(null);
+  it('puts the music on the master bus input, so the slider, the fades and the limiter apply to it', () => {
+    const { engine } = musicEngine();
+    expect(engine.spatial.musicInput).toBeNull();
+    engine.enable();
+    const music = engine.spatial.musicInput as unknown as FakeNode;
+    const master = (engine.spatial as unknown as { master: { input: FakeNode } }).master;
+    expect(music.outputs).toEqual([master.input]);
+    // The master input is the one the UI sounds use, and its chain reaches the speakers
+    const reached = new Set<unknown>();
+    const walk = (node: unknown) => {
+      if (reached.has(node)) return;
+      reached.add(node);
+      for (const next of (node as FakeNode).outputs ?? []) walk(next);
+    };
+    walk(master.input);
+    const ctx = engine.spatial.context as unknown as FakeAudioContext;
+    expect(reached.has(ctx.destination)).toBe(true);
+    engine.disable();
+  });
+
+  it('plays the soundtrack by default, for the moment the app gives it', async () => {
+    const { engine, heard } = musicEngine();
+    expect(engine.getMusicSetting()).toBe('soundtrack');
+    engine.setMusicMoment('look_around');
     engine.enable();
     await flush();
-    expect(engine.getMusicDirection()).toBeNull();
+    expect(engine.getMusicStatus()).toMatchObject({ setting: 'soundtrack', moment: 'look_around', piece: 'ambient-beats', state: 'playing' });
+    expect(heard).toEqual(['ambient-beats']);
+    engine.disable();
+  });
+
+  it('plays nothing, fetches nothing and wants no stars where no samples are served (no sources base)', async () => {
+    const { engine, requests, states } = musicEngine(undefined, null);
+    // Known and reported when the engine is made, before Audio on, so nothing says music plays and no tile is loaded for it
+    expect(states).toEqual(['unavailable']);
+    expect(engine.getMusicStatus()).toMatchObject({ state: 'unavailable' });
+    expect(engine.getMusicStatus().reason).toMatch(/not served/);
+    expect(engine.wantsMusicStars()).toBe(false);
+    engine.enable();
+    await flush();
+    expect(requests).toEqual([]);
+    expect(engine.getMusicStatus()).toMatchObject({ state: 'unavailable', piece: null });
+    expect(engine.wantsMusicStars()).toBe(false);
+    expect(states).not.toContain('playing');
+    engine.disable();
+  });
+
+  it('wants the stars on screen only while music can play: not with the music off, nor once a file is missing', async () => {
+    const { engine, states } = musicEngine();
+    expect(engine.wantsMusicStars()).toBe(true);
+    engine.setMusicSetting('off');
+    expect(engine.wantsMusicStars()).toBe(false);
+    engine.setMusicSetting('soundtrack');
+    expect(engine.wantsMusicStars()).toBe(true);
+
+    const failing = new ObservatoryAudioEngine({
+      contextFactory: () => new FakeAudioContext() as unknown as AudioContext,
+      impulseResponseUrl: null,
+      bedPreference: 'stereo-diffuse',
+      musicSourcesBase: SOURCES,
+      fetchImpl: (async () => new Response('missing', { status: 404 })) as unknown as typeof fetch,
+      onMusicStatus: (status) => states.push(`failing:${status.state}`),
+    });
+    failing.setMusicStars([{ id: 'test-a', teffK: 5_000, luminositySolar: 1, distancePc: 10, screenX: 0.2, screenY: 0.1 }]);
+    failing.enable();
+    await flush();
+    expect(failing.getMusicStatus().state).toBe('unavailable');
+    expect(failing.wantsMusicStars()).toBe(false);
+    expect(states).toContain('failing:unavailable');
+    failing.disable();
+  });
+
+  it('plays no music and fetches no sample when the music is off, and plays at once when it is turned on', async () => {
+    const { engine, requests } = musicEngine('off');
+    engine.setMusicMoment('look_around');
+    engine.enable();
+    await flush();
     expect(requests.filter((url) => url.startsWith(SOURCES))).toEqual([]);
-    expect(engine.getMusicStatus()).toMatchObject({ state: 'off', reason: 'no music direction chosen' });
+    expect(engine.getMusicStatus()).toMatchObject({ setting: 'off', state: 'off', reason: 'the music is off' });
+    engine.setMusicSetting('soundtrack');
+    await flush();
+    expect(engine.getMusicSetting()).toBe('soundtrack');
+    expect(engine.getMusicStatus()).toMatchObject({ piece: 'ambient-beats', state: 'playing' });
+    engine.disable();
   });
 });
 

@@ -18,8 +18,11 @@ import {
   type EngineSnapshot,
   type SpatialAudioEngineOptions,
 } from './engine/SpatialAudioEngine.js';
+import { appHeardMusic, appMusicAvailability } from './audioCredits.js';
 import { MusicLayer, type MusicStatus } from './music/MusicLayer.js';
-import { APP_MUSIC_DIRECTION, DEV_BUILD, type MusicDirectionId } from './music/musicDirection.js';
+import { DEV_BUILD, appMusicSetting, type MusicSetting } from './music/musicSetting.js';
+import type { PieceId, SoundtrackMoment } from './music/soundtrack.js';
+import { appSoundtrackMoment } from './music/soundtrackMoment.js';
 import type { ScreenStar } from './music/starNotes.js';
 
 export type { ScaleAudioRegime } from './mappings.js';
@@ -28,10 +31,16 @@ export type { EngineSnapshot } from './engine/SpatialAudioEngine.js';
 export type { MusicStatus } from './music/MusicLayer.js';
 
 export interface ObservatoryAudioOptions extends SpatialAudioEngineOptions {
-  /** The music direction to play on Audio on (`resolveMusicDirection`); none by default. */
-  readonly musicDirection?: MusicDirectionId | null;
+  /** The Music setting to start with (musicSetting.ts); the soundtrack by default. */
+  readonly musicSetting?: MusicSetting;
+  /** The moment of the visit to start with (soundtrackMoment.ts); arriving by default. */
+  readonly musicMoment?: SoundtrackMoment;
   /** URL prefix the music's samples are fetched from, ending in '/'; none by default. */
   readonly musicSourcesBase?: string | null;
+  /** Told each time a soundtrack piece starts playing, for its credits. */
+  readonly onMusicPieceStarted?: (piece: PieceId) => void;
+  /** Told the music's status when the engine is made and each time it changes, so the page can say whether music can play. */
+  readonly onMusicStatus?: (status: MusicStatus) => void;
 }
 
 export class ObservatoryAudioEngine {
@@ -41,10 +50,15 @@ export class ObservatoryAudioEngine {
   constructor(options: ObservatoryAudioOptions = {}) {
     this.spatial = new SpatialAudioEngine(options);
     this.music = new MusicLayer({
-      direction: options.musicDirection ?? null,
+      setting: options.musicSetting ?? 'soundtrack',
+      moment: options.musicMoment ?? 'arrive',
       sourcesBase: options.musicSourcesBase ?? null,
       ...(options.fetchImpl ? { fetch: options.fetchImpl } : {}),
+      ...(options.onMusicPieceStarted ? { onPieceStarted: options.onMusicPieceStarted } : {}),
+      ...(options.onMusicStatus ? { onStatus: options.onMusicStatus } : {}),
     });
+    // The first status, so the page knows from load whether music can play (no samples served)
+    options.onMusicStatus?.(this.music.getStatus());
   }
 
   /** Call from a click or key handler: the first call creates the AudioContext. */
@@ -71,13 +85,27 @@ export class ObservatoryAudioEngine {
     this.spatial.stop();
   }
 
-  /** The music direction that plays on Audio on, for its credits; null when none does. */
-  public getMusicDirection(): MusicDirectionId | null {
-    return this.music.direction;
+  /** The Music setting: the soundtrack, off, or a pinned piece. */
+  public getMusicSetting(): MusicSetting {
+    return this.music.setting;
+  }
+
+  public setMusicSetting(setting: MusicSetting): void {
+    this.music.setSetting(setting);
+  }
+
+  /** The moment of the visit the soundtrack follows (soundtrackMoment.ts). */
+  public setMusicMoment(moment: SoundtrackMoment): void {
+    this.music.setMoment(moment);
   }
 
   public getMusicStatus(): MusicStatus {
     return this.music.getStatus();
+  }
+
+  /** Whether the music wants the stars on screen: not where no music can play, nor with the music off. */
+  public wantsMusicStars(): boolean {
+    return this.music.wantsStars();
   }
 
   /** The catalog stars on screen, for the music's data part (`SkyAudioFeed` sends them). */
@@ -137,7 +165,18 @@ const DEV_MUSIC_SOURCES = 'http://127.0.0.1:5199/';
 // Vite replaces import.meta.env at build time; the app's tsconfig carries no vite/client types
 const env = (import.meta as ImportMeta & { readonly env?: { readonly VITE_ALBEDIAN_MUSIC_SOURCES?: string } }).env;
 
-export const observatoryAudio = new ObservatoryAudioEngine({
-  musicDirection: APP_MUSIC_DIRECTION,
+/** What the app's engine is made with: the page's Music setting and moment, where the samples are, and the credits' record of what played. */
+export const APP_AUDIO_OPTIONS: ObservatoryAudioOptions = {
+  musicSetting: appMusicSetting.get(),
+  musicMoment: appSoundtrackMoment.get(),
   musicSourcesBase: env?.VITE_ALBEDIAN_MUSIC_SOURCES || (DEV_BUILD ? DEV_MUSIC_SOURCES : null),
-});
+  onMusicPieceStarted: (piece) => appHeardMusic.add(piece),
+  onMusicStatus: (status) => appMusicAvailability.set(status.state !== 'unavailable'),
+};
+
+export const observatoryAudio = new ObservatoryAudioEngine(APP_AUDIO_OPTIONS);
+
+
+// The Music control changes the page's setting and the viewport its moment; the engine follows both
+appMusicSetting.subscribe(() => observatoryAudio.setMusicSetting(appMusicSetting.get()));
+appSoundtrackMoment.subscribe(() => observatoryAudio.setMusicMoment(appSoundtrackMoment.get()));

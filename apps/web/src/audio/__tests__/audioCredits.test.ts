@@ -2,11 +2,25 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
-import { APP_AUDIO_CREDIT_LINES, AUDIO_CREDITS, AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL, audioCreditLines } from '../audioCredits';
+import {
+  AUDIO_CREDITS,
+  AUDIO_CREDIT_LINES,
+  AUDIO_DISCLOSURE,
+  AUDIO_DISCLOSURE_WITHOUT_MUSIC,
+  AUDIO_NOTICES_URL,
+  HeardMusic,
+  MusicAvailability,
+  appHeardMusic,
+  appMusicAvailability,
+  audioCreditLines,
+  audioDisclosure,
+} from '../audioCredits';
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../engine/ConvolutionReverb';
 import { RECORDING } from '../music/directions';
-import { APP_MUSIC_DIRECTION, MUSIC_DIRECTIONS, musicCreditLines } from '../music/musicDirection';
-import { observatoryAudio } from '../ObservatoryAudioEngine';
+import { appMusicSetting } from '../music/musicSetting';
+import { SOUNDTRACK, pieceCreditLines } from '../music/soundtrack';
+import { appSoundtrackMoment } from '../music/soundtrackMoment';
+import { APP_AUDIO_OPTIONS, observatoryAudio } from '../ObservatoryAudioEngine';
 
 const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`, import.meta.url));
 const read = (rel: string) => fs.readFileSync(repoFile(rel), 'utf8');
@@ -100,9 +114,11 @@ describe('audio credits and notices', () => {
 
   it('says what the sound is beside the audio, and the listening page opens with its own version', () => {
     // Not every sound is data: the reverb is a recorded room, the click and the identity pitch carry none
-    expect(AUDIO_DISCLOSURE).toBe(
+    expect(AUDIO_DISCLOSURE_WITHOUT_MUSIC).toBe(
       'No sound reaches us from space. What you hear is made from data and stated design choices; none of it is a recording of space.'
     );
+    // The soundtrack is the default Music setting
+    expect(AUDIO_DISCLOSURE).toBe(audioDisclosure('soundtrack'));
     // The page names its value kinds, since some clips play labelled test values. The sentence must be
     // the page's own paragraph: commented-out markup or a sentence left in a comment does not count.
     const page =
@@ -116,43 +132,128 @@ describe('audio credits and notices', () => {
   });
 });
 
+describe('what the sound is, with the music', () => {
+  it('says plainly that composed music, and in the recording piece a recorded track, plays alongside the star notes', () => {
+    expect(audioDisclosure('off')).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+    expect(audioDisclosure('soundtrack')).toBe(
+      'No sound reaches us from space. The star notes are made from catalog data and stated design choices. Composed music plays alongside them, and in Signal to Noise a recorded track. None of it is a recording of space.'
+    );
+    for (const pinned of ['organ-pulse', 'ambient-beats']) {
+      expect(audioDisclosure(pinned)).toBe(
+        'No sound reaches us from space. The star notes are made from catalog data and stated design choices. Composed music plays alongside them. None of it is a recording of space.'
+      );
+    }
+    expect(audioDisclosure('recording')).toBe(
+      'No sound reaches us from space. The star notes are made from catalog data and stated design choices. A recorded track, Signal to Noise, plays alongside them. None of it is a recording of space.'
+    );
+    for (const setting of ['off', 'soundtrack', ...SOUNDTRACK.map((piece) => piece.id)]) expect(audioDisclosure(setting)).not.toMatch(/\u2014/);
+  });
+
+  it('says no music plays wherever none can, whatever the setting', () => {
+    for (const setting of ['off', 'soundtrack', ...SOUNDTRACK.map((piece) => piece.id)]) {
+      expect(audioDisclosure(setting, false)).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+    }
+    expect(audioDisclosure('soundtrack', true)).toBe(AUDIO_DISCLOSURE);
+  });
+
+  it('keeps whether music can play on this page, and tells its listeners of a change', () => {
+    const available = new MusicAvailability(true);
+    const listener = vi.fn();
+    available.subscribe(listener);
+    available.set(true);
+    available.set(false);
+    available.set(false);
+    expect(available.get()).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows the app engine's music: available unless the samples are not served or a file is missing", () => {
+    expect(appMusicAvailability.get()).toBe(observatoryAudio.getMusicStatus().state !== 'unavailable');
+    const status = observatoryAudio.getMusicStatus();
+    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'unavailable', reason: 'the music samples are not served here' });
+    expect(appMusicAvailability.get()).toBe(false);
+    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'loading', reason: null });
+    expect(appMusicAvailability.get()).toBe(true);
+  });
+});
+
 describe('the credits and notices of the music that plays', () => {
   const sources = JSON.parse(read('apps/web/spike/music/sources.json')) as {
     vcslCommit: string;
     files: { path: string; sha256: string; licencePage: string; credit: string }[];
   };
 
-  it('shows the engine credits alone without music, and adds the playing direction credits after them', () => {
-    expect(audioCreditLines(null)).toEqual(AUDIO_CREDIT_LINES);
-    for (const id of MUSIC_DIRECTIONS) {
-      expect(audioCreditLines(id)).toEqual([...AUDIO_CREDIT_LINES, ...musicCreditLines(id)]);
-      expect(musicCreditLines(id).length).toBeGreaterThan(0);
+  it('shows the engine credits alone before any music is heard, then adds each piece heard, its lines once', () => {
+    expect(audioCreditLines([])).toEqual(AUDIO_CREDIT_LINES);
+    expect(audioCreditLines(['recording'])).toEqual([...AUDIO_CREDIT_LINES, ...pieceCreditLines('recording')]);
+    // The composed pieces share their head line and VCSL's credit: each line shows once, first heard first
+    const both = audioCreditLines(['ambient-beats', 'organ-pulse']);
+    expect(new Set(both).size).toBe(both.length);
+    expect(both).toEqual([...AUDIO_CREDIT_LINES, ...new Set([...pieceCreditLines('ambient-beats'), ...pieceCreditLines('organ-pulse')])]);
+    for (const piece of SOUNDTRACK) {
+      expect(pieceCreditLines(piece.id).length).toBeGreaterThan(0);
+      for (const line of pieceCreditLines(piece.id)) expect(audioCreditLines([piece.id])).toContain(line);
     }
   });
 
-  it('shows the credits of the direction the app engine plays', () => {
-    expect(observatoryAudio.getMusicDirection()).toBe(APP_MUSIC_DIRECTION);
-    expect(APP_AUDIO_CREDIT_LINES).toEqual(audioCreditLines(APP_MUSIC_DIRECTION));
+  it('keeps the pieces heard this visit in the order first heard, and tells its listeners of each new one', () => {
+    const heard = new HeardMusic();
+    const listener = vi.fn();
+    const unsubscribe = heard.subscribe(listener);
+    expect(heard.get()).toEqual([]);
+    heard.add('ambient-beats');
+    heard.add('recording');
+    heard.add('ambient-beats');
+    expect(heard.get()).toEqual(['ambient-beats', 'recording']);
+    expect(listener).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    heard.add('organ-pulse');
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 
-  it('in development, plays and credits the direction the address names', async () => {
+  it("records every piece the app engine starts for the credits, and plays the page's Music setting and moment", () => {
+    const before = appHeardMusic.get();
+    APP_AUDIO_OPTIONS.onMusicPieceStarted?.('recording');
+    expect(appHeardMusic.get()).toContain('recording');
+    expect(audioCreditLines(appHeardMusic.get())).toContain(RECORDING.credit);
+    expect(appHeardMusic.get().slice(0, before.length)).toEqual(before);
+
+    expect(observatoryAudio.getMusicSetting()).toBe(appMusicSetting.get());
+    const was = appMusicSetting.get();
+    try {
+      appMusicSetting.set('off');
+      expect(observatoryAudio.getMusicSetting()).toBe('off');
+      appMusicSetting.set('ambient-beats');
+      expect(observatoryAudio.getMusicSetting()).toBe('ambient-beats');
+    } finally {
+      appMusicSetting.set(was);
+    }
+
+    const moment = appSoundtrackMoment.get();
+    expect(observatoryAudio.getMusicStatus().moment).toBe(moment);
+    appSoundtrackMoment.set(moment === 'travel' ? 'reveal' : 'travel');
+    expect(observatoryAudio.getMusicStatus().moment).toBe(appSoundtrackMoment.get());
+    appSoundtrackMoment.set(moment);
+  });
+
+  it('in development, plays the music the address names for that load', async () => {
     vi.resetModules();
     vi.stubGlobal('window', { location: { search: '?music=recording' } });
     try {
-      const credits = await import('../audioCredits');
+      const setting = await import('../music/musicSetting');
       const engine = await import('../ObservatoryAudioEngine');
-      expect(engine.observatoryAudio.getMusicDirection()).toBe('recording');
-      expect(credits.APP_AUDIO_CREDIT_LINES).toEqual([...AUDIO_CREDIT_LINES, ...musicCreditLines('recording')]);
+      expect(setting.appMusicSetting.get()).toBe('recording');
+      expect(engine.observatoryAudio.getMusicSetting()).toBe('recording');
     } finally {
       vi.unstubAllGlobals();
       vi.resetModules();
     }
   });
 
-  it('carries a notice for every source a direction credits, with its licence and where it came from', () => {
+  it('carries a notice for every source a piece credits, with its licence and where it came from', () => {
     const music = section('MUSIC');
-    for (const id of MUSIC_DIRECTIONS) {
-      for (const line of musicCreditLines(id)) if (line !== 'Music: Albedian') expect(music, `${id}: ${line}`).toContain(line);
+    for (const piece of SOUNDTRACK) {
+      for (const line of pieceCreditLines(piece.id)) if (line !== 'Music: Albedian') expect(music, `${piece.id}: ${line}`).toContain(line);
     }
     expect(music).toContain(`github.com/sgossner/VCSL at commit ${sources.vcslCommit}`);
     expect(music).toContain('https://creativecommons.org/publicdomain/zero/1.0/');

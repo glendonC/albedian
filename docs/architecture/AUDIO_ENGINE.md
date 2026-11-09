@@ -6,9 +6,13 @@ the landing are exercised and measured in headless Chrome on macOS (`[tested]`).
 architecture is music first (section 13): a composed, adaptive musical score in which the catalog
 stars on screen play the data layer (`apps/web/src/audio/music/`). The continuous Planck-voice sky
 feed (`SkyAudioFeed`, section 8) remains implemented and tested, with the application's `skyAudio`
-singleton configured with continuous star voices disabled (`voices: false`). When a music direction
-is chosen, enabling audio plays it live and the feed hands it the stars on screen (section 13.7);
-with none chosen, enabling audio plays only the UI detent.
+singleton configured with continuous star voices disabled (`voices: false`). Where the music's
+samples are served (development with `serveSources.mjs`, or a build given
+`VITE_ALBEDIAN_MUSIC_SOURCES`), enabling audio plays the soundtrack live: its director picks a piece
+for the moment of the visit, and the feed hands it the stars on screen (section 13.7). Where they
+are not (a production build today, or development without the sources server), and with the Music
+setting off, no music plays, the feed loads no tile for it, the disclosure says so and the Music
+control is not shown; enabling audio then plays only the UI detent.
 
 Code: [`apps/web/src/audio/`](../../apps/web/src/audio/) (including [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/)).
 Harnesses: [`apps/web/spike/music/`](../../apps/web/spike/music/) (music directions, section 13) and
@@ -679,13 +683,19 @@ proposed for subsequent units (`[proposed]`).
 - **(c) Show what is sounding (`[proposed]`).** Mark the voiced stars on screen, as an animated plot's
   cursor does (Tucker Brown et al.), since listeners missed how the sounds relate to the image
   (Arcand et al.).
-- **(d) Say what the sound is (`[tested]`).** `AUDIO_DISCLOSURE` in `audioCredits.ts` reads "No
-  sound reaches us from space. What you hear is made from data and stated design choices; none of
-  it is a recording of space." It calls nothing data that is not: the detent click and the identity
-  pitch carry none (4.8), and the chapel reverb is a recording of an earthly room. The music
-  directions page opens with: "No sound reaches us from space. This is composed music; the notes the
-  stars play are chosen by their catalog values, as each clip says." The viewport shows the app's
-  sentence beside the Audio control while audio is on.
+- **(d) Say what the sound is (`[tested]`).** `audioDisclosure(setting)` in `audioCredits.ts` says it
+  for the Music setting (13.7). With the soundtrack it reads "No sound reaches us from space. The
+  star notes are made from catalog data and stated design choices. Composed music plays alongside
+  them, and in Signal to Noise a recorded track. None of it is a recording of space." A pinned piece
+  names only what that piece plays, from its `alongside` declaration in `soundtrack.ts`, which a test
+  holds to its arrangement. With the music off, or where no music can play (no samples served, or
+  a file missing), it reads "No sound reaches us from space. What you hear is made from data and
+  stated design choices; none of it is a recording of space." It calls
+  nothing data that is not: the detent click and the identity pitch carry none (4.8), and the chapel
+  reverb is a recording of an earthly room. The music directions page opens with: "No sound reaches
+  us from space. This is composed music; the notes the stars play are chosen by their catalog
+  values, as each clip says." The viewport shows the app's sentence beside the Audio control while
+  audio is on.
 - **(e) Keep fine distinctions on screen (`[proposed]`).** Sound alone carried strong signals and
   missed weak ones (Tucker Brown et al.); small differences of temperature, distance or residual
   need the inspector's numbers beside the sound.
@@ -696,8 +706,9 @@ proposed for subsequent units (`[proposed]`).
 ## 13. Music over the landing
 
 Status: **Locally implemented and tested capability** (`[tested]`). Pure harmony and star-note
-mappings, the three candidate arrangements (`directions.ts`), the sample engine (`sampler.ts`,
-`synth.ts`) and the one scheduler both the app and the demo page use (`MusicLayer.ts`) live in
+mappings, the three arrangements (`directions.ts`), the sample engine (`sampler.ts`, `synth.ts`),
+the one scheduler both the app and the demo page use (`MusicLayer.ts`), and the soundtrack's
+registry, director, moments and setting (`soundtrack.ts`, `soundtrackMoment.ts`, `musicSetting.ts`) live in
 [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/); the audio analysis, click detector,
 headless Chrome render pipeline and the development sources server live in
 [`apps/web/spike/music/`](../../apps/web/spike/music/).
@@ -882,35 +893,66 @@ pnpm --filter @albedian/web exec vite --port 5188 --strictPort &
 node apps/web/spike/music/render.mjs --url http://localhost:5188 --out .cache/music
 ```
 
-### 13.7 In the app: one setting picks the direction
+### 13.7 In the app: an adaptive soundtrack
 
-Status: **Locally implemented and tested capability** (`[tested]` in Vitest; played in the
-development app in Chrome on macOS, `[tested]`). No direction is chosen yet, so a production build
-plays no music.
+Status: **Locally implemented and tested capability** (`[tested]` in Vitest, the director under
+property tests; played in the development app in Chrome on macOS, `[tested]`). The owner chose to
+keep all three directions as one soundtrack, in the pattern of Minecraft's: each piece fits some
+moments of a visit, a piece plays through, a silence follows, then another piece.
 
-- **The setting.** `CHOSEN_MUSIC_DIRECTION` in
-  [`apps/web/src/audio/music/musicDirection.ts`](../../apps/web/src/audio/music/musicDirection.ts) is
-  the owner's pick (`organ-pulse`, `ambient-beats` or `recording`), null until they choose. In
-  development, `?music=organ-pulse`, `?music=ambient-beats` or `?music=recording` plays that
-  direction in the real app, and `?music=off` plays none; a production build ignores the address.
+- **The registry.** `SOUNDTRACK` in
+  [`apps/web/src/audio/music/soundtrack.ts`](../../apps/web/src/audio/music/soundtrack.ts) lists
+  each piece with its id, title, the moments it fits, its credit lines and how it is arranged from
+  the stars on screen. The organ and pulse fits arriving and Back to Moment; the ambient beats fit
+  the reveal, looking around and a star's card; Signal to Noise (the recording) fits travel. A new
+  piece drops in as one more entry.
+- **The moments.** [`soundtrackMoment.ts`](../../apps/web/src/audio/music/soundtrackMoment.ts) reads
+  the moment from what the viewport already holds, first match winning: `arrive` (the landing page),
+  `travel` (navigation `transitioning` or `space`, or a flight phase), `back_to_moment` (back at the
+  source from a departed view, until the next navigation or selection change), `star_card` (a
+  finding selected or inspected), `reveal` (a solved photo, nothing selected) and `look_around`
+  (everything else). The viewport's hook puts it in `appSoundtrackMoment`, which the app's engine
+  follows. The renderer's own Go There and regime flights do not change the session's navigation, so
+  they are not travel yet (`[open]`); `setMusicMoment` is ready for them.
+- **The director.** `SoundtrackDirector` is pure: the music layer passes it the AudioContext's
+  clock and carries out its commands (`play`, `fade`). A piece plays through; then silence for a gap
+  drawn uniformly from `20` to `60 s`; then a piece that fits the moment and is not the one just
+  played, or, when only that one fits, another piece. A new moment must hold `1.5 s`; a piece that
+  does not fit it fades over `3 s` and the moment's piece follows the fade; in a silence, a fitting
+  piece other than the last enters `2 s` after the moment settles. Each pass has its own gain, so a
+  fade touches only the pass that no longer fits. These timings are design choices for visits of
+  minutes, agreed with the lead (`[proposed]` as listening choices; the rules are `[tested]`).
+- **The setting.** [`musicSetting.ts`](../../apps/web/src/audio/music/musicSetting.ts) holds
+  `soundtrack` (the default), a piece id to pin it (the pin plays again after each gap), or `off`.
+  The Music control beside Audio changes it, and each viewer's browser keeps it in `localStorage`
+  under `albedian.music`; where storage is refused it holds for the visit. In development
+  `?music=soundtrack|organ-pulse|ambient-beats|recording|off` sets it for that load without storing
+  it; a production build ignores the address.
 - **Playing.** `ObservatoryAudioEngine.enable()`, inside the user's gesture, starts the
   `MusicLayer` on the engine's context into a music input on the master bus, so the header slider,
   the fades and the limiter apply to it; `disable()` fades it out over `0.25 s` and stops it. Each
-  pass of the piece is built from the stars with a temperature, a luminosity and a distance on
-  screen when it starts, and the next pass from the stars on screen then. The first pass waits up
-  to `8 s` for stars (on a cold start the astro tiles arrive several seconds after Audio on),
-  loading its composed parts' samples meanwhile (`[tested]`; in the development app direction A's
-  first pass played `16` stars over the landing, `[tested]`).
-- **Sources.** The samples and C's recording are fetched from `VITE_ALBEDIAN_MUSIC_SOURCES`, or in
+  pass is arranged from the stars with a temperature, a luminosity and a distance on screen when it
+  starts. The first pass after Audio on waits up to `8 s` for stars (on a cold start the astro tiles
+  arrive several seconds after Audio on), loading its composed parts' samples meanwhile
+  (`[tested]`). The Audio bar shows the stored volume whether audio is on or off.
+- **Sources.** The samples and the recording are fetched from `VITE_ALBEDIAN_MUSIC_SOURCES`, or in
   development from `http://127.0.0.1:5199/`, which
   [`apps/web/spike/music/serveSources.mjs`](../../apps/web/spike/music/serveSources.mjs) serves
-  from `.cache/music/sources/`. Direction C plays inside the beats and chords `analysis.ts` measured
-  from the recording when the demo page was rendered, served as `/recording-analysis.json` from
-  `.cache/music/facts.json`. Where a file is missing the music stays silent and
-  `getMusicStatus()` names it; nothing stands in for it (`[tested]`). How the samples reach a
-  production build (a trimmed, encoded set in the build, or hosting) is `[open]`.
-- **Credits.** The viewport shows `APP_AUDIO_CREDIT_LINES` from `audioCredits.ts`, read from the
-  same `APP_MUSIC_DIRECTION` the engine plays: `audioCreditLines(direction)` is the engine's three
-  lines and then the playing direction's: `Music: Albedian` with the VCSL and Ivy Audio credits for A and B,
-  Scott Buckley's credit with VCSL's for C (`[tested]` against the instruments each arrangement
-  plays). Section 5 of `THIRD_PARTY_NOTICES.txt` carries their licences and sources.
+  from `.cache/music/sources/` (`node apps/web/spike/music/serveSources.mjs`). The recording piece
+  plays inside the beats and chords `analysis.ts` measured from the recording when the demo page was
+  rendered, served as `/recording-analysis.json` from `.cache/music/facts.json`. Where a file is
+  missing the music stays silent and `getMusicStatus()` names it; nothing stands in for it
+  (`[tested]`). How the samples reach a production build (a trimmed, encoded set in the build, or
+  hosting) is `[open]`.
+- **What the sound is.** Beside the Audio control the viewport shows `useAudioDisclosure()`, the
+  sentence for the current Music setting (12.4 (d)): composed music, and in Signal to Noise a
+  recorded track, play alongside the star notes. Where no music can play (`appMusicAvailability`
+  false: no sources base, or a file the music needs is missing) it shows the sentence without
+  music, the Music control is not shown, and the feed loads no tile for the music (`[tested]`).
+- **Credits.** The viewport shows `useAudioCreditLines()`: the engine's three lines, then the lines
+  of each piece heard this visit, first heard first, each line once (`audioCreditLines` and
+  `appHeardMusic` in `audioCredits.ts`). A piece's lines stay once it has played, so a CC BY credit
+  remains after its piece ends: `Music: Albedian` with the VCSL and Ivy Audio credits for the
+  composed pieces, Scott Buckley's credit with VCSL's for Signal to Noise (`[tested]` against the
+  instruments each arrangement plays). Section 5 of `THIRD_PARTY_NOTICES.txt` carries their
+  licences and sources.
