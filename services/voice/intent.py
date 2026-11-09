@@ -44,6 +44,8 @@ from services.voice.claude import (
     propose_action_with_claude,
 )
 from services.voice.names import (
+    JAVASCRIPT_SPACE,
+    name_pattern,
     names_southern_cross,
     southern_cross_stars,
     spoken_names,
@@ -78,7 +80,7 @@ _STAR_NAMES: dict[str, str] = {star.common_name.lower(): f"finding-{star.id}" fo
 for _spoken, _finding_id in spoken_names():
     _STAR_NAMES.setdefault(_spoken, _finding_id)
 _NAMED_FINDINGS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
-    (whole_word(name), finding_id)
+    (name_pattern(name), finding_id)
     for name, finding_id in sorted(_STAR_NAMES.items(), key=lambda item: len(item[0]), reverse=True)
 ) + tuple((whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
 
@@ -233,7 +235,7 @@ def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | 
 
 # Years are read as packages/observation/src/voiceParser.ts reads them, so both parsers read the same phrases:
 # ASCII digits and word boundaries (re.ASCII), and JavaScript's whitespace in place of Python's \s.
-_S = "[" + "".join(re.escape(char) for char in sorted(JAVASCRIPT_SPACES)) + "]"
+_S = JAVASCRIPT_SPACE
 _UNSAFE_SYNTHETIC = re.compile(
     r"\b(?:fake|synthetic|hallucinate|invent|replace the sky|add a moon|add a nebula|generate a galaxy)\b",
     re.ASCII | re.IGNORECASE,

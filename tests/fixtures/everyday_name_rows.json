@@ -1,0 +1,33 @@
+{
+  "description": "Rows for star names that are also everyday words, read by both parsers' tests (tests/integration/test_voice_everyday_names.py and packages/observation/src/__tests__/voiceParser.everydayNames.test.ts), so the two cannot drift. boundary: [utterance, everyday word], where the naming verb, the name or the word star runs on into a longer word, so the utterance names no star. separators: [label, one character, whether JavaScript's /\\s/ takes it]. spaced: [utterance with {s} for that character, everyday word], each asking to select.",
+  "boundary": [
+    ["deselect fang", "fang"],
+    ["refocus on the peacock feather", "peacock"],
+    ["select range", "ran"],
+    ["where is the shampoo", "sham"],
+    ["look at the fangs", "fang"],
+    ["it ran start to finish", "ran"],
+    ["the fang stars", "fang"],
+    ["my costar ran the race", "ran"],
+    ["the superstar fang", "fang"],
+    ["a lodestar atlas", "atlas"],
+    ["the veteran star", "ran"]
+  ],
+  "separators": [
+    ["U+FEFF", "\ufeff", true],
+    ["U+0085", "\u0085", false],
+    ["U+001C", "\u001c", false],
+    ["U+001D", "\u001d", false],
+    ["U+001E", "\u001e", false],
+    ["U+001F", "\u001f", false]
+  ],
+  "spaced": [
+    ["select{s}ran", "ran"],
+    ["select{s}the{s}peacock", "peacock"],
+    ["focus on{s}skat", "skat"],
+    ["select the star{s}fang", "fang"],
+    ["select star{s}atlas", "atlas"],
+    ["the star{s}diadem, select it", "diadem"],
+    ["the atlas{s}star, select it", "atlas"]
+  ]
+}

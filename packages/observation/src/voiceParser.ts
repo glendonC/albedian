@@ -13,7 +13,7 @@ import {
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
 import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
-import { CATALOG_STAR_NAMES } from './generated/catalogStarNames.js';
+import { CATALOG_STAR_NAMES, EVERYDAY_WORD_NAMES, NAME_CUE_VERBS } from './generated/catalogStarNames.js';
 
 /**
  * ============================================================================
@@ -253,17 +253,43 @@ export const UNBAKED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
   'the Coalsack': ['coalsack', 'coal sack'],
 };
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const EVERYDAY_WORDS = new Set(EVERYDAY_WORD_NAMES);
+const NAME_CUES = NAME_CUE_VERBS.map(escapeRegExp).join('|');
+
+/**
+ * How a request names a star, as services/voice/names.py name_pattern does. A plain name is a whole word, with the
+ * name first in the pattern so the regex engine skips straight to where it occurs. A name that is also an everyday
+ * word (ran, fang, atlas) names a star only after a naming verb, then "the" and "star" if said, or with "star" right
+ * before or after it, so "zoom in, I ran out of room" names no star.
+ */
+function starNamePattern(name: string): RegExp {
+  const lower = name.trim().toLowerCase();
+  const literal = escapeRegExp(lower);
+  if (!EVERYDAY_WORDS.has(lower)) return new RegExp(`${literal}(?<![a-z0-9]${literal})(?![a-z0-9])`);
+  return new RegExp(
+    `(?:(?<![a-z0-9])(?:${NAME_CUES})\\s+(?:the\\s+)?(?:star\\s+)?|(?<![a-z0-9])star\\s+)${literal}(?![a-z0-9])` +
+      `|(?<![a-z0-9])${literal}\\s+star(?![a-z0-9])`
+  );
+}
+
+/** A finding's title named in the request; an everyday-word title (Ran, Fang) only when cued, as above. */
+function titleNamedIn(normalizedUtterance: string, title: string): boolean {
+  return EVERYDAY_WORDS.has(title.trim().toLowerCase())
+    ? starNamePattern(title).test(normalizedUtterance)
+    : namesWholeWord(normalizedUtterance, title);
+}
+
 /**
  * Every star name the backend knows (generated/catalogStarNames.ts, from services/voice/names.py), longest first so
- * "Polaris Australis" is read before "Polaris". The name comes first in each pattern and the check on the character
- * before it follows, so the regex engine skips straight to where the name occurs.
+ * "Polaris Australis" is read before "Polaris".
  */
 const CATALOG_STARS_LONGEST_FIRST = [...CATALOG_STAR_NAMES]
   .sort((a, b) => b[0].length - a[0].length || (a[0] < b[0] ? -1 : 1))
-  .map(([spoken, findingId, shown]) => {
-    const literal = spoken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return { pattern: new RegExp(`${literal}(?<![a-z0-9]${literal})(?![a-z0-9])`), findingId, shown };
-  });
+  .map(([spoken, findingId, shown]) => ({ pattern: starNamePattern(spoken), findingId, shown }));
 
 const UNRESOLVED_SKY = 'The sky is unresolved, so no finding in it can be named, selected or pointed at yet.';
 
@@ -321,7 +347,7 @@ function findNamedFindingInUtterance(
     if (finding) return finding;
   }
   for (const finding of session.observationSolution?.findings ?? []) {
-    if (namesWholeWord(normalizedUtterance, finding.title)) return finding;
+    if (titleNamedIn(normalizedUtterance, finding.title)) return finding;
     const idShort = finding.id.replace(/^finding_/, '');
     if (idShort.length >= 3 && namesWholeWord(normalizedUtterance, idShort)) return finding;
     if (finding.catalogRef?.bayerDesignation && namesWholeWord(normalizedUtterance, finding.catalogRef.bayerDesignation)) {

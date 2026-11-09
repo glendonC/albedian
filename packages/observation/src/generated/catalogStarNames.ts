@@ -445,3 +445,9 @@ export const CATALOG_STAR_NAMES: ReadonlyArray<readonly [string, string, string]
   ["zubenelhakrabi", "finding-gaia-dr3-6265374394490973184", "Zubenelhakrabi"],
   ["zubeneschamali", "finding-hip-74785", "Zubeneschamali"],
 ];
+
+/** Star names that are also everyday words: each names a star only after a naming verb or beside "star". */
+export const EVERYDAY_WORD_NAMES: readonly string[] = ["atlas", "axolotl", "diadem", "fang", "peacock", "ran", "sham", "skat"];
+
+/** The naming verbs after which an everyday-word name is a star. */
+export const NAME_CUE_VERBS: readonly string[] = ["select", "fly to", "go to", "take me to", "travel to", "tell me about", "where is", "where's", "what is", "what's", "describe", "focus on", "look at", "point at"];

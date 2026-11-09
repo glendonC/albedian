@@ -52,7 +52,7 @@ from services.contracts import voice as contract
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 from services.science.catalog_model import BAILER_JONES_PHOTOGEOMETRIC
 from services.science.ephemeris import MOON_METHOD, PLANET_METHOD
-from services.voice import claude
+from services.voice import claude, names
 from services.voice.intent import ActionContext, check_voice_command, parse_voice_intent
 
 YEAR = 2101  # a clock year no code path may assume
@@ -102,7 +102,10 @@ def _action(action_type: str, **fields: Any) -> dict[str, Any]:
 
 
 def _names(name: str, utterance: str) -> bool:
-    """A name counts only as a whole word: Moon is not in "honeymoon"."""
+    """A name counts only as a whole word: Moon is not in "honeymoon". A star name that is also an everyday word
+    (Skat, Atlas) counts only after a naming verb or beside "star" (services/voice/names.py, language-6b)."""
+    if name.lower() in names.EVERYDAY_WORD_NAMES:
+        return names.name_pattern(name).search(utterance.lower()) is not None
     return re.search(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])", utterance.lower()) is not None
 
 

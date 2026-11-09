@@ -21,6 +21,7 @@ import json
 from pathlib import Path
 import re
 
+from services.contracts.voice import JAVASCRIPT_SPACES
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -82,6 +83,35 @@ UNBAKED_DEEP_SKY_ROWS: dict[str, str | None] = {
 }
 
 
+# Star names that are also everyday English words, reviewed from the 32 table names that are lowercase entries of
+# /usr/share/dict/words. These name a star only after a naming verb or with "star" beside them, so "zoom in, I ran
+# out of room" names no star. The other 24 (castor, pollux, regulus, spica and the like, said as star names first;
+# brachium, situla, torcular and the like, rare in speech) stay plain names.
+EVERYDAY_WORD_NAMES: dict[str, str] = {
+    "ran": "the past of run",
+    "fang": "a tooth",
+    "atlas": "a book of maps",
+    "sham": "a fake",
+    "skat": "a card game",
+    "peacock": "a bird",
+    "diadem": "a crown",
+    "axolotl": "an amphibian",
+}
+
+# The naming verbs after which an everyday-word name is a star ("the" and "star" may come between). "show" is not
+# one: "show the fang shaped cloud" names no star. "what is" is one, since otherwise "what is atlas" would name no
+# star and a describe rule would answer about the selection instead.
+NAME_CUE_VERBS = (
+    "select", "fly to", "go to", "take me to", "travel to", "tell me about", "where is", "where's", "what is",
+    "what's", "describe", "focus on", "look at", "point at",
+)
+
+# One space as JavaScript's /\s/ reads it (JAVASCRIPT_SPACES), so a pattern here reads the same phrases as
+# packages/observation/src/voiceParser.ts: Python's \s also takes U+001C to U+001F and U+0085, and not U+FEFF.
+# services/voice/intent.py reads years with it too.
+JAVASCRIPT_SPACE = "[" + "".join(re.escape(char) for char in sorted(JAVASCRIPT_SPACES)) + "]"
+
+
 def whole_word(name: str) -> re.Pattern[str]:
     """Match `name` only as a whole word, so the Moon is not found in "honeymoon".
 
@@ -91,6 +121,21 @@ def whole_word(name: str) -> re.Pattern[str]:
     """
     literal = re.escape(name.lower())
     return re.compile(rf"{literal}(?<![a-z0-9]{literal})(?![a-z0-9])")
+
+
+def name_pattern(name: str) -> re.Pattern[str]:
+    """How a request names this star: a plain whole word, or for an everyday-word name, only after a naming verb
+    (NAME_CUE_VERBS, then "the" and "star" if said) or with "star" right before or after it.
+    packages/observation/src/voiceParser.ts builds the same pattern from the generated lists."""
+    if name.lower() not in EVERYDAY_WORD_NAMES:
+        return whole_word(name)
+    literal = re.escape(name.lower())
+    cues = "|".join(re.escape(verb) for verb in NAME_CUE_VERBS)
+    s = JAVASCRIPT_SPACE
+    return re.compile(
+        rf"(?:(?<![a-z0-9])(?:{cues}){s}+(?:the{s}+)?(?:star{s}+)?|(?<![a-z0-9])star{s}+){literal}(?![a-z0-9])"
+        rf"|(?<![a-z0-9]){literal}{s}+star(?![a-z0-9])"
+    )
 
 
 @dataclass(frozen=True)
@@ -192,6 +237,12 @@ def render_ts_table() -> str:
         "export const CATALOG_STAR_NAMES: ReadonlyArray<readonly [string, string, string]> = [\n"
         f"{rows}\n"
         "];\n"
+        "\n"
+        "/** Star names that are also everyday words: each names a star only after a naming verb or beside \"star\". */\n"
+        f"export const EVERYDAY_WORD_NAMES: readonly string[] = {json.dumps(sorted(EVERYDAY_WORD_NAMES))};\n"
+        "\n"
+        "/** The naming verbs after which an everyday-word name is a star. */\n"
+        f"export const NAME_CUE_VERBS: readonly string[] = {json.dumps(list(NAME_CUE_VERBS))};\n"
     )
 
 
