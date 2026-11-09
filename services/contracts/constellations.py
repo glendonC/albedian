@@ -18,7 +18,10 @@ in [0, 360).
   are J2000 positions of corners defined at equinox B1875, and each edge runs along a constant right ascension or
   declination of B1875, not straight between the J2000 vertices: a straight segment can sit arcminutes off the true
   boundary. A layer that draws or tests an edge must densify it along B1875 right ascension or declination (precess
-  both vertices to B1875, step the coordinate that changes, precess each step back to J2000).
+  both vertices to B1875, step the coordinate that changes, precess each step back to J2000). Each edge goes the
+  short way in right ascension (none spans 180 degrees; the widest spans 97.5), and ring orientation is mixed:
+  with right ascension increasing to the right, 56 rings run clockwise and 31 counterclockwise, and the two round
+  a pole (Octans, Ursa Minor) run all the way round, so a point-in-ring test must not assume either winding.
 
 Rules beyond each value's own range: codes are unique within a document. Completeness (all 89 entries) is a
 property of the baked files, checked by tests/integration/test_constellations_d3celestial.py, not of the contract.

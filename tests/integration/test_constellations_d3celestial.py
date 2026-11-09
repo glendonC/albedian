@@ -34,7 +34,7 @@ import pytest
 
 from services.contracts.constellations import CONSTELLATION_CODES, ConstellationBoundaries, ConstellationLines
 from services.contracts.deep_sky import DEEP_SKY_COLUMNS
-from services.contracts.provenance import AssetProvenanceRecord
+from services.contracts.provenance import AssetProvenanceRecord, dumps_record
 from services.science.catalog import precession_matrix_iau1976
 from services.science.catalog_tiles import decode_core_directions, decode_core_tile, decode_detail_tile, decode_f16, decode_mag
 from tests.integration.test_constellations_contract import REAL_BOUNDS, REAL_LINES
@@ -100,6 +100,27 @@ def test_parse_refuses_other_shapes() -> None:
         bake.parse_features(json.dumps({**collection, "features": [{**feature, "properties": {"rank": "2", "name": "Crux"}}]}), "MultiLineString")
     with pytest.raises(ValueError, match="FeatureCollection"):
         bake.parse_features(json.dumps({**collection, "bbox": [0, 0, 1, 1]}), "MultiLineString")
+
+
+def test_a_synthetic_collection_becomes_exactly_its_entries() -> None:
+    """Made from real points of the pinned file. Two longitudes gain 360 inexactly in binary (-120.8867 + 360 is
+    239.11329999999998, -89.2295 + 360 is 270.77049999999997) and are written back at the source's 4 decimals;
+    Mimosa's, -168.0697, comes out exact; the two Serpens features become Se1 and Se2."""
+    features = [
+        {"type": "Feature", "id": "Cru", "properties": {"rank": "2"},
+         "geometry": {"type": "MultiLineString", "coordinates": [[[-168.0697, -59.6888], [-176.2137, -58.7489]]]}},
+        {"type": "Feature", "id": "Ser", "properties": {"rank": "3"},
+         "geometry": {"type": "MultiLineString", "coordinates": [[[-123.4531, 15.4218], [-120.8867, 15.6616]]]}},
+        {"type": "Feature", "id": "Ser", "properties": {"rank": "3"},
+         "geometry": {"type": "MultiLineString", "coordinates": [[[-102.4055, -15.7249], [-89.2295, -8.1803]]]}},
+    ]  # fmt: skip
+    assert -120.8867 + 360 != 239.1133 and -89.2295 + 360 != 270.7705 and -168.0697 + 360 == 191.9303
+    parsed = bake.parse_features(json.dumps({"type": "FeatureCollection", "features": features}), "MultiLineString")
+    assert parsed == [
+        {"code": "Cru", "rank": 2, "parts": [[[191.9303, -59.6888], [183.7863, -58.7489]]]},
+        {"code": "Se1", "rank": 3, "parts": [[[236.5469, 15.4218], [239.1133, 15.6616]]]},
+        {"code": "Se2", "rank": 3, "parts": [[[257.5945, -15.7249], [270.7705, -8.1803]]]},
+    ]
 
 
 def test_check_inputs_refuses_a_missing_or_altered_file(tmp_path: Path) -> None:
@@ -314,11 +335,17 @@ def test_provenance_record_keeps_the_bsd_notice_and_says_what_the_lines_are() ->
     assert "Davenhall" in (record.sources[1].citation or "")
 
 
+def test_record_rebuilds_without_the_cache() -> None:
+    """Runs where .cache is absent (CI): the record is built from the committed files and the bake's constants only."""
+    assert (OUT_DIR / "PROVENANCE.json").read_text(encoding="utf-8") == dumps_record(bake.build_provenance_record(OUT_DIR))
+
+
 def test_science_doc_states_licence_equinoxes_and_limits() -> None:
     doc = DOC_PATH.read_text(encoding="utf-8")
     assert "\u2014" not in doc  # no em dash characters in project prose
     for required in ("d2e20e104b86", "Olaf Frohn", "BSD-3-Clause", "not an IAU product", "B1875", "J2000",
-                     "densify", "Se1", "Se2", "`catalog-derived`", "Davenhall"):  # fmt: skip
+                     "densify", "Se1", "Se2", "`catalog-derived`", "Davenhall", "short way",
+                     "56", "31 counterclockwise"):  # fmt: skip
         assert required in doc
     assert bake.BSD_NOTICE.split("\n")[0] in doc and "ADVISED OF THE POSSIBILITY OF SUCH DAMAGE" in doc
 

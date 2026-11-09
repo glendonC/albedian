@@ -59,6 +59,8 @@ REAL_BOUNDS = {
 # fmt: on
 
 MODELS: dict[str, type[BaseModel]] = {"lines": ConstellationLines, "bounds": ConstellationBoundaries}
+# Made up: no figure in the file has two consecutive points with the same RA [tested], but the contract allows it
+MERIDIAN_SEGMENT = {"code": "Cru", "rank": 2, "polylines": [[[187.0, -57.0], [187.0, -63.0]]]}
 
 
 def document(kind: str, entries: list[dict[str, Any]]) -> dict[str, Any]:
@@ -142,6 +144,9 @@ BOUND_FAULTS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "vertices in B1875": lambda t: t.update(vertexEquinox="B1875"),
     "edges in J2000": lambda t: t.update(edgeEquinox="J2000"),
     "open ring": lambda t: first(t)["ring"].pop(),
+    "ring end on the start's RA but not its Dec": lambda t: first(t)["ring"].__setitem__(
+        -1, [first(t)["ring"][0][0], first(t)["ring"][0][1] + (0.5 if first(t)["ring"][0][1] < 0 else -0.5)]
+    ),
     "ring of three points": lambda t: first(t).update(ring=[*first(t)["ring"][:2], copy.deepcopy(first(t)["ring"][0])]),
     "point repeated at once in a ring": repeat_ring_point,
     "ring right ascension of 360": lambda t: set_ring_point(t, [360.0, 0.0]),
@@ -176,7 +181,11 @@ def build_constellation_samples() -> dict[str, Any]:
             "boundaryEdges": cn.CONSTELLATION_BOUNDARY_EDGE_EQUINOX,
         },
         "ringMinPoints": cn.CONSTELLATION_RING_MIN_POINTS,
-        "valid": [{"kind": kind, "table": document(kind, real(kind))} for kind in ("lines", "bounds")],
+        "valid": [
+            *({"kind": kind, "table": document(kind, real(kind))} for kind in ("lines", "bounds")),
+            # Made up, not from the file: a segment along one meridian, two points with the same RA, is valid
+            {"kind": "lines", "table": document("lines", [MERIDIAN_SEGMENT])},
+        ],
         "invalid": invalid,
     }
 
@@ -212,6 +221,12 @@ def test_real_entries_parse_and_round_trip_unchanged(kind: str) -> None:
     parsed = MODELS[kind].model_validate(sample)
     assert parsed.to_contract_dict() == sample  # type: ignore[attr-defined]
     assert json.loads(json.dumps(parsed.to_contract_dict())) == sample  # type: ignore[attr-defined]
+
+
+def test_a_meridian_segment_is_valid() -> None:
+    """Two consecutive points may share an RA: only a point repeated at once is refused."""
+    parsed = ConstellationLines.model_validate(document("lines", [MERIDIAN_SEGMENT]))
+    assert parsed.constellations[0].polylines[0] == ((187.0, -57.0), (187.0, -63.0))
 
 
 def test_real_entries_keep_the_southern_figures_and_both_serpens_parts() -> None:

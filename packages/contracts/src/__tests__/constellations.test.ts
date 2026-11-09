@@ -104,6 +104,11 @@ const BOUND_FAULTS: Record<string, (t: Doc) => void> = {
   'vertices in B1875': (t) => void (t.vertexEquinox = 'B1875'),
   'edges in J2000': (t) => void (t.edgeEquinox = 'J2000'),
   'open ring': (t) => void first(t).ring!.pop(),
+  "ring end on the start's RA but not its Dec": (t) => {
+    const ring = first(t).ring!;
+    const [ra, dec] = ring[0] as [number, number];
+    ring[ring.length - 1] = [ra, dec + (dec < 0 ? 0.5 : -0.5)];
+  },
   'ring of three points': (t) => {
     const ring = first(t).ring!;
     first(t).ring = [...ring.slice(0, 2), structuredClone(ring[0]!)];
@@ -183,7 +188,8 @@ describe('@albedian/contracts: constellation lines and boundaries', () => {
   });
 
   it('parses the real entries the Python side wrote, unchanged', () => {
-    expect(fixture.valid.map((v) => v.kind)).toEqual(['lines', 'bounds']);
+    // The real entries of each file, then a made-up meridian segment (two points with one RA), which is valid
+    expect(fixture.valid.map((v) => v.kind)).toEqual(['lines', 'bounds', 'lines']);
     for (const { kind, table } of fixture.valid) {
       const parsed = SCHEMAS[kind].safeParse(table);
       expect(parsed.success, `${kind}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);

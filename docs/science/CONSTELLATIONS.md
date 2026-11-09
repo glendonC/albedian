@@ -79,7 +79,9 @@ So a layer that draws or tests an edge must densify it along B1875 right ascensi
 vertices to B1875, step the coordinate that changes, and precess each step back to J2000. To place a point, do as
 Roman (1987) does: precess it to B1875 and test it against the B1875 edges (`tests/integration/
 test_constellations_d3celestial.py` has such a test). Octans and Ursa Minor ring the south and north celestial poles,
-and their rings run round all 24 hours of right ascension.
+and their rings run round all 24 hours of right ascension. Every edge goes the short way in right ascension (the
+widest spans 97.5 degrees), and the other rings wind both ways: with right ascension increasing to the right, 56
+run clockwise and 31 counterclockwise [tested], so a point-in-ring test must not assume a winding.
 
 ## Checks
 
