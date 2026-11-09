@@ -540,9 +540,10 @@ export const SpatialObservatoryViewport: React.FC<
           )}
           <CelestialTargetCard
             session={session}
-            selectedFinding={selectedFinding}
+            selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
             onRunUtterance={onRunUtterance}
             onPushToTalk={onPushToTalk}
+            sourceImageUrl={uploadedMediaUrl}
           />
           <FlightAndRestoreHud
             session={session}
