@@ -42,6 +42,9 @@ USER_AGENT = "Albedian/0.1 (research prototype)"
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 MAX_TOKENS = 4096
+# With no network, or one that drops packets, a try fails at the connect bound and the rules answer:
+# two tries take about 5 s at most. A reachable API that is slow to answer keeps the longer read bound.
+CONNECT_TIMEOUT_S = 2.0
 TIMEOUT_S = 20.0
 MAX_RETRIES = 1
 MAX_POINTER_RECENCY_MS = 10_000.0
@@ -267,12 +270,17 @@ def live_claude_enabled() -> bool:
     return os.environ.get(ENABLE_ENV, "0") == "1" and bool(os.environ.get(API_KEY_ENV, "").strip())
 
 
+def client_timeout() -> anthropic.Timeout:
+    """The bounds on each try: `CONNECT_TIMEOUT_S` to connect, `TIMEOUT_S` for every other step."""
+    return anthropic.Timeout(TIMEOUT_S, connect=CONNECT_TIMEOUT_S)
+
+
 def build_client(api_key: str, *, http_client: Any = None, max_retries: int = MAX_RETRIES) -> anthropic.Anthropic:
     """A client for an explicit key: the SDK then reads no other credential and no on-disk profile."""
     return anthropic.Anthropic(
         api_key=api_key,
         default_headers={"User-Agent": USER_AGENT},
-        timeout=TIMEOUT_S,
+        timeout=client_timeout(),
         max_retries=max_retries,
         http_client=http_client,
     )
