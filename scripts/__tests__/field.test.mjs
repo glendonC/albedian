@@ -98,11 +98,12 @@ describe('field start plan', () => {
     expect(pickLanAddress({ en1: [{ address: '203.0.113.9', family: 'IPv4', internal: false }] })).toBeNull();
   });
 
-  it('accepts only --lan, --help and the three port options', () => {
-    const defaults = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
+  it('accepts only --lan, --help, --check and the three port options', () => {
+    const defaults = { lan: false, help: false, check: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
     expect(parseFieldArgs([])).toEqual(defaults);
     expect(parseFieldArgs(['--lan'])).toEqual({ ...defaults, lan: true });
     expect(parseFieldArgs(['--help'])).toEqual({ ...defaults, help: true });
+    expect(parseFieldArgs(['--check', '--lan'])).toEqual({ ...defaults, check: true, lan: true });
     expect(parseFieldArgs(['--api-port', '8100', '--web-port', '5180'])).toEqual({ ...defaults, apiPort: 8100, webPort: 5180 });
     expect(() => parseFieldArgs(['--host', '0.0.0.0'])).toThrow(/Unknown option --host/);
     expect(() => parseFieldArgs(['--api-port'])).toThrow(/needs a port/);

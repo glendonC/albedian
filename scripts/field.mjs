@@ -18,6 +18,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fieldCheck, formatReport, realProbes } from './field-check.mjs';
 
 export const API_PORT = 8000;
 export const WEB_PORT = 5173;
@@ -32,12 +33,13 @@ const API_HOST = '127.0.0.1';
 const HEALTH_WAIT_MS = 90_000;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const USAGE = `Usage: pnpm field [--lan] [--api-port <port>] [--web-port <port>] [--music-port <port>]
+const USAGE = `Usage: pnpm field [--check] [--lan] [--api-port <port>] [--web-port <port>] [--music-port <port>]
 
 Starts the Albedian API (http://${API_HOST}:${API_PORT}) and web app (http://localhost:${WEB_PORT}) on this laptop.
   --lan              build the web app and also serve that build to a phone on the same network at this
                      laptop's network address. Any device on that network can then open it, upload, solve
                      and send voice commands. Use it only on a network you trust. Off unless given.
+  --check            start nothing: report what a field run needs on this laptop and what is missing.
   --api-port <port>  API port (default ${API_PORT}); --web-port <port> web app port (default ${WEB_PORT});
   --music-port <port> music sources server port on 127.0.0.1 (default ${MUSIC_PORT}).
 Stop all three with Ctrl+C.`;
@@ -50,13 +52,14 @@ function parsePort(flag, value) {
   return port;
 }
 
-/** Parses the command line: only --lan, --api-port, --web-port, --music-port and --help are accepted. */
+/** Parses the command line: only --lan, --check, --api-port, --web-port, --music-port and --help are accepted. */
 export function parseFieldArgs(argv) {
-  const options = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
+  const options = { lan: false, help: false, check: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--lan') options.lan = true;
     else if (arg === '--help' || arg === '-h') options.help = true;
+    else if (arg === '--check') options.check = true;
     else if (arg === '--api-port') options.apiPort = parsePort(arg, argv[++i]);
     else if (arg === '--web-port') options.webPort = parsePort(arg, argv[++i]);
     else if (arg === '--music-port') options.musicPort = parsePort(arg, argv[++i]);
@@ -184,6 +187,12 @@ async function main() {
   if (options.help) {
     console.log(USAGE);
     return;
+  }
+  if (options.check) {
+    const ports = { api: options.apiPort, web: options.webPort, music: options.musicPort };
+    const result = await fieldCheck({ probes: realProbes(REPO_ROOT), ports, lan: options.lan });
+    console.log(formatReport(result));
+    process.exit(result.exitCode);
   }
 
   let plan;

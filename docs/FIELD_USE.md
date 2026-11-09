@@ -5,13 +5,28 @@ the audio need no internet [tested by code audit: no runtime request leaves the 
 
 ## Before you leave (with internet)
 
+First run the preflight. It starts nothing and prints one line per need, by count and version only:
+
+```bash
+pnpm field --check
+```
+
+- `MISSING` lines are required: Node, pnpm, uv, installed dependencies (real `node_modules` folders and `.venv`),
+  ffmpeg, ffprobe and the tracked star tiles and catalogs. With one, it exits 1 [tested].
+- `advice` lines leave it at exit 0: HEIC support ("iPhone HEIC photos will be refused: install ffmpeg 7.1 or
+  later, or set the iPhone's Camera Formats to Most Compatible (JPEG)"), the music samples present of the 216
+  listed, a disk with under 10 GB free, a busy port, or a pnpm other than the pinned one [tested].
+- The voice line says whether live Claude is on and whether its key is set, never the key [tested].
+
+Then:
+
 1. From the repository root, once: `pnpm install` and `uv sync`.
 2. Run `pnpm field` once and open the laptop address below, so the browser has the web fonts cached
    [inference: the browser cache may keep them; without them the page uses system fonts].
 3. If you will use a phone, run `pnpm field --lan` once on your home network to check that the build passes and
    the phone opens the app [proposed].
 4. The music needs its samples in `.cache/music/sources` of the checkout you run `pnpm field` from. `pnpm field`
-   prints how many sample files it found [tested]. If it says the folder is missing, fetch the samples as
+   and `pnpm field --check` print how many sample files they found [tested]. If it says the folder is missing, fetch the samples as
    `docs/architecture/AUDIO_ENGINE.md` section 13.6 describes; without them the app runs and its music says it is
    unavailable [inference from code].
 
@@ -33,7 +48,8 @@ pnpm field
 - Other ports: `pnpm field --api-port 8100 --web-port 5180 --music-port 5299`.
 - The API runs without its access log, so no request's query string is printed in the terminal [tested].
 - Music: the app fetches its samples from its own address, at `/music-sources/`, which the web app forwards to
-  the music sources server on `127.0.0.1` [tested]. The laptop and a phone on `--lan` get the music the same way.
+  the music sources server on `127.0.0.1` [tested]. The laptop and a phone on `--lan` get the music the same way
+  [inference from config; not run on a phone].
 
 ## Phone on the same network (opt-in)
 
@@ -63,8 +79,9 @@ What any device on that network can do while it runs:
   sends no origin and passes it [inference from code].
 - Read back an upload's record, original and solution by its content hash. A device knows a hash only for a file
   it uploaded or was given [inference from code].
-- Fetch the music: the sample files in `.cache/music/sources` (the CC0 and CC BY files listed in
-  `apps/web/spike/music/sources.json`) and the recording's analysis, through `/music-sources/` [tested].
+- Fetch the music through `/music-sources/`: every regular file in `.cache/music/sources`, that is the CC0 and
+  CC BY samples `apps/web/spike/music/sources.json` lists plus the fetch step's own two JSON lists, and the
+  recording's analysis [tested: the music server serves every regular file in that folder].
 
 What it cannot get:
 
@@ -96,8 +113,9 @@ The laptop at `http://localhost:5173` is the full experience.
 
 - Fonts: the page paints at once in system fonts; the web fonts load only when the internet is there
   [tested: the font stylesheet no longer blocks the first paint].
-- Speech push-to-talk in Chrome sends audio to a speech service, so it needs the internet [inference]. Type the
-  command in the command bar instead.
+- Typed commands in the command bar always work offline. Spoken input depends on the browser's own speech
+  recognition: Chrome's usually sends audio to a speech service, so it needs the internet [inference]. The
+  preflight cannot see which the browser does.
 - The Claude voice reading is off unless `ALBEDIAN_ENABLE_LIVE_CLAUDE=1` and `ANTHROPIC_API_KEY` are set. With it
   on and no internet, the built-in rules answer instead [inference from code].
 - No ephemeris or catalog is fetched while the app runs: the planet positions are computed on the laptop and the
