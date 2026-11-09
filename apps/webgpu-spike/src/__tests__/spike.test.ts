@@ -49,13 +49,28 @@ describe('webgpu spike: Local Bubble loader port', () => {
     expect(raw.length).toBe(27648);
     expect(arrays.count).toBe(27648);
     const C = LOCAL_BUBBLE_LOADER_CONSTANTS;
+    // One assertion on the worst row, not one per row: 110,000 expect calls ran past the 5 s timeout under load
+    let worstCenterError = 0;
+    let worstCenterRow = -1;
+    let worstNormError = 0;
+    let worstNormRow = -1;
     for (let i = 0; i < arrays.count; i++) {
       for (let k = 0; k < 3; k++) {
-        expect(Math.abs(arrays.centers[i * 3 + k]! - raw[i]![k]! * C.positionScale)).toBeLessThan(1e-5);
+        const error = Math.abs(arrays.centers[i * 3 + k]! - raw[i]![k]! * C.positionScale);
+        if (!(error <= worstCenterError) && !Number.isNaN(worstCenterError)) {
+          worstCenterError = error;
+          worstCenterRow = i;
+        }
       }
       const q = arrays.quaternions.subarray(i * 4, i * 4 + 4);
-      expect(Math.hypot(q[0]!, q[1]!, q[2]!, q[3]!)).toBeCloseTo(1, 5);
+      const normError = Math.abs(Math.hypot(q[0]!, q[1]!, q[2]!, q[3]!) - 1);
+      if (!(normError <= worstNormError) && !Number.isNaN(worstNormError)) {
+        worstNormError = normError;
+        worstNormRow = i;
+      }
     }
+    expect(worstCenterError, `row ${worstCenterRow}`).toBeLessThan(1e-5);
+    expect(worstNormError, `row ${worstNormRow}`).toBeLessThan(5e-6);
   });
 
   it('skips rows missing a value instead of filling them in', () => {
