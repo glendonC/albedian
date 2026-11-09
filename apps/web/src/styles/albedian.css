@@ -1,4 +1,6 @@
 
+@import './hud-tokens.css';
+
 :root {
   --alb-bg: #07080a;
   --alb-glass: rgba(13, 15, 20, 0.82);
@@ -10,9 +12,9 @@
   --alb-text-muted: #5e6572;
   --alb-accent: #8ab4d8;
   --alb-gold: #d4b483;
-  --alb-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --alb-font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
-  --alb-font-micro: 'Exo 2', sans-serif;
+  --alb-font-sans: var(--hud-font-sans);
+  --alb-font-mono: var(--hud-font-mono);
+  --alb-font-micro: var(--hud-font-mono);
 }
 
 * {

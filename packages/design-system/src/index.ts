@@ -4,6 +4,9 @@ import {
   VoiceMachineState,
 } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
+import { HUD_FONTS } from './hudGlass.js';
+
+export * from './hudGlass.js';
 
 /**
  * ============================================================================
@@ -103,10 +106,8 @@ export const ALBEDIAN_THEMES: Record<AlbedianThemeMode, AlbedianThemeTokenSet> =
 } as const;
 
 export const ALBEDIAN_TYPOGRAPHY = {
-  fontSans:
-    '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif',
-  fontMono:
-    '"SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace',
+  fontSans: HUD_FONTS.sans,
+  fontMono: HUD_FONTS.mono,
   numericVariant: 'tabular-nums',
   sizesPx: {
     microMeta: 12,

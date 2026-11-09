@@ -1,0 +1,51 @@
+/* HUD black glass tokens. The values come from @albedian/design-system (hudGlass.ts);
+   apps/web/src/__tests__/hudTokens.test.ts keeps this file identical to that map. */
+:root {
+  --hud-font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --hud-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --hud-ink: #f8fafc;
+  --hud-highlight: #caddff;
+
+  --hud-glass-fill: rgba(12, 14, 22, 0.72);
+  --hud-glass-filter: blur(40px) saturate(140%);
+  --hud-chip-fill: rgba(12, 14, 22, 0.6);
+  --hud-chip-filter: blur(10px) saturate(140%);
+  --hud-caption-fill: rgba(20, 22, 36, 0.64);
+  --hud-caption-filter: blur(14px) saturate(140%);
+
+  --hud-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --hud-caption-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --hud-specular: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --hud-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  --hud-glyph-shadow: drop-shadow(0 0 2.4px rgba(0, 0, 0, 0.95));
+
+  --hud-radius-pill: 100px;
+  --hud-radius-palette: 12px;
+  --hud-radius-item: 8px;
+  --hud-radius-key: 5px;
+
+  /* One stroke colour per evidence class; the glyph shape carries the class as well. */
+  --hud-ev-observed: #f8fafc;
+  --hud-ev-catalog: #caddff;
+  --hud-ev-predicted: #fbbf24;
+  --hud-ev-simulated: #a78bfa;
+
+  --hud-ease-standard: cubic-bezier(0.35, 0, 0, 1);
+  --hud-ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --hud-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --hud-dur-fast: 180ms;
+  --hud-dur-base: 320ms;
+  --hud-dur-enter: 420ms;
+  --hud-dur-caption-word: 480ms;
+  --hud-caption-stagger: 45ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hud-dur-fast: 0ms;
+    --hud-dur-base: 0ms;
+    --hud-dur-enter: 0ms;
+    --hud-dur-caption-word: 0ms;
+    --hud-caption-stagger: 0ms;
+  }
+}
