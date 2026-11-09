@@ -650,6 +650,19 @@ describe('@albedian/evidence: licence and source strings', () => {
     expect(lastRecord(predicted(rigel('SIMBAD')))?.license).toBe('Not used: Albedian makes no SIMBAD query');
   });
 
+  it('gives an OpenNGC record its CC BY-SA licence and leaves out a magnitude the catalog does not give', () => {
+    // M31 as the real OpenNGC v20260501 row gives it (tests/fixtures/catalog_reference_contract.json)
+    const m31: CatalogRef = {
+      id: 'openngc-NGC0224', provider: 'OpenNGC', releaseVersion: 'OpenNGC v20260501', catalogSourceId: 'NGC0224',
+      commonName: 'Andromeda Galaxy', constellation: 'And', objectType: 'deep_sky', coordinateEpoch: 'J2000.0',
+      raDeg: 10.684792, decDeg: 41.269056, citation: 'OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0',
+    };
+    const record = lastRecord(predicted(m31));
+    expect(record?.license).toBe('CC BY-SA 4.0; credit OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)');
+    expect(record?.coverageDescription).toBe('And (deep_sky)');
+    expect(lastRecord(predicted({ ...m31, apparentMagnitude: 3.44 }))?.coverageDescription).toBe('And (deep_sky, m=3.44)');
+  });
+
   it('titles a catalog record by provider, release, name and catalog id', () => {
     expect(lastRecord(predicted(rigel('Gaia DR3')))?.title).toBe('Gaia DR3 (DR3-2022): Rigel (HIP 24436)');
   });

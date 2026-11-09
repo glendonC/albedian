@@ -1,0 +1,408 @@
+{
+  "providers": [
+    "Gaia DR3",
+    "Hipparcos",
+    "JPL Horizons",
+    "SIMBAD",
+    "OpenNGC"
+  ],
+  "objectTypes": [
+    "star",
+    "planet",
+    "moon",
+    "deep_sky",
+    "satellite_candidate"
+  ],
+  "distanceMethods": [
+    "photogeometric_bailer_jones_edr3",
+    "geometric_parallax",
+    "ephemeris_au"
+  ],
+  "valid": [
+    {
+      "id": "star-vega",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 91262",
+      "commonName": "Vega",
+      "bayerDesignation": "Alpha Lyrae",
+      "constellation": "Lyra",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 279.234735,
+      "decDeg": 38.783689,
+      "apparentMagnitude": 0.03,
+      "properMotionRaMasYr": 200.94,
+      "properMotionDecMasYr": 286.23,
+      "bailerJonesDistancePc": {
+        "lower": 7.657554177195803,
+        "median": 7.678722260615834,
+        "upper": 7.700007700007702,
+        "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 130.23,
+      "parallaxErrorMas": 0.36
+    },
+    {
+      "id": "star-meissa",
+      "provider": "Gaia DR3",
+      "releaseVersion": "Gaia DR3",
+      "catalogSourceId": "Gaia DR3 3337991583943473280",
+      "commonName": "Meissa",
+      "bayerDesignation": "Lambda Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 83.784492,
+      "decDeg": 9.934156,
+      "apparentMagnitude": 3.39,
+      "properMotionRaMasYr": -0.45,
+      "properMotionDecMasYr": -2.62,
+      "bailerJonesDistancePc": {
+        "lower": 337.5872,
+        "median": 386.42804,
+        "upper": 464.1803,
+        "method": "photogeometric_bailer_jones_edr3"
+      },
+      "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+      "colorIndexBpRp": -0.14241743
+    },
+    {
+      "id": "openngc-NGC0224",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC0224",
+      "commonName": "Andromeda Galaxy",
+      "constellation": "And",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 10.684792,
+      "decDeg": 41.269056,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 3.44
+    },
+    {
+      "id": "openngc-IC0113",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "IC0113",
+      "commonName": "IC0113",
+      "constellation": "Psc",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 21.60625,
+      "decDeg": 19.191972,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
+    }
+  ],
+  "invalid": [
+    {
+      "rule": "a star without a magnitude",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": "Alpha Lyrae",
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 279.234735,
+        "decDeg": 38.783689,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36
+      }
+    },
+    {
+      "rule": "a planet without a magnitude",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": "Alpha Lyrae",
+        "constellation": "Lyra",
+        "objectType": "planet",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 279.234735,
+        "decDeg": 38.783689,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36
+      }
+    },
+    {
+      "rule": "an OpenNGC reference that is not a deep-sky object",
+      "reference": {
+        "id": "openngc-NGC0224",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "NGC0224",
+        "commonName": "Andromeda Galaxy",
+        "constellation": "And",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 10.684792,
+        "decDeg": 41.269056,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+        "apparentMagnitude": 3.44
+      }
+    },
+    {
+      "rule": "a provider outside the list",
+      "reference": {
+        "id": "star-vega",
+        "provider": "NED",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": "Alpha Lyrae",
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 279.234735,
+        "decDeg": 38.783689,
+        "apparentMagnitude": 0.03,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36
+      }
+    },
+    {
+      "rule": "an object type outside the list",
+      "reference": {
+        "id": "openngc-NGC0224",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "NGC0224",
+        "commonName": "Andromeda Galaxy",
+        "constellation": "And",
+        "objectType": "nebula",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 10.684792,
+        "decDeg": 41.269056,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+        "apparentMagnitude": 3.44
+      }
+    },
+    {
+      "rule": "a right ascension past 360",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": "Alpha Lyrae",
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 360.5,
+        "decDeg": 38.783689,
+        "apparentMagnitude": 0.03,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36
+      }
+    },
+    {
+      "rule": "a declination past -90",
+      "reference": {
+        "id": "openngc-IC0113",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "IC0113",
+        "commonName": "IC0113",
+        "constellation": "Psc",
+        "objectType": "deep_sky",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 21.60625,
+        "decDeg": -90.5,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
+      }
+    },
+    {
+      "rule": "an empty common name",
+      "reference": {
+        "id": "star-meissa",
+        "provider": "Gaia DR3",
+        "releaseVersion": "Gaia DR3",
+        "catalogSourceId": "Gaia DR3 3337991583943473280",
+        "commonName": "",
+        "bayerDesignation": "Lambda Orionis",
+        "constellation": "Orion",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 83.784492,
+        "decDeg": 9.934156,
+        "apparentMagnitude": 3.39,
+        "properMotionRaMasYr": -0.45,
+        "properMotionDecMasYr": -2.62,
+        "bailerJonesDistancePc": {
+          "lower": 337.5872,
+          "median": 386.42804,
+          "upper": 464.1803,
+          "method": "photogeometric_bailer_jones_edr3"
+        },
+        "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+        "colorIndexBpRp": -0.14241743
+      }
+    },
+    {
+      "rule": "a negative parallax error",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": "Alpha Lyrae",
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 279.234735,
+        "decDeg": 38.783689,
+        "apparentMagnitude": 0.03,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": -0.1
+      }
+    },
+    {
+      "rule": "a distance method outside the list",
+      "reference": {
+        "id": "star-meissa",
+        "provider": "Gaia DR3",
+        "releaseVersion": "Gaia DR3",
+        "catalogSourceId": "Gaia DR3 3337991583943473280",
+        "commonName": "Meissa",
+        "bayerDesignation": "Lambda Orionis",
+        "constellation": "Orion",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 83.784492,
+        "decDeg": 9.934156,
+        "apparentMagnitude": 3.39,
+        "properMotionRaMasYr": -0.45,
+        "properMotionDecMasYr": -2.62,
+        "bailerJonesDistancePc": {
+          "lower": 337.5872,
+          "median": 386.42804,
+          "upper": 464.1803,
+          "method": "kinematic"
+        },
+        "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
+        "colorIndexBpRp": -0.14241743
+      }
+    },
+    {
+      "rule": "a magnitude given as null",
+      "reference": {
+        "id": "openngc-IC0113",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "IC0113",
+        "commonName": "IC0113",
+        "constellation": "Psc",
+        "objectType": "deep_sky",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 21.60625,
+        "decDeg": 19.191972,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+        "apparentMagnitude": null
+      }
+    },
+    {
+      "rule": "a magnitude given as text",
+      "reference": {
+        "id": "openngc-NGC0224",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "NGC0224",
+        "commonName": "Andromeda Galaxy",
+        "constellation": "And",
+        "objectType": "deep_sky",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 10.684792,
+        "decDeg": 41.269056,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+        "apparentMagnitude": "3.44"
+      }
+    }
+  ],
+  "droppedKey": {
+    "reference": {
+      "id": "openngc-NGC0224",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC0224",
+      "commonName": "Andromeda Galaxy",
+      "constellation": "And",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 10.684792,
+      "decDeg": 41.269056,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 3.44,
+      "note": "a key the contract does not name"
+    },
+    "parsed": {
+      "id": "openngc-NGC0224",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC0224",
+      "commonName": "Andromeda Galaxy",
+      "constellation": "And",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 10.684792,
+      "decDeg": 41.269056,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 3.44
+    }
+  }
+}

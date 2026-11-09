@@ -490,6 +490,9 @@ function resolveCatalogLicense(provider: CatalogReference['provider']): string {
       return "No finding uses JPL Horizons data; only the landing scene's baked Sun and Moon positions come from it";
     case 'SIMBAD':
       return 'Not used: Albedian makes no SIMBAD query';
+    case 'OpenNGC':
+      // apps/web/public/catalog/deepsky/PROVENANCE.json
+      return 'CC BY-SA 4.0; credit OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)';
   }
 }
 
@@ -636,7 +639,8 @@ export function buildFindingEvidenceRecords(
             ? `Angular uncertainty ±${sky.uncertaintyArcsec.toFixed(1)} arcsec`
             : 'No sky position, so no angular uncertainty'),
       processingDescription: `Citation: ${cat.citation}`,
-      coverageDescription: `${cat.constellation} (${cat.objectType}, m=${cat.apparentMagnitude.toFixed(2)})`,
+      // A deep-sky reference may give no magnitude, and none is shown in its place
+      coverageDescription: `${cat.constellation} (${cat.objectType}${cat.apparentMagnitude !== undefined ? `, m=${cat.apparentMagnitude.toFixed(2)}` : ''})`,
     };
 
     return [...records, catalogRecord];

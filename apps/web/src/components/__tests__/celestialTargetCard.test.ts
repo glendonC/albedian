@@ -699,3 +699,44 @@ describe('scan card CSS (hud-5)', () => {
     expect(sheet.top).toBe('auto');
   });
 });
+
+describe('catalog magnitude (integrity-25)', () => {
+  it('shows no magnitude for a deep-sky object its catalog gives none for, and the magnitude when it does', () => {
+    const session = createSyntheticCalibratedSession();
+    // M31 as the real OpenNGC v20260501 row gives it (tests/fixtures/catalog_reference_contract.json)
+    const m31: CelestialFinding = {
+      id: 'finding-openngc-NGC0224',
+      observationSolutionId: session.observationSolution!.id,
+      evidenceClass: 'predicted',
+      title: 'Andromeda Galaxy',
+      subtitle: 'Galaxy · And · OpenNGC CC BY-SA 4.0',
+      skyPosition: { raDeg: 10.684792, decDeg: 41.269056, uncertaintyArcsec: 1 },
+      catalogRef: {
+        id: 'openngc-NGC0224',
+        provider: 'OpenNGC',
+        releaseVersion: 'OpenNGC v20260501',
+        catalogSourceId: 'NGC0224',
+        commonName: 'Andromeda Galaxy',
+        constellation: 'And',
+        objectType: 'deep_sky',
+        coordinateEpoch: 'J2000.0',
+        raDeg: 10.684792,
+        decDeg: 41.269056,
+        citation: 'OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0',
+      },
+      evidence: {
+        id: 'ev-openngc-NGC0224',
+        evidenceClass: 'predicted',
+        verificationMethod: 'Catalog position projected through the solved WCS',
+        limitations: ['Catalog position; not measured in the image'],
+        verifiedByIndependentHoldout: false,
+      },
+    };
+    const catalogLine = (finding: CelestialFinding) => {
+      renderCard({ session, selectedFinding: finding });
+      return q('target-card-catalog-row')?.querySelector('.alb-scan-catalog-line')?.textContent;
+    };
+    expect(catalogLine(m31)).toBe('And');
+    expect(catalogLine({ ...m31, catalogRef: { ...m31.catalogRef!, apparentMagnitude: 3.44 } })).toBe('And · Mag 3.44');
+  });
+});

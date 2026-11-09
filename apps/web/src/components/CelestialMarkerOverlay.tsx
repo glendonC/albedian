@@ -205,7 +205,8 @@ export function chooseLabelledFindingIds(
   );
   const namedStars = findingsInView
     .filter((f) => f.evidenceClass === 'catalog_matched' && hasProperName(f))
-    .sort((a, b) => a.catalogRef!.apparentMagnitude - b.catalogRef!.apparentMagnitude);
+    // A catalog that gives no magnitude ranks the finding after every one that gives one
+    .sort((a, b) => (a.catalogRef!.apparentMagnitude ?? Infinity) - (b.catalogRef!.apparentMagnitude ?? Infinity));
   const ranked = [...objects, ...namedStars];
   const ids = new Set(ranked.slice(0, markerLabelBudget(viewportWidthPx)).map((f) => f.id));
   for (const id of alwaysLabelledIds) {

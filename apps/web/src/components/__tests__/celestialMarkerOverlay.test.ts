@@ -45,7 +45,7 @@ vi.mock('../CoalescingBar.js', () => ({
   CoalescingBar: () => null,
 }));
 
-const { CelestialMarkerOverlay, projectFindingToViewport } = await import(
+const { CelestialMarkerOverlay, chooseLabelledFindingIds, projectFindingToViewport } = await import(
   '../CelestialMarkerOverlay.js'
 );
 const { SpatialObservatoryViewport } = await import(
@@ -480,7 +480,7 @@ describe('CelestialMarkerOverlay label budget (experience-9b)', () => {
     const session = buildCrowdedSession(33, 30, 705);
     const brightestNamed = session
       .observationSolution!.findings.filter((f) => f.id.startsWith('named_'))
-      .sort((a, b) => a.catalogRef!.apparentMagnitude - b.catalogRef!.apparentMagnitude)
+      .sort((a, b) => a.catalogRef!.apparentMagnitude! - b.catalogRef!.apparentMagnitude!)
       .map((f) => f.id);
 
     act(() => {
@@ -561,6 +561,23 @@ describe('CelestialMarkerOverlay label budget (experience-9b)', () => {
     expect(marker.classList.contains('is-quiet')).toBe(false);
     expect(marker.querySelector('.alb-marker-label')).not.toBeNull();
     expect(labelledIds().length).toBe(9);
+  });
+});
+
+describe('CelestialMarkerOverlay label budget without a magnitude (integrity-25)', () => {
+  it('ranks a named finding whose catalog gives no magnitude after every one that gives one', () => {
+    // The brightest named star loses its magnitude, as a catalog that gives none would leave it
+    const findings = buildCrowdedSession(33, 0, 0).observationSolution!.findings.map((f) => {
+      if (f.id !== 'named_0') return f;
+      const catalogRef = { ...f.catalogRef! };
+      delete catalogRef.apparentMagnitude;
+      return { ...f, catalogRef } as CelestialFinding;
+    });
+    const brightestWithMagnitude = findings
+      .filter((f) => f.id.startsWith('named_') && f.catalogRef!.apparentMagnitude !== undefined)
+      .sort((a, b) => a.catalogRef!.apparentMagnitude! - b.catalogRef!.apparentMagnitude!)
+      .map((f) => f.id);
+    expect([...chooseLabelledFindingIds(findings, 390, [])].sort()).toEqual(brightestWithMagnitude.slice(0, 8).sort());
   });
 });
 

@@ -430,7 +430,8 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
             {cat.provider} ({cat.releaseVersion}) · {cat.catalogSourceId}
           </div>
           <div className="alb-scan-catalog-line">
-            {cat.constellation} · Mag {cat.apparentMagnitude.toFixed(2)}
+            {cat.constellation}
+            {cat.apparentMagnitude !== undefined && ` · Mag ${cat.apparentMagnitude.toFixed(2)}`}
           </div>
           {cat.spectralType && (
             <div className="alb-scan-catalog-line" data-testid="target-card-spectral-type">

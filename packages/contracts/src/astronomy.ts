@@ -13,36 +13,60 @@ export const SourceSha256Schema = z
  * SourceDetection, CelestialFinding, WCSCalibrationModel, and ObservationSolution.
  */
 
-export const CatalogReferenceSchema = z.object({
-  id: z.string().min(1),
-  provider: z.enum(['Gaia DR3', 'Hipparcos', 'JPL Horizons', 'SIMBAD']),
-  releaseVersion: z.string().min(1),
-  catalogSourceId: z.string().min(1),
-  commonName: z.string().min(1),
-  bayerDesignation: z.string().optional(),
-  constellation: z.string().min(1),
-  objectType: z.enum(['star', 'planet', 'moon', 'deep_sky', 'satellite_candidate']),
-  coordinateEpoch: z.string().min(1),
-  raDeg: z.number().min(0).max(360),
-  decDeg: z.number().min(-90).max(90),
-  apparentMagnitude: z.number(),
-  colorIndexBpRp: z.number().optional(),
-  spectralType: z.string().optional(),
-  properMotionRaMasYr: z.number().optional(),
-  properMotionDecMasYr: z.number().optional(),
-  radialVelocityKmS: z.number().optional(),
-  parallaxMas: z.number().optional(),
-  parallaxErrorMas: z.number().nonnegative().optional(),
-  bailerJonesDistancePc: z
-    .object({
-      lower: z.number().positive(),
-      median: z.number().positive(),
-      upper: z.number().positive(),
-      method: z.enum(['photogeometric_bailer_jones_edr3', 'geometric_parallax', 'ephemeris_au']),
-    })
-    .optional(),
-  citation: z.string().min(1),
-});
+/**
+ * The catalog row a finding stands on. Its Python mirror is services/contracts/catalog_reference.py, and
+ * tests/fixtures/catalog_reference_contract.json holds samples both sides judge alike.
+ *
+ * `apparentMagnitude` is required except for a deep-sky object: OpenNGC gives none for many, and none is filled
+ * in. An OpenNGC reference is a deep-sky object.
+ */
+export const CatalogReferenceSchema = z
+  .object({
+    id: z.string().min(1),
+    provider: z.enum(['Gaia DR3', 'Hipparcos', 'JPL Horizons', 'SIMBAD', 'OpenNGC']),
+    releaseVersion: z.string().min(1),
+    catalogSourceId: z.string().min(1),
+    commonName: z.string().min(1),
+    bayerDesignation: z.string().optional(),
+    constellation: z.string().min(1),
+    objectType: z.enum(['star', 'planet', 'moon', 'deep_sky', 'satellite_candidate']),
+    coordinateEpoch: z.string().min(1),
+    raDeg: z.number().min(0).max(360),
+    decDeg: z.number().min(-90).max(90),
+    apparentMagnitude: z.number().optional(),
+    colorIndexBpRp: z.number().optional(),
+    spectralType: z.string().optional(),
+    properMotionRaMasYr: z.number().optional(),
+    properMotionDecMasYr: z.number().optional(),
+    radialVelocityKmS: z.number().optional(),
+    parallaxMas: z.number().optional(),
+    parallaxErrorMas: z.number().nonnegative().optional(),
+    bailerJonesDistancePc: z
+      .object({
+        lower: z.number().positive(),
+        median: z.number().positive(),
+        upper: z.number().positive(),
+        method: z.enum(['photogeometric_bailer_jones_edr3', 'geometric_parallax', 'ephemeris_au']),
+      })
+      .optional(),
+    citation: z.string().min(1),
+  })
+  .superRefine((reference, ctx) => {
+    if (reference.apparentMagnitude === undefined && reference.objectType !== 'deep_sky') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['apparentMagnitude'],
+        message: "Only a deep-sky object's reference may leave the apparent magnitude out.",
+      });
+    }
+    if (reference.provider === 'OpenNGC' && reference.objectType !== 'deep_sky') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['objectType'],
+        message: 'An OpenNGC reference is a deep-sky object.',
+      });
+    }
+  });
 export type CatalogReference = z.infer<typeof CatalogReferenceSchema>;
 
 export const ScientificEvidenceSchema = z.object({
