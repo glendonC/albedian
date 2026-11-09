@@ -183,7 +183,10 @@ describe('the tempo and the beat of a click track', () => {
     expect(relativeGap(tempo.bpm, bpm)).toBeLessThan(0.002);
   });
 
-  it('recovers any tempo from 60 to 160 BPM within 1 percent, and the beat within 25 ms, at any phase (property)', () => {
+  // Each run builds and analyses a 15 s click track. Measured on the M5 Max: 1.4 to 4.7 s for the 22 runs
+  // at load averages of 60 to 80, and 6.8 s in a gate run under heavier load, past Vitest's 5 s default.
+  // 30 s is over four times the worst seen; the runs stay at 20 plus the seeded ends of the range.
+  it('recovers any tempo from 60 to 160 BPM within 1 percent, and the beat within 25 ms, at any phase (property)', { timeout: 30_000 }, () => {
     fc.assert(
       fc.property(
         fc.double({ min: 60, max: 160, noNaN: true }),
