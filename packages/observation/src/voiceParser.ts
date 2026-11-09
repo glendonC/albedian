@@ -45,6 +45,8 @@ export interface VoiceParseResult {
   error?: string;
   /** Why no action was formed, as the contract's rejection reason; set whenever `error` is. */
   reason?: RejectionReason;
+  /** Said before the reducer's own banner when the action completes: how its target was chosen. */
+  note?: string;
 }
 
 /**
@@ -324,11 +326,124 @@ interface TargetResolutionResult {
   reason?: RejectionReason;
 }
 
+/** The brightest family: services/voice/intent.py refuses the same words, since it never sees the fluxes. */
+export const BRIGHTEST_PATTERN = /\bbrightest\b/i;
+/** A rank past the first: only the single brightest is named. */
+const NTH_BRIGHTEST = /\b(?:second|third|fourth|fifth|next|\d+(?:st|nd|rd|th))[\s-]+brightest\b/i;
+/**
+ * The first place word after "brightest" names somewhere other than the photo itself ("in Orion", "in the
+ * sky", "of the Southern Cross", "on the left"): the parser ranks only what was measured in the photo.
+ */
+const BRIGHTEST_ELSEWHERE =
+  /\bbrightest\b(?:(?!\b(?:in|of|among|within|on|near|at)\b).)*\b(?:in|of|among|within|on|near|at)\s+(?!(?:(?:my|the|this|your)\s+)?(?:photo|picture|image|frame|shot|video|recording|view|screen|capture|it|all|them|these|those)\b)/i;
+/**
+ * Kinds of body the photo's measured brightness does not rank: the ranking covers stars and points of light only.
+ * services/voice/intent.py refuses the same words with the same reason (a test keeps the lists equal).
+ */
+export const BRIGHTEST_UNRANKED_KINDS = [
+  'planet', 'planets', 'moon', 'moons', 'galaxy', 'galaxies', 'nebula', 'nebulae', 'nebulas', 'cluster', 'clusters',
+  'deep', 'deep-sky', 'comet', 'comets', 'asteroid', 'asteroids', 'satellite', 'satellites', 'constellation', 'constellations',
+];
+/** Words that may follow "brightest" for the parser to rank: a star or an unqualified word, or where to look. */
+const BRIGHTEST_RANKED_WORDS = new Set([
+  'star', 'stars', 'object', 'objects', 'point', 'points', 'light', 'lights', 'thing', 'things', 'one', 'ones', 'source', 'sources',
+  'in', 'on', 'of', 'among', 'within', 'near', 'at', 'here', 'there', 'now',
+]);
+/** The word right after "brightest", if any. */
+const BRIGHTEST_NEXT_WORD = /\bbrightest\b[\s-]*([a-z][a-z-]*)?/i;
+
+function mediaWord(session: ObservationSession): 'photo' | 'video' {
+  return session.sourceAsset?.mediaKind === 'video' ? 'video' : 'photo';
+}
+
+function joinedNames(names: string[]): string {
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * The finding measured brightest in the source's own pixels: the largest sourceDetection flux among observed
+ * and catalog-matched findings measured on the source asset, in the frame nearest the current time. Catalog
+ * magnitudes and the selection play no part. When others agree with the top flux within the combined
+ * measurement uncertainty (each flux / its SNR), the parser asks which one rather than choosing.
+ */
+function brightestMeasuredFinding(session: ObservationSession): TargetResolutionResult {
+  const kind = mediaWord(session);
+  const sourceId = session.sourceAsset?.id;
+  const measured = (session.observationSolution?.findings ?? []).filter(
+    (f): f is CelestialFinding & { sourceDetection: NonNullable<CelestialFinding['sourceDetection']> } =>
+      (f.evidenceClass === 'observed' || f.evidenceClass === 'catalog_matched') &&
+      f.sourceDetection !== undefined &&
+      f.sourceDetection.assetId === sourceId
+  );
+  if (sourceId === undefined || measured.length === 0) {
+    return {
+      error: `No finding in this sky solution carries a brightness measured from the ${kind}'s pixels, so none can be named the brightest.`,
+      reason: 'no_grounded_answer',
+    };
+  }
+  const now = session.currentSourceTimeSec;
+  const frame = measured
+    .map((f) => f.sourceDetection.frameTimeSec)
+    .reduce((best, t) => {
+      const gap = Math.abs(t - now);
+      const bestGap = Math.abs(best - now);
+      return gap < bestGap || (gap === bestGap && t < best) ? t : best;
+    });
+  const ranked = measured
+    .filter((f) => f.sourceDetection.frameTimeSec === frame)
+    .sort((a, b) => b.sourceDetection.flux - a.sourceDetection.flux || a.id.localeCompare(b.id));
+  const top = ranked[0]!;
+  const sigma = (f: (typeof ranked)[number]) => f.sourceDetection.flux / f.sourceDetection.snr;
+  const level = ranked.filter((f) => top.sourceDetection.flux - f.sourceDetection.flux <= Math.hypot(sigma(top), sigma(f)));
+  if (level.length > 1) {
+    return {
+      disambiguation: {
+        question: `${joinedNames(level.map((f) => f.title))} are equally bright in this ${kind} within their measurement uncertainty. Which did you mean?`,
+        choices: level.map((f) => ({ id: f.id, label: f.title })),
+      },
+    };
+  }
+  return { findingId: top.id };
+}
+
+function brightestTarget(normalizedUtterance: string, session: ObservationSession): TargetResolutionResult {
+  const kind = mediaWord(session);
+  const next = BRIGHTEST_NEXT_WORD.exec(normalizedUtterance)?.[1]?.toLowerCase();
+  if (next !== undefined && BRIGHTEST_UNRANKED_KINDS.includes(next)) {
+    return {
+      error: `Brightness measured in this ${kind} ranks stars and points of light only, so a brightest planet, moon, galaxy, nebula or cluster is not named.`,
+      reason: 'no_grounded_answer',
+    };
+  }
+  if (next !== undefined && !BRIGHTEST_RANKED_WORDS.has(next)) {
+    return {
+      error: `Only the brightest star measured in this ${kind} can be named, by measured brightness alone, so "brightest ${next}" is not answered.`,
+      reason: 'no_grounded_answer',
+    };
+  }
+  if (NTH_BRIGHTEST.test(normalizedUtterance)) {
+    return {
+      error: `Only the single brightest star measured in this ${kind} can be named, not the second or a later one.`,
+      reason: 'no_grounded_answer',
+    };
+  }
+  if (BRIGHTEST_ELSEWHERE.test(normalizedUtterance)) {
+    return {
+      error: `Only the brightest star measured in this ${kind} can be named; a brightest in the sky, a constellation or a part of the frame is not ranked.`,
+      reason: 'no_grounded_answer',
+    };
+  }
+  return brightestMeasuredFinding(session);
+}
+
 function resolveTargetFinding(
   normalizedUtterance: string,
   context: ActionContext,
   session: ObservationSession
 ): TargetResolutionResult {
+  // "Brightest" asks for a ranking, so it is answered from the measurements even when a star is named
+  if (BRIGHTEST_PATTERN.test(normalizedUtterance)) return brightestTarget(normalizedUtterance, session);
+
   const named = findNamedFindingInUtterance(normalizedUtterance, session);
   if (named) return { findingId: named.id };
 
@@ -400,6 +515,23 @@ export function parseUtteranceToAction(
   context: ActionContext,
   session: ObservationSession,
   options: VoiceParseOptions = {}
+): VoiceParseResult {
+  const parsed = parseWithRules(utterance, context, session, options);
+  // An action on the brightest says that its target was ranked by measured flux
+  const action = parsed.action;
+  if (action && 'findingId' in action && BRIGHTEST_PATTERN.test(utterance)) {
+    if (brightestMeasuredFinding(session).findingId === action.findingId) {
+      return { ...parsed, note: `Brightest by measured flux in this ${mediaWord(session)}:` };
+    }
+  }
+  return parsed;
+}
+
+function parseWithRules(
+  utterance: string,
+  context: ActionContext,
+  session: ObservationSession,
+  options: VoiceParseOptions
 ): VoiceParseResult {
   const trimmed = utterance.trim();
   if (!trimmed) return { error: 'Empty voice or text command.', reason: 'no_grounded_answer' };
@@ -583,7 +715,11 @@ export function parseUtteranceToAction(
     };
   }
 
-  if (/\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i.test(norm) || (!/\bhow\s+many\b/i.test(norm) && Boolean(findNamedFindingInUtterance(norm, session)))) {
+  if (
+    /\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i.test(norm) ||
+    BRIGHTEST_PATTERN.test(norm) ||
+    (!/\bhow\s+many\b/i.test(norm) && Boolean(findNamedFindingInUtterance(norm, session)))
+  ) {
     const resolved = resolveTargetFinding(norm, context, session);
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
     if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
@@ -688,10 +824,12 @@ export function executeVoiceOrTextCommand(
   }
 
   const dispatched = dispatchAlbedianAction(session, parsed.action);
+  const noted = parsed.note && dispatched.outcome.status === 'completed';
   return {
     session: {
       ...dispatched.session,
       voiceActions: [...dispatched.session.voiceActions, voiceActionRecord],
+      ...(noted ? { lastStatusBanner: `${parsed.note} ${dispatched.session.lastStatusBanner}` } : {}),
     },
     outcome: dispatched.outcome,
     voiceActionRecord,

@@ -346,6 +346,25 @@ def _year_refusal(said: int | str) -> str | None:
     return None
 
 
+# The brightest family, read as packages/observation/src/voiceParser.ts reads it (BRIGHTEST_PATTERN). The ranking
+# comes from the fluxes measured in the photo's pixels, which the app holds and this service never receives.
+BRIGHTEST = re.compile(r"\bbrightest\b")
+BRIGHTEST_REFUSAL = (
+    "Which star is brightest in a photo is read from the brightness measured in its pixels, which the voice "
+    "service does not receive, so it names none."
+)
+# Kinds of body the measured brightness does not rank at all, as voiceParser.ts lists them (BRIGHTEST_UNRANKED_KINDS)
+BRIGHTEST_UNRANKED_KINDS = (
+    "planet", "planets", "moon", "moons", "galaxy", "galaxies", "nebula", "nebulae", "nebulas", "cluster", "clusters",
+    "deep", "deep-sky", "comet", "comets", "asteroid", "asteroids", "satellite", "satellites", "constellation",
+    "constellations",
+)
+BRIGHTEST_KIND_REFUSAL = (
+    "Brightness measured in a photo ranks stars and points of light only, so a brightest planet, moon, galaxy, "
+    "nebula or cluster is not named."
+)
+_BRIGHTEST_NEXT_WORD = re.compile(r"\bbrightest\b[\s-]*([a-z][a-z-]*)?")
+
 _NO_TARGET = (
     "The request names no object the catalog or the ephemeris holds, and none is pointed at, selected "
     "or focused."
@@ -495,6 +514,14 @@ def parse_voice_intent(
             None,
             "unsafe_synthetic_edit",
             "Albedian never fabricates or replaces sky observations with synthetic stars.",
+        )
+    # Before any model and any rule, so neither names a star, or the selection, in place of a measured ranking
+    lowered = utterance.lower()
+    if BRIGHTEST.search(lowered):
+        next_word = _BRIGHTEST_NEXT_WORD.search(lowered)
+        unranked = next_word is not None and next_word.group(1) in BRIGHTEST_UNRANKED_KINDS
+        return _rules_intent(
+            request_id, None, "no_grounded_answer", BRIGHTEST_KIND_REFUSAL if unranked else BRIGHTEST_REFUSAL
         )
 
     proposal = propose_action_with_claude(utterance, ctx, request_id, rev, current_year=current_year)
