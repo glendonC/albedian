@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   ALWAYS_SIMULATED_RENDER_LAYER_KINDS,
+  COMPUTED_ONLY_RENDER_LAYER_KINDS,
   EvidenceClassSchema,
   RENDER_LAYER_ID_PATTERN,
   RENDER_LAYER_LIMITS,
@@ -14,11 +15,14 @@ import {
 
 // Written by tests/integration/test_render_layer_contract.py from the Pydantic model
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/render_layer_contract.json');
+// ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
+const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
 
 interface RenderLayerFixture {
   kinds: string[];
   evidenceClasses: string[];
   alwaysSimulatedKinds: string[];
+  computedOnlyKinds: string[];
   limits: typeof RENDER_LAYER_LIMITS & { idPattern: string };
   valid: Record<string, unknown>[];
   invalid: { rule: string; layer: Record<string, unknown> }[];
@@ -32,6 +36,7 @@ describe('@albedian/contracts: render layers', () => {
     expect(fixture.kinds).toEqual(RenderLayerKindSchema.options);
     expect(fixture.evidenceClasses).toEqual(EvidenceClassSchema.options);
     expect(fixture.alwaysSimulatedKinds).toEqual(ALWAYS_SIMULATED_RENDER_LAYER_KINDS);
+    expect(fixture.computedOnlyKinds).toEqual(COMPUTED_ONLY_RENDER_LAYER_KINDS);
     const { idPattern, ...limits } = fixture.limits;
     expect(limits).toEqual(RENDER_LAYER_LIMITS);
     expect(idPattern).toBe(RENDER_LAYER_ID_PATTERN.source);
@@ -110,8 +115,21 @@ describe('@albedian/contracts: render layers', () => {
       if (!(EvidenceClassSchema.options as string[]).includes(evidence)) return false;
       if ((evidence === 'observed' || evidence === 'catalog_matched') && !('sourceAssetId' in layer)) return false;
       if (evidence === 'catalog_matched' && !('observationSolutionId' in layer)) return false;
+      if ((COMPUTED_ONLY_RENDER_LAYER_KINDS as string[]).includes(kind) && evidence !== 'predicted' && evidence !== 'simulated') {
+        return false;
+      }
       return !((ALWAYS_SIMULATED_RENDER_LAYER_KINDS as string[]).includes(kind) && evidence !== 'simulated');
     };
+    // A computed overlay is predicted or simulated, never measured; seeded so every run meets each case
+    const overlay = (evidenceClass: string, ids: Record<string, string> = {}) => ({
+      id: 'sky.horizon',
+      kind: 'sky_overlay',
+      title: 'Horizon',
+      evidenceClass,
+      disclosure: 'Computed.',
+      sources: [],
+      ...ids,
+    });
 
     let accepted = 0;
     let rejected = 0;
@@ -127,7 +145,15 @@ describe('@albedian/contracts: render layers', () => {
           rejected++;
         }
       }),
-      { numRuns: 300 }
+      {
+        numRuns: 300,
+        seed: SEED,
+        examples: [
+          [overlay('predicted')],
+          [overlay('observed', { sourceAssetId: 'a' })],
+          [overlay('catalog_matched', { sourceAssetId: 'a', observationSolutionId: 's' })],
+        ],
+      }
     );
     // Both outcomes must actually be exercised for the property to mean anything
     expect(accepted).toBeGreaterThan(30);

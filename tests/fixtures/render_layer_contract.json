@@ -7,7 +7,8 @@
     "dust_volume",
     "capture_splats",
     "procedural",
-    "camera_optics"
+    "camera_optics",
+    "sky_overlay"
   ],
   "evidenceClasses": [
     "observed",
@@ -18,6 +19,9 @@
   "alwaysSimulatedKinds": [
     "procedural",
     "camera_optics"
+  ],
+  "computedOnlyKinds": [
+    "sky_overlay"
   ],
   "limits": {
     "titleMaxLength": 80,
@@ -87,6 +91,17 @@
       "evidenceClass": "simulated",
       "disclosure": "Modeled lens glare, chromatic aberration, streaks and vignette.",
       "sources": []
+    },
+    {
+      "id": "sky.horizon",
+      "kind": "sky_overlay",
+      "title": "Horizon and compass points",
+      "evidenceClass": "predicted",
+      "disclosure": "Computed for the capture's place and time from sidereal time and precession; not seen in the recording.",
+      "sources": [
+        "IAU 1982 sidereal time (Aoki et al. 1982)",
+        "IAU 1976 precession (Lieske et al. 1977)"
+      ]
     }
   ],
   "invalid": [
@@ -142,6 +157,35 @@
         "sources": [
           "Gaia DR3 (Gaia Collaboration 2023)"
         ]
+      }
+    },
+    {
+      "rule": "sky_overlay layer observed",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "sky_overlay",
+        "title": "Catalog stars",
+        "evidenceClass": "observed",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "sourceAssetId": "asset-synthetic-night"
+      }
+    },
+    {
+      "rule": "sky_overlay layer catalog_matched",
+      "layer": {
+        "id": "scene.layer",
+        "kind": "sky_overlay",
+        "title": "Catalog stars",
+        "evidenceClass": "catalog_matched",
+        "disclosure": "Catalog positions and magnitudes; star images are a modeled point-spread function.",
+        "sources": [
+          "Gaia DR3 (Gaia Collaboration 2023)"
+        ],
+        "sourceAssetId": "asset-synthetic-night",
+        "observationSolutionId": "solution-synthetic-night"
       }
     },
     {

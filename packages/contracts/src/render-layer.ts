@@ -26,11 +26,16 @@ export const RenderLayerKindSchema = z.enum([
   'procedural',
   // Lens and sensor effects applied to the whole frame: bloom, aberration, streaks, vignette
   'camera_optics',
+  // Lines and marks computed from the observer's time and place: horizon, compass points
+  'sky_overlay',
 ]);
 export type RenderLayerKind = z.infer<typeof RenderLayerKindSchema>;
 
 /** Kinds that never show measured data, so they can only be disclosed as simulated. */
 export const ALWAYS_SIMULATED_RENDER_LAYER_KINDS: readonly RenderLayerKind[] = ['procedural', 'camera_optics'];
+
+/** Kinds computed rather than measured, so they can only be disclosed as predicted or simulated. */
+export const COMPUTED_ONLY_RENDER_LAYER_KINDS: readonly RenderLayerKind[] = ['sky_overlay'];
 
 export const RENDER_LAYER_LIMITS = {
   titleMaxLength: 80,
@@ -80,6 +85,14 @@ export const RenderLayerSchema = z
         code: z.ZodIssueCode.custom,
         path: ['evidenceClass'],
         message: `A ${layer.kind} layer shows no measured data and must be disclosed as simulated.`,
+      });
+    }
+    const computed = layer.evidenceClass === 'predicted' || layer.evidenceClass === 'simulated';
+    if (COMPUTED_ONLY_RENDER_LAYER_KINDS.includes(layer.kind) && !computed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['evidenceClass'],
+        message: `A ${layer.kind} layer is computed, not measured, and must be disclosed as predicted or simulated.`,
       });
     }
   });

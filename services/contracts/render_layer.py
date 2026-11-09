@@ -23,6 +23,7 @@ RenderLayerKind = Literal[
     "capture_splats",
     "procedural",
     "camera_optics",
+    "sky_overlay",
 ]
 
 EVIDENCE_CLASSES: tuple[str, ...] = get_args(EvidenceClass)
@@ -30,6 +31,9 @@ RENDER_LAYER_KINDS: tuple[str, ...] = get_args(RenderLayerKind)
 
 # Kinds that never show measured data, so they can only be disclosed as simulated
 ALWAYS_SIMULATED_RENDER_LAYER_KINDS: tuple[str, ...] = ("procedural", "camera_optics")
+
+# Kinds computed rather than measured, so they can only be disclosed as predicted or simulated
+COMPUTED_ONLY_RENDER_LAYER_KINDS: tuple[str, ...] = ("sky_overlay",)
 
 TITLE_MAX_LENGTH = 80
 DISCLOSURE_MAX_LENGTH = 240
@@ -88,6 +92,10 @@ class RenderLayer(BaseModel):
             raise ValueError("A catalog_matched layer must name the observation solution with the verified WCS.")
         if self.kind in ALWAYS_SIMULATED_RENDER_LAYER_KINDS and self.evidence_class != "simulated":
             raise ValueError(f"A {self.kind} layer shows no measured data and must be disclosed as simulated.")
+        if self.kind in COMPUTED_ONLY_RENDER_LAYER_KINDS and self.evidence_class not in ("predicted", "simulated"):
+            raise ValueError(
+                f"A {self.kind} layer is computed, not measured, and must be disclosed as predicted or simulated."
+            )
         return self
 
     def to_contract_dict(self) -> dict[str, Any]:

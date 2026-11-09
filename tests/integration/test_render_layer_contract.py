@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
@@ -97,6 +97,14 @@ def build_render_layer_samples() -> dict[str, Any]:
                 disclosure="Modeled lens glare, chromatic aberration, streaks and vignette.",
                 sources=[],
             ),
+            _layer(
+                id="sky.horizon",
+                kind="sky_overlay",
+                title="Horizon and compass points",
+                evidenceClass="predicted",
+                disclosure="Computed for the capture's place and time from sidereal time and precession; not seen in the recording.",
+                sources=["IAU 1982 sidereal time (Aoki et al. 1982)", "IAU 1976 precession (Lieske et al. 1977)"],
+            ),
         ]
     ]
     invalid = [
@@ -110,6 +118,19 @@ def build_render_layer_samples() -> dict[str, Any]:
             "layer": _layer(kind="camera_optics", evidenceClass="observed", sourceAssetId="asset-synthetic-night"),
         },
         {"rule": "procedural layer not simulated", "layer": _layer(kind="procedural", evidenceClass="predicted")},
+        {
+            "rule": "sky_overlay layer observed",
+            "layer": _layer(kind="sky_overlay", evidenceClass="observed", sourceAssetId="asset-synthetic-night"),
+        },
+        {
+            "rule": "sky_overlay layer catalog_matched",
+            "layer": _layer(
+                kind="sky_overlay",
+                evidenceClass="catalog_matched",
+                sourceAssetId="asset-synthetic-night",
+                observationSolutionId="solution-synthetic-night",
+            ),
+        },
         {"rule": "blank disclosure", "layer": _layer(disclosure="   ")},
         {"rule": "disclosure too long", "layer": _layer(disclosure="x" * (rl.DISCLOSURE_MAX_LENGTH + 1))},
         {"rule": "blank title", "layer": _layer(title="")},
@@ -128,6 +149,7 @@ def build_render_layer_samples() -> dict[str, Any]:
         "kinds": list(RENDER_LAYER_KINDS),
         "evidenceClasses": list(EVIDENCE_CLASSES),
         "alwaysSimulatedKinds": list(ALWAYS_SIMULATED_RENDER_LAYER_KINDS),
+        "computedOnlyKinds": list(rl.COMPUTED_ONLY_RENDER_LAYER_KINDS),
         "limits": {
             "titleMaxLength": rl.TITLE_MAX_LENGTH,
             "disclosureMaxLength": rl.DISCLOSURE_MAX_LENGTH,
@@ -242,11 +264,17 @@ def _expected_valid(layer: dict[str, Any]) -> bool:
         return False
     if evidence == "catalog_matched" and "observationSolutionId" not in layer:
         return False
+    if layer["kind"] in rl.COMPUTED_ONLY_RENDER_LAYER_KINDS and evidence not in ("predicted", "simulated"):
+        return False
     return not (layer["kind"] in ALWAYS_SIMULATED_RENDER_LAYER_KINDS and evidence != "simulated")
 
 
 @settings(max_examples=300, deadline=None)
 @given(layer=layer_strategy())
+# A computed overlay is predicted or simulated, never measured; seeded so every run meets each case
+@example(layer=_layer(kind="sky_overlay", evidenceClass="predicted"))
+@example(layer=_layer(kind="sky_overlay", evidenceClass="observed", sourceAssetId="a"))
+@example(layer=_layer(kind="sky_overlay", evidenceClass="catalog_matched", sourceAssetId="a", observationSolutionId="s"))
 def test_pbt_layer_1_model_accepts_exactly_the_layers_the_rules_allow(layer: dict[str, Any]) -> None:
     """PBT-LAYER-1 (Python half): validation succeeds exactly when the contract rules hold."""
     try:
