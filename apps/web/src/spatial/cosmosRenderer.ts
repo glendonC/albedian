@@ -28,7 +28,13 @@ export interface CameraSkyPose {
 }
 
 export interface CosmosRenderer {
-  setObserverCoordinates(latDeg: number, lonDeg: number): void;
+  /**
+   * The recording's place and, when it has one, its capture time (ISO 8601 UTC); without a capture
+   * time the sky is for the device's time now.
+   */
+  setObserverCoordinates(latDeg: number, lonDeg: number, capturedAtUtc?: string | null): void;
+  /** Forgets the place and time, for a recording without a location; absent where nothing is held. */
+  clearObserverCoordinates?(): void;
   setShowcaseMode(enabled: boolean): void;
   transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant?: boolean): void;
   /** Holds the scene clock at `seconds` for matched snapshots; null runs it again. */

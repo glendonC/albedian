@@ -202,10 +202,10 @@ describe('the viewport while audio is on', () => {
     act(() => stub.onRegimeChange?.('cislunar'));
     expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith('catalog_matched');
 
-    // The capture view declares no layers yet (webglRenderLayers.ts), so its voices carry no class
+    // The sky view declares its layers too (webglRenderLayers.ts), so its voices carry its star layer's class
     stub.layers = webglRenderLayersFor({ regime: 'earth_capture', blackHole: false });
-    expect(stub.layers).toBeNull();
+    expect(stub.layers).not.toBeNull();
     act(() => stub.onRegimeChange?.('earth_capture'));
-    expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith(null);
+    expect(skyAudio.setEvidenceClass).toHaveBeenLastCalledWith('simulated');
   });
 });

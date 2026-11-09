@@ -6,6 +6,7 @@ import {
   BLACK_HOLE_WEBGL_RENDER_LAYERS,
   CISLUNAR_WEBGL_RENDER_LAYERS,
   DEEP_SKY_WEBGL_RENDER_LAYERS,
+  SKY_VIEW_WEBGL_RENDER_LAYERS,
   SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS,
   webglRenderLayersFor,
 } from '../webglRenderLayers.js';
@@ -180,15 +181,20 @@ describe('WebGL renderer: scene 03 draws no invented structure', () => {
 });
 
 describe('WebGL renderer: which view declares layers', () => {
-  it('declares the cislunar, deep-sky and solar-neighbourhood views, until the others are declared', () => {
+  it('declares the sky, cislunar, deep-sky and solar-neighbourhood views, until the planetary one is declared', () => {
+    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false })).toBe(SKY_VIEW_WEBGL_RENDER_LAYERS.unplaced);
+    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime: 'now' })).toBe(
+      SKY_VIEW_WEBGL_RENDER_LAYERS.now
+    );
+    expect(webglRenderLayersFor({ regime: 'earth_capture', blackHole: false, observerTime: 'capture' })).toBe(
+      SKY_VIEW_WEBGL_RENDER_LAYERS.capture
+    );
     expect(webglRenderLayersFor({ regime: 'cislunar', blackHole: false })).toBe(CISLUNAR_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: true })).toBe(BLACK_HOLE_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'deep_sky', blackHole: false })).toBe(DEEP_SKY_WEBGL_RENDER_LAYERS);
     expect(webglRenderLayersFor({ regime: 'solar_neighborhood', blackHole: false })).toBe(
       SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS
     );
-    for (const regime of ['earth_capture', 'planetary_surface'] as const) {
-      expect(webglRenderLayersFor({ regime, blackHole: false })).toBeNull();
-    }
+    expect(webglRenderLayersFor({ regime: 'planetary_surface', blackHole: false })).toBeNull();
   });
 });

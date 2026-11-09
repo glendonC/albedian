@@ -167,14 +167,62 @@ export const SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS: RenderLayerSet = RenderLay
   WEBGL_CAMERA_OPTICS,
 ]);
 
-/** What a WebGL view shows: its regime and, in the deep-sky regime, whether the black hole is up. */
+/**
+ * The horizon, ground and compass points of the sky view (webgl/observerHorizon.ts), computed for
+ * the recording's location at its capture time, or at the device's time now when it has none. Its
+ * text is fixed, so no place, time or figure of the recording reaches the panel.
+ */
+function skyHorizonLayer(time: ObserverTimeKind): RenderLayer {
+  const when = time === 'capture' ? 'at its capture time' : "at this device's time now";
+  return {
+    id: 'sky.horizon',
+    kind: 'sky_overlay',
+    title: 'Horizon and compass',
+    evidenceClass: 'predicted',
+    disclosure: `The horizon, ground and compass points computed for the recording's location ${when}. The drawn horizon is geometric: no terrain, and refraction shows real stars near it slightly higher.`,
+    sources: [
+      'IAU 1976 precession (Lieske et al. 1977)',
+      'IAU 1982 sidereal time (Aoki et al. 1982)',
+      "Location and capture time from the recording's metadata, else this device's clock",
+    ],
+  };
+}
+
+function skyViewLayers(time: ObserverTimeKind | null): RenderLayerSet {
+  return RenderLayerSetSchema.parse([
+    { ...WEBGL_SKY, id: 'sky.panorama' },
+    { ...WEBGL_CATALOG_STARS, id: 'sky.catalog-stars' },
+    ...(time ? [skyHorizonLayer(time)] : []),
+    WEBGL_CAMERA_OPTICS,
+  ]);
+}
+
+/**
+ * The sky view (earth_capture): the registered panorama, the catalog stars and the optics, with
+ * the observer's horizon once the recording's location is known, by the time it is drawn for.
+ */
+export const SKY_VIEW_WEBGL_RENDER_LAYERS = {
+  unplaced: skyViewLayers(null),
+  capture: skyViewLayers('capture'),
+  now: skyViewLayers('now'),
+} as const satisfies Record<string, RenderLayerSet>;
+
+/** What time the sky view's horizon is drawn for. */
+export type ObserverTimeKind = 'capture' | 'now';
+
+/**
+ * What a WebGL view shows: its regime, in the deep-sky regime whether the black hole is up, and in
+ * the sky view the time its horizon is for, or none (null or absent) before a location is known.
+ */
 export interface WebglView {
   regime: SpatialScaleRegime;
   blackHole: boolean;
+  observerTime?: ObserverTimeKind | null;
 }
 
 /** Layers the WebGL renderer declares for a view; null where the view is not declared yet. */
 export function webglRenderLayersFor(view: WebglView): RenderLayerSet | null {
+  if (view.regime === 'earth_capture') return SKY_VIEW_WEBGL_RENDER_LAYERS[view.observerTime ?? 'unplaced'];
   if (view.regime === 'cislunar') return CISLUNAR_WEBGL_RENDER_LAYERS;
   if (view.regime === 'deep_sky') return view.blackHole ? BLACK_HOLE_WEBGL_RENDER_LAYERS : DEEP_SKY_WEBGL_RENDER_LAYERS;
   if (view.regime === 'solar_neighborhood') return SOLAR_NEIGHBOURHOOD_WEBGL_RENDER_LAYERS;

@@ -10,6 +10,8 @@ import { cameraSkyPose } from './cameraSkyPose.js';
 import type { CameraSkyPose } from './cosmosRenderer.js';
 import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStats } from './catalogStars/index.js';
 import { webglRenderLayersFor } from './webglRenderLayers.js';
+import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, observerHorizonVisible } from './observerPose.js';
+import { canvasCompassLabel, createObserverHorizon, disposeObserverHorizon } from './webgl/observerHorizon.js';
 import { createOriginCameraFrustumIndicator } from './referenceFrameContinuity.js';
 import { centreOnCamera } from './skyMounts.js';
 import {
@@ -31,7 +33,7 @@ import {
   type PlanetarySkyUniforms, type PlanetaryTerrainPalette,
 } from './webgl/planetarySurfaceRegime.js';
 import {
-  resolveSkyTargetPosition, projectCatalogDirectionToScreen, clampLookPitch, lookAnglesForSceneDirection,
+  resolveSkyTargetPosition, projectCatalogDirectionToScreen, clampLookPitch,
   projectSkyWorldPointToScreen, computeCameraTelemetrySnapshot,
 } from './webgl/skyTargets.js';
 
@@ -83,24 +85,22 @@ export class SparkPortalRenderer {
   private planetarySkyUniforms: PlanetarySkyUniforms = createPlanetarySkyUniforms();
   private cinemaOpticsUniforms: CinemaOpticsUniforms = createCinemaOpticsUniforms();
 
-  private skyMoonMesh: THREE.Mesh | null = null;
   private cislunarMoonMesh: THREE.Mesh | null = null;
   private cislunarEarthMesh: THREE.Mesh | null = null;
   private betelgeuseMesh: THREE.Mesh | null = null;
   private localBubbleCavityGroup: THREE.Group | null = null;
   private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
-  private captureHorizonSplatMesh: SplatMesh | null = null;
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
   private planetaryParentBodyMesh: THREE.Mesh | null = null;
   private originFrustumGroup: THREE.Group | null = null;
   private catalogStars: CatalogStarField | null = null;
   private readonly catalogStarMounts: THREE.Group[] = [];
 
-  private observerLatDeg: number | null = null;
-  private observerLonDeg: number | null = null;
+  private observer = new ObserverSky();
+  private observerHorizon: THREE.Group | null = null;
   private activeRegime: SpatialScaleRegime = 'earth_capture';
   private flightState: {
-    active: boolean; startPos: THREE.Vector3; endPos: THREE.Vector3;
+    active: boolean; startPos: THREE.Vector3; endPos: THREE.Vector3; startQuat: THREE.Quaternion; endQuat: THREE.Quaternion;
     progress: number; targetRegime: SpatialScaleRegime;
   } | null = null;
 
@@ -165,6 +165,7 @@ export class SparkPortalRenderer {
         '/textures/eso1804a.jpg'
       );
       this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
+      this.localFrame.add((this.observerHorizon = createObserverHorizon(canvasCompassLabel)));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
       this.buildSolarNeighborhoodWorld();
@@ -186,38 +187,35 @@ export class SparkPortalRenderer {
     this.catalogStarMounts.push(mount);
   }
 
-  private rebuildCaptureHorizonSplatMesh(latDeg: number): void {
-    const group = this.regimeGroups.earth_capture;
-    if (this.captureHorizonSplatMesh) {
-      group.remove(this.captureHorizonSplatMesh);
-      this.captureHorizonSplatMesh.dispose();
-      this.captureHorizonSplatMesh = null;
-    }
-    const horizonDome = group.getObjectByName('captureHorizonLandscapeDome') as THREE.Mesh | undefined;
-    const mat = horizonDome?.material as THREE.ShaderMaterial | undefined;
-    if (mat?.uniforms?.uIsSouthern) mat.uniforms.uIsSouthern.value = latDeg < 0 ? 1.0 : 0.0;
-  }
-
   private buildEarthCaptureWorld(): void {
     this.addCatalogStarMount(this.regimeGroups.earth_capture, 58.0);
   }
 
-  public setObserverCoordinates(latDeg: number, lonDeg: number): void {
-    if (
-      this.observerLatDeg !== null && this.observerLonDeg !== null &&
-      Math.abs(latDeg - this.observerLatDeg) < 0.01 && Math.abs(lonDeg - this.observerLonDeg) < 0.01
-    ) return;
-    this.observerLatDeg = latDeg;
-    this.observerLonDeg = lonDeg;
-    this.rebuildCaptureHorizonSplatMesh(latDeg);
+  /** The recording's place and capture time (ISO 8601 UTC); without a time the sky view is for now. */
+  public setObserverCoordinates(latDeg: number, lonDeg: number, capturedAtUtc: string | null = null): void {
+    if (!this.observer.set(latDeg, lonDeg, capturedAtUtc)) return;
+    this.applyObserverFrame(true);
+    if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.z = latDeg < 0 ? Math.PI * 0.85 : 0.0;
+    this.cislunarEarthMesh?.rotation.set(...((latDeg < 0 ? [-0.88, -1.15, 0.18] : [-0.55, 1.68, -0.24]) as [number, number, number]));
+  }
 
-    const isSouthern = latDeg < 0;
-    if (this.skyMoonMesh) this.skyMoonMesh.rotation.z = isSouthern ? Math.PI : 0.0;
-    if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.z = isSouthern ? Math.PI * 0.85 : 0.0;
-    if (this.cislunarEarthMesh) {
-      if (isSouthern) this.cislunarEarthMesh.rotation.set(-0.88, -1.15, 0.18);
-      else this.cislunarEarthMesh.rotation.set(-0.55, 1.68, -0.24);
+  /** A recording without a location: no place, time or horizon, and celestial north up again. */
+  public clearObserverCoordinates(): void { if (this.observer.clear()) this.applyObserverFrame(false); }
+
+  /** New observer frame; in the sky view the camera's parent turns to it, and a new place opens on its default look. */
+  private applyObserverFrame(newPlace: boolean): void {
+    const frame = this.observer.refresh(Date.now());
+    if (this.activeRegime === 'earth_capture' && !this.flightState) {
+      localFrameQuaternionFor(this.activeRegime, frame, this.localFrame.quaternion);
+      this.localFrame.updateMatrixWorld(true);
+      if (newPlace) this.lookAtDefault();
     }
+    this.syncRegimeVisibility();
+  }
+
+  private lookAtDefault(): void {
+    const look = this.observer.site ? defaultObserverLook(this.observer.site.latDeg) : null;
+    if (look) Object.assign(this.lookTarget, { yaw: look.yaw, pitch: look.pitch, curYaw: look.yaw, curPitch: look.pitch });
   }
 
   private buildCislunarWorld(): void {
@@ -273,6 +271,8 @@ export class SparkPortalRenderer {
     for (const r of SCALE_REGIME_ORDER) {
       this.regimeGroups[r].visible = r === this.activeRegime || this.flightState?.targetRegime === r;
     }
+    const view = { regime: this.activeRegime, flying: Boolean(this.flightState), placed: this.observer.frame !== null };
+    if (this.observerHorizon) this.observerHorizon.visible = observerHorizonVisible(view);
   }
 
   private startLoop(): void {
@@ -289,6 +289,9 @@ export class SparkPortalRenderer {
       this.localBubbleUniforms.uTime.value = elapsed;
       this.planetarySkyUniforms.uTime.value = elapsed;
       this.cinemaOpticsUniforms.uTime.value = elapsed;
+
+      // Without a capture time the sky view is for now, so the sky keeps turning with the clock
+      if (this.heldClockSec === null && this.observer.due(Date.now())) this.applyObserverFrame(false);
 
       const rotMult = this.heldClockSec !== null ? 0 : this.showcaseMode ? 3.2 : 1.0;
       if (this.cislunarMoonMesh) this.cislunarMoonMesh.rotation.y += 0.0005 * rotMult;
@@ -314,7 +317,9 @@ export class SparkPortalRenderer {
       if (this.flightState?.active) {
         this.flightState.progress = Math.min(1, this.flightState.progress + 0.048);
         const t = this.flightState.progress;
-        this.localFrame.position.lerpVectors(this.flightState.startPos, this.flightState.endPos, t * t * (3 - 2 * t));
+        const eased = t * t * (3 - 2 * t);
+        this.localFrame.position.lerpVectors(this.flightState.startPos, this.flightState.endPos, eased);
+        this.localFrame.quaternion.slerpQuaternions(this.flightState.startQuat, this.flightState.endQuat, eased);
         const warpArc = Math.sin(t * Math.PI);
         this.camera.fov = this.curFov + warpArc * 16;
         this.camera.updateProjectionMatrix();
@@ -436,12 +441,6 @@ export class SparkPortalRenderer {
     return projectSkyWorldPointToScreen(this.camera, this.getSkyTargetPosition(id, title, raDeg, decDeg), viewportWidth, viewportHeight);
   }
 
-  public focusSkyTarget(id: string, title: string, raDeg: number, decDeg: number): void {
-    const { yaw, pitch } = lookAnglesForSceneDirection(this.getSkyTargetPosition(id, title, raDeg, decDeg));
-    this.lookTarget.yaw = yaw;
-    this.lookTarget.pitch = pitch;
-  }
-
   public setTargetAppearance(title: string, bpRp?: number, objectType?: string): void {
     const isBh = applyTargetAppearanceToUniforms(title, bpRp, objectType, this.localBubbleUniforms);
     this.nebulaUniforms.uIsBlackHole.value = isBh ? 1.0 : 0.0;
@@ -454,7 +453,9 @@ export class SparkPortalRenderer {
     const targetRegime = SCALE_REGIME_ORDER[nextIdx]!;
     this.flightState = {
       active: true, startPos: this.localFrame.position.clone(),
-      endPos: REGIME_CAMERA_ANCHORS[targetRegime].clone(), progress: 0, targetRegime,
+      endPos: REGIME_CAMERA_ANCHORS[targetRegime].clone(),
+      startQuat: this.localFrame.quaternion.clone(), endQuat: localFrameQuaternionFor(targetRegime, this.observer.frame),
+      progress: 0, targetRegime,
     };
     this.syncRegimeVisibility();
   }
@@ -463,8 +464,9 @@ export class SparkPortalRenderer {
     this.activeRegime = regime;
     this.flightState = null;
     this.localFrame.position.copy(REGIME_CAMERA_ANCHORS[regime]);
-    this.localFrame.rotation.set(0, 0, 0);
+    localFrameQuaternionFor(regime, this.observer.frame, this.localFrame.quaternion);
     Object.assign(this.lookTarget, { yaw: 0, pitch: 0, curYaw: 0, curPitch: 0 });
+    if (regime === 'earth_capture') this.lookAtDefault();
     this.camera.rotation.set(0, 0, 0);
     this.targetFov = 56;
     this.curFov = 56;
@@ -480,7 +482,8 @@ export class SparkPortalRenderer {
   public holdClock(seconds: number | null): void { this.heldClockSec = seconds; }
 
   public getRenderLayers(): RenderLayerSet | null {
-    return webglRenderLayersFor({ regime: this.activeRegime, blackHole: this.nebulaUniforms.uIsBlackHole.value > 0.5 });
+    const blackHole = this.nebulaUniforms.uIsBlackHole.value > 0.5;
+    return webglRenderLayersFor({ regime: this.activeRegime, blackHole, observerTime: this.observer.frame ? this.observer.clock.kind : null });
   }
 
   public setShowcaseMode(enabled: boolean): void {
@@ -530,7 +533,7 @@ export class SparkPortalRenderer {
   public dispose(): void {
     if (typeof window !== 'undefined' && this.rafId) window.cancelAnimationFrame(this.rafId);
     this.timer.dispose();
-    this.captureHorizonSplatMesh?.dispose();
+    if (this.observerHorizon) disposeObserverHorizon(this.observerHorizon);
     this.planetaryTerrainSplatMesh?.dispose();
     this.catalogStars?.dispose();
     this.sparkRenderer?.dispose();

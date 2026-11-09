@@ -213,6 +213,7 @@ export const SpatialObservatoryViewport: React.FC<
     session.sourceAsset?.observerLocation?.lonDeg ??
     activeDiscoveredItem?.lonDeg ??
     null;
+  const observerCapturedAtUtc = session.sourceAsset?.capturedAtUTC ?? activeDiscoveredItem?.capturedAtUTC ?? null;
 
   // Initialize the cosmos renderer: WebGL2 + @sparkjsdev/spark by default, the WebGPU host behind ?renderer=webgpu
   useEffect(() => {
@@ -271,9 +272,13 @@ export const SpatialObservatoryViewport: React.FC<
 
   // Sync observer geographic coordinates into 3D renderer
   useEffect(() => {
-    if (observerLat === null || observerLon === null) return;
-    rendererRef.current?.setObserverCoordinates(observerLat, observerLon);
-  }, [observerLat, observerLon, rendererGeneration]);
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    if (observerLat === null || observerLon === null) renderer.clearObserverCoordinates?.();
+    else renderer.setObserverCoordinates(observerLat, observerLon, observerCapturedAtUtc);
+    // The sky view's horizon and its disclosure follow the place and time, or their absence
+    setRenderLayers(renderer.getRenderLayers?.() ?? null);
+  }, [observerLat, observerLon, observerCapturedAtUtc, rendererGeneration]);
 
   // The header slider is the engine's master volume; the engine keeps it until audio starts
   useEffect(() => {

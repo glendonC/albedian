@@ -17,24 +17,31 @@ import {
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
 
 /**
- * Real catalog positions (ICRS, J2000): Hipparcos for the stars, the LMC and SMC optical centres
- * as SIMBAD lists them, Sgr A* (Reid and Brunthaler 2004). The southern ones are the ones the old
- * hand-set scene vectors and pitch clamps got wrong.
+ * Catalog positions (ICRS, J2000): Hipparcos for the stars, the LMC and SMC optical centres as
+ * SIMBAD lists them, Sgr A* (Reid and Brunthaler 2004). The southern ones are the ones the old
+ * hand-set scene vectors and pitch clamps got wrong. The last two rows are test directions, not
+ * catalog positions: one in Carina near the nebula (no cited position), and one for the Moon, which
+ * has no fixed position; both had special cases in the old code.
  */
 const TARGETS: Array<{ id: string; title: string; raDeg: number; decDeg: number }> = [
   { id: 'hip_60718_acrux', title: 'Acrux', raDeg: 186.6496, decDeg: -63.0991 },
   { id: 'hip_71683_alpha_centauri', title: 'Alpha Centauri A', raDeg: 219.9021, decDeg: -60.8340 },
   { id: 'hip_30438_canopus', title: 'Canopus', raDeg: 95.9880, decDeg: -52.6957 },
-  { id: 'ngc_3372_carina', title: 'Carina Nebula', raDeg: 161.2650, decDeg: -59.8667 },
   { id: 'hip_32349_sirius', title: 'Sirius', raDeg: 101.2872, decDeg: -16.7161 },
   { id: 'sgr_a_star', title: 'Sagittarius A*', raDeg: 266.4168, decDeg: -29.0078 },
   { id: 'lmc', title: 'Large Magellanic Cloud', raDeg: 80.894, decDeg: -69.756 },
   { id: 'smc', title: 'Small Magellanic Cloud', raDeg: 13.187, decDeg: -72.829 },
   { id: 'hip_91262_vega', title: 'Vega', raDeg: 279.2347, decDeg: 38.7837 },
+  // Test directions, not catalog positions
+  { id: 'ngc_3372_carina', title: 'Carina Nebula', raDeg: 161.2650, decDeg: -59.8667 },
   { id: 'moon', title: 'Moon', raDeg: 150.0, decDeg: -25.0 },
 ];
 
-const angleBetween = (a: THREE.Vector3, b: THREE.Vector3) => a.clone().normalize().angleTo(b.clone().normalize());
+/**
+ * How far apart two directions are: the chord between them as unit vectors, equal to the angle in
+ * radians at these sizes. angleTo's acos cannot resolve under about 1.5e-8 rad, so it is not used.
+ */
+const angleBetween = (a: THREE.Vector3, b: THREE.Vector3) => a.clone().normalize().distanceTo(b.clone().normalize());
 const catalogDirection = (raDeg: number, decDeg: number) => icrsToScene(raDecDegToVec(raDeg, decDeg));
 /** The direction the sky view's camera faces for a yaw and pitch (camera Euler order YXZ). */
 const facing = (yaw: number, pitch: number) =>
@@ -103,7 +110,6 @@ describe('southern sky pose in the WebGL sky view', () => {
     expect(src).not.toMatch(/Math\.max\(-1\.15/);
     expect(src).not.toMatch(/Math\.max\(-0\.85/);
     expect(src.match(/clampLookPitch\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
-    expect(src).toContain('lookAnglesForSceneDirection(');
   });
 
   it('draws no decorative observer horizon ring', () => {
