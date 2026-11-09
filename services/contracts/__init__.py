@@ -1,5 +1,11 @@
 """Python mirrors of the cross-service schemas in packages/contracts."""
 
+from services.contracts.bright_stars import (
+    BRIGHT_STAR_COLUMNS,
+    BRIGHT_STAR_SUPPLEMENT_FORMAT,
+    BRIGHT_STAR_SUPPLEMENT_FORMAT_VERSION,
+    BrightStarSupplement,
+)
 from services.contracts.catalog_reference import (
     CATALOG_DISTANCE_METHODS,
     CATALOG_OBJECT_TYPES,
@@ -57,6 +63,9 @@ __all__ = [
     "ASSET_PROVENANCE_FORMAT",
     "ASSET_PROVENANCE_FORMAT_VERSION",
     "ASSET_PROVENANCE_RECORD_FILENAME",
+    "BRIGHT_STAR_COLUMNS",
+    "BRIGHT_STAR_SUPPLEMENT_FORMAT",
+    "BRIGHT_STAR_SUPPLEMENT_FORMAT_VERSION",
     "CATALOG_DISTANCE_METHODS",
     "CATALOG_OBJECT_TYPES",
     "CATALOG_PROVIDERS",
@@ -78,6 +87,7 @@ __all__ = [
     "SOLAR_ECLIPSE_COLUMNS",
     "SPDX_LICENSE_IDS",
     "AssetProvenanceRecord",
+    "BrightStarSupplement",
     "CatalogReference",
     "ConstellationBoundaries",
     "ConstellationLines",

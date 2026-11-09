@@ -14,3 +14,4 @@ export * from './eclipses.js';
 export * from './exoplanets.js';
 export * from './deep-sky.js';
 export * from './constellations.js';
+export * from './bright-stars.js';

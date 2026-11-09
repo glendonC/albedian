@@ -40,6 +40,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'DeepSkyCatalogSchema',
   'ConstellationLinesSchema',
   'ConstellationBoundariesSchema',
+  'BrightStarSupplementSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
