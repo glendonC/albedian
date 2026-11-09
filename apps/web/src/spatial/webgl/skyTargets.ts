@@ -1,88 +1,37 @@
 import * as THREE from 'three';
+import { icrsToScene } from '../catalogStars/CatalogStarField.js';
+import { raDecDegToVec } from '../catalogStars/healpix.js';
 
+/** Radius of the sphere sky targets sit on around the sky view's camera, in scene units. */
+const SKY_TARGET_RADIUS = 26;
+
+/**
+ * Where a sky target sits in the scene: on a sphere around the camera, in its catalog direction
+ * (ICRS axes to scene axes as the catalog stars use). The name never moves it.
+ */
 export function resolveSkyTargetPosition(
-  id: string,
-  title: string,
+  _id: string,
+  _title: string,
   raDeg: number,
   decDeg: number
 ): THREE.Vector3 {
-  const lowerId = id.toLowerCase();
-  const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('moon')) {
-    return new THREE.Vector3(5.4, 2.8, -26.0);
-  }
-  if (lowerId.includes('alpha_centauri') || lowerTitle.includes('alpha centauri')) {
-    return new THREE.Vector3(-3.8, 4.4, -25.4);
-  }
-  if (lowerId.includes('carina') || lowerTitle.includes('carina')) {
-    return new THREE.Vector3(2.8, 3.6, -25.6);
-  }
-  if (lowerId.includes('acrux') || lowerTitle.includes('acrux') || lowerTitle.includes('southern cross')) {
-    return new THREE.Vector3(-0.6, 5.1, -25.4);
-  }
-  if (lowerId.includes('canopus') || lowerTitle.includes('canopus')) {
-    return new THREE.Vector3(6.8, 1.4, -25.8);
-  }
-  if (lowerId.includes('altair') || lowerTitle.includes('altair')) {
-    return new THREE.Vector3(-6.4, 4.6, -25.0);
-  }
-  if (lowerId.includes('tarazed') || lowerTitle.includes('tarazed')) {
-    return new THREE.Vector3(-8.8, 6.2, -25.2);
-  }
-  if (lowerId.includes('alshain') || lowerTitle.includes('alshain')) {
-    return new THREE.Vector3(-4.2, 2.8, -25.2);
-  }
-  if (lowerId.includes('albireo') || lowerTitle.includes('albireo')) {
-    return new THREE.Vector3(-10.5, 8.2, -24.8);
-  }
-  if (lowerId.includes('deneb_algedi') || lowerTitle.includes('deneb algedi')) {
-    return new THREE.Vector3(1.8, 0.2, -25.8);
-  }
-  if (lowerId.includes('sadalsuud') || lowerTitle.includes('sadalsuud')) {
-    return new THREE.Vector3(0.4, 4.2, -25.6);
-  }
-  if (lowerId.includes('dabih') || lowerTitle.includes('dabih')) {
-    return new THREE.Vector3(-2.6, -1.2, -25.8);
-  }
-  if (lowerId.includes('algedi') || lowerTitle.includes('algedi')) {
-    return new THREE.Vector3(-4.8, -0.2, -25.8);
-  }
-  if (lowerId.includes('nashira') || lowerTitle.includes('nashira')) {
-    return new THREE.Vector3(0.2, -1.6, -25.8);
-  }
-  if (lowerId.includes('fomalhaut') || lowerTitle.includes('fomalhaut')) {
-    return new THREE.Vector3(4.2, -3.4, -26.2);
-  }
-  if (lowerId.includes('saturn') || lowerTitle.includes('saturn')) {
-    return new THREE.Vector3(3.1, 5.4, -25.8);
-  }
-  if (lowerId.includes('uranus') || lowerTitle.includes('uranus')) {
-    return new THREE.Vector3(8.8, 3.6, -25.5);
-  }
-  if (lowerId.includes('vega') || lowerTitle.includes('vega')) {
-    return new THREE.Vector3(-10.2, 7.4, -24.5);
-  }
-  if (lowerId.includes('betelgeuse') || lowerTitle.includes('betelgeuse')) {
-    return new THREE.Vector3(-4.2, 3.8, -25.5);
-  }
-  if (lowerId.includes('rigel') || lowerTitle.includes('rigel')) {
-    return new THREE.Vector3(-1.4, -2.1, -26.0);
-  }
-  if (lowerId.includes('aldebaran') || lowerTitle.includes('aldebaran')) {
-    return new THREE.Vector3(4.6, 5.6, -25.2);
-  }
-  if (lowerId.includes('sirius') || lowerTitle.includes('sirius')) {
-    return new THREE.Vector3(-7.6, -3.2, -25.5);
-  }
-  if (lowerId.includes('jupiter') || lowerTitle.includes('jupiter')) {
-    return new THREE.Vector3(2.4, 6.4, -25.4);
-  }
-  if (lowerId.includes('sgr_a') || lowerTitle.includes('sagittarius') || lowerTitle.includes('black hole')) {
-    return new THREE.Vector3(0.8, 3.2, -25.4);
-  }
-  const normRa = (((raDeg - 80 + 540) % 360) - 180) / 180;
-  const normDec = Math.max(-45, Math.min(65, decDeg)) / 65;
-  return new THREE.Vector3(normRa * 11.5, normDec * 6.5 + 1.2, -26.0);
+  return icrsToScene(raDecDegToVec(raDeg, decDeg)).multiplyScalar(SKY_TARGET_RADIUS);
+}
+
+/**
+ * The sky view's look pitch limit: just short of the celestial poles, so the camera (Euler order
+ * YXZ) can face the Magellanic Clouds and the south celestial pole without flipping over the top.
+ */
+export const MAX_LOOK_PITCH_RAD = Math.PI / 2 - 0.01;
+
+export function clampLookPitch(pitch: number): number {
+  return Math.max(-MAX_LOOK_PITCH_RAD, Math.min(MAX_LOOK_PITCH_RAD, pitch));
+}
+
+/** Yaw and pitch that face a scene direction (yaw about +Y, then pitch, as the sky view's camera). */
+export function lookAnglesForSceneDirection(direction: THREE.Vector3): { yaw: number; pitch: number } {
+  const d = direction.clone().normalize();
+  return { yaw: Math.atan2(-d.x, -d.z), pitch: clampLookPitch(Math.asin(Math.max(-1, Math.min(1, d.y)))) };
 }
 
 export function projectCatalogDirectionToScreen(

@@ -21,13 +21,11 @@ const REGIME_WORLD_ANCHORS: Record<string, THREE.Vector3> = {
 interface OriginFrustumMaterials {
   pyramidLineMat: THREE.LineBasicMaterial;
   goldAccentMat: THREE.LineBasicMaterial;
-  horizonRingMat: THREE.LineBasicMaterial;
   sightlineDashMat: THREE.LineDashedMaterial;
   waypointPointsMat: THREE.PointsMaterial;
   frustumSubgroup: THREE.Group;
   sightlineLine: THREE.Line;
   waypointPoints: THREE.Points;
-  horizonRingGroup: THREE.Group;
 }
 
 /**
@@ -162,55 +160,6 @@ export function createOriginCameraFrustumIndicator(): THREE.Group {
   const goldAccentLines = new THREE.LineSegments(goldAccentGeo, goldAccentMat);
   frustumSubgroup.add(goldAccentLines);
 
-  // 3. Earthly Observer Horizon Ring around the Frustum Nodal Apex (0, 0, 0)
-  const horizonRingGroup = new THREE.Group();
-  horizonRingGroup.name = 'ObserverHorizonRing';
-  const horizonRadius = 0.46;
-  const horizonCoords: number[] = [];
-  const horizonSegs = 32;
-  for (let i = 0; i < horizonSegs; i++) {
-    const a0 = (i / horizonSegs) * Math.PI * 2;
-    const a1 = ((i + 1) / horizonSegs) * Math.PI * 2;
-    horizonCoords.push(
-      Math.cos(a0) * horizonRadius,
-      0,
-      Math.sin(a0) * horizonRadius,
-      Math.cos(a1) * horizonRadius,
-      0,
-      Math.sin(a1) * horizonRadius
-    );
-  }
-  // Cardinal zenith/azimuth ticks on the observer horizon ring
-  for (let c = 0; c < 4; c++) {
-    const ang = (c / 4) * Math.PI * 2;
-    const rIn = horizonRadius * 0.82;
-    const rOut = horizonRadius * 1.16;
-    horizonCoords.push(
-      Math.cos(ang) * rIn,
-      0,
-      Math.sin(ang) * rIn,
-      Math.cos(ang) * rOut,
-      0,
-      Math.sin(ang) * rOut
-    );
-  }
-
-  const horizonGeo = new THREE.BufferGeometry();
-  horizonGeo.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(horizonCoords, 3)
-  );
-  const horizonRingMat = new THREE.LineBasicMaterial({
-    color: PALETTE_WARM_PEWTER,
-    transparent: true,
-    opacity: 0.34,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const horizonLines = new THREE.LineSegments(horizonGeo, horizonRingMat);
-  horizonRingGroup.add(horizonLines);
-  frustumSubgroup.add(horizonRingGroup);
-
   // 4. Receding Origin Sightline Ray (Dashed Optical Filament connecting capture to 3D target)
   const sightlinePositions = new Float32Array([
     0, 0, 0,
@@ -267,13 +216,11 @@ export function createOriginCameraFrustumIndicator(): THREE.Group {
   const storedMaterials: OriginFrustumMaterials = {
     pyramidLineMat,
     goldAccentMat,
-    horizonRingMat,
     sightlineDashMat,
     waypointPointsMat,
     frustumSubgroup,
     sightlineLine,
     waypointPoints,
-    horizonRingGroup,
   };
   rootGroup.userData.originContinuity = storedMaterials;
 
@@ -290,9 +237,7 @@ export function updateOriginFrustumContinuity(
   group: THREE.Group,
   activeRegime: string,
   warpFactor: number,
-  elapsedSec: number,
-  observerLatDeg: number,
-  observerLonDeg: number
+  elapsedSec: number
 ): void {
   const clampedWarp = Math.max(0, Math.min(1, warpFactor));
   const isEarthSteadyState = activeRegime === 'earth_capture' && clampedWarp < 0.02;
@@ -357,12 +302,6 @@ export function updateOriginFrustumContinuity(
   const frustumScale = Math.max(0.46, 0.78 - regimeIndex * 0.065 + clampedWarp * 0.14);
   state.frustumSubgroup.scale.setScalar(frustumScale);
 
-  // Orient the earthly observer horizon ring by observer latitude & sidereal longitude
-  const latRad = (observerLatDeg * Math.PI) / 180;
-  const lonRad = (observerLonDeg * Math.PI) / 180;
-  state.horizonRingGroup.rotation.x = Math.max(-0.55, Math.min(0.55, latRad * 0.35));
-  state.horizonRingGroup.rotation.y = lonRad * 0.25 + elapsedSec * 0.08;
-
   // Update the Origin Sightline Ray geometry connecting the earthly frustum apex to the 3D target anchor
   const frameCenterWorld = new THREE.Vector3(0, 0, -2.25 * frustumScale)
     .applyQuaternion(alignQuat)
@@ -400,7 +339,6 @@ export function updateOriginFrustumContinuity(
   const pulse = 0.92 + 0.08 * Math.sin(elapsedSec * 2.2);
   state.pyramidLineMat.opacity = 0.26 * visibilityBlend * pulse;
   state.goldAccentMat.opacity = 0.56 * visibilityBlend * pulse;
-  state.horizonRingMat.opacity = 0.34 * visibilityBlend;
   state.sightlineDashMat.opacity = (0.38 + clampedWarp * 0.28) * visibilityBlend;
   state.waypointPointsMat.opacity = (0.52 + clampedWarp * 0.32) * visibilityBlend;
 }

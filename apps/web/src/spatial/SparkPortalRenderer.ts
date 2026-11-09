@@ -31,7 +31,7 @@ import {
   type PlanetarySkyUniforms, type PlanetaryTerrainPalette,
 } from './webgl/planetarySurfaceRegime.js';
 import {
-  resolveSkyTargetPosition, projectCatalogDirectionToScreen,
+  resolveSkyTargetPosition, projectCatalogDirectionToScreen, clampLookPitch, lookAnglesForSceneDirection,
   projectSkyWorldPointToScreen, computeCameraTelemetrySnapshot,
 } from './webgl/skyTargets.js';
 
@@ -370,7 +370,7 @@ export class SparkPortalRenderer {
   public dragLook(deltaPixelsX: number, deltaPixelsY: number): void {
     const sensitivity = 0.0032 * (this.curFov / 56);
     this.lookTarget.yaw -= deltaPixelsX * sensitivity;
-    this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch - deltaPixelsY * sensitivity));
+    this.lookTarget.pitch = clampLookPitch(this.lookTarget.pitch - deltaPixelsY * sensitivity);
     if (this.activeRegime === 'cislunar' && this.cislunarMoonMesh) {
       this.cislunarMoonMesh.rotation.y += deltaPixelsX * 0.004;
       this.cislunarMoonMesh.rotation.x = Math.max(-0.6, Math.min(0.6, this.cislunarMoonMesh.rotation.x + deltaPixelsY * 0.003));
@@ -412,7 +412,7 @@ export class SparkPortalRenderer {
   public nudgeMovement(dx: number, dy: number, dz: number): void {
     if (this.activeRegime === 'earth_capture') {
       this.lookTarget.yaw -= dx * 0.14;
-      this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch - dz * 0.14 + dy * 0.14));
+      this.lookTarget.pitch = clampLookPitch(this.lookTarget.pitch - dz * 0.14 + dy * 0.14);
       return;
     }
     this.localFrame.position.addScaledVector(new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion), dx);
@@ -422,7 +422,7 @@ export class SparkPortalRenderer {
 
   public nudgeLook(dYaw: number, dPitch: number): void {
     this.lookTarget.yaw += dYaw;
-    this.lookTarget.pitch = Math.max(-1.15, Math.min(1.15, this.lookTarget.pitch + dPitch));
+    this.lookTarget.pitch = clampLookPitch(this.lookTarget.pitch + dPitch);
   }
 
   public getSkyTargetPosition(id: string, title: string, raDeg: number, decDeg: number): THREE.Vector3 {
@@ -437,9 +437,9 @@ export class SparkPortalRenderer {
   }
 
   public focusSkyTarget(id: string, title: string, raDeg: number, decDeg: number): void {
-    const dir = this.getSkyTargetPosition(id, title, raDeg, decDeg).clone().normalize();
-    this.lookTarget.yaw = Math.atan2(-dir.x, -dir.z);
-    this.lookTarget.pitch = Math.asin(Math.max(-0.85, Math.min(0.85, dir.y)));
+    const { yaw, pitch } = lookAnglesForSceneDirection(this.getSkyTargetPosition(id, title, raDeg, decDeg));
+    this.lookTarget.yaw = yaw;
+    this.lookTarget.pitch = pitch;
   }
 
   public setTargetAppearance(title: string, bpRp?: number, objectType?: string): void {
