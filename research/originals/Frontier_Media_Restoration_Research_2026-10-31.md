@@ -35,7 +35,7 @@ The essential claim is not that AI can recover invisible stars or scene geometry
 
 ## The verdict and its falsifiers
 
-**GO** if a real 5–15-second low-light consumer-video test shows a defensible improvement over a strong ordinary baseline, exported with synchronized audio, and demonstrates a repeatable multi-attempt selection process. **Pivot** to an evidence-based *media experiment workspace* if actual night restoration is only marginally better than straightforward tone/denoise processing. **Stop** if results are regularly hallucinated or weak compared with a simple commercial tool, while the extra workflow complexity does not produce appreciable user benefit.
+**GO** if a real 5 to 15-second low-light consumer-video test shows a defensible improvement over a strong ordinary baseline, exported with synchronized audio, and demonstrates a repeatable multi-attempt selection process. **Pivot** to an evidence-based *media experiment workspace* if actual night restoration is only marginally better than straightforward tone/denoise processing. **Stop** if results are regularly hallucinated or weak compared with a simple commercial tool, while the extra workflow complexity does not produce appreciable user benefit.
 
 **Recommendation:** product Option A's immediate clarity, Option C's experimental credibility, and Option D's hybrid interaction: a **night-first adaptive restoration workspace with an inspectable experiment runtime**. Do not build a generalized studio in the first month.
 
@@ -63,7 +63,7 @@ Core foundations: [Google HDR+ burst photography, SIGGRAPH Asia 2016](https://re
 
 | Work, date, authors | Input / task | Evidence and reported setup | Code / integration | Limitations / relevance |
 |---|---|---|---|---|
-| **AIM 2025 Low-light RAW Video Denoising Challenge**, ICCV Workshops 2025, Yakovenko et al. | Ten-frame smartphone linear RAW sequence to denoised tenth Bayer frame | **756 sequences, 14 sensors, 1/5/10 lx, 1/24–1/120 s**; high-SNR burst references; PSNR/SSIM ranking | [Paper](https://openaccess.thecvf.com/content/ICCV2025W/AIM/html/Yakovenko_AIM_2025_Low-light_RAW_Video_Denoising_Challenge_Dataset_Methods_and_ICCVW_2025_paper.html); challenge dataset access requires checking | Superb sensor-level research reference, **not directly compatible** with post-ISP Meta MP4. Challenge paper does not establish transferable weights, licensing, or consumer-video performance. |
+| **AIM 2025 Low-light RAW Video Denoising Challenge**, ICCV Workshops 2025, Yakovenko et al. | Ten-frame smartphone linear RAW sequence to denoised tenth Bayer frame | **756 sequences, 14 sensors, 1/5/10 lx, 1/24 to 1/120 s**; high-SNR burst references; PSNR/SSIM ranking | [Paper](https://openaccess.thecvf.com/content/ICCV2025W/AIM/html/Yakovenko_AIM_2025_Low-light_RAW_Video_Denoising_Challenge_Dataset_Methods_and_ICCVW_2025_paper.html); challenge dataset access requires checking | Superb sensor-level research reference, **not directly compatible** with post-ISP Meta MP4. Challenge paper does not establish transferable weights, licensing, or consumer-video performance. |
 | **Low-Light Video Enhancement via Spatial-Temporal Consistent Decomposition**, IJCAI 2025, Xiaogang Xu, Kun Zhou, Tao Hu, Jiafei Wu, Ruixing Wang, Hao Peng, Bei Yu | RGB video with temporal supervision | Authors report on SDSD indoor/outdoor, SMID, DID and DAVIS; SDSD outdoor **26.32 dB PSNR**, versus **25.17 dB** for best listed baseline in their protocol; methods retrained on common splits | [Paper](https://ijcai.org/proceedings/2025/238), [repo](https://github.com/xiaogang00/LLVE_STCD) | Good research candidate for compressed video; repository availability does not itself establish pretrained weights, license, Mac speed, or cross-sensor reliability. |
 | **RetinexMCNet**, ICCV 2025, Meiao Wang, Xuejing Kang, Yaxi Lu, Jie Xu | sRGB low-light video | Two-stage illumination/reflectance processing and memory controller, reports temporal-quality improvements on common sRGB datasets | [Paper](https://openaccess.thecvf.com/content/ICCV2025/html/Wang_RetinexMCNet_A_Memory_Controller_Dominated_Network_for_Low-Light_Video_Enhancement_ICCV_2025_paper.html) | Published paper's code URL is a placeholder (`xxx/...`); reproducible integration and weights **not verified**. Do not schedule as core dependency. |
 | **DarkIR**, CVPR 2025, Daniel Feijoo, Juan C. Benito, Alvaro Garcia, Marcos V. Conde | Single low-light image, joint light/noise/blur restoration | Repository reports **27.30 dB PSNR on LOLBlur for DarkIR-l**; 12.96M parameters and 27.19 GMACs for that variant; datasets include LOL-Blur, LOLv2, LSRW | [Repo, checkpoints](https://github.com/cidautai/DarkIR) | Excellent photo and sampled-frame baseline; independent per-frame operation risks video flicker. Public setup references PyTorch 2.5.1 and CUDA 12.4. Check checkpoint and repository licenses. |
@@ -164,9 +164,9 @@ Immediate: per-clip method selection, cached reruns, paired human preferences an
 
 ## Scenario A: Import
 
-**0–1 s:** the uploaded original stays visually dominant; a poster frame is displayed immediately. File name, duration, camera/codec where available, and the original audio track are identified. Do not fabricate a processing preview.
+**0 to 1 s:** the uploaded original stays visually dominant; a poster frame is displayed immediately. File name, duration, camera/codec where available, and the original audio track are identified. Do not fabricate a processing preview.
 
-**1–5 s, conditional on actual compute:** behind the same player, ingest/probe checks dimensions, transfer function, noise, exposure histogram, codec, motion and scene boundaries. UI changes `Analyzing` to `Ready to Restore` only when real analysis completes. If metadata inspection fails, provide a usable manual path.
+**1 to 5 s, conditional on actual compute:** behind the same player, ingest/probe checks dimensions, transfer function, noise, exposure histogram, codec, motion and scene boundaries. UI changes `Analyzing` to `Ready to Restore` only when real analysis completes. If metadata inspection fails, provide a usable manual path.
 
 **First visible choices:** `Restore`, `Compare`, `Original`, a small `Advanced`/`Processing Graph` entry. On a heavy dark night-sky clip the user can issue “Recover genuine detail. Keep people unchanged. Don't invent stars.”
 
@@ -176,7 +176,7 @@ A constrained policy selects a **cheap baseline** first, then one motion-aware s
 
 Possible strategy (illustrative, not fixed):
 
-`Original 00:05–00:15` → `[Decode + color normalize]` → branch A `[Exposure + mild denoise]`, branch B `[Motion estimate + temporal denoise + tone]`, branch C `[Vetted RGB-video model]` → `[Evaluate]`.
+`Original 00:05 to 00:15` → `[Decode + color normalize]` → branch A `[Exposure + mild denoise]`, branch B `[Motion estimate + temporal denoise + tone]`, branch C `[Vetted RGB-video model]` → `[Evaluate]`.
 
 The planner must avoid a star-hallucination model for the above fidelity constraint. It can display `No reliable sky detail found` rather than claiming success.
 
@@ -237,13 +237,13 @@ Comparison of four hypotheses, design assessment (1 weak to 5 strong; **subjecti
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Default state:** 70–80% of visual emphasis on media, not nodes. Right inspector closed until a result or diagnostic is selected. A narrow bottom experiment strip replaces a permanent graph. `Processing Graph` opens as an overlay/alternate perspective with thumbnails and dependency edges.
+**Default state:** 70 to 80% of visual emphasis on media, not nodes. Right inspector closed until a result or diagnostic is selected. A narrow bottom experiment strip replaces a permanent graph. `Processing Graph` opens as an overlay/alternate perspective with thumbnails and dependency edges.
 
 ### Five intentional canvas states
 
 1. **Import**: original fills player; ingestion metadata enters subtly.
 2. **Diagnose**: defects appear as small inspectable annotations associated with footage and time ranges. The first frame stays visible.
-3. **Restore**: 2–3 attempted branches enter a compact bottom strip; actual processing jobs display determinate progress only when a known denominator exists; otherwise show `Processing` and elapsed time.
+3. **Restore**: 2 to 3 attempted branches enter a compact bottom strip; actual processing jobs display determinate progress only when a known denominator exists; otherwise show `Processing` and elapsed time.
 4. **Compare**: player becomes synchronized split/wipe. Branch cards are ordered by meaningful criteria (quality and fidelity, speed), not fake composite scores.
 5. **Inspect**: a `Processing Graph` overlay shows actual node inputs/outputs and event trace, with an obvious back to media.
 
@@ -260,9 +260,9 @@ Comparison of four hypotheses, design assessment (1 weak to 5 strong; **subjecti
 ### Visual treatment and tokens
 
 - Surfaces: neutral near-black editing room; content obtains all visual emphasis. Light mode optional; no neon/gradient wallpaper.
-- Type: system sans; 12–13 px metadata, 14–16 px controls, ~22–28 px headings only when necessary; consistent tabular numbers for time/metrics.
-- Layout: 8-point grid, 16–24 px panel gutters, at least 44 px touch targets on small screens; rounded elements used sparingly.
-- Motion: 120–220 ms for UI transitions; no animated fake progress; reduced-motion preference supported.
+- Type: system sans; 12 to 13 px metadata, 14 to 16 px controls, ~22 to 28 px headings only when necessary; consistent tabular numbers for time/metrics.
+- Layout: 8-point grid, 16 to 24 px panel gutters, at least 44 px touch targets on small screens; rounded elements used sparingly.
+- Motion: 120 to 220 ms for UI transitions; no animated fake progress; reduced-motion preference supported.
 - Accent: single restrained selection accent; distinct accessible status cues with icon/text (not color only).
 - Accessibility: keyboardable timeline/compare slider, captionable voice transcripts, ARIA labels, visible focus, no reliance on audio instructions, voice confirmation on risky synthetic actions.
 - Example exact copy: `Original`, `Natural`, `Temporal`, `Compare`, `Processing Graph`, `Preserve Audio`, `Export`, `No Reliable Detail`, `Reference Unavailable`.
@@ -490,13 +490,13 @@ These are **planning envelopes, not verified prices or benchmark measurements**:
 
 | Experiment/build item | Working estimate | Cost risk |
 |---|---|---|
-| Probe + FFmpeg deterministic baselines | 0.5–2 days engineering | Low CPU cost; careful color/audio handling costs time |
-| Media-first player with exact A/B sync | 1–3 days engineering | Moderate; VFR/timebases, transformations and mobile preview handling |
-| One learned model reproduction on real RGB clips | 1–4 days **if** weights and compatible dependencies exist; may be impossible under license/hardware constraints | Highest technical uncertainty |
-| Graph execution records + cache + fork | 2–4 days engineering | Moderate; content hashing and invalidation correctness |
-| Evaluation and live telemetry | 2–4 days engineering | Metric validity is harder than plotting numbers |
-| Hosted judging demo | 1–3 days engineering | GPU availability, uploads, queue caps and privacy |
-| Voice commands after text editing | 1–2 days for constrained MVP | API usage, latency, transcript ambiguity |
+| Probe + FFmpeg deterministic baselines | 0.5 to 2 days engineering | Low CPU cost; careful color/audio handling costs time |
+| Media-first player with exact A/B sync | 1 to 3 days engineering | Moderate; VFR/timebases, transformations and mobile preview handling |
+| One learned model reproduction on real RGB clips | 1 to 4 days **if** weights and compatible dependencies exist; may be impossible under license/hardware constraints | Highest technical uncertainty |
+| Graph execution records + cache + fork | 2 to 4 days engineering | Moderate; content hashing and invalidation correctness |
+| Evaluation and live telemetry | 2 to 4 days engineering | Metric validity is harder than plotting numbers |
+| Hosted judging demo | 1 to 3 days engineering | GPU availability, uploads, queue caps and privacy |
+| Voice commands after text editing | 1 to 2 days for constrained MVP | API usage, latency, transcript ambiguity |
 
 For a small batch of clips, trial GPU bills may be modest, but there is **no defensible exact dollar figure** without selected model/frame sizes, workers, provider pricing and render benchmark. Set a real spending cap and sample workloads before enabling open-ended automation. Treat Topaz Starlight's stated potentially hours-long renders as a warning, not the default experience. [Topaz Starlight requirements](https://docs.topazlabs.com/topaz-video/system-requirements).
 
@@ -520,7 +520,7 @@ For a small batch of clips, trial GPU bills may be modest, but there is **no def
 
 Official [rules](https://kiroween.devpost.com/rules), [FAQ](https://kiroween.devpost.com/details/faqs), and [competition overview](https://kiroween.devpost.com/):
 
-- Submission/build window **Oct 30, 2026 9 AM PT–Dec 4, 2026 2 PM PT**. Only projects newly built in the period are eligible; previously started projects cannot simply be repackaged.
+- Submission/build window **Oct 30, 2026 9 AM PT to Dec 4, 2026 2 PM PT**. Only projects newly built in the period are eligible; previously started projects cannot simply be repackaged.
 - Entrants must meaningfully use **Kiro IDE, CLI, Web and/or Crew**. A functioning software app is required.
 - Public **GitHub** repository, with an open-source license visible as required; `/.kiro` directory in repo root and not gitignored.
 - Public YouTube demo **under 3 minutes**, working app URL, test credentials/instructions if needed, and explanation of Kiro use. Judges need the product to run as depicted.
@@ -546,12 +546,12 @@ Official [rules](https://kiroween.devpost.com/rules), [FAQ](https://kiroween.dev
 
 | Window | Gate |
 |---|---|
-| Oct 31–Nov 3 | Collect representative dark clips; run baseline/restoration experiments, select a real model or reject neural dependency |
-| Nov 4–9 | Build real import→decode→process→export vertical slice and deterministic end-to-end tests |
-| Nov 10–16 | Source-aligned synchronized compare, immutable attempts, real event stream, minimal visual polish |
-| Nov 17–23 | Constrained planner/text edit, basic metrics, audio sync, artifact provenance, scene-class demo |
-| Nov 24–28 | Voice only if stable, graph overlay, user experience/accessibility testing, New Zealand footage as optional validation |
-| Nov 29–Dec 3 | Freeze dependencies, deploy judge path, record <3 min truthful demo, public repo and Kiro writeup, submit early |
+| Oct 31 to Nov 3 | Collect representative dark clips; run baseline/restoration experiments, select a real model or reject neural dependency |
+| Nov 4 to 9 | Build real import→decode→process→export vertical slice and deterministic end-to-end tests |
+| Nov 10 to 16 | Source-aligned synchronized compare, immutable attempts, real event stream, minimal visual polish |
+| Nov 17 to 23 | Constrained planner/text edit, basic metrics, audio sync, artifact provenance, scene-class demo |
+| Nov 24 to 28 | Voice only if stable, graph overlay, user experience/accessibility testing, New Zealand footage as optional validation |
+| Nov 29 to Dec 3 | Freeze dependencies, deploy judge path, record <3 min truthful demo, public repo and Kiro writeup, submit early |
 
 No milestone requires location-specific footage; public or controlled clips are sufficient if lawful and representative.
 
@@ -559,13 +559,13 @@ No milestone requires location-specific footage; public or controlled clips are 
 
 | Clock | What the judge actually sees | Claim justified |
 |---|---|---|
-| 0:00–0:22 | Original nearly-dark travel clip with authentic ambient audio and visible inability to see terrain | Problem immediately obvious |
-| 0:22–0:40 | Import, original viewer, brief defect diagnosis and constrained natural-language instruction | No special technical knowledge needed |
-| 0:40–1:18 | Two or three **real** attempts execute; a true preview appears; original stays accessible | Architecture does genuine work |
-| 1:18–1:54 | A/B synchronized wipe at same timestamp; zoomed crop of stars, faces and terrain; show measurable *valid* evidence and caveats | Improvement and limits are inspectable |
-| 1:54–2:25 | User says/types “More denoise behind people”; UI shows graph change and targeted rerun | Interaction is consequential, not theatrical |
-| 2:25–2:49 | Final MP4 export with original soundtrack, normal playback and provenance manifest | Delivered artifact usable outside app |
-| 2:49–2:58 | One-line innovation and Kiro development evidence | Explain product and hackathon substance |
+| 0:00 to 0:22 | Original nearly-dark travel clip with authentic ambient audio and visible inability to see terrain | Problem immediately obvious |
+| 0:22 to 0:40 | Import, original viewer, brief defect diagnosis and constrained natural-language instruction | No special technical knowledge needed |
+| 0:40 to 1:18 | Two or three **real** attempts execute; a true preview appears; original stays accessible | Architecture does genuine work |
+| 1:18 to 1:54 | A/B synchronized wipe at same timestamp; zoomed crop of stars, faces and terrain; show measurable *valid* evidence and caveats | Improvement and limits are inspectable |
+| 1:54 to 2:25 | User says/types “More denoise behind people”; UI shows graph change and targeted rerun | Interaction is consequential, not theatrical |
+| 2:25 to 2:49 | Final MP4 export with original soundtrack, normal playback and provenance manifest | Delivered artifact usable outside app |
+| 2:49 to 2:58 | One-line innovation and Kiro development evidence | Explain product and hackathon substance |
 
 **Do not** splice a pre-rendered enhanced example into a fake live job. If render time is longer than demo time, use an accelerated cut clearly indicated and show real state/provenance; host a reproducible short clip for judges.
 
@@ -578,13 +578,13 @@ The tests are ordered to disprove the largest risky assumptions before polishing
 | Priority | Hypothesis / assets | Procedure and strong baseline | Go / failure signal | Effort / implications |
 |---|---|---|---|---|
 | **E1: Very dark MP4 actually contains recoverable signal** | 3 to 5 representative glasses/phone clips, including hardest low-light footage, no special capture | Probe bit depth, codec, low-percentile histogram; compare tone-only, classical denoise, multi-frame. Blind crop inspection. | **Go** if genuine structures become more discernible without severe new artifacts. **Fail** if dominant area is clipped or pure codec noise; pivot to capture assistance or footage-quality triage. | 0.5 to 1 day, local CPU |
-| **E2: Temporal method beats good classical baseline** | Static terrain, pan, moving person clips | Aligned temporal vs tuned spatial processing on same spans; motion and flicker review | **Go** if temporal improves static details without harming faces/motion. **Fail** if ghosting dominates; make temporal method conditional. | 0.5–2 days |
-| **E3: Available neural candidate runs and helps** | 1 vetted repo, checkpoint, licensed code, representative compressed clips | Reproduce pinned environment; test 50–150 frames against classical method; measure speed/memory and artifacts | **Go** if accessible and materially useful. **Fail** if CUDA-only, weights absent, weak generalization, or unacceptable flicker; remove from MVP. | 1–4 days, cloud GPU optional |
-| **E4: Star and face integrity can be guarded** | Source with point light/true stars, face footage with consent; secondary reference if possible | Source-aligned point map, user A/B, frame sequence, motion-aware face ROIs | **Go** if obvious invented points and face distortions are rejected reliably enough for demo. **Fail** if output changes identity/creates stars; strictly restrict restoration class. | 1–2 days |
-| **E5: Automated branching matters** | 4 scene types, 2–3 fixed recipes, 1 adaptive selector | Compare best fixed baseline against selected branch and user time/effort | **Go** if choice changes appropriately across scene types and reduces effort. **Fail** if one simple filter always wins; remove agentic framing. | 1–2 days |
-| **E6: True export and original audio** | MP4 with people speaking, silent clips, unusual timebases | Render, remux/probe, compare stream hash where stream-copied, waveform/PTS and listening test | **Go** if audio duration and sync pass. **Fail** if metadata/timebases break; repair before any UI polish. | 0.5–1 day |
-| **E7: Interface comprehensible and inspectable** | Clickable no-backend prototype then real vertical slice | Ask three novice users to import/compare/export; ask two engineers to find model parameters and source linkage | **Go** if both tasks can be completed without explanation. **Fail** if graph consumes attention or experts cannot reproduce. | 1–2 days |
-| **E8: Hosted judge path stable** | 5–15 s open demo clip, CPU-safe workflow | Repeated cold starts, error injection, upload/timeout tests, actual MP4 export | **Go** if sample route consistently works independently. **Fail** if a GPU wait makes judges unable to test; move CPU route to primary. | 1–2 days |
+| **E2: Temporal method beats good classical baseline** | Static terrain, pan, moving person clips | Aligned temporal vs tuned spatial processing on same spans; motion and flicker review | **Go** if temporal improves static details without harming faces/motion. **Fail** if ghosting dominates; make temporal method conditional. | 0.5 to 2 days |
+| **E3: Available neural candidate runs and helps** | 1 vetted repo, checkpoint, licensed code, representative compressed clips | Reproduce pinned environment; test 50 to 150 frames against classical method; measure speed/memory and artifacts | **Go** if accessible and materially useful. **Fail** if CUDA-only, weights absent, weak generalization, or unacceptable flicker; remove from MVP. | 1 to 4 days, cloud GPU optional |
+| **E4: Star and face integrity can be guarded** | Source with point light/true stars, face footage with consent; secondary reference if possible | Source-aligned point map, user A/B, frame sequence, motion-aware face ROIs | **Go** if obvious invented points and face distortions are rejected reliably enough for demo. **Fail** if output changes identity/creates stars; strictly restrict restoration class. | 1 to 2 days |
+| **E5: Automated branching matters** | 4 scene types, 2 to 3 fixed recipes, 1 adaptive selector | Compare best fixed baseline against selected branch and user time/effort | **Go** if choice changes appropriately across scene types and reduces effort. **Fail** if one simple filter always wins; remove agentic framing. | 1 to 2 days |
+| **E6: True export and original audio** | MP4 with people speaking, silent clips, unusual timebases | Render, remux/probe, compare stream hash where stream-copied, waveform/PTS and listening test | **Go** if audio duration and sync pass. **Fail** if metadata/timebases break; repair before any UI polish. | 0.5 to 1 day |
+| **E7: Interface comprehensible and inspectable** | Clickable no-backend prototype then real vertical slice | Ask three novice users to import/compare/export; ask two engineers to find model parameters and source linkage | **Go** if both tasks can be completed without explanation. **Fail** if graph consumes attention or experts cannot reproduce. | 1 to 2 days |
+| **E8: Hosted judge path stable** | 5 to 15 s open demo clip, CPU-safe workflow | Repeated cold starts, error injection, upload/timeout tests, actual MP4 export | **Go** if sample route consistently works independently. **Fail** if a GPU wait makes judges unable to test; move CPU route to primary. | 1 to 2 days |
 
 **Minimum experiment report format:** asset/hash, device/source class, exact commands and model commit, hardware, step time, output, metrics + validity flags, synchronized crops, failure analysis, decision (`Adopt`, `Conditional`, `Reject`).
 
@@ -607,14 +607,14 @@ The tests are ordered to disprove the largest risky assumptions before polishing
 | Core primitive | **Media Experiment Runtime** with immutable source, typed transforms, versioned attempts and evidence-aware evaluation |
 | Defining interaction | `Import → Restore → Compare → Refine → Export`; advanced `Processing Graph` when requested |
 | Distinction to test | Constrained automatic multiple-attempt evaluation + source-aligned visual comparison + true graph edits + honest limitations |
-| MVP | One dark video use case; 2–3 methods; real processing; strict-fidelity mode; export/audio; no dummy telemetry |
+| MVP | One dark video use case; 2 to 3 methods; real processing; strict-fidelity mode; export/audio; no dummy telemetry |
 | Defer | Live Meta capture, model training, autonomous cloud fleet, semantic video editing, broad image/video types, star synthesis |
 | Architecture | Web UI + thin Python API + FFmpeg/OpenCV + one optional learned backend + minimal persistent job engine + immutable manifests |
 | Technical gating | E1/E2 determine recoverability; E3 validates model; E6 establishes end-to-end reliability; E5 determines whether “adaptive” is defensible |
 | Competition | Frankenstein; new Oct 30+ repo; Kiro used meaningfully; public playable app and <3-minute truthful demo |
 | Readiness | **Research-informed but NOT yet implementation-ready for model selection or quality claims.** Await earliest controlled processing experiments and license/compute checks. |
 
-## Exact problem–solution narrative
+## Exact problem to solution narrative
 
 **Problem:** a recording of a night scene can be noisy, compressed and much darker than the memory. Most people don't know whether to brighten, denoise, align frames, run a model, or give up. Worse, a realistic-looking AI output may contain invented detail.
 

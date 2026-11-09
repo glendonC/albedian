@@ -23,7 +23,7 @@ import {
   worldToPixelWCS,
 } from '../index.js';
 
-describe('@albedian/camera-rig — Property-Based & Unit Verification', () => {
+describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
   it('PBT-COORD-1: raDecToUnitVector and unitVectorToRaDec preserve unit norm and round-trip', () => {
     fc.assert(
       fc.property(

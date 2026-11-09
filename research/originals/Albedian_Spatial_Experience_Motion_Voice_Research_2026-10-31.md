@@ -187,7 +187,7 @@ Source inspector: `Source`, `Time`, `Detected`, `Matched`, `Unresolved`, `Solve 
 
 ## 3.4 Mobile, desktop and spatial future
 
-- **Desktop:** single large content plane, optional right inspector 280–340px; fixed bottom transport/voice tray; resizable captions; keyboard shortcuts.
+- **Desktop:** single large content plane, optional right inspector 280 to 340px; fixed bottom transport/voice tray; resizable captions; keyboard shortcuts.
 - **Mobile portrait:** immersive full-width source, touch-sized bottom control rail, bottom-sheet inspector. Star markers are larger hit regions than visible glyphs; avoid masking the sky with keyboards.
 - **Landscape tablet:** desktop-like immersive content with collapsible inspector. No implicit 3D movement on device tilt unless opted in.
 - **Spatial computing / XR (long-term):** the source video is a stable, readable window, with nearby controls treated like ornaments; opening scientific space can explicitly opt into an immersive volume. Apple warns against too many windows and overly effortful gestures [S19-S20]. **[I] Browser-to-native visionOS/Quest portability is not established by this report.**
@@ -225,8 +225,8 @@ The colors are **design proposals**. All components must be contrast-tested in a
 
 - **[D] Primary type:** Apple-like system sans stack (`-apple-system`, `SF Pro` when platform-provided, `Inter` as distributable fallback) rather than bundling Apple font files.
 - **[D] Technical data:** `SF Mono` only when available locally, else a suitable open-source mono. Use tabular figures for timecode, coordinates and distances.
-- Labels 11–12px only when nonessential; controls 13–16px, selected object 18–22px, title 22–28px in view. 8px base spacing, 4px micro-offsets; edge gutters 20–32px desktop and 16px mobile.
-- Touch hit areas target at least ~44 CSS px; visible point glyphs can be 8–12px because hit areas are separate.
+- Labels 11 to 12px only when nonessential; controls 13 to 16px, selected object 18 to 22px, title 22 to 28px in view. 8px base spacing, 4px micro-offsets; edge gutters 20 to 32px desktop and 16px mobile.
+- Touch hit areas target at least ~44 CSS px; visible point glyphs can be 8 to 12px because hit areas are separate.
 - No all-uppercase body metadata; no long explanatory chatter; no em dashes in product copy. `Calibrated · 14 Matches · Residual 0.9 px` is **illustrative copy only** and must never appear with invented values in the actual app.
 
 ### Line and marker grammar
@@ -248,7 +248,7 @@ The colors are **design proposals**. All components must be contrast-tested in a
 
 A symbol based on a *single radial observation ray crossing a sparse, open aperture* is more appropriate than a planet, moon, infinity glyph, astronaut or random starburst. **[D]** The logo can appear as a small 2D steady mark. A subtle transient alignment of two rings could represent moving from recorded to measured sky, but the animated logo must not monopolize import time.
 
-**Voice presence** is an expandable 2–3-stroke waveform/oscillating arc around the microphone control. Its animation must come from real microphone voice activity and state, not an always-pulsing AI orb. No audio capture until explicitly activated.
+**Voice presence** is an expandable 2 to 3-stroke waveform/oscillating arc around the microphone control. Its animation must come from real microphone voice activity and state, not an always-pulsing AI orb. No audio capture until explicitly activated.
 
 ---
 
@@ -262,21 +262,21 @@ The following numbers are **initial design hypotheses**, not measured performanc
 
 | Interaction | Stage / motion contract | Proposed timing | Rendering mechanism | Cancel / reduced motion |
 |---|---|---|---|---|
-| Import | Source thumbnail fills media plane; other controls arrive only after first decodable frame | 200–400ms UI placement | CSS transform/opacity or Motion | Instant placement, no zoom |
-| Analyze | Small source-edge status; badges update on real detector events | 100–180ms text transition; job has no fabricated duration | CSS/Motion state UI | Static text |
-| Restoration preview | New output appears at exact same crop/time, crossfade only after pixels ready | 150–300ms | Composited two video/image planes | Direct switch |
+| Import | Source thumbnail fills media plane; other controls arrive only after first decodable frame | 200 to 400ms UI placement | CSS transform/opacity or Motion | Instant placement, no zoom |
+| Analyze | Small source-edge status; badges update on real detector events | 100 to 180ms text transition; job has no fabricated duration | CSS/Motion state UI | Static text |
+| Restoration preview | New output appears at exact same crop/time, crossfade only after pixels ready | 150 to 300ms | Composited two video/image planes | Direct switch |
 | Before/after | Handle tracks pointer 1:1 with no spring overshoot; optional snap to full source | During drag, 120ms release | CSS clip-path, WebGL mask if GPU pipeline | Same slider, no animation |
 | Region selection | Outline follows pointer, corners resolve on release; no particles | 0ms during drag, 120ms settle | SVG/Canvas overlay | Static rectangle |
-| Detection | Dots/rings appear on actual measured coordinates; no scan pretending to find stars | 100–220ms after validated results | HTML/SVG or WebGL instancing | Immediate |
-| Source-to-catalog | An observed dot acquires a thin second ring; label materializes | 180–300ms | Overlay / Motion | Instant label |
-| Inspect | Inspector attaches to screen-safe side of selected point without moving source | 160–240ms | Motion shared layout | Static popover |
-| Photo→Sky | Keep selected star at chosen screen coordinate; match sky projection; source opacity yields to catalog/survey scene | 450–950ms | WebGL camera + alpha composition | Direct registered sky view |
-| Sky→3D | Commit explicit `Catalog Geometry` mode, then start depth movement | 300–500ms disclosure; optional 1.8–3.5s travel | Custom shader/camera rig | Jump to destination with short fade |
+| Detection | Dots/rings appear on actual measured coordinates; no scan pretending to find stars | 100 to 220ms after validated results | HTML/SVG or WebGL instancing | Immediate |
+| Source-to-catalog | An observed dot acquires a thin second ring; label materializes | 180 to 300ms | Overlay / Motion | Instant label |
+| Inspect | Inspector attaches to screen-safe side of selected point without moving source | 160 to 240ms | Motion shared layout | Static popover |
+| Photo→Sky | Keep selected star at chosen screen coordinate; match sky projection; source opacity yields to catalog/survey scene | 450 to 950ms | WebGL camera + alpha composition | Direct registered sky view |
+| Sky→3D | Commit explicit `Catalog Geometry` mode, then start depth movement | 300 to 500ms disclosure; optional 1.8 to 3.5s travel | Custom shader/camera rig | Jump to destination with short fade |
 | Interstellar flight | Selected target remains projected inside safe central zone; speed varies with distance, no instantaneous incoherent parallax | Variable, user controllable | 3D camera easing + origin rebasing | Stop, skip, reverse, direct target |
-| Change viewpoint | Pivot around stable target and update all catalog-relative positions, not image-texture fake 3D | 400–900ms small move | Quaternion slerp + position path | Immediate reposition |
+| Change viewpoint | Pivot around stable target and update all catalog-relative positions, not image-texture fake 3D | 400 to 900ms small move | Quaternion slerp + position path | Immediate reposition |
 | Time scrub | Update exact epoch values and recalc data; show pending vs available results | Pointer-locked, no artificial easing | Deterministic science state + WebGL | Same |
-| Return | Reverse route when feasible; always exact source checkpoint | 450–900ms sky→image; 1–2s long flight if preferred | Camera checkpoints + alpha | Immediate snap to source |
-| Processing failure | Stop any activity, retain valid preview, show concise actionable error | 100–180ms | Text/icon | Static |
+| Return | Reverse route when feasible; always exact source checkpoint | 450 to 900ms sky→image; 1 to 2s long flight if preferred | Camera checkpoints + alpha | Immediate snap to source |
+| Processing failure | Stop any activity, retain valid preview, show concise actionable error | 100 to 180ms | Text/icon | Static |
 | Tracking lost | Immediately remove anchored labels, retain selected object in inspector as `Tracking Lost` | Immediate marker removal | State-driven | Same |
 
 ### What *must not* animate
@@ -611,7 +611,7 @@ OptInSonification ──── SonificationGain/Panner ──┘
 
 **[D] “Experience Continuity”:** an observation-derived journey with independently inspectable layers: `Recorded Moment → Recoverable Detail → Measured Sky → Catalog Context → Explorable Geometry → Recorded Moment`. The user is never forced to forget where the question came from.
 
-**[U] Differentiation is a usability claim, not yet demonstrated.** Prior product research identified sky-photo solvers and 3D planetariums. The app is not justified if users prefer a standard photo editor plus a planetarium after experiencing the prototype. A blinded 5–10 minute task comparison is a required product gate.
+**[U] Differentiation is a usability claim, not yet demonstrated.** Prior product research identified sky-photo solvers and 3D planetariums. The app is not justified if users prefer a standard photo editor plus a planetarium after experiencing the prototype. A blinded 5 to 10 minute task comparison is a required product gate.
 
 ---
 
@@ -734,7 +734,7 @@ A study is only useful if it changes a specific interaction. The following findi
 
 # D12. Three Prototype Specifications
 
-## Prototype A — Reveal
+## Prototype A: Reveal
 
 **Purpose:** prove that the source-first restoration and voice experience genuinely helps users, even when astronomy is unavailable. **Status: proposed only.**
 
@@ -760,7 +760,7 @@ A study is only useful if it changes a specific interaction. The following findi
 
 ### Animation/camera
 
-The camera is an image crop/zoom transform. No 3D camera. Use 150–300ms real-result reveal and pointer-locked comparison. Show job activity only when backend events arrive. During voice listening, mic glyph is sound-level responsive but not an agent avatar.
+The camera is an image crop/zoom transform. No 3D camera. Use 150 to 300ms real-result reveal and pointer-locked comparison. Show job activity only when backend events arrive. During voice listening, mic glyph is sound-level responsive but not an agent avatar.
 
 ### Outputs and tests
 
@@ -768,7 +768,7 @@ The camera is an image crop/zoom transform. No 3D camera. Use 150–300ms real-r
 
 **Implementation:** parent Media Experiment Runtime, FFmpeg/OpenCV adapters, media transform store, job events, compare canvas, voice actions. **[U]** Actual dark glasses video quality, model licensing/performance, face/mask preservation and cost are still untested on target footage. Reference: Apple Photos original-compare [S17]; affectUI activity status as conceptual inspiration [S47].
 
-## Prototype B — From Earth to Space
+## Prototype B: From Earth to Space
 
 **Purpose:** test Albedian's defining continuity from a user-originated astronomical direction into catalog-backed 3D geometry. **Status: proposed only.**
 
@@ -806,7 +806,7 @@ The camera is an image crop/zoom transform. No 3D camera. Use 150–300ms real-r
 
 **Implementation:** Astropy-produced WCS/quality model, server-side source→catalog linkage, Three/R3F **and** WWT adapter experiments, bounded Gaia subset, camera-relative coordinate renderer, math-driven camera controller. **[U]** 100% continuity under ultrawide lens distortion, mixed renderer composition, and perceptual comfort remain untested. References: WWT engine [S01-S03], Aladin [S04], Gaia Sky [S08-S09], Astropy [S06-S07].
 
-## Prototype C — Investigate the Night
+## Prototype C: Investigate the Night
 
 **Purpose:** prove that voice + pointing + scientific state performs a real contextual investigation beyond simple star labels. **Status: proposed only.**
 
@@ -848,15 +848,15 @@ The camera is an image crop/zoom transform. No 3D camera. Use 150–300ms real-r
 | Clock | What judge sees | Real software proof | Visual / sound direction |
 |---|---|---|---|
 | **0:00 to 0:15** | Dark recorded night clip with people's voices or night ambience. Text: `What the camera kept` | Actual source hash and source player; no simulated darkness | Original sound establishes emotional context, no music |
-| **0:15–0:34** | Say `Recover what you can. Don't invent stars.` Real processing starts | Typed constraint + actual graph/job lifecycle event | One understated job activity lane, not a swarm |
-| **0:34–0:55** | One completed preview, same timestamp A/B reveal; optional quick second attempt | Two real media derivatives and synchronized compare | Quiet source sound, crisp wipe, no theatrical flash |
-| **0:55–1:12** | Pause on solved sky image, `Calibrated` and actual matched-star dots | Real WCS result + held-out residual; calibrated on real uploaded image | Dots align one by one only after result arrives |
-| **1:12–1:30** | Tap one **actually matched** star; ask `How far away is that?` | Catalog object ID and a defensible distance estimate | Object card, brief spoken response |
-| **1:30–1:55** | Say `Take me there.` Image→angular sky→catalog geometry→star neighborhood | Actual WCS handoff; one star retains identity and screen anchor; real catalog subset | Data boundary disclosure, restrained camera travel |
-| **1:55–2:14** | Rotate viewpoint; Earth direction and measured neighboring stars visibly change | Positions recalculated using actual distances, not 2D particle parallax | No fake sky sound; subtle optional cue |
-| **2:14–2:29** | Say `Show the sky a thousand years ago.` | Epoch-labeled modeled view, source epoch pinned | `Modeled Sky` and caveat clearly visible |
-| **2:29–2:44** | Say `Go back.` Exact original frame/time/audio reappears | Saved checkpoint restoration | Recorded voices/ambience return as emotional ending |
-| **2:44–3:00** | Export restored playable video and inspect `Evidence`/`Methods` | Real output MP4 with original sound, source/graph/catalog manifest | Final card: `ALBEDIAN · See (Beyond) the Night Sky.` |
+| **0:15 to 0:34** | Say `Recover what you can. Don't invent stars.` Real processing starts | Typed constraint + actual graph/job lifecycle event | One understated job activity lane, not a swarm |
+| **0:34 to 0:55** | One completed preview, same timestamp A/B reveal; optional quick second attempt | Two real media derivatives and synchronized compare | Quiet source sound, crisp wipe, no theatrical flash |
+| **0:55 to 1:12** | Pause on solved sky image, `Calibrated` and actual matched-star dots | Real WCS result + held-out residual; calibrated on real uploaded image | Dots align one by one only after result arrives |
+| **1:12 to 1:30** | Tap one **actually matched** star; ask `How far away is that?` | Catalog object ID and a defensible distance estimate | Object card, brief spoken response |
+| **1:30 to 1:55** | Say `Take me there.` Image→angular sky→catalog geometry→star neighborhood | Actual WCS handoff; one star retains identity and screen anchor; real catalog subset | Data boundary disclosure, restrained camera travel |
+| **1:55 to 2:14** | Rotate viewpoint; Earth direction and measured neighboring stars visibly change | Positions recalculated using actual distances, not 2D particle parallax | No fake sky sound; subtle optional cue |
+| **2:14 to 2:29** | Say `Show the sky a thousand years ago.` | Epoch-labeled modeled view, source epoch pinned | `Modeled Sky` and caveat clearly visible |
+| **2:29 to 2:44** | Say `Go back.` Exact original frame/time/audio reappears | Saved checkpoint restoration | Recorded voices/ambience return as emotional ending |
+| **2:44 to 3:00** | Export restored playable video and inspect `Evidence`/`Methods` | Real output MP4 with original sound, source/graph/catalog manifest | Final card: `ALBEDIAN · See (Beyond) the Night Sky.` |
 
 ### Must be legible within three minutes
 
@@ -942,13 +942,13 @@ Include these as explicit non-negotiables:
 | **X2 / P0** | WWT custom control or Three/R3F camera rig? | Same source, star target, 3D subset, single hardware/software matrix | Choose path with measured continuity, interruptibility, profiling and API/license feasibility |
 | **X3 / P0** | Can precise source checkpoint survive 3D flight? | Seek source to fractional timestamp, change crop and audio gain, leave/return, decode original frame | NO-GO for continuous experience if source/audio state cannot be restored reliably |
 | **X4 / P0** | Does restoration meaningfully help real night footage? | Parent benchmark comparing source, classical, neural with temporal metrics and actual source sound | Keep Reveal only if real footage shows meaningful utility; no fabricated proof |
-| **X5 / P0** | Do users perceive the scientific boundary correctly? | Show transition to 8–12 non-team testers; ask what was recorded vs predicted vs simulated | Revise motion/labels if users falsely believe catalog stars were recovered from image |
+| **X5 / P0** | Do users perceive the scientific boundary correctly? | Show transition to 8 to 12 non-team testers; ask what was recorded vs predicted vs simulated | Revise motion/labels if users falsely believe catalog stars were recovered from image |
 | **X6 / P1** | Is target tracking comfortable and controllable? | Test stationary/short/long camera moves, cancel and reduced motion on desktop/mobile | Reduce visual travel and add instant jump if motion discomfort or disorientation appears |
 | **X7 / P1** | Can voice reliably bind “that”, “back”, “there”? | 40+ utterance-context pairs with two or more visible findings, speech overlap, mid-transition events | Fail closed on ambiguity; no wrong star or unauthorized job executed |
 | **X8 / P1** | Are star distances/scale represented honestly? | Compare camera positions to Astropy-derived expected ray projections at multiple viewpoints | Reject silent distance invention and unmarked nonlinear spatial warp |
 | **X9 / P1** | Does browser meet actual render/audio budgets? | Chrome/Safari desktop + supported mobiles, 1k/10k/100k stars, source video streaming, camera flight | Profile p95 dropped frames, memory and audio offset; implement tiered fallback |
 | **X10 / P1** | Will live voice audio overlap/duck recording appropriately? | Recorded speech source + simultaneous voice replies, interruption, return, export | Fail if export original audio modified or two playback clocks desynchronize |
-| **X11 / P1** | Is the combined product better than existing separate tools? | 5–10 minute tasks, crossover groups: Albedian vs photo editor + plate solver/WWT, satisfaction + errors | If no substantial convenience/understanding advantage, narrow to best single capability |
+| **X11 / P1** | Is the combined product better than existing separate tools? | 5 to 10 minute tasks, crossover groups: Albedian vs photo editor + plate solver/WWT, satisfaction + errors | If no substantial convenience/understanding advantage, narrow to best single capability |
 | **X12 / P2** | Is historical satellite identity supportable? | Recordings with known trajectory + archived orbital state; report time/location uncertainties | Display candidates only if independent pixel/ephemeris agreement; defer otherwise |
 | **X13 / P2** | Does VR/spatial interaction materially improve observation? | Port same controlled camera/selection state to spatial device with comfort/accessibility study | Defer if novelty is only stereoscopic spectacle |
 | **X14 / P2** | Can a shareable journey replay with licenses preserved? | Serialize source-derived script/data refs; replay on new client and offline partial cache | Reject missing provenance/assets silently replaced by generated visuals |

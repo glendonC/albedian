@@ -11,7 +11,7 @@ import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
 
 /**
  * ============================================================================
- * @albedian/observation — Checkpoints & Media Timeline Synchronization
+ * @albedian/observation: Checkpoints & Media Timeline Synchronization
  * Reversible CameraCheckpoint stack, Back-to-Moment restoration & sync checks
  * ============================================================================
  */

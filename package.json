@@ -2,7 +2,7 @@
   "name": "albedian",
   "version": "0.1.0",
   "private": true,
-  "description": "Albedian — See (Beyond) the Night Sky. Observation-centered, evidence-aware night media restoration and calibrated astronomical spatial exploration.",
+  "description": "Albedian: See (Beyond) the Night Sky. Observation-centered, evidence-aware night media restoration and calibrated astronomical spatial exploration.",
   "license": "MIT",
   "packageManager": "pnpm@10.7.1",
   "engines": {

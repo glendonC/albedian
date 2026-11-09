@@ -577,7 +577,7 @@
 }
 
 /* ============================================================================
-   H2: SITERRA 7-LAYER TILTING ISOMETRIC EVIDENCE SPECIMEN (01–07)
+   H2: SITERRA 7-LAYER TILTING ISOMETRIC EVIDENCE SPECIMEN (01 to 07)
    Matches media_1793482708413_8b54d14d.png
    ============================================================================ */
 .alb-siterra-overlay {
@@ -844,8 +844,8 @@
    FRAMELESS DIEGETIC OPTICAL HUD (Two-Tone Starlight Alabaster & Blackbody Gold)
    Color Theory:
    - Primary Readout: #F4F1EA (5600K Starlight Alabaster)
-   - Secondary Label: rgba(244, 241, 234, 0.44) (Warm Pewter — Luminance Contrast)
-   - Semantic Accent: #E2B86B (4200K Blackbody Gold — <5% of UI)
+   - Secondary Label: rgba(244, 241, 234, 0.44) (Warm Pewter: Luminance Contrast)
+   - Semantic Accent: #E2B86B (4200K Blackbody Gold: <5% of UI)
    ============================================================================ */
 
 /* Top-Right Whisper Telemetry Stamp */

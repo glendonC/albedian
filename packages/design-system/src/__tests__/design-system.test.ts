@@ -9,7 +9,7 @@ import {
   resolveTransitionTiming,
 } from '../index.js';
 
-describe('@albedian/design-system — Tokens, Contrast, Markers, Motion & Audio Bus', () => {
+describe('@albedian/design-system: Tokens, Contrast, Markers, Motion & Audio Bus', () => {
   it('verifies WCAG AA/AAA contrast ratios for all text and evidence tokens against space-0 and space-1', () => {
     expect(
       computeContrastRatio(ALBEDIAN_COLORS.textPrimary, ALBEDIAN_COLORS.space0)

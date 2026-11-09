@@ -1,5 +1,5 @@
 /**
- * @albedian/contracts — Modular Public Barrel
+ * @albedian/contracts: Modular Public Barrel
  */
 export * from './primitives.js';
 export * from './media.js';

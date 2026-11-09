@@ -63,7 +63,7 @@ A calibrated image supports pixel-to-direction correspondence, not a depth map. 
 | [Lang, Hogg, Mierle, Blanton, Roweis, *Astrometry.net*](https://doi.org/10.1088/0004-6256/139/5/1782) | *Astronomical Journal*, 2010, peer-reviewed | Geometric hashing, blind camera WCS, Bayesian solution verification | [Code](https://github.com/dstndstn/astrometry.net); actual distribution has GPL dependencies | **P0 baseline**; survey success rates cannot be copied to phones. |
 | [`photutils` star finders](https://docs.astropy.org/projects/photutils/en/stable/api/photutils.detection.DAOStarFinder.html) | Mature astronomy software, not novel 2026 AI | Point-like source detection, centroid/shape/brightness extraction | Package; verify version lock; BSD-style Astropy ecosystem | **P0 detection baseline**; local noise estimate and distorted phone PSFs matter. |
 | [SEP, Barbary et al.](https://sep.readthedocs.io/en/stable/) | Research software / classical source extraction | Background estimation, detection, measurements | Public C/Python library; LGPL | **P0 alternative**; must test stars vs. noise and codec artifacts. |
-| [Megeri, *Towards Learned Star Detection and Identification for Plate-Solving under Urban Light Pollution*](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7518006) | **SSRN preprint posted Sep 24, 2026**; peer review not verified | On 365 London Bortle 7–9 photos from four fields, reports Astrometry.net 195/365 solves and ASTAP 0/365 under reported setup; DNA-Net F1 .671 vs U-Net .629 for learned detection | Code, weights, licensing and independent replication **not verified** | Extremely relevant caution: detection bottleneck, and simplistic preprocessing may *reduce* solves. Dataset small/narrow, not conclusive cross-device performance. |
+| [Megeri, *Towards Learned Star Detection and Identification for Plate-Solving under Urban Light Pollution*](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7518006) | **SSRN preprint posted Sep 24, 2026**; peer review not verified | On 365 London Bortle 7 to 9 photos from four fields, reports Astrometry.net 195/365 solves and ASTAP 0/365 under reported setup; DNA-Net F1 .671 vs U-Net .629 for learned detection | Code, weights, licensing and independent replication **not verified** | Extremely relevant caution: detection bottleneck, and simplistic preprocessing may *reduce* solves. Dataset small/narrow, not conclusive cross-device performance. |
 | [Luo, Ding, Han, Chen, *Robust star identification using topology-invariant features and a SOM neural network*](https://pubmed.ncbi.nlm.nih.gov/41842109/) | *Applied Optics*, Jan 2026, peer-reviewed | Topology-invariant star identification for reconfigurable satellite star sensors, simulated noise/camera variants | Code/weights/license **not verified** | Related algorithm, but **spacecraft star sensors ≠ compressed consumer night scenes**. Research only. |
 | [Luo, Guo, Feng, Li, Zhang, *Centroid algorithm for high-dynamic star sensor...*](https://pubmed.ncbi.nlm.nih.gov/40797963/) | *Optics Express*, Apr 2025, peer-reviewed | Deep-keypoint localization under trailing/high-dynamic star sensor conditions | Code/weights/license **not verified** | Useful idea for blur and star trails, but domain shift makes it **non-MVP**. |
 | [Gaia DR3 stellar astrometry](https://gea.esac.esa.int/archive/) | ESA mission archive, DR3 released 2022 | Measured positions, proper motion, photometry, parallax for huge catalog, with errors | TAP/ADQL/ESA Archive; data use/attribution reviewed per dataset | **P0 catalog** for robust star identity; many distances uncertain. |
@@ -331,7 +331,7 @@ This is an **information hierarchy**, not a final visual comp. Use generous spac
 | `Sky → Explore` | Deliberate transition label then 3D flight | Switches from image evidence to catalog-backed simulation |
 | `Explore → Original` | Return to exact pixel/frame/time | Persist source ID, timeline timestamp and selected star |
 
-**Timing numbers are proposed motion design targets, not tested implementation values.** For example, a 200–300 ms label reveal, 500–900 ms photo-to-sky dissolve, and short >1 s 3D camera move. Allow reduced-motion mode that uses fades instead of cinematic motion. Test actual GPU frame rate and accessibility, not the impression of speed.
+**Timing numbers are proposed motion design targets, not tested implementation values.** For example, a 200 to 300 ms label reveal, 500 to 900 ms photo-to-sky dissolve, and short >1 s 3D camera move. Allow reduced-motion mode that uses fades instead of cinematic motion. Test actual GPU frame rate and accessibility, not the impression of speed.
 
 ## Voice should be structured state manipulation
 
@@ -465,7 +465,7 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **All experiments below are proposed. None has been run.** Effort estimates are approximate developer time on a prepared Mac, **not** verified timings. Costs exclude model subscriptions, potential GPU rentals, provider fees, and production hardening; first experiments can normally use local open tools and public sample images with correct rights. A successful isolated proof of concept still needs repeated tests on real held-out footage.
 
-## E1. Consumer Photo Plate Solving — P0 / 0.5–2 developer-days
+## E1. Consumer Photo Plate Solving: P0 / 0.5 to 2 developer-days
 
 **Hypothesis:** an ordinary non-telescope consumer nighttime photograph with several detected stars can be plate-solved and assigned verifiable WCS accurately enough for anchored overlays.
 
@@ -477,17 +477,17 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** raw input with default Astrometry.net or an existing consumer photo-solving app as a controlled reference. **Provisional success:** ≥80% independently validated WCS on a preselected **star-rich** test subset and no verified false solves, with acceptable held-out pixel residuals. This is a proposed demo engineering goal, **not a scientifically established expected rate**. **Failure:** low solve rate on star-rich inputs, frequent false sky locations, unusable wide-lens distortion. **Decision:** fail => don't make import-and-identify the core; restrict input conditions or postpone.
 
-## E2. Low-Light Compressed Video Calibration — P0 / 1–3 developer-days
+## E2. Low-Light Compressed Video Calibration: P0 / 1 to 3 developer-days
 
 **Hypothesis:** motion-aware temporal integration from consumer video can increase useful point-source evidence and solve more sky intervals than individual frames.
 
-**Assets:** 8–12 representative 5–15 s clips: a truly dark Meta glasses clip if available, iPhone handheld night video, static tripod, pans, people under sky, and a known-negative sky. Include camera/time info when available, but do not rely on it for blind verification.
+**Assets:** 8 to 12 representative 5 to 15 s clips: a truly dark Meta glasses clip if available, iPhone handheld night video, static tripod, pans, people under sky, and a known-negative sky. Include camera/time info when available, but do not rely on it for blind verification.
 
 **Procedure:** (1) sample source frames at fixed times; (2) detect independently; (3) use nonstar image features/optical flow and candidate stars to estimate sky plane motion; (4) align frames only when credible; (5) median/robust-stack static sky regions with motion masks; (6) solve per-frame and from composite; (7) validate composites against held-out raw-frame detections and metadata where possible; (8) track WCS forward while camera pose is stable.
 
 **Baseline:** highest-SNR single frame, tone-adjusted frame, off-the-shelf plate solver. **Provisional success:** stacking solves at least 2 otherwise-unsolved clips **without introducing any false verified solves** and produces stable overlays through at least a short solved interval. **Failure:** artifacts masquerade as stars, registration drifts, time savings are swamped by processing time, or all representative clips remain unsolved. **Decision:** restrict MVP to stills if video fails; retain video restoration as original project without astronomy overlays.
 
-## E3. Catalog Alignment and False-Match Rejection — P0 / 1–2 developer-days
+## E3. Catalog Alignment and False-Match Rejection: P0 / 1 to 2 developer-days
 
 **Hypothesis:** verified WCS and catalog information can map a subset of source detections to Gaia stars with auditable errors, including difficult edge regions.
 
@@ -497,7 +497,7 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** nearest-neighbor catalog assignment without WCS verification or false-positive rejection. **Provisional success:** high precision for confirmed matched points, no false positive *catalog label* on controlled injected artifacts, residual reporting is stable under cropping/rotation. Use detailed count/uncertainty rather than a universal threshold. **Failure:** labels jump, corners misregister, multiple equally plausible solutions are silently collapsed. **Decision:** no direct pixel overlay until reliable; use an unregistered sky map with explicit prediction labels.
 
-## E4. Historical Sky Reconstruction — P0/P1 / 0.5–1.5 developer-days
+## E4. Historical Sky Reconstruction: P0/P1 / 0.5 to 1.5 developer-days
 
 **Hypothesis:** known observation time and approximate place suffice to compute a credible historical sky independently of image solving.
 
@@ -507,7 +507,7 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** Stellarium or another established planetarium on same observer/time. **Success:** consistency within a predeclared angular error budget appropriate to object, reference model and test setup; predicted/observed distinction remains clear. **Failure:** systematic time-zone sign errors, horizon inversion, missing ephemeris dates, highly misleading image-space overlays without WCS. **Decision:** make predicted-only sky fallback available even when E1/E2 fail, but not as a fraudulent calibrated result.
 
-## E5. Source Photo → Spatial Universe Navigation — P0/P1 / 2–4 developer-days
+## E5. Source Photo → Spatial Universe Navigation: P0/P1 / 2 to 4 developer-days
 
 **Hypothesis:** a catalog-matched star in a real photo can anchor a convincing, understandable transition to a scientific 3D viewpoint while preserving exact media return state.
 
@@ -517,7 +517,7 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** open same object manually in WWT or Gaia Sky and compare cognitive effort and visual orientation. **Provisional success:** user understands which part is actual photo, sky prediction and 3D simulation; selected star remains visually anchored during initial transition; return is frame-perfect; runs smoothly in the target judge browser. **Failure:** renderer cannot reproduce correct initial angular geometry, moving to 3D breaks selected-object identity, UI implies reconstructed dune depth, browser performance unstable. **Decision:** fall back to 2D Aladin Lite + outbound WWT deep link; do not sink the hackathon into custom universe graphics.
 
-## E6. Restoration-Assisted Plate Solving — P0 research gate / 2–4 developer-days
+## E6. Restoration-Assisted Plate Solving: P0 research gate / 2 to 4 developer-days
 
 **Hypothesis:** source-constrained low-light enhancement improves *independently verified* solveability without fabricating or suppressing star observations.
 
@@ -527,7 +527,7 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** tone-only + standard solver and temporal-stack + standard solver. **Provisional strong success:** held-out validated solve rate gains ≥10 percentage points over strongest fair baseline, no increase in independently confirmed false solutions, acceptable source-supported point preservation and compute costs. Report binomial confidence intervals and per-condition outcomes, not a leaderboard without denominators. **Failure:** only makes images brighter, produces catalog-looking artificial points, improves accuracy only on a handpicked small subset, or is slower without useful extra solves. **Decision:** success can elevate astronomy-aware imaging to the core USP; failure keeps astronomy as interpretation, not restoration science.
 
-## E7. Historical Satellite Identification — P2 / 1–3 developer-days for proof, unknown for reliable production
+## E7. Historical Satellite Identification: P2 / 1 to 3 developer-days for proof, unknown for reliable production
 
 **Hypothesis:** archived epoch-matched GP/OMM records, accurate media time/location and calibrated camera field can narrow down a recorded moving streak to credible satellite candidates.
 
@@ -537,11 +537,11 @@ Notably, `evidenceClass` labels **the finding's grounding**, not whether every r
 
 **Baseline:** independent known ISS prediction/log and measured streak trajectory. **Success:** right object ranked under controlled case, no forced identification on obvious aircraft/blank negatives, clear uncertainty state. **Failure:** historical orbital elements unavailable, media clock too inaccurate, multiple candidate tracks overlap, predicted brightness too uncertain. **Decision:** keep as `Possible Satellite` research extension only; never show confidently named satellite for anonymous single streak without independent evidence. [Skyfield limitation](https://rhodesmill.org/skyfield/earth-satellites.html), [CelesTrak archive](https://celestrak.org/norad/archives/request.php?FORMAT=json).
 
-## E8. Product Usability + Competitive Differentiation — P0 / 1–2 developer-days
+## E8. Product Usability + Competitive Differentiation: P0 / 1 to 2 developer-days
 
 **Hypothesis:** the photo-grounded workflow materially improves understanding and context recovery compared with separate plate-solving and 3D tools.
 
-**Assets:** working E1+E5 prototype, 3 realistic photos (one resolvable, one difficult, one unresolved), 5–8 test participants without astronomy training and a comparable SkySafari/Sideris/Plate Solver + WWT workflow. Participants should be unfamiliar with the prototype; pre-register task success criteria.
+**Assets:** working E1+E5 prototype, 3 realistic photos (one resolvable, one difficult, one unresolved), 5 to 8 test participants without astronomy training and a comparable SkySafari/Sideris/Plate Solver + WWT workflow. Participants should be unfamiliar with the prototype; pre-register task success criteria.
 
 **Tasks:** (a) determine whether a particular dot was truly observed and identified; (b) find distance and uncertainty of a star; (c) distinguish `Predicted` Moon/planet from source-observed point; (d) visit a measured star region and return to exact original photo; (e) handle an unsolved picture without assuming invented stars; (f) obtain an export or source reference.
 
@@ -577,11 +577,11 @@ E7 (satellite) = standalone optional investigation after E1/E3/E4
 
 **One-sentence provisional product definition:** *An evidence-aware night-media workspace that restores real recordings and, when the sky can be calibrated, lets you explore the astronomical objects connected to that exact moment without confusing observation with prediction.*
 
-**Better narrow first use:** a 5–10 MP star-rich photograph with source-preserving optional tone processing, verified WCS, click-to-inspect a few matched sources, and one catalog-backed `Explore` transition. A follow-up restoration-assisted video demonstration is acceptable **only after E2/E6 work**. Do not promise deep galaxies, arbitrary solar system flight, face restoration, atmospheric science, live wearable streaming and archived satellites in one first release.
+**Better narrow first use:** a 5 to 10 MP star-rich photograph with source-preserving optional tone processing, verified WCS, click-to-inspect a few matched sources, and one catalog-backed `Explore` transition. A follow-up restoration-assisted video demonstration is acceptable **only after E2/E6 work**. Do not promise deep galaxies, arbitrary solar system flight, face restoration, atmospheric science, live wearable streaming and archived satellites in one first release.
 
 ## Rules and category
 
-[Kiroween 2026 official rules](https://kiroween.devpost.com/rules) set the submission period **October 30–December 4, 2026**, deadline **December 4 at 2 PM Pacific**. Projects must be new work during that window (preexisting standard frameworks are permitted subject to disclosure), built meaningfully with Kiro, working and installable/runnable as presented, hosted for judges, with public GitHub repo, root `/.kiro`, open-source license, Kiro writeup and public YouTube demo **under three minutes**. You must disclose preexisting third-party code and comply with licenses; team size max three. Judging weights: potential impact 20%, Kiro/technical implementation 20%, design 20%, innovation 20%, presentation 20%. The rules allow one project category.
+[Kiroween 2026 official rules](https://kiroween.devpost.com/rules) set the submission period **October 30 to December 4, 2026**, deadline **December 4 at 2 PM Pacific**. Projects must be new work during that window (preexisting standard frameworks are permitted subject to disclosure), built meaningfully with Kiro, working and installable/runnable as presented, hosted for judges, with public GitHub repo, root `/.kiro`, open-source license, Kiro writeup and public YouTube demo **under three minutes**. You must disclose preexisting third-party code and comply with licenses; team size max three. Judging weights: potential impact 20%, Kiro/technical implementation 20%, design 20%, innovation 20%, presentation 20%. The rules allow one project category.
 
 **Recommended category: Frankenstein**, if and only if the finished integration meaningfully combines the source-media evidence system, astronomy calibration and scientific navigation. The meaningful result is the unbroken photo-to-scientific-discovery experience, **not** a dashboard listing many APIs. If the astronomy direction proves only a 2D overlay and its 3D transition fails, the original restoration app may be stronger in **Costume Contest** on polished design, but that category expects Halloween-themed design serving function; don't force spooky decoration. Resurrection would require a real obsolete-tech revival thesis, not manufactured retro branding. Skeleton Crew requires two distinct apps from one template and is not suitable here. [Official rule definitions](https://kiroween.devpost.com/rules).
 
@@ -602,14 +602,14 @@ E7 (satellite) = standalone optional investigation after E1/E3/E4
 | Time | Onscreen action | What the judge learns |
 |---|---|---|
 | **0:00 to 0:18** | Real dark field recording or other rights-cleared night photo/video with original ambient sound. “I saw more than the camera recorded.” | Immediate human problem, real media. |
-| **0:18–0:40** | Drop source into app. Show actual source detection and calibrated result or transparent fallback. | Actual software does work, not a concept animation. |
-| **0:40–1:02** | Toggle `Original` / genuinely enhanced treatment; inspect source-aligned evidence and label which detections are real matches. | Restoration constraints and honesty about observations. If enhancement unproven, show honest minimal adjustment, not invented stars. |
-| **1:02–1:27** | Select a matched star, retrieve Gaia identity/distance with uncertainty; optionally ask “How far away?” | Scientific data meaningfully tied to this photo. |
-| **1:27–1:53** | Tap `Explore`; source angular geometry anchors, then transition to marked catalog-geometry 3D view; show different viewpoint if supported. | Memorable defining interaction and a real scene engine. |
-| **1:53–2:13** | `Back to Moment`; photo or video returns to exact frame/audio; inspector shows WCS residual and catalog/release. | Cohesive experience with provenance, not a disconnected planetarium. |
-| **2:13–2:30** | Import an intentionally unsolvable frame; `Unresolved`, show separate `Predicted Sky` without fake photo labels. | Science integrity and useful failure handling. |
-| **2:30–2:47** | Show executable graph in secondary inspector, rerun one actual step, export manifest/source-preserved artifact. | Real technical substance and Kiro-build relevance. |
-| **2:47–2:58** | One-line summary, app/GitHub link. Leave slack for production editing. | Understandable product and working proof. |
+| **0:18 to 0:40** | Drop source into app. Show actual source detection and calibrated result or transparent fallback. | Actual software does work, not a concept animation. |
+| **0:40 to 1:02** | Toggle `Original` / genuinely enhanced treatment; inspect source-aligned evidence and label which detections are real matches. | Restoration constraints and honesty about observations. If enhancement unproven, show honest minimal adjustment, not invented stars. |
+| **1:02 to 1:27** | Select a matched star, retrieve Gaia identity/distance with uncertainty; optionally ask “How far away?” | Scientific data meaningfully tied to this photo. |
+| **1:27 to 1:53** | Tap `Explore`; source angular geometry anchors, then transition to marked catalog-geometry 3D view; show different viewpoint if supported. | Memorable defining interaction and a real scene engine. |
+| **1:53 to 2:13** | `Back to Moment`; photo or video returns to exact frame/audio; inspector shows WCS residual and catalog/release. | Cohesive experience with provenance, not a disconnected planetarium. |
+| **2:13 to 2:30** | Import an intentionally unsolvable frame; `Unresolved`, show separate `Predicted Sky` without fake photo labels. | Science integrity and useful failure handling. |
+| **2:30 to 2:47** | Show executable graph in secondary inspector, rerun one actual step, export manifest/source-preserved artifact. | Real technical substance and Kiro-build relevance. |
+| **2:47 to 2:58** | One-line summary, app/GitHub link. Leave slack for production editing. | Understandable product and working proof. |
 
 **Important:** this is a contingent storyboard, not footage or proven app behavior. Do not record a polished animation in place of the actual result. If E5 fails, replace the 3D segment with honest source→sky-map interaction and reconsider whether the extension deserves the hackathon spotlight.
 
@@ -617,12 +617,12 @@ E7 (satellite) = standalone optional investigation after E1/E3/E4
 
 | Window | One deliverable | Cutoff rule |
 |---|---|---|
-| Oct 31–Nov 3 | E1 consumer photo solving + E4 historical sky prediction | Stop full feature if star-rich photo cannot be validated. |
-| Nov 4–7 | E3 WCS matching; minimal source viewer; first WWT/Three.js experiment | No simulated match markers in source view. |
-| Nov 8–12 | E5 full photo→space→same photo interaction; E8 first user test | If no spatial continuity and usability advantage, cut `Explore`. |
-| Nov 13–18 | E2/E6 low-light stack and limited restoration branch, if target clips available | Do not claim new imaging capability without held-out results. |
-| Nov 19–28 | Polish core UX, real job telemetry, error states, tests and export; remote judge accessibility | Defer satellites and ambitious simulation. Plan around travel/compute constraints. |
-| Nov 29–Dec 3 | GitHub, root `.kiro`, open-source license and obligations, demo recording, judging smoke test | Freeze features. Do **not** wait for Gaia DR4 scheduled Dec 2. |
+| Oct 31 to Nov 3 | E1 consumer photo solving + E4 historical sky prediction | Stop full feature if star-rich photo cannot be validated. |
+| Nov 4 to 7 | E3 WCS matching; minimal source viewer; first WWT/Three.js experiment | No simulated match markers in source view. |
+| Nov 8 to 12 | E5 full photo→space→same photo interaction; E8 first user test | If no spatial continuity and usability advantage, cut `Explore`. |
+| Nov 13 to 18 | E2/E6 low-light stack and limited restoration branch, if target clips available | Do not claim new imaging capability without held-out results. |
+| Nov 19 to 28 | Polish core UX, real job telemetry, error states, tests and export; remote judge accessibility | Defer satellites and ambitious simulation. Plan around travel/compute constraints. |
+| Nov 29 to Dec 3 | GitHub, root `.kiro`, open-source license and obligations, demo recording, judging smoke test | Freeze features. Do **not** wait for Gaia DR4 scheduled Dec 2. |
 | Dec 4 before 2 PM PT | Submit verified build, public YouTube video under 3 min and all form fields | Deadline is absolute, no late submissions. |
 
 If this schedule collides with development commitments or travel, **cut scope before sacrificing a functioning end-to-end app.** Video calibration, AI optimization, historical satellites, entire universe catalog streaming and phone capture are first to cut. A precise photo-first experience is more competitive than a broad but broken video-to-space platform.
@@ -645,9 +645,9 @@ If this schedule collides with development commitments or travel, **cut scope be
 
 ## Explicit GO / DEFER / NO-GO
 
-**GO — research prototype now:** E1 consumer-photo plate solving, E3 validated catalog match, E4 historic predicted sky, E5 photo-to-catalog-3D transition, then E8 usability comparison. This is a short spike attached to the existing concept. It is a good fit for the *Frankenstein* category **if it yields an unusually useful integrated result**.
+**GO: research prototype now:** E1 consumer-photo plate solving, E3 validated catalog match, E4 historic predicted sky, E5 photo-to-catalog-3D transition, then E8 usability comparison. This is a short spike attached to the existing concept. It is a good fit for the *Frankenstein* category **if it yields an unusually useful integrated result**.
 
-**CONDITIONAL GO — restoration-aware astronomy as a core product capability:** only after E2/E6 show measured improvements in source-supported detection, valid solve rate and real user value over ordinary image processing and separate plate-solving tools. Until then, describe it as an experiment, not a proven imaging breakthrough.
+**CONDITIONAL GO: restoration-aware astronomy as a core product capability:** only after E2/E6 show measured improvements in source-supported detection, valid solve rate and real user value over ordinary image processing and separate plate-solving tools. Until then, describe it as an experiment, not a proven imaging breakthrough.
 
 **DEFER:** named historical satellite ID, robust noisy moving video calibration across arbitrary glasses footage, real-time wearable streaming, physically complete 3D universe, simultaneous full-media restoration and astronomy agents, exoplanet worlds and arbitrary constellation light-travel simulation.
 
@@ -674,53 +674,53 @@ The following links are not all equal kinds of evidence. Peer-reviewed papers es
 
 **Core science and software**
 
-1. Lang et al. (2010), *Astrometry.net: Blind Astrometric Calibration of Arbitrary Astronomical Images*, *Astronomical Journal* — https://doi.org/10.1088/0004-6256/139/5/1782
-2. Astrometry.net API — https://astrometry.net/doc/net/api.html
-3. Astrometry.net distribution license — https://github.com/dstndstn/astrometry.net/blob/main/LICENSE
-4. Astrometry.net index files — https://data.astrometry.net/
-5. Astropy coordinate transforms — https://docs.astropy.org/en/stable/coordinates/
-6. Astropy AltAz/refraction limits — https://docs.astropy.org/en/stable/api/astropy.coordinates.AltAz.html
-7. Photutils DAOFIND — https://docs.astropy.org/projects/photutils/en/stable/api/photutils.detection.DAOStarFinder.html
-8. SEP source extraction — https://sep.readthedocs.io/en/stable/
-9. Megeri (2026), unpublished SSRN preprint on learned urban-light-polluted star detection — https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7518006
-10. Luo et al. (2026), star identification, *Applied Optics* — https://pubmed.ncbi.nlm.nih.gov/41842109/
-11. Luo et al. (2025), star-sensor centroid detection, *Optics Express* — https://pubmed.ncbi.nlm.nih.gov/40797963/
-12. Gaia DR3 archive — https://gea.esac.esa.int/archive/
-13. Gaia DR4 scheduled-release page — https://www.cosmos.esa.int/web/gaia/data-release-4
-14. Bailer-Jones EDR3 distance inference FAQ — https://bailer-jones.www3.mpia.de/gedr3_distances/FAQ.html
+1. Lang et al. (2010), *Astrometry.net: Blind Astrometric Calibration of Arbitrary Astronomical Images*, *Astronomical Journal*: https://doi.org/10.1088/0004-6256/139/5/1782
+2. Astrometry.net API: https://astrometry.net/doc/net/api.html
+3. Astrometry.net distribution license: https://github.com/dstndstn/astrometry.net/blob/main/LICENSE
+4. Astrometry.net index files: https://data.astrometry.net/
+5. Astropy coordinate transforms: https://docs.astropy.org/en/stable/coordinates/
+6. Astropy AltAz/refraction limits: https://docs.astropy.org/en/stable/api/astropy.coordinates.AltAz.html
+7. Photutils DAOFIND: https://docs.astropy.org/projects/photutils/en/stable/api/photutils.detection.DAOStarFinder.html
+8. SEP source extraction: https://sep.readthedocs.io/en/stable/
+9. Megeri (2026), unpublished SSRN preprint on learned urban-light-polluted star detection: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7518006
+10. Luo et al. (2026), star identification, *Applied Optics*: https://pubmed.ncbi.nlm.nih.gov/41842109/
+11. Luo et al. (2025), star-sensor centroid detection, *Optics Express*: https://pubmed.ncbi.nlm.nih.gov/40797963/
+12. Gaia DR3 archive: https://gea.esac.esa.int/archive/
+13. Gaia DR4 scheduled-release page: https://www.cosmos.esa.int/web/gaia/data-release-4
+14. Bailer-Jones EDR3 distance inference FAQ: https://bailer-jones.www3.mpia.de/gedr3_distances/FAQ.html
 
 **Catalogs, ephemerides and simulations**
 
-15. JPL Horizons API — https://ssd-api.jpl.nasa.gov/doc/horizons.html
-16. Skyfield satellite prediction limitations — https://rhodesmill.org/skyfield/earth-satellites.html
-17. CelesTrak usage policy, updated May 2026 — https://celestrak.org/usage-policy.php
-18. CelesTrak historical GP request and six-digit ID warning — https://celestrak.org/norad/archives/request.php?FORMAT=json
-19. Space-Track GP_HISTORY documentation — https://www.space-track.org/documentation
-20. VizieR/TAP — https://vizier.cds.unistra.fr/
-21. SIMBAD — https://simbad.cds.unistra.fr/simbad/
-22. NASA Exoplanet Archive TAP — https://exoplanetarchive.ipac.caltech.edu/docs/program_interfaces.html
-23. NASA SkyView permissions — https://skyview.gsfc.nasa.gov/current/help/faq.html
-24. ESASky — https://sky.esa.int/esasky/
-25. NAIF SPICE terms — https://naif.jpl.nasa.gov/naif/rules.html
+15. JPL Horizons API: https://ssd-api.jpl.nasa.gov/doc/horizons.html
+16. Skyfield satellite prediction limitations: https://rhodesmill.org/skyfield/earth-satellites.html
+17. CelesTrak usage policy, updated May 2026: https://celestrak.org/usage-policy.php
+18. CelesTrak historical GP request and six-digit ID warning: https://celestrak.org/norad/archives/request.php?FORMAT=json
+19. Space-Track GP_HISTORY documentation: https://www.space-track.org/documentation
+20. VizieR/TAP: https://vizier.cds.unistra.fr/
+21. SIMBAD: https://simbad.cds.unistra.fr/simbad/
+22. NASA Exoplanet Archive TAP: https://exoplanetarchive.ipac.caltech.edu/docs/program_interfaces.html
+23. NASA SkyView permissions: https://skyview.gsfc.nasa.gov/current/help/faq.html
+24. ESASky: https://sky.esa.int/esasky/
+25. NAIF SPICE terms: https://naif.jpl.nasa.gov/naif/rules.html
 
 **Visualization and existing products**
 
-26. WWT renderer docs — https://docs.worldwidetelescope.org/webgl-reference/latest/
-27. WWT 3D mode — https://worldwidetelescope.org/Learn/Exploring
-28. WWT WebGL Engine (MIT) — https://github.com/WorldWideTelescope/wwt-webgl-engine
-29. Aladin Lite v3 documentation — https://aladin.cds.unistra.fr/AladinLite/doc/
-30. Aladin Lite LGPL license — https://github.com/cds-astro/aladin-lite/blob/master/LICENSE
-31. Stellarium Web Engine (AGPL) — https://github.com/Stellarium/stellarium-web-engine
-32. Gaia Sky v3.9.2 Oct 2026 — https://gaiasky.space/
-33. NASA Eyes — https://science.nasa.gov/eyes/
-34. SkySafari 8 image gallery / plate solve — https://support.simulationcurriculum.com/hc/en-us/community/posts/37033110168215-SkySafari-8-Is-Now-Available-Read-On
-35. Sideris mobile photo solver — https://apps.apple.com/us/app/sideris-sky-map-plate-solver/id6809145518
-36. Plate Solver online — https://alokm.com/solve/
-37. Skyshot (device-specific benchmark methodological note) — https://skyshot.app/technology
-38. Cosmoscope 3D universe (third-party claim) — https://cosmoscope.space/
-39. Stellata open-source 3D model (third-party claim) — https://github.com/alexmensch/stellata
-40. Kiroween 2026 official rules — https://kiroween.devpost.com/rules
-41. Kiroween FAQ — https://kiroween.devpost.com/details/faqs
+26. WWT renderer docs: https://docs.worldwidetelescope.org/webgl-reference/latest/
+27. WWT 3D mode: https://worldwidetelescope.org/Learn/Exploring
+28. WWT WebGL Engine (MIT): https://github.com/WorldWideTelescope/wwt-webgl-engine
+29. Aladin Lite v3 documentation: https://aladin.cds.unistra.fr/AladinLite/doc/
+30. Aladin Lite LGPL license: https://github.com/cds-astro/aladin-lite/blob/master/LICENSE
+31. Stellarium Web Engine (AGPL): https://github.com/Stellarium/stellarium-web-engine
+32. Gaia Sky v3.9.2 Oct 2026: https://gaiasky.space/
+33. NASA Eyes: https://science.nasa.gov/eyes/
+34. SkySafari 8 image gallery / plate solve: https://support.simulationcurriculum.com/hc/en-us/community/posts/37033110168215-SkySafari-8-Is-Now-Available-Read-On
+35. Sideris mobile photo solver: https://apps.apple.com/us/app/sideris-sky-map-plate-solver/id6809145518
+36. Plate Solver online: https://alokm.com/solve/
+37. Skyshot (device-specific benchmark methodological note): https://skyshot.app/technology
+38. Cosmoscope 3D universe (third-party claim): https://cosmoscope.space/
+39. Stellata open-source 3D model (third-party claim): https://github.com/alexmensch/stellata
+40. Kiroween 2026 official rules: https://kiroween.devpost.com/rules
+41. Kiroween FAQ: https://kiroween.devpost.com/details/faqs
 
 **Unverified items that must remain marked unverified:** accurate solve rate on user's actual recordings; availability of sufficient historical orbit elements for a given satellite; WWT seamless photo-to-3D API choreography; scene-quality/performance on the exact intended browsers and Mac; a direct commercial competitor offering the complete media/audio/restoration/provenance workflow; individual licensed redistributability of every survey asset; viability of astronomy-guided restoration as an actual quality improvement.
 

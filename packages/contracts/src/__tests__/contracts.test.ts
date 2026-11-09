@@ -14,7 +14,7 @@ import {
   validateProcessingGraphDAG,
 } from '../index.js';
 
-describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)', () => {
+describe('@albedian/contracts: Domain Schemas & PBT Suite #4 (Processing DAG)', () => {
   it('validates immutable SourceAsset schema and rejects mutable flags', () => {
     const validSource = {
       id: 'src_synthetic_001',
