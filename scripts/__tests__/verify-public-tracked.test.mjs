@@ -278,13 +278,15 @@ describe('the public folder check', () => {
 });
 
 /**
- * A scratch checkout laid out like this one for one app: its own Vite config and the check at the paths the config
- * imports them from, a page to build, and the app's node_modules linked outside the public folder.
+ * A scratch checkout laid out like this one for one app: its own Vite config and the modules the config imports
+ * (the check and the /api proxy guard) at the paths it imports them from, a page to build, and the app's
+ * node_modules linked outside the public folder.
  */
 function appCheckout(app, files) {
   const root = scratch({ files: { [`${app}/index.html`]: '<!doctype html><title>scratch</title>\n', ...files } });
   mkdirSync(path.join(root, 'scripts'), { recursive: true });
   copyFileSync(path.join(repoRoot, 'scripts/verify-public-tracked.mjs'), path.join(root, 'scripts/verify-public-tracked.mjs'));
+  copyFileSync(path.join(repoRoot, 'scripts/field-proxy-guard.mjs'), path.join(root, 'scripts/field-proxy-guard.mjs'));
   copyFileSync(path.join(repoRoot, app, 'vite.config.ts'), path.join(root, app, 'vite.config.ts'));
   symlinkSync(path.join(repoRoot, app, 'node_modules'), path.join(root, app, 'node_modules'));
   return root;

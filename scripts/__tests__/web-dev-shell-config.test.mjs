@@ -58,6 +58,7 @@ describe('web shell Vite /api dev proxy target', () => {
     expect(config.server?.proxy?.['/api']).toEqual({
       target: 'http://127.0.0.1:8000',
       changeOrigin: true,
+      bypass: expect.any(Function),
     });
   });
 
@@ -67,6 +68,7 @@ describe('web shell Vite /api dev proxy target', () => {
     expect(config.server?.proxy?.['/api']).toEqual({
       target: 'http://127.0.0.1:8000',
       changeOrigin: true,
+      bypass: expect.any(Function),
     });
   });
 
@@ -76,6 +78,7 @@ describe('web shell Vite /api dev proxy target', () => {
     expect(config.server?.proxy?.['/api']).toEqual({
       target: 'http://127.0.0.1:8100',
       changeOrigin: true,
+      bypass: expect.any(Function),
     });
   });
 });
