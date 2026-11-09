@@ -13,6 +13,7 @@ import {
   computeCartesianParsecICRS,
   computeStarAnchorNdc,
   pushCheckpointIfDepartingSource,
+  returnCheckpointOf,
   restoreSessionToCheckpoint,
   syncAnchorCheckpointIfInitial,
 } from './checkpoints.js';
@@ -404,10 +405,14 @@ export function dispatchAlbedianAction(
     }
 
     case 'source.return': {
+      // A named checkpoint of this recording wins; otherwise (no id, an unknown id, or one saved on another
+      // recording) the moment you left, the same one the button returns to
       const all = [base.navigationHistory.anchorMomentCheckpoint, ...base.navigationHistory.checkpoints];
-      const target = action.checkpointId
-        ? (all.find((c) => c.id === action.checkpointId) ?? base.navigationHistory.anchorMomentCheckpoint)
-        : base.navigationHistory.anchorMomentCheckpoint;
+      const named = action.checkpointId ? all.find((c) => c.id === action.checkpointId) : undefined;
+      const target =
+        named && named.sourceAssetId === base.sourceAsset?.id
+          ? named
+          : (returnCheckpointOf(base) ?? base.navigationHistory.anchorMomentCheckpoint);
       const status = `Returned to Moment (${target.sourceTimeSec.toFixed(1)}s) · Audio & frame restored.`;
       return completeAction(
         restoreSessionToCheckpoint(base, nextRev, target, true, [target], status),

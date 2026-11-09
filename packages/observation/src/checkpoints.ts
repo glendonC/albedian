@@ -131,6 +131,35 @@ export function pushCheckpointIfDepartingSource(
 }
 
 /**
+ * Whether a checkpoint was saved while the photo itself was on screen: on the source, or in the compare wipe
+ * opened over the photo (media.compare from the sky or 3D space keeps that view, so the photo is not shown).
+ */
+export function savedOnRecording(checkpoint: Pick<CameraCheckpoint, 'navigationState' | 'spatialView'>): boolean {
+  return (
+    checkpoint.navigationState === 'source' ||
+    (checkpoint.navigationState === 'comparison' && checkpoint.spatialView.mode === 'source_2d')
+  );
+}
+
+/**
+ * The moment Back to Moment returns to, by button, key or voice: the latest checkpoint at or before the
+ * history cursor that was saved while this session's photo was on screen (savedOnRecording; AGENTS.md:
+ * leaving the source saves the moment, selection included, and Back to Moment restores it; sky.show and
+ * space.enter save it when leaving the wipe too), else the session's anchor. A checkpoint saved on another
+ * recording is never the moment to return to.
+ */
+export function returnCheckpointOf(session: ObservationSession): CameraCheckpoint | undefined {
+  const history = session.navigationHistory;
+  if (!history) return undefined;
+  const assetId = session.sourceAsset?.id;
+  for (let i = Math.min(history.cursorIndex, history.checkpoints.length - 1); i >= 0; i--) {
+    const checkpoint = history.checkpoints[i];
+    if (checkpoint && savedOnRecording(checkpoint) && checkpoint.sourceAssetId === assetId) return checkpoint;
+  }
+  return history.anchorMomentCheckpoint;
+}
+
+/**
  * Restores an `ObservationSession` to a saved `CameraCheckpoint` (`Back to Moment`).
  */
 export function restoreSessionToCheckpoint(

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import type { CameraCheckpoint, ObservationSession } from '@albedian/contracts';
-import { dispatchAlbedianAction } from '@albedian/observation';
+import type { ObservationSession } from '@albedian/contracts';
+import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import {
   getEpistemicBadgeDescriptor,
   PARSEC_TO_LIGHT_YEAR,
@@ -49,21 +49,6 @@ function formatTransitionPhaseLabel(
     default:
       return 'Source Recording';
   }
-}
-
-/**
- * The moment Back to Moment returns to: the latest checkpoint saved while on the source recording
- * (AGENTS.md: leaving the source saves the moment, and Back to Moment restores it, selection included),
- * else the session's anchor.
- */
-export function returnCheckpointOf(session: ObservationSession): CameraCheckpoint | undefined {
-  const history = session.navigationHistory;
-  if (!history) return undefined;
-  for (let i = Math.min(history.cursorIndex, history.checkpoints.length - 1); i >= 0; i--) {
-    const checkpoint = history.checkpoints[i];
-    if (checkpoint && checkpoint.navigationState === 'source') return checkpoint;
-  }
-  return history.anchorMomentCheckpoint;
 }
 
 /**

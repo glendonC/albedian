@@ -577,7 +577,8 @@ function parseWithRules(
       return { action: AlbedianActionSchema.parse({ type: 'history.back', requestId, expectedViewRevision: context.viewRevision, mode: 'checkpoint' }) };
     }
     return {
-      action: AlbedianActionSchema.parse({ type: 'source.return', requestId, expectedViewRevision: context.viewRevision, checkpointId: session.navigationHistory.anchorMomentCheckpoint.id, restoreAudio: true }),
+      // No checkpoint named: the reducer returns to the moment you left, as the button does
+      action: AlbedianActionSchema.parse({ type: 'source.return', requestId, expectedViewRevision: context.viewRevision, restoreAudio: true }),
     };
   }
 

@@ -10,6 +10,7 @@ import {
 } from '@albedian/contracts';
 import {
   computeStarAnchorNdc,
+  returnCheckpointOf,
   createCameraCheckpoint,
   createEmptyObservationSession,
   createSessionForSourceAsset,
@@ -335,7 +336,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(skyResult.session.machines.restoration).toBe('processing');
   });
 
-  it('PBT-NAV-1: Arbitrary sequences of sky.show, finding.select, space.enter, space.viewpoint, space.epoch, history.back(partial) followed by source.return recover exact initial CameraCheckpoint state', () => {
+  it('PBT-NAV-1: Arbitrary sequences of sky.show, finding.select, space.enter, space.viewpoint, space.epoch, history.back(partial), media.seek and media.compare followed by source.return recover the exact state saved when the session last left the recording, from the source or the compare wipe (the initial state if it never left)', () => {
     const catalogStarIds = [
       'finding_betelgeuse',
       'finding_rigel',
@@ -378,6 +379,17 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       fc.record({
         kind: fc.constant('history.back.partial' as const),
         fraction: fc.double({ min: 0.05, max: 0.95, noNaN: true }),
+      }),
+      // Seeking and opening the compare wipe change the moment on the recording, so the property can tell
+      // the moment left from the session's start by time and variant, not only by selection
+      fc.record({
+        kind: fc.constant('media.seek' as const),
+        sourceTimeSec: fc.double({ min: 0, max: 11.9, noNaN: true }),
+      }),
+      fc.record({
+        kind: fc.constant('media.compare' as const),
+        variantAId: fc.constantFrom('variant_original', 'variant_natural', 'variant_temporal'),
+        variantBId: fc.constantFrom('variant_original', 'variant_natural', 'variant_temporal'),
       })
     );
 
@@ -413,6 +425,9 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
             isPlaying: initOverrides.isPlaying,
           };
 
+          // The moment Back to Moment returns to (experience-9m): the session as it stood when it last left the source
+          const initial = session;
+          let lastDeparture: ObservationSession | undefined;
           for (let i = 0; i < steps.length; i++) {
             const step = steps[i]!;
             const reqId = `pbt_nav_step_${i}`;
@@ -472,6 +487,25 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
                   fraction: step.fraction,
                 };
                 break;
+              case 'media.seek':
+                action = {
+                  type: 'media.seek',
+                  requestId: reqId,
+                  expectedViewRevision: session.viewRevision,
+                  sourceTimeSec: step.sourceTimeSec,
+                  preserveAudioSync: true,
+                };
+                break;
+              case 'media.compare':
+                action = {
+                  type: 'media.compare',
+                  requestId: reqId,
+                  expectedViewRevision: session.viewRevision,
+                  variantAId: step.variantAId,
+                  variantBId: step.variantBId,
+                  preserveTime: true,
+                };
+                break;
             }
 
             const res = dispatchAlbedianAction(session, action);
@@ -482,8 +516,18 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
             } else {
               expect(res.outcome.status).toBe('completed');
             }
+            // The photo is on screen on the source and in a wipe opened over it; a wipe opened in the sky or
+            // space keeps that view, so leaving it is not leaving the photo (stated here, not imported, so the
+            // property checks the rule rather than restating the code under test)
+            const onRecording = (s: ObservationSession) =>
+              s.machines.navigation === 'source' ||
+              (s.machines.navigation === 'comparison' && s.spatialView.mode === 'source_2d');
+            if (onRecording(session) && !onRecording(res.session)) {
+              lastDeparture = session;
+            }
             session = res.session;
           }
+          const expected = lastDeparture ?? initial;
 
           const returned = dispatchAlbedianAction(session, {
             type: 'source.return',
@@ -493,21 +537,42 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
           });
 
           expect(returned.outcome.status).toBe('completed');
-          expect(returned.session.currentSourceTimeSec).toBe(initOverrides.currentSourceTimeSec);
-          expect(returned.session.audioGain).toBe(initOverrides.audioGain);
-          expect(returned.session.cropTransform).toEqual({
-            zoom: initOverrides.cropZoom,
-            panX: initOverrides.cropPanX,
-            panY: initOverrides.cropPanY,
-          });
-          expect(returned.session.activeVariantId).toBe(initOverrides.activeVariantId);
-          expect(returned.session.selectedFindingId).toBe(initOverrides.selectedFindingId);
-          expect(returned.session.isPlaying).toBe(initOverrides.isPlaying);
+          expect(returned.session.currentSourceTimeSec).toBe(expected.currentSourceTimeSec);
+          expect(returned.session.audioGain).toBe(expected.audioGain);
+          expect(returned.session.cropTransform).toEqual(expected.cropTransform);
+          expect(returned.session.activeVariantId).toBe(expected.activeVariantId);
+          expect(returned.session.selectedFindingId).toBe(expected.selectedFindingId);
+          expect(returned.session.isPlaying).toBe(expected.isPlaying);
+          expect(returned.session.compareVariantId).toBeUndefined();
           expect(returned.session.machines.navigation).toBe('source');
           expect(returned.session.spatialView.mode).toBe('source_2d');
         }
       ),
-      { numRuns: 100 }
+      {
+        // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run
+        seed: process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined,
+        numRuns: 100,
+        examples: [
+          // A star picked on the photo before flying is the selection Back to Moment brings back (experience-9m)
+          [
+            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: 'variant_original', selectedFindingId: null, isPlaying: false },
+            [
+              { kind: 'finding.select', findingId: 'finding_sirius' },
+              { kind: 'space.enter', findingId: 'finding_sirius' },
+            ],
+          ],
+          // Seek, open the compare wipe and fly from it: Back to Moment brings back that time and variant
+          [
+            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: 'variant_original', selectedFindingId: null, isPlaying: false },
+            [
+              { kind: 'media.seek', sourceTimeSec: 7.25 },
+              { kind: 'media.compare', variantAId: 'variant_original', variantBId: 'variant_temporal' },
+              { kind: 'finding.select', findingId: 'finding_rigel' },
+              { kind: 'sky.show' },
+            ],
+          ],
+        ],
+      }
     );
   });
 
@@ -808,5 +873,233 @@ describe('@albedian/observation: the anchor of a turned photo (experience-9h)', 
     expect(at(0, 0, true)).toEqual([0.5, 0.75]);
     // The stored bottom-right pixel lands bottom-left
     expect(at(3, 1, true)).toEqual([-0.5, -0.75]);
+  });
+});
+
+describe('@albedian/observation: Back to Moment by voice and by button (experience-9m)', () => {
+  // Pick a catalog star with a distance, then fly to it: the flight saves the moment with the selection
+  function departed() {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
+    )!;
+    const selected = dispatchAlbedianAction(base, {
+      type: 'finding.select', requestId: 'sel', expectedViewRevision: base.viewRevision, findingId: finding.id,
+    }).session;
+    const inSpace = dispatchAlbedianAction(selected, {
+      type: 'space.enter', requestId: 'enter', expectedViewRevision: selected.viewRevision,
+      findingId: finding.id, distancePolicy: 'measured_or_estimated',
+    }).session;
+    expect(inSpace.machines.navigation).toBe('space');
+    return { base, finding, inSpace };
+  }
+
+  it('picks the latest checkpoint saved on the source of this recording, else the anchor', () => {
+    const { finding, inSpace } = departed();
+    const picked = returnCheckpointOf(inSpace)!;
+    expect(picked.label).toBe(`Checkpoint before entering 3D space toward ${finding.title}`);
+    expect(picked.selectedFindingId).toBe(finding.id);
+    // A checkpoint taken while on another recording is never the moment to return to
+    const otherAsset = { ...picked, id: 'chk_other_asset', sourceAssetId: 'src_another_photo' };
+    const withOther = {
+      ...inSpace,
+      navigationHistory: {
+        ...inSpace.navigationHistory,
+        checkpoints: [...inSpace.navigationHistory.checkpoints, otherAsset],
+        cursorIndex: inSpace.navigationHistory.checkpoints.length,
+      },
+    };
+    expect(returnCheckpointOf(withOther)!.id).toBe(picked.id);
+    // Nothing saved on this recording's source but the anchor: the anchor
+    const onlySky = {
+      ...inSpace,
+      navigationHistory: { ...inSpace.navigationHistory, checkpoints: [otherAsset], cursorIndex: 0 },
+    };
+    expect(returnCheckpointOf(onlySky)!.id).toBe(inSpace.navigationHistory.anchorMomentCheckpoint.id);
+  });
+
+  it('restores the departure checkpoint for source.return without an id, and for an id from another recording', () => {
+    const { finding, inSpace } = departed();
+    const noId = dispatchAlbedianAction(inSpace, {
+      type: 'source.return', requestId: 'ret', expectedViewRevision: inSpace.viewRevision, restoreAudio: true,
+    }).session;
+    expect(noId.machines.navigation).toBe('source');
+    expect(noId.selectedFindingId).toBe(finding.id);
+
+    const otherAsset = { ...returnCheckpointOf(inSpace)!, id: 'chk_other_asset', sourceAssetId: 'src_another_photo' };
+    const withOther = {
+      ...inSpace,
+      navigationHistory: { ...inSpace.navigationHistory, checkpoints: [...inSpace.navigationHistory.checkpoints, otherAsset] },
+    };
+    const named = dispatchAlbedianAction(withOther, {
+      type: 'source.return', requestId: 'ret2', expectedViewRevision: withOther.viewRevision,
+      checkpointId: 'chk_other_asset', restoreAudio: true,
+    }).session;
+    // Falls back the same way as no id: this recording's departure moment, never another recording's
+    expect(named.machines.navigation).toBe('source');
+    expect(named.selectedFindingId).toBe(finding.id);
+    expect(named.navigationHistory.anchorMomentCheckpoint.sourceAssetId).toBe(inSpace.sourceAsset!.id);
+  });
+
+  it('restores the same moment for "back to moment" and "take me back" as for the button', () => {
+    const { finding, inSpace } = departed();
+    const button = dispatchAlbedianAction(inSpace, {
+      type: 'source.return', requestId: 'btn', expectedViewRevision: inSpace.viewRevision,
+      checkpointId: returnCheckpointOf(inSpace)!.id, restoreAudio: true,
+    }).session;
+    for (const said of ['back to moment', 'Take me back']) {
+      const spoken = executeVoiceOrTextCommand(inSpace, said, 'voice').session;
+      expect(spoken.machines.navigation, said).toBe('source');
+      expect(spoken.selectedFindingId, said).toBe(finding.id);
+      expect(spoken.selectedFindingId, said).toBe(button.selectedFindingId);
+      expect(spoken.navigationHistory.anchorMomentCheckpoint.id, said).toBe(button.navigationHistory.anchorMomentCheckpoint.id);
+    }
+  });
+
+  // Seek, open the compare wipe, pick a star there, then leave for the sky or space (both save that moment)
+  function departedFromWipe(leave: 'sky' | 'space') {
+    const base = createSyntheticCalibratedSession();
+    const seeked = dispatchAlbedianAction(base, {
+      type: 'media.seek', requestId: 'seek', expectedViewRevision: base.viewRevision, sourceTimeSec: 7.25,
+      preserveAudioSync: true,
+    }).session;
+    const wipe = dispatchAlbedianAction(seeked, {
+      type: 'media.compare', requestId: 'cmp', expectedViewRevision: seeked.viewRevision,
+      variantAId: 'variant_original', variantBId: 'variant_temporal', preserveTime: true,
+    }).session;
+    expect(wipe.machines.navigation).toBe('comparison');
+    const finding = wipe.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc && f.id !== base.selectedFindingId
+    )!;
+    const selected = dispatchAlbedianAction(wipe, {
+      type: 'finding.select', requestId: 'sel', expectedViewRevision: wipe.viewRevision, findingId: finding.id,
+    }).session;
+    const left =
+      leave === 'sky'
+        ? dispatchAlbedianAction(selected, {
+            type: 'sky.show', requestId: 'sky', expectedViewRevision: selected.viewRevision, mode: 'measured',
+          }).session
+        : dispatchAlbedianAction(selected, {
+            type: 'space.enter', requestId: 'enter', expectedViewRevision: selected.viewRevision,
+            findingId: finding.id, distancePolicy: 'measured_or_estimated',
+          }).session;
+    expect(left.machines.navigation).toBe(leave === 'sky' ? 'sky_registered' : 'space');
+    return { base, selected, left };
+  }
+
+  it('returns to the moment the compare wipe was left, by voice, by the card and by the button', () => {
+    for (const leave of ['sky', 'space'] as const) {
+      const { base, selected, left } = departedFromWipe(leave);
+      // The moment left differs from the session's start in time, variant and selection
+      expect(selected.currentSourceTimeSec).not.toBe(base.currentSourceTimeSec);
+      expect(selected.activeVariantId).not.toBe(base.activeVariantId);
+      expect(selected.selectedFindingId).not.toBe(base.selectedFindingId);
+      const paths = {
+        button: dispatchAlbedianAction(left, {
+          type: 'source.return', requestId: 'btn', expectedViewRevision: left.viewRevision,
+          checkpointId: returnCheckpointOf(left)!.id, restoreAudio: true,
+        }).session,
+        voice: executeVoiceOrTextCommand(left, 'back to moment', 'voice').session,
+        card: executeVoiceOrTextCommand(left, 'Take me back', 'pointer').session,
+      };
+      for (const [name, restored] of Object.entries(paths)) {
+        const label = `${leave} ${name}`;
+        expect(restored.machines.navigation, label).toBe('source');
+        expect(restored.currentSourceTimeSec, label).toBe(selected.currentSourceTimeSec);
+        expect(restored.activeVariantId, label).toBe(selected.activeVariantId);
+        expect(restored.selectedFindingId, label).toBe(selected.selectedFindingId);
+        expect(restored.compareVariantId, label).toBeUndefined();
+      }
+    }
+  });
+
+  it('restores a checkpoint of this recording that the caller names, over the default', () => {
+    const { base, finding, inSpace } = departed();
+    const anchorId = inSpace.navigationHistory.anchorMomentCheckpoint.id;
+    expect(returnCheckpointOf(inSpace)!.id).not.toBe(anchorId);
+    const named = dispatchAlbedianAction(inSpace, {
+      type: 'source.return', requestId: 'ret', expectedViewRevision: inSpace.viewRevision,
+      checkpointId: anchorId, restoreAudio: true,
+    }).session;
+    expect(named.machines.navigation).toBe('source');
+    expect(named.selectedFindingId).toBe(base.selectedFindingId);
+    expect(named.selectedFindingId).not.toBe(finding.id);
+  });
+
+  it('returns by voice to the moment the source was left, not to a checkpoint saved later in the sky', () => {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc && f.id !== base.selectedFindingId
+    )!;
+    const sky = dispatchAlbedianAction(base, {
+      type: 'sky.show', requestId: 'sky', expectedViewRevision: base.viewRevision, mode: 'measured',
+    }).session;
+    const picked = dispatchAlbedianAction(sky, {
+      type: 'finding.select', requestId: 'sel', expectedViewRevision: sky.viewRevision, findingId: finding.id,
+    }).session;
+    const inSpace = dispatchAlbedianAction(picked, {
+      type: 'space.enter', requestId: 'enter', expectedViewRevision: picked.viewRevision,
+      findingId: finding.id, distancePolicy: 'measured_or_estimated',
+    }).session;
+    // space.enter from the sky saves a sky checkpoint holding the star picked there
+    expect(inSpace.navigationHistory.checkpoints.at(-1)!.navigationState).toBe('sky_registered');
+    for (const said of ['back to moment', 'Take me back']) {
+      const spoken = executeVoiceOrTextCommand(inSpace, said, 'voice').session;
+      expect(spoken.machines.navigation, said).toBe('source');
+      expect(spoken.selectedFindingId, said).toBe(base.selectedFindingId);
+      expect(spoken.currentSourceTimeSec, said).toBe(base.currentSourceTimeSec);
+    }
+  });
+
+  // The compare HUD shows in every view; its wipe opened in the sky or in 3D space keeps that view on screen
+  function restoredByEveryPath(left: ObservationSession) {
+    return {
+      button: dispatchAlbedianAction(left, {
+        type: 'source.return', requestId: 'btn', expectedViewRevision: left.viewRevision,
+        checkpointId: returnCheckpointOf(left)!.id, restoreAudio: true,
+      }).session,
+      voice: executeVoiceOrTextCommand(left, 'back to moment', 'voice').session,
+      card: executeVoiceOrTextCommand(left, 'Take me back', 'pointer').session,
+    };
+  }
+
+  it('returns to the moment the photo was left, not a star picked in a wipe opened over the sky or 3D space', () => {
+    const base = createSyntheticCalibratedSession();
+    const [first, second] = base.observationSolution!.findings.filter(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc && f.id !== base.selectedFindingId
+    );
+    const variantA = base.mediaVariants[0]!.id;
+    const variantB = base.mediaVariants.at(-1)!.id;
+    expect(variantB).not.toBe(base.activeVariantId);
+    const step = (s: ObservationSession, action: Record<string, unknown>) => {
+      const res = dispatchAlbedianAction(s, { requestId: `r${s.viewRevision}`, expectedViewRevision: s.viewRevision, ...action } as AlbedianAction);
+      expect(res.outcome.status, String(action.type)).toBe('completed');
+      return res.session;
+    };
+    const compare = { type: 'media.compare', variantAId: variantA, variantBId: variantB, preserveTime: true };
+
+    // Sky, pick a star there, open the wipe (the sky stays on screen), Register Sky again
+    let sky = step(base, { type: 'sky.show', mode: 'measured' });
+    sky = step(sky, { type: 'finding.select', findingId: first!.id });
+    sky = step(sky, compare);
+    expect(sky.spatialView.mode).not.toBe('source_2d');
+    sky = step(sky, { type: 'sky.show', mode: 'measured' });
+
+    // Fly to a star, open the wipe in 3D space, then Go there to a second star
+    let space = step(base, { type: 'space.enter', findingId: first!.id, distancePolicy: 'measured_or_estimated' });
+    space = step(space, compare);
+    expect(space.spatialView.mode).not.toBe('source_2d');
+    space = step(space, { type: 'space.enter', findingId: second!.id, distancePolicy: 'measured_or_estimated' });
+
+    for (const [where, left] of [['sky', sky], ['space', space]] as const) {
+      for (const [name, restored] of Object.entries(restoredByEveryPath(left))) {
+        const label = `${where} ${name}`;
+        expect(restored.machines.navigation, label).toBe('source');
+        expect(restored.selectedFindingId, label).toBe(base.selectedFindingId);
+        expect(restored.activeVariantId, label).toBe(base.activeVariantId);
+        expect(restored.currentSourceTimeSec, label).toBe(base.currentSourceTimeSec);
+        expect(restored.compareVariantId, label).toBeUndefined();
+      }
+    }
   });
 });
