@@ -122,10 +122,17 @@ that still lack a provenance record, and an entry fails when:
 - its file has a record now, or is gone (remove the entry);
 - its bytes changed (a changed asset needs a record).
 
-`BASELINE_GAPS` pins eight entries: four textures (the atmosphere lookup table, which a script
-makes from hand-set parameters with no outside data, and three legacy Earth maps that match
-three.js example textures or are unidentified), two files in `models/`, and the two tracked
-sample splats. Any deleted legacy asset is removed from `BASELINE_GAPS` at the same time so it
-can return only with a provenance record.
+`BASELINE_GAPS` pins three entries, one for each open gap: the atmosphere lookup table
+(`textures/bruneton_atmo_lut.png`, which a script makes from hand-set parameters with no outside
+data) and two files in `models/` (`lb_splats.json` and `nasa_lro_moon_3d.glb`). Any deleted
+legacy asset is removed from `BASELINE_GAPS` at the same time so it can return only with a
+provenance record.
+
+The WebGPU spike's two sample splats, `snow-street.spz` and `valley.spz`, left the tracked tree
+because no licence is stated at their source, and so they cannot carry a record. They live only in
+the shared, untracked `.cache/splats/` for local spike runs, with the bytes their baseline pins
+named. Deleting a file from the tree does not remove it from the repository: git history still
+holds both splats in every commit before their removal. The same change dropped the pins of the
+three legacy Earth maps that commit cbf96557 had already deleted.
 
 To close a gap, write the file's record and delete its entry in the same change.

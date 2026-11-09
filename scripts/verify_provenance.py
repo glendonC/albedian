@@ -49,12 +49,7 @@ GAPS_FORMAT = "albedian.asset-provenance-gaps"
 BASELINE_GAPS: dict[str, str] = {
     "apps/web/public/models/lb_splats.json": "626645289f55f59f527d8003c19ed81e0928be21b7505b07e00286352d757b49",
     "apps/web/public/models/nasa_lro_moon_3d.glb": "75eba4b5f9168c96f8ef9f47d2a346ba54eef05d5f2b81c1de5ed816f8dcd09a",
-    "apps/web/public/splats/snow-street.spz": "35840fd3d178388409096537e2f363c49e1502850c5bb81dbaa5cbc4ecb3ecaa",
-    "apps/web/public/splats/valley.spz": "565768b0b758698a641521654ac0947a74c85cb69ee0f034e6c928fbefa97833",
     "apps/web/public/textures/bruneton_atmo_lut.png": "9747ec7c4555cba7bc7fbee4ae5839e09196e9d75d23023aec5ff76b3f36c4dd",
-    "apps/web/public/textures/earth_clouds.png": "f6f9195b2ca84ef45a7b6ca50bc956c06d694a5ebdc57c6bfcf950d367bc7604",
-    "apps/web/public/textures/earth_normal.jpg": "3fc43e9639c34e8223c4a871e3bdf5b2d52ee79f7e89ce3f28cba45d4cac031a",
-    "apps/web/public/textures/earth_specular.jpg": "2df48906732d7a458b2d0a7cdec51a829262307c6bdee4cfdf079a4dd7c71c69",
 }
 
 
