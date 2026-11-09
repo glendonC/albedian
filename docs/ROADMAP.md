@@ -97,7 +97,7 @@ Done when a real phone photo from the corpus solves in the app to a verified WCS
 
 Owners: `science` for catalogs, `architecture` for contracts, `verification` for provenance checks.
 
-- **M1, data registry.** Every file under `apps/web/public` has a `PROVENANCE.json` record (source, version, licence, credit, checksum and bake script) or a pinned gap in `scripts/provenance_gaps.json`, enforced in CI, and unused unrecorded assets have been removed. [tested] Next: close the 2 remaining gaps in section 6. [proposed]
+- **M1, data registry.** Every file under `apps/web/public` has a `PROVENANCE.json` record (source, version, licence, credit, checksum and bake script) or a pinned gap in `scripts/provenance_gaps.json`, enforced in CI, and unused unrecorded assets have been removed. [tested] Next: close the last remaining gap in section 6. [proposed]
 - **M2, small authoritative tables.** Contracts for `SolarEclipseCatalog`, `LunarEclipseCatalog` and `ExoplanetTable` live in `packages/contracts/src/eclipses.ts`, `packages/contracts/src/exoplanets.ts`, `services/contracts/eclipses.py` and `services/contracts/exoplanets.py`, and Espenak's solar and lunar eclipse catalogues are baked in `apps/web/public/catalog/eclipses/solar.json` and `apps/web/public/catalog/eclipses/lunar.json` with provenance [tested]; remaining table bakes and ingestion: [verified sizes; ingestion proposed]
   - NASA Exoplanet Archive PSCompPars (6,451 planets).
   - The ATNF Pulsar Catalogue (4,503 pulsars).
@@ -291,12 +291,11 @@ Some licences carry obligations:
 
 ## 6. Assets without recorded provenance
 
-Every other file under `apps/web/public` has a record ([ASSET_PROVENANCE.md](architecture/ASSET_PROVENANCE.md)). These 2 are pinned gaps in `scripts/provenance_gaps.json`, and a test fails if a gap's bytes change or a file arrives without a record. [tested]
+Every other file under `apps/web/public` has a record ([ASSET_PROVENANCE.md](architecture/ASSET_PROVENANCE.md)). This one is a pinned gap in `scripts/provenance_gaps.json`, and a test fails if a gap's bytes change or a file arrives without a record. [tested]
 
-- **Models:** `nasa_lro_moon_3d.glb` (made in Blender, with relief about 2.4 times the real range; a rebuild from the registered LOLA elevation map at true scale is queued).
-- **Textures:** `bruneton_atmo_lut.png` (hand-set single scattering, to be replaced by a real precomputation).
+- **Textures:** `bruneton_atmo_lut.png` (hand-set single scattering, to be replaced by a real precomputation; queued).
 
-Closed since the last count: `lb_splats.json` was rebaked from the recorded O'Neill et al. 2024 table, with each cell's thickness projected onto the shell normal and the cross-normal footprint named as grid geometry ([LOCAL_BUBBLE_SPLATS.md](science/LOCAL_BUBBLE_SPLATS.md)); `local_bubble_oneill2024.glb` has a record (O'Neill et al. 2024, CC0); the three Earth textures were replaced and deleted; the WebGPU spike's `snow-street.spz` and `valley.spz` left the tracked tree for the untracked `.cache/splats`, though git history still holds them. [tested]
+Closed since the last count: `nasa_lro_moon_3d.glb` was rebuilt from the registered LOLA elevation map at true scale on a 1 degree grid ([MOON_MESH.md](science/MOON_MESH.md)); `lb_splats.json` was rebaked from the recorded O'Neill et al. 2024 table, with each cell's thickness projected onto the shell normal and the cross-normal footprint named as grid geometry ([LOCAL_BUBBLE_SPLATS.md](science/LOCAL_BUBBLE_SPLATS.md)); `local_bubble_oneill2024.glb` has a record (O'Neill et al. 2024, CC0); the three Earth textures were replaced and deleted; the WebGPU spike's `snow-street.spz` and `valley.spz` left the tracked tree for the untracked `.cache/splats`, though git history still holds them. [tested]
 
 ## 7. Running this in new sessions
 
