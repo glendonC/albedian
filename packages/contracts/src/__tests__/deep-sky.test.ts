@@ -61,6 +61,10 @@ const FAULTS: Record<string, (t: Catalog) => void> = {
   format: (t) => void (t.format = 'albedian.deep-sky-list'),
   formatVersion: (t) => void (t.formatVersion = 2),
   'evidence kind': (t) => void (t.evidenceKind = 'observed'),
+  'snake-case top-level key': (t) => {
+    t.format_version = t.formatVersion;
+    delete t.formatVersion;
+  },
   'extra field': (t) => void (t.extra = 1),
   'blank-padded release': (t) => void (t.release = ' OpenNGC'),
   'column renamed': (t) => void (t.columns[0] = 'id'),
@@ -76,6 +80,7 @@ const FAULTS: Record<string, (t: Catalog) => void> = {
   'right ascension of 360': (t) => put(t, { type: 'G', raDeg: 360.0, decDeg: 0.0, constellation: 'Psc' }),
   'negative right ascension': (t) => put(t, { type: 'G', raDeg: -0.5, decDeg: 0.0, constellation: 'Psc' }),
   'declination past the pole': (t) => put(t, { type: 'G', raDeg: 10.0, decDeg: 90.5, constellation: 'Cep' }),
+  'declination below the south pole': (t) => put(t, { type: 'G', raDeg: 10.0, decDeg: -90.5, constellation: 'Oct' }),
   'right ascension without declination': (t) => put(t, { type: 'G', raDeg: 10.0, decDeg: null, constellation: 'Psc' }),
   'no position on a galaxy': (t) => put(t, { type: 'G', raDeg: null, decDeg: null, constellation: null }),
   'position as text': (t) => put(t, { type: 'G', raDeg: '10.0', decDeg: 0.0, constellation: 'Psc' }),
@@ -83,6 +88,7 @@ const FAULTS: Record<string, (t: Catalog) => void> = {
   'constellation missing with a position': (t) => put(t, { type: 'G', raDeg: 10.0, decDeg: 0.0, constellation: null }),
   'constellation without a position': (t) => put(t, { type: 'NonEx', raDeg: null, decDeg: null, constellation: 'Cru' }),
   'zero major axis': (t) => put(t, { majorAxisArcmin: 0.0, minorAxisArcmin: null, positionAngleDeg: null }),
+  'zero minor axis': (t) => put(t, { majorAxisArcmin: 1.0, minorAxisArcmin: 0.0, positionAngleDeg: null }),
   'minor axis larger than major': (t) => put(t, { majorAxisArcmin: 1.0, minorAxisArcmin: 2.0 }),
   'minor axis without major': (t) => put(t, { majorAxisArcmin: null, minorAxisArcmin: 1.0, positionAngleDeg: null }),
   'position angle of 181': (t) => put(t, { majorAxisArcmin: 1.0, minorAxisArcmin: null, positionAngleDeg: 181.0 }),

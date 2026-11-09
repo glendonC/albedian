@@ -120,6 +120,26 @@
       "licence": "LicenseRef-NASA-Exoplanet-Archive-Acknowledgement",
       "licenceUrl": "https://exoplanetarchive.ipac.caltech.edu/docs/acknowledge.html",
       "source": "NASA Exoplanet Archive Planetary Systems Composite Parameters (PSCompPars) table, doi:10.26133/NEA13 (companion to Planetary Systems table, doi:10.26133/NEA12), frozen TAP snapshot (select * from pscomppars, retrieved 2026-11-05T00:36:15Z; upstream TAP query results change as new planets and solutions are ingested, so bytes and sha256 pin the 2026-11-05T00:36:15Z snapshot; cite Christiansen et al. 2025, PSJ, doi:10.3847/PSJ/ade3c2, table DOI doi:10.26133/NEA13, and each value's literature reference)"
+    },
+    {
+      "path": ".cache/m2/openngc_v20260501_NGC.csv",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/NGC.csv",
+      "bytes": 3876288,
+      "sha256": "840fe0c9ee1332e551b2e722a0e92726cd7b157914a3d2177602832aadd3aa9e",
+      "licence": "CC-BY-SA-4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source": "OpenNGC v20260501 (github.com/mattiaverga/OpenNGC, git tag v20260501), database_files/NGC.csv: 13,969 NGC and IC objects, credit Mattia Verga; CC-BY-SA-4.0 for every file per the repository's .reuse/dep5, so tables derived from it are shared under CC-BY-SA-4.0"
+    },
+    {
+      "path": ".cache/m2/openngc_v20260501_addendum.csv",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/addendum.csv",
+      "bytes": 17484,
+      "sha256": "1d8f0914e643ada325a5a94d88d8fefad6a4937a2f77cc34f21483af22b11983",
+      "licence": "CC-BY-SA-4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source": "OpenNGC v20260501 (github.com/mattiaverga/OpenNGC, git tag v20260501), database_files/addendum.csv: 64 objects outside NGC and IC (among them the Large Magellanic Cloud and the Coalsack), credit Mattia Verga; CC-BY-SA-4.0 for every file per the repository's .reuse/dep5"
     }
   ]
 }

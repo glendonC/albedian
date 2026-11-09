@@ -108,7 +108,8 @@ DeepSkyRow = tuple[
 class DeepSkyCatalog(BaseModel):
     """apps/web/public/catalog/deepsky/openngc.json."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    # Wire names only (formatVersion, evidenceKind), as the Zod schema reads them: no populate_by_name
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     format: Literal[DEEP_SKY_CATALOG_FORMAT]
     format_version: Annotated[int, Strict(), Field(ge=1, le=1)] = Field(alias="formatVersion")

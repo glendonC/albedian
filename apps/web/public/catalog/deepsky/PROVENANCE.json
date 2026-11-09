@@ -1,0 +1,55 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "openngc-v20260501-ngc",
+      "title": "OpenNGC database_files/NGC.csv",
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/NGC.csv",
+      "version": "OpenNGC v20260501 (git tag v20260501, published 2026-05-01)",
+      "retrieved": "2026-11-09",
+      "license": {
+        "spdx": "CC-BY-SA-4.0",
+        "name": "Creative Commons Attribution-ShareAlike 4.0 International",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "conditions": "Credit OpenNGC and Mattia Verga, link the licence, and say that the data were changed. An adaptation, such as openngc.json, must be shared under CC-BY-SA-4.0 or a compatible licence (OpenNGC .reuse/dep5 at tag v20260501: 'Files: * License: CC-BY-SA-4.0')."
+      },
+      "credit": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)",
+      "sha256": "840fe0c9ee1332e551b2e722a0e92726cd7b157914a3d2177602832aadd3aa9e",
+      "note": "13,969 rows, 3,876,288 bytes, fetched from https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/NGC.csv at 2026-11-09T04:09:06Z; byte-identical to the copy fetched earlier into .cache/m2. Positions are J2000. Repository: https://github.com/mattiaverga/OpenNGC."
+    },
+    {
+      "id": "openngc-v20260501-addendum",
+      "title": "OpenNGC database_files/addendum.csv",
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/addendum.csv",
+      "version": "OpenNGC v20260501 (git tag v20260501, published 2026-05-01)",
+      "retrieved": "2026-11-09",
+      "license": {
+        "spdx": "CC-BY-SA-4.0",
+        "name": "Creative Commons Attribution-ShareAlike 4.0 International",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "conditions": "Credit OpenNGC and Mattia Verga, link the licence, and say that the data were changed. An adaptation, such as openngc.json, must be shared under CC-BY-SA-4.0 or a compatible licence (OpenNGC .reuse/dep5 at tag v20260501: 'Files: * License: CC-BY-SA-4.0')."
+      },
+      "credit": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)",
+      "sha256": "1d8f0914e643ada325a5a94d88d8fefad6a4937a2f77cc34f21483af22b11983",
+      "note": "64 rows, 17,484 bytes, fetched from https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/addendum.csv at 2026-11-09T04:09:06Z; byte-identical to the copy fetched earlier into .cache/m2. Positions are J2000. Repository: https://github.com/mattiaverga/OpenNGC."
+    }
+  ],
+  "files": [
+    {
+      "path": "openngc.json",
+      "sha256": "279def44d423244b805c46382dbc8ea50ac876340847bebed2f676d0045dd620",
+      "sources": [
+        "openngc-v20260501-ngc",
+        "openngc-v20260501-addendum"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_deepsky_openngc.py",
+        "command": "uv run python scripts/bake_deepsky_openngc.py"
+      },
+      "note": "All 14,033 rows of OpenNGC v20260501 (13,969 NGC and IC, 64 addendum) in 16 columns, evidenceKind 'catalog-derived'. Changed from the source: positions converted from sexagesimal to degrees, list cells split at commas, and the columns not listed left out. Offered under CC-BY-SA-4.0, as OpenNGC is."
+    }
+  ],
+  "fileSets": []
+}
