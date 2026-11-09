@@ -30,6 +30,8 @@ SUPPORTED_MEDIA_EXTENSIONS = {".mov", ".mp4", ".m4v", ".png", ".jpg", ".jpeg"}
 ISO6709_PATTERN = re.compile(r"([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)(?:([+-]\d+(?:\.\d+)?))?")
 # ffmpeg's showinfo filter logs each frame it passes with ffmpeg's own timestamp for it
 SHOWINFO_PTS_TIME = re.compile(r"\bpts_time:\s*(-?\d+(?:\.\d+)?)")
+# and the size of that frame as it reached the filter
+SHOWINFO_SIZE = re.compile(r"\bs:(\d+)x(\d+)\b")
 # Under -loglevel level+info ffmpeg tags each line with its level; these are its error lines
 FFMPEG_ERROR_TAG = re.compile(r"\[(?:error|fatal|panic)\] ")
 
@@ -199,6 +201,18 @@ class FrameDecodeError(RuntimeError):
     """ffmpeg could not decode a frame of the file; the message is ffmpeg's own."""
 
 
+def _require_probed_size(log: list[str], width: int, height: int) -> None:
+    """Raise FrameDecodeError unless every frame showinfo logged is `width` x `height`, the probed size."""
+    for line in log:
+        if SHOWINFO_PTS_TIME.search(line) and (size := SHOWINFO_SIZE.search(line)):
+            got_w, got_h = int(size.group(1)), int(size.group(2))
+            if (got_w, got_h) != (width, height):
+                raise FrameDecodeError(
+                    f"ffmpeg decoded a {got_w} x {got_h} frame, not the probed {width} x {height}: "
+                    "no frame is scaled or reshaped to fit"
+                )
+
+
 def _extract_representative_luma(
     file_path: Path, width: int, height: int
 ) -> tuple[np.ndarray, list[dict[str, Any]], float]:
@@ -209,20 +223,27 @@ def _extract_representative_luma(
     Also returns the selected frame's time in the clip, in seconds from the start of its video stream: ffmpeg's own
     timestamp for that frame (showinfo's pts_time after the fps filter), 0 for a still.
 
-    Raises FrameDecodeError when ffmpeg decodes no frame, gives no time for the frames it decodes, or the native
-    decode does not return that same frame at `(height, width)`: nothing stands in for the pixels or for when they
-    were recorded.
+    Raises FrameDecodeError when ffmpeg decodes no frame, gives no time for the frames it decodes, decodes a frame
+    whose size is not the probed `width` x `height`, or the native decode does not return that same frame at
+    `(height, width)`: nothing stands in for the pixels or for when they were recorded, and no frame is scaled or
+    reshaped to fit a size it does not have.
+
+    Both decodes pass `-noautorotate`, so a clip that carries a display rotation is read as it is stored, the
+    geometry its probed width and height describe; ffmpeg would otherwise turn it, and a turned frame holds as many
+    pixels as the stored one.
     """
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
     is_vid = file_path.suffix.lower() in {".mov", ".mp4", ".m4v"}
-    vf = (f"fps=1,scale={scale_w}:{scale_h}" if is_vid else f"scale={scale_w}:{scale_h}") + ",showinfo"
+    # showinfo sits ahead of the scale, so it logs each frame at the size ffmpeg decoded it
+    vf = ("fps=1,showinfo," if is_vid else "showinfo,") + f"scale={scale_w}:{scale_h}"
     cmd = [
         "ffmpeg",
         "-hide_banner",
         # showinfo logs at the info level; the level tags keep ffmpeg's error lines apart from it
         "-loglevel",
         "level+info",
+        "-noautorotate",
         "-i",
         str(file_path),
         "-frames:v",
@@ -250,6 +271,7 @@ def _extract_representative_luma(
             raise FrameDecodeError(
                 f"ffmpeg decoded {n_frames} frame(s) but gave a time for {len(frame_times)}: no time for the frames"
             )
+        _require_probed_size(log, width, height)
         frames = (
             np.frombuffer(proc.stdout[: n_frames * frame_bytes], dtype=np.uint8)
             .reshape((n_frames, scale_h, scale_w))
@@ -268,6 +290,7 @@ def _extract_representative_luma(
                 "-hide_banner",
                 "-loglevel",
                 "level+info",
+                "-noautorotate",
                 "-i",
                 str(file_path),
                 "-frames:v",
@@ -500,7 +523,8 @@ def discover_uploaded_media_report(
             primary, aliases, sha256, pub_root, art_root
         )
 
-        asset_id = f"asset-{primary.stem}"
+        # Named by its content, as ingest names an upload: a file name can carry a place and a local time
+        asset_id = f"src_{sha256[:16]}"
         solution_id = f"sol-{sha256[:10]}"
 
         # The representative frame comes from the original file only: a rendered variant never stands in for it

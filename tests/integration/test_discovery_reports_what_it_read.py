@@ -268,7 +268,7 @@ def _picked_frame_and_time(path: Path, width: int, height: int) -> tuple[np.ndar
     scale_w = min(480, max(64, width))
     scale_h = max(36, int(round(height * (scale_w / float(max(width, 1))))))
     done = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "level+info", "-i", str(path), "-frames:v", "8", "-vf",
+        ["ffmpeg", "-hide_banner", "-loglevel", "level+info", "-noautorotate", "-i", str(path), "-frames:v", "8", "-vf",
          f"fps=1,scale={scale_w}:{scale_h},showinfo", "-f", "rawvideo", "-pix_fmt", "gray", "pipe:1"],
         check=False, capture_output=True,
     )
@@ -280,7 +280,8 @@ def _picked_frame_and_time(path: Path, width: int, height: int) -> tuple[np.ndar
     sky_h = max(8, int(scale_h * 0.22))
     best = int(np.argmax([float(np.max(f[:sky_h]) - np.median(f[:sky_h])) for f in frames]))
     native = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1", "-vf", f"fps=1,select=eq(n\\,{best})",
+        ["ffmpeg", "-v", "error", "-noautorotate", "-i", str(path), "-frames:v", "1",
+         "-vf", f"fps=1,select=eq(n\\,{best})",
          "-f", "rawvideo", "-pix_fmt", "gray16le", "pipe:1"],
         check=False, capture_output=True,
     )
@@ -403,3 +404,61 @@ def test_each_real_clip_solution_names_its_frames_time_and_moment(monkeypatch) -
         solved_image = solved_images.get(item["id"])
         is_native = solved_image is not None and np.array_equal(solved_image, expected_frame)
         assert is_native, "a real clip was not solved on a native-size decode of its picked frame"
+
+
+def _rotated_copy(plain: Path, rotated: Path, degrees: int) -> None:
+    """The same coded frames, stream-copied with a display rotation, as a phone writes a clip held on its side."""
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-display_rotation", str(degrees), "-i", str(plain), "-c", "copy", str(rotated)],
+        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+
+
+def test_a_clip_with_a_display_rotation_is_decoded_at_its_stored_size_and_orientation(tmp_path: Path) -> None:
+    plain, rotated = tmp_path / "plain.mp4", tmp_path / "rotated.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(plain)
+    _rotated_copy(plain, rotated, 90)
+    stream = next(s for s in discovery._probe_media_metadata(rotated)["streams"] if s["codec_type"] == "video")
+    assert (stream["width"], stream["height"]) == (320, 180)
+    assert any(d.get("rotation") == 90 for d in stream.get("side_data_list", [])), "the copy carries no rotation"
+    luma, _, frame_time = discovery._extract_representative_luma(rotated, width=320, height=180)
+    reference, _, reference_time = discovery._extract_representative_luma(plain, width=320, height=180)
+    # The pixels the probed width and height describe: the beacon where it was drawn, every pixel as in the plain copy
+    assert luma.shape == (180, 320)
+    y, x = np.unravel_index(int(np.argmax(luma)), luma.shape)
+    assert 10 <= y < 16 and 150 <= x < 156, (y, x)
+    assert np.array_equal(luma, reference) and frame_time == reference_time == 3.0
+
+
+def test_a_frame_whose_size_is_not_the_probed_size_is_refused(tmp_path: Path, monkeypatch) -> None:
+    clip = tmp_path / "beacon.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(clip)
+    decodes: list[list[str]] = []
+    real_run = subprocess.run
+    monkeypatch.setattr(discovery.subprocess, "run", lambda cmd, *a, **k: decodes.append(cmd) or real_run(cmd, *a, **k))
+    # 180 x 320 holds as many pixels as 320 x 180, so only the size itself can tell the two apart
+    with pytest.raises(discovery.FrameDecodeError, match=r"320 x 180 frame, not the probed 180 x 320"):
+        discovery._extract_representative_luma(clip, width=180, height=320)
+    # Refused at the first decode, before any frame is scaled or reshaped to the probed size
+    assert len(decodes) == 1
+
+
+def test_a_discovered_asset_is_named_by_its_content_hash_and_never_by_its_file_name(
+    tmp_path: Path, monkeypatch
+) -> None:
+    (tmp_path / "uploads").mkdir()
+    stem = "a-file-name-that-could-name-a-place"
+    clip = tmp_path / "uploads" / f"{stem}.mp4"
+    _clip_with_a_beacon_in_its_fourth_second(clip)
+    probe = discovery._probe_media_metadata(clip)
+    probe["format"]["tags"] = dict(SYNTHETIC_TAGS)
+    monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
+    item = _discover(tmp_path)["items"][0]
+    expected = f"src_{item['sha256'][:16]}"
+    assert item["id"] == expected
+    text = json.dumps(item)
+    named = re.findall(r'"sourceAssetId": "([^"]*)"', text)
+    assert named and set(named) == {expected}
+    # Only the fields that name the file itself hold its name
+    holding_the_name = {"filename", "relativePath", "aliases", "variants", "artifactReportPath"}
+    assert stem not in json.dumps({key: value for key, value in item.items() if key not in holding_the_name})
