@@ -180,6 +180,7 @@ def phone_calls(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         return real(image, **kwargs)
 
     monkeypatch.setattr(ingest_jobs, "solve_phone_photo", spy)
+    monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
     return calls
 
 

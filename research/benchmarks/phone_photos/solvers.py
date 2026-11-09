@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import hashlib
 import math
-import signal
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
@@ -29,6 +28,7 @@ from typing import Callable, Protocol
 import numpy as np
 
 from research.benchmarks.phone_photos.geometry import CameraTruth
+from services.science.bounded_worker import BoundedWorker, WorkerFailed, WorkerTimeout
 
 
 class WcsLike(Protocol):
@@ -183,28 +183,30 @@ SOLVERS: dict[str, Callable[[SolverInput], SolverOutcome]] = {
 }
 
 
-class SolveTimeout(Exception):
-    pass
+def _run_named(name: str, inp: SolverInput) -> SolverOutcome:
+    """Run one registered solver; called in the BoundedWorker child, so it is looked up by name there."""
+    return SOLVERS[name](inp)
 
 
-def _alarm(_signum, _frame) -> None:
-    raise SolveTimeout()
+_WORKER: BoundedWorker | None = None
 
 
 def run_solver(name: str, inp: SolverInput, timeout_s: float) -> SolverOutcome:
-    """Run a solver under a wall-clock limit (main thread only); a timeout or a crash is an outcome."""
+    """Run a solver in a child process stopped at a wall-clock limit; a timeout or a crash is an outcome.
+
+    The child stays up across frames and is restarted after a stop. Unlike SIGALRM, the stop holds during a long
+    numpy or scipy call and from any thread.
+    """
+    global _WORKER
+    if _WORKER is None:
+        _WORKER = BoundedWorker()
     start = time.perf_counter()
-    previous = signal.signal(signal.SIGALRM, _alarm)
-    signal.setitimer(signal.ITIMER_REAL, timeout_s)
     try:
-        return SOLVERS[name](inp)
-    except SolveTimeout:
+        return _WORKER.call(_run_named, (name, inp), timeout_s=timeout_s)
+    except WorkerTimeout:
         return SolverOutcome("timeout", False, None, [], 0, 0, None, time.perf_counter() - start, error=f"over {timeout_s:g} s")
-    except Exception as exc:  # the benchmark records crashes rather than stopping
-        return SolverOutcome("error", False, None, [], 0, 0, None, time.perf_counter() - start, error=f"{type(exc).__name__}: {exc}"[:300])
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0.0)
-        signal.signal(signal.SIGALRM, previous)
+    except WorkerFailed as exc:  # the benchmark records crashes rather than stopping
+        return SolverOutcome("error", False, None, [], 0, 0, None, time.perf_counter() - start, error=str(exc)[:300])
 
 
 def field_errors_px(camera_truth: CameraTruth, wcs: WcsLike, sky_mask: np.ndarray | None, grid: int = 24) -> np.ndarray:

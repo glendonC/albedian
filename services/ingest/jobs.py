@@ -19,6 +19,7 @@ import re
 import secrets
 import subprocess
 import tempfile
+import threading
 from typing import Any, Callable, Optional
 
 import numpy as np
@@ -27,14 +28,25 @@ from PIL import Image, UnidentifiedImageError
 from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.science.detector import _to_luma_2d, detect_point_sources, stack_video_frames_for_calibration
+from services.science.bounded_worker import BoundedWorker, WorkerTimeout
+from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
+    PHONE_SOLVER_IDENTITY,
     diagonal_fov_deg_from_35mm_equivalent,
     is_published_camera_label,
     solve_phone_photo,
 )
-from services.science.solver import solve_and_verify_field
+from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 
 MAX_VIDEO_SOLVE_FRAMES = 8
+# The searches run in a child process stopped at this bound; the 12 MP no-star solves measured here took 40 to 70 s
+SOLVE_TIME_LIMIT_SEC = 180.0
+# Exists only so tests can spy on the solvers: True runs the chain in the caller's process, unbounded. Never set in production
+_SOLVE_IN_PROCESS = False
+# The searches share one child process, started on the first solve and kept, so it imports the solvers and loads
+# the star tiles once; a stop at the bound ends it and the next solve starts a fresh one
+_SOLVE_WORKER = BoundedWorker()
+_SOLVE_LOCK = threading.Lock()
 DECODE_TIMEOUT_SEC = 60
 
 
@@ -326,11 +338,113 @@ def _decode_luma_frames(
     return frames, None
 
 
+def _solve_chain(
+    solve_image: np.ndarray,
+    detections: list,
+    width: int,
+    height: int,
+    *,
+    camera_meta: bool,
+    camera_label: str | None,
+    fov_hint: float | None,
+    obs_utc_iso: str | None,
+    lat_deg: float | None,
+    lon_deg: float | None,
+    source_asset_id: str,
+    sha256: str,
+    solution_id: str,
+    on_event: Callable[..., None],
+):
+    """The searches in order (35 mm hinted, generic, plate solver), run in the BoundedWorker child.
+
+    `on_event("solver", name)` comes before each search and `on_event("candidate", done, total)` reports its counts.
+    """
+
+    def on_candidate(done: int, total: int) -> None:
+        on_event("candidate", done, total)
+
+    if camera_meta:
+        on_event("solver", "phone_photo")
+        solution = solve_phone_photo(
+            solve_image,
+            obs_utc_iso=obs_utc_iso,
+            observer_lat=lat_deg,
+            observer_lon=lon_deg,
+            camera_label=camera_label,
+            fov_diagonal_deg=fov_hint,
+            source_asset_id=source_asset_id,
+            source_sha256=sha256,
+            solution_id=solution_id,
+            on_candidate=on_candidate,
+        )
+        if fov_hint is not None and solution.status != "calibrated":
+            # A wrong or cropped 35 mm tag must not block the solve: retry with the generic field search
+            on_event("solver", "phone_photo")
+            solution = solve_phone_photo(
+                solve_image,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                camera_label=camera_label,
+                source_asset_id=source_asset_id,
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+            )
+        if solution.status != "calibrated":
+            on_event("solver", "triangle")
+            plate_sol = solve_and_verify_field(
+                detections,
+                width,
+                height,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                source_asset_id=source_asset_id,
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+            )
+            if plate_sol.status == "calibrated":
+                solution = plate_sol
+    else:
+        on_event("solver", "triangle")
+        solution = solve_and_verify_field(
+            detections,
+            width,
+            height,
+            obs_utc_iso=obs_utc_iso,
+            observer_lat=lat_deg,
+            observer_lon=lon_deg,
+            source_asset_id=source_asset_id,
+            source_sha256=sha256,
+            solution_id=solution_id,
+            on_candidate=on_candidate,
+        )
+        if solution.status != "calibrated" and len(detections) >= 10:
+            on_event("solver", "phone_photo")
+            phone_sol = solve_phone_photo(
+                solve_image,
+                obs_utc_iso=obs_utc_iso,
+                observer_lat=lat_deg,
+                observer_lon=lon_deg,
+                camera_label=camera_label,
+                source_asset_id=source_asset_id,
+                source_sha256=sha256,
+                solution_id=solution_id,
+                on_candidate=on_candidate,
+            )
+            if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
+                solution = phone_sol
+    return solution
+
+
 def run_solve_job(
     store: IngestStore,
     sha256: str,
     *,
     on_transition: Callable[[dict[str, Any]], None] | None = None,
+    solve_time_limit_s: float | None = None,
 ) -> dict[str, Any]:
     """Execute a `SolveJob` for `sha256` with real stage denominators and persist `job.json` and `solution.json`."""
     record = store.read_record(sha256)
@@ -412,6 +526,7 @@ def run_solve_job(
             emit("running", started_dt=started_dt)
 
         candidate_reported = False
+        stopped_at_bound = False
 
         def on_candidate(done: int, total: int) -> None:
             nonlocal candidate_reported
@@ -435,77 +550,59 @@ def run_solve_job(
         lon_deg = location.get("lonDeg")
         solution_id = f"sol_{sha256[:16]}"
 
-        if camera_meta:
-            solution = solve_phone_photo(
-                solve_image,
-                obs_utc_iso=obs_utc_iso,
-                observer_lat=lat_deg,
-                observer_lon=lon_deg,
-                camera_label=camera_label,
-                fov_diagonal_deg=fov_hint,
-                source_asset_id=asset["id"],
-                source_sha256=sha256,
-                solution_id=solution_id,
-                on_candidate=on_candidate,
-            )
-            if fov_hint is not None and solution.status != "calibrated":
-                # A wrong or cropped 35 mm tag must not block the solve: retry with the generic field search
-                solution = solve_phone_photo(
-                    solve_image,
-                    obs_utc_iso=obs_utc_iso,
-                    observer_lat=lat_deg,
-                    observer_lon=lon_deg,
-                    camera_label=camera_label,
-                    source_asset_id=asset["id"],
-                    source_sha256=sha256,
-                    solution_id=solution_id,
-                    on_candidate=on_candidate,
-                )
-            if solution.status != "calibrated":
-                plate_sol = solve_and_verify_field(
-                    detections,
-                    width,
-                    height,
-                    obs_utc_iso=obs_utc_iso,
-                    observer_lat=lat_deg,
-                    observer_lon=lon_deg,
-                    source_asset_id=asset["id"],
-                    source_sha256=sha256,
-                    solution_id=solution_id,
-                    on_candidate=on_candidate,
-                )
-                if plate_sol.status == "calibrated":
-                    solution = plate_sol
+        def on_event(kind: str, *payload: Any) -> None:
+            if kind == "solver":
+                running_solver[0] = payload[0]
+            elif kind == "candidate":
+                on_candidate(*payload)
+
+        running_solver = ["phone_photo" if camera_meta else "triangle"]
+        chain_kwargs = dict(
+            camera_meta=bool(camera_meta),
+            camera_label=camera_label,
+            fov_hint=fov_hint,
+            obs_utc_iso=obs_utc_iso,
+            lat_deg=lat_deg,
+            lon_deg=lon_deg,
+            source_asset_id=asset["id"],
+            sha256=sha256,
+            solution_id=solution_id,
+        )
+        limit_s = SOLVE_TIME_LIMIT_SEC if solve_time_limit_s is None else float(solve_time_limit_s)
+        if _SOLVE_IN_PROCESS:
+            solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
         else:
-            solution = solve_and_verify_field(
-                detections,
-                width,
-                height,
-                obs_utc_iso=obs_utc_iso,
-                observer_lat=lat_deg,
-                observer_lon=lon_deg,
-                source_asset_id=asset["id"],
-                source_sha256=sha256,
-                solution_id=solution_id,
-                on_candidate=on_candidate,
-            )
-            if solution.status != "calibrated" and len(detections) >= 10:
-                phone_sol = solve_phone_photo(
-                    solve_image,
-                    obs_utc_iso=obs_utc_iso,
-                    observer_lat=lat_deg,
-                    observer_lon=lon_deg,
-                    camera_label=camera_label,
-                    source_asset_id=asset["id"],
-                    source_sha256=sha256,
-                    solution_id=solution_id,
-                    on_candidate=on_candidate,
+            try:
+                # One solve at a time in the shared child; the bound counts from the call, once the child is free
+                with _SOLVE_LOCK:
+                    solution = _SOLVE_WORKER.call(
+                        _solve_chain,
+                        (solve_image, detections, width, height),
+                        chain_kwargs,
+                        timeout_s=limit_s,
+                        progress_kwarg="on_event",
+                        on_event=on_event,
+                    )
+            except WorkerTimeout:
+                stopped_at_bound = True
+                identity = PHONE_SOLVER_IDENTITY if running_solver[0] == "phone_photo" else triangle_solver_identity(get_catalog_stars())
+                solution = _build_unresolved_solution(
+                    detections,
+                    solution_id,
+                    asset["id"],
+                    sha256,
+                    0.0,
+                    obs_utc_iso,
+                    lat_deg,
+                    lon_deg,
+                    f"The search stopped at its {limit_s:g} s limit before a verified calibration was found.",
+                    "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky.",
+                    identity,
                 )
-                if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
-                    solution = phone_sol
 
         if not candidate_reported:
-            stage_map["solve"] = {"stage": "solve", "unit": "steps", "done": 1, "total": 1}
+            # A search stopped at its bound before counting a candidate did not finish its step
+            stage_map["solve"] = {"stage": "solve", "unit": "steps", "done": 0 if stopped_at_bound else 1, "total": 1}
             emit("running", started_dt=started_dt)
 
         if solution.quality.held_out_pair_count > 0:
