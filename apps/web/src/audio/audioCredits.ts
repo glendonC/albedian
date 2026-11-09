@@ -14,7 +14,13 @@
  * attribution, served as a text file the way the reverb's response is. `SpatialObservatoryViewport.tsx`
  * renders the disclosure, the credit lines and the Notices link while audio is enabled, and the
  * notices file ships in the build (`dist/assets/THIRD_PARTY_NOTICES-*.txt`).
+ *
+ * The music direction that plays adds its own lines (`musicCreditLines`, music/musicDirection.ts):
+ * VCSL's samples (CC0 1.0) for A and B, and for C Scott Buckley's recording (CC BY 4.0) with VCSL's
+ * glockenspiel. Their notices are the MUSIC section of the same file.
  */
+
+import { APP_MUSIC_DIRECTION, musicCreditLines, type MusicDirectionId } from './music/musicDirection.js';
 
 export interface AudioCredit {
   /** The work credited, as the engine loads it. */
@@ -54,6 +60,17 @@ export const AUDIO_DISCLOSURE =
 
 /** The credit lines, in order, for the credits beside the canvas while audio is on. */
 export const AUDIO_CREDIT_LINES: readonly string[] = AUDIO_CREDITS.map((credit) => credit.line);
+
+/**
+ * The credit lines beside the canvas while audio is on: the engine's works, then those of the music
+ * direction that plays, none when no music plays.
+ */
+export function audioCreditLines(direction: MusicDirectionId | null): readonly string[] {
+  return [...AUDIO_CREDIT_LINES, ...musicCreditLines(direction)];
+}
+
+/** The lines the viewport shows: those of the direction this page plays (`APP_MUSIC_DIRECTION`). */
+export const APP_AUDIO_CREDIT_LINES: readonly string[] = audioCreditLines(APP_MUSIC_DIRECTION);
 
 /** The full notices (licence text, Omnitone's NOTICE, the response's attribution), for a Notices link. */
 export const AUDIO_NOTICES_URL: string = new URL('./assets/THIRD_PARTY_NOTICES.txt', import.meta.url).href;

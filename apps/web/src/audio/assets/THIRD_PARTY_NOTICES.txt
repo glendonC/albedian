@@ -4,7 +4,7 @@ The audio engine ships two third-party works: the Omnitone library, whose
 binaural filters come from the Google/SADIE measurements, and a measured room
 impulse response. Their notices follow, as their licences ask. Each also has a
 one-line credit, in apps/web/src/audio/audioCredits.ts, shown beside the canvas
-while audio is on.
+while audio is on. The sources of the music that plays are in section 5.
 
 
 1. Omnitone 2.0.0
@@ -293,3 +293,32 @@ The text as the omnitone package carries it (its LICENSE file).
    See the License for the specific language governing permissions and
    limitations under the License.
 ----- END LICENSE -----
+
+
+5. Music: samples and a recording
+
+The music direction that plays (apps/web/src/audio/music/musicDirection.ts)
+adds its credit lines to those above. Its samples and its recording are not
+bundled in the build: the app fetches them from a sources folder, listed file
+by file with URL, licence and SHA-256 in apps/web/spike/music/sources.json.
+
+----- BEGIN MUSIC -----
+Directions A and B: Music: Albedian, composed for the app. Their sampled
+instruments, and the glockenspiel of direction C:
+
+Versilian Community Sample Library (VCSL), Versilian Studios LLC, CC0 1.0
+Pipe organ sampled by Simon Dalzell of Ivy Audio, Versilian Community Sample Library (VCSL), CC0 1.0
+From github.com/sgossner/VCSL at commit c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e.
+Licence: CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/
+Albedian plays the samples repitched, enveloped and mixed; the files are unchanged.
+
+Direction C:
+
+'Signal to Noise' by Scott Buckley - released under CC-BY 4.0. www.scottbuckley.com.au
+The 'No Piano Melody' mix, from
+https://www.scottbuckley.com.au/library/wp-content/uploads/2020/04/sb_signaltonoise_nomelody.mp3
+SHA-256 8e20b496b0614053565d4f43c80f469c84abd2aefb3ba01e29dfa813f49b9594.
+Licence: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+Changes: Albedian plays a 14-bar excerpt, faded in and out, and adds the
+stars' glockenspiel notes on top of it.
+----- END MUSIC -----

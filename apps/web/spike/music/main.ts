@@ -10,9 +10,6 @@
  * vertical field at 16:9 and stars to magnitude 6.5, as that host draws them.
  */
 
-import { DEFAULT_IMPULSE_RESPONSE_URL } from '../../src/audio/engine/ConvolutionReverb';
-import { compressorMakeupGainDb } from '../../src/audio/engine/MasterBus';
-import { energyNormalize } from '../../src/audio/dsp';
 import { noteName } from '../../src/audio/music/harmony';
 import { screenStars, type ScreenStar } from '../../src/audio/music/starNotes';
 import { skySourcesInView, skyViewFromPose, type SkyTileData } from '../../src/audio/skySources';
@@ -23,30 +20,25 @@ import type { CatalogStarAstroTile } from '../../src/spatial/catalogStars/tileCo
 import { landingPose } from '../../src/spatial/webgpu/cislunar/landingScene';
 import { barChords, beatGrid, chromaFrames, estimateKey, estimateTempo, onsetEnvelope } from './analysis';
 import {
-  INSTRUMENTS,
   RECORDING,
   ambientBeats,
   dataNotesInChords,
   organAndPulse,
   recordingArrangement,
   type Arrangement,
-  type BusId,
   type DirectionId,
-  type InstrumentDef,
   type RecordingAnalysis,
-} from './directions';
-import { SampleBank, chooseZone, playSample, type SampleZone } from './sampler';
-import { duckUnderKicks, pingPongDelay, playKick, playPad, playRiser, playSub, syntheticHallImpulse } from './synth';
+} from '../../src/audio/music/directions';
+import { loadChapelImpulse, loadRecording, neededZones, scheduleArrangement } from '../../src/audio/music/MusicLayer';
+import { SampleBank } from '../../src/audio/music/sampler';
+import { syntheticHallImpulse } from '../../src/audio/music/synth';
 
 export const SAMPLE_RATE = 48000;
 /** The WebGPU host's landing field (CislunarWebGpuRenderer.ts, LANDING_FOV_DEG) and frame. */
 export const LANDING_FOV_DEG = 26;
 export const LANDING_ASPECT = 16 / 9;
 export const NAKED_EYE_LIMIT = 6.5;
-/** The master's glue compressor: hard knee, so its automatic makeup gain has a closed form and is divided out. */
-const GLUE = { thresholdDb: -18, ratio: 2, attackSec: 0.03, releaseSec: 0.25 } as const;
 
-const dbToGain = (db: number) => 10 ** (db / 20);
 
 // ---------------------------------------------------------------------------
 // The landing's stars
@@ -148,30 +140,6 @@ export async function starFacts(star: ScreenStar): Promise<StarFacts> {
 // Rendering
 // ---------------------------------------------------------------------------
 
-/** Every zone a note may use: the root and layer chooseZone picks, with all of that pair's round robins. */
-function neededZones(arrangement: Arrangement): SampleZone[] {
-  const out = new Map<string, SampleZone>();
-  for (const e of arrangement.events) {
-    if (e.type !== 'sample') continue;
-    const zones = (INSTRUMENTS[e.instrument] as InstrumentDef).zones;
-    const { zone } = chooseZone(zones, e.midi, e.layer, 0);
-    for (const z of zones) if (z.rootMidi === zone.rootMidi && z.layer === zone.layer) out.set(z.file, z);
-  }
-  return [...out.values()];
-}
-
-async function chapelImpulse(ctx: BaseAudioContext): Promise<AudioBuffer> {
-  const response = await fetch(DEFAULT_IMPULSE_RESPONSE_URL);
-  if (!response.ok) throw new Error(`chapel response unavailable (${response.status})`);
-  const decoded = await ctx.decodeAudioData(await response.arrayBuffer()).catch((error: unknown) => {
-    throw new Error(`chapel response ${String(DEFAULT_IMPULSE_RESPONSE_URL)} could not be decoded: ${error instanceof Error ? error.message : String(error)}`);
-  });
-  const channels = energyNormalize([decoded.getChannelData(0), decoded.getChannelData(decoded.numberOfChannels > 1 ? 1 : 0)]);
-  const buffer = ctx.createBuffer(2, decoded.length, decoded.sampleRate);
-  channels.forEach((data, c) => buffer.copyToChannel(data, c));
-  return buffer;
-}
-
 export interface RenderedClip {
   readonly arrangement: Arrangement;
   readonly channels: Float32Array[];
@@ -181,106 +149,17 @@ export interface RenderedClip {
 export async function renderArrangement(arrangement: Arrangement, sourcesBase: string): Promise<RenderedClip> {
   const length = Math.ceil(arrangement.durationSec * SAMPLE_RATE);
   const ctx = new OfflineAudioContext(2, length, SAMPLE_RATE);
-
-  const master = ctx.createGain();
-  const glue = ctx.createDynamicsCompressor();
-  glue.threshold.value = GLUE.thresholdDb;
-  glue.knee.value = 0;
-  glue.ratio.value = GLUE.ratio;
-  glue.attack.value = GLUE.attackSec;
-  glue.release.value = GLUE.releaseSec;
-  const makeup = ctx.createGain();
-  makeup.gain.value = dbToGain(-compressorMakeupGainDb(GLUE.thresholdDb, GLUE.ratio));
-  master.connect(glue);
-  glue.connect(makeup);
-  makeup.connect(ctx.destination);
-
-  const convolver = ctx.createConvolver();
-  convolver.normalize = false;
-  convolver.buffer = arrangement.room === 'chapel' ? await chapelImpulse(ctx) : syntheticHallImpulse(ctx);
-  const roomReturn = ctx.createGain();
-  roomReturn.gain.value = dbToGain(arrangement.roomReturnDb);
-  convolver.connect(roomReturn);
-  roomReturn.connect(master);
-
-  const delay = arrangement.delay ? pingPongDelay(ctx, arrangement.delay) : null;
-  delay?.output.connect(master);
-
-  const kickTimes = arrangement.events.flatMap((e) => (e.type === 'kick' ? [e.timeSec] : []));
-  const buses = new Map<BusId, AudioNode>();
-  for (const bus of arrangement.buses) {
-    const input = ctx.createGain();
-    input.gain.value = dbToGain(bus.gainDb);
-    const duck = ctx.createGain();
-    input.connect(duck);
-    duck.connect(master);
-    if (bus.duckUnderKick) duckUnderKicks(duck.gain, kickTimes, bus.duckUnderKick.depthDb, bus.duckUnderKick.releaseSec);
-    if (bus.reverbSendDb !== null) {
-      const send = ctx.createGain();
-      send.gain.value = dbToGain(bus.reverbSendDb);
-      duck.connect(send);
-      send.connect(convolver);
-    }
-    if (bus.delaySendDb !== null && delay) {
-      const send = ctx.createGain();
-      send.gain.value = dbToGain(bus.delaySendDb);
-      duck.connect(send);
-      send.connect(delay.input);
-    }
-    buses.set(bus.id, input);
-  }
-  const busOf = (id: BusId): AudioNode => {
-    const node = buses.get(id);
-    if (!node) throw new Error(`${arrangement.id} uses bus ${id} but does not define it`);
-    return node;
-  };
+  const room = arrangement.room === 'chapel' ? await loadChapelImpulse(ctx) : syntheticHallImpulse(ctx);
 
   const bank = new SampleBank(ctx, sourcesBase);
   const zones = neededZones(arrangement);
   console.log(`[music] ${arrangement.id}: loading ${zones.length} samples`);
   await bank.load(zones);
   console.log(`[music] ${arrangement.id}: samples loaded`);
+  const recording = arrangement.recording ? await loadRecording(ctx, sourcesBase, arrangement.recording.file) : null;
 
-  if (arrangement.recording) {
-    const rec = arrangement.recording;
-    const response = await fetch(sourcesBase + rec.file.split('/').map(encodeURIComponent).join('/'));
-    if (!response.ok) throw new Error(`recording ${rec.file} unavailable (${response.status})`);
-    const decoded = await ctx.decodeAudioData(await response.arrayBuffer());
-    const source = ctx.createBufferSource();
-    source.buffer = decoded;
-    const fade = ctx.createGain();
-    const g = dbToGain(rec.gainDb);
-    fade.gain.setValueAtTime(0, 0);
-    fade.gain.setValueAtTime(0, Math.min(0.3, rec.fadeInSec * 0.25));
-    fade.gain.linearRampToValueAtTime(g, rec.fadeInSec);
-    fade.gain.setValueAtTime(g, rec.durationSec - rec.fadeOutSec);
-    fade.gain.linearRampToValueAtTime(0, rec.durationSec);
-    source.connect(fade);
-    fade.connect(busOf('recording'));
-    source.start(0, rec.fromSec, rec.durationSec + 0.05);
-  }
-
-  for (const e of arrangement.events) {
-    switch (e.type) {
-      case 'sample': {
-        const def = INSTRUMENTS[e.instrument] as InstrumentDef;
-        playSample(ctx, bank, def, busOf(e.bus), { timeSec: e.timeSec, midi: e.midi, durationSec: e.durationSec, gainDb: e.gainDb, pan: e.pan, layer: e.layer });
-        break;
-      }
-      case 'pad':
-        playPad(ctx, busOf(e.bus), e);
-        break;
-      case 'sub':
-        playSub(ctx, busOf(e.bus), e);
-        break;
-      case 'kick':
-        playKick(ctx, busOf(e.bus), e.timeSec, e.gainDb);
-        break;
-      case 'riser':
-        playRiser(ctx, busOf(e.bus), e.timeSec, e.durationSec, e.gainDb);
-        break;
-    }
-  }
+  // The same scheduler the app plays with (MusicLayer.ts), from time 0 into the offline destination
+  scheduleArrangement(ctx, ctx.destination, arrangement, bank, 0, room, recording);
 
   console.log(`[music] ${arrangement.id}: ${arrangement.events.length} events scheduled, rendering ${arrangement.durationSec.toFixed(1)} s`);
   const rendered = await ctx.startRendering();

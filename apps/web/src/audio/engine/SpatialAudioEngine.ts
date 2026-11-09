@@ -102,6 +102,7 @@ export class SpatialAudioEngine {
   private reverb: ConvolutionReverb | null = null;
   private pool: VoicePool | null = null;
   private uiBus: GainNode | null = null;
+  private musicBus: GainNode | null = null;
   private bed: SkyglowBed | null = null;
   private bedLoading = false;
   private bedToken = 0;
@@ -137,6 +138,16 @@ export class SpatialAudioEngine {
 
   get started(): boolean {
     return this.ctx !== null;
+  }
+
+  /** The AudioContext, once `start()` has made it in a user gesture; null before. */
+  get context(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** The music's input on the master bus (volume, fades, limiter), once the context exists. */
+  get musicInput(): GainNode | null {
+    return this.musicBus;
   }
 
   /** Creates (first call) or resumes the AudioContext. Call only from a user gesture. */
@@ -322,6 +333,7 @@ export class SpatialAudioEngine {
     this.reverb = null;
     this.pool = null;
     this.uiBus = null;
+    this.musicBus = null;
     this.bed = null;
     this.enabledValue = false;
   }
@@ -333,6 +345,9 @@ export class SpatialAudioEngine {
     const reverb = new ConvolutionReverb(ctx, master.input);
     const uiBus = ctx.createGain();
     uiBus.connect(master.input);
+    const musicBus = ctx.createGain();
+    musicBus.connect(master.input);
+    this.musicBus = musicBus;
     this.master = master;
     if (this.masterVolume !== null) master.setVolume(this.masterVolume);
     this.reverb = reverb;

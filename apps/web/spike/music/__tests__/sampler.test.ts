@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { chooseZone, measureTuningCents, playbackRate, vcslRootMidi, type SampleZone } from '../sampler';
+import { chooseZone, measureTuningCents, playbackRate, vcslRootMidi, type SampleZone } from '../../../src/audio/music/sampler';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;

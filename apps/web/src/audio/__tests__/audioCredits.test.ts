@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { AUDIO_CREDITS, AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audioCredits';
+import { describe, expect, it, vi } from 'vitest';
+import { APP_AUDIO_CREDIT_LINES, AUDIO_CREDITS, AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL, audioCreditLines } from '../audioCredits';
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../engine/ConvolutionReverb';
+import { RECORDING } from '../music/directions';
+import { APP_MUSIC_DIRECTION, MUSIC_DIRECTIONS, musicCreditLines } from '../music/musicDirection';
+import { observatoryAudio } from '../ObservatoryAudioEngine';
 
 const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`, import.meta.url));
 const read = (rel: string) => fs.readFileSync(repoFile(rel), 'utf8');
@@ -110,5 +113,55 @@ describe('audio credits and notices', () => {
       .split('\n')
       .map((line) => line.trim());
     expect(lines).toContain(`<p class="lede">${page}</p>`);
+  });
+});
+
+describe('the credits and notices of the music that plays', () => {
+  const sources = JSON.parse(read('apps/web/spike/music/sources.json')) as {
+    vcslCommit: string;
+    files: { path: string; sha256: string; licencePage: string; credit: string }[];
+  };
+
+  it('shows the engine credits alone without music, and adds the playing direction credits after them', () => {
+    expect(audioCreditLines(null)).toEqual(AUDIO_CREDIT_LINES);
+    for (const id of MUSIC_DIRECTIONS) {
+      expect(audioCreditLines(id)).toEqual([...AUDIO_CREDIT_LINES, ...musicCreditLines(id)]);
+      expect(musicCreditLines(id).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('shows the credits of the direction the app engine plays', () => {
+    expect(observatoryAudio.getMusicDirection()).toBe(APP_MUSIC_DIRECTION);
+    expect(APP_AUDIO_CREDIT_LINES).toEqual(audioCreditLines(APP_MUSIC_DIRECTION));
+  });
+
+  it('in development, plays and credits the direction the address names', async () => {
+    vi.resetModules();
+    vi.stubGlobal('window', { location: { search: '?music=recording' } });
+    try {
+      const credits = await import('../audioCredits');
+      const engine = await import('../ObservatoryAudioEngine');
+      expect(engine.observatoryAudio.getMusicDirection()).toBe('recording');
+      expect(credits.APP_AUDIO_CREDIT_LINES).toEqual([...AUDIO_CREDIT_LINES, ...musicCreditLines('recording')]);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
+  });
+
+  it('carries a notice for every source a direction credits, with its licence and where it came from', () => {
+    const music = section('MUSIC');
+    for (const id of MUSIC_DIRECTIONS) {
+      for (const line of musicCreditLines(id)) if (line !== 'Music: Albedian') expect(music, `${id}: ${line}`).toContain(line);
+    }
+    expect(music).toContain(`github.com/sgossner/VCSL at commit ${sources.vcslCommit}`);
+    expect(music).toContain('https://creativecommons.org/publicdomain/zero/1.0/');
+    // CC BY 4.0 asks for the creator, the licence, a link and a note of the changes made
+    const recording = sources.files.find((f) => f.path === RECORDING.file)!;
+    expect(music).toContain(RECORDING.credit);
+    expect(music).toContain(recording.sha256);
+    expect(music).toContain(recording.licencePage);
+    expect(music).toMatch(/excerpt[^.]*faded in and out/);
+    expect(music).not.toMatch(/\u2014/);
   });
 });

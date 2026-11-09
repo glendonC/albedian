@@ -5,8 +5,8 @@
  * a ramp, so none starts or stops with a click.
  */
 
-import { energyNormalize, mulberry32, whiteNoise } from '../../src/audio/dsp';
-import { midiToHz } from '../../src/audio/music/harmony';
+import { energyNormalize, mulberry32, whiteNoise } from '../dsp';
+import { midiToHz } from './harmony';
 
 const dbToGain = (db: number) => 10 ** (db / 20);
 

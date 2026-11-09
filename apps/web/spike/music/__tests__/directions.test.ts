@@ -15,7 +15,7 @@ import {
   type Arrangement,
   type InstrumentDef,
   type RecordingAnalysis,
-} from '../directions';
+} from '../../../src/audio/music/directions';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;

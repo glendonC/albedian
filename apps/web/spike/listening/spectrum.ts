@@ -5,6 +5,10 @@
  * arrays, with no Web Audio, so they run in the page and in tests alike.
  */
 
+import { fft } from '../../src/audio/dsp';
+
+export { fft };
+
 /** A one-sided power spectrum, the channels' power summed bin by bin. */
 export interface PowerSpectrum {
   /** Bin frequencies from 0 to Nyquist, in hertz. */
@@ -36,57 +40,6 @@ export const DEFAULT_SEGMENT_LENGTH = 4096;
 export const AUDIBLE_BAND = { minHz: 20, maxHz: 20000 } as const;
 
 type Samples = ArrayLike<number>;
-
-const twiddleCache = new Map<number, { cos: Float64Array; sin: Float64Array }>();
-
-function twiddles(n: number): { cos: Float64Array; sin: Float64Array } {
-  let t = twiddleCache.get(n);
-  if (!t) {
-    const cos = new Float64Array(n / 2);
-    const sin = new Float64Array(n / 2);
-    for (let k = 0; k < n / 2; k++) {
-      cos[k] = Math.cos((2 * Math.PI * k) / n);
-      sin[k] = -Math.sin((2 * Math.PI * k) / n);
-    }
-    t = { cos, sin };
-    twiddleCache.set(n, t);
-  }
-  return t;
-}
-
-/** In-place iterative radix-2 FFT (forward, unscaled) of a complex sequence of power-of-two length. */
-export function fft(re: Float64Array, im: Float64Array): void {
-  const n = re.length;
-  if (n !== im.length || n < 2 || (n & (n - 1)) !== 0) throw new Error(`FFT length must be a power of two, got ${n}`);
-  for (let i = 1, j = 0; i < n; i++) {
-    let bit = n >> 1;
-    for (; j & bit; bit >>= 1) j ^= bit;
-    j ^= bit;
-    if (i < j) {
-      [re[i], re[j]] = [re[j]!, re[i]!];
-      [im[i], im[j]] = [im[j]!, im[i]!];
-    }
-  }
-  const { cos, sin } = twiddles(n);
-  for (let size = 2; size <= n; size <<= 1) {
-    const half = size >> 1;
-    const step = n / size;
-    for (let start = 0; start < n; start += size) {
-      for (let k = 0; k < half; k++) {
-        const wr = cos[k * step]!;
-        const wi = sin[k * step]!;
-        const a = start + k;
-        const b = a + half;
-        const tr = re[b]! * wr - im[b]! * wi;
-        const ti = re[b]! * wi + im[b]! * wr;
-        re[b] = re[a]! - tr;
-        im[b] = im[a]! - ti;
-        re[a] = re[a]! + tr;
-        im[a] = im[a]! + ti;
-      }
-    }
-  }
-}
 
 /**
  * Welch's averaged periodogram: periodic Hann segments overlapping by half, each scaled to a

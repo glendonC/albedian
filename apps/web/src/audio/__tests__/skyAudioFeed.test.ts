@@ -9,6 +9,8 @@ import { ObservatoryAudioEngine } from '../ObservatoryAudioEngine';
 import { SkyAudioFeed, type SkyAudioTarget } from '../SkyAudioFeed';
 import { skySourceId, type SkyCameraPose } from '../skySources';
 import type { AudioSourceInput, Quat, Vec3 } from '../voicePlanning';
+import { organAndPulse } from '../music/directions';
+import type { ScreenStar } from '../music/starNotes';
 
 const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`, import.meta.url));
 const RELEASE = 'apps/web/public/catalog/stars/gaia-dr3';
@@ -115,6 +117,44 @@ describe('SkyAudioFeed with the star voices off (the app singleton configuration
   it('is how the app singleton is built', async () => {
     const { skyAudio } = await import('../SkyAudioFeed');
     expect(skyAudio.voicesEnabled).toBe(false);
+  });
+
+  it('with a music target, hands the music the stars on screen with their tile values, and still plans no voice', async () => {
+    const { fetchImpl } = releaseFetch();
+    const { target, sourceLists } = recordingTarget();
+    const musicStars: ScreenStar[][] = [];
+    const clock = { t: 0 };
+    const feed = new SkyAudioFeed(target, {
+      fetch: fetchImpl,
+      baseUrl: BASE_URL,
+      now: () => clock.t,
+      voices: false,
+      music: { setMusicStars: (stars) => musicStars.push([...stars]) },
+    });
+    await settle(feed, CASSIOPEIA, clock);
+    expect(sourceLists).toEqual([]);
+
+    // Segin carries its Gaia DR3 values from the astro tile; Caph has none and is handed over without them
+    const stars = musicStars.at(-1)!;
+    const segin = stars.find((s) => s.id === idOf('Segin'))!;
+    expect(segin).toMatchObject({ teffK: 14806 });
+    expect(segin.luminositySolar).not.toBeNull();
+    expect(Math.abs(segin.screenX)).toBeLessThanOrEqual(1);
+    expect(Math.abs(segin.screenY)).toBeLessThanOrEqual(1);
+    expect(stars.find((s) => s.id === idOf('Caph'))).toMatchObject({ teffK: null, luminositySolar: null });
+
+    // Direction A over this sky: Segin and Achird play the data part, Caph plays nothing
+    const complete = stars.filter((s) => s.teffK != null && s.luminositySolar != null && s.distancePc != null);
+    const played = new Set(organAndPulse(complete).events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
+    expect(played.has(idOf('Segin'))).toBe(true);
+    expect(played.has(idOf('Achird'))).toBe(true);
+    expect(played.has(idOf('Caph'))).toBe(false);
+  });
+
+  it('is built with the music as its music target only when a direction plays', async () => {
+    const { skyAudio } = await import('../SkyAudioFeed');
+    const { observatoryAudio } = await import('../ObservatoryAudioEngine');
+    expect(skyAudio.musicEnabled).toBe(observatoryAudio.getMusicDirection() !== null);
   });
 });
 

@@ -8,8 +8,8 @@
  * Pure: main.ts renders an arrangement with Web Audio.
  */
 
-import { parseChord, pitchClassOf, pitchSet, scalePitchClasses, type PitchSet } from '../../src/audio/music/harmony';
-import { DEFAULT_STAR_NOTE_MAPPING, starSweep, type ScreenStar, type StarNote, type StarNoteMapping } from '../../src/audio/music/starNotes';
+import { parseChord, pitchClassOf, pitchSet, scalePitchClasses, type PitchSet } from './harmony';
+import { DEFAULT_STAR_NOTE_MAPPING, starSweep, type ScreenStar, type StarNote, type StarNoteMapping } from './starNotes';
 import { vcslRootMidi, type SampleZone } from './sampler';
 
 export type DirectionId = 'organ-pulse' | 'ambient-beats' | 'recording';

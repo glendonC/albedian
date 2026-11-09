@@ -20,7 +20,7 @@ import {
   observatoryAudio,
 } from '../audio/ObservatoryAudioEngine.js';
 import { skyAudio } from '../audio/SkyAudioFeed.js';
-import { AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
+import { APP_AUDIO_CREDIT_LINES, AUDIO_DISCLOSURE, AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
 import {
   CoalescingBar,
 } from './CoalescingBar.js';
@@ -626,7 +626,7 @@ export const SpatialObservatoryViewport: React.FC<
             <div className="alb-audio-notes">
               <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{AUDIO_DISCLOSURE}</p>
               <ul className="alb-audio-credits" aria-label="Audio credits">
-                {AUDIO_CREDIT_LINES.map((line) => (
+                {APP_AUDIO_CREDIT_LINES.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>

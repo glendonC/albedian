@@ -6,8 +6,9 @@ the landing are exercised and measured in headless Chrome on macOS (`[tested]`).
 architecture is music first (section 13): a composed, adaptive musical score in which the catalog
 stars on screen play the data layer (`apps/web/src/audio/music/`). The continuous Planck-voice sky
 feed (`SkyAudioFeed`, section 8) remains implemented and tested, with the application's `skyAudio`
-singleton configured with continuous star voices disabled (`voices: false`) so enabling audio plays
-only the UI detent while the musical score direction is selected.
+singleton configured with continuous star voices disabled (`voices: false`). When a music direction
+is chosen, enabling audio plays it live and the feed hands it the stars on screen (section 13.7);
+with none chosen, enabling audio plays only the UI detent.
 
 Code: [`apps/web/src/audio/`](../../apps/web/src/audio/) (including [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/)).
 Harnesses: [`apps/web/spike/music/`](../../apps/web/spike/music/) (music directions, section 13) and
@@ -324,10 +325,13 @@ audio plays only the detent.
 The application's `skyAudio` singleton is constructed with continuous star voices disabled
 (`voices: false`, `[tested]`). Under the music-first architecture (section 13), the catalog stars on
 screen are voiced as discrete musical notes inside a composed arrangement rather than as continuous
-sustained Planck-spectrum drones. With `voices: false`, `skyAudio` updates listener orientation
-with the camera, loads no star tiles and schedules no continuous star voices, so enabling audio in
-the header plays only the UI detent. A `SkyAudioFeed` constructed with `voices: true` performs the
-continuous star-voice pipeline described below.
+sustained Planck-spectrum drones. With `voices: false`, `skyAudio` schedules no continuous star
+voices. When a music direction plays, it is built with that music as its `music` target: it loads
+the tiles in view and hands the stars on screen, with their screen positions and tile values, to
+`setMusicStars` (`[tested]` on the committed release, Segin's `14806 K` included), never to
+`setSources`. With no direction chosen it has no music target, updates listener orientation with
+the camera and loads no star tiles, so enabling audio plays only the UI detent. A `SkyAudioFeed`
+constructed with `voices: true` performs the continuous star-voice pipeline described below.
 
 - **One frame, ICRS.** The pose carries two world quaternions: the camera's, and the catalog star
   sphere's (ICRS axes into world axes). The listener orientation is the camera's turn in ICRS,
@@ -692,9 +696,11 @@ proposed for subsequent units (`[proposed]`).
 ## 13. Music over the landing
 
 Status: **Locally implemented and tested capability** (`[tested]`). Pure harmony and star-note
-mappings live in [`apps/web/src/audio/music/`](../../apps/web/src/audio/music/); the three candidate
-arrangements, sample engine, audio analysis, click detector and headless Chrome render pipeline live
-in [`apps/web/spike/music/`](../../apps/web/spike/music/).
+mappings, the three candidate arrangements (`directions.ts`), the sample engine (`sampler.ts`,
+`synth.ts`) and the one scheduler both the app and the demo page use (`MusicLayer.ts`) live in
+[`apps/web/src/audio/music/`](../../apps/web/src/audio/music/); the audio analysis, click detector,
+headless Chrome render pipeline and the development sources server live in
+[`apps/web/spike/music/`](../../apps/web/spike/music/).
 
 ### 13.1 Design principles
 
@@ -739,7 +745,7 @@ stars lie on screen and `171` carry complete Gaia DR3 temperature, luminosity an
 (`[tested]`). In a D minor bar over `D4` to `D6` (`MIDI 62..86`), the eight loudest complete stars
 sweep left to right as `A4, D4, F4, F4, A4, A5, F4, A4` (`starNotes.test.ts`, `[tested]`).
 
-### 13.3 The three musical directions (`apps/web/spike/music/`)
+### 13.3 The three musical directions (`apps/web/src/audio/music/directions.ts`)
 
 All three directions are rendered over the same landing sky at `48 kHz` stereo on an
 `OfflineAudioContext` in headless Chrome (`main.ts` and `render.mjs`, `[tested]`):
@@ -876,3 +882,35 @@ pnpm --filter @albedian/web exec vite --port 5188 --strictPort &
 node apps/web/spike/music/render.mjs --url http://localhost:5188 --out .cache/music
 ```
 
+### 13.7 In the app: one setting picks the direction
+
+Status: **Locally implemented and tested capability** (`[tested]` in Vitest; played in the
+development app in Chrome on macOS, `[tested]`). No direction is chosen yet, so a production build
+plays no music.
+
+- **The setting.** `CHOSEN_MUSIC_DIRECTION` in
+  [`apps/web/src/audio/music/musicDirection.ts`](../../apps/web/src/audio/music/musicDirection.ts) is
+  the owner's pick (`organ-pulse`, `ambient-beats` or `recording`), null until they choose. In
+  development, `?music=organ-pulse`, `?music=ambient-beats` or `?music=recording` plays that
+  direction in the real app, and `?music=off` plays none; a production build ignores the address.
+- **Playing.** `ObservatoryAudioEngine.enable()`, inside the user's gesture, starts the
+  `MusicLayer` on the engine's context into a music input on the master bus, so the header slider,
+  the fades and the limiter apply to it; `disable()` fades it out over `0.25 s` and stops it. Each
+  pass of the piece is built from the stars with a temperature, a luminosity and a distance on
+  screen when it starts, and the next pass from the stars on screen then. The first pass waits up
+  to `8 s` for stars (on a cold start the astro tiles arrive several seconds after Audio on),
+  loading its composed parts' samples meanwhile (`[tested]`; in the development app direction A's
+  first pass played `16` stars over the landing, `[tested]`).
+- **Sources.** The samples and C's recording are fetched from `VITE_ALBEDIAN_MUSIC_SOURCES`, or in
+  development from `http://127.0.0.1:5199/`, which
+  [`apps/web/spike/music/serveSources.mjs`](../../apps/web/spike/music/serveSources.mjs) serves
+  from `.cache/music/sources/`. Direction C plays inside the beats and chords `analysis.ts` measured
+  from the recording when the demo page was rendered, served as `/recording-analysis.json` from
+  `.cache/music/facts.json`. Where a file is missing the music stays silent and
+  `getMusicStatus()` names it; nothing stands in for it (`[tested]`). How the samples reach a
+  production build (a trimmed, encoded set in the build, or hosting) is `[open]`.
+- **Credits.** The viewport shows `APP_AUDIO_CREDIT_LINES` from `audioCredits.ts`, read from the
+  same `APP_MUSIC_DIRECTION` the engine plays: `audioCreditLines(direction)` is the engine's three
+  lines and then the playing direction's: `Music: Albedian` with the VCSL and Ivy Audio credits for A and B,
+  Scott Buckley's credit with VCSL's for C (`[tested]` against the instruments each arrangement
+  plays). Section 5 of `THIRD_PARTY_NOTICES.txt` carries their licences and sources.

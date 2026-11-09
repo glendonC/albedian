@@ -9,8 +9,8 @@
  * need a Web Audio context.
  */
 
-import { fft } from '../listening/spectrum';
-import { midiToHz, parseNote } from '../../src/audio/music/harmony';
+import { fft } from '../dsp';
+import { midiToHz, parseNote } from './harmony';
 
 /** One recorded note: its file under the sources folder and the pitch it sounds at. */
 export interface SampleZone {
@@ -132,7 +132,8 @@ export class SampleBank {
   constructor(
     private readonly ctx: BaseAudioContext,
     /** URL prefix of the sources folder, ending in '/'. */
-    private readonly baseUrl: string
+    private readonly baseUrl: string,
+    private readonly fetchImpl: typeof fetch = fetch
   ) {}
 
   async load(zones: readonly SampleZone[]): Promise<void> {
@@ -140,7 +141,9 @@ export class SampleBank {
       zones.map(async (z) => {
         if (this.buffers.has(z.file)) return;
         const url = this.baseUrl + z.file.split('/').map(encodeURIComponent).join('/');
-        const response = await fetch(url);
+        // Called as a plain function: a browser's fetch refuses to run as another object's method
+        const fetchImpl = this.fetchImpl;
+        const response = await fetchImpl(url);
         if (!response.ok) throw new Error(`sample ${z.file} unavailable (${response.status})`);
         const buffer = await this.ctx.decodeAudioData(await response.arrayBuffer()).catch((error: unknown) => {
           throw new Error(`sample ${z.file} could not be decoded: ${error instanceof Error ? error.message : String(error)}`);

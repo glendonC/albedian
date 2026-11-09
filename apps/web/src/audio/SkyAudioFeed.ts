@@ -13,6 +13,7 @@ import { STAR_CATALOG_BASE_URL } from '../spatial/catalogStars/CatalogStarField.
 import { CatalogStarTileLoader } from '../spatial/catalogStars/CatalogStarTileLoader.js';
 import type { CatalogStarAstroTile } from '../spatial/catalogStars/tileCodec.js';
 import { observatoryAudio } from './ObservatoryAudioEngine.js';
+import { screenStars, type ScreenStar } from './music/starNotes.js';
 import {
   angleBetweenUnit,
   skySourcesInView,
@@ -27,6 +28,11 @@ import type { AudioSourceInput, Quat, Vec3 } from './voicePlanning.js';
 export interface SkyAudioTarget {
   setSources(sources: readonly AudioSourceInput[]): void;
   setListenerOrientation(orientation: Quat): void;
+}
+
+/** Where the stars on screen go for the music's data part (`observatoryAudio` provides it). */
+export interface SkyMusicTarget {
+  setMusicStars(stars: readonly ScreenStar[]): void;
 }
 
 export type SkyCatalogStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
@@ -58,10 +64,12 @@ export interface SkyAudioFeedOptions {
   /** Resident star bound of the feed's own loader. */
   readonly maxResidentStars?: number;
   /**
-   * False: the feed only turns the listener with the camera, and loads and passes no stars, so no
-   * star voice is planned. Default true.
+   * False: the feed passes no stars to `setSources`, so no star voice is planned. Without a music
+   * target it then only turns the listener with the camera and loads nothing. Default true.
    */
   readonly voices?: boolean;
+  /** Receives the stars on screen, with their screen positions, for the music's data part. */
+  readonly music?: SkyMusicTarget;
 }
 
 /** As the star fields: plan tiles again when the view moves 0.01 rad, at most every 120 ms. */
@@ -135,6 +143,11 @@ export class SkyAudioFeed {
     return this.options.voices !== false;
   }
 
+  /** Whether the feed hands the stars on screen to a music target. */
+  get musicEnabled(): boolean {
+    return this.options.music !== undefined;
+  }
+
   /**
    * Call once per animation frame while audio is on. `null` (no renderer, or no pose yet) changes
    * nothing: the engine keeps what it last had.
@@ -147,7 +160,7 @@ export class SkyAudioFeed {
       this.orientation = view.orientationIcrs;
       this.audio.setListenerOrientation(view.orientationIcrs);
     }
-    if (!this.voicesEnabled) return;
+    if (!this.voicesEnabled && !this.musicEnabled) return;
     if (this.catalog === 'idle') this.open();
     const loader = this.loader;
     if (!loader) return;
@@ -266,6 +279,10 @@ export class SkyAudioFeed {
       tilesWithoutAstro: result.tilesWithoutAstro.length,
     };
 
+    // Screen positions move with the camera, so the music gets every update
+    this.options.music?.setMusicStars(screenStars(result.sources, view));
+    if (!this.voicesEnabled) return;
+
     // A star's catalog values never change within a release, so its id stands for its values
     const ids = result.sources.map((source) => source.id);
     const passedKey = `${this.evidenceClass ?? ''}|${ids.join(',')}`;
@@ -312,7 +329,11 @@ export class SkyAudioFeed {
 /**
  * The feed the viewport drives, sounding through the app's audio engine. Its continuous star
  * voices are off (`voices: false`): under the music-first architecture (AUDIO_ENGINE.md sections 8
- * and 13), the stars in view are voiced inside the musical score rather than as continuous
- * sustained drones, so `skyAudio` updates only listener orientation with the camera.
+ * and 13), the stars in view play inside the musical score rather than as continuous sustained
+ * drones. When a music direction plays, the feed hands it the stars on screen; when none does, it
+ * only turns the listener with the camera and loads nothing.
  */
-export const skyAudio = new SkyAudioFeed(observatoryAudio, { voices: false });
+export const skyAudio = new SkyAudioFeed(observatoryAudio, {
+  voices: false,
+  ...(observatoryAudio.getMusicDirection() !== null ? { music: observatoryAudio } : {}),
+});

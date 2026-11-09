@@ -32,11 +32,15 @@ class FakeParam {
   cancelScheduledValues() {
     return this;
   }
+  setValueCurveAtTime(values: ArrayLike<number>) {
+    this.value = values[values.length - 1] ?? 0;
+    return this;
+  }
 }
 
 const PARAM_NAMES = new Set([
   'gain', 'frequency', 'detune', 'Q', 'pan', 'threshold', 'knee', 'ratio', 'attack', 'release',
-  'positionX', 'positionY', 'positionZ', 'playbackRate',
+  'positionX', 'positionY', 'positionZ', 'playbackRate', 'delayTime',
 ]);
 
 class FakeNode {
@@ -110,6 +114,8 @@ class FakeAudioContext {
   resume() { this.state = 'running'; return Promise.resolve(); }
   suspend() { this.state = 'suspended'; return Promise.resolve(); }
   close() { this.state = 'closed'; return Promise.resolve(); }
+  createDelay() { return this.make('delay'); }
+  decodeAudioData() { return Promise.resolve(this.createBuffer(2, 8000, 8000)); }
 }
 
 function makeEngine() {
@@ -207,6 +213,55 @@ describe('ObservatoryAudioEngine lifecycle', () => {
     const snapshot = engine.getSnapshot();
     expect(snapshot.voices.map((v) => v.id)).toEqual(['a']);
     expect(snapshot.voices[0]!.slot).toBe(0);
+  });
+});
+
+describe('ObservatoryAudioEngine music', () => {
+  const SOURCES = 'http://127.0.0.1:5199/';
+  const flush = async () => {
+    for (let i = 0; i < 20; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+  function musicEngine(musicDirection: 'ambient-beats' | null) {
+    const requests: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      requests.push(String(input));
+      return new Response(new Uint8Array(16));
+    }) as unknown as typeof fetch;
+    const factory = vi.fn(() => new FakeAudioContext() as unknown as AudioContext);
+    const engine = new ObservatoryAudioEngine({
+      contextFactory: factory,
+      impulseResponseUrl: null,
+      bedPreference: 'stereo-diffuse',
+      musicDirection,
+      musicSourcesBase: SOURCES,
+      fetchImpl,
+    });
+    // A made-up complete star, so the direction has a data part to play
+    engine.setMusicStars([{ id: 'test-a', teffK: 5_000, luminositySolar: 1, distancePc: 10, screenX: 0.2, screenY: 0.1 }]);
+    return { engine, factory, requests };
+  }
+
+  it('makes and fetches nothing before Audio on, plays the direction on Audio on, and stops it on Audio off', async () => {
+    const { engine, factory, requests } = musicEngine('ambient-beats');
+    expect(engine.getMusicDirection()).toBe('ambient-beats');
+    expect(factory).not.toHaveBeenCalled();
+    expect(requests).toEqual([]);
+    engine.enable();
+    await flush();
+    expect(factory).toHaveBeenCalledTimes(1);
+    expect(requests.some((url) => url.startsWith(`${SOURCES}vcsl/`))).toBe(true);
+    expect(engine.getMusicStatus()).toMatchObject({ direction: 'ambient-beats', state: 'playing', reason: null, passes: 1, starsPlayed: 1 });
+    engine.disable();
+    expect(engine.getMusicStatus()).toMatchObject({ state: 'off', passes: 1 });
+  });
+
+  it('plays no music and fetches no sample when no direction is chosen', async () => {
+    const { engine, requests } = musicEngine(null);
+    engine.enable();
+    await flush();
+    expect(engine.getMusicDirection()).toBeNull();
+    expect(requests.filter((url) => url.startsWith(SOURCES))).toEqual([]);
+    expect(engine.getMusicStatus()).toMatchObject({ state: 'off', reason: 'no music direction chosen' });
   });
 });
 

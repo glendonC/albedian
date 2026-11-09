@@ -18,16 +18,33 @@ import {
   type EngineSnapshot,
   type SpatialAudioEngineOptions,
 } from './engine/SpatialAudioEngine.js';
+import { MusicLayer, type MusicStatus } from './music/MusicLayer.js';
+import { APP_MUSIC_DIRECTION, DEV_BUILD, type MusicDirectionId } from './music/musicDirection.js';
+import type { ScreenStar } from './music/starNotes.js';
 
 export type { ScaleAudioRegime } from './mappings.js';
 export type { AudioSourceInput, Quat, Vec3 } from './voicePlanning.js';
 export type { EngineSnapshot } from './engine/SpatialAudioEngine.js';
+export type { MusicStatus } from './music/MusicLayer.js';
+
+export interface ObservatoryAudioOptions extends SpatialAudioEngineOptions {
+  /** The music direction to play on Audio on (`resolveMusicDirection`); none by default. */
+  readonly musicDirection?: MusicDirectionId | null;
+  /** URL prefix the music's samples are fetched from, ending in '/'; none by default. */
+  readonly musicSourcesBase?: string | null;
+}
 
 export class ObservatoryAudioEngine {
   readonly spatial: SpatialAudioEngine;
+  private readonly music: MusicLayer;
 
-  constructor(options: SpatialAudioEngineOptions = {}) {
+  constructor(options: ObservatoryAudioOptions = {}) {
     this.spatial = new SpatialAudioEngine(options);
+    this.music = new MusicLayer({
+      direction: options.musicDirection ?? null,
+      sourcesBase: options.musicSourcesBase ?? null,
+      ...(options.fetchImpl ? { fetch: options.fetchImpl } : {}),
+    });
   }
 
   /** Call from a click or key handler: the first call creates the AudioContext. */
@@ -44,10 +61,28 @@ export class ObservatoryAudioEngine {
   public enable(): void {
     if (!this.spatial.start()) return;
     this.spatial.playDetentClick(1100);
+    const ctx = this.spatial.context;
+    const input = this.spatial.musicInput;
+    if (ctx && input) void this.music.start(ctx, input);
   }
 
   public disable(): void {
+    this.music.stop();
     this.spatial.stop();
+  }
+
+  /** The music direction that plays on Audio on, for its credits; null when none does. */
+  public getMusicDirection(): MusicDirectionId | null {
+    return this.music.direction;
+  }
+
+  public getMusicStatus(): MusicStatus {
+    return this.music.getStatus();
+  }
+
+  /** The catalog stars on screen, for the music's data part (`SkyAudioFeed` sends them). */
+  public setMusicStars(stars: readonly ScreenStar[]): void {
+    this.music.setStars(stars);
   }
 
   /** Selects the distance scale for the DRR and rolloff cues, and gates the skyglow bed. */
@@ -96,4 +131,13 @@ export class ObservatoryAudioEngine {
   }
 }
 
-export const observatoryAudio = new ObservatoryAudioEngine();
+/** Where the dev server's music samples are, when VITE_ALBEDIAN_MUSIC_SOURCES does not say (spike/music/serveSources.mjs). */
+const DEV_MUSIC_SOURCES = 'http://127.0.0.1:5199/';
+
+// Vite replaces import.meta.env at build time; the app's tsconfig carries no vite/client types
+const env = (import.meta as ImportMeta & { readonly env?: { readonly VITE_ALBEDIAN_MUSIC_SOURCES?: string } }).env;
+
+export const observatoryAudio = new ObservatoryAudioEngine({
+  musicDirection: APP_MUSIC_DIRECTION,
+  musicSourcesBase: env?.VITE_ALBEDIAN_MUSIC_SOURCES || (DEV_BUILD ? DEV_MUSIC_SOURCES : null),
+});
