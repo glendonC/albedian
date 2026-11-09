@@ -121,6 +121,22 @@ The API also answers only a `Host` that names this machine: localhost, 127.0.0.1
 
 ---
 
+## Continuous integration
+
+`.github/workflows/gates.yml` runs the six gates on every pull request and every push to `main`, on Node 22 and 24
+and on Python 3.12 and 3.14. The two pytest jobs each run one ffmpeg, so both HEIC paths stay tested:
+
+- Python 3.12 runs Ubuntu 24.04's ffmpeg 6.1.1. Its ffprobe has no `-show_stream_groups`, so a tiled iPhone HEIC
+  photo is refused, and that refusal is what this job tests.
+- Python 3.14 runs a static ffmpeg 8.1.3 from FFmpeg-Builds (`github.com/FFmpeg-Builds/FFmpeg-Builds`), pinned by
+  URL and SHA-256 to the last build of October 2026, which reads the tile grid; this job tests the stored pixels.
+  That build is GPL version 3 or later, because the video export encodes with libx264, which the LGPL build lacks.
+  CI downloads and runs it only; nothing in this repository ships it.
+- Each job fails if its ffprobe is not the one it means to test (`tests/integration/test_ci_ffmpeg.py` checks the
+  workflow says so).
+
+---
+
 ## License
 
 Released under the [MIT License](LICENSE). The catalogs and models used are ESA Gaia DR3, ESA Hipparcos 2007, the Standish and Williams (1992) planetary elements from JPL Solar System Dynamics, Meeus (1998) for the Moon and, for the landing scene's Sun and Moon positions and check values (sub-observer and sub-solar points, pole and phase angles) only, the NASA/JPL Horizons API; their credits and the library licenses are in [`docs/architecture/ARCHITECTURE_OVERVIEW.md`](docs/architecture/ARCHITECTURE_OVERVIEW.md).

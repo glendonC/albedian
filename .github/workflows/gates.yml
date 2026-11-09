@@ -44,14 +44,21 @@ jobs:
       - run: pnpm build
 
   python:
-    name: Python ${{ matrix.python }} (pytest)
+    name: Python ${{ matrix.python }}, ${{ matrix.ffmpeg }} ffmpeg (pytest)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        # 3.12 is the floor in pyproject.toml requires-python; 3.14 is the version the project is developed on
-        python: ["3.12", "3.14"]
+        # 3.12 is the floor in pyproject.toml requires-python; 3.14 is the version the project is developed on.
+        # The HEIC tests take the branch ffprobe allows, so each job runs one ffmpeg: Ubuntu's 6.1.1 has no
+        # -show_stream_groups and tests the refusal of a tiled HEIC; the pinned 8.1 build reads the tile grid and
+        # tests the stored pixels.
+        include:
+          - python: "3.12"
+            ffmpeg: distro
+          - python: "3.14"
+            ffmpeg: pinned
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,9 +68,39 @@ jobs:
           version: "0.12.5"
           python-version: ${{ matrix.python }}
       # EXP-10 synthesizes and probes a clip with ffmpeg and ffprobe, which the runner image does not include
-      - run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      - if: matrix.ffmpeg == 'distro'
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      # FFmpeg-Builds' static build of ffmpeg 8.1.3, from the last build of October 2026 (the project keeps each
+      # month's last build for two years). 152,246,308 bytes; the sha256 is the release's own checksums.sha256 entry.
+      # GPL version 3 or later (--enable-gpl --enable-version3): the exports encode with libx264, which the LGPL build
+      # lacks. CI only runs it; nothing is redistributed. The archive is checked before it is unpacked.
+      - if: matrix.ffmpeg == 'pinned'
+        env:
+          FFMPEG_URL: https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-10-31-12-59/ffmpeg-n8.1.3-27-g8dca1586f4-linux64-gpl-8.1.tar.xz
+          FFMPEG_SHA256: 41e9c565594c390622cf968d82fa4135d9e9a11d06c1515644288cbc844e3380
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/ffmpeg.tar.xz" "$FFMPEG_URL"
+          echo "$FFMPEG_SHA256  $RUNNER_TEMP/ffmpeg.tar.xz" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/ffmpeg"
+          tar -xJf "$RUNNER_TEMP/ffmpeg.tar.xz" -C "$RUNNER_TEMP/ffmpeg" --strip-components=1
+          test -x "$RUNNER_TEMP/ffmpeg/bin/ffmpeg"
+          test -x "$RUNNER_TEMP/ffmpeg/bin/ffprobe"
+          echo "$RUNNER_TEMP/ffmpeg/bin" >> "$GITHUB_PATH"
       # The versions and library builds go in the log, so a test that differs between platforms can be traced to them
       - run: ffmpeg -hide_banner -version && ffprobe -hide_banner -version
+      # Each job fails unless its ffprobe is the one it means to test. ffprobe -h goes to a file first: a grep -q
+      # reading a pipe can end ffprobe early, which pipefail would report as a failure
+      - if: matrix.ffmpeg == 'pinned'
+        run: |
+          ffprobe -hide_banner -h > "$RUNNER_TEMP/ffprobe-help.txt"
+          grep -q -e -show_stream_groups "$RUNNER_TEMP/ffprobe-help.txt"
+      - if: matrix.ffmpeg == 'distro'
+        run: |
+          ffprobe -hide_banner -h > "$RUNNER_TEMP/ffprobe-help.txt"
+          if grep -q -e -show_stream_groups "$RUNNER_TEMP/ffprobe-help.txt"; then
+            echo "This ffprobe reads HEIC tile grids, so the refusal path would go untested"
+            exit 1
+          fi
       - run: uv sync --frozen
       - run: uv run --frozen python scripts/verify_provenance.py
       # data/uploads and .cache are not in git: tests marked owner_media or local_dataset skip with their marker's own
