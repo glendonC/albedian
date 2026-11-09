@@ -15,7 +15,7 @@ export const MusicSettingControl: React.FC<{ readonly store?: MusicSettingStore;
   available = appMusicAvailability,
 }) => {
   const setting = useSyncExternalStore(store.subscribe, store.get, store.get);
-  const canPlay = useSyncExternalStore(available.subscribe, available.get, available.get);
+  const canPlay = useSyncExternalStore(available.subscribe, available.get, available.get) === 'available';
   if (!canPlay) return null;
   return (
     <select

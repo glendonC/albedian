@@ -936,19 +936,28 @@ moments of a visit, a piece plays through, a silence follows, then another piece
   arrive several seconds after Audio on), loading its composed parts' samples meanwhile
   (`[tested]`). The Audio bar shows the stored volume whether audio is on or off.
 - **Sources.** The samples and the recording are fetched from `VITE_ALBEDIAN_MUSIC_SOURCES`, or in
-  development from `http://127.0.0.1:5199/`, which
-  [`apps/web/spike/music/serveSources.mjs`](../../apps/web/spike/music/serveSources.mjs) serves
-  from `.cache/music/sources/` (`node apps/web/spike/music/serveSources.mjs`). The recording piece
+  development from the app's own origin at `/music-sources/`, which Vite proxies (`vite.config.ts`)
+  to [`apps/web/spike/music/serveSources.mjs`](../../apps/web/spike/music/serveSources.mjs) on
+  `127.0.0.1:5199` (`ALBEDIAN_MUSIC_TARGET` overrides); it serves `.cache/music/sources/`
+  (`node apps/web/spike/music/serveSources.mjs`). A production build carries neither address
+  (`[tested]`). The recording piece
   plays inside the beats and chords `analysis.ts` measured from the recording when the demo page was
   rendered, served as `/recording-analysis.json` from `.cache/music/facts.json`. Where a file is
   missing the music stays silent and `getMusicStatus()` names it; nothing stands in for it
-  (`[tested]`). How the samples reach a production build (a trimmed, encoded set in the build, or
+  (`[tested]`). While Audio is on the layer then tries again after `15`, `30` and `60 s` and every
+  `120 s` after, on the context's clock (so not while it is suspended), fetching only what it still
+  lacks; `retryAtSec` in the status says when. When a try succeeds the music plays, and the Music
+  control and the disclosure come back by themselves. There is no try with no sources base or with
+  Audio off (`[tested]`). How the samples reach a production build (a trimmed, encoded set in the build, or
   hosting) is `[open]`.
 - **What the sound is.** Beside the Audio control the viewport shows `useAudioDisclosure()`, the
   sentence for the current Music setting (12.4 (d)): composed music, and in Signal to Noise a
   recorded track, play alongside the star notes. Where no music can play (`appMusicAvailability`
-  false: no sources base, or a file the music needs is missing) it shows the sentence without
-  music, the Music control is not shown, and the feed loads no tile for the music (`[tested]`).
+  is `'not_served'` with no sources base, or `'not_reachable'` when a file the music needs could not
+  be fetched) it shows the sentence without music, adding "The music files are not reachable, so no
+  music plays." in the second case; the Music control is not shown, and the feed loads no tile for
+  the music (`[tested]`). A try asks for one file first, so with the sources down it makes one
+  failed request, not one per file (`[tested]`).
 - **Credits.** The viewport shows `useAudioCreditLines()`: the engine's three lines, then the lines
   of each piece heard this visit, first heard first, each line once (`audioCreditLines` and
   `appHeardMusic` in `audioCredits.ts`). A piece's lines stay once it has played, so a CC BY credit
@@ -977,7 +986,9 @@ behave is `[open]` until the checklist below is run on an iPhone and an Android 
   - a context the browser stops while the page is visible (iOS's `interrupted` when the phone locks
     or a call comes in) is resumed, and where the browser refuses a resume outside a gesture, the
     next tap, click or key (`pointerdown`, `touchend`, `keydown`) resumes it; those listeners go
-    once the context runs;
+    once the context runs. A tap on the Audio control itself (marked `data-audio-control="toggle"`)
+    is not taken as that gesture, since the control resumes or stops the audio itself: turning Audio
+    off while a tap is awaited then plays no tail (`[tested]`);
   - audio the user turned off is never resumed, through any of the above.
 - **The music on a suspended context.** While the context is not running its clock stands still:
   the soundtrack's director wakes no timer and no pass is scheduled; when it runs again the music
@@ -988,14 +999,12 @@ behave is `[open]` until the checklist below is run on an iPhone and an Android 
   audio (`[verified]` in the W3C Audio Session draft). Neither the specification nor WebKit's notes
   say whether iOS then silences the page with the ring/silent switch, so that is on the checklist
   (`[open]`).
-- **Music in the field run** (`[inference]` from `scripts/field.mjs` and 13.7; not run). Plain
-  `pnpm field` runs the dev server on the laptop's localhost: with `serveSources.mjs` running, the
-  music plays there, on the laptop only. `pnpm field --lan` builds the app without
-  `VITE_ALBEDIAN_MUSIC_SOURCES` and serves that build with `vite preview`, so no music plays on a
-  `--lan` run, on the phone or on the laptop; the disclosure says so and the Music control is not
-  shown. The platform lane's unit 11 is to serve the music in the field run, through the web app's
-  own origin at `/music-sources/`, so that both the laptop and the phone play it once it lands
-  (`[proposed]`).
+- **Music in the field run** (`[inference]` from `scripts/field.mjs` and `vite.config.ts`; not run).
+  `pnpm field` starts `serveSources.mjs` on `127.0.0.1` and gives the app
+  `VITE_ALBEDIAN_MUSIC_SOURCES=/music-sources/`, both for the dev server and for the `--lan` build
+  served with `vite preview`; the web app's `/music-sources/` proxy hands the samples to the laptop
+  and to a phone on the network from the app's own origin. Where the samples cannot be reached the
+  disclosure says so and the Music control is not shown.
 
 **Real-phone checklist** (`[open]` until run; record the phone, the OS and browser versions, and
 what was heard):

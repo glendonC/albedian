@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AudioLifecycle, type LifecycleContext, type LifecycleHost } from '../engine/audioLifecycle';
+import { AUDIO_CONTROL_SELECTOR, AudioLifecycle, type LifecycleContext, type LifecycleHost } from '../engine/audioLifecycle';
 import { ObservatoryAudioEngine } from '../ObservatoryAudioEngine';
 
-type Listener = (event?: unknown) => void;
+type Listener = (event?: { readonly target?: unknown }) => void;
 
 const captureOf = (options?: boolean | { capture?: boolean }) => (typeof options === 'boolean' ? options : (options?.capture ?? false));
 
@@ -20,8 +20,8 @@ class Target {
   removeEventListener(type: string, fn: Listener, options?: boolean | { capture?: boolean }) {
     this.listeners.get(`${type}|${captureOf(options)}`)?.delete(fn);
   }
-  fire(type: string) {
-    for (const capture of [true, false]) for (const fn of [...(this.listeners.get(`${type}|${capture}`) ?? [])]) fn();
+  fire(type: string, event?: { readonly target?: unknown }) {
+    for (const capture of [true, false]) for (const fn of [...(this.listeners.get(`${type}|${capture}`) ?? [])]) fn(event);
   }
   count(type: string) {
     return (this.listeners.get(`${type}|true`)?.size ?? 0) + (this.listeners.get(`${type}|false`)?.size ?? 0);
@@ -75,9 +75,9 @@ class Host extends Target implements LifecycleHost {
     this.visibilityState = 'visible';
     this.fire('visibilitychange');
   }
-  gesture(ctx: PhoneContext, type = 'touchend') {
+  gesture(ctx: PhoneContext, type = 'touchend', target: unknown = null) {
     ctx.inGesture = true;
-    this.fire(type);
+    this.fire(type, { target });
     ctx.inGesture = false;
   }
 }
@@ -200,6 +200,36 @@ describe('AudioLifecycle on phones', () => {
     expect(ctx.state).toBe('interrupted');
     expect(lifecycle.getStatus().waitingForGesture).toBe(false);
     for (const type of ['pointerdown', 'keydown', 'touchend']) expect(host.count(type)).toBe(0);
+  });
+
+  it('ignores a tap on the Audio control itself, so turning Audio off while a tap is awaited plays no tail', async () => {
+    const { ctx, host, lifecycle, setEnabled } = setup({ needsGesture: true });
+    ctx.setState('interrupted');
+    await flush();
+    expect(lifecycle.getStatus().waitingForGesture).toBe(true);
+    // A tap whose target sits inside the Audio control, as the page marks it
+    const audioButton = { closest: (selector: string) => (selector === AUDIO_CONTROL_SELECTOR ? {} : null) };
+    const elsewhere = { closest: () => null };
+    expect(AUDIO_CONTROL_SELECTOR).toBe('[data-audio-control="toggle"]');
+    const resumes = ctx.resumes;
+    host.gesture(ctx, 'pointerdown', audioButton);
+    await flush();
+    expect(ctx.resumes).toBe(resumes);
+    expect(ctx.state).toBe('interrupted');
+    // Its click then turns Audio off: no later tap resumes it
+    setEnabled(false);
+    host.gesture(ctx, 'pointerdown', elsewhere);
+    await flush();
+    expect(ctx.resumes).toBe(resumes);
+    expect(lifecycle.getStatus().waitingForGesture).toBe(false);
+
+    // With Audio on, a tap anywhere else still resumes
+    const other = setup({ needsGesture: true });
+    other.ctx.setState('interrupted');
+    await flush();
+    other.host.gesture(other.ctx, 'keydown', elsewhere);
+    await flush();
+    expect(other.ctx.state).toBe('running');
   });
 
   it('stops waiting for a tap on detach, so a later tap resumes nothing', async () => {

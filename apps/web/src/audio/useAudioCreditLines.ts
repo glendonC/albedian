@@ -14,6 +14,6 @@ export function useAudioCreditLines(heard: HeardMusic = appHeardMusic): readonly
 /** What the sound is beside the Audio control, for the page's Music setting and whether music can play (audioCredits.ts). */
 export function useAudioDisclosure(setting: MusicSettingStore = appMusicSetting, available: MusicAvailability = appMusicAvailability): string {
   const value = useSyncExternalStore(setting.subscribe, setting.get, setting.get);
-  const canPlay = useSyncExternalStore(available.subscribe, available.get, available.get);
-  return audioDisclosure(value, canPlay);
+  const availability = useSyncExternalStore(available.subscribe, available.get, available.get);
+  return audioDisclosure(value, availability);
 }

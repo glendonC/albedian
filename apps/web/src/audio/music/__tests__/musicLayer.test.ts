@@ -167,7 +167,7 @@ describe('MusicLayer', () => {
     const { fetch, requests } = sourcesFetch();
     const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: null, fetch });
     // Known from the start, before Audio on: no music can play here, so it wants no stars
-    expect(layer.getStatus()).toMatchObject({ state: 'unavailable' });
+    expect(layer.getStatus()).toMatchObject({ state: 'unavailable', why: 'not_served' });
     expect(layer.wantsStars()).toBe(false);
     const ctx = new FakeContext();
     await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
@@ -190,6 +190,7 @@ describe('MusicLayer', () => {
     expect(ctx.sources().filter((s) => s.starts.length > 0)).toEqual([]);
     expect(layer.getStatus().state).toBe('unavailable');
     expect(layer.getStatus().reason).toMatch(/Pipe Organ.*unavailable \(503\)/);
+    layer.stop();
   });
 
   it('schedules the whole arrangement ahead of the clock into the music input, its stars as the data part', async () => {
@@ -325,6 +326,7 @@ describe('MusicLayer', () => {
     expect(ctx.sources().filter((s) => s.starts.length > 0)).toEqual([]);
     expect(layer.getStatus()).toMatchObject({ state: 'unavailable' });
     expect(layer.getStatus().reason).toMatch(/recording-analysis\.json unavailable \(503\)/);
+    layer.stop();
   });
 });
 
@@ -503,6 +505,164 @@ describe('MusicLayer on a phone, while the context is not running', () => {
     await flushAll();
     expect(ctx.sources().filter((s) => s.starts.length > 0)).toEqual([]);
     expect(layer.getStatus()).toMatchObject({ state: 'off', passes: 0 });
+  });
+});
+
+
+describe('MusicLayer after a missing file', () => {
+  const ORGAN = 'Pipe%20Organ';
+
+  it('tries again after 15, 30, 60 and then every 120 s on the context clock, and plays once the file is served', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let missing = true;
+    const { fetch, requests } = sourcesFetch({ fail: (url) => missing && url.includes(ORGAN) });
+    const states: string[] = [];
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, onStatus: (status) => states.push(status.state) });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ state: 'unavailable', why: 'not_reachable', retryAtSec: 10 + 15 });
+    expect(layer.wantsStars()).toBe(false);
+
+    // Nothing is fetched again before its time; then each try fails and the wait grows
+    const tries = () => requests.filter((url) => url.includes(ORGAN)).length;
+    const first = tries();
+    await clockTo(ctx, 24.8);
+    expect(tries()).toBe(first);
+    const waits: number[] = [];
+    let at = layer.getStatus().retryAtSec!;
+    for (let i = 0; i < 5; i++) {
+      await clockTo(ctx, at + 0.2);
+      const next = layer.getStatus().retryAtSec!;
+      expect(next).not.toBeNull();
+      waits.push(Math.round(next - at));
+      at = next;
+    }
+    expect(waits).toEqual([30, 60, 120, 120, 120]);
+    expect(tries()).toBeGreaterThan(first);
+    // The page saw no music coming and going while the tries failed
+    expect(states.slice(states.indexOf('unavailable'))).not.toContain('loading');
+
+    // The file is served now: the next try plays, and what had loaded is not fetched again
+    missing = false;
+    const fetchedBefore = new Map<string, number>();
+    for (const url of requests) fetchedBefore.set(url, (fetchedBefore.get(url) ?? 0) + 1);
+    await clockTo(ctx, at + 0.5);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', piece: 'organ-pulse', retryAtSec: null, reason: null, why: null, passes: 1 });
+    expect(layer.wantsStars()).toBe(true);
+    for (const [url, count] of fetchedBefore) {
+      if (url.includes(ORGAN)) continue;
+      const after = requests.filter((u) => u === url).length;
+      if (!url.endsWith('.json')) expect(after, url).toBe(count);
+    }
+  });
+
+  it('asks for one file per try when the music files cannot be reached, not one per file', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let down = true;
+    const { fetch, requests } = sourcesFetch({ fail: (url) => down && url.startsWith(BASE) });
+    for (const setting of ['organ-pulse', 'ambient-beats'] as const) {
+      requests.length = 0;
+      down = true;
+      const layer = new MusicLayer({ setting, sourcesBase: BASE, fetch });
+      layer.setStars(STARS);
+      const ctx = new FakeContext();
+      await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+      expect(layer.getStatus().state).toBe('unavailable');
+      expect(requests.filter((url) => url.startsWith(BASE)), setting).toHaveLength(1);
+      await clockTo(ctx, 25.2);
+      expect(requests.filter((url) => url.startsWith(BASE)), setting).toHaveLength(2);
+      // Reachable again: the next try loads everything
+      down = false;
+      await clockTo(ctx, layer.getStatus().retryAtSec! + 0.5);
+      expect(layer.getStatus().state, setting).toBe('playing');
+      layer.stop();
+    }
+  });
+
+  it('starts the waits over once the music has played again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let missing = true;
+    // The organ is missing at first; the recording piece never plays here (its analysis is not served)
+    const { fetch } = sourcesFetch({ fail: (url) => missing && url.includes(ORGAN) });
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    await clockTo(ctx, 25.2);
+    const third = layer.getStatus().retryAtSec!;
+    expect(Math.round(third - 25.2)).toBe(30);
+    missing = false;
+    await clockTo(ctx, third + 0.5);
+    expect(layer.getStatus().state).toBe('playing');
+
+    // A later piece cannot be played: the first wait is 15 s again, not the next in the old run
+    layer.setSetting('recording');
+    await clockTo(ctx, ctx.currentTime + 3.5);
+    const status = layer.getStatus();
+    expect(status.state).toBe('unavailable');
+    expect(status.reason).toMatch(/recording-analysis\.json holds no analysis/);
+    expect(status.retryAtSec! - ctx.currentTime).toBeGreaterThan(14.5);
+    expect(status.retryAtSec! - ctx.currentTime).toBeLessThanOrEqual(15);
+    layer.stop();
+  });
+
+  it('does not keep a failed chapel response, so the next try fetches it again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    let missing = true;
+    const { fetch, requests } = sourcesFetch({ fail: (url) => missing && url.includes('aachen-nikolauskapelle') });
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    await layer.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    expect(layer.getStatus().state).toBe('unavailable');
+    expect(layer.getStatus().reason).toMatch(/chapel response unavailable \(503\)/);
+    missing = false;
+    await clockTo(ctx, 25.2);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', retryAtSec: null });
+    expect(requests.filter((url) => url.includes('aachen-nikolauskapelle'))).toHaveLength(2);
+  });
+
+  it('does not try again with no sources base, after Audio off, or while the context is not running', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    // No sources base: nothing is served, so nothing to try
+    const none = sourcesFetch();
+    const unserved = new MusicLayer({ setting: 'organ-pulse', sourcesBase: null, fetch: none.fetch });
+    await unserved.start(new FakeContext() as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    expect(unserved.getStatus()).toMatchObject({ state: 'unavailable', retryAtSec: null });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(none.requests).toEqual([]);
+
+    // Audio off cancels the next try
+    const off = sourcesFetch({ fail: (url) => url.includes(ORGAN) });
+    const stopped = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch: off.fetch });
+    stopped.setStars(STARS);
+    const ctx = new FakeContext();
+    await stopped.start(ctx as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    expect(stopped.getStatus().retryAtSec).toBe(25);
+    stopped.stop();
+    expect(stopped.getStatus().retryAtSec).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    const asked = off.requests.length;
+    await clockTo(ctx, 400);
+    expect(off.requests).toHaveLength(asked);
+
+    // A suspended context: no try, and no timer, until it runs; then the try comes on its clock
+    let missing = true;
+    const later = sourcesFetch({ fail: (url) => missing && url.includes(ORGAN) });
+    const waiting = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch: later.fetch });
+    waiting.setStars(STARS);
+    const phone = new FakeContext();
+    await waiting.start(phone as unknown as AudioContext, new FakeNode('music') as unknown as AudioNode);
+    phone.setState('suspended');
+    const before = later.requests.length;
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(later.requests).toHaveLength(before);
+    expect(vi.getTimerCount()).toBe(0);
+    missing = false;
+    phone.setState('running');
+    await clockTo(phone, 25.2);
+    expect(waiting.getStatus()).toMatchObject({ state: 'playing', retryAtSec: null });
   });
 });
 

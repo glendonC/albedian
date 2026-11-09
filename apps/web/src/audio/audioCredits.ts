@@ -60,13 +60,24 @@ export const AUDIO_DISCLOSURE_WITHOUT_MUSIC =
   'No sound reaches us from space. What you hear is made from data and stated design choices; none of it is a recording of space.';
 
 /**
+ * Whether music can play on this page: 'available'; 'not_served' where no samples are served (a
+ * production build without VITE_ALBEDIAN_MUSIC_SOURCES); 'not_reachable' where a file the music needs
+ * could not be fetched (the layer tries again on its own).
+ */
+export type MusicAvailabilityState = 'available' | 'not_served' | 'not_reachable';
+
+/** Said after the sentence without music when the music files cannot be reached. */
+const NOT_REACHABLE = 'The music files are not reachable, so no music plays.';
+
+/**
  * What the sound is for a Music setting: with music, it says plainly that composed music, and in the
  * recording piece a recorded track, plays alongside the star notes, from what each piece the setting
- * can play declares (`alongside` in music/soundtrack.ts). Where no music can play (`canPlay` false:
- * no samples are served, or a file the music needs is missing) it says what plays without music.
+ * can play declares (`alongside` in music/soundtrack.ts). Where no music can play it says what plays
+ * without music, and, when the files cannot be reached, says so.
  */
-export function audioDisclosure(setting: string, canPlay = true): string {
-  const pieces = !canPlay || setting === 'off' ? [] : SOUNDTRACK.filter((piece) => setting === 'soundtrack' || piece.id === setting);
+export function audioDisclosure(setting: string, availability: MusicAvailabilityState = 'available'): string {
+  if (availability === 'not_reachable') return `${AUDIO_DISCLOSURE_WITHOUT_MUSIC} ${NOT_REACHABLE}`;
+  const pieces = availability !== 'available' || setting === 'off' ? [] : SOUNDTRACK.filter((piece) => setting === 'soundtrack' || piece.id === setting);
   if (pieces.length === 0) return AUDIO_DISCLOSURE_WITHOUT_MUSIC;
   const composed = pieces.some((piece) => piece.alongside.composedMusic);
   const recorded = pieces.filter((piece) => piece.alongside.recordedTrack).map((piece) => piece.title).join(' and ');
@@ -119,22 +130,18 @@ export class HeardMusic {
 /** The pieces this page's engine has played (`useAudioCreditLines` shows their credits). */
 export const appHeardMusic = new HeardMusic();
 
-/**
- * Whether music can play on this page: false where no samples are served (a production build without
- * VITE_ALBEDIAN_MUSIC_SOURCES) or a file the music needs could not be fetched. The disclosure and the
- * Music control follow it.
- */
+/** Whether music can play on this page, and why not (MusicAvailabilityState). The disclosure and the Music control follow it. */
 export class MusicAvailability {
-  private available: boolean;
+  private available: MusicAvailabilityState;
   private readonly listeners = new Set<() => void>();
 
-  constructor(initial: boolean) {
+  constructor(initial: MusicAvailabilityState) {
     this.available = initial;
   }
 
-  readonly get = (): boolean => this.available;
+  readonly get = (): MusicAvailabilityState => this.available;
 
-  readonly set = (available: boolean): void => {
+  readonly set = (available: MusicAvailabilityState): void => {
     if (available === this.available) return;
     this.available = available;
     for (const listener of [...this.listeners]) listener();
@@ -147,7 +154,7 @@ export class MusicAvailability {
 }
 
 /** This page's music availability; the app's engine keeps it (ObservatoryAudioEngine.ts). */
-export const appMusicAvailability = new MusicAvailability(true);
+export const appMusicAvailability = new MusicAvailability('available');
 
 /** The full notices (licence text, Omnitone's NOTICE, the response's attribution), for a Notices link. */
 export const AUDIO_NOTICES_URL: string = new URL('./assets/THIRD_PARTY_NOTICES.txt', import.meta.url).href;

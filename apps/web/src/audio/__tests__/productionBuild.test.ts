@@ -51,11 +51,14 @@ describe('a production build of the audio', () => {
     const production = await bundle('production');
     expect(production.length).toBeGreaterThan(10_000);
     expect(production).not.toContain('5199');
+    expect(production).not.toContain('/music-sources/');
     expect(production).not.toMatch(MUSIC_QUERY_READ);
 
     // The control: a development build of the same modules carries both
     const development = await bundle('development');
-    expect(development).toContain('127.0.0.1:5199');
+    // Development fetches the samples from the app's own origin, which Vite proxies to serveSources.mjs
+    expect(development).toContain('/music-sources/');
+    expect(development).not.toContain('127.0.0.1:5199');
     expect(development).toMatch(MUSIC_QUERY_READ);
   });
 });

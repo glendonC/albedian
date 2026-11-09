@@ -626,6 +626,7 @@ export const SpatialObservatoryViewport: React.FC<
             <button
               type="button"
               className={`alb-audio-label-btn ${soundEnabled ? 'is-active' : ''}`}
+              data-audio-control="toggle"
               onClick={handleToggleSound}
               aria-describedby={soundEnabled ? 'alb-audio-disclosure' : undefined}
             >

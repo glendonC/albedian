@@ -18,7 +18,7 @@ import {
   type EngineSnapshot,
   type SpatialAudioEngineOptions,
 } from './engine/SpatialAudioEngine.js';
-import { appHeardMusic, appMusicAvailability } from './audioCredits.js';
+import { appHeardMusic, appMusicAvailability, type MusicAvailabilityState } from './audioCredits.js';
 import { MusicLayer, type MusicStatus } from './music/MusicLayer.js';
 import { DEV_BUILD, appMusicSetting, type MusicSetting } from './music/musicSetting.js';
 import type { PieceId, SoundtrackMoment } from './music/soundtrack.js';
@@ -159,11 +159,20 @@ export class ObservatoryAudioEngine {
   }
 }
 
-/** Where the dev server's music samples are, when VITE_ALBEDIAN_MUSIC_SOURCES does not say (spike/music/serveSources.mjs). */
-const DEV_MUSIC_SOURCES = 'http://127.0.0.1:5199/';
+/**
+ * Where the dev server's music samples are, when VITE_ALBEDIAN_MUSIC_SOURCES does not say: the app's own
+ * origin, which Vite proxies to spike/music/serveSources.mjs (vite.config.ts), so a phone on the field
+ * run's network reaches them too.
+ */
+const DEV_MUSIC_SOURCES = '/music-sources/';
 
 // Vite replaces import.meta.env at build time; the app's tsconfig carries no vite/client types
 const env = (import.meta as ImportMeta & { readonly env?: { readonly VITE_ALBEDIAN_MUSIC_SOURCES?: string } }).env;
+
+/** Whether the music can play, from its status: 'not_served' with no sources base, 'not_reachable' after a failed fetch. */
+export function musicAvailabilityOf(status: MusicStatus): MusicAvailabilityState {
+  return status.state === 'unavailable' ? (status.why ?? 'not_reachable') : 'available';
+}
 
 /** What the app's engine is made with: the page's Music setting and moment, where the samples are, and the credits' record of what played. */
 export const APP_AUDIO_OPTIONS: ObservatoryAudioOptions = {
@@ -171,7 +180,7 @@ export const APP_AUDIO_OPTIONS: ObservatoryAudioOptions = {
   musicMoment: appSoundtrackMoment.get(),
   musicSourcesBase: env?.VITE_ALBEDIAN_MUSIC_SOURCES || (DEV_BUILD ? DEV_MUSIC_SOURCES : null),
   onMusicPieceStarted: (piece) => appHeardMusic.add(piece),
-  onMusicStatus: (status) => appMusicAvailability.set(status.state !== 'unavailable'),
+  onMusicStatus: (status) => appMusicAvailability.set(musicAvailabilityOf(status)),
 };
 
 export const observatoryAudio = new ObservatoryAudioEngine(APP_AUDIO_OPTIONS);

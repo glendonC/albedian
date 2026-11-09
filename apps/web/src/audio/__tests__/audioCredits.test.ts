@@ -149,31 +149,38 @@ describe('what the sound is, with the music', () => {
     for (const setting of ['off', 'soundtrack', ...SOUNDTRACK.map((piece) => piece.id)]) expect(audioDisclosure(setting)).not.toMatch(/\u2014/);
   });
 
-  it('says no music plays wherever none can, whatever the setting', () => {
+  it('says no music plays wherever none can, whatever the setting, and why when the files cannot be reached', () => {
     for (const setting of ['off', 'soundtrack', ...SOUNDTRACK.map((piece) => piece.id)]) {
-      expect(audioDisclosure(setting, false)).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+      // No sources base (a build that serves no music): the plain sentence
+      expect(audioDisclosure(setting, 'not_served')).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
+      // A sources base whose files cannot be fetched: the plain reason after it
+      expect(audioDisclosure(setting, 'not_reachable')).toBe('No sound reaches us from space. What you hear is made from data and stated design choices; none of it is a recording of space. The music files are not reachable, so no music plays.');
     }
-    expect(audioDisclosure('soundtrack', true)).toBe(AUDIO_DISCLOSURE);
+    expect(audioDisclosure('soundtrack', 'available')).toBe(AUDIO_DISCLOSURE);
+    expect(audioDisclosure('soundtrack', 'not_reachable')).not.toMatch(/[\u2013\u2014]/);
   });
 
-  it('keeps whether music can play on this page, and tells its listeners of a change', () => {
-    const available = new MusicAvailability(true);
+  it('keeps whether music can play on this page and why not, and tells its listeners of a change', () => {
+    const available = new MusicAvailability('available');
     const listener = vi.fn();
     available.subscribe(listener);
-    available.set(true);
-    available.set(false);
-    available.set(false);
-    expect(available.get()).toBe(false);
-    expect(listener).toHaveBeenCalledTimes(1);
+    available.set('available');
+    available.set('not_reachable');
+    available.set('not_reachable');
+    available.set('not_served');
+    expect(available.get()).toBe('not_served');
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 
-  it("follows the app engine's music: available unless the samples are not served or a file is missing", () => {
-    expect(appMusicAvailability.get()).toBe(observatoryAudio.getMusicStatus().state !== 'unavailable');
+  it("follows the app engine's music: available, not served (no sources base) or not reachable (a file could not be fetched)", () => {
     const status = observatoryAudio.getMusicStatus();
-    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'unavailable', reason: 'the music samples are not served here' });
-    expect(appMusicAvailability.get()).toBe(false);
-    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'loading', reason: null });
-    expect(appMusicAvailability.get()).toBe(true);
+    expect(appMusicAvailability.get()).toBe(status.state === 'unavailable' ? status.why : 'available');
+    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'unavailable', why: 'not_served', reason: 'the music samples are not served here' });
+    expect(appMusicAvailability.get()).toBe('not_served');
+    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'unavailable', why: 'not_reachable', reason: 'Failed to fetch' });
+    expect(appMusicAvailability.get()).toBe('not_reachable');
+    APP_AUDIO_OPTIONS.onMusicStatus?.({ ...status, state: 'loading', why: null, reason: null });
+    expect(appMusicAvailability.get()).toBe('available');
   });
 });
 

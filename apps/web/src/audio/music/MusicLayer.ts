@@ -210,10 +210,14 @@ export interface MusicStatus {
   readonly state: MusicState;
   /** Why no music plays, when none does for a reason other than Audio being off. */
   readonly reason: string | null;
+  /** While unavailable: no sources base ('not_served'), or a file that could not be fetched ('not_reachable'). */
+  readonly why: 'not_served' | 'not_reachable' | null;
   /** Distinct stars the current pass plays in its data part. */
   readonly starsPlayed: number;
   /** Passes scheduled since the layer was made. */
   readonly passes: number;
+  /** After a missing file, when the layer tries again, on the context's clock; null when no try waits. */
+  readonly retryAtSec: number | null;
 }
 
 /** Audio off fades the music out over this long, then disconnects it. */
@@ -228,6 +232,11 @@ const FIRST_STARS_WAIT_MS = 8_000;
 const NOT_SERVED = 'the music samples are not served here (VITE_ALBEDIAN_MUSIC_SOURCES is not set), so the music stays silent';
 /** The director's timer never fires sooner than this, so a clock that lags the timer cannot spin it. */
 const MIN_TIMER_MS = 50;
+/**
+ * After a missing file, while Audio is on, the layer tries again after these waits, in seconds on the
+ * context's clock, the last repeating: a sources server started late is found within two minutes.
+ */
+const RETRY_WAITS_SEC = [15, 30, 60, 120] as const;
 
 const isComplete = (star: ScreenStar) => star.teffK != null && star.luminositySolar != null && star.distancePc != null;
 
@@ -248,6 +257,12 @@ export class MusicLayer {
   private passToken = 0;
   private firstPass = true;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Tries made since the music last played or Audio was turned on. */
+  private retries = 0;
+  /** A try is under way: the music stays unavailable until a pass starts, so the page does not flicker. */
+  private retrying = false;
+  private destination: AudioNode | null = null;
   private status: MusicStatus;
   private starsArrived: (() => void) | null = null;
   private readonly pieces: readonly SoundtrackPiece[];
@@ -264,9 +279,9 @@ export class MusicLayer {
       ...(options.random ? { random: options.random } : {}),
     });
     const { setting, moment } = this.director.state;
-    this.status = { setting: setting as MusicSetting, moment, piece: null, state: 'off', reason: null, starsPlayed: 0, passes: 0 };
+    this.status = { setting: setting as MusicSetting, moment, piece: null, state: 'off', reason: null, why: null, starsPlayed: 0, passes: 0, retryAtSec: null };
     // Known from the start: with no samples served, no music can play here
-    if (!options.sourcesBase) this.status = { ...this.status, state: 'unavailable', reason: NOT_SERVED };
+    if (!options.sourcesBase) this.status = { ...this.status, state: 'unavailable', reason: NOT_SERVED, why: 'not_served' };
   }
 
   /** Whether the music wants the stars on screen: only while it can play and is not off. */
@@ -304,9 +319,18 @@ export class MusicLayer {
    */
   async start(ctx: BaseAudioContext, destination: AudioNode): Promise<void> {
     if (this.output) return;
+    this.retries = 0;
+    this.retrying = false;
+    this.disarmRetry();
+    await this.begin(ctx, destination);
+  }
+
+  /** Audio on, or a try after a missing file. */
+  private async begin(ctx: BaseAudioContext, destination: AudioNode): Promise<void> {
+    if (this.output) return;
     const base = this.options.sourcesBase;
     if (!base) {
-      this.setStatus({ state: 'unavailable', reason: NOT_SERVED });
+      this.setStatus({ state: 'unavailable', reason: NOT_SERVED, why: 'not_served' });
       return;
     }
     if (this.ctx !== ctx) {
@@ -316,11 +340,12 @@ export class MusicLayer {
       this.recordings.clear();
     }
     this.run += 1;
+    this.destination = destination;
     const output = ctx.createGain();
     output.connect(destination);
     this.output = output;
     this.firstPass = true;
-    this.setStatus({ state: 'off', reason: null });
+    if (!this.retrying) this.setStatus({ state: 'off', reason: null, why: null });
     await this.answer(this.director.start(ctx.currentTime));
   }
 
@@ -329,6 +354,10 @@ export class MusicLayer {
     this.run += 1;
     this.passToken += 1;
     this.disarm();
+    this.disarmRetry();
+    this.retries = 0;
+    this.retrying = false;
+    if (this.status.retryAtSec !== null) this.setStatus({ retryAtSec: null });
     this.stopWaitingToRun?.();
     this.director.stop();
     this.pass = null;
@@ -434,7 +463,7 @@ export class MusicLayer {
       const sources = this.sources(base);
       if (this.firstPass) {
         this.firstPass = false;
-        const preload = piece.arrange([], sources).then((composed) => this.bank!.load(neededZones(composed)));
+        const preload = piece.arrange([], sources).then((composed) => this.loadZones(neededZones(composed)));
         try {
           await Promise.all([this.firstStars(), preload]);
         } catch (error) {
@@ -444,7 +473,7 @@ export class MusicLayer {
         }
       }
       const arrangement = await piece.arrange(this.stars, sources);
-      await this.bank!.load(neededZones(arrangement));
+      await this.loadZones(neededZones(arrangement));
       const room = await this.roomFor(ctx, arrangement.room);
       const recording = arrangement.recording ? await this.recordingFor(ctx, base, arrangement.recording.file) : null;
       // Nothing is scheduled on a context that is not running: it waits until it runs
@@ -459,6 +488,9 @@ export class MusicLayer {
       this.pass = { gain, piece: piece.id };
       const played = new Set(arrangement.events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
       this.director.started(piece.id, t0, t0 + arrangement.durationSec);
+      // Playing again after a missing file: the tries start over next time
+      this.retries = 0;
+      this.retrying = false;
       this.setStatus({ starsPlayed: played.size, passes: this.status.passes + 1 });
       this.options.onPieceStarted?.(piece.id);
       this.arm();
@@ -466,6 +498,16 @@ export class MusicLayer {
     } catch (error) {
       if (token === this.passToken && run === this.run) this.fail(error);
     }
+  }
+
+  /**
+   * Loads the zones the bank lacks, one first: when the music files cannot be reached, a try costs one
+   * failed request rather than one per file.
+   */
+  private async loadZones(zones: readonly SampleZone[]): Promise<void> {
+    const bank = this.bank!;
+    if (zones.length > 1) await bank.load(zones.slice(0, 1));
+    await bank.load(zones);
   }
 
   /** Resolves when a star with all its values is on screen, or after FIRST_STARS_WAIT_MS without one. */
@@ -492,7 +534,10 @@ export class MusicLayer {
     return (input, init) => impl(input, init);
   }
 
-  /** No stand-in: a missing file leaves the music silent and says which. */
+  /**
+   * No stand-in: a missing file leaves the music silent and says which. While Audio is on the layer
+   * tries again later (RETRY_WAITS_SEC), fetching only what it still lacks.
+   */
   private fail(error: unknown): void {
     this.run += 1;
     this.disarm();
@@ -500,7 +545,50 @@ export class MusicLayer {
     this.output?.disconnect();
     this.output = null;
     this.pass = null;
-    this.setStatus({ state: 'unavailable', reason: errorMessage(error), piece: null });
+    this.retrying = false;
+    this.setStatus({ state: 'unavailable', reason: errorMessage(error), why: 'not_reachable', piece: null });
+    this.scheduleRetry();
+  }
+
+  /** Sets the next try on the context's clock, the wait growing with each failed try (a layer with no sources base never fails a fetch). */
+  private scheduleRetry(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.destination) return;
+    const wait = RETRY_WAITS_SEC[Math.min(this.retries, RETRY_WAITS_SEC.length - 1)]!;
+    this.retries += 1;
+    this.setStatus({ retryAtSec: ctx.currentTime + wait });
+    this.armRetry();
+  }
+
+  /** Wakes for the next try; no timer runs while the context does not (its clock stands still). */
+  private armRetry(): void {
+    this.disarmRetry();
+    const ctx = this.ctx;
+    const at = this.status.retryAtSec;
+    if (!ctx || at === null) return;
+    const run = this.run;
+    if (ctx.state !== 'running') {
+      void this.untilRunning(ctx).then(() => {
+        if (run === this.run) this.armRetry();
+      });
+      return;
+    }
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (run !== this.run || this.output) return;
+      if (ctx.currentTime < at) {
+        this.armRetry();
+        return;
+      }
+      this.retrying = true;
+      this.setStatus({ retryAtSec: null });
+      void this.begin(ctx, this.destination!);
+    }, Math.max(MIN_TIMER_MS, (at - ctx.currentTime) * 1000));
+  }
+
+  private disarmRetry(): void {
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
   }
 
   private sources(base: string): PieceSources {
@@ -535,6 +623,8 @@ export class MusicLayer {
     let buffer = this.rooms.get(room);
     if (!buffer) {
       buffer = room === 'chapel' ? loadChapelImpulse(ctx, this.fetchImpl) : Promise.resolve(syntheticHallImpulse(ctx));
+      // A failed response is not kept, so the next try fetches it again
+      buffer.catch(() => this.rooms.delete(room));
       this.rooms.set(room, buffer);
     }
     return buffer;
@@ -544,13 +634,13 @@ export class MusicLayer {
   private syncStatus(): void {
     const d = this.director.state;
     const base = { setting: d.setting as MusicSetting, moment: d.moment };
-    if (this.status.state === 'unavailable' && this.output === null) {
+    if (this.status.state === 'unavailable' && (this.output === null || this.retrying)) {
       this.setStatus(base);
       return;
     }
     const state: MusicState = d.phase === 'starting' ? 'loading' : d.phase === 'playing' || d.phase === 'fading' ? 'playing' : d.phase === 'gap' ? 'gap' : 'off';
     const reason = d.phase === 'silent' && d.setting === 'off' ? 'the music is off' : null;
-    this.setStatus({ ...base, piece: d.piece as PieceId | null, state, reason });
+    this.setStatus({ ...base, piece: d.piece as PieceId | null, state, reason, why: null });
   }
 
   private setStatus(change: Partial<MusicStatus>): void {

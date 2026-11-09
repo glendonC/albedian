@@ -16,7 +16,19 @@
  * The engine attaches one lifecycle when it makes its context, inside the user's gesture.
  */
 
-type Listener = () => void;
+type Listener = (event?: { readonly target?: unknown }) => void;
+
+/**
+ * Marks the Audio control on the page. It resumes or stops the audio itself, so a tap on it is not
+ * taken as a gesture to resume: turning Audio off while a tap is awaited then plays no tail.
+ */
+export const AUDIO_CONTROL_SELECTOR = '[data-audio-control="toggle"]';
+
+/** Whether an event's target sits inside the Audio control. */
+function onAudioControl(event?: { readonly target?: unknown }): boolean {
+  const target = event?.target as { closest?: (selector: string) => unknown } | null | undefined;
+  return typeof target?.closest === 'function' && target.closest(AUDIO_CONTROL_SELECTOR) != null;
+}
 
 export interface LifecycleEvents {
   addEventListener(type: string, listener: Listener, options?: boolean | AddEventListenerOptions): void;
@@ -143,11 +155,13 @@ export class AudioLifecycle {
     if (this.ctx.state !== 'running' && this.isEnabled()) this.waitForGesture();
   }
 
-  private readonly onGesture = (): void => {
+  private readonly onGesture = (event?: { readonly target?: unknown }): void => {
     if (!this.isEnabled()) {
       this.stopWaiting();
       return;
     }
+    // The Audio control resumes or stops the audio itself: a tap there must not resume first
+    if (onAudioControl(event)) return;
     void this.ctx.resume().catch(() => undefined);
   };
 

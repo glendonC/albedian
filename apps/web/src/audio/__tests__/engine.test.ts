@@ -297,7 +297,7 @@ describe('ObservatoryAudioEngine music', () => {
     const { engine, requests, states } = musicEngine(undefined, null);
     // Known and reported when the engine is made, before Audio on, so nothing says music plays and no tile is loaded for it
     expect(states).toEqual(['unavailable']);
-    expect(engine.getMusicStatus()).toMatchObject({ state: 'unavailable' });
+    expect(engine.getMusicStatus()).toMatchObject({ state: 'unavailable', why: 'not_served' });
     expect(engine.getMusicStatus().reason).toMatch(/not served/);
     expect(engine.wantsMusicStars()).toBe(false);
     engine.enable();
@@ -328,7 +328,7 @@ describe('ObservatoryAudioEngine music', () => {
     failing.setMusicStars([{ id: 'test-a', teffK: 5_000, luminositySolar: 1, distancePc: 10, screenX: 0.2, screenY: 0.1 }]);
     failing.enable();
     await flush();
-    expect(failing.getMusicStatus().state).toBe('unavailable');
+    expect(failing.getMusicStatus()).toMatchObject({ state: 'unavailable', why: 'not_reachable' });
     expect(failing.wantsMusicStars()).toBe(false);
     expect(states).toContain('failing:unavailable');
     failing.disable();

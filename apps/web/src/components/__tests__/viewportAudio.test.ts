@@ -247,6 +247,17 @@ describe('the music beside the Audio control', () => {
     expect(appSoundtrackMoment.get()).toBe('look_around');
   });
 
+  it('marks the Audio button for the phone lifecycle, which ignores a tap on it (and only on it)', async () => {
+    const { AUDIO_CONTROL_SELECTOR } = await import('../../audio/engine/audioLifecycle.js');
+    renderViewport();
+    const marked = container.querySelectorAll(AUDIO_CONTROL_SELECTOR);
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toBe(audioButton());
+    // The volume bar's stand-in and the Music select are not marked: a tap there still resumes
+    clickAudio();
+    expect(container.querySelector('select[aria-label="Music"]')!.closest(AUDIO_CONTROL_SELECTOR)).toBeNull();
+  });
+
   it('shows the Music setting beside Audio while audio is on', () => {
     renderViewport();
     expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
@@ -276,11 +287,16 @@ describe('the music beside the Audio control', () => {
     renderViewport();
     clickAudio();
     try {
-      act(() => appMusicAvailability.set(false));
+      act(() => appMusicAvailability.set('not_served'));
       expect(document.getElementById('alb-audio-disclosure')!.textContent).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
       expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
+      // The music files cannot be reached: the page says so plainly
+      act(() => appMusicAvailability.set('not_reachable'));
+      expect(document.getElementById('alb-audio-disclosure')!.textContent).toBe(audioDisclosure('soundtrack', 'not_reachable'));
+      expect(document.getElementById('alb-audio-disclosure')!.textContent).toContain('The music files are not reachable, so no music plays.');
+      expect(container.querySelector('select[aria-label="Music"]')).toBeNull();
     } finally {
-      act(() => appMusicAvailability.set(true));
+      act(() => appMusicAvailability.set('available'));
     }
     expect(container.querySelector('select[aria-label="Music"]')).not.toBeNull();
   });

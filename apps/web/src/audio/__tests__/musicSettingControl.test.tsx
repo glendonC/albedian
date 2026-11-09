@@ -64,23 +64,27 @@ describe('the Music control', () => {
 describe('where no music can play', () => {
   it('shows no Music control, and shows it again once music can play', () => {
     const store = new MusicSettingStore('soundtrack', null);
-    const available = new MusicAvailability(false);
+    const available = new MusicAvailability('not_reachable');
     act(() => root.render(createElement(MusicSettingControl, { store, available })));
     expect(container.querySelector('select')).toBeNull();
-    act(() => available.set(true));
+    act(() => available.set('not_served'));
+    expect(container.querySelector('select')).toBeNull();
+    act(() => available.set('available'));
     expect(select().value).toBe('soundtrack');
   });
 
   it('says no music plays, whatever the setting, and what plays once music can', () => {
     const setting = new MusicSettingStore('recording', null);
-    const available = new MusicAvailability(false);
+    const available = new MusicAvailability('not_served');
     function Disclosure() {
       return createElement('p', null, useAudioDisclosure(setting, available));
     }
     const text = () => container.querySelector('p')!.textContent;
     act(() => root.render(createElement(Disclosure)));
     expect(text()).toBe(AUDIO_DISCLOSURE_WITHOUT_MUSIC);
-    act(() => available.set(true));
+    act(() => available.set('not_reachable'));
+    expect(text()).toBe(audioDisclosure('recording', 'not_reachable'));
+    act(() => available.set('available'));
     expect(text()).toBe(audioDisclosure('recording'));
     act(() => setting.set('soundtrack'));
     expect(text()).toBe(AUDIO_DISCLOSURE);
