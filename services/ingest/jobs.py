@@ -42,7 +42,17 @@ class SolveJobError(Exception):
     """A failure while decoding or solving a stored upload."""
 
 
-UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error, so no solution was saved."
+UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
+# A stored reason stays short: the contract allows 2000 characters, and a decoder can print far more
+MAX_STORED_ERROR_CHARS = 500
+
+
+def _stored_reason(message: str, original: Path) -> str:
+    """A SolveJobError message as stored: the upload's path replaced and the text cut to a bounded length."""
+    text = message.replace(str(original), "the upload")
+    if len(text) > MAX_STORED_ERROR_CHARS:
+        text = text[: MAX_STORED_ERROR_CHARS - 3].rstrip() + "..."
+    return text
 
 
 def job_id_for_sha256(sha256: str) -> str:
@@ -508,7 +518,7 @@ def run_solve_job(
         return emit("succeeded", started_dt=started_dt, finished_dt=finished_dt, solution_id=solution.id)
     except SolveJobError as exc:
         finished_dt = max(datetime.now(timezone.utc), started_dt)
-        return emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=str(exc))
+        return emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=_stored_reason(str(exc), original))
     except Exception:
         # Never leave a job running forever; the reason stays generic so no path or capture value is stored
         finished_dt = max(datetime.now(timezone.utc), started_dt)
