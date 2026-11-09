@@ -47,7 +47,6 @@ GAPS_FORMAT = "albedian.asset-provenance-gaps"
 # The assets under apps/web/public that had no provenance record on 2026-11-04, when this check
 # arrived, each pinned by its SHA-256 then. provenance_gaps.json may drop entries, never add one.
 BASELINE_GAPS: dict[str, str] = {
-    "apps/web/public/models/nasa_lro_moon_3d.glb": "75eba4b5f9168c96f8ef9f47d2a346ba54eef05d5f2b81c1de5ed816f8dcd09a",
     "apps/web/public/textures/bruneton_atmo_lut.png": "9747ec7c4555cba7bc7fbee4ae5839e09196e9d75d23023aec5ff76b3f36c4dd",
 }
 

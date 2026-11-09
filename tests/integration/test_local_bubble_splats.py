@@ -171,15 +171,13 @@ def test_record_entry_states_what_is_measured_and_what_is_presentation() -> None
                   "Grid geometry, a presentation value", "Presentation mapping of a measured quantity",
                   "1 - 10^(-0.4 A_G)", "Simulated:", "neutral grey"):  # fmt: skip
         assert words in (entry.note or "")
-    assert [f.path for f in record.files] == ["lb_splats.json", "local_bubble_oneill2024.glb"]
+    paths = [f.path for f in record.files]
+    assert paths == sorted(paths) and {"lb_splats.json", "local_bubble_oneill2024.glb"} <= set(paths)
 
 
 def test_the_gap_for_lb_splats_is_closed() -> None:
     gaps = {g["path"] for g in json.loads((ROOT / "scripts" / "provenance_gaps.json").read_text(encoding="utf-8"))["gaps"]}
-    assert gaps == set(vp.BASELINE_GAPS) == {
-        "apps/web/public/models/nasa_lro_moon_3d.glb",
-        "apps/web/public/textures/bruneton_atmo_lut.png",
-    }
+    assert "apps/web/public/models/lb_splats.json" not in gaps | set(vp.BASELINE_GAPS)
 
 
 def test_doc_states_sources_mapping_and_limits() -> None:
@@ -187,7 +185,7 @@ def test_doc_states_sources_mapping_and_limits() -> None:
     assert "\u2014" not in doc
     for required in ("doi:10.7910/DVN/INB1RB", "CC0", "arXiv:2403.04961", "1 - 10^(-0.4 A_G)", "sqrt(12)",
                      "neutral grey", "simulated", "27,648", "100 pc", "19 to 36", "|n . r|", "grid geometry",
-                     "peak distance"):  # fmt: skip
+                     "peak distance", "locally flat", "measured mean distance placed at the cell centre direction"):  # fmt: skip
         assert required in doc
 
 

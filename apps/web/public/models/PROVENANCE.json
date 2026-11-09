@@ -3,6 +3,21 @@
   "formatVersion": 1,
   "sources": [
     {
+      "id": "nasa-svs-4720-ldem-16",
+      "title": "CGI Moon Kit: LOLA elevation, 16 samples per degree, unsigned half-metres above 1727.4 km",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_16_uint.tif",
+      "retrieved": "2026-11-04",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
+      },
+      "credit": "NASA's Scientific Visualization Studio",
+      "sha256": "45a2b32d56e81ed30db07fead8abc842b249b6511219d9ca2c53f81bc2dc5d62",
+      "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the CGI Moon Kit maps are optimized for aesthetics, not science."
+    },
+    {
       "id": "oneill-2024-local-bubble",
       "title": "The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
       "url": "https://doi.org/10.7910/DVN/INB1RB",
@@ -45,6 +60,19 @@
         "script": "scripts/bake_local_bubble_mesh.py",
         "command": "uv run python scripts/bake_local_bubble_mesh.py"
       }
+    },
+    {
+      "path": "nasa_lro_moon_3d.glb",
+      "sha256": "1a5acbfc93fb507feb0134b47eb30439075f8b612dc8cbb1c5bfe2aaa492256d",
+      "sources": [
+        "nasa-svs-4720-ldem-16"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_moon_mesh.py",
+        "command": "uv run python scripts/bake_moon_mesh.py"
+      },
+      "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS made the CGI Moon Kit's maps for appearance, not science. Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
     }
   ],
   "fileSets": []

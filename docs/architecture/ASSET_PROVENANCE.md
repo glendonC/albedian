@@ -122,10 +122,11 @@ that still lack a provenance record, and an entry fails when:
 - its file has a record now, or is gone (remove the entry);
 - its bytes changed (a changed asset needs a record).
 
-`BASELINE_GAPS` pins two entries, one for each open gap: the atmosphere lookup table
+`BASELINE_GAPS` pins one entry, the one open gap: the atmosphere lookup table
 (`textures/bruneton_atmo_lut.png`, which a script makes from hand-set parameters with no outside
-data) and `models/nasa_lro_moon_3d.glb`. `models/lb_splats.json` left the gaps when it was rebaked
-from the O'Neill et al. (2024) shell table with a record (docs/science/LOCAL_BUBBLE_SPLATS.md). Any deleted
+data). `models/lb_splats.json` left the gaps when it was rebaked from the O'Neill et al. (2024) shell
+table with a record (docs/science/LOCAL_BUBBLE_SPLATS.md), and `models/nasa_lro_moon_3d.glb` when it was
+baked from LOLA heights at true scale with a record (docs/science/MOON_MESH.md). Any deleted
 legacy asset is removed from `BASELINE_GAPS` at the same time so it can return only with a
 provenance record.
 

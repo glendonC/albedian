@@ -28,7 +28,7 @@ as the mesh averages `d`.
 
 | Value | Kind | How |
 |---|---|---|
-| centre | measured | the mesh vertex, at the cell's mean peak distance d, written as the shortest decimal that reads back as the same float32; the slab is centred there, although d_inner and d_outer need not be symmetric about d |
+| centre | measured | the mesh vertex: the measured mean distance placed at the cell centre direction (the cell's mean peak distance d), written as the shortest decimal that reads back as the same float32; the slab is centred there, although d_inner and d_outer need not be symmetric about d |
 | orientation | measured | the splat's third axis along the cell's mean shell normal; each table normal is first turned to point away from the Sun, because the table's sign is arbitrary (48% of its normals point inward) |
 | thickness along the normal | measured, projected | the table's thickness is along the line of sight; each row's thick times \|n . r\| puts it along the normal, and the cell's mean is drawn as a uniform slab's sigma, thickness / sqrt(12) |
 | footprint across the normal | grid geometry, a presentation value | the cell's side, sqrt(4 pi / 27,648) times the vertex distance, as a slab sigma, side / sqrt(12); not a measurement |
@@ -41,6 +41,9 @@ across it, as the shell is thicker than the grid is fine; opacity 0.0008 to 0.75
 
 ## Limits
 
+- The projection onto the normal is made row by row, treating the shell as locally flat over each row's patch, an
+  approximation the paper does not make. That is why the smallest thickness along the normal (0.8 pc) is under the
+  paper's 3 pc minimum, which is a line-of-sight thickness.
 - The opacity is the absorbed fraction along the line of sight from the Sun. A splat seen from elsewhere, at another
   angle through the shell, would absorb a different fraction; the value is a presentation mapping, not a radiative
   transfer result, and a layer drawing it must say so.

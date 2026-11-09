@@ -340,9 +340,10 @@ def test_committed_local_bubble_glb_and_provenance_are_valid():
     assert PROV_PATH.is_file(), f"missing {PROV_PATH}"
 
     record = AssetProvenanceRecord.model_validate(json.loads(PROV_PATH.read_text("utf-8")))
-    assert len(record.sources) == 1
-    src = record.sources[0]
-    assert src.id == "oneill-2024-local-bubble"
+    # The models folder record also holds the other bakes' sources (the Moon's LOLA heights, data-9); this one once
+    oneill = [s for s in record.sources if s.id == "oneill-2024-local-bubble"]
+    assert len(oneill) == 1
+    src = oneill[0]
     assert src.license.spdx == "CC0-1.0"
     assert src.doi == "10.7910/DVN/INB1RB"
     assert "10.3847/1538-4357/ad47b5" in (src.citation or "")
@@ -389,7 +390,7 @@ def test_committed_local_bubble_glb_and_provenance_are_valid():
 
     vp = _load_module("verify_provenance_for_lb", ROOT / "scripts" / "verify_provenance.py")
     assert "apps/web/public/models/local_bubble_oneill2024.glb" not in vp.BASELINE_GAPS
-    assert len(vp.BASELINE_GAPS) == 2
+    assert len(vp.BASELINE_GAPS) == 1
 
     # data/downloads.json registers the Harvard Dataverse FITS input with matching size & sha256.
     downloads = json.loads((ROOT / "data" / "downloads.json").read_text("utf-8"))["downloads"]
