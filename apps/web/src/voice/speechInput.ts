@@ -3,9 +3,11 @@
  * @albedian/web: push-to-talk through the browser's speech recognition
  * ============================================================================
  *
- * One capture: listen once, hand over the words, stop. Every way a capture ends (words heard, an error, the
- * browser ending the session with nothing heard, or recognition refusing to start) reports the stop exactly
- * once, so the app never stays in a listening state with no capture running.
+ * One capture: listen once, hand over the words, stop. The app is told the capture is asking when it starts,
+ * and listening only when the browser opens the microphone (audiostart), so it never says listening while a
+ * permission prompt is up. Every way a capture ends (words heard, an error, the browser ending the session with
+ * nothing heard, or recognition refusing to start) reports the stop exactly once, so the app never stays in a
+ * listening state with no capture running.
  *
  * In Chrome the recognition runs on a remote service, so with no internet a capture ends in a 'network'
  * error. The sentence for each ending says plainly why it stopped and that the typed command bar still
@@ -15,8 +17,15 @@
 export const SPEECH_UNAVAILABLE =
   'Browser speech recognition unavailable in this environment; use the typed command bar below.';
 
-/** The banner shown while a capture is open. */
+/** The banner while the browser opens the microphone, and may be asking the user to allow it. */
+export const SPEECH_ASKING = 'Opening the microphone. Allow it if the browser asks.';
+
+/** The banner while the microphone is open. */
 export const SPEECH_LISTENING = 'Listening (Push-to-Talk active)… Speak a command.';
+
+/** The banner when words arrive after a new photo replaced the one they were spoken over. */
+export const SPEECH_PREVIOUS_PHOTO =
+  'Those words were spoken over the previous photo, so they were not applied to this one.';
 
 const STOPPED = 'Speech recognition stopped. Type the command below.';
 
@@ -46,11 +55,15 @@ export interface SpeechRecognitionLike {
   onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((ev: { error?: string }) => void) | null;
   onend: (() => void) | null;
+  /** The browser opened the microphone, after any permission prompt (Web Speech API audiostart). */
+  onaudiostart: (() => void) | null;
   start(): void;
 }
 
 export interface SpeechCaptureHandlers {
-  /** The capture started and is listening. */
+  /** The capture started; the microphone is not open yet, and the browser may be asking for it. */
+  onAsking(): void;
+  /** The microphone is open: the only point at which the app may say it is listening. */
   onListening(): void;
   /** Words were heard, trimmed and not empty. */
   onTranscript(text: string): void;
@@ -97,10 +110,13 @@ export function startSpeechCapture(
     // After words were heard the command has already answered, so a late error or end keeps its banner.
     rec.onerror = (event) => stop(heard ? null : speechErrorBanner(event.error));
     rec.onend = () => stop(heard ? null : speechErrorBanner('no-speech'));
+    rec.onaudiostart = () => {
+      if (!stopped) handlers.onListening();
+    };
     rec.start();
   } catch {
     stop(STOPPED);
     return;
   }
-  if (!stopped) handlers.onListening();
+  if (!stopped) handlers.onAsking();
 }

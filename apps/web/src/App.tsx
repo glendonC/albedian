@@ -19,8 +19,20 @@ import {
   fetchDiscoveredMedia,
   uploadAndSolveMedia,
 } from './services/apiClient.js';
-import { applyVoiceBackendReply, askVoiceBackend, backendMayResolve } from './voice/voiceBackend.js';
-import { SPEECH_LISTENING, startSpeechCapture, type SpeechRecognitionLike } from './voice/speechInput.js';
+import {
+  applyVoiceBackendReply,
+  askVoiceBackend,
+  backendMayResolve,
+  photoKeyOf,
+  VOICE_REPLY_PREVIOUS_PHOTO,
+} from './voice/voiceBackend.js';
+import {
+  SPEECH_ASKING,
+  SPEECH_LISTENING,
+  SPEECH_PREVIOUS_PHOTO,
+  startSpeechCapture,
+  type SpeechRecognitionLike,
+} from './voice/speechInput.js';
 import './styles/albedian.css';
 
 /**
@@ -80,11 +92,15 @@ export const App: React.FC = () => {
 
   const audioBusRef = useRef<AlbedianWebAudioBus | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // The session as it stands now, for a backend reply that arrives after later changes
+  // The session and pointer as they stand now, for spoken words or a backend reply that arrive after later changes
   const sessionRef = useRef(session);
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+  const recentPointerRef = useRef(recentPointer);
+  useEffect(() => {
+    recentPointerRef.current = recentPointer;
+  }, [recentPointer]);
 
   const { animatePhaseAToPhaseBSpaceFlight } = useCameraFlightAnimation(session, setSession);
 
@@ -132,7 +148,10 @@ export const App: React.FC = () => {
     modality: 'voice' | 'text' | 'pointer' = 'text'
   ) => {
     if (!utterance.trim()) return;
-    const result = executeVoiceOrTextCommand(session, utterance, modality, recentPointer);
+    // Push-to-talk calls this from the render that opened the microphone; the words act on what stands now
+    const pointer = recentPointerRef.current;
+    const asked = sessionRef.current;
+    const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
     setSession(result.session);
 
     if (result.outcome.status === 'completed') {
@@ -143,8 +162,13 @@ export const App: React.FC = () => {
     } else if (result.outcome.status === 'rejected' && backendMayResolve(result.outcome.reason)) {
       // The backend may read what the parser could not. Its reply applies to the session as it stands when
       // the reply arrives, through the reducer, which refuses an action that went stale meanwhile.
-      void askVoiceBackend(utterance, result.session, recentPointer).then((reply) => {
+      void askVoiceBackend(utterance, result.session, pointer).then((reply) => {
         if (!reply) return;
+        // A reply about the previous photo is dropped: a new session can match its view revision by coincidence
+        if (photoKeyOf(sessionRef.current) !== photoKeyOf(asked)) {
+          setSession((prev) => ({ ...prev, lastStatusBanner: VOICE_REPLY_PREVIOUS_PHOTO }));
+          return;
+        }
         const applied = applyVoiceBackendReply(sessionRef.current, reply);
         setSession(applied.session);
         if (applied.outcome?.status === 'completed') {
@@ -185,7 +209,16 @@ export const App: React.FC = () => {
       webkitSpeechRecognition?: new () => SpeechRecognitionLike;
     };
     const w = window as unknown as SpeechRecWindow;
+    // The photo the words are spoken over; words that arrive after another photo is loaded are dropped
+    const spokenOver = photoKeyOf(sessionRef.current);
     startSpeechCapture(w.SpeechRecognition ?? w.webkitSpeechRecognition, {
+      // The browser may be asking for the microphone; nothing is heard yet
+      onAsking: () =>
+        setSession((prev) => ({
+          ...prev,
+          machines: { ...prev.machines, voice: 'permission' },
+          lastStatusBanner: SPEECH_ASKING,
+        })),
       onListening: () =>
         setSession((prev) => ({
           ...prev,
@@ -193,6 +226,10 @@ export const App: React.FC = () => {
           lastStatusBanner: SPEECH_LISTENING,
         })),
       onTranscript: (transcript) => {
+        if (photoKeyOf(sessionRef.current) !== spokenOver) {
+          setSession((prev) => ({ ...prev, lastStatusBanner: SPEECH_PREVIOUS_PHOTO }));
+          return;
+        }
         setCommandText(transcript);
         runUtterance(transcript, 'voice');
       },

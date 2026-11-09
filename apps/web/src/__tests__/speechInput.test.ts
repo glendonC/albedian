@@ -21,6 +21,7 @@ class FakeRecognition implements SpeechRecognitionLike {
   onresult: ((ev: Event) => void) | null = null;
   onerror: ((ev: { error?: string }) => void) | null = null;
   onend: (() => void) | null = null;
+  onaudiostart: (() => void) | null = null;
   started = false;
   constructor() {
     FakeRecognition.last = this;
@@ -30,6 +31,10 @@ class FakeRecognition implements SpeechRecognitionLike {
   }
   hear(transcript: string) {
     this.onresult?.({ results: [[{ transcript }]] });
+  }
+  /** The browser opened the microphone (after any permission prompt). */
+  open() {
+    this.onaudiostart?.();
   }
 }
 
@@ -49,8 +54,9 @@ class EndsAtOnceRecognition extends FakeRecognition {
 
 /** `null` stands for a browser with no recognition (an explicit undefined would take the default). */
 function capture(Ctor: (new () => SpeechRecognitionLike) | null = FakeRecognition) {
-  const calls = { listening: 0, transcripts: [] as string[], stopped: [] as Array<string | null> };
+  const calls = { asking: 0, listening: 0, transcripts: [] as string[], stopped: [] as Array<string | null> };
   startSpeechCapture(Ctor ?? undefined, {
+    onAsking: () => calls.asking++,
     onListening: () => calls.listening++,
     onTranscript: (text) => calls.transcripts.push(text),
     onStopped: (banner) => calls.stopped.push(banner),
@@ -61,7 +67,7 @@ function capture(Ctor: (new () => SpeechRecognitionLike) | null = FakeRecognitio
 describe('@albedian/web push-to-talk speech capture', () => {
   it('says plainly when the browser has no speech recognition', () => {
     const { calls } = capture(null);
-    expect(calls).toEqual({ listening: 0, transcripts: [], stopped: [SPEECH_UNAVAILABLE] });
+    expect(calls).toEqual({ asking: 0, listening: 0, transcripts: [], stopped: [SPEECH_UNAVAILABLE] });
   });
 
   it('listens, hands over the words, and stops without replacing the banner the command wrote', () => {
@@ -69,6 +75,8 @@ describe('@albedian/web push-to-talk speech capture', () => {
     expect(rec.started).toBe(true);
     expect(rec.lang).toBe('en-US');
     expect(rec.interimResults).toBe(false);
+    expect([calls.asking, calls.listening]).toEqual([1, 0]);
+    rec.open();
     expect(calls.listening).toBe(1);
     rec.hear('take me to Canopus');
     rec.onend?.();
@@ -110,7 +118,7 @@ describe('@albedian/web push-to-talk speech capture', () => {
 
   it('stops at once when recognition refuses to start', () => {
     const { calls } = capture(RefusingRecognition);
-    expect(calls.listening).toBe(0);
+    expect([calls.asking, calls.listening]).toEqual([0, 0]);
     expect(calls.stopped).toHaveLength(1);
     expect(calls.stopped[0]).toMatch(/speech recognition stopped/i);
   });
@@ -135,6 +143,16 @@ describe('@albedian/web push-to-talk speech capture', () => {
 
   it('never marks the app listening after a capture that ended inside start', () => {
     const { calls } = capture(EndsAtOnceRecognition);
+    expect([calls.asking, calls.listening]).toEqual([0, 0]);
+    expect(calls.stopped).toEqual([speechErrorBanner('not-allowed')]);
+  });
+
+  it('never says listening before the microphone opens, even when the capture ends unopened', () => {
+    const { calls, rec } = capture();
+    expect([calls.asking, calls.listening]).toEqual([1, 0]);
+    rec.onerror?.({ error: 'not-allowed' });
+    rec.onend?.();
+    rec.open();
     expect(calls.listening).toBe(0);
     expect(calls.stopped).toEqual([speechErrorBanner('not-allowed')]);
   });

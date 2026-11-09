@@ -34,6 +34,19 @@ export function backendMayResolve(reason: RejectionReason): boolean {
  */
 export const VOICE_BACKEND_TIMEOUT_MS = 45_000;
 
+/** The banner when a backend reply arrives after a new photo replaced the one it was asked about. */
+export const VOICE_REPLY_PREVIOUS_PHOTO =
+  'That answer was for the previous photo, so it was not applied to this one.';
+
+/**
+ * Which photo a session is about: its id and its source asset. Words and replies carry the key from when they
+ * were asked, and are dropped when the session now holds another photo; the view revision alone cannot tell,
+ * since a new session can reach the same revision by coincidence.
+ */
+export function photoKeyOf(session: ObservationSession): string {
+  return `${session.id}:${session.sourceAsset?.id ?? ''}`;
+}
+
 /**
  * Asks the backend to read `utterance` against the parser's own context, plus the recording's place and
  * capture time, which the backend needs to place a planet. The pointer goes along only when the parser

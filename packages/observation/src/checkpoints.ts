@@ -165,7 +165,6 @@ export function restoreSessionToCheckpoint(
     machines: {
       ...baseSession.machines,
       navigation: resetToSourceAnchor ? 'source' : targetCheckpoint.navigationState,
-      voice: 'listening',
     },
     spatialView: restoredSpatialView,
     navigationHistory: {

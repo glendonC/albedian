@@ -52,6 +52,9 @@ function completeAction(
 
 /**
  * Authoritative revision-checked `AlbedianAction` dispatcher and reducer.
+ *
+ * No action opens the microphone, so none sets machines.voice to listening: only an open capture does
+ * (apps/web push-to-talk), whether a button or a spoken command dispatched the action.
  */
 export function dispatchAlbedianAction(
   session: ObservationSession,
@@ -85,7 +88,7 @@ export function dispatchAlbedianAction(
       }
       const status = `Applied ${variant.label} (${variant.summaryNote})`;
       return completeAction(
-        { ...base, viewRevision: nextRev, activeVariantId: variant.id, machines: { ...base.machines, restoration: 'ready', voice: 'listening' }, lastStatusBanner: status },
+        { ...base, viewRevision: nextRev, activeVariantId: variant.id, machines: { ...base.machines, restoration: 'ready' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
         `Restored sky clarity using ${variant.label} while preserving people and original audio.`,
@@ -101,7 +104,7 @@ export function dispatchAlbedianAction(
       }
       const status = `Comparing ${variantA.label} with ${variantB.label} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
       return completeAction(
-        { ...base, viewRevision: nextRev, activeVariantId: variantB.id, compareVariantId: variantA.id, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison', voice: 'listening' }, lastStatusBanner: status },
+        { ...base, viewRevision: nextRev, activeVariantId: variantB.id, compareVariantId: variantA.id, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
         `Comparing ${variantA.label} and ${variantB.label}.`,
@@ -144,7 +147,7 @@ export function dispatchAlbedianAction(
         {
           ...base,
           viewRevision: nextRev,
-          machines: { ...base.machines, navigation: 'sky_registered', voice: 'listening' },
+          machines: { ...base.machines, navigation: 'sky_registered' },
           spatialView: {
             ...base.spatialView,
             mode: 'registered_sky',
@@ -249,7 +252,7 @@ export function dispatchAlbedianAction(
           isPlaying: false,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          machines: { ...base.machines, navigation: 'space', voice: 'listening' },
+          machines: { ...base.machines, navigation: 'space' },
           spatialView: {
             ...base.spatialView,
             mode: 'catalog_3d',
@@ -294,7 +297,7 @@ export function dispatchAlbedianAction(
           isPlaying: false,
           selectedFindingId: finding.id,
           focusedFindingId: finding.id,
-          machines: { ...base.machines, navigation: 'space', voice: 'listening' },
+          machines: { ...base.machines, navigation: 'space' },
           spatialView: {
             ...base.spatialView,
             mode: 'catalog_3d',
