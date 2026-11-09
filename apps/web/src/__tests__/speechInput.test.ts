@@ -149,9 +149,9 @@ describe('@albedian/web push-to-talk speech capture', () => {
 
   it('writes no em or en dash in any sentence', () => {
     for (const code of ['network', 'not-allowed', 'no-speech', 'audio-capture', 'aborted', 'language-not-supported', undefined]) {
-      expect(speechErrorBanner(code)).not.toMatch(/[–—]/);
+      expect(speechErrorBanner(code)).not.toMatch(/[\u2013\u2014]/);
     }
-    expect(SPEECH_UNAVAILABLE).not.toMatch(/[–—]/);
+    expect(SPEECH_UNAVAILABLE).not.toMatch(/[\u2013\u2014]/);
     vi.restoreAllMocks();
   });
 });
