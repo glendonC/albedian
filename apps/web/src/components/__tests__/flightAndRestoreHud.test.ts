@@ -11,6 +11,8 @@ import {
   getEpistemicBadgeDescriptor,
   PARSEC_TO_LIGHT_YEAR,
 } from '@albedian/evidence';
+import { resolveFindingParsecPosition } from '@albedian/camera-rig';
+import { FLIGHT_STANDOFF_PC, flightEndOrigin } from '../../spatial/flightTarget.js';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -402,8 +404,9 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
     const distEl = container.querySelector<HTMLElement>(
       '[data-testid="flight-distance-readout"]'
     );
-    expect(distEl?.textContent).toContain(`${expectedLy.toFixed(2)} ly`);
-    expect(distEl?.textContent).toContain(`${expectedPc.toFixed(2)} pc`);
+    // Three significant figures: the distance rests on a catalog estimate
+    expect(distEl?.textContent).toContain(`${Number(expectedLy.toPrecision(3))} ly`);
+    expect(distEl?.textContent).toContain(`${Number(expectedPc.toPrecision(3))} pc`);
 
     const rungGroup = container.querySelector<HTMLElement>(
       '[data-testid="flight-scale-rung"]'
@@ -438,6 +441,93 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
     expect(simDisclosure?.textContent).toContain(simBadge.disclosure);
     expect(simDisclosure?.textContent).toContain('Gaia DR3');
     expect(simDisclosure?.textContent).toContain('Hipparcos');
+  });
+
+  it('says how far the camera is from the target, and that the flight moves the markers, not the stars', async () => {
+    const base = createSyntheticCalibratedSession();
+    const finding = base.observationSolution!.findings.find(
+      (f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc
+    )!;
+    const inSpace = dispatchAlbedianAction(base, {
+      type: 'space.enter',
+      requestId: 'req-enter-space-target',
+      expectedViewRevision: base.viewRevision,
+      findingId: finding.id,
+      distancePolicy: 'measured_or_estimated',
+    }).session;
+    // Where a Go There flight now ends: one light year short of the star (spatial/flightTarget.ts)
+    const target = resolveFindingParsecPosition(finding)!;
+    const arrived: ObservationSession = {
+      ...inSpace,
+      spatialView: { ...inSpace.spatialView, observerOriginParsec: flightEndOrigin([0, 0, 0], target) },
+    };
+
+    await act(async () => {
+      root.render(React.createElement(FlightAndRestoreHud, { session: arrived, setSession: () => {} }));
+    });
+
+    const toTarget = container.querySelector<HTMLElement>('[data-testid="flight-target-distance-readout"]');
+    expect(toTarget?.textContent).toMatch(new RegExp(`^1\\.00 ly from ${finding.title}`));
+    // Three significant figures from Earth: the star's own distance is a catalog estimate
+    const fromEarth = container.querySelector<HTMLElement>('[data-testid="flight-distance-readout"]');
+    const earthLy = (Math.hypot(...target) - FLIGHT_STANDOFF_PC) * PARSEC_TO_LIGHT_YEAR;
+    expect(fromEarth?.textContent).toContain(`${Number(earthLy.toPrecision(3))} ly`);
+    expect(fromEarth?.textContent).not.toMatch(/\.\d\d ly/);
+    const disclosure = container.querySelector<HTMLElement>('[data-testid="flight-simulated-disclosure"]');
+    expect(disclosure?.textContent).toMatch(/the flight moves the markers, not the stars/i);
+  });
+
+  it("gives a prior-placed star's catalog distance with its range, at three significant figures", async () => {
+    const base = createSyntheticCalibratedSession();
+    const betelgeuse = base.observationSolution!.findings.find((f) => f.title === 'Betelgeuse')!;
+    const inSpace = dispatchAlbedianAction(base, {
+      type: 'space.enter',
+      requestId: 'req-enter-space-betelgeuse',
+      expectedViewRevision: base.viewRevision,
+      findingId: betelgeuse.id,
+      distancePolicy: 'measured_or_estimated',
+    }).session;
+    const arrived: ObservationSession = {
+      ...inSpace,
+      spatialView: {
+        ...inSpace.spatialView,
+        observerOriginParsec: flightEndOrigin([0, 0, 0], resolveFindingParsecPosition(betelgeuse)!),
+      },
+    };
+    await act(async () => {
+      root.render(React.createElement(FlightAndRestoreHud, { session: arrived, setSession: () => {} }));
+    });
+    const toTarget = container.querySelector<HTMLElement>('[data-testid="flight-target-distance-readout"]');
+    // 168.067 pc (156.25 to 181.818) in the synthetic Hipparcos row
+    expect(toTarget?.textContent).toContain('548 ly (510 to 593 ly) from Earth');
+  });
+
+  it('gives the catalog clause only for a catalog distance, not an ephemeris one or none', async () => {
+    const base = createSyntheticCalibratedSession();
+    const star = base.observationSolution!.findings.find((f) => f.title === 'Betelgeuse')!;
+    const at = resolveFindingParsecPosition(star)!;
+    const variants = {
+      // A solar system body's distance comes from the ephemeris, in a few au
+      ephemeris: { ...star, title: 'Mars', inferredDistancePc: { lower: 6.0e-6, median: 6.1e-6, upper: 6.2e-6, method: 'ephemeris_au' as const } },
+      // A finding placed in 3D with no distance prior at all
+      noPrior: { ...star, title: 'Unpriored star', cartesianParsecICRS: at, inferredDistancePc: undefined },
+    };
+    for (const [name, finding] of Object.entries(variants)) {
+      const session: ObservationSession = {
+        ...base,
+        selectedFindingId: finding.id,
+        machines: { ...base.machines, navigation: 'space' },
+        observationSolution: { ...base.observationSolution!, findings: [finding as typeof star] },
+        spatialView: { ...base.spatialView, mode: 'catalog_3d', transitionPhase: 'at_space', observerOriginParsec: [0, 0, 0] },
+      };
+      await act(async () => {
+        root.render(React.createElement(FlightAndRestoreHud, { session, setSession: () => {} }));
+      });
+      const toTarget = container.querySelector<HTMLElement>('[data-testid="flight-target-distance-readout"]');
+      expect(toTarget?.textContent, name).toMatch(new RegExp(`ly from ${finding.title}$`));
+      expect(toTarget?.textContent, name).not.toMatch(/catalog/);
+      expect(toTarget?.textContent, name).not.toMatch(/e[-+]\d/);
+    }
   });
 
   it('renders Stop flight button during active transitions and dispatches navigation.cancel on click', async () => {
@@ -477,7 +567,9 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
     expect(phaseEl?.textContent).toContain(
       'Phase B: Calibrated Sky to 3D Catalog Space'
     );
-    expect(phaseEl?.textContent).toContain('42%');
+    // The animation's progress is not a job's, so the phase is named without a percentage
+    expect(phaseEl?.textContent).not.toMatch(/%/);
+    expect(phaseEl?.textContent).not.toContain('42');
 
     const stopBtn = container.querySelector<HTMLButtonElement>(
       '[data-testid="stop-flight-btn"]'

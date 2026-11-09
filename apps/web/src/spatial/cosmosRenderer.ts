@@ -36,6 +36,11 @@ export interface CosmosRenderer {
   /** Forgets the place and time, for a recording without a location; absent where nothing is held. */
   clearObserverCoordinates?(): void;
   setShowcaseMode(enabled: boolean): void;
+  /**
+   * Shows the sky view when the landing ends, unless it is already showing (so the viewer keeps
+   * their turn); absent where a renderer draws only the landing scene.
+   */
+  showSkyView?(): void;
   transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant?: boolean): void;
   /** Holds the scene clock at `seconds` for matched snapshots; null runs it again. */
   holdClock(seconds: number | null): void;

@@ -319,6 +319,7 @@ export const SpatialObservatoryViewport: React.FC<
     const renderer = rendererRef.current;
     if (!renderer) return;
     if (!entryStageActive) {
+      renderer.showSkyView?.();
       renderer.setShowcaseMode(false);
       appliedShowcaseRef.current.sceneKey = null;
       return;
@@ -489,7 +490,7 @@ export const SpatialObservatoryViewport: React.FC<
                   Light pollution hides the Milky Way from more than a third of
                   humanity, severing our perspective in the cosmos. Upload a night photo to find
                   where and when it was taken, see the real sky behind the glow,
-                  and fly through the 3D universe behind your frame.
+                  and find out how far away each star in your frame is.
                 </p>
                 <div className="alb-nazyurtal-actions">
                   <button

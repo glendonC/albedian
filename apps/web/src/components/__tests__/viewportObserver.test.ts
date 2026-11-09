@@ -16,6 +16,7 @@ const stub = vi.hoisted(() => ({
   clears: 0,
   // What the stand-in renderer holds: no place, or a place with or without a capture time
   placed: null as null | 'capture' | 'now',
+  skyViews: 0,
 }));
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
@@ -27,6 +28,9 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
     clearObserverCoordinates() {
       stub.clears += 1;
       stub.placed = null;
+    }
+    showSkyView() {
+      stub.skyViews += 1;
     }
     setShowcaseMode() {}
     transitionToShowcaseScene() {}
@@ -74,7 +78,7 @@ const noop = () => {};
 let container: HTMLDivElement;
 let root: Root;
 
-function renderViewport(sourceAsset: Record<string, unknown>): void {
+function renderViewport(sourceAsset: Record<string, unknown>, uploadedMediaUrl: string | null = null): void {
   const session = { sourceAsset } as unknown as ObservationSession;
   act(() => {
     root.render(
@@ -86,7 +90,7 @@ function renderViewport(sourceAsset: Record<string, unknown>): void {
         activeDiscoveredId: null,
         setActiveDiscoveredId: noop,
         activeDiscoveredItem: null,
-        uploadedMediaUrl: null,
+        uploadedMediaUrl,
         setUploadedMediaUrl: noop,
         commandText: '',
         setCommandText: noop,
@@ -132,6 +136,7 @@ beforeEach(() => {
   stub.calls = [];
   stub.clears = 0;
   stub.placed = null;
+  stub.skyViews = 0;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -189,5 +194,31 @@ describe("the viewport hands the sky view the recording's place and time", () =>
     } finally {
       for (const spy of spies) spy.mockRestore();
     }
+  });
+});
+
+describe('the landing promises only what the app does', () => {
+  it('does not promise a flight through the 3D universe before the stars move with the camera', () => {
+    renderViewport({ observerLocation: null });
+    expect(container.textContent).not.toMatch(/fly through the 3D universe/i);
+    expect(container.textContent).toMatch(/how far/i);
+  });
+});
+
+describe('the viewport returns the canvas to the sky view when the landing ends', () => {
+  it('shows the sky view on Launch, not the last landing scene', () => {
+    renderViewport({ observerLocation: null });
+    expect(stub.skyViews).toBe(0);
+    const launch = container.querySelector<HTMLButtonElement>('[data-testid="enter-observatory-btn"]');
+    expect(launch).not.toBeNull();
+    act(() => launch!.click());
+    expect(stub.skyViews).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows the sky view when the landing hands over to an uploaded photo, so a ground photo is not drawn as deep sky', () => {
+    renderViewport({ observerLocation: null });
+    expect(stub.skyViews).toBe(0);
+    renderViewport({ observerLocation: null }, 'blob:uploaded-photo');
+    expect(stub.skyViews).toBeGreaterThanOrEqual(1);
   });
 });

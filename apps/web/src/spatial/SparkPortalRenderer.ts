@@ -89,7 +89,6 @@ export class SparkPortalRenderer {
   private localBubbleCavityGroup: THREE.Group | null = null;
   private deepSkyBlackHoleMeshes: THREE.Object3D[] = [];
   private planetaryTerrainSplatMesh: SplatMesh | null = null;
-  private planetaryParentBodyMesh: THREE.Mesh | null = null;
   private catalogStars: CatalogStarField | null = null;
   private readonly catalogStarMounts: THREE.Group[] = [];
 
@@ -244,10 +243,9 @@ export class SparkPortalRenderer {
   private buildPlanetarySurfaceWorld(): void {
     const group = this.regimeGroups.planetary_surface;
     this.addCatalogStarMount(group, 95.0);
-    const { parentBodyMesh, terrainSplatMesh } = buildPlanetarySurfaceRegimeGroup(
+    const { terrainSplatMesh } = buildPlanetarySurfaceRegimeGroup(
       group, this.planetarySkyUniforms, this.earthUniforms, this.moonUniforms
     );
-    this.planetaryParentBodyMesh = parentBodyMesh;
     this.planetaryTerrainSplatMesh = terrainSplatMesh;
   }
 
@@ -294,7 +292,6 @@ export class SparkPortalRenderer {
       if (this.cislunarEarthMesh) this.cislunarEarthMesh.rotation.y += 0.00018 * rotMult;
       if (this.betelgeuseMesh) this.betelgeuseMesh.rotation.y += 0.0006 * rotMult;
       if (this.localBubbleCavityGroup) this.localBubbleCavityGroup.rotation.y += 0.00045 * rotMult;
-      if (this.planetaryParentBodyMesh) this.planetaryParentBodyMesh.rotation.y += 0.0005 * rotMult;
 
       if (this.showcaseMode && !this.flightState?.active) {
         this.lookTarget.yaw = Math.sin(elapsed * 0.42) * 0.095;
@@ -445,6 +442,7 @@ export class SparkPortalRenderer {
 
   public setSkyRestorationActive(active: boolean): void { this.skyDomeUniforms.uRestoration.value = active ? 1.0 : 0.0; }
   public holdClock(seconds: number | null): void { this.heldClockSec = seconds; }
+  public showSkyView(): void { if (this.activeRegime !== 'earth_capture' || this.flightState) this.jumpToRegime('earth_capture'); }
 
   public getRenderLayers(): RenderLayerSet | null {
     const blackHole = this.nebulaUniforms.uIsBlackHole.value > 0.5;

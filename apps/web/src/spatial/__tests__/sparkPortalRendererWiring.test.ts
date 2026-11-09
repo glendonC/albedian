@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { julianDateUtc } from '../bodyOrientation.js';
 import { defaultObserverLook, observerAxes, observerFrameQuaternion } from '../observerPose.js';
-import { SparkPortalRenderer } from '../SparkPortalRenderer.js';
+import { SparkPortalRenderer, type SpatialScaleRegime } from '../SparkPortalRenderer.js';
 
 /**
  * The WebGL renderer's observer wiring, driven through its public methods. Under Node there is no
@@ -24,11 +24,14 @@ const CAPTURED_AT = '2027-02-06T17:00:00Z';
 const FRAME = observerFrameQuaternion(observerAxes(SITE, julianDateUtc(CAPTURED_AT)));
 const IDENTITY = new THREE.Quaternion();
 
-function makeRenderer(): { r: SparkPortalRenderer; i: Internals } {
+function makeRenderer(): { r: SparkPortalRenderer; i: Internals; regimes: SpatialScaleRegime[] } {
+  const regimes: SpatialScaleRegime[] = [];
   const container = { clientWidth: 800, clientHeight: 450, appendChild() {} } as unknown as HTMLElement;
-  const r = new SparkPortalRenderer(container);
-  return { r, i: r as unknown as Internals };
+  const r = new SparkPortalRenderer(container, (regime) => regimes.push(regime));
+  return { r, i: r as unknown as Internals, regimes };
 }
+
+afterEach(() => vi.restoreAllMocks());
 
 const near = (a: THREE.Quaternion, b: THREE.Quaternion) => Math.abs(Math.abs(a.dot(b)) - 1) < 1e-12;
 const horizonRow = (r: SparkPortalRenderer) => r.getRenderLayers()?.find((l) => l.kind === 'sky_overlay');
@@ -127,5 +130,44 @@ describe('the WebGL renderer places, clears and flies the sky view observer', ()
     r.jumpToRegime('cislunar');
     r.stepThroughPortal(-1);
     expect(near(i.flightState!.endQuat, IDENTITY)).toBe(true);
+  });
+
+  it("never logs the recording's place or time", () => {
+    const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+    const spies = methods.map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+    const { r } = makeRenderer();
+    r.setObserverCoordinates(SITE.latDeg, SITE.lonDeg, CAPTURED_AT);
+    r.getRenderLayers();
+    r.jumpToRegime('cislunar');
+    r.stepThroughPortal(-1);
+    r.clearObserverCoordinates();
+    const logged = spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(String).join(' '))).join('\n');
+    for (const piece of ['31.2', '149.0', '2027', '02-06', '17:00']) expect(logged, piece).not.toContain(piece);
+  });
+});
+
+describe('the WebGL renderer returns to the sky view when the landing ends', () => {
+  it('leaves any landing scene for the sky view, with no modelled black hole or star in view', () => {
+    for (const scene of ['cislunar', 'black_hole', 'supergiant', 'saturn_horizon'] as const) {
+      const { r, regimes } = makeRenderer();
+      r.transitionToShowcaseScene(scene, true);
+      expect(regimes.at(-1)).not.toBe('earth_capture');
+      r.showSkyView();
+      expect(regimes.at(-1), scene).toBe('earth_capture');
+      const layers = r.getRenderLayers()!;
+      expect(layers.map((l) => l.id)).toContain('sky.panorama');
+      expect(layers.some((l) => l.kind === 'procedural'), scene).toBe(false);
+    }
+  });
+
+  it('leaves the sky view alone when it is already showing, so the viewer keeps their turn', () => {
+    const { r, i, regimes } = makeRenderer();
+    r.showSkyView();
+    r.nudgeLook(0.4, -0.2);
+    const turned = { yaw: i.lookTarget.yaw, pitch: i.lookTarget.pitch };
+    const jumps = regimes.length;
+    r.showSkyView();
+    expect(regimes.length).toBe(jumps);
+    expect(i.lookTarget).toMatchObject(turned);
   });
 });

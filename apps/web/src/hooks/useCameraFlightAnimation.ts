@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { computeStarAnchorNdc } from '@albedian/observation';
+import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
+import { distancePc, flightEndOrigin, threeFigures } from '../spatial/flightTarget.js';
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -36,11 +38,12 @@ export function useCameraFlightAnimation(
         window.cancelAnimationFrame(flightRafRef.current);
       }
 
-      const endOrigin: [number, number, number] = [
-        Number((targetParsec[0] * 0.45).toFixed(3)),
-        Number((targetParsec[1] * 0.45).toFixed(3)),
-        Number((targetParsec[2] * 0.45).toFixed(3)),
-      ];
+      // One light year short of the star, on the line from where the camera is now
+      const startOrigin = [...session.spatialView.observerOriginParsec] as [number, number, number];
+      const endOrigin = flightEndOrigin(startOrigin, targetParsec);
+      // One light year by design, or how far it already was when the camera started closer
+      const arrivedLy = distancePc(endOrigin, targetParsec) * PARSEC_TO_LIGHT_YEAR;
+      const arrival = Math.abs(arrivedLy - 1) < 1e-9 ? 'one light year' : `${threeFigures(arrivedLy)} ly`;
 
       // The same anchor the reducer locks on selection: the detection as the upright photo shows it
       const anchorNdc = computeStarAnchorNdc(target, session.sourceAsset);
@@ -65,12 +68,11 @@ export function useCameraFlightAnimation(
               constellationLines: true,
             },
           },
-          lastStatusBanner: `Catalog Geometry · Distance Estimates: Arrived in 3D neighborhood of ${target.title}.`,
+          lastStatusBanner: `Catalog Geometry · Distance Estimates: ${arrival} from ${target.title}.`,
         }));
         return;
       }
 
-      const startOrigin = [...session.spatialView.observerOriginParsec] as [number, number, number];
       const startTime = performance.now();
       const phaseADurationMs = 620;
       const phaseBDurationMs = 1550;
@@ -91,8 +93,10 @@ export function useCameraFlightAnimation(
               transitionPhase: 'phase_a_photo_to_sky',
               transitionProgress: Number(easeA.toFixed(3)),
               lockedAnchorNdc: anchorNdc,
+              // The command may already have put the camera on the star: it stays where it starts
+              observerOriginParsec: startOrigin,
             },
-            lastStatusBanner: `Phase A (Anchor Lock ≤ 0.5 px): Registering ${target.title} against WCS sky…`,
+            lastStatusBanner: `Phase A: registering ${target.title} against the calibrated sky…`,
           }));
           flightRafRef.current = window.requestAnimationFrame(step);
         } else if (elapsed < totalDurationMs) {
@@ -125,7 +129,7 @@ export function useCameraFlightAnimation(
                 constellationLines: true,
               },
             },
-            lastStatusBanner: `Phase B (3D Parsec Flight): Flying through Gaia DR3 catalog geometry toward ${target.title} (${(easeB * 100).toFixed(0)}%)…`,
+            lastStatusBanner: `Phase B: flying toward ${target.title} through catalog geometry…`,
           }));
           flightRafRef.current = window.requestAnimationFrame(step);
         } else {
@@ -142,13 +146,14 @@ export function useCameraFlightAnimation(
               fovVerticalDeg: 45.0,
               frustumShiftNdc: [0, 0],
             },
-            lastStatusBanner: `Catalog Geometry · Distance Estimates: Arrived in 3D neighborhood of ${target.title}. Drag to orbit or scroll to dolly.`,
+            lastStatusBanner: `Catalog Geometry · Distance Estimates: ${arrival} from ${target.title}.`,
           }));
           flightRafRef.current = null;
         }
       };
 
-      flightRafRef.current = window.requestAnimationFrame(step);
+      // The first frame now, so the panel never shows the state the command left (the camera on the star)
+      step(startTime);
     },
     [session, setSession]
   );

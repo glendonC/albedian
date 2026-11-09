@@ -105,7 +105,7 @@ export function buildPlanetarySurfaceRegimeGroup(
   planetarySkyUniforms: PlanetarySkyUniforms,
   earthUniforms: EarthUniforms,
   moonUniforms: MoonUniforms
-): { parentBodyMesh: THREE.Mesh; terrainSplatMesh: SplatMesh } {
+): { terrainSplatMesh: SplatMesh } {
   const worldGeo = new THREE.SphereGeometry(85, 128, 96);
   const worldMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -508,15 +508,8 @@ export function buildPlanetarySurfaceRegimeGroup(
   const worldDome = new THREE.Mesh(worldGeo, worldMat);
   group.add(worldDome);
 
-  // Invisible anchor mesh for camera telemetry projection
-  const anchorGeo = new THREE.SphereGeometry(0.1, 8, 8);
-  const anchorMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 });
-  const parentBodyMesh = new THREE.Mesh(anchorGeo, anchorMat);
-  parentBodyMesh.position.set(-3.6, 4.2, -19.0);
-  group.add(parentBodyMesh);
-
   const terrainSplatMesh = createPlanetaryTerrainSplatMesh('exoplanet_terminator', planetarySkyUniforms);
   group.add(terrainSplatMesh);
 
-  return { parentBodyMesh, terrainSplatMesh };
+  return { terrainSplatMesh };
 }

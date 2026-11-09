@@ -91,4 +91,9 @@ describe('dead sky target and frustum code stays cut', () => {
     );
     expect(fs.existsSync(fileURLToPath(new URL('../referenceFrameContinuity.ts', import.meta.url).href))).toBe(false);
   });
+
+  it('builds no invisible telemetry anchor in the planetary scene', () => {
+    expect(read('../webgl/planetarySurfaceRegime.ts')).not.toMatch(/parentBodyMesh|telemetry/);
+    expect(read('../SparkPortalRenderer.ts')).not.toMatch(/planetaryParentBodyMesh/);
+  });
 });

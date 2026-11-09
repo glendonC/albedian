@@ -5,11 +5,16 @@ import {
   getEpistemicBadgeDescriptor,
   PARSEC_TO_LIGHT_YEAR,
 } from '@albedian/evidence';
+import { resolveFindingParsecPosition } from '@albedian/camera-rig';
+import { distancePc, threeFigures } from '../spatial/flightTarget.js';
 
 export interface FlightAndRestoreHudProps {
   session: ObservationSession;
   setSession: React.Dispatch<React.SetStateAction<ObservationSession>>;
 }
+
+/** Distance methods that come from a star catalog (parallax or a Bailer-Jones prior), not an ephemeris. */
+const CATALOG_DISTANCE_METHODS = new Set<string>(['geometric_parallax', 'photogeometric_bailer_jones_edr3']);
 
 const POWERS_OF_TEN_RUNGS = [
   { exp: -3, label: '10^-3 pc' },
@@ -153,6 +158,17 @@ export const FlightAndRestoreHud: React.FC<FlightAndRestoreHudProps> = ({
   const distPc = Math.hypot(origin[0], origin[1], origin[2]);
   const distLy = distPc * PARSEC_TO_LIGHT_YEAR;
   const activeRungExp = resolveScaleRungExp(distPc);
+  // How far the selected star is from the camera, beside how far the camera is from Earth
+  const target = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId);
+  const targetPc = target ? resolveFindingParsecPosition(target) : null;
+  const toTargetLy = targetPc ? distancePc(origin, targetPc) * PARSEC_TO_LIGHT_YEAR : null;
+  // The catalog's own distance and range for the star, when it gives one; an ephemeris distance is not a catalog's
+  const prior = target?.inferredDistancePc && CATALOG_DISTANCE_METHODS.has(target.inferredDistancePc.method)
+    ? target.inferredDistancePc
+    : undefined;
+  const catalogLy = prior
+    ? ` which the catalog puts at ${threeFigures(prior.median * PARSEC_TO_LIGHT_YEAR)} ly (${threeFigures(prior.lower * PARSEC_TO_LIGHT_YEAR)} to ${threeFigures(prior.upper * PARSEC_TO_LIGHT_YEAR)} ly) from Earth`
+    : '';
   const simBadge = getEpistemicBadgeDescriptor('simulated');
 
   return (
@@ -200,14 +216,22 @@ export const FlightAndRestoreHud: React.FC<FlightAndRestoreHudProps> = ({
               className="alb-flight-scale-distance"
               data-testid="flight-distance-readout"
             >
-              {distLy.toFixed(2)} ly ({distPc.toFixed(2)} pc) from Earth
+              {threeFigures(distLy)} ly ({threeFigures(distPc)} pc) from Earth
             </div>
+            {target && toTargetLy !== null && (
+              <div
+                className="alb-flight-scale-distance"
+                data-testid="flight-target-distance-readout"
+              >
+                {threeFigures(toTargetLy)} ly from {target.title}
+                {catalogLy && `,${catalogLy}`}
+              </div>
+            )}
             <div
               className="alb-flight-scale-phase"
               data-testid="flight-transition-phase"
             >
-              {formatTransitionPhaseLabel(transitionPhase)} ·{' '}
-              {Math.round(transitionProgress * 100)}%
+              {formatTransitionPhaseLabel(transitionPhase)}
             </div>
             {isTransitionActive && (
               <button
@@ -250,7 +274,8 @@ export const FlightAndRestoreHud: React.FC<FlightAndRestoreHudProps> = ({
             </strong>{' '}
             {simBadge.disclosure} Catalog 3D geometry from Gaia DR3 / Hipparcos
             directions and distance priors (16th-84th percentile intervals along
-            the line of sight).
+            the line of sight). The flight moves the markers, not the stars:
+            the stars stay drawn as seen from Earth.
           </p>
         </div>
       )}
