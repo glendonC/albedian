@@ -23,6 +23,7 @@ import { MusicLayer, type MusicStatus } from './music/MusicLayer.js';
 import { DEV_BUILD, appMusicSetting, type MusicSetting } from './music/musicSetting.js';
 import type { PieceId, SoundtrackMoment } from './music/soundtrack.js';
 import { appSoundtrackMoment } from './music/soundtrackMoment.js';
+import { appMusicSelection, type MusicSelection } from './music/selectionTone.js';
 import type { ScreenStar } from './music/starNotes.js';
 
 export type { ScaleAudioRegime } from './mappings.js';
@@ -101,6 +102,11 @@ export class ObservatoryAudioEngine {
 
   public getMusicStatus(): MusicStatus {
     return this.music.getStatus();
+  }
+
+  /** A selected finding's quiet note inside the playing piece (selectionTone.ts); nothing while Audio is off. */
+  public playMusicSelection(selection: MusicSelection): void {
+    this.music.playSelection(selection);
   }
 
   /** Whether the music wants the stars on screen: not where no music can play, nor with the music off. */
@@ -189,3 +195,8 @@ export const observatoryAudio = new ObservatoryAudioEngine(APP_AUDIO_OPTIONS);
 // The Music control changes the page's setting and the viewport its moment; the engine follows both
 appMusicSetting.subscribe(() => observatoryAudio.setMusicSetting(appMusicSetting.get()));
 appSoundtrackMoment.subscribe(() => observatoryAudio.setMusicMoment(appSoundtrackMoment.get()));
+// A newly selected finding plays its note; clearing the selection plays nothing
+appMusicSelection.subscribe(() => {
+  const selection = appMusicSelection.get();
+  if (selection) observatoryAudio.playMusicSelection(selection);
+});

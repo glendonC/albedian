@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RECORDING, ambientBeats, organAndPulse, type RecordingAnalysis } from '../directions';
+import { INSTRUMENTS, RECORDING, ambientBeats, barPitchSet, organAndPulse, type InstrumentDef, type RecordingAnalysis } from '../directions';
 import { MusicLayer, neededZones } from '../MusicLayer';
-import { SampleBank } from '../sampler';
+import { selectionNote, type MusicSelection } from '../selectionTone';
+import { SampleBank, chooseZone, playbackRate } from '../sampler';
 import type { ScreenStar } from '../starNotes';
 
 /**
@@ -690,6 +691,522 @@ describe('MusicLayer after a missing file', () => {
     phone.setState('running');
     await clockTo(phone, 25.2);
     expect(waiting.getStatus()).toMatchObject({ state: 'playing', retryAtSec: null });
+  });
+});
+
+
+describe('MusicLayer playing a selected star', () => {
+  const SIRIUS: MusicSelection = { id: 'f-sirius', evidenceClass: 'catalog_matched', temperatureK: 9940, panX: 0.4 };
+  const PLAIN: MusicSelection = { id: 'f-spot', evidenceClass: 'observed', temperatureK: null, panX: null };
+
+  async function playing() {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, requests } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    return { layer, ctx, music, requests, arrangement: organAndPulse(STARS.slice(0, 2)) };
+  }
+  /** Sources started on the context so far: the pass's notes and any selection's. */
+  const notesStarted = (ctx: FakeContext) => ctx.sources().filter((s) => s.starts.length > 0).length;
+
+  it('plays it on the next beat of the playing pass, in its bar, panned, and coloured by its catalog temperature', async () => {
+    const { layer, ctx, arrangement } = await playing();
+    await clockTo(ctx, 12.1);
+    const before = ctx.sources().length;
+    const filters = ctx.nodes.filter((n) => n.kind === 'biquad').length;
+    layer.playSelection(SIRIUS);
+    await vi.advanceTimersByTimeAsync(0);
+    const added = ctx.sources().slice(before);
+    expect(added).toHaveLength(1);
+    const expected = selectionNote(SIRIUS, { arrangement, t0: 10.25 }, 12.1, 0.25)!;
+    // The organ piece runs at 60 beats a minute from 10.25 s: the beat after 12.35 s is 13.25 s
+    expect(added[0]!.starts[0]).toBeCloseTo(13.25, 6);
+    expect(expected.timeSec).toBeCloseTo(13.25, 6);
+    const lowpass = ctx.nodes.filter((n) => n.kind === 'biquad').slice(filters);
+    expect(lowpass).toHaveLength(1);
+    expect((lowpass[0]!.frequency as FakeParam).value).toBeCloseTo(expected.brightnessHz!, 6);
+    const panner = ctx.nodes.filter((n) => n.kind === 'panner').at(-1)!;
+    expect((panner.pan as FakeParam).value).toBeCloseTo(expected.pan, 9);
+    layer.stop();
+  });
+
+  it('plays a finding without a catalog temperature as the plain instrument, with no filter', async () => {
+    const { layer, ctx } = await playing();
+    const filters = ctx.nodes.filter((n) => n.kind === 'biquad').length;
+    const before = ctx.sources().length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ctx.sources().length).toBe(before + 1);
+    expect(ctx.nodes.filter((n) => n.kind === 'biquad').length).toBe(filters);
+    layer.stop();
+  });
+
+  it('plays nothing before Audio on, after Audio off, or while the context is not running', async () => {
+    const { fetch } = sourcesFetch();
+    const idle = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch });
+    idle.playSelection(SIRIUS);
+    const { layer, ctx } = await playing();
+    const started = () => ctx.sources().filter((s) => s.starts.length > 0).length;
+    const before = started();
+    // Selected while the context is suspended: dropped, not played later when it runs again
+    ctx.setState('suspended');
+    layer.playSelection(SIRIUS);
+    ctx.setState('running');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(started()).toBe(before);
+    // Selected, then Audio off before the note is scheduled: nothing
+    layer.playSelection(SIRIUS);
+    layer.stop();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(started()).toBe(before);
+    layer.playSelection(SIRIUS);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(started()).toBe(before);
+  });
+
+  it('plays at once in a silence between pieces, in the key of the piece just played, straight to the layer output', async () => {
+    const { layer, ctx, music, arrangement } = await playing();
+    const end = 10.25 + arrangement.durationSec;
+    await clockTo(ctx, end + 2);
+    expect(layer.getStatus().state).toBe('gap');
+    const before = ctx.sources().length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const added = ctx.sources().slice(before);
+    expect(added).toHaveLength(1);
+    expect(added[0]!.starts[0]).toBeCloseTo(ctx.currentTime + 0.25, 6);
+    // In the key of the piece just played: the root of its last bar's set, in its data register
+    const expected = selectionNote(PLAIN, { arrangement, t0: 10.25 }, ctx.currentTime, 0.25)!;
+    expect(((expected.midi % 12) + 12) % 12).toBe(barPitchSet(arrangement.chords.at(-1)!.chord).root);
+    const { semitones } = chooseZone((INSTRUMENTS[expected.instrument] as InstrumentDef).zones, expected.midi, 0, 0);
+    expect((added[0]!.playbackRate as FakeParam).value).toBeCloseTo(playbackRate(semitones, 0), 9);
+    // A piece that ended on its own is let go at once when the next is scheduled, which would cut a note still
+    // sounding on its data bus: a note in the silence goes straight to the layer output
+    expect(ctx.nodes.filter((n) => n.kind === 'panner').at(-1)!.outputs).toEqual([layerNodes(ctx, music).output]);
+    layer.stop();
+  });
+
+  /** A cool catalog star (made up for the test): its note needs a sample file the organ pass did not fetch. */
+  const COOL: MusicSelection = { id: 'f-cool', evidenceClass: 'catalog_matched', temperatureK: 3_000, panX: -0.5 };
+  /** The URL of the sample file the selection's note would play in the organ pass, at the clock now. */
+  const noteFileUrl = (selection: MusicSelection, arrangement: ReturnType<typeof organAndPulse>, ctx: FakeContext) => {
+    const note = selectionNote(selection, { arrangement, t0: 10.25 }, ctx.currentTime, 0.25)!;
+    const { zone } = chooseZone((INSTRUMENTS[note.instrument] as InstrumentDef).zones, note.midi, note.layer, 0);
+    return BASE + zone.file.split('/').map(encodeURIComponent).join('/');
+  };
+
+  it('plays nothing once the Music setting is off, though a piece played before, and fetches nothing for it', async () => {
+    const { layer, ctx, requests, arrangement } = await playing();
+    layer.setSetting('off');
+    await clockTo(ctx, 14);
+    expect(layer.getStatus()).toMatchObject({ setting: 'off', state: 'off', reason: 'the music is off' });
+    const before = notesStarted(ctx);
+    const fetches = requests.length;
+    expect(requests).not.toContain(noteFileUrl(COOL, arrangement, ctx));
+    layer.playSelection(PLAIN);
+    layer.playSelection(SIRIUS);
+    layer.playSelection(COOL);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    expect(requests.length).toBe(fetches);
+    layer.stop();
+  });
+
+  it('plays nothing after Audio off, the Music setting off, and Audio on again', async () => {
+    const { layer, ctx, music, requests, arrangement } = await playing();
+    layer.stop();
+    layer.setSetting('off');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    await clockTo(ctx, 14);
+    expect(layer.getStatus()).toMatchObject({ setting: 'off', state: 'off' });
+    const before = notesStarted(ctx);
+    const fetches = requests.length;
+    expect(requests).not.toContain(noteFileUrl(COOL, arrangement, ctx));
+    layer.playSelection(PLAIN);
+    layer.playSelection(SIRIUS);
+    layer.playSelection(COOL);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    expect(requests.length).toBe(fetches);
+    layer.stop();
+  });
+
+  it("plays nothing when the Music setting goes off while the note's samples load", async () => {
+    const { layer, ctx } = await playing();
+    await clockTo(ctx, 12.1);
+    const before = notesStarted(ctx);
+    layer.playSelection(SIRIUS);
+    layer.setSetting('off');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    layer.stop();
+  });
+
+  it("plays nothing in the new run when Audio goes off and on again while the note's samples load", async () => {
+    // The same Audio off and on with no selection: the notes the new run plays by itself
+    const control = await playing();
+    control.layer.stop();
+    await control.layer.start(control.ctx as unknown as AudioContext, control.music as unknown as AudioNode);
+    await vi.advanceTimersByTimeAsync(0);
+    const { layer, ctx, music, arrangement } = await playing();
+    const firstRun = notesStarted(ctx);
+    const colour = selectionNote(SIRIUS, { arrangement, t0: 10.25 }, ctx.currentTime, 0.25)!.brightnessHz!;
+    const lowpassesAtColour = () => ctx.nodes.filter((n) => n.kind === 'biquad' && Math.abs((n.frequency as FakeParam).value - colour) < 1e-6).length;
+    layer.playSelection(SIRIUS);
+    layer.stop();
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', passes: 2 });
+    expect(notesStarted(ctx)).toBeGreaterThan(firstRun);
+    expect(notesStarted(ctx)).toBe(notesStarted(control.ctx));
+    expect(lowpassesAtColour()).toBe(0);
+    layer.stop();
+    control.layer.stop();
+  });
+
+  it("schedules nothing when the context stops running while the note's samples load, nor once it runs again", async () => {
+    const { layer, ctx } = await playing();
+    await clockTo(ctx, 12.1);
+    const before = notesStarted(ctx);
+    layer.playSelection(SIRIUS);
+    ctx.setState('suspended');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    ctx.setState('running');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    layer.stop();
+  });
+
+  it("joins the playing pass's data bus beside its data notes, not the layer output", async () => {
+    const { layer, ctx, music, arrangement } = await playing();
+    await clockTo(ctx, 12.1);
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const bus = ctx.nodes.filter((n) => n.kind === 'panner').at(-1)!.outputs[0];
+    expect(bus).not.toBe(layerNodes(ctx, music).output);
+    // Every note of the pass on its data bus goes into that node, and now the selection's note too
+    const dataNotes = arrangement.events.filter((e) => e.type === 'sample' && e.bus === 'data').length;
+    expect(dataNotes).toBeGreaterThan(0);
+    expect(ctx.nodes.filter((n) => n.kind === 'panner' && n.outputs.includes(bus))).toHaveLength(dataNotes + 1);
+    // A coloured note reaches the same bus through its low-pass
+    layer.playSelection(SIRIUS);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ctx.nodes.filter((n) => n.kind === 'biquad').at(-1)!.outputs).toEqual([bus]);
+    layer.stop();
+  });
+
+  it('plays through the faded piece, straight to the layer output, while a piece fades after a moment change and the next has not started', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ piece: 'organ-pulse', state: 'playing', passes: 1 });
+    // A star selected: the moment moves on, and once it has held 1.5 s the organ fades out over 3 s
+    await clockTo(ctx, 12);
+    layer.setMoment('star_card');
+    await clockTo(ctx, 14);
+    const { output, passes } = layerNodes(ctx, music);
+    expect(passes).toHaveLength(1);
+    expect((passes[0]!.gain as FakeParam).events.at(-1)).toMatchObject({ call: 'linear', value: 0 });
+    expect(layer.getStatus()).toMatchObject({ piece: 'organ-pulse', passes: 1 });
+    const before = ctx.sources().length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const added = ctx.sources().slice(before);
+    expect(added).toHaveLength(1);
+    // On the faded piece's beat and in its bar
+    const expected = selectionNote(PLAIN, { arrangement: organAndPulse(STARS.slice(0, 2)), t0: 10.25 }, ctx.currentTime, 0.25)!;
+    expect(added[0]!.starts[0]).toBeCloseTo(expected.timeSec, 6);
+    const { semitones } = chooseZone((INSTRUMENTS[expected.instrument] as InstrumentDef).zones, expected.midi, expected.layer, 0);
+    expect((added[0]!.playbackRate as FakeParam).value).toBeCloseTo(playbackRate(semitones, 0), 9);
+    // Not into the fading pass's data bus, which would fade it out with the piece: the layer output
+    expect(ctx.nodes.filter((n) => n.kind === 'panner').at(-1)!.outputs).toEqual([output]);
+    // After the fade the next piece plays
+    await clockTo(ctx, 18);
+    expect(layer.getStatus()).toMatchObject({ piece: 'ambient-beats', state: 'playing', passes: 2 });
+    layer.stop();
+  });
+
+  /**
+   * Serves the sources (with the recording's analysis), fails every request, or leaves requests
+   * unanswered as a host that does not answer would, on the test's say; `release` answers the held
+   * ones as served.
+   */
+  function gatedSources() {
+    const requests: string[] = [];
+    const held: { url: string; answer: (response: Response) => void }[] = [];
+    const gate = { mode: 'serve' as 'serve' | 'fail' | 'hold' };
+    const served = (url: string) => (url.endsWith('recording-analysis.json') ? new Response(JSON.stringify(ANALYSIS)) : new Response(new Uint8Array(16)));
+    const impl = async (input: RequestInfo | URL): Promise<Response> => {
+      const url = String(input);
+      requests.push(url);
+      if (gate.mode === 'hold') return new Promise<Response>((answer) => held.push({ url, answer }));
+      if (gate.mode === 'fail') return new Response('unavailable in this test', { status: 503 });
+      return served(url);
+    };
+    const release = () => {
+      for (const { url, answer } of held.splice(0)) answer(served(url));
+    };
+    return { fetch: impl as unknown as typeof fetch, requests, gate, release };
+  }
+  /** The newest layer output into the music input: a try after a missing file makes a new one. */
+  const newestOutput = (ctx: FakeContext, music: FakeNode) => ctx.nodes.filter((n) => n.outputs.includes(music)).at(-1)!;
+  /** The data bus a note's last node joined, checked to be the newest pass's: other panners (its data notes) join it too. */
+  const joinedPassBus = (ctx: FakeContext, music: FakeNode, node: FakeNode) => {
+    const bus = node.outputs[0] as FakeNode;
+    const output = newestOutput(ctx, music);
+    const newestPass = ctx.nodes.filter((n) => n.outputs.includes(output)).at(-1)!;
+    expect(bus).not.toBe(output);
+    expect(ctx.nodes.indexOf(bus)).toBeGreaterThan(ctx.nodes.indexOf(newestPass));
+    expect(ctx.nodes.filter((n) => n.kind === 'panner' && n.outputs.includes(bus)).length).toBeGreaterThan(1);
+  };
+
+  it('plays nothing while a try after a missing file runs, though a selection in the silence before loaded its sample, and plays once the try succeeds', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, requests, gate, release } = gatedSources();
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ piece: 'organ-pulse', state: 'playing' });
+    const end = 10.25 + organAndPulse(STARS.slice(0, 2)).durationSec;
+    // In the silence after the organ a plain finding plays, loading its sample
+    await clockTo(ctx, end + 2);
+    expect(layer.getStatus().state).toBe('gap');
+    let before = notesStarted(ctx);
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before + 1);
+    // The next piece's files cannot be fetched: no music, and the page says so
+    gate.mode = 'fail';
+    await clockTo(ctx, end + 22);
+    const failed = layer.getStatus();
+    expect(failed).toMatchObject({ state: 'unavailable', why: 'not_reachable', piece: null });
+    // The try: its first request is not answered yet, and the music stays unavailable
+    gate.mode = 'hold';
+    await clockTo(ctx, failed.retryAtSec! + 0.3);
+    expect(layer.wantsStars()).toBe(true);
+    const trying = layer.getStatus();
+    expect(trying).toMatchObject({ state: 'unavailable', why: 'not_reachable', retryAtSec: null });
+    before = notesStarted(ctx);
+    const asked = requests.length;
+    layer.playSelection({ id: 'f-spot-2', evidenceClass: 'observed', temperatureK: null, panX: 0.2 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before);
+    expect(requests).toHaveLength(asked);
+    expect(layer.getStatus()).toEqual(trying);
+    // The files are served again: the try plays, and so does the next selection, on its data bus
+    gate.mode = 'serve';
+    release();
+    await clockTo(ctx, ctx.currentTime + 1);
+    expect(layer.getStatus()).toMatchObject({ state: 'playing', reason: null, why: null, passes: 2 });
+    before = notesStarted(ctx);
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(before + 1);
+    joinedPassBus(ctx, music, ctx.nodes.filter((n) => n.kind === 'panner').at(-1)!);
+    layer.stop();
+  });
+
+  it('plays nothing, plain or coloured, and fetches nothing for it while a try after a missing file runs, then plays once the try succeeds', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, requests, gate, release } = gatedSources();
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    expect(layer.getStatus()).toMatchObject({ piece: 'organ-pulse', state: 'playing' });
+    // A star selected while the organ plays: the piece that fits the card cannot be fetched
+    await clockTo(ctx, 12);
+    gate.mode = 'fail';
+    layer.setMoment('star_card');
+    await clockTo(ctx, 20);
+    const failed = layer.getStatus();
+    expect(failed).toMatchObject({ state: 'unavailable', why: 'not_reachable', piece: null });
+    gate.mode = 'hold';
+    await clockTo(ctx, failed.retryAtSec! + 0.3);
+    expect(layer.wantsStars()).toBe(true);
+    const trying = layer.getStatus();
+    expect(trying).toMatchObject({ state: 'unavailable', why: 'not_reachable', retryAtSec: null });
+    // Catalog stars at a screen star's temperature take that star's tone, whose sample the organ loaded
+    const LIKE_A: MusicSelection = { id: 'f-like-a', evidenceClass: 'catalog_matched', temperatureK: 5_000, panX: 0 };
+    const LIKE_B: MusicSelection = { id: 'f-like-b', evidenceClass: 'catalog_matched', temperatureK: 12_000, panX: 0 };
+    const before = notesStarted(ctx);
+    const asked = requests.length;
+    for (const selection of [PLAIN, SIRIUS, COOL, LIKE_A, LIKE_B]) {
+      layer.playSelection(selection);
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    expect(notesStarted(ctx)).toBe(before);
+    expect(requests).toHaveLength(asked);
+    expect(layer.getStatus()).toEqual(trying);
+    // The files are served again: the try plays the card's piece, and a coloured selection plays on its data bus
+    gate.mode = 'serve';
+    release();
+    await clockTo(ctx, ctx.currentTime + 1);
+    expect(layer.getStatus()).toMatchObject({ piece: 'ambient-beats', state: 'playing', reason: null, why: null });
+    const played = notesStarted(ctx);
+    const filters = ctx.nodes.filter((n) => n.kind === 'biquad').length;
+    layer.playSelection(SIRIUS);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(played + 1);
+    const lowpass = ctx.nodes.filter((n) => n.kind === 'biquad').slice(filters);
+    expect(lowpass).toHaveLength(1);
+    joinedPassBus(ctx, music, lowpass[0]!);
+    layer.stop();
+  });
+
+  it('sends a note selected late in a silence straight to the layer output, so letting the ended piece go never cuts it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const end = 10.25 + organAndPulse(STARS.slice(0, 2)).durationSec;
+    // With random() at 0 the silence after a pinned piece lasts 20 s: select 1 s before it ends
+    await clockTo(ctx, end + 19);
+    expect(layer.getStatus().state).toBe('gap');
+    const { output, passes } = layerNodes(ctx, music);
+    const ended = passes.at(-1)!;
+    const before = ctx.nodes.length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const panner = ctx.nodes.slice(before).find((n) => n.kind === 'panner')!;
+    expect(panner.outputs).toEqual([output]);
+    // The next pass is scheduled and the ended one let go while the note still sounds; the note's way out stays
+    await clockTo(ctx, end + 24);
+    expect(layer.getStatus().passes).toBe(2);
+    expect(ended.disconnected).toBe(true);
+    expect(output.disconnected).toBe(false);
+    layer.stop();
+  });
+
+  it('sends a note that would outlast its piece straight to the layer output, though the piece still plays', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const end = 10.25 + organAndPulse(STARS.slice(0, 2)).durationSec;
+    // Half a second before the piece ends: its next beat leaves no room for the held note and its release
+    await clockTo(ctx, end - 0.5);
+    expect(layer.getStatus().state).toBe('playing');
+    const { output } = layerNodes(ctx, music);
+    const before = ctx.nodes.length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const panner = ctx.nodes.slice(before).find((n) => n.kind === 'panner')!;
+    expect(panner.outputs).toEqual([output]);
+    layer.stop();
+  });
+
+  it("counts the note's release: one whose key lifts inside the piece but whose release runs past it goes to the layer output", async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const arrangement = organAndPulse(STARS.slice(0, 2));
+    const end = 10.25 + arrangement.durationSec;
+    // The note is held 1.2 s, then released: find a clock time whose planned note lifts its key before the piece
+    // ends and finishes its release after
+    const heldSec = 1.2;
+    let at: number | null = null;
+    for (let t = end - 6; t < end && at === null; t += 0.01) {
+      const note = selectionNote(PLAIN, { arrangement, t0: 10.25 }, t, 0.25)!;
+      const releaseSec = (INSTRUMENTS[note.instrument] as InstrumentDef).releaseSec;
+      if (note.timeSec + heldSec <= end && note.timeSec + heldSec + releaseSec > end) at = t;
+    }
+    expect(at).not.toBeNull();
+    await clockTo(ctx, at!);
+    expect(layer.getStatus().state).toBe('playing');
+    const { output } = layerNodes(ctx, music);
+    const before = ctx.nodes.length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const panner = ctx.nodes.slice(before).find((n) => n.kind === 'panner')!;
+    expect(panner.outputs).toEqual([output]);
+    layer.stop();
+  });
+
+  it("joins the playing pass's data bus when the note's release ends just inside the piece", async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch } = sourcesFetch();
+    const layer = new MusicLayer({ setting: 'organ-pulse', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const arrangement = organAndPulse(STARS.slice(0, 2));
+    const end = 10.25 + arrangement.durationSec;
+    // The latest clock time, near the end, whose planned note finishes its hold and release inside the piece
+    const heldSec = 1.2;
+    let at: number | null = null;
+    for (let t = end - 1; t > end - 8 && at === null; t -= 0.01) {
+      const note = selectionNote(PLAIN, { arrangement, t0: 10.25 }, t, 0.25)!;
+      const releaseSec = (INSTRUMENTS[note.instrument] as InstrumentDef).releaseSec;
+      if (note.timeSec + heldSec + releaseSec <= end && note.timeSec + heldSec + releaseSec > end - 1) at = t;
+    }
+    expect(at).not.toBeNull();
+    await clockTo(ctx, at!);
+    expect(layer.getStatus().state).toBe('playing');
+    const before = ctx.nodes.length;
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    const panner = ctx.nodes.slice(before).find((n) => n.kind === 'panner')!;
+    joinedPassBus(ctx, music, panner);
+    layer.stop();
+  });
+
+  it('plays nothing after a failure, Audio off and on, until a piece plays again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { fetch, gate, release } = gatedSources();
+    const layer = new MusicLayer({ moment: 'back_to_moment', sourcesBase: BASE, fetch, random: () => 0 });
+    layer.setStars(STARS);
+    const ctx = new FakeContext();
+    const music = new FakeNode('music');
+    await layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    const end = 10.25 + organAndPulse(STARS.slice(0, 2)).durationSec;
+    await clockTo(ctx, end + 2);
+    // The next piece's files cannot be fetched: no music, and the page says so
+    gate.mode = 'fail';
+    await clockTo(ctx, end + 22);
+    expect(layer.getStatus()).toMatchObject({ state: 'unavailable', why: 'not_reachable' });
+    // Audio off and on: the new run's first request is not answered yet
+    layer.stop();
+    gate.mode = 'hold';
+    void layer.start(ctx as unknown as AudioContext, music as unknown as AudioNode);
+    await clockTo(ctx, ctx.currentTime + 0.5);
+    expect(layer.getStatus().state).toBe('loading');
+    const before = notesStarted(ctx);
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    // No note in the key of a piece from before the failure
+    expect(notesStarted(ctx)).toBe(before);
+    gate.mode = 'serve';
+    release();
+    await clockTo(ctx, ctx.currentTime + 1);
+    expect(layer.getStatus().state).toBe('playing');
+    const played = notesStarted(ctx);
+    layer.playSelection(PLAIN);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(notesStarted(ctx)).toBe(played + 1);
+    layer.stop();
   });
 });
 

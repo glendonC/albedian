@@ -558,16 +558,19 @@ export function dataNotesInChords(arrangement: Arrangement): { notes: number; ou
   for (const e of arrangement.events) {
     if (e.type !== 'sample' || e.kind !== 'data' || !e.star) continue;
     notes++;
-    const set = e.star.chord.endsWith('pentatonic') ? null : parseChord(e.star.chord);
-    const pcs = set ? set.pitchClasses : pentatonicOf(e.star.chord);
-    if (!pcs.includes(pitchClassOf(e.midi))) outside++;
+    if (!barPitchSet(e.star.chord).pitchClasses.includes(pitchClassOf(e.midi))) outside++;
   }
   return { notes, outside };
 }
 
-function pentatonicOf(name: string): readonly number[] {
+/**
+ * A bar's pitch set from its name: a chord symbol, or a key's pentatonic set as the recording's
+ * unmeasured bars name it (`A minor pentatonic`). A pentatonic name of another form has no notes.
+ */
+export function barPitchSet(name: string): PitchSet {
+  if (!name.endsWith('pentatonic')) return parseChord(name);
   const match = /^([A-G][#b]?) (major|minor) pentatonic$/.exec(name);
-  if (!match) return [];
+  if (!match) return pitchSet(name, 0, []);
   const tonic = parseChord(match[1]!).root;
-  return scalePitchClasses(tonic, match[2] === 'minor' ? 'minorPentatonic' : 'majorPentatonic');
+  return pitchSet(name, tonic, scalePitchClasses(tonic, match[2] === 'minor' ? 'minorPentatonic' : 'majorPentatonic'));
 }

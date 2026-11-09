@@ -67,6 +67,25 @@ describe('the development sources server', () => {
     expect(refused.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  it('serves nothing from its folder with an empty or missing list, and refuses a listed path with its case changed', async () => {
+    for (const listed of [[], undefined]) {
+      const bare = createSourcesServer({ sourcesDir: path.join(tmp, 'sources'), factsFile: path.join(tmp, 'facts.json'), listed });
+      const { port: barePort } = await listenOnLoopback(bare, 0);
+      const status = await new Promise((resolve, reject) => {
+        http.get({ host: LOOPBACK, port: barePort, path: '/vcsl/a%20%231.wav' }, (res) => {
+          res.resume();
+          resolve(res.statusCode);
+        }).on('error', reject);
+      });
+      await new Promise((resolve) => bare.close(resolve));
+      expect(status, String(listed)).toBe(404);
+    }
+    // The folder may sit on a disk that ignores case: the list decides, letter for letter
+    for (const raw of ['/VCSL/a%20%231.wav', '/vcsl/A%20%231.wav', '/vcsl/a%20%231.WAV']) {
+      expect((await get(raw)).status, raw).toBe(404);
+    }
+  });
+
   it('serves only the files sources.json lists: any other file in its folder is refused', async () => {
     const res = await get('/vcsl/unlisted.wav');
     expect(res.status).toBe(404);

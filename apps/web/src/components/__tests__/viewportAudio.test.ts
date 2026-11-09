@@ -2,7 +2,8 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ObservationSession, RenderLayerSet } from '@albedian/contracts';
+import type { CelestialFinding, ObservationSession, RenderLayerSet } from '@albedian/contracts';
+import { appMusicSelection } from '../../audio/music/selectionTone.js';
 import {
   AUDIO_CREDIT_LINES,
   AUDIO_DISCLOSURE,
@@ -101,13 +102,13 @@ const CISLUNAR_LAYERS = webglRenderLayersFor({ regime: 'cislunar', blackHole: fa
 let container: HTMLDivElement;
 let root: Root;
 
-function renderViewport(): void {
+function renderViewport(selectedFinding: CelestialFinding | null = null): void {
   act(() => {
     root.render(
       createElement(SpatialObservatoryViewport, {
         session,
         setSession: noop,
-        selectedFinding: null,
+        selectedFinding,
         discoveredMedia: [],
         activeDiscoveredId: null,
         setActiveDiscoveredId: noop,
@@ -299,6 +300,16 @@ describe('the music beside the Audio control', () => {
       act(() => appMusicAvailability.set('available'));
     }
     expect(container.querySelector('select[aria-label="Music"]')).not.toBeNull();
+  });
+
+  it('gives the music each newly selected finding, which the engine plays as a quiet note', () => {
+    const finding = { id: 'f-sirius', evidenceClass: 'catalog_matched', sourceDetection: { xPx: 10, yPx: 10 } } as unknown as CelestialFinding;
+    renderViewport();
+    expect(appMusicSelection.get()).toBeNull();
+    renderViewport(finding);
+    expect(appMusicSelection.get()).toMatchObject({ id: 'f-sirius', evidenceClass: 'catalog_matched', temperatureK: null });
+    renderViewport();
+    expect(appMusicSelection.get()).toBeNull();
   });
 
   it('credits each piece once it has been heard, and keeps it', () => {

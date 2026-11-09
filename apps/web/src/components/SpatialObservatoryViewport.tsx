@@ -22,6 +22,7 @@ import {
 import { skyAudio } from '../audio/SkyAudioFeed.js';
 import { AUDIO_NOTICES_URL } from '../audio/audioCredits.js';
 import { useSoundtrackMoment } from '../audio/music/soundtrackMoment.js';
+import { useSelectionTone } from '../audio/useSelectionTone.js';
 import { MusicSettingControl } from '../audio/MusicSettingControl.js';
 import { useAudioCreditLines, useAudioDisclosure } from '../audio/useAudioCreditLines.js';
 import {
@@ -294,6 +295,7 @@ export const SpatialObservatoryViewport: React.FC<
 
   // The soundtrack follows the moment of the visit; the credits name each piece once heard
   useSoundtrackMoment(entryStageActive, session);
+  useSelectionTone(selectedFinding, session);
   const audioCreditLines = useAudioCreditLines();
   const audioDisclosure = useAudioDisclosure();
 

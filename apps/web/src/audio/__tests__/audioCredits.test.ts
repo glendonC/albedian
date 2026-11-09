@@ -20,6 +20,7 @@ import { RECORDING } from '../music/directions';
 import { appMusicSetting } from '../music/musicSetting';
 import { SOUNDTRACK, pieceCreditLines } from '../music/soundtrack';
 import { appSoundtrackMoment } from '../music/soundtrackMoment';
+import { appMusicSelection } from '../music/selectionTone';
 import { APP_AUDIO_OPTIONS, observatoryAudio } from '../ObservatoryAudioEngine';
 
 const repoFile = (rel: string) => fileURLToPath(new URL(`../../../../../${rel}`, import.meta.url));
@@ -241,6 +242,19 @@ describe('the credits and notices of the music that plays', () => {
     appSoundtrackMoment.set(moment === 'travel' ? 'reveal' : 'travel');
     expect(observatoryAudio.getMusicStatus().moment).toBe(appSoundtrackMoment.get());
     appSoundtrackMoment.set(moment);
+  });
+
+  it("plays the page's newly selected finding through the app engine's music, and nothing when the selection clears", () => {
+    const play = vi.spyOn(observatoryAudio, 'playMusicSelection');
+    try {
+      const sirius = { id: 'f-sirius', evidenceClass: 'catalog_matched', temperatureK: 9940, panX: 0.2 };
+      appMusicSelection.set(sirius);
+      expect(play).toHaveBeenCalledWith(sirius);
+      appMusicSelection.set(null);
+      expect(play).toHaveBeenCalledTimes(1);
+    } finally {
+      play.mockRestore();
+    }
   });
 
   it('in development, plays the music the address names for that load', async () => {

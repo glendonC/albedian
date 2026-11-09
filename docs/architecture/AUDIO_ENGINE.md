@@ -956,6 +956,33 @@ moments of a visit, a piece plays through, a silence follows, then another piece
   control and the disclosure come back by themselves. There is no try with no sources base or with
   Audio off (`[tested]`). How the samples reach a production build (a trimmed, encoded set in the build, or
   hosting) is `[open]`.
+- **A selected star.** Selecting a finding plays one quiet note inside the music
+  ([`selectionTone.ts`](../../apps/web/src/audio/music/selectionTone.ts), `useSelectionTone`): on the
+  playing pass's next beat (the pass's first beat if it has not begun; at once, in the last piece's
+  key, in a silence between pieces), a tone of that bar's pitch set in the data part's register,
+  6 dB under the pass's loudest data note (a `[proposed]` listening choice),
+  panned by the finding's position on the photo (centre without one). It goes through the playing
+  pass's data bus when the note ends inside the piece. A note in a silence between pieces, or one that
+  would outlast its piece, goes straight to the music layer's output: an ended piece's pass is let go
+  at once when the next is scheduled, which would cut a note still sounding on it. While a piece fades
+  out after a moment change and the next has not started, the note keeps the faded piece's beat and
+  key but goes straight to the output too, so it does not fade with that piece (`[tested]`). On the
+  output route the note skips the data bus's gain, its room and delay sends, and the glue compressor.
+  After organ-pulse it is 3 dB lower than on the bus (that piece's data bus adds 3 dB) and dry; after
+  ambient-beats and the recording piece, whose data buses add 0 dB, its direct level is the same, it
+  loses a room send (and after ambient-beats a delay send) worth under 1 dB, and when the mix is above
+  the compressor's threshold it can sit louder than a compressed bus note (`[inference]` from
+  `directions.ts` and `MusicLayer.ts`, not measured in a render). After a piece's files fail, no
+  selection takes the key of the piece before the failure, even after Audio off and on (`[tested]`). A catalog-matched finding
+  whose catalog reference carries its Gaia DR3 temperature takes the tone the star-note mapping gives
+  that temperature and a low-pass whose cutoff rises with it (1.5 to 12 kHz on the same log scale, a
+  stated design choice, cooler stars darker); anything else plays the plain instrument on the set's
+  root, since no colour is made up. BP-RP is not turned into a temperature. Nothing plays before
+  Audio on, after Audio off, with the Music setting off (also after a piece played), while the music
+  is unavailable (also while a try after a missing file runs, until it plays; the note's sample is
+  not fetched then either), or while the context does not run (`[tested]`; the timings and the
+  cutoff range are `[proposed]` listening choices). The pan follows the finding's stored x on the photo, not the orientation the viewport
+  displays the photo in, so whether a turned clip should pan by its displayed x is `[open]`.
 - **What the sound is.** Beside the Audio control the viewport shows `useAudioDisclosure()`, the
   sentence for the current Music setting (12.4 (d)): composed music, and in Signal to Noise a
   recorded track, play alongside the star notes. Where no music can play (`appMusicAvailability`

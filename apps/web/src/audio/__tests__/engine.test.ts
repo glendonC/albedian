@@ -334,6 +334,22 @@ describe('ObservatoryAudioEngine music', () => {
     failing.disable();
   });
 
+  it('plays a selected star through its music while it plays, and nothing once Audio is off', async () => {
+    const { engine } = musicEngine('ambient-beats');
+    engine.enable();
+    await flush();
+    const ctx = engine.spatial.context as unknown as FakeAudioContext;
+    const sources = () => ctx.created.bufferSource ?? 0;
+    const before = sources();
+    engine.playMusicSelection({ id: 'f-sirius', evidenceClass: 'catalog_matched', temperatureK: 9940, panX: 0 });
+    await flush();
+    expect(sources()).toBe(before + 1);
+    engine.disable();
+    engine.playMusicSelection({ id: 'f-vega', evidenceClass: 'catalog_matched', temperatureK: 9600, panX: 0 });
+    await flush();
+    expect(sources()).toBe(before + 1);
+  });
+
   it('plays no music and fetches no sample when the music is off, and plays at once when it is turned on', async () => {
     const { engine, requests } = musicEngine('off');
     engine.setMusicMoment('look_around');

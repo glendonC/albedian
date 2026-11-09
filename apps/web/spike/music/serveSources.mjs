@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Serves the music's samples to the app in development, so the soundtrack plays in the real app
- * (AUDIO_ENGINE.md section 13.7). The app's music layer fetches from http://127.0.0.1:5199/ by
- * default in development (VITE_ALBEDIAN_MUSIC_SOURCES overrides it):
+ * Serves the music's samples to the app in development and in the field run, so the soundtrack plays
+ * in the real app (AUDIO_ENGINE.md section 13.7). The app fetches them from its own origin at
+ * /music-sources/, which Vite proxies to this server on 127.0.0.1:5199 (vite.config.ts;
+ * ALBEDIAN_MUSIC_TARGET moves it, VITE_ALBEDIAN_MUSIC_SOURCES sets another base). pnpm field starts it:
  *
  *   node apps/web/spike/music/serveSources.mjs [--port 5199] [--sources <dir>] [--facts <file>]
  *

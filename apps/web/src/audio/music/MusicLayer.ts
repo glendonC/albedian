@@ -18,6 +18,7 @@ import { energyNormalize } from '../dsp';
 import { DEFAULT_IMPULSE_RESPONSE_URL } from '../engine/ConvolutionReverb';
 import { compressorMakeupGainDb } from '../engine/MasterBus';
 import { INSTRUMENTS, RECORDING, type Arrangement, type BusId, type InstrumentDef, type RecordingAnalysis } from './directions';
+import { selectionNote, type MusicSelection } from './selectionTone';
 import type { MusicSetting } from './musicSetting';
 import { SampleBank, chooseZone, playSample, type SampleZone } from './sampler';
 import {
@@ -74,7 +75,8 @@ export async function loadRecording(ctx: BaseAudioContext, sourcesBase: string, 
 /**
  * Schedules a whole arrangement into `destination`, its time 0 at `t0` on the context's clock: the
  * glue compressor, the room, the delay, the buses with their ducking, the recording and every event.
- * The bank must already hold every zone `neededZones` names.
+ * The bank must already hold every zone `neededZones` names. Returns the buses' inputs, so a note
+ * added later (a selected star) can join a bus.
  */
 export function scheduleArrangement(
   ctx: BaseAudioContext,
@@ -84,7 +86,7 @@ export function scheduleArrangement(
   t0: number,
   room: AudioBuffer,
   recording: AudioBuffer | null
-): void {
+): ReadonlyMap<BusId, AudioNode> {
   const master = ctx.createGain();
   const glue = ctx.createDynamicsCompressor();
   glue.threshold.value = GLUE.thresholdDb;
@@ -177,6 +179,7 @@ export function scheduleArrangement(
         break;
     }
   }
+  return buses;
 }
 
 export interface MusicLayerOptions {
@@ -228,6 +231,18 @@ const STOP_FADE_SEC = 0.25;
  * parts' samples meanwhile.
  */
 const FIRST_STARS_WAIT_MS = 8_000;
+/** How long a selected star's note is held, as the stars' own notes are. */
+const SELECTION_NOTE_SEC = 1.2;
+
+/** A scheduled pass: its own gain under the layer's output, its arrangement, start and data bus. */
+interface Pass {
+  readonly gain: GainNode;
+  readonly piece: string;
+  readonly arrangement: Arrangement;
+  readonly t0: number;
+  readonly dataBus: AudioNode | null;
+}
+
 /** Why no music plays where no samples are served. */
 const NOT_SERVED = 'the music samples are not served here (VITE_ALBEDIAN_MUSIC_SOURCES is not set), so the music stays silent';
 /** The director's timer never fires sooner than this, so a clock that lags the timer cannot spin it. */
@@ -250,7 +265,9 @@ export class MusicLayer {
   /** The layer's output into the engine's music input, while Audio is on. */
   private output: GainNode | null = null;
   /** The pass last scheduled, with its own gain under `output`. */
-  private pass: { readonly gain: GainNode; readonly piece: string } | null = null;
+  private pass: Pass | null = null;
+  /** The last pass scheduled, kept after a fade so a selection in a silence between pieces still knows its key; never used with the Music setting off or while the music is unavailable, and cleared when a piece's files fail. */
+  private lastPass: Pass | null = null;
   /** Counts Audio on and off, so work begun before either finds itself stale. */
   private run = 0;
   /** Counts passes asked for and fades, so a pass still loading when faded never starts. */
@@ -304,6 +321,64 @@ export class MusicLayer {
 
   getStatus(): MusicStatus {
     return this.status;
+  }
+
+  /**
+   * A selected finding's note (selectionTone.ts): on the playing pass's next beat, in its bar's set,
+   * through its data bus when the note ends inside the piece, quiet under the data part. In a silence it
+   * plays at once in the key of the piece just played, straight to the layer output, and so does a note
+   * that would outlast its piece. With no pass playing (one fading after a moment change, the next not
+   * started) it takes the last pass's beat and key and goes straight to the layer output. Nothing plays before
+   * Audio on, after Audio off, with the Music setting off (also when a piece played before it went
+   * off), while the music is unavailable (also while a try after a missing file runs, until it plays),
+   * or while the context does not run.
+   */
+  playSelection(selection: MusicSelection): void {
+    if (this.setting === 'off') return;
+    // The page says no music plays: a try's new output and the last pass must not make a note
+    if (this.status.state === 'unavailable') return;
+    const ctx = this.ctx;
+    const bank = this.bank;
+    const pass = this.pass ?? this.lastPass;
+    if (!ctx || !bank || !this.output || !pass || ctx.state !== 'running') return;
+    const planned = selectionNote(selection, pass, ctx.currentTime, this.lead);
+    if (!planned) return;
+    const run = this.run;
+    const zones = neededZones({ events: [{ type: 'sample', instrument: planned.instrument, midi: planned.midi, layer: planned.layer }] } as unknown as Arrangement);
+    void bank
+      .load(zones)
+      .then(() => {
+        const output = this.output;
+        if (run !== this.run || !output || ctx.state !== 'running') return;
+        // The Music setting went off while the samples loaded
+        if (this.setting === 'off') return;
+        // The music became unavailable while the samples loaded
+        if (this.status.state === 'unavailable') return;
+        // Loading may have taken a beat or more: plan again from the clock now
+        const note = selectionNote(selection, pass, ctx.currentTime, this.lead) ?? planned;
+        // The pass's data bus only for a note that ends inside its piece: an ended piece's pass is let go at once
+        // when the next is scheduled, which would cut a note still sounding on it
+        const releaseSec = (INSTRUMENTS[note.instrument] as InstrumentDef).releaseSec;
+        const endsInPiece = note.timeSec + SELECTION_NOTE_SEC + releaseSec <= pass.t0 + pass.arrangement.durationSec;
+        const bus = this.pass === pass && pass.dataBus && endsInPiece ? pass.dataBus : output;
+        let destination: AudioNode = bus;
+        if (note.brightnessHz !== null) {
+          const lowpass = ctx.createBiquadFilter();
+          lowpass.type = 'lowpass';
+          lowpass.frequency.value = note.brightnessHz;
+          lowpass.connect(bus);
+          destination = lowpass;
+        }
+        playSample(ctx, bank, INSTRUMENTS[note.instrument] as InstrumentDef, destination, {
+          timeSec: note.timeSec,
+          midi: note.midi,
+          durationSec: SELECTION_NOTE_SEC,
+          gainDb: note.gainDb,
+          pan: note.pan,
+          layer: note.layer,
+        });
+      })
+      .catch(() => undefined);
   }
 
   /** The moment of the visit (soundtrackMoment.ts). */
@@ -485,10 +560,11 @@ export class MusicLayer {
       const t0 = Math.max(atSec, ctx.currentTime + this.lead);
       const gain = ctx.createGain();
       gain.connect(output);
-      scheduleArrangement(ctx, gain, arrangement, this.bank!, t0, room, recording);
+      const buses = scheduleArrangement(ctx, gain, arrangement, this.bank!, t0, room, recording);
       // The pass before ended on its own before the gap: let it go
       this.pass?.gain.disconnect();
-      this.pass = { gain, piece: piece.id };
+      this.pass = { gain, piece: piece.id, arrangement, t0, dataBus: buses.get('data') ?? null };
+      this.lastPass = this.pass;
       const played = new Set(arrangement.events.flatMap((e) => (e.type === 'sample' && e.star ? [e.star.starId] : [])));
       this.director.started(piece.id, t0, t0 + arrangement.durationSec);
       // Playing again after a missing file: the tries start over next time
@@ -548,6 +624,8 @@ export class MusicLayer {
     this.output?.disconnect();
     this.output = null;
     this.pass = null;
+    // No selection takes its key from a piece before the failure, even after Audio off and on
+    this.lastPass = null;
     this.retrying = false;
     this.setStatus({ state: 'unavailable', reason: errorMessage(error), why: 'not_reachable', piece: null });
     this.scheduleRetry();
