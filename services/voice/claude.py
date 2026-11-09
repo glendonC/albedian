@@ -252,7 +252,7 @@ SYSTEM_PROMPT = (
     + _finding_table(list(CATALOG_STAR_NAMES.items()))
     + "\n\nPredicted Solar System bodies (name: finding id):\n"
     + _finding_table([(key.capitalize(), f"finding-predicted-{key}") for key in PREDICTED_BODY_KEYS])
-    + "\n\nNot in the app's data yet, so call no tool when the user names one: "
+    + "\n\nVoice cannot reach these yet, so call no tool when the user names one: "
     + ", ".join(label.removeprefix("the ") for label in UNBAKED_OBJECTS)
     + ". The Southern Cross is a constellation, not one star: call no tool unless the user names one of "
     "its stars."

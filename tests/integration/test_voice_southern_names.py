@@ -226,3 +226,80 @@ def test_a_long_utterance_is_scanned_for_every_name_quickly() -> None:
     start = time.perf_counter()
     assert not any(pattern.search(text) for pattern in patterns)
     assert time.perf_counter() - start < 1.0
+
+
+# Each object voice cannot reach yet, and the row of the baked OpenNGC table that holds it (None: no table does).
+# apps/web/public/catalog/deepsky/openngc.json (data lane, CC BY-SA 4.0); read only.
+DEEP_SKY_ROWS = {
+    "the Large Magellanic Cloud": "ESO056-115",
+    "the Small Magellanic Cloud": "NGC0292",
+    "the Magellanic Clouds": None,
+    "Omega Centauri": "NGC5139",
+    "47 Tucanae": "NGC0104",
+    "the Carina Nebula": "NGC3372",
+    "Eta Carinae": None,
+    "the Jewel Box": "NGC4755",
+    "the Coalsack": "C099",
+}
+OPENNGC_PATH = names.NAMES_PATH.parents[2] / "deepsky" / "openngc.json"
+
+
+def _openngc_rows() -> dict[str, dict[str, Any]]:
+    table = json.loads(OPENNGC_PATH.read_text(encoding="utf-8"))
+    return {row[0]: dict(zip(table["columns"], row)) for row in table["rows"]}
+
+
+def test_each_object_voice_cannot_reach_names_its_deep_sky_row_or_none() -> None:
+    assert names.UNBAKED_DEEP_SKY_ROWS == DEEP_SKY_ROWS
+    assert set(DEEP_SKY_ROWS) == set(names.UNBAKED_OBJECTS)
+
+
+def test_each_listed_row_is_in_the_openngc_table_under_one_of_the_spoken_names() -> None:
+    rows = _openngc_rows()
+    for label, row_name in DEEP_SKY_ROWS.items():
+        if row_name is None:
+            continue
+        common = " | ".join(rows[row_name]["commonNames"]).lower()
+        assert any(names.whole_word(spoken).search(common) for spoken in names.UNBAKED_OBJECTS[label]), (label, common)
+
+
+def test_no_baked_table_holds_an_object_listed_as_having_no_row() -> None:
+    # Fails loudly when a data table gains one of these, so its refusal can say where it is
+    openngc = _openngc_rows().values()
+    held = {name.lower() for row in openngc for name in (row["name"], *row["commonNames"], *row["identifiers"])}
+    held |= {name.lower() for row in _rows() for name in (row["name"], row["nameAscii"])}
+    for label, row_name in DEEP_SKY_ROWS.items():
+        if row_name is None:
+            assert not held & set(names.UNBAKED_OBJECTS[label]), label
+
+
+def test_the_refusal_says_where_the_object_is_and_that_voice_cannot_reach_it() -> None:
+    assert names.unbaked_refusal("Omega Centauri") == (
+        "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach "
+        "deep-sky objects yet, so it cannot be selected, described or flown to."
+    )
+    assert names.unbaked_refusal("the Coalsack") == (
+        "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach "
+        "deep-sky objects yet, so it cannot be selected, described or flown to."
+    )
+    assert names.unbaked_refusal("Eta Carinae") == (
+        "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or "
+        "flown to by name."
+    )
+    for label in names.UNBAKED_OBJECTS:
+        assert "not in the app's baked data" not in names.unbaked_refusal(label)
+
+
+def test_the_model_prompt_no_longer_says_these_objects_are_missing_from_the_data() -> None:
+    assert "Not in the app's data yet" not in claude.SYSTEM_PROMPT
+    assert "Voice cannot reach these yet, so call no tool when the user names one:" in claude.SYSTEM_PROMPT
+
+
+def test_the_typescript_parser_names_the_same_deep_sky_rows() -> None:
+    import re
+
+    ts_rows = {
+        label: (None if row == "null" else row.strip("'"))
+        for label, row in re.findall(r"^\s*'([^']+)': ('[^']+'|null),$", _ts_block("UNBAKED_DEEP_SKY_ROWS"), re.M)
+    }
+    assert ts_rows == DEEP_SKY_ROWS

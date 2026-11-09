@@ -6,8 +6,9 @@ PROVENANCE.json. A name resolves to the finding id the phone-photo solver gives 
 (`services/science/phone_photo_solver.py`): a pinned catalog star keeps its own id, any other star is
 `finding-hip-<HIP>` or `finding-gaia-dr3-<source id>`.
 
-Common names of southern objects the baked data has no row for yet resolve to nothing: the parsers refuse
-them plainly, so a request for one never falls through to the selected finding.
+Common names of southern objects voice cannot reach yet resolve to nothing: the parsers refuse them plainly,
+saying where the baked data holds each (UNBAKED_DEEP_SKY_ROWS), so a request for one never falls through to
+the selected finding.
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ SPOKEN_ALIASES = {
 SOUTHERN_CROSS_STARS = ("Acrux", "Mimosa", "Gacrux", "Imai", "Ginan")
 SOUTHERN_CROSS_NAMES = ("southern cross", "crux")
 
-# Southern showpieces with no row in the baked data yet, by the names people say.
+# Southern showpieces voice cannot reach yet, by the names people say.
 UNBAKED_OBJECTS: dict[str, tuple[str, ...]] = {
     "the Large Magellanic Cloud": ("large magellanic cloud", "lmc"),
     "the Small Magellanic Cloud": ("small magellanic cloud", "smc"),
@@ -57,6 +58,22 @@ UNBAKED_OBJECTS: dict[str, tuple[str, ...]] = {
     "Eta Carinae": ("eta carinae", "eta car"),
     "the Jewel Box": ("jewel box", "kappa crucis cluster"),
     "the Coalsack": ("coalsack", "coal sack"),
+}
+
+# The row of the baked OpenNGC table (apps/web/public/catalog/deepsky/openngc.json) that holds each object above,
+# or None when no baked table holds it by name. Voice does not reach deep-sky rows yet, so each is still refused;
+# the refusal says where the object is. tests/integration/test_voice_southern_names.py checks every entry
+# against the table, so a new data row fails it loudly.
+UNBAKED_DEEP_SKY_ROWS: dict[str, str | None] = {
+    "the Large Magellanic Cloud": "ESO056-115",
+    "the Small Magellanic Cloud": "NGC0292",
+    "the Magellanic Clouds": None,
+    "Omega Centauri": "NGC5139",
+    "47 Tucanae": "NGC0104",
+    "the Carina Nebula": "NGC3372",
+    "Eta Carinae": None,
+    "the Jewel Box": "NGC4755",
+    "the Coalsack": "C099",
 }
 
 
@@ -140,7 +157,7 @@ def names_southern_cross(lower_utterance: str) -> bool:
 
 
 def unbaked_object(lower_utterance: str) -> str | None:
-    """The southern object the utterance names that the baked data holds no row for, if any."""
+    """The southern object the utterance names that voice cannot reach yet, if any."""
     for label, spoken in UNBAKED_OBJECTS.items():
         if any(whole_word(name).search(lower_utterance) for name in spoken):
             return label
@@ -148,7 +165,12 @@ def unbaked_object(lower_utterance: str) -> str | None:
 
 
 def unbaked_refusal(label: str) -> str:
-    return (
-        f"{label[0].upper()}{label[1:]} is not in the app's baked data yet, so it cannot be selected, "
-        "described or flown to."
-    )
+    """Why voice cannot act on this object: where the baked data holds it, or that no table holds it by name."""
+    subject = f"{label[0].upper()}{label[1:]}"
+    row = UNBAKED_DEEP_SKY_ROWS.get(label)
+    if row is not None:
+        return (
+            f"{subject} is in the app's deep-sky catalogue (OpenNGC {row}), but voice does not reach deep-sky "
+            "objects yet, so it cannot be selected, described or flown to."
+        )
+    return f"{subject} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."

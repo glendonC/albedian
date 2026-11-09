@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
-import { buildActionContext, parseUtteranceToAction, SOUTHERN_CROSS_STARS } from '../voiceParser.js';
+import { buildActionContext, parseUtteranceToAction, SOUTHERN_CROSS_STARS, unbakedRefusal } from '../voiceParser.js';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions.js';
 
 /**
  * Names a stargazer says under a southern sky, read as services/voice/names.py reads them
  * (tests/integration/test_voice_southern_names.py): a name or alias resolves only to a solved finding whose
- * title is that IAU name; a southern object with no baked row, or a named star the solution lacks, is
+ * title is that IAU name; a southern object voice cannot reach yet, or a named star the solution lacks, is
  * refused and never falls through to the selection; the Southern Cross asks which of its stars.
  * The ids are those the phone-photo solver gives these stars (finding-hip-<HIP> from names.json).
  */
@@ -84,6 +84,20 @@ describe('southern names', () => {
       expect(result.reason).toBe('no_grounded_answer');
       expect(result.error?.toLowerCase()).toContain(label.toLowerCase());
     }
+  });
+
+  it('says where a deep-sky object is and that voice cannot reach it, in the backend words', () => {
+    // The same sentences as services/voice/names.py (tests/integration/test_voice_southern_names.py)
+    expect(unbakedRefusal('Omega Centauri')).toBe(
+      "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    );
+    expect(unbakedRefusal('the Coalsack')).toBe(
+      "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    );
+    expect(unbakedRefusal('Eta Carinae')).toBe(
+      "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    );
+    expect(parse('take me to omega centauri', session).error).toBe(unbakedRefusal('Omega Centauri'));
   });
 
   it('a named southern star the solution lacks is refused, not swapped for the selection', () => {

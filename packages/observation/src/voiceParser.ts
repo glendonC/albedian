@@ -235,7 +235,7 @@ const SOUTHERN_CROSS_NAMES = ['southern cross', 'crux'];
 const SOUTHERN_CROSS_QUESTION = `The Southern Cross is a constellation, not one star. Which of its stars did you mean: ${SOUTHERN_CROSS_STARS.join(', ')}?`;
 
 /**
- * Southern showpieces with no row in the baked data yet, by the names people say. Kept equal to
+ * Southern showpieces voice cannot reach yet (deep-sky rows, or no named row), by the names people say. Kept equal to
  * UNBAKED_OBJECTS in services/voice/names.py by a test there.
  */
 export const UNBAKED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
@@ -261,8 +261,30 @@ function unbakedObjectIn(normalizedUtterance: string): string | undefined {
   )?.[0];
 }
 
+/**
+ * The row of the baked OpenNGC table (apps/web/public/catalog/deepsky/openngc.json) that holds each object above,
+ * or null when no baked table holds it by name; kept equal to UNBAKED_DEEP_SKY_ROWS in services/voice/names.py.
+ */
+export const UNBAKED_DEEP_SKY_ROWS: Readonly<Record<string, string | null>> = {
+  'the Large Magellanic Cloud': 'ESO056-115',
+  'the Small Magellanic Cloud': 'NGC0292',
+  'the Magellanic Clouds': null,
+  'Omega Centauri': 'NGC5139',
+  '47 Tucanae': 'NGC0104',
+  'the Carina Nebula': 'NGC3372',
+  'Eta Carinae': null,
+  'the Jewel Box': 'NGC4755',
+  'the Coalsack': 'C099',
+};
+
+/** Why voice cannot act on this object: where the baked data holds it, or that no table holds it by name. */
 export function unbakedRefusal(label: string): string {
-  return `${label.charAt(0).toUpperCase()}${label.slice(1)} is not in the app's baked data yet, so it cannot be selected, described or flown to.`;
+  const subject = `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+  const row = UNBAKED_DEEP_SKY_ROWS[label];
+  if (row) {
+    return `${subject} is in the app's deep-sky catalogue (OpenNGC ${row}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
+  }
+  return `${subject} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.`;
 }
 
 /** The IAU name of a known southern star the utterance names, by that name or a spoken alias. */
