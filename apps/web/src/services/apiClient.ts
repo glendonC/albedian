@@ -338,8 +338,56 @@ export function buildSessionFromIngestReceipt(
 }
 
 /**
+ * The server answered the upload with an error status. `POST /api/ingest` leaves nothing behind when it
+ * refuses (services/ingest/router.py), so the file was not stored; `reason` is the server's own words.
+ */
+export class UploadRefusedError extends Error {
+  readonly status: number;
+  readonly reason: string;
+
+  constructor(status: number, reason: string) {
+    super(`Not stored: ${reason}`);
+    this.name = 'UploadRefusedError';
+    this.status = status;
+    this.reason = reason;
+  }
+}
+
+/** The server's reason for an error answer: its `{"detail": "..."}` text, else the HTTP status. */
+async function serverReason(res: Response): Promise<string> {
+  try {
+    const body: unknown = await res.json();
+    const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
+    if (typeof detail === 'string' && detail.trim() !== '') return detail.trim();
+  } catch {
+    // Not JSON, so the status is all there is
+  }
+  return `the server answered HTTP ${res.status}`;
+}
+
+/** A failure in words a person can read; an answer that fails the contract is named, not dumped. */
+export function failureReason(err: unknown): string {
+  if (err instanceof Error && err.name === 'ZodError') return "the server's answer did not match the contract";
+  if (err instanceof Error && err.message) return err.message;
+  return String(err);
+}
+
+/** `fetch`, with a rejection (no HTTP answer at all) said as such. */
+async function fetchAnswer(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    throw new Error(`no answer from the Albedian server (${failureReason(err)})`);
+  }
+}
+
+/**
  * Upload a photo or clip to `POST /api/ingest`, run `POST /api/ingest/{sha256}/solve`, and load
  * `GET /api/ingest/{sha256}/solution` into a contract-validated `ObservationSession`.
+ *
+ * An error answer to the upload throws `UploadRefusedError` with the server's reason (nothing was
+ * stored). Once the receipt arrives the file is stored, so a solve that does not finish returns the
+ * stored session with the reason instead of throwing.
  */
 export async function uploadAndSolveMedia(
   file: Blob,
@@ -350,7 +398,7 @@ export async function uploadAndSolveMedia(
   }
 ): Promise<ObservationSession> {
   const bytes = await file.arrayBuffer();
-  const ingestRes = await fetch('/api/ingest', {
+  const ingestRes = await fetchAnswer('/api/ingest', {
     method: 'POST',
     headers: {
       'content-type': file.type || 'application/octet-stream',
@@ -359,20 +407,34 @@ export async function uploadAndSolveMedia(
     body: bytes,
   });
   if (!ingestRes.ok) {
-    throw new Error(`Upload to /api/ingest failed with HTTP ${ingestRes.status}`);
+    throw new UploadRefusedError(ingestRes.status, await serverReason(ingestRes));
   }
-  const receipt = IngestReceiptSchema.parse(await ingestRes.json());
+  const receipt = IngestReceiptSchema.parse(await ingestRes.json().catch(() => undefined));
   const ingestedSession = buildSessionFromIngestReceipt(receipt, {
     localObjectUrl: options?.localObjectUrl,
   });
   options?.onSessionUpdate?.(ingestedSession);
 
+  // Stored from here on: a solve that does not finish keeps the file on screen and says why
+  const solveDidNotFinish = (err: unknown): ObservationSession => {
+    const stored = ObservationSessionSchema.parse({
+      ...ingestedSession,
+      machines: { ...ingestedSession.machines, calibration: 'not_requested' },
+      lastStatusBanner: `Stored "${filename}", but the sky solve did not finish: ${failureReason(err)}.`,
+    });
+    options?.onSessionUpdate?.(stored);
+    return stored;
+  };
+
   const sha256 = receipt.sourceAsset.sha256;
-  const solveRes = await fetch(`/api/ingest/${sha256}/solve`, { method: 'POST' });
-  if (!solveRes.ok) {
-    throw new Error(`Solve job request for ${sha256} failed with HTTP ${solveRes.status}`);
+  let job: SolveJob;
+  try {
+    const solveRes = await fetchAnswer(`/api/ingest/${sha256}/solve`, { method: 'POST' });
+    if (!solveRes.ok) throw new Error(await serverReason(solveRes));
+    job = SolveJobSchema.parse(await solveRes.json());
+  } catch (err) {
+    return solveDidNotFinish(err);
   }
-  const job = SolveJobSchema.parse(await solveRes.json());
   if (job.state === 'failed') {
     const failedSession = buildSessionFromIngestReceipt(receipt, {
       localObjectUrl: options?.localObjectUrl,
@@ -382,11 +444,14 @@ export async function uploadAndSolveMedia(
     return failedSession;
   }
 
-  const solRes = await fetch(`/api/ingest/${sha256}/solution`);
-  if (!solRes.ok) {
-    throw new Error(`Reading solution for ${sha256} failed with HTTP ${solRes.status}`);
+  let solution: ObservationSolution;
+  try {
+    const solRes = await fetchAnswer(`/api/ingest/${sha256}/solution`);
+    if (!solRes.ok) throw new Error(await serverReason(solRes));
+    solution = ObservationSolutionSchema.parse(await solRes.json());
+  } catch (err) {
+    return solveDidNotFinish(err);
   }
-  const solution = ObservationSolutionSchema.parse(await solRes.json());
   const finalSession = buildSessionFromIngestReceipt(receipt, {
     localObjectUrl: options?.localObjectUrl,
     job,

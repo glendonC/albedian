@@ -14,6 +14,7 @@ import {
 } from '@albedian/camera-rig';
 import {
   IngestReceipt,
+  ObservationSession,
   ObservationSessionSchema,
   ObservationSolution,
   SolveJob,
@@ -23,6 +24,7 @@ import {
   buildSessionFromDiscoveredMedia,
   buildSessionFromIngestReceipt,
   formatSolveJobProgressBanner,
+  UploadRefusedError,
   uploadAndSolveMedia,
 } from '../services/apiClient';
 import { ingestAndSolveUploadedFile } from '../App';
@@ -332,7 +334,10 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       const finalSession = await ingestAndSolveUploadedFile(file, 'blob:local-orion', (s) => updates.push(s));
 
       expect(updates.length).toBeGreaterThanOrEqual(3);
-      expect(updates[0]!.machines.media).toBe('importing');
+      // Until the receipt nothing about the file is known: no asset, no size, no hash
+      expect(updates[0]!.machines.media).toBe('empty');
+      expect(updates[0]!.sourceAsset).toBeUndefined();
+      expect(updates[0]!.lastStatusBanner).toBe('Uploading "orion_phone.png" to the Albedian server…');
       expect(updates[1]!.machines.media).toBe('ready');
       expect(updates[1]!.machines.calibration).toBe('solving');
 
@@ -356,7 +361,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     }
   });
 
-  it('honestly reports failed solve jobs and falls back to local importing session when backend is offline', async () => {
+  it('honestly reports failed solve jobs and says the upload got no answer when the backend is offline', async () => {
     const fileBytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
     const file = new File([fileBytes], 'offline.png', { type: 'image/png' });
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network unreachable'));
@@ -364,9 +369,12 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       const updates: ReturnType<typeof buildSessionFromIngestReceipt>[] = [];
       const fallback = await ingestAndSolveUploadedFile(file, 'blob:offline', (s) => updates.push(s));
       ObservationSessionSchema.parse(fallback);
-      expect(fallback.machines.media).toBe('importing');
+      expect(fallback.machines.media).toBe('empty');
       expect(fallback.machines.calibration).toBe('not_requested');
-      expect(fallback.lastStatusBanner).toContain('Not yet decoded or calibrated.');
+      expect(fallback.sourceAsset).toBeUndefined();
+      expect(fallback.lastStatusBanner).toBe(
+        'The upload of "offline.png" did not finish: no answer from the Albedian server (Network unreachable).'
+      );
     } finally {
       fetchSpy.mockRestore();
     }
@@ -461,5 +469,187 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       ),
       { numRuns: 25, ...(process.env.FC_SEED ? { seed: Number(process.env.FC_SEED) } : {}) }
     );
+  });
+});
+
+describe('upload refusals and the state before the receipt (experience-9d)', () => {
+  const refusals: Array<[number, string, string]> = [
+    [415, 'declared as image/x-adobe-dng, but the bytes are image/tiff', 'IMG_0001.DNG'],
+    [413, 'larger than the 256 MiB a still may be', 'huge.jpg'],
+    [422, 'the HEIF item table is truncated', 'IMG_0002.HEIC'],
+  ];
+
+  for (const [status, reason, name] of refusals) {
+    it(`shows a ${status} refusal as Not stored with the server's reason, and never asks for a solve`, async () => {
+      const calls: string[] = [];
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        calls.push(url);
+        return new Response(JSON.stringify({ detail: reason }), { status });
+      });
+      try {
+        const file = new File([new Uint8Array([1, 2, 3, 4])], name, { type: 'image/jpeg' });
+        const updates: ObservationSession[] = [];
+        const result = await ingestAndSolveUploadedFile(file, 'blob:refused', (s) => updates.push(s));
+        ObservationSessionSchema.parse(result);
+        expect(result.lastStatusBanner).toBe(`Not stored: ${reason} ("${name}").`);
+        expect(result.machines.media).toBe('empty');
+        expect(result.sourceAsset).toBeUndefined();
+        expect(result.observationSolution).toBeUndefined();
+        expect(calls).toEqual(['/api/ingest']);
+        // Nothing along the way claimed the file was imported, decoded, pending or sized
+        expect(updates.every((u) => u.sourceAsset === undefined)).toBe(true);
+        expect(updates.some((u) => /Imported|Not yet decoded|SHA-256/.test(u.lastStatusBanner ?? ''))).toBe(false);
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
+  }
+
+  it('names the HTTP status when the refusal carries no reason of its own', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('<html>Request Entity Too Large</html>', { status: 413 }));
+    try {
+      const file = new File([new Uint8Array([1])], 'big.mov', { type: 'video/quicktime' });
+      const result = await ingestAndSolveUploadedFile(file, 'blob:big', () => {});
+      expect(result.lastStatusBanner).toBe('Not stored: the server answered HTTP 413 ("big.mov").');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('throws an UploadRefusedError carrying the status and the reason', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(
+        async () =>
+          new Response(JSON.stringify({ detail: 'not a JPEG, PNG, TIFF, HEIC, QuickTime or MP4 file' }), { status: 415 })
+      );
+    try {
+      const file = new File([new Uint8Array([1])], 'note.txt', { type: 'text/plain' });
+      await expect(uploadAndSolveMedia(file, 'note.txt')).rejects.toMatchObject({
+        name: 'UploadRefusedError',
+        status: 415,
+        reason: 'not a JPEG, PNG, TIFF, HEIC, QuickTime or MP4 file',
+      });
+      await expect(uploadAndSolveMedia(file, 'note.txt')).rejects.toBeInstanceOf(UploadRefusedError);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('says the upload got no answer when the server cannot be reached, without claiming it was stored', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Load failed'));
+    try {
+      const file = new File([new Uint8Array([1, 2])], 'offline.jpg', { type: 'image/jpeg' });
+      const updates: ObservationSession[] = [];
+      const result = await ingestAndSolveUploadedFile(file, 'blob:offline', (s) => updates.push(s));
+      ObservationSessionSchema.parse(result);
+      expect(result.lastStatusBanner).toBe(
+        'The upload of "offline.jpg" did not finish: no answer from the Albedian server (Load failed).'
+      );
+      expect(result.machines.media).toBe('empty');
+      expect(result.sourceAsset).toBeUndefined();
+      expect(updates.every((u) => u.sourceAsset === undefined)).toBe(true);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  const storedReceipt = (): IngestReceipt => {
+    const sha256 = 'c'.repeat(64);
+    return {
+      sourceAsset: {
+        id: `src_${sha256.slice(0, 16)}`,
+        title: 'stored.jpg',
+        mediaKind: 'image',
+        sha256,
+        uri: `/api/ingest/${sha256}/original`,
+        byteSize: 4,
+        mimeType: 'image/jpeg',
+        width: 4032,
+        height: 3024,
+        durationMs: 0,
+        videoCodec: 'mjpeg',
+        audioStreams: [],
+        privacyClass: 'private',
+        immutable: true,
+      },
+      hints: {},
+      alreadyStored: false,
+    };
+  };
+
+  it('keeps the stored photo and says the solve did not finish when the solve request is refused', async () => {
+    const receipt = storedReceipt();
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url === '/api/ingest') return new Response(JSON.stringify(receipt), { status: 201 });
+      return new Response(JSON.stringify({ detail: 'the solve queue is full' }), { status: 503 });
+    });
+    try {
+      const file = new File([new Uint8Array([1, 2, 3, 4])], 'stored.jpg', { type: 'image/jpeg' });
+      const result = await ingestAndSolveUploadedFile(file, 'blob:stored', () => {});
+      ObservationSessionSchema.parse(result);
+      expect(result.sourceAsset!.width).toBe(4032);
+      expect(result.sourceAsset!.height).toBe(3024);
+      expect(result.sourceAsset!.uri).toBe('blob:stored');
+      expect(result.machines.media).toBe('ready');
+      // Nothing is solving any more
+      expect(result.machines.calibration).toBe('not_requested');
+      expect(result.lastStatusBanner).toBe('Stored "stored.jpg", but the sky solve did not finish: the solve queue is full.');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('keeps the stored photo when the solution cannot be read, and names the reason', async () => {
+    const receipt = storedReceipt();
+    const sha256 = receipt.sourceAsset.sha256;
+    const job: SolveJob = {
+      id: `job_${sha256.slice(0, 16)}`,
+      sourceAssetSha256: sha256,
+      state: 'succeeded',
+      createdAtUTC: '2026-01-19T05:31:00Z',
+      startedAtUTC: '2026-01-19T05:31:01Z',
+      finishedAtUTC: '2026-01-19T05:31:02Z',
+      stages: [{ stage: 'store', unit: 'bytes', done: 4, total: 4 }],
+      solutionId: 'sol_stored',
+    };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url === '/api/ingest') return new Response(JSON.stringify(receipt), { status: 201 });
+      if (url === `/api/ingest/${sha256}/solve`) return new Response(JSON.stringify(job), { status: 201 });
+      return new Response(JSON.stringify({ detail: 'no solution is stored for that file' }), { status: 404 });
+    });
+    try {
+      const file = new File([new Uint8Array([1, 2, 3, 4])], 'stored.jpg', { type: 'image/jpeg' });
+      const result = await ingestAndSolveUploadedFile(file, 'blob:stored', () => {});
+      ObservationSessionSchema.parse(result);
+      expect(result.sourceAsset!.sha256).toBe(sha256);
+      expect(result.machines.calibration).toBe('not_requested');
+      expect(result.lastStatusBanner).toBe(
+        'Stored "stored.jpg", but the sky solve did not finish: no solution is stored for that file.'
+      );
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('says the server answer did not match the contract instead of printing the validator dump', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => new Response(JSON.stringify({ sourceAsset: { id: 7 } }), { status: 201 }));
+    try {
+      const file = new File([new Uint8Array([1])], 'odd.jpg', { type: 'image/jpeg' });
+      const result = await ingestAndSolveUploadedFile(file, 'blob:odd', () => {});
+      expect(result.lastStatusBanner).toBe(
+        "The upload of \"odd.jpg\" did not finish: the server's answer did not match the contract."
+      );
+      expect(result.sourceAsset).toBeUndefined();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

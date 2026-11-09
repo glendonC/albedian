@@ -5,7 +5,6 @@ import {
 } from '@albedian/contracts';
 import {
   createEmptyObservationSession,
-  createSessionForSourceAsset,
   dispatchAlbedianAction,
   executeVoiceOrTextCommand,
 } from '@albedian/observation';
@@ -14,6 +13,8 @@ import { AlbedianWebAudioBus } from './audio/WebAudioBus.js';
 import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
 import {
   DiscoveredMediaItem,
+  UploadRefusedError,
+  failureReason,
   fetchDiscoveredMedia,
   uploadAndSolveMedia,
 } from './services/apiClient.js';
@@ -21,53 +22,36 @@ import { applyVoiceBackendReply, askVoiceBackend, backendMayResolve } from './vo
 import { SPEECH_LISTENING, startSpeechCapture, type SpeechRecognitionLike } from './voice/speechInput.js';
 import './styles/albedian.css';
 
-async function sha256HexOfFile(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
+/**
+ * Upload a chosen file and solve it. Nothing about the file is known until the server's receipt
+ * arrives, so until then the session stays empty and says it is uploading; a refused upload says
+ * why and that nothing was stored.
+ */
 export async function ingestAndSolveUploadedFile(
   file: File,
   localObjectUrl: string,
   onSessionUpdate: (session: ObservationSession) => void
 ): Promise<ObservationSession> {
-  const isVideo = file.type.startsWith('video/');
-  const sha256 = await sha256HexOfFile(file);
-  const imported = createSessionForSourceAsset(
-    {
-      id: `src_${sha256.slice(0, 16)}`,
-      title: file.name,
-      mediaKind: isVideo ? 'video' : 'image',
-      sha256,
-      uri: localObjectUrl,
-      width: 1,
-      height: 1,
-      durationMs: 0,
-      videoCodec: 'none',
-      audioStreams: [],
-      privacyClass: 'private',
-      immutable: true,
-    },
-    'importing'
-  );
-  const initialSession: ObservationSession = {
-    ...imported,
-    lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Starting upload and sky calibration…`,
-  };
-  onSessionUpdate(initialSession);
+  onSessionUpdate({
+    ...createEmptyObservationSession(),
+    lastStatusBanner: `Uploading "${file.name}" to the Albedian server…`,
+  });
 
   try {
     return await uploadAndSolveMedia(file, file.name, {
       localObjectUrl,
       onSessionUpdate,
     });
-  } catch {
-    const offlineSession: ObservationSession = {
-      ...imported,
-      lastStatusBanner: `Imported "${file.name}" (SHA-256 ${sha256.slice(0, 16)}…). Not yet decoded or calibrated.`,
+  } catch (err) {
+    const notStored: ObservationSession = {
+      ...createEmptyObservationSession(),
+      lastStatusBanner:
+        err instanceof UploadRefusedError
+          ? `Not stored: ${err.reason} ("${file.name}").`
+          : `The upload of "${file.name}" did not finish: ${failureReason(err)}.`,
     };
-    onSessionUpdate(offlineSession);
-    return offlineSession;
+    onSessionUpdate(notStored);
+    return notStored;
   }
 }
 
