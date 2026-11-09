@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 
 from services.science.catalog import ALL_SKY_CATALOG_STARS
+from services.voice.names import UNBAKED_OBJECTS, named_stars
 
 if TYPE_CHECKING:
     from services.voice.intent import ActionContext
@@ -51,7 +52,11 @@ MAX_POINTER_RECENCY_MS = 10_000.0
 
 # Solar System bodies the ephemeris predicts. The rules parser in intent.py shares this vocabulary.
 PREDICTED_BODY_KEYS: tuple[str, ...] = ("jupiter", "uranus", "saturn", "mars", "venus", "moon")
-CATALOG_FINDING_IDS = frozenset(f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS)
+# The pinned catalog stars, then every star of the baked IAU name table (services/voice/names.py)
+CATALOG_STAR_NAMES: dict[str, str] = {star.common_name: f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
+for _star in named_stars():
+    CATALOG_STAR_NAMES.setdefault(_star.name, _star.finding_id)
+CATALOG_FINDING_IDS = frozenset(CATALOG_STAR_NAMES.values())
 PREDICTED_FINDING_IDS = frozenset(f"finding-predicted-{key}" for key in PREDICTED_BODY_KEYS)
 
 _FINDING_ID = {
@@ -244,9 +249,13 @@ SYSTEM_PROMPT = (
     "present, otherwise state.selectedFindingId, otherwise state.focusedFindingId.\n"
     "- If the user names an object that is in neither the tables nor the request, call no tool.\n\n"
     "Catalog stars (name: finding id):\n"
-    + _finding_table([(star.common_name, f"finding-{star.id}") for star in ALL_SKY_CATALOG_STARS])
+    + _finding_table(list(CATALOG_STAR_NAMES.items()))
     + "\n\nPredicted Solar System bodies (name: finding id):\n"
     + _finding_table([(key.capitalize(), f"finding-predicted-{key}") for key in PREDICTED_BODY_KEYS])
+    + "\n\nNot in the app's data yet, so call no tool when the user names one: "
+    + ", ".join(label.removeprefix("the ") for label in UNBAKED_OBJECTS)
+    + ". The Southern Cross is a constellation, not one star: call no tool unless the user names one of "
+    "its stars."
 )
 
 

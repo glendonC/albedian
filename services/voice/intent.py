@@ -43,6 +43,13 @@ from services.voice.claude import (
     historical_year,
     propose_action_with_claude,
 )
+from services.voice.names import (
+    names_southern_cross,
+    southern_cross_stars,
+    spoken_names,
+    unbaked_object,
+    unbaked_refusal,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +76,14 @@ def _whole_word(name: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![a-z0-9]){re.escape(name.lower())}(?![a-z0-9])")
 
 
-# Every name the catalog and the ephemeris hold, longest first so "Deneb Algedi" wins over "Deneb"
+# Every star name the pinned catalog and the baked IAU name table hold (services/voice/names.py), then the
+# ephemeris bodies; longest first so "Deneb Algedi" wins over "Deneb" and "Alpha Centauri" over nothing shorter
+_STAR_NAMES: dict[str, str] = {star.common_name.lower(): f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
+for _spoken, _finding_id in spoken_names():
+    _STAR_NAMES.setdefault(_spoken, _finding_id)
 _NAMED_FINDINGS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
-    (_whole_word(star.common_name), f"finding-{star.id}")
-    for star in sorted(ALL_SKY_CATALOG_STARS, key=lambda star: len(star.common_name), reverse=True)
+    (_whole_word(name), finding_id)
+    for name, finding_id in sorted(_STAR_NAMES.items(), key=lambda item: len(item[0]), reverse=True)
 ) + tuple((_whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
 
 
@@ -343,6 +354,11 @@ _NO_TARGET = (
     "The request names no object the catalog or the ephemeris holds, and none is pointed at, selected "
     "or focused."
 )
+_SOUTHERN_CROSS_QUESTION = (
+    "The Southern Cross is a constellation, not one star. Which of its stars did you mean: "
+    + ", ".join(star.name for star in southern_cross_stars())
+    + "?"
+)
 _SPACE_ENTER = re.compile(
     r"\b(?:take me (?:there|to)|fly (?:there|to)|go (?:there|to)|travel(?:\b| to)|"
     r"enter(?: (?:space|3d))?|3d space|into space|zoom into space|explore|fly|beyond)\b",
@@ -411,6 +427,14 @@ def _parse_with_rules(
             profile=profile,
             constraints={"preservePeople": True, "allowSyntheticSky": False, "protectStars": True},
         )
+
+    # A southern object named but not baked, or the Southern Cross, never falls through to the selection
+    if _named_finding_id(utterance) is None:
+        unbaked = unbaked_object(text)
+        if unbaked is not None:
+            return _rules_intent(request_id, None, "no_grounded_answer", unbaked_refusal(unbaked))
+        if names_southern_cross(text):
+            return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
 
     target = _resolve_target_finding_id(utterance, ctx)
     if _SPACE_ENTER.search(text):
@@ -587,11 +611,24 @@ def _describe_body(name: str, ctx: ActionContext) -> str | None:
 
 def _describe_finding(finding_id: str, ctx: ActionContext) -> str | None:
     """The catalog row or ephemeris prediction behind a finding id, in its source's words; None if neither holds it."""
-    if finding_id in CATALOG_FINDING_IDS:
-        return _describe_star(STAR_BY_ID[finding_id.removeprefix("finding-")])
+    # The backend holds catalog rows for the pinned stars only; a star named from the IAU table is described
+    # by the app from its own solved finding
+    star = STAR_BY_ID.get(finding_id.removeprefix("finding-"))
+    if star is not None:
+        return _describe_star(star)
     if finding_id in PREDICTED_FINDING_IDS:
         return _describe_body(finding_id.removeprefix("finding-predicted-").capitalize(), ctx)
     return None
+
+
+def _southern_cross_choice(action_id: str) -> dict[str, Any]:
+    """Which of the Southern Cross's five named stars, as the baked IAU name table holds them."""
+    return {
+        "status": "needs_input",
+        "actionId": action_id,
+        "question": _SOUTHERN_CROSS_QUESTION,
+        "choices": [{"id": star.finding_id, "label": star.name} for star in southern_cross_stars()],
+    }
 
 
 def _pointer_disambiguation(
@@ -646,6 +683,8 @@ def _check(
 
     if action is None:
         if reason == "ambiguous_target":
+            if explanation == _SOUTHERN_CROSS_QUESTION:
+                return _southern_cross_choice(action_id)
             disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
             if disambiguation is not None:
                 return disambiguation

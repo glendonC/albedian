@@ -207,10 +207,80 @@ export function isPointerFreshAndMatchingRevision(
   return context.sourceTimeSec * 1000 - pointer.atTimestampMs <= MAX_POINTER_RECENCY_MS;
 }
 
+/**
+ * Names a stargazer says for a star the IAU star-name table names otherwise, each the IAU name a solved
+ * finding carries as its title. Kept equal to SPOKEN_ALIASES in services/voice/names.py by a test there.
+ */
+export const SPOKEN_STAR_ALIASES: Readonly<Record<string, string>> = {
+  'alpha centauri': 'Rigil Kentaurus',
+  'beta centauri': 'Hadar',
+  agena: 'Hadar',
+  'alpha crucis': 'Acrux',
+  'beta crucis': 'Mimosa',
+  'gamma crucis': 'Gacrux',
+  'delta crucis': 'Imai',
+  'epsilon crucis': 'Ginan',
+  'alpha carinae': 'Canopus',
+  'beta carinae': 'Miaplacidus',
+  'epsilon carinae': 'Avior',
+  'alpha eridani': 'Achernar',
+  'alpha pavonis': 'Peacock',
+  'alpha gruis': 'Alnair',
+  'alpha trianguli australis': 'Atria',
+};
+
+/** Alpha, beta, gamma, delta and epsilon Crucis, by their IAU names. */
+export const SOUTHERN_CROSS_STARS = ['Acrux', 'Mimosa', 'Gacrux', 'Imai', 'Ginan'] as const;
+const SOUTHERN_CROSS_NAMES = ['southern cross', 'crux'];
+const SOUTHERN_CROSS_QUESTION = `The Southern Cross is a constellation, not one star. Which of its stars did you mean: ${SOUTHERN_CROSS_STARS.join(', ')}?`;
+
+/**
+ * Southern showpieces with no row in the baked data yet, by the names people say. Kept equal to
+ * UNBAKED_OBJECTS in services/voice/names.py by a test there.
+ */
+export const UNBAKED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
+  'the Large Magellanic Cloud': ['large magellanic cloud', 'lmc'],
+  'the Small Magellanic Cloud': ['small magellanic cloud', 'smc'],
+  'the Magellanic Clouds': ['magellanic clouds'],
+  'Omega Centauri': ['omega centauri', 'omega cen'],
+  '47 Tucanae': ['47 tucanae', '47 tuc'],
+  'the Carina Nebula': ['carina nebula', 'eta carinae nebula'],
+  'Eta Carinae': ['eta carinae', 'eta car'],
+  'the Jewel Box': ['jewel box', 'kappa crucis cluster'],
+  'the Coalsack': ['coalsack', 'coal sack'],
+};
+
+/** IAU names of the bright southern stars the parser knows even when the sky solution does not hold them. */
+const SOUTHERN_STAR_NAMES = [
+  ...new Set([...Object.values(SPOKEN_STAR_ALIASES), ...SOUTHERN_CROSS_STARS, 'Rigil Kentaurus', 'Toliman', 'Hadar']),
+];
+
+function unbakedObjectIn(normalizedUtterance: string): string | undefined {
+  return Object.entries(UNBAKED_OBJECTS).find(([, spoken]) =>
+    spoken.some((name) => namesWholeWord(normalizedUtterance, name))
+  )?.[0];
+}
+
+export function unbakedRefusal(label: string): string {
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)} is not in the app's baked data yet, so it cannot be selected, described or flown to.`;
+}
+
+/** The IAU name of a known southern star the utterance names, by that name or a spoken alias. */
+function southernStarNamedIn(normalizedUtterance: string): string | undefined {
+  const alias = Object.entries(SPOKEN_STAR_ALIASES).find(([spoken]) => namesWholeWord(normalizedUtterance, spoken));
+  if (alias) return alias[1];
+  return SOUTHERN_STAR_NAMES.find((name) => namesWholeWord(normalizedUtterance, name));
+}
+
 function findNamedFindingInUtterance(
   normalizedUtterance: string,
   session: ObservationSession
 ): CelestialFinding | undefined {
+  const aliased = Object.entries(SPOKEN_STAR_ALIASES).find(([spoken]) => namesWholeWord(normalizedUtterance, spoken));
+  if (aliased) {
+    const finding = (session.observationSolution?.findings ?? []).find((f) => f.title === aliased[1]);
+    if (finding) return finding;
+  }
   for (const finding of session.observationSolution?.findings ?? []) {
     if (namesWholeWord(normalizedUtterance, finding.title)) return finding;
     const idShort = finding.id.replace(/^finding_/, '');
@@ -239,6 +309,27 @@ function resolveTargetFinding(
 ): TargetResolutionResult {
   const named = findNamedFindingInUtterance(normalizedUtterance, session);
   if (named) return { findingId: named.id };
+
+  // A southern object or star the request names, but the sky solution does not hold, never falls through
+  // to the pointer or the selection
+  const unbaked = unbakedObjectIn(normalizedUtterance);
+  if (unbaked) return { error: unbakedRefusal(unbaked), reason: 'no_grounded_answer' };
+  if (SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(normalizedUtterance, name))) {
+    const findings = session.observationSolution?.findings ?? [];
+    const choices = SOUTHERN_CROSS_STARS.flatMap((name) => {
+      const finding = findings.find((f) => f.title === name);
+      return finding ? [{ id: finding.id, label: name }] : [];
+    });
+    if (choices.length > 0) return { disambiguation: { question: SOUTHERN_CROSS_QUESTION, choices } };
+    return {
+      error: `The Southern Cross is a constellation, not one star, and none of its stars (${SOUTHERN_CROSS_STARS.join(', ')}) is in the sky solution.`,
+      reason: 'ambiguous_target',
+    };
+  }
+  const southernStar = southernStarNamedIn(normalizedUtterance);
+  if (southernStar) {
+    return { error: `${southernStar} is not among the findings in this sky solution.`, reason: 'ambiguous_target' };
+  }
 
   const pointerFresh = isPointerFreshAndMatchingRevision(context.recentPointer, context);
 
@@ -368,6 +459,19 @@ export function parseUtteranceToAction(
         constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
       }),
     };
+  }
+
+  // As the backend does: a southern object, the Southern Cross, or a southern star the sky solution lacks
+  // is answered here, before a later rule could read the request as a question or take the selection
+  if (
+    !findNamedFindingInUtterance(norm, session) &&
+    (unbakedObjectIn(norm) !== undefined ||
+      SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(norm, name)) ||
+      southernStarNamedIn(norm) !== undefined)
+  ) {
+    const resolved = resolveTargetFinding(norm, context, session);
+    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
   }
 
   const seekMatch = norm.match(/\b(?:seek|jump|scrub)\s+(?:to\s+)?(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\b/i);
