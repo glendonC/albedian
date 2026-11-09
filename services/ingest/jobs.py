@@ -41,6 +41,9 @@ class SolveJobError(Exception):
     """A failure while decoding or solving a stored upload."""
 
 
+UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error, so no solution was saved."
+
+
 def job_id_for_sha256(sha256: str) -> str:
     """Deterministic `SolveJob.id` for a stored upload's SHA-256."""
     if not re.fullmatch(r"^[0-9a-f]{64}$", sha256):
@@ -52,16 +55,13 @@ def _write_json(folder: Path, filename: str, payload: dict[str, Any], *, read_on
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / filename
     scratch = folder / f".{filename}-{secrets.token_hex(8)}.tmp"
-    with open(scratch, "x", encoding="utf-8") as handle:
+    with os.fdopen(os.open(scratch, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
         handle.flush()
         os.fsync(handle.fileno())
     try:
-        if target.exists() and not (target.stat().st_mode & 0o200):
-            os.chmod(target, 0o644)
         os.replace(scratch, target)
-        if read_only:
-            os.chmod(target, 0o444)
+        os.chmod(target, 0o400 if read_only else 0o600)
     finally:
         scratch.unlink(missing_ok=True)
     _fsync_dir(folder)
@@ -167,9 +167,8 @@ def _decode_luma_frames(
 
     on_progress(0, None)
     frames = _decode_with_ffmpeg(original, width, height, MAX_VIDEO_SOLVE_FRAMES)
-    total = len(frames)
-    for idx in range(1, total + 1):
-        on_progress(idx, total)
+    # ffmpeg returns every frame at once: the one measured transition is "all of them decoded"
+    on_progress(len(frames), len(frames))
     return frames, None
 
 
@@ -248,9 +247,6 @@ def run_solve_job(
 
         if frame_count > 1:
             composite = stack_video_frames_for_calibration(frames).composite_luma
-            for idx in range(1, frame_count):
-                stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": idx, "total": frame_count}
-                emit("running", started_dt=started_dt, persist=False)
             detections = detect_point_sources(composite, snr_threshold=4.0, asset_id=asset["id"])
             solve_image: np.ndarray = composite
             stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count}
@@ -358,8 +354,10 @@ def run_solve_job(
             stage_map["solve"] = {"stage": "solve", "unit": "steps", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)
 
-        stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
-        emit("running", started_dt=started_dt)
+        if solution.quality.held_out_pair_count > 0:
+            # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
+            stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
+            emit("running", started_dt=started_dt)
 
         _write_json(folder, "solution.json", solution.to_contract_dict(), read_only=True)
         finished_dt = max(datetime.now(timezone.utc), started_dt)
@@ -367,3 +365,8 @@ def run_solve_job(
     except SolveJobError as exc:
         finished_dt = max(datetime.now(timezone.utc), started_dt)
         return emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=str(exc))
+    except Exception:
+        # Never leave a job running forever; the reason stays generic so no path or capture value is stored
+        finished_dt = max(datetime.now(timezone.utc), started_dt)
+        emit("failed", started_dt=started_dt, finished_dt=finished_dt, error=UNEXPECTED_ERROR_REASON)
+        raise

@@ -450,13 +450,16 @@ def test_pbt_solve_job_with_or_without_camera_metadata_preserves_stage_denominat
             job = solve_resp.json()
             SolveJob.model_validate(job)
             stages = {s["stage"]: s for s in job["stages"]}
-            assert list(stages.keys()) == ["store", "decode", "detect", "solve", "verify"]
+            sol = test_client.get(f"/api/ingest/{sha}/solution").json()
+            # A verify step is recorded only when a held-out star was compared
+            verified = sol["quality"]["heldOutPairCount"] > 0
+            assert list(stages.keys()) == ["store", "decode", "detect", "solve"] + (["verify"] if verified else [])
             assert stages["store"] == {"stage": "store", "unit": "bytes", "done": len(png_bytes), "total": len(png_bytes)}
             assert stages["decode"] == {"stage": "decode", "unit": "frames", "done": 1, "total": 1}
             assert stages["detect"] == {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
             assert 0 <= stages["solve"]["done"] <= stages["solve"]["total"]
-            assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
-            sol = test_client.get(f"/api/ingest/{sha}/solution").json()
+            if verified:
+                assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
             assert sol["sourceSha256"] == sha
             assert sol["status"] in ("unresolved", "ambiguous")
             assert sol["quality"]["passedIndependentVerification"] is False
