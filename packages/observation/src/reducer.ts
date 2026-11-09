@@ -7,6 +7,7 @@ import {
 import {
   formatDistanceWithUncertainty,
   getEpistemicBadgeDescriptor,
+  PARSEC_TO_LIGHT_YEAR,
 } from '@albedian/evidence';
 import {
   computeCartesianParsecICRS,
@@ -48,6 +49,24 @@ function completeAction(
     session,
     outcome: ActionOutcomeSchema.parse({ status: 'completed', actionId, newStateVersion, spokenFeedback, visualStatus }),
   };
+}
+
+const THREE_FIGURES = new Intl.NumberFormat('en-US', {
+  minimumSignificantDigits: 3,
+  maximumSignificantDigits: 3,
+  useGrouping: false,
+  notation: 'standard',
+});
+
+/**
+ * Where Go There ends, in the words of the flight's own arrival line (apps/web/src/hooks/useCameraFlightAnimation.ts
+ * with spatial/flightTarget.ts): one light year short of the star, or where the camera already is when it starts
+ * that close or closer, to three significant figures.
+ */
+function arrivalDistance(fromPc: readonly [number, number, number], starPc: readonly [number, number, number]): string {
+  const startLy = Math.hypot(starPc[0] - fromPc[0], starPc[1] - fromPc[1], starPc[2] - fromPc[2]) * PARSEC_TO_LIGHT_YEAR;
+  const arrivedLy = Math.min(startLy, 1);
+  return Math.abs(arrivedLy - 1) < 1e-9 ? 'one light year' : `${THREE_FIGURES.format(arrivedLy)} ly`;
 }
 
 /**
@@ -268,7 +287,7 @@ export function dispatchAlbedianAction(
         },
         action.requestId,
         nextRev,
-        `Arrived near ${finding.title}, approximately ${distInfo.lightYearText} from Earth. Catalog geometry and distance estimates active.`,
+        `Arrived ${arrivalDistance(base.spatialView.observerOriginParsec, targetCoords)} from ${finding.title}. The stars stay drawn as seen from Earth.`,
         status
       );
     }
