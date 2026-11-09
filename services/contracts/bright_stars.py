@@ -16,12 +16,15 @@ A supplement is {format, formatVersion, evidenceKind, catalogue, frame, epochJul
   and the star's row in the tiles: layer, HEALPix nested pixel and row index in that tile's core block, so a reader
   can move exactly these stars without drawing them twice.
 
-The parallax rule (no distance is baked): a positive parallax p mas gives a distance of 1000 / p parsecs; the 1 sigma
-range 1000 / (p + e) to 1000 / (p - e) holds only where p - e > 0, and has no upper end otherwise; a parallax at or
-below zero gives no distance. The inverse is a biased estimator where e / p is large; a reader that needs a distance
-there must choose and disclose its own estimator, as the data do not settle one.
+The parallax rule (no distance is baked): a parallax p mas with standard error e mas gives a distance only where p > 0
+and e / p is at most 0.1: 1000 / p parsecs, with the 1 sigma range 1000 / (p + e) to 1000 / (p - e). Above that
+threshold the inverse is a biased estimator, so no 1000 / p distance is given there: a reader that needs one must
+choose and disclose its own estimator, as the data do not settle one. A parallax at or below zero gives no distance.
 
 Rules beyond each value's own range: HIP numbers are unique; tile locations are unique; a parallax error is positive.
+Integers (HIP, solution type, components, tile layer, pixel and index) are written plain, as 32349 and never 32349.0:
+this side refuses a JSON number with a fraction where an integer goes, while Zod cannot tell 32349.0 from 32349 once
+JSON.parse has read it, so a hand edit like that is caught here only.
 tests/fixtures/bright_stars_contract.json holds samples both sides of the contract judge alike.
 """
 

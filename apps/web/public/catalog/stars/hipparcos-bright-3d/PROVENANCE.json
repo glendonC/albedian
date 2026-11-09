@@ -1,0 +1,89 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "hipparcos-2007-bright-3d",
+      "title": "Hipparcos, the New Reduction of the Raw Data: the 226 stars the G 12 tiles take from Hipparcos",
+      "url": "https://gea.esac.esa.int/tap-server/tap/sync?REQUEST=doQuery&LANG=ADQL&FORMAT=csv&QUERY=SELECT%20n.hip,n.ra,n.dec,n.plx,n.e_plx,n.pm_ra,n.pm_de,n.e_ra_rad,n.e_de_rad,n.e_pm_ra,n.e_pm_de,n.hp_mag,n.b_v,n.e_b_v,n.sn,n.nc,h.vmag,h.multflag,h.ccdm%20FROM%20public.hipparcos_newreduction%20AS%20n%20LEFT%20OUTER%20JOIN%20public.hipparcos%20AS%20h%20ON%20h.hip=n.hip%20WHERE%20n.hip%20IN%20(677,746,1067,2021,2081,3092,3179,3419,4427,5447,6686,6867,7588,8903,9236,9640,9884,11767,14135,14328,14354,14576,15474,15863,17358,17678,17702,18246,18532,18543,21421,21479,23015,23416,23685,23875,24436,24608,25336,25428,25606,25930,25985,26220,26224,26241,26311,26451,26634,26727,27366,27628,27989,28360,28380,29655,30324,30343,30438,31681,32246,32349,32768,33579,33856,34444,34922,35264,35904,36188,36377,36850,37279,37819,37826,39429,39757,39953,41037,42913,43813,44816,45238,45556,45860,45941,46390,46701,47908,48002,49669,50371,50583,50801,52419,52727,52943,53910,54061,54539,54872,57632,58001,59196,59316,59747,59803,59929,60718,60965,61084,61359,61585,61932,62434,62956,63090,63125,63608,64962,65109,65378,65474,66657,67301,67457,67927,68002,68702,68895,68933,69673,71352,71502,71681,71683,71860,72105,72607,72622,73273,73714,74785,74946,75177,75458,76267,77070,77952,78265,78401,78820,79593,79882,80112,80331,80704,80763,80816,81266,81377,81693,82273,82396,83000,83081,84012,84345,84380,85258,85670,85696,85792,85927,86032,86228,86670,86742,87073,87261,87833,88635,89642,89931,89962,90185,90496,91262,92791,92855,92862,93864,94141,94376,95447,95947,97165,97278,97365,97649,98337,100345,100453,100751,101769,101772,102098,102488,104732,105199,106278,107259,107315,107556,109074,109268,109492,110130,111043,112122,112158,112961,113368,113881,113963,116727)%20ORDER%20BY%20n.hip",
+      "version": "2007 new reduction",
+      "retrieved": "2026-11-09",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA",
+      "citation": "van Leeuwen, F. 2007, A&A 474, 653",
+      "doi": "10.1051/0004-6361:20078357",
+      "sha256": "96b8f753deb086e26e3ac0bafdf219ff3ab4b8e3dba289d8f29714e32836e631",
+      "note": "One ADQL query of the ESA Gaia archive's TAP service, as the url gives it: public.hipparcos_newreduction left outer join public.hipparcos on hip, for the 226 HIP numbers, ordered by hip. Fetched at 2026-11-09T21:13:20Z: 226 rows, 28,076 bytes of CSV. The ESA Space Science Archives terms (read 2026-11-09) put the data they host under CC BY-NC 3.0 IGO, credit ESA; commercial use needs ESA's prior authorisation."
+    },
+    {
+      "id": "hipparcos-1997",
+      "title": "The Hipparcos and Tycho Catalogues (ESA 1997)",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "1997",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA",
+      "citation": "ESA 1997, The Hipparcos and Tycho Catalogues, ESA SP-1200",
+      "note": "Table public.hipparcos, joined on hip in the hipparcos-2007-bright-3d query: only its V magnitude (vmag) is written; multflag and ccdm are read and not written."
+    },
+    {
+      "id": "gaia-dr3-hipparcos2-best-neighbour",
+      "title": "Gaia DR3 to Hipparcos-2 best-neighbour crossmatch",
+      "url": "https://gea.esac.esa.int/archive/",
+      "version": "DR3",
+      "license": {
+        "spdx": "CC-BY-NC-3.0-IGO",
+        "name": "Creative Commons Attribution-NonCommercial 3.0 IGO",
+        "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/",
+        "conditions": "Data hosted in the ESA Space Science Archives are distributed under this licence; commercial use needs ESA's prior authorisation (https://www.cosmos.esa.int/web/esdc/terms-and-conditions)."
+      },
+      "credit": "ESA/Gaia/DPAC",
+      "citation": "Marrese, P. M., Marinoni, S., Fabrizio, M., & Altavilla, G. 2019, A&A 621, A144",
+      "doi": "10.1051/0004-6361/201834142",
+      "note": "Read from the gaia-dr3 tiles' bright-star-merge.json (that folder's PROVENANCE.json records its query): each star's Gaia DR3 best neighbour, or none, and why Hipparcos wins."
+    },
+    {
+      "id": "iau-csn",
+      "title": "IAU Catalog of Star Names (IAU-CSN)",
+      "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+      "version": "Last updated 2022-04-04",
+      "license": {
+        "spdx": "LicenseRef-IAU-Creative-Commons-Attribution",
+        "name": "Creative Commons Attribution, as the IAU states it, with no version given",
+        "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+        "conditions": "The file's header says all IAU-produced products are released under Creative Commons Attribution, free to use as long as the source is mentioned, and asks users to cite the official IAU version."
+      },
+      "credit": "IAU Working Group on Star Names (WGSN)",
+      "citation": "IAU Working Group on Star Names, IAU Catalog of Star Names",
+      "note": "Read from the gaia-dr3 tiles' names.json: the IAU names, by HIP number."
+    }
+  ],
+  "files": [
+    {
+      "path": "stars.json",
+      "sha256": "cf04b0a3b3c3fb77397b26eeee74d7b3cb757407532caf3fb598e148d4461afe",
+      "sources": [
+        "hipparcos-2007-bright-3d",
+        "hipparcos-1997",
+        "gaia-dr3-hipparcos2-best-neighbour",
+        "iau-csn"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_bright_stars_3d.py",
+        "command": "uv run python scripts/bake_bright_stars_3d.py"
+      },
+      "note": "All 226 stars the gaia-dr3 G 12 tiles take from Hipparcos (bright-star-merge.json, action use_hipparcos), in HIP order, evidenceKind 'catalog-derived': Hipparcos 2007 astrometry with its errors, Hp, B-V, solution type and components; V from Hipparcos 1997; the Gaia DR3 best neighbour and the merge's reason; the IAU name; and each star's row in the tiles' core blocks, found by HIP number in the detail tiles. ICRS at J1991.25, not moved. No distance is written: the contract's parallax rule gives 1000 / p only where p > 0 and e / p is at most 0.1 (197 stars); 26 have e / p above 0.1 and 3 a parallax at or below zero (HIP 26220, HIP 26224, HIP 71502). Toliman (HIP 71681) and Rigil Kentaurus (HIP 71683) are one binary, yet their 2007 parallaxes differ by 42.11 mas, so placing each by its own puts them about 14,400 au apart along the line of sight; Kervella et al. 2016 give the pair one parallax, 747.17 ± 0.61 mas. Offered under CC BY-NC 3.0 IGO with credit ESA, as its sources are."
+    }
+  ],
+  "fileSets": []
+}

@@ -160,6 +160,16 @@
       "licence": "BSD-3-Clause",
       "licenceUrl": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
       "source": "d3-celestial (github.com/ofrohn/d3-celestial, git commit d2e20e104b86429d90ac8227a5b021262b45d75a, 2020-03-20), Copyright (c) 2015 Olaf Frohn, BSD-3-Clause per the repository's LICENSE (keep the notice with any redistribution), data/constellations.bounds.json: the IAU constellation boundaries from Davenhall and Leggett (1989), VizieR VI/49, vertices at J2000 of B1875 corners"
+    },
+    {
+      "path": ".cache/hipparcos-bright-3d/hipparcos_bright_3d.csv",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://gea.esac.esa.int/tap-server/tap/sync?REQUEST=doQuery&LANG=ADQL&FORMAT=csv&QUERY=SELECT%20n.hip,n.ra,n.dec,n.plx,n.e_plx,n.pm_ra,n.pm_de,n.e_ra_rad,n.e_de_rad,n.e_pm_ra,n.e_pm_de,n.hp_mag,n.b_v,n.e_b_v,n.sn,n.nc,h.vmag,h.multflag,h.ccdm%20FROM%20public.hipparcos_newreduction%20AS%20n%20LEFT%20OUTER%20JOIN%20public.hipparcos%20AS%20h%20ON%20h.hip=n.hip%20WHERE%20n.hip%20IN%20(677,746,1067,2021,2081,3092,3179,3419,4427,5447,6686,6867,7588,8903,9236,9640,9884,11767,14135,14328,14354,14576,15474,15863,17358,17678,17702,18246,18532,18543,21421,21479,23015,23416,23685,23875,24436,24608,25336,25428,25606,25930,25985,26220,26224,26241,26311,26451,26634,26727,27366,27628,27989,28360,28380,29655,30324,30343,30438,31681,32246,32349,32768,33579,33856,34444,34922,35264,35904,36188,36377,36850,37279,37819,37826,39429,39757,39953,41037,42913,43813,44816,45238,45556,45860,45941,46390,46701,47908,48002,49669,50371,50583,50801,52419,52727,52943,53910,54061,54539,54872,57632,58001,59196,59316,59747,59803,59929,60718,60965,61084,61359,61585,61932,62434,62956,63090,63125,63608,64962,65109,65378,65474,66657,67301,67457,67927,68002,68702,68895,68933,69673,71352,71502,71681,71683,71860,72105,72607,72622,73273,73714,74785,74946,75177,75458,76267,77070,77952,78265,78401,78820,79593,79882,80112,80331,80704,80763,80816,81266,81377,81693,82273,82396,83000,83081,84012,84345,84380,85258,85670,85696,85792,85927,86032,86228,86670,86742,87073,87261,87833,88635,89642,89931,89962,90185,90496,91262,92791,92855,92862,93864,94141,94376,95447,95947,97165,97278,97365,97649,98337,100345,100453,100751,101769,101772,102098,102488,104732,105199,106278,107259,107315,107556,109074,109268,109492,110130,111043,112122,112158,112961,113368,113881,113963,116727)%20ORDER%20BY%20n.hip",
+      "bytes": 28076,
+      "sha256": "96b8f753deb086e26e3ac0bafdf219ff3ab4b8e3dba289d8f29714e32836e631",
+      "licence": "CC-BY-NC-3.0-IGO",
+      "licenceUrl": "https://www.cosmos.esa.int/web/esdc/terms-and-conditions",
+      "source": "ESA Gaia archive TAP (gea.esac.esa.int), one ADQL query: Hipparcos, the New Reduction (van Leeuwen 2007, public.hipparcos_newreduction) joined on hip with the Hipparcos Catalogue (ESA 1997, public.hipparcos) for the 226 stars the gaia-dr3 G 12 tiles take from Hipparcos; 226 rows of CSV, fetched 2026-11-09T21:13:20Z. Data hosted in the ESA Space Science Archives are distributed under CC BY-NC 3.0 IGO, credit ESA; commercial use needs ESA's prior authorisation. Baked by scripts/bake_bright_stars_3d.py."
     }
   ]
 }
