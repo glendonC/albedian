@@ -19,6 +19,10 @@ in the ESO panorama, but no name or position entry. Every one of them is a row h
 - Licence: CC-BY-SA-4.0 for every file of the repository [verified: `.reuse/dep5` at tag v20260501 reads
   `Files: *` with `License: CC-BY-SA-4.0`; `LICENSES/CC-BY-SA-4.0.txt`; the README says OpenNGC "is released under
   CC-BY-SA-4.0 license"].
+- Copyright 2023 Mattia Verga [verified: `.reuse/dep5` at tag v20260501 reads `Copyright: 2023 Mattia Verga`].
+- Citation: the README at tag v20260501 gives the DOI `10.21938/y.1ejWUD_MQ6b_eDFoVbbw` (a VO DOI from GAVO,
+  dc.zah.uni-heidelberg.de) [verified]. The record carries it, and the README's acknowledgements of NED,
+  HyperLeda and SIMBAD, whose data OpenNGC merges.
 - Obligations: credit OpenNGC and Mattia Verga, link the licence, and say what was changed. `openngc.json` is an
   adaptation, so it is shared under CC-BY-SA-4.0 too, and so is anything that adapts it further. The record
   (`apps/web/public/catalog/deepsky/PROVENANCE.json`) states both.

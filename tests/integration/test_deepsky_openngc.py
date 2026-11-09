@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 
 from services.contracts.deep_sky import DEEP_SKY_COLUMNS, DEEP_SKY_CONSTELLATIONS, DEEP_SKY_OBJECT_TYPES, DeepSkyCatalog
-from services.contracts.provenance import AssetProvenanceRecord
+from services.contracts.provenance import AssetProvenanceRecord, dumps_record
 from services.science.catalog_tiles import decode_core_directions, decode_core_tile, radec_to_vec
 from tests.integration.test_deep_sky_contract import ROWS as CONTRACT_ROWS
 from tests.integration.test_deep_sky_contract import TYPE_LABELS
@@ -88,6 +88,22 @@ def test_parse_keeps_blanks_null_and_refuses_another_header_or_row_count() -> No
         bake.parse_openngc_csv(bake.OPENNGC_HEADER.replace("Common names", "Names") + "\n" + nonex + "\n")
     with pytest.raises(ValueError, match="expected 2 rows"):
         bake.parse_openngc_csv(_csv(nonex), expected_rows=2)
+
+
+def test_one_synthetic_row_becomes_exactly_its_tuple() -> None:
+    """A made-up object (not in OpenNGC) with every carried cell set, list cells with blanks around and between items,
+    and the cells the table leaves out set too, so each shows up in, or stays out of, the row as the bake intends."""
+    row = (
+        "NGC9999;G;01:02:03.45;-12:34:56.7;Cet;3.50;1.20;45;12.30;11.80;10.1;9.9;9.7;13.90;Sb;0.5;1.0;-1.0;1200;"
+        "0.004;15.0;14.0;13.0;042;0001A, 0002 NED01;0003;CS 1;PGC 000001, ,UGC 00002 ;Made-up Galaxy, Test Cloud;"
+        "NED note;OpenNGC note;Src"
+    )
+    assert bake.parse_openngc_csv(_csv(row), expected_rows=1) == [
+        [
+            "NGC9999", "G", 15.514375, -12.582417, "Cet", 3.5, 1.2, 45.0, 12.3, 11.8, 13.9, 42,
+            ["0001A", "0002 NED01"], ["0003"], ["PGC 000001", "UGC 00002"], ["Made-up Galaxy", "Test Cloud"],
+        ]
+    ]  # fmt: skip
 
 
 def test_check_inputs_refuses_a_missing_or_altered_csv(tmp_path: Path) -> None:
@@ -234,10 +250,27 @@ def test_provenance_record_states_sources_licence_and_changes() -> None:
         assert str(src.url) == f"https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/{item.upstream}"
 
 
+def test_record_rebuilds_without_the_csvs_and_states_copyright_doi_and_licence() -> None:
+    """Runs where .cache is absent (CI): the record is built from the committed table and the bake's constants only."""
+    text = (OUT_DIR / "PROVENANCE.json").read_text(encoding="utf-8")
+    assert text == dumps_record(bake.build_provenance_record(OUT_DIR))
+    record = AssetProvenanceRecord.model_validate_json(text)
+    for src in record.sources:
+        conditions = src.license.conditions or ""
+        assert src.license.spdx == "CC-BY-SA-4.0" and str(src.license.url) == "https://creativecommons.org/licenses/by-sa/4.0/"
+        assert conditions.startswith("Copyright 2023 Mattia Verga (.reuse/dep5 at tag v20260501). ")
+        assert "must be shared under CC-BY-SA-4.0 or a compatible licence" in conditions
+        assert src.doi == "10.21938/y.1ejWUD_MQ6b_eDFoVbbw"
+        assert "doi:10.21938/y.1ejWUD_MQ6b_eDFoVbbw" in (src.citation or "")
+        for database in ("NASA/IPAC Extragalactic Database (NED)", "HyperLeda database", "SIMBAD database"):
+            assert database in (src.acknowledgement or "")
+
+
 def test_science_doc_states_licence_fields_and_limits() -> None:
     doc = DOC_PATH.read_text(encoding="utf-8")
     assert "\u2014" not in doc  # no em dash characters in project prose
-    for required in ("OpenNGC v20260501", "Mattia Verga", "CC-BY-SA-4.0", "share", "`catalog-derived`", "J2000",
+    for required in ("OpenNGC v20260501", "Copyright 2023 Mattia Verga", "10.21938/y.1ejWUD_MQ6b_eDFoVbbw",
+                     "Mattia Verga", "CC-BY-SA-4.0", "share", "`catalog-derived`", "J2000",
                      "Se1", "M102", "NonEx", "14,033"):  # fmt: skip
         assert required in doc
 

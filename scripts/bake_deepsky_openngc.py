@@ -60,6 +60,20 @@ REPO = "https://github.com/mattiaverga/OpenNGC"
 RAW = "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501"
 RETRIEVED = "2026-11-09"
 CREDIT = "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC)"
+# .reuse/dep5 at tag v20260501: "Copyright: 2023 Mattia Verga"
+COPYRIGHT = "Copyright 2023 Mattia Verga"
+# The DOI badge of the README at tag v20260501 (a GAVO VO DOI, dc.zah.uni-heidelberg.de/voidoi)
+DOI = "10.21938/y.1ejWUD_MQ6b_eDFoVbbw"
+CITATION = f"Verga, M., OpenNGC: a license friendly NGC/IC objects database, release v20260501, doi:{DOI}."
+# One sentence of ours naming what OpenNGC merges, then the three acknowledgements its README at tag v20260501
+# gives for NED, HyperLeda and SIMBAD, as written there (line breaks joined, a final full stop added)
+ACKNOWLEDGEMENT = (
+    "OpenNGC merges NED, HyperLEDA, SIMBAD, HEASARC tables and Harold Corwin's NGC/IC Positions and Notes. "
+    "This research has made use of the NASA/IPAC Extragalactic Database (NED) which is operated by the Jet "
+    "Propulsion Laboratory, California Institute of Technology, under contract with the National Aeronautics and "
+    "Space Administration. We acknowledge the usage of the HyperLeda database (http://leda.univ-lyon1.fr). This "
+    "research has made use of the SIMBAD database, operated at CDS, Strasbourg, France."
+)
 
 # OpenNGC v20260501 NGC_guide.txt, "Type: Object type"
 TYPE_LABELS = {
@@ -207,7 +221,7 @@ LICENSE = {
     "name": "Creative Commons Attribution-ShareAlike 4.0 International",
     "url": "https://creativecommons.org/licenses/by-sa/4.0/",
     "conditions": (
-        "Credit OpenNGC and Mattia Verga, link the licence, and say that the data were changed. An adaptation, such "
+        f"{COPYRIGHT} (.reuse/dep5 at tag v20260501). Credit OpenNGC and Mattia Verga, link the licence, and say that the data were changed. An adaptation, such "
         "as openngc.json, must be shared under CC-BY-SA-4.0 or a compatible licence (OpenNGC .reuse/dep5 at tag "
         "v20260501: 'Files: * License: CC-BY-SA-4.0')."
     ),
@@ -225,6 +239,9 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
             "retrieved": RETRIEVED,
             "license": LICENSE,
             "credit": CREDIT,
+            "citation": CITATION,
+            "doi": DOI,
+            "acknowledgement": ACKNOWLEDGEMENT,
             "sha256": item.sha256,
             "note": (
                 f"{item.rows:,} rows, {item.bytes:,} bytes, fetched from {RAW}/{item.upstream} at "
