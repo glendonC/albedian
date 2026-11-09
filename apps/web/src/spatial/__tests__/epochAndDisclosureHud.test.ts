@@ -5,6 +5,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
+import { resolveFindingParsecPosition } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
@@ -139,8 +140,9 @@ describe('EpochAndDisclosureHud (moment 05/06: alternative 3D viewpoint, marker 
     );
     expect(discEl?.textContent).toContain(simBadge.disclosure);
 
-    // Click Orbit Viewpoint (+1 pc)
-    const beforeOrigin = [...latestSession.spatialView.observerOriginParsec];
+    // Click Orbit Viewpoint (+1 pc): space.viewpoint places the camera at the star plus the offset,
+    // wherever space.enter left it (one light year short of the star)
+    const beforeOrigin = [...resolveFindingParsecPosition(finding)!];
     const orbitBtn = container.querySelector<HTMLButtonElement>(
       '[data-testid="shift-viewpoint-orbit-btn"]'
     )!;

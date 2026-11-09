@@ -12,7 +12,7 @@ import {
   PARSEC_TO_LIGHT_YEAR,
 } from '@albedian/evidence';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { FLIGHT_STANDOFF_PC, flightEndOrigin } from '../../spatial/flightTarget.js';
+import { FLIGHT_STANDOFF_PC, flightEndOrigin } from '@albedian/observation';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -455,7 +455,7 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
       findingId: finding.id,
       distancePolicy: 'measured_or_estimated',
     }).session;
-    // Where a Go There flight now ends: one light year short of the star (spatial/flightTarget.ts)
+    // Where a Go There flight now ends: one light year short of the star (flightEndOrigin, packages/observation/src/flight.ts)
     const target = resolveFindingParsecPosition(finding)!;
     const arrived: ObservationSession = {
       ...inSpace,

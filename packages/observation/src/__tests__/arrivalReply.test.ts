@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
+import { distancePc } from '../flight.js';
 import { dispatchAlbedianAction } from '../reducer.js';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions.js';
 
 /**
  * The reply when a flight to a star completes says where Go There ends, in the words of the flight's own arrival
- * line (apps/web/src/hooks/useCameraFlightAnimation.ts with spatial/flightTarget.ts): one light year short of the
- * star, or where the camera already was when it started closer, to three significant figures. The stars stay
- * drawn as seen from Earth, so the reply says so.
+ * line (arrivalDistanceText in packages/observation/src/flight.ts, which apps/web/src/hooks/useCameraFlightAnimation.ts
+ * also uses): one light year short of the star, or where the camera already was when it started closer, to three
+ * significant figures. The stars stay drawn as seen from Earth, so the reply says so.
  */
 
 const base = createSyntheticCalibratedSession();
@@ -22,7 +23,7 @@ function startShortOf(ly: number): [number, number, number] {
   return [star[0] * f, star[1] * f, star[2] * f];
 }
 
-function arriveFrom(origin: [number, number, number]) {
+function enterFrom(origin: [number, number, number]) {
   const session: ObservationSession = { ...base, spatialView: { ...base.spatialView, observerOriginParsec: origin } };
   const result = dispatchAlbedianAction(session, {
     type: 'space.enter',
@@ -32,7 +33,12 @@ function arriveFrom(origin: [number, number, number]) {
     distancePolicy: 'measured_or_estimated',
   });
   expect(result.outcome.status).toBe('completed');
-  return result.outcome.status === 'completed' ? result.outcome.spokenFeedback : undefined;
+  return result;
+}
+
+function arriveFrom(origin: [number, number, number]) {
+  const { outcome } = enterFrom(origin);
+  return outcome.status === 'completed' ? outcome.spokenFeedback : undefined;
 }
 
 describe('@albedian/observation: the reply when a flight to a star arrives', () => {
@@ -42,6 +48,17 @@ describe('@albedian/observation: the reply when a flight to a star arrives', () 
 
   it('says one light year when the camera starts exactly one light year away', () => {
     expect(arriveFrom(startShortOf(1))).toBe('Arrived one light year from Betelgeuse. The stars stay drawn as seen from Earth.');
+  });
+
+  it('moves on to one light year and says so when the camera starts 1.4 ly from the star', () => {
+    const start = startShortOf(1.4);
+    const result = enterFrom(start);
+    const end = result.session.spatialView.observerOriginParsec;
+    expect(Math.abs(distancePc(end, star) * PARSEC_TO_LIGHT_YEAR - 1)).toBeLessThan(1e-9);
+    expect(distancePc(start, end) * PARSEC_TO_LIGHT_YEAR).toBeCloseTo(0.4, 9);
+    expect(result.outcome.status === 'completed' && result.outcome.spokenFeedback).toBe(
+      'Arrived one light year from Betelgeuse. The stars stay drawn as seen from Earth.'
+    );
   });
 
   it('says the distance it already was, in three figures, when the camera starts closer', () => {

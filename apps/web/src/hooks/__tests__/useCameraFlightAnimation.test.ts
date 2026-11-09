@@ -7,7 +7,7 @@ import { executeVoiceOrTextCommand } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlightAndRestoreHud } from '../../components/FlightAndRestoreHud.js';
-import { FLIGHT_STANDOFF_PC, distancePc } from '../../spatial/flightTarget.js';
+import { FLIGHT_STANDOFF_PC, distancePc } from '@albedian/observation';
 import { useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
 
 /**
@@ -121,7 +121,8 @@ describe('Go There flies to one light year short of the star', () => {
 
   it('never shows the camera at the star on the way, from the command to the arrival', () => {
     // The target card's "Take me to <star>" runs this command; the reducer's space.enter puts the
-    // camera on the star, then the app starts the flight from the session it rendered with
+    // camera at the flight's end, one light year short of the star, then the app starts the flight
+    // from the session it rendered with
     const star = base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc)!;
     const starPc = resolveFindingParsecPosition(star)!;
     for (const reducedMotion of [false, true]) {

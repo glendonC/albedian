@@ -9,6 +9,7 @@ import {
   MediaVariant,
 } from '@albedian/contracts';
 import {
+  FLIGHT_STANDOFF_PC,
   computeStarAnchorNdc,
   returnCheckpointOf,
   createCameraCheckpoint,
@@ -16,7 +17,9 @@ import {
   createSessionForSourceAsset,
   dispatchAlbedianAction,
   epochIsoForYear,
+  distancePc,
   executeVoiceOrTextCommand,
+  flightEndOrigin,
   transitionOrthogonalMachine,
   validateMediaTimelineSync,
 } from '../index';
@@ -1103,3 +1106,27 @@ describe('@albedian/observation: Back to Moment by voice and by button (experien
     }
   });
 });
+
+describe('@albedian/observation: space.enter stops one light year short of the star', () => {
+  it('puts the camera one light year short of the star on the line from where it was, not at the star', () => {
+    const base = createSyntheticCalibratedSession();
+    const star = base.observationSolution!.findings.find((f) => f.id === 'finding_betelgeuse')!;
+    const starPc = star.cartesianParsecICRS!;
+    for (const from of [[0, 0, 0], [3, -2, 1.5]] as Array<[number, number, number]>) {
+      const session = { ...base, spatialView: { ...base.spatialView, observerOriginParsec: from } };
+      const result = dispatchAlbedianAction(session, {
+        type: 'space.enter',
+        requestId: `req-standoff-${from.join('-')}`,
+        expectedViewRevision: session.viewRevision,
+        findingId: star.id,
+        distancePolicy: 'measured_or_estimated',
+      });
+      expect(result.outcome.status).toBe('completed');
+      const end = result.session.spatialView.observerOriginParsec;
+      expect(Math.abs(distancePc(end, starPc) - FLIGHT_STANDOFF_PC)).toBeLessThan(1e-9);
+      expect(Math.abs(distancePc(from, end) + distancePc(end, starPc) - distancePc(from, starPc))).toBeLessThan(1e-9);
+      expect(end).toEqual(flightEndOrigin(from, starPc));
+    }
+  });
+});
+

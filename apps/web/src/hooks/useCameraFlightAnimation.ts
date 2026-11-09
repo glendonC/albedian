@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { computeStarAnchorNdc } from '@albedian/observation';
-import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
-import { distancePc, flightEndOrigin, threeFigures } from '../spatial/flightTarget.js';
+import { arrivalDistanceText, computeStarAnchorNdc, flightEndOrigin } from '@albedian/observation';
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -41,9 +39,8 @@ export function useCameraFlightAnimation(
       // One light year short of the star, on the line from where the camera is now
       const startOrigin = [...session.spatialView.observerOriginParsec] as [number, number, number];
       const endOrigin = flightEndOrigin(startOrigin, targetParsec);
-      // One light year by design, or how far it already was when the camera started closer
-      const arrivedLy = distancePc(endOrigin, targetParsec) * PARSEC_TO_LIGHT_YEAR;
-      const arrival = Math.abs(arrivedLy - 1) < 1e-9 ? 'one light year' : `${threeFigures(arrivedLy)} ly`;
+      // One light year by design, or how far it already was when the camera started closer (the reducer says the same)
+      const arrival = arrivalDistanceText(startOrigin, targetParsec);
 
       // The same anchor the reducer locks on selection: the detection as the upright photo shows it
       const anchorNdc = computeStarAnchorNdc(target, session.sourceAsset);
@@ -93,7 +90,8 @@ export function useCameraFlightAnimation(
               transitionPhase: 'phase_a_photo_to_sky',
               transitionProgress: Number(easeA.toFixed(3)),
               lockedAnchorNdc: anchorNdc,
-              // The command may already have put the camera on the star: it stays where it starts
+              // The command may already have moved the camera to the flight's end, one light year short of
+              // the star: in this phase it stays where the flight starts
               observerOriginParsec: startOrigin,
             },
             lastStatusBanner: `Phase A: registering ${target.title} against the calibrated sky…`,
@@ -152,7 +150,8 @@ export function useCameraFlightAnimation(
         }
       };
 
-      // The first frame now, so the panel never shows the state the command left (the camera on the star)
+      // The first frame now, so the panel never shows the state the command left (the camera already at
+      // the flight's end, one light year short of the star, before it has flown)
       step(startTime);
     },
     [session, setSession]

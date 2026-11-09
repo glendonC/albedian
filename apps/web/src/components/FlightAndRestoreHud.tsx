@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
-import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
+import { dispatchAlbedianAction, distancePc, returnCheckpointOf, threeFigures } from '@albedian/observation';
 import {
   getEpistemicBadgeDescriptor,
   PARSEC_TO_LIGHT_YEAR,
 } from '@albedian/evidence';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { distancePc, threeFigures } from '../spatial/flightTarget.js';
 
 export interface FlightAndRestoreHudProps {
   session: ObservationSession;

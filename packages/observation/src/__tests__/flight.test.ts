@@ -1,7 +1,7 @@
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FLIGHT_STANDOFF_PC, distancePc, flightEndOrigin, threeFigures } from '../flightTarget.js';
+import { FLIGHT_STANDOFF_PC, arrivalDistanceText, distancePc, flightEndOrigin, threeFigures } from '../flight.js';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
@@ -21,6 +21,13 @@ const at = (raDeg: number, decDeg: number, pc: number): [number, number, number]
  */
 const TABIT = at(72.460047, 6.961275, 8.02372);
 const EARTH: [number, number, number] = [0, 0, 0];
+
+/** A start on the line from the Sun to `target`, `ly` light years short of it. */
+function shortOf(target: [number, number, number], ly: number): [number, number, number] {
+  const d = Math.hypot(...target);
+  const k = (d - ly / PARSEC_TO_LIGHT_YEAR) / d;
+  return [target[0] * k, target[1] * k, target[2] * k];
+}
 
 const vec = fc.tuple(
   fc.double({ min: -500, max: 500, noNaN: true }),
@@ -43,13 +50,19 @@ describe('a flight to a star ends one light year short of it', () => {
     fc.assert(
       fc.property(vec, vec, (from, target) => {
         const d = distancePc(from, target);
-        fc.pre(d > FLIGHT_STANDOFF_PC * 1.001);
+        fc.pre(d > FLIGHT_STANDOFF_PC);
         const end = flightEndOrigin(from, target);
         expect(Math.abs(distancePc(end, target) - FLIGHT_STANDOFF_PC)).toBeLessThan(1e-9 * Math.max(1, d));
         // On the segment: the two legs add up to the whole
         expect(Math.abs(distancePc(from, end) + distancePc(end, target) - d)).toBeLessThan(1e-9 * Math.max(1, d));
       }),
-      { numRuns: 300, seed: SEED, examples: [[EARTH, TABIT]] }
+      {
+        numRuns: 300,
+        seed: SEED,
+        // Random starts in +-500 pc seldom land a few light years from the target, so starts just
+        // past the one light year line are seeded: 1.001, 1.5 and 3 ly from the star
+        examples: [[EARTH, TABIT], [shortOf(TABIT, 1.001), TABIT], [shortOf(TABIT, 1.5), TABIT], [shortOf(TABIT, 3), TABIT]],
+      }
     );
   });
 
@@ -81,5 +94,17 @@ describe('a flight to a star ends one light year short of it', () => {
       }),
       { numRuns: 300, seed: SEED, examples: [[Math.log10(999.5), false], [Math.log10(9.99e-7), false], [-7.39, false]] }
     );
+  });
+
+  it('words the arrival as the flight and the reducer both say it: one light year, or how far it already was', () => {
+    expect(arrivalDistanceText(EARTH, TABIT)).toBe('one light year');
+    const halfLy = FLIGHT_STANDOFF_PC / 2;
+    const near: [number, number, number] = [TABIT[0] + halfLy, TABIT[1], TABIT[2]];
+    expect(arrivalDistanceText(near, TABIT)).toBe('0.500 ly');
+    // Starting 1.4 ly out, the flight moves on to one light year and says so
+    expect(arrivalDistanceText(shortOf(TABIT, 1.4), TABIT)).toBe('one light year');
+    // Starting just inside one light year, the camera stays and the words give its real distance
+    expect(arrivalDistanceText(shortOf(TABIT, 0.96), TABIT)).toBe('0.960 ly');
+    expect(arrivalDistanceText(shortOf(TABIT, 0.995), TABIT)).toBe('0.995 ly');
   });
 });
