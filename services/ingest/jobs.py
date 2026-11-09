@@ -26,7 +26,11 @@ from PIL import Image, UnidentifiedImageError
 from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
 from services.ingest.store import IngestStore, _fsync_dir
 from services.science.detector import _to_luma_2d, detect_point_sources, stack_video_frames_for_calibration
-from services.science.phone_photo_solver import solve_phone_photo
+from services.science.phone_photo_solver import (
+    diagonal_fov_deg_from_35mm_equivalent,
+    is_published_camera_label,
+    solve_phone_photo,
+)
 from services.science.solver import solve_and_verify_field
 
 MAX_VIDEO_SOLVE_FRAMES = 8
@@ -110,6 +114,8 @@ def _decode_with_ffmpeg(path: Path, width: int, height: int, max_frames: int) ->
                 "-v",
                 "error",
                 "-nostdin",
+                # Stored pixels, as probe.py and the SourceAsset size them: the display matrix stays metadata
+                "-noautorotate",
                 "-i",
                 str(path),
                 "-frames:v",
@@ -267,6 +273,13 @@ def run_solve_job(
         location = asset.get("observerLocation") or {}
         camera_meta = asset.get("cameraMetadata") or {}
         camera_label = camera_meta.get("model") if isinstance(camera_meta, dict) else None
+        focal_35mm = camera_meta.get("focalLength35mmMm") if isinstance(camera_meta, dict) else None
+        fov_hint: float | None = None
+        if isinstance(focal_35mm, (int, float)) and not isinstance(focal_35mm, bool) and not is_published_camera_label(camera_label):
+            try:
+                fov_hint = diagonal_fov_deg_from_35mm_equivalent(float(focal_35mm))
+            except ValueError:
+                fov_hint = None
         obs_utc_iso = asset.get("capturedAtUTC")
         lat_deg = location.get("latDeg")
         lon_deg = location.get("lonDeg")
@@ -279,11 +292,25 @@ def run_solve_job(
                 observer_lat=lat_deg,
                 observer_lon=lon_deg,
                 camera_label=camera_label,
+                fov_diagonal_deg=fov_hint,
                 source_asset_id=asset["id"],
                 source_sha256=sha256,
                 solution_id=solution_id,
                 on_candidate=on_candidate,
             )
+            if fov_hint is not None and solution.status != "calibrated":
+                # A wrong or cropped 35 mm tag must not block the solve: retry with the generic field search
+                solution = solve_phone_photo(
+                    solve_image,
+                    obs_utc_iso=obs_utc_iso,
+                    observer_lat=lat_deg,
+                    observer_lon=lon_deg,
+                    camera_label=camera_label,
+                    source_asset_id=asset["id"],
+                    source_sha256=sha256,
+                    solution_id=solution_id,
+                    on_candidate=on_candidate,
+                )
             if solution.status != "calibrated":
                 plate_sol = solve_and_verify_field(
                     detections,

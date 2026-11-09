@@ -107,6 +107,22 @@ PUBLISHED_CAMERA_FOV_DEG: dict[str, tuple[float, tuple[str, ...]]] = {
     "galaxy-s25-ultra-ultra-wide": (120.0, ("brown-conrady",)),
 }
 
+# The 36 x 24 mm film frame that EXIF FocalLengthIn35mmFilm refers to; makers scale by its diagonal [inference]
+FULL_FRAME_DIAGONAL_MM = math.hypot(36.0, 24.0)
+
+
+def diagonal_fov_deg_from_35mm_equivalent(focal_35mm_mm: float) -> float:
+    """Diagonal field of view of a rectilinear lens with this 35 mm equivalent focal length: 2 atan(d / 2f)."""
+    if not (math.isfinite(focal_35mm_mm) and focal_35mm_mm > 0.0):
+        raise ValueError(f"A 35 mm equivalent focal length must be finite and positive, not {focal_35mm_mm!r}.")
+    return math.degrees(2.0 * math.atan(FULL_FRAME_DIAGONAL_MM / (2.0 * focal_35mm_mm)))
+
+
+def is_published_camera_label(camera_label: str | None) -> bool:
+    """Whether `camera_label` names a camera in `PUBLISHED_CAMERA_FOV_DEG`."""
+    return camera_label is not None and camera_label.strip().lower() in PUBLISHED_CAMERA_FOV_DEG
+
+
 MIN_COINCIDENCE_LOG_ODDS = 18.0
 MIN_HELD_OUT_INLIERS = 6
 MAX_HELD_OUT_MEDIAN_PX = 3.0
@@ -1699,7 +1715,15 @@ def solve_phone_photo(
                     observation_solution_id=solution_id,
                     evidence_class="catalog_matched",
                     title=st.common_name,
-                    subtitle=f"{st.bayer_designation} · {st.spectral_type} · {st.median_pc:.1f} pc [{st.lower_pc:.1f}-{st.upper_pc:.1f} pc]",
+                    subtitle=" · ".join(
+                        part
+                        for part in (
+                            st.bayer_designation,
+                            st.spectral_type,
+                            f"{st.median_pc:.1f} pc [{st.lower_pc:.1f}-{st.upper_pc:.1f} pc]",
+                        )
+                        if part
+                    ),
                     ra_deg=st.ra_deg,
                     dec_deg=st.dec_deg,
                     alt_deg=alt_deg,
