@@ -12,3 +12,4 @@ export * from './ingest.js';
 export * from './voice-command.js';
 export * from './eclipses.js';
 export * from './exoplanets.js';
+export * from './deep-sky.js';
