@@ -6,9 +6,14 @@
 // with `vite preview` on every interface, never the dev server, which hands out any file in the repository by its
 // /@fs/ path. The API stays on 127.0.0.1 behind the web app's /api proxy, which refuses media discover to any client
 // that is not this machine (scripts/field-proxy-guard.mjs), and the API accepts exactly one more origin, this
-// laptop's private network address on the web port. See docs/FIELD_USE.md.
+// laptop's private network address on the web port.
+//
+// In both modes it also starts the music sources server (apps/web/spike/music/serveSources.mjs) on 127.0.0.1, and the
+// web app's /music-sources/ proxy hands its samples to the laptop and the phone from the app's own origin.
+// See docs/FIELD_USE.md.
 
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,19 +21,26 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const API_PORT = 8000;
 export const WEB_PORT = 5173;
+/** serveSources.mjs's own default port */
+export const MUSIC_PORT = 5199;
+/** Where the app fetches the music from: a path on its own origin, which apps/web/vite.config.ts proxies */
+export const MUSIC_BASE = '/music-sources/';
+const MUSIC_SERVER = 'apps/web/spike/music/serveSources.mjs';
+const MUSIC_SOURCES_DIR = '.cache/music/sources';
 export const DEFAULT_ORIGINS = Object.freeze([`http://localhost:${WEB_PORT}`, `http://127.0.0.1:${WEB_PORT}`]);
 const API_HOST = '127.0.0.1';
 const HEALTH_WAIT_MS = 90_000;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const USAGE = `Usage: pnpm field [--lan] [--api-port <port>] [--web-port <port>]
+const USAGE = `Usage: pnpm field [--lan] [--api-port <port>] [--web-port <port>] [--music-port <port>]
 
 Starts the Albedian API (http://${API_HOST}:${API_PORT}) and web app (http://localhost:${WEB_PORT}) on this laptop.
   --lan              build the web app and also serve that build to a phone on the same network at this
                      laptop's network address. Any device on that network can then open it, upload, solve
                      and send voice commands. Use it only on a network you trust. Off unless given.
-  --api-port <port>  API port (default ${API_PORT}); --web-port <port> web app port (default ${WEB_PORT}).
-Stop both with Ctrl+C.`;
+  --api-port <port>  API port (default ${API_PORT}); --web-port <port> web app port (default ${WEB_PORT});
+  --music-port <port> music sources server port on 127.0.0.1 (default ${MUSIC_PORT}).
+Stop all three with Ctrl+C.`;
 
 function parsePort(flag, value) {
   const port = Number(value);
@@ -38,15 +50,16 @@ function parsePort(flag, value) {
   return port;
 }
 
-/** Parses the command line: only --lan, --api-port, --web-port and --help are accepted. */
+/** Parses the command line: only --lan, --api-port, --web-port, --music-port and --help are accepted. */
 export function parseFieldArgs(argv) {
-  const options = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT };
+  const options = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--lan') options.lan = true;
     else if (arg === '--help' || arg === '-h') options.help = true;
     else if (arg === '--api-port') options.apiPort = parsePort(arg, argv[++i]);
     else if (arg === '--web-port') options.webPort = parsePort(arg, argv[++i]);
+    else if (arg === '--music-port') options.musicPort = parsePort(arg, argv[++i]);
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
   return options;
@@ -72,7 +85,7 @@ export function pickLanAddress(interfaces = os.networkInterfaces()) {
 }
 
 /** The two commands to run, their environments and the URLs to print. Starts nothing. */
-export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, webPort = WEB_PORT }) {
+export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, webPort = WEB_PORT, musicPort = MUSIC_PORT }) {
   if (lan && !lanAddress) {
     throw new Error('--lan found no private network address on this laptop. Join the same Wi-Fi or hotspot as the phone first.');
   }
@@ -89,7 +102,10 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
 
   return {
     // Under --lan the network gets the built app alone: the dev server would hand out any repository file by /@fs/ path
-    build: lan ? { command: 'pnpm', args: ['--filter', '@albedian/web', 'build'], env: { ...env } } : null,
+    // Vite bakes VITE_ values into the build, so the music base for the --lan build is set here
+    build: lan
+      ? { command: 'pnpm', args: ['--filter', '@albedian/web', 'build'], env: { ...env, VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE } }
+      : null,
     api: {
       command: 'uv',
       // No access log: it prints each request line with its query string, so a GET route that took a capture time
@@ -111,9 +127,16 @@ export function fieldPlan({ lan, lanAddress = null, env, apiPort = API_PORT, web
         String(webPort),
         '--strictPort',
       ],
-      // The dev server and preview both read the /api proxy target from here (apps/web/vite.config.ts)
-      env: { ...env, ALBEDIAN_API_TARGET: `http://${API_HOST}:${apiPort}` },
+      // The dev server and preview both read the proxy targets from here (apps/web/vite.config.ts)
+      env: {
+        ...env,
+        ALBEDIAN_API_TARGET: `http://${API_HOST}:${apiPort}`,
+        ALBEDIAN_MUSIC_TARGET: `http://${API_HOST}:${musicPort}`,
+        VITE_ALBEDIAN_MUSIC_SOURCES: MUSIC_BASE,
+      },
     },
+    // serveSources.mjs binds 127.0.0.1 itself; only the web app's /music-sources/ proxy reaches it
+    music: { command: process.execPath, args: [MUSIC_SERVER, '--port', String(musicPort)], env: { ...env } },
     healthUrl: `http://${API_HOST}:${apiPort}/api/health`,
     laptopUrl: `http://localhost:${webPort}`,
     phoneUrl,
@@ -141,6 +164,15 @@ async function waitForHealth(healthUrl, deadline, isStopped) {
   return false;
 }
 
+/** How many sample files the music has, by count only: their names are not printed. */
+export function musicSourcesLine(sourcesDir) {
+  if (!fs.existsSync(sourcesDir)) {
+    return `Music: ${MUSIC_SOURCES_DIR} is missing, so the music stays silent (docs/FIELD_USE.md says how to fetch it).`;
+  }
+  const files = fs.readdirSync(sourcesDir, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile());
+  return `Music: ${files.length} sample files in ${MUSIC_SOURCES_DIR}, served at ${MUSIC_BASE}.`;
+}
+
 async function main() {
   let options;
   try {
@@ -162,6 +194,7 @@ async function main() {
       env: process.env,
       apiPort: options.apiPort,
       webPort: options.webPort,
+      musicPort: options.musicPort,
     });
   } catch (error) {
     console.error(error.message);
@@ -171,6 +204,7 @@ async function main() {
   for (const [port, host, what] of [
     [options.apiPort, API_HOST, 'the API'],
     [options.webPort, options.lan ? '0.0.0.0' : 'localhost', 'the web app'],
+    [options.musicPort, API_HOST, 'the music sources server'],
   ]) {
     if (!(await portIsFree(port, host))) {
       console.error(`Port ${port} is already in use, so ${what} cannot start. Stop whatever is using it and run pnpm field again.`);
@@ -199,6 +233,7 @@ async function main() {
 
   for (const [name, step] of [
     ['API', plan.api],
+    ['music sources server', plan.music],
     ['web app', plan.web],
   ]) {
     const child = spawn(step.command, step.args, { cwd: REPO_ROOT, env: step.env, stdio: 'inherit' });
@@ -230,12 +265,13 @@ async function main() {
   }
 
   console.log(`\nAlbedian is ready. On this laptop (full experience): ${plan.laptopUrl}`);
+  console.log(musicSourcesLine(path.join(REPO_ROOT, MUSIC_SOURCES_DIR)));
   if (plan.phoneUrl) {
     console.log(`Phone on the same network: ${plan.phoneUrl}`);
     console.log('Over plain http the phone gets upload, solve and the sky, but no WebGPU views, microphone or speech.');
     console.log('Any device on this network can open it, upload, solve and send voice commands; stop it when you are done.');
   }
-  console.log('Stop both with Ctrl+C.\n');
+  console.log('Stop all three with Ctrl+C.\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

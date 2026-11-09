@@ -21,6 +21,13 @@ export default defineConfig({
         // Refuses media discover, which lists data/uploads, to any client that is not this machine (pnpm field --lan)
         bypass: refuseOnNetwork,
       },
+      // The music samples, from apps/web/spike/music/serveSources.mjs on this machine (pnpm field starts it), so the
+      // laptop and a phone on the network fetch them from the app's own origin
+      '/music-sources/': {
+        target: process.env.ALBEDIAN_MUSIC_TARGET?.trim() || 'http://127.0.0.1:5199',
+        changeOrigin: true,
+        rewrite: (url) => url.slice('/music-sources'.length),
+      },
     },
   },
   test: {

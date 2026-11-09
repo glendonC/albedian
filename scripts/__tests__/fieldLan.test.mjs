@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createSourcesServer, listenOnLoopback } from '../../apps/web/spike/music/serveSources.mjs';
 import { DISCOVER_PATH, refuseOnNetwork } from '../field-proxy-guard.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -117,6 +118,24 @@ describe('the /api proxy guard', () => {
   });
 });
 
+describe('the /music-sources/ proxy', () => {
+  it('proxies /music-sources/ to the music sources server on this machine, prefix stripped, for the dev server and for preview', async () => {
+    const { resolveConfig } = await loadVite();
+    const saved = process.env.ALBEDIAN_MUSIC_TARGET;
+    delete process.env.ALBEDIAN_MUSIC_TARGET;
+    try {
+      const config = await resolveConfig({ configFile: WEB_CONFIG, logLevel: 'silent' }, 'serve');
+      for (const proxy of [config.server.proxy, config.preview.proxy]) {
+        const music = proxy['/music-sources/'];
+        expect(music.target).toBe('http://127.0.0.1:5199');
+        expect(music.rewrite('/music-sources/vcsl/C%234.wav')).toBe('/vcsl/C%234.wav');
+      }
+    } finally {
+      if (saved !== undefined) process.env.ALBEDIAN_MUSIC_TARGET = saved;
+    }
+  });
+});
+
 describe('vite preview with the web app config, as --lan serves it', () => {
   const MARKER = 'planted stand-in for an uploaded clip';
   const NOTES_MARKER = 'planted stand-in for the lead notes';
@@ -125,8 +144,11 @@ describe('vite preview with the web app config, as --lan serves it', () => {
   let preview;
   let devServer;
   let api;
+  let music;
   const apiSeen = [];
   const savedTarget = process.env.ALBEDIAN_API_TARGET;
+  const savedMusicTarget = process.env.ALBEDIAN_MUSIC_TARGET;
+  const SAMPLE = 'stand-in sample bytes for a chime at C sharp 4';
 
   const portOf = (server) => server.address().port;
 
@@ -166,6 +188,17 @@ describe('vite preview with the web app config, as --lan serves it', () => {
     await new Promise((resolve) => api.listen(0, '127.0.0.1', resolve));
     process.env.ALBEDIAN_API_TARGET = `http://127.0.0.1:${portOf(api)}`;
 
+    // The music sources folder as the field run serves it, with the audio lane's own server: one sample whose name
+    // holds '#' as VCSL's do, and two links inside the folder that point out of it, at the planted clip and its folder
+    const sources = path.join(root, '.cache/music/sources');
+    fs.mkdirSync(path.join(sources, 'vcsl/Chimes'), { recursive: true });
+    fs.writeFileSync(path.join(sources, 'vcsl/Chimes/C#4.wav'), SAMPLE);
+    fs.symlinkSync(path.join(root, 'data/uploads/planted-clip.txt'), path.join(sources, 'escape.txt'));
+    fs.symlinkSync(path.join(root, 'data/uploads'), path.join(sources, 'out'));
+    music = createSourcesServer({ sourcesDir: sources, factsFile: path.join(root, '.cache/music/facts.json') });
+    const { port: musicPort } = await listenOnLoopback(music, 0);
+    process.env.ALBEDIAN_MUSIC_TARGET = `http://127.0.0.1:${musicPort}`;
+
     preview = await vite.preview({
       root: path.join(root, 'apps/web'),
       configFile: WEB_CONFIG,
@@ -187,6 +220,9 @@ describe('vite preview with the web app config, as --lan serves it', () => {
   afterAll(async () => {
     if (savedTarget === undefined) delete process.env.ALBEDIAN_API_TARGET;
     else process.env.ALBEDIAN_API_TARGET = savedTarget;
+    if (savedMusicTarget === undefined) delete process.env.ALBEDIAN_MUSIC_TARGET;
+    else process.env.ALBEDIAN_MUSIC_TARGET = savedMusicTarget;
+    await new Promise((resolve) => (music ? music.close(resolve) : resolve()));
     await preview?.close();
     await devServer?.close();
     await new Promise((resolve) => (api ? api.close(resolve) : resolve()));
@@ -221,6 +257,28 @@ describe('vite preview with the web app config, as --lan serves it', () => {
       const res = await get(port, rawPath);
       expect(res.body, rawPath).not.toContain(MARKER);
       expect(res.body, rawPath).not.toContain(NOTES_MARKER);
+    }
+  });
+
+  it('serves a music sample through /music-sources/, a # in its name included', async () => {
+    const res = await get(portOf(preview.httpServer), '/music-sources/vcsl/Chimes/C%234.wav');
+    expect(res.status).toBe(200);
+    expect(res.body).toBe(SAMPLE);
+  });
+
+  it('never serves a file outside the music sources folder through /music-sources/, by path or by a link inside it', async () => {
+    const port = portOf(preview.httpServer);
+    const paths = [
+      '/music-sources/../../../data/uploads/planted-clip.txt',
+      '/music-sources/%2e%2e/%2e%2e/%2e%2e/data/uploads/planted-clip.txt',
+      '/music-sources/..%2f..%2f..%2fdata/uploads/planted-clip.txt',
+      `/music-sources/${encodeURIComponent(path.join(root, 'data/uploads/planted-clip.txt'))}`,
+      '/music-sources/escape.txt',
+      '/music-sources/out/planted-clip.txt',
+    ];
+    for (const rawPath of paths) {
+      const res = await get(port, rawPath);
+      expect(res.body, rawPath).not.toContain(MARKER);
     }
   });
 

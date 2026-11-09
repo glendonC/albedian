@@ -1,5 +1,18 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { API_PORT, DEFAULT_ORIGINS, WEB_PORT, fieldPlan, parseFieldArgs, pickLanAddress } from '../field.mjs';
+import {
+  API_PORT,
+  DEFAULT_ORIGINS,
+  MUSIC_BASE,
+  MUSIC_PORT,
+  WEB_PORT,
+  fieldPlan,
+  musicSourcesLine,
+  parseFieldArgs,
+  pickLanAddress,
+} from '../field.mjs';
 
 const interfaces = {
   lo0: [
@@ -85,8 +98,8 @@ describe('field start plan', () => {
     expect(pickLanAddress({ en1: [{ address: '203.0.113.9', family: 'IPv4', internal: false }] })).toBeNull();
   });
 
-  it('accepts only --lan, --help and the two port options', () => {
-    const defaults = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT };
+  it('accepts only --lan, --help and the three port options', () => {
+    const defaults = { lan: false, help: false, apiPort: API_PORT, webPort: WEB_PORT, musicPort: MUSIC_PORT };
     expect(parseFieldArgs([])).toEqual(defaults);
     expect(parseFieldArgs(['--lan'])).toEqual({ ...defaults, lan: true });
     expect(parseFieldArgs(['--help'])).toEqual({ ...defaults, help: true });
@@ -94,6 +107,30 @@ describe('field start plan', () => {
     expect(() => parseFieldArgs(['--host', '0.0.0.0'])).toThrow(/Unknown option --host/);
     expect(() => parseFieldArgs(['--api-port'])).toThrow(/needs a port/);
     expect(() => parseFieldArgs(['--web-port', '80'])).toThrow(/needs a port/);
+    expect(parseFieldArgs(['--music-port', '5299'])).toEqual({ ...defaults, musicPort: 5299 });
+    expect(() => parseFieldArgs(['--music-port', 'x'])).toThrow(/needs a port/);
+  });
+
+  it('starts the music sources server on this machine only, at the music port', () => {
+    for (const lan of [false, true]) {
+      const plan = fieldPlan({ lan, lanAddress: '192.168.1.20', env: {}, musicPort: 5299 });
+      expect(plan.music.command).toBe(process.execPath);
+      // serveSources.mjs binds 127.0.0.1 itself and takes no host option
+      expect(plan.music.args).toEqual(['apps/web/spike/music/serveSources.mjs', '--port', '5299']);
+      expect(plan.web.env.ALBEDIAN_MUSIC_TARGET).toBe('http://127.0.0.1:5299');
+    }
+    expect(MUSIC_PORT).toBe(5199);
+  });
+
+  it('points the app at the music through its own origin, in the dev server and in the --lan build', () => {
+    expect(MUSIC_BASE).toBe('/music-sources/');
+    const shell = { VITE_ALBEDIAN_MUSIC_SOURCES: 'http://127.0.0.1:5199/' };
+    const plain = fieldPlan({ lan: false, env: shell });
+    expect(plain.web.env.VITE_ALBEDIAN_MUSIC_SOURCES).toBe(MUSIC_BASE);
+    const lan = fieldPlan({ lan: true, lanAddress: '192.168.1.20', env: shell });
+    // Vite bakes VITE_ values into the build, so the build step is where the phone's music base is set
+    expect(lan.build.env.VITE_ALBEDIAN_MUSIC_SOURCES).toBe(MUSIC_BASE);
+    expect(lan.web.env.VITE_ALBEDIAN_MUSIC_SOURCES).toBe(MUSIC_BASE);
   });
 
   it('carries other ports into the origins, the proxy target and the health check', () => {
@@ -102,5 +139,24 @@ describe('field start plan', () => {
     expect(plan.web.env.ALBEDIAN_API_TARGET).toBe('http://127.0.0.1:8100');
     expect(plan.healthUrl).toBe('http://127.0.0.1:8100/api/health');
     expect(plan.web.args).toContain('5180');
+  });
+});
+
+describe('the music line pnpm field prints', () => {
+  it('counts the sample files without naming any, and says plainly when the folder is missing', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'albedian-field-music-'));
+    try {
+      const sources = path.join(root, 'sources');
+      expect(musicSourcesLine(sources)).toMatch(/is missing, so the music stays silent/);
+      fs.mkdirSync(path.join(sources, 'vcsl/Chimes'), { recursive: true });
+      fs.writeFileSync(path.join(sources, 'vcsl/Chimes/C#4.wav'), 'a');
+      fs.writeFileSync(path.join(sources, 'notes.txt'), 'b');
+      fs.symlinkSync(path.join(sources, 'notes.txt'), path.join(sources, 'link.txt'));
+      const line = musicSourcesLine(sources);
+      expect(line).toContain('2 sample files');
+      for (const name of ['C#4', 'notes', 'link', 'vcsl']) expect(line).not.toContain(name);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
