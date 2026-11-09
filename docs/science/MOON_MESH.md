@@ -12,8 +12,11 @@ relief was about 2.4 times the real range, and which carried an embedded image w
   `apps/web/public/textures/PROVENANCE.json` and `apps/web/public/models/PROVENANCE.json` under the same source entry.
 - Licence: NASA Images and Media Usage Guidelines (`LicenseRef-NASA-Media-Guidelines`): credit NASA, imply no
   endorsement.
-- SVS says the kit's maps are made for appearance, not science. The mesh inherits that: it is the Moon's measured
-  shape as SVS prepared it, not a geodetic product.
+- What SVS says of this map [verified at svs.gsfc.nasa.gov/4720, read 2026-11-09]: the elevation map "was taken
+  directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter
+  instrument team", and the kit's "color and elevation maps are designed for use in 3D rendering software". The
+  page's "optimized for aesthetics, not science" is said of its colour map, which the mesh does not use. The mesh is
+  the Moon's measured shape as SVS prepared it for rendering, not a geodetic product.
 
 ## What the mesh is
 

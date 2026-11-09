@@ -3,8 +3,10 @@
 
 Input: `ldem_16_uint.tif` from NASA's CGI Moon Kit (SVS 4720), the file `scripts/bake_moon_maps.py` pins and reads:
 5760 x 2880 LOLA heights, 16 samples per degree, unsigned half-metres above a 1727.4 km sphere, columns from
-longitude -180 to +180 and rows from north to south, sample centres at half steps. SVS says the kit's maps are made
-for appearance, not science; the record and doc repeat that.
+longitude -180 to +180 and rows from north to south, sample centres at half steps. SVS says the elevation map "was
+taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter
+instrument team" and that the kit's maps "are designed for use in 3D rendering software"; its "optimized for
+aesthetics, not science" is said of the colour map, not this one. The record and doc quote both.
 
 Output: a latitude-longitude sphere on a 1 degree grid, 361 x 181 = 65,341 vertices and 128,880 triangles, with
 POSITION, NORMAL and TEXCOORD_0 and nothing else (no material, no image):
@@ -211,7 +213,9 @@ def file_note(glb_bytes: int) -> str:
         f"The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 "
         f"triangles, {glb_bytes:,} bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in "
         "the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 "
-        "units = 1737.4 km. SVS made the CGI Moon Kit's maps for appearance, not science. Conventions kept from the "
+        "units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded "
+        "data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for "
+        "use in 3D rendering software\". Conventions kept from the "
         "mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, "
         "v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
     )

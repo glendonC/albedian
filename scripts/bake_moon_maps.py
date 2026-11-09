@@ -68,7 +68,13 @@ NASA_GUIDELINES = {
         "acknowledged as the source, and no use may imply NASA's endorsement."
     ),
 }
-SVS_CAVEAT = "SVS says the CGI Moon Kit maps are optimized for aesthetics, not science."
+# SVS 4720, read 2026-11-09: the aesthetics line is in the colour map's section; the elevation map has its own words
+SVS_COLOUR_CAVEAT = 'SVS says of the colour map: "These image is optimized for aesthetics, not science" [sic].'
+SVS_ELEVATION_NOTE = (
+    'SVS says the elevation map "was taken directly from the latest (as of spring 2019) gridded data products of the '
+    'Lunar Orbiter Laser Altimeter instrument team", and that the kit\'s "color and elevation maps are designed for use '
+    'in 3D rendering software".'
+)
 
 # SVS 4720: heights are unsigned half-metres above this sphere
 HEIGHT_BASE_M = 1_727_400.0
@@ -194,7 +200,7 @@ def record_sources() -> list[dict]:
             "license": NASA_GUIDELINES,
             "credit": "NASA's Scientific Visualization Studio",
             "sha256": COLOUR_INPUT[1],
-            "note": f"From the Lunar Reconnaissance Orbiter Camera's WAC mosaic. {SVS_CAVEAT}",
+            "note": f"From the Lunar Reconnaissance Orbiter Camera's WAC mosaic. {SVS_COLOUR_CAVEAT}",
         },
         {
             "id": "nasa-svs-4720-ldem-16",
@@ -204,7 +210,7 @@ def record_sources() -> list[dict]:
             "license": NASA_GUIDELINES,
             "credit": "NASA's Scientific Visualization Studio",
             "sha256": HEIGHT_INPUT[1],
-            "note": f"From the Lunar Orbiter Laser Altimeter, LOLA. {SVS_CAVEAT}",
+            "note": f"From the Lunar Orbiter Laser Altimeter, LOLA. {SVS_ELEVATION_NOTE}",
         },
     ]
 

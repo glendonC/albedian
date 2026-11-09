@@ -97,6 +97,10 @@ def test_a_made_up_height_field_builds_the_conventions_at_true_scale() -> None:
     du = np.abs(uvs[:, 0] - (lon + 180) / 360)[off_pole]
     assert np.max(np.minimum(du, 1 - du)) < 1e-6
     assert np.max(np.abs(uvs[:, 1] - (90 - lat) / 180)) < 1e-6
+    # The seam's and the poles' copies share one normal, checked here without the cache
+    grid = normals.reshape(181, 361, 3)
+    assert np.array_equal(grid[:, 0], grid[:, 360])
+    assert np.all(grid[0] == grid[0, 0]) and np.all(grid[180] == grid[180, 0])
 
 
 # =============================================================================================
@@ -168,7 +172,7 @@ def test_record_entry_names_lola_the_scale_the_size_and_the_caveat() -> None:
     assert entry.sha256 == hashlib.sha256(glb).hexdigest()
     assert entry.sources == ("nasa-svs-4720-ldem-16",)
     assert entry.produced_by.script == "scripts/bake_moon_mesh.py"
-    for words in ("true scale", "65,341 vertices", f"{len(glb):,} bytes", "10 units = 1737.4 km", "appearance, not science", "no exaggeration"):
+    for words in ("true scale", "65,341 vertices", f"{len(glb):,} bytes", "10 units = 1737.4 km", "designed for use in 3D rendering software", "gridded data products", "no exaggeration"):
         assert words in (entry.note or "")
     textures = json.loads((ROOT / "apps" / "web" / "public" / "textures" / "PROVENANCE.json").read_text(encoding="utf-8"))
     same = next(s for s in textures["sources"] if s["id"] == "nasa-svs-4720-ldem-16")
@@ -196,8 +200,12 @@ def test_doc_states_source_scale_conventions_and_caveat() -> None:
     doc = (ROOT / "docs" / "science" / "MOON_MESH.md").read_text(encoding="utf-8")
     assert "\u2014" not in doc
     for required in ("ldem_16_uint.tif", "SVS 4720", "1727.4 km", "10 units = 1737.4 km", "65,341", "128,880",
-                     "appearance, not science", "+y", "(longitude + 180) / 360", "(90 - latitude) / 180"):  # fmt: skip
+                     "designed for use in 3D rendering software", "colour map", "+y", "(longitude + 180) / 360",
+                     "(90 - latitude) / 180"):  # fmt: skip
         assert required in doc
+    # SVS's "optimized for aesthetics, not science" belongs to its colour map: the doc may name it only beside that map
+    for at in [i for i in range(len(doc)) if doc.startswith("aesthetics", i)]:
+        assert "colour map" in doc[at : at + 120], doc[at - 80 : at + 120]
 
 
 # =============================================================================================

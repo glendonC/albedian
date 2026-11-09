@@ -15,7 +15,7 @@
       },
       "credit": "NASA's Scientific Visualization Studio",
       "sha256": "45a2b32d56e81ed30db07fead8abc842b249b6511219d9ca2c53f81bc2dc5d62",
-      "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the CGI Moon Kit maps are optimized for aesthetics, not science."
+      "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\", and that the kit's \"color and elevation maps are designed for use in 3D rendering software\"."
     },
     {
       "id": "oneill-2024-local-bubble",
@@ -72,7 +72,7 @@
         "script": "scripts/bake_moon_mesh.py",
         "command": "uv run python scripts/bake_moon_mesh.py"
       },
-      "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS made the CGI Moon Kit's maps for appearance, not science. Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
+      "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for use in 3D rendering software\". Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
     }
   ],
   "fileSets": []

@@ -151,7 +151,16 @@ def test_the_textures_record_pins_both_maps_and_the_svs_inputs_they_come_from():
         assert sources[source_id]["sha256"] == sha256
         assert sources[source_id]["url"].endswith(name)
         assert sources[source_id]["credit"] == "NASA's Scientific Visualization Studio"
-        assert "aesthetics, not science" in sources[source_id]["note"]
+    # SVS scopes "optimized for aesthetics, not science" to its colour map; of the elevation map it says it is taken
+    # from the LOLA team's gridded data products, and of both that they are designed for 3D rendering software
+    assert "aesthetics, not science" in sources["nasa-svs-4720-lroc-color-8k"]["note"]
+    # The committed sources are the ones the bake writes, so a changed note in the script fails without the cache
+    for written in bake.record_sources():
+        assert sources[written["id"]] == written
+    ldem = sources["nasa-svs-4720-ldem-16"]["note"]
+    assert "aesthetics" not in ldem
+    assert "taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team" in ldem
+    assert "designed for use in 3D rendering software" in ldem
 
 
 def test_the_material_scales_the_colour_map_by_its_measured_mean_to_the_moons_albedo():

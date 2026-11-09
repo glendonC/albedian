@@ -42,7 +42,7 @@
         "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement."
       },
       "credit": "NASA's Scientific Visualization Studio",
-      "note": "Colour from the Lunar Reconnaissance Orbiter Camera's WAC mosaic and elevation from its laser altimeter, LOLA. The page says the maps are optimized for aesthetics, not science, and states no licence, so NASA's media guidelines apply."
+      "note": "Colour from the Lunar Reconnaissance Orbiter Camera's WAC mosaic and elevation from its laser altimeter, LOLA. SVS says of the colour map: \"These image is optimized for aesthetics, not science\" [sic]. SVS says the elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\", and that the kit's \"color and elevation maps are designed for use in 3D rendering software\". The page states no licence, so NASA's media guidelines apply."
     },
     {
       "id": "nasa-black-marble-2016",
@@ -181,7 +181,7 @@
       },
       "credit": "NASA's Scientific Visualization Studio",
       "sha256": "db7808e878b6a55eb409bb231eab8deb477f84b5c9d7396d76ff73e5d54992d9",
-      "note": "From the Lunar Reconnaissance Orbiter Camera's WAC mosaic. SVS says the CGI Moon Kit maps are optimized for aesthetics, not science."
+      "note": "From the Lunar Reconnaissance Orbiter Camera's WAC mosaic. SVS says of the colour map: \"These image is optimized for aesthetics, not science\" [sic]."
     },
     {
       "id": "nasa-svs-4720-ldem-16",
@@ -196,7 +196,7 @@
       },
       "credit": "NASA's Scientific Visualization Studio",
       "sha256": "45a2b32d56e81ed30db07fead8abc842b249b6511219d9ca2c53f81bc2dc5d62",
-      "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the CGI Moon Kit maps are optimized for aesthetics, not science."
+      "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\", and that the kit's \"color and elevation maps are designed for use in 3D rendering software\"."
     }
   ],
   "files": [
