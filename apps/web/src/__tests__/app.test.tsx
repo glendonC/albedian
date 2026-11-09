@@ -426,6 +426,9 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       expect(failedSession.machines.media).toBe('ready');
       expect(failedSession.machines.calibration).toBe('unresolved');
       expect(failedSession.observationSolution!.status).toBe('unresolved');
+      // The job failed before any solver ran: no counts and no solver, never zeros (experience-9f)
+      expect(failedSession.observationSolution!.quality).toBeUndefined();
+      expect(failedSession.observationSolution!.solver).toBeUndefined();
       expect(failedSession.observationSolution!.warnings).toContain('The decoder could not read the file: corrupt stream');
       expect(failedSession.lastStatusBanner).toContain('The decoder could not read the file: corrupt stream');
       expect(failedSession.lastStatusBanner).toContain('store: 8/8 bytes · decode: 0/1 frames');
@@ -599,6 +602,9 @@ describe('upload refusals and the state before the receipt (experience-9d)', () 
       // Nothing is solving any more
       expect(result.machines.calibration).toBe('not_requested');
       expect(result.lastStatusBanner).toBe('Stored "stored.jpg", but the sky solve did not finish: the solve queue is full.');
+      // Nothing was solved, so nothing is counted (experience-9f)
+      expect(result.observationSolution!.status).toBe('pending');
+      expect(result.observationSolution!.quality).toBeUndefined();
     } finally {
       fetchSpy.mockRestore();
     }

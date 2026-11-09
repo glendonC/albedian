@@ -502,14 +502,7 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
       frameTimeSec: 0,
       revision: 1,
       status: 'pending' as const,
-      solver: { name: 'none', version: '0', catalogRelease: 'none' },
-      quality: {
-        detectedCandidateCount: 0,
-        matchedInlierCount: 0,
-        heldOutPairCount: 0,
-        heldOutInliers: 0,
-        passedIndependentVerification: false,
-      },
+      // Nothing has run yet, so a pending solution names no solver and counts nothing
       findings: [],
       warnings: [],
     };

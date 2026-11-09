@@ -518,10 +518,15 @@ describe('@albedian/evidence: detections without a sky position', () => {
       ...(status === 'approximate' || status === 'predicted_only'
         ? { observedAtUTC: '2031-08-30T03:01:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 } }
         : {}),
-      solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
+      // A pending solution names no solver and counts nothing: none has run
+      ...(status === 'pending'
+        ? {}
+        : {
+            solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
+            // No held-out star paired with the catalog, so no held-out residual
+            quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
+          }),
       wcs,
-      // No held-out star paired with the catalog, so no held-out residual
-      quality: { detectedCandidateCount: 8, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false },
       findings: [finding], warnings: [],
     });
 
@@ -559,11 +564,28 @@ describe('@albedian/evidence: detections without a sky position', () => {
     const finding = pixelOnly();
     // The pose paired no held-out star, so its quality carries no held-out residual
     const solution = solutionFor(finding, 'approximate', approximateWcs);
-    expect(solution.quality.medianResidualPx).toBeUndefined();
+    expect(solution.quality?.medianResidualPx).toBeUndefined();
     const records = buildFindingEvidenceRecords(sourceAsset, solution, finding);
     const description = records[1]?.uncertaintyDescription ?? '';
     expect(description).toContain('No held-out star paired with the catalog, so no held-out residual');
     expect(description).not.toMatch(/NaN|undefined|999/);
+  });
+
+  it('says no solver ran instead of inventing counts or a solver when a solution has neither (experience-9f)', () => {
+    const finding = pixelOnly();
+    // An unresolved attempt that no solver reached, carrying a published WCS: the records name no solver or quality
+    const solution = ObservationSolutionSchema.parse({
+      id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1,
+      status: 'unresolved', wcs: approximateWcs, findings: [finding], warnings: ['The decoder stopped early.'],
+    });
+    expect(solution.quality).toBeUndefined();
+    expect(solution.solver).toBeUndefined();
+    const records = buildFindingEvidenceRecords(sourceAsset, solution, finding);
+    const registration = records[1]!;
+    expect(registration.title).toBe('WCS Sky Registration (no solver ran)');
+    expect(registration.uncertaintyDescription).toContain('No solver ran, so no held-out residual');
+    expect(registration.processingDescription).toContain('independent holdout verification: NOT RUN');
+    expect(JSON.stringify(records)).not.toMatch(/undefined|NaN| 0 held-out/);
   });
 
   it('promotes a detection without a sky position to the position of its verified catalog match', () => {

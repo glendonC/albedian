@@ -154,17 +154,23 @@ export const ObservationSolveAndCompareHud: React.FC<
         className="albedian-solve-compare-hud__metrics"
         data-testid="solve-receipt-metrics"
       >
-        <span>{quality.detectedCandidateCount} detected</span>
-        <span>·</span>
-        <span>{quality.matchedInlierCount} matched inliers</span>
-        <span>·</span>
-        <span>
-          {quality.heldOutInliers}/{quality.heldOutPairCount} held-out inliers
-        </span>
-        {quality.medianResidualPx !== undefined && (
+        {quality === undefined ? (
+          <span>No solver ran</span>
+        ) : (
           <>
+            <span>{quality.detectedCandidateCount} detected</span>
             <span>·</span>
-            <span>{quality.medianResidualPx.toFixed(2)} px median residual</span>
+            <span>{quality.matchedInlierCount} matched inliers</span>
+            <span>·</span>
+            <span>
+              {quality.heldOutInliers}/{quality.heldOutPairCount} held-out inliers
+            </span>
+            {quality.medianResidualPx !== undefined && (
+              <>
+                <span>·</span>
+                <span>{quality.medianResidualPx.toFixed(2)} px median residual</span>
+              </>
+            )}
           </>
         )}
       </div>
@@ -173,8 +179,14 @@ export const ObservationSolveAndCompareHud: React.FC<
         className="albedian-solve-compare-hud__solver"
         data-testid="solve-receipt-solver"
       >
-        Solver: {solution.solver.name} v{solution.solver.version} · Catalog:{' '}
-        {solution.solver.catalogRelease} · Status: {solution.status}
+        {solution.solver ? (
+          <>
+            Solver: {solution.solver.name} v{solution.solver.version} · Catalog:{' '}
+            {solution.solver.catalogRelease} · Status: {solution.status}
+          </>
+        ) : (
+          <>No solver ran · Status: {solution.status}</>
+        )}
       </div>
 
       <p

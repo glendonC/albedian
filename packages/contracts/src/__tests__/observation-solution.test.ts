@@ -57,6 +57,13 @@ function solution(parts: { wcs: boolean; passed: boolean; findings: unknown[] })
   };
 }
 
+/** The solution under another status; a pending one has no solver and no quality, since nothing has run. */
+function asStatus<T extends ReturnType<typeof solution>>(sol: T, status: SolutionStatus) {
+  if (status !== 'pending') return { ...sol, status };
+  const { quality: _noQuality, solver: _noSolver, ...rest } = sol;
+  return { ...rest, status };
+}
+
 describe('@albedian/contracts: CelestialFinding sky positions', () => {
   it('accepts an observed point source located by its pixels alone', () => {
     const parsed = CelestialFindingSchema.parse(finding('obs', 'observed', { detection: true }));
@@ -325,9 +332,9 @@ describe('@albedian/contracts: the hashes a solution and its evidence name', () 
   });
 
   it('let only a pending solution with no findings name no source hash', () => {
-    const { sourceSha256: _none, ...pending } = { ...solution({ wcs: false, passed: false, findings: [] }), status: 'pending' };
+    const { sourceSha256: _none, ...pending } = asStatus(solution({ wcs: false, passed: false, findings: [] }), 'pending');
     expect(issuePaths(ObservationSolutionSchema.safeParse(pending))).toEqual([]);
-    expect(issuePaths(ObservationSolutionSchema.safeParse({ ...pending, status: 'unresolved' }))).toContain('sourceSha256');
+    expect(issuePaths(ObservationSolutionSchema.safeParse({ ...asStatus(solution({ wcs: false, passed: false, findings: [] }), 'unresolved'), sourceSha256: undefined }))).toContain('sourceSha256');
     const withFinding = { ...pending, findings: [finding('obs', 'observed', { detection: true })] };
     expect(issuePaths(ObservationSolutionSchema.safeParse(withFinding))).toContain('sourceSha256');
   });
@@ -346,7 +353,7 @@ describe('@albedian/contracts: solution and spatial view time and place', () => 
     findings?: unknown[];
   }) {
     const verified = opts.status === 'calibrated';
-    const base = solution({ wcs: verified, passed: verified, findings: opts.findings ?? [] });
+    const base = asStatus(solution({ wcs: verified, passed: verified, findings: opts.findings ?? [] }), opts.status);
     const { observedAtUTC: _droppedTime, observerLocation: _droppedPlace, ...withoutTimeAndPlace } = base;
     return {
       ...withoutTimeAndPlace,
@@ -509,5 +516,78 @@ describe('@albedian/contracts: solution and spatial view time and place', () => 
     expect(SpatialViewStateSchema.safeParse({ ...baseView, observationEpochISO: null }).success).toBe(false);
     const { simulationEpochISO: _dropped, ...withoutSimEpoch } = baseView;
     expect(SpatialViewStateSchema.safeParse(withoutSimEpoch).success).toBe(false);
+  });
+});
+
+describe('@albedian/contracts: what a solver measured (experience-9f)', () => {
+  const STATUSES: SolutionStatus[] = ['pending', 'calibrated', 'approximate', 'predicted_only', 'unresolved', 'ambiguous'];
+  // A solution under a status, with or without its quality and solver; calibrated ones carry a verified WCS
+  const build = (status: SolutionStatus, parts: { quality: boolean; solver: boolean }) => {
+    const verified = status === 'calibrated';
+    const { quality, solver, ...rest } = solution({ wcs: verified, passed: verified, findings: [] });
+    return { ...rest, status, ...(parts.quality ? { quality } : {}), ...(parts.solver ? { solver } : {}) };
+  };
+
+  it('accepts a pending solution with no quality and no solver: nothing has run, so nothing was counted', () => {
+    expect(issuePaths(ObservationSolutionSchema.safeParse(build('pending', { quality: false, solver: false })))).toEqual([]);
+  });
+
+  it('refuses counts or a solver on a pending solution, zeros included', () => {
+    const zeros = {
+      detectedCandidateCount: 0, matchedInlierCount: 0, heldOutPairCount: 0, heldOutInliers: 0, passedIndependentVerification: false,
+    };
+    const withZeros = { ...build('pending', { quality: false, solver: false }), quality: zeros };
+    expect(issuePaths(ObservationSolutionSchema.safeParse(withZeros))).toContain('quality');
+    const standIn = { ...build('pending', { quality: false, solver: false }), solver: { name: 'none', version: '0', catalogRelease: 'none' } };
+    expect(issuePaths(ObservationSolutionSchema.safeParse(standIn))).toContain('solver');
+  });
+
+  it('requires the quality a calibrated or approximate solution was judged on', () => {
+    for (const status of ['calibrated', 'approximate'] as const) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(build(status, { quality: false, solver: true }))), status).toContain('quality');
+      expect(issuePaths(ObservationSolutionSchema.safeParse(build(status, { quality: true, solver: true }))), status).toEqual([]);
+    }
+  });
+
+  it('lets an unresolved, ambiguous or predicted_only solution leave quality out, and only an unresolved one its solver', () => {
+    for (const status of ['unresolved', 'ambiguous', 'predicted_only'] as const) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(build(status, { quality: false, solver: true }))), status).toEqual([]);
+    }
+    for (const status of ['calibrated', 'approximate', 'ambiguous', 'predicted_only'] as const) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(build(status, { quality: true, solver: false }))), status).toContain('solver');
+    }
+    // A solve job that failed before any solver ran (the file would not decode) names none
+    expect(issuePaths(ObservationSolutionSchema.safeParse(build('unresolved', { quality: false, solver: false })))).toEqual([]);
+  });
+
+  it('places nothing on the sky through a WCS whose verification quality is absent', () => {
+    const { quality: _none, ...noQuality } = solution({ wcs: true, passed: true, findings: [] });
+    expect(hasVerifiedWcs(noQuality)).toBe(false);
+    expect(hasVerifiedWcs(solution({ wcs: true, passed: true, findings: [] }))).toBe(true);
+  });
+
+  it('PBT-QUALITY-1: status alone decides whether quality and solver must, may or must not be present', () => {
+    const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
+    fc.assert(
+      fc.property(fc.constantFrom(...STATUSES), fc.boolean(), fc.boolean(), (status, hasQuality, hasSolver) => {
+        const expectedValid =
+          status === 'pending'
+            ? !hasQuality && !hasSolver
+            : (hasSolver || status === 'unresolved') && (hasQuality || (status !== 'calibrated' && status !== 'approximate'));
+        const parsed = ObservationSolutionSchema.safeParse(build(status, { quality: hasQuality, solver: hasSolver }));
+        expect(parsed.success).toBe(expectedValid);
+      }),
+      {
+        seed: SEED,
+        numRuns: 100,
+        examples: [
+          ['pending', false, false],
+          ['pending', true, false],
+          ['calibrated', false, true],
+          ['approximate', true, false],
+          ['predicted_only', false, true],
+        ],
+      }
+    );
   });
 });

@@ -52,9 +52,9 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(temporalAttempt?.metrics?.falsePointArtifactCount).toBe(0);
 
     expect(parsed.observationSolution?.status).toBe('calibrated');
-    expect(parsed.observationSolution?.quality.heldOutInliers).toBe(10);
-    expect(parsed.observationSolution?.quality.medianResidualPx).toBe(0.42);
-    expect(parsed.observationSolution?.quality.p95ResidualPx).toBe(0.89);
+    expect(parsed.observationSolution?.quality?.heldOutInliers).toBe(10);
+    expect(parsed.observationSolution?.quality?.medianResidualPx).toBe(0.42);
+    expect(parsed.observationSolution?.quality?.p95ResidualPx).toBe(0.89);
     expect(parsed.observationSolution?.wcs?.crvalRaDeg).toBe(83.8);
     expect(parsed.observationSolution?.wcs?.crvalDecDeg).toBe(4.0);
     expect(parsed.observationSolution?.wcs?.crpixX).toBe(960);
@@ -87,8 +87,8 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     const parsed = ObservationSessionSchema.parse(session);
     expect(parsed.machines.calibration).toBe('predicted_only');
     expect(parsed.observationSolution?.status).toBe('predicted_only');
-    expect(parsed.observationSolution?.quality.heldOutInliers).toBe(2);
-    expect(parsed.observationSolution?.quality.passedIndependentVerification).toBe(false);
+    expect(parsed.observationSolution?.quality?.heldOutInliers).toBe(2);
+    expect(parsed.observationSolution?.quality?.passedIndependentVerification).toBe(false);
     expect(
       parsed.observationSolution?.findings.filter((f) => f.evidenceClass === 'catalog_matched')
     ).toHaveLength(0);

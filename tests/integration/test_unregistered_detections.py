@@ -276,6 +276,91 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         solution(None, True, matched)
 
 
+def _quality_rule_solution(status: str, has_quality: bool, has_solver: bool) -> ObservationSolution:
+    """A finding-free solution under a status, with or without quality and solver (experience-9f)."""
+    calibrated = status == "calibrated"
+    wcs = WCSModel(
+        crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+        scale_deg_per_px=0.035, width=WIDTH, height=HEIGHT,
+    )
+    quality = SolutionQuality(
+        detected_candidate_count=8, matched_inlier_count=7 if calibrated else 0,
+        held_out_pair_count=7 if calibrated else 0, held_out_inliers=7 if calibrated else 0,
+        median_residual_px=0.4 if calibrated else None, p95_residual_px=0.9 if calibrated else None,
+        median_residual_arcsec=50.4 if calibrated else None, passed_independent_verification=calibrated,
+    )
+    needs_moment = status in ("approximate", "predicted_only")
+    return ObservationSolution(
+        id="sol-q", source_asset_id="hand-built", source_sha256=RECORD_SHA, frame_time_sec=0.0, revision=1,
+        status=status,
+        observed_at_utc=MOMENT["obs_utc_iso"] if needs_moment else None,
+        observer_lat=MOMENT["observer_lat"] if needs_moment else None,
+        observer_lon=MOMENT["observer_lon"] if needs_moment else None,
+        wcs=wcs if calibrated or status == "approximate" else None,
+        quality=quality if has_quality else None,
+        solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none") if has_solver else None,
+    )
+
+
+def test_pending_solution_counts_nothing_and_names_no_solver() -> None:
+    pending = _quality_rule_solution("pending", has_quality=False, has_solver=False)
+    payload = pending.to_contract_dict()
+    assert "quality" not in payload and "solver" not in payload
+    assert pending.held_out_inliers is None and pending.matched_inlier_count is None
+    assert not pending.has_verified_wcs
+    with pytest.raises(ValueError, match="no quality"):
+        _quality_rule_solution("pending", has_quality=True, has_solver=False)
+    with pytest.raises(ValueError, match="names no solver"):
+        _quality_rule_solution("pending", has_quality=False, has_solver=True)
+
+
+def test_quality_and_solver_follow_the_solution_status() -> None:
+    for status in ("calibrated", "approximate"):
+        with pytest.raises(ValueError, match="quality it was judged on"):
+            _quality_rule_solution(status, has_quality=False, has_solver=True)
+    for status in ("calibrated", "approximate", "ambiguous", "predicted_only"):
+        with pytest.raises(ValueError, match="names no solver"):
+            _quality_rule_solution(status, has_quality=True, has_solver=False)
+    # An attempt that failed before any solver ran: unresolved, with neither
+    failed = _quality_rule_solution("unresolved", has_quality=False, has_solver=False).to_contract_dict()
+    assert "quality" not in failed and "solver" not in failed
+    # A WCS with no quality behind it was never verified, so it places nothing on the sky
+    unverified = replace(
+        _quality_rule_solution("unresolved", has_quality=False, has_solver=False),
+        wcs=WCSModel(
+            crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0,
+            scale_deg_per_px=0.035, width=WIDTH, height=HEIGHT,
+        ),
+    )
+    assert not unverified.has_verified_wcs
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    status=st.sampled_from(["pending", "calibrated", "approximate", "predicted_only", "unresolved", "ambiguous"]),
+    has_quality=st.booleans(),
+    has_solver=st.booleans(),
+)
+@example(status="pending", has_quality=True, has_solver=False)
+@example(status="calibrated", has_quality=False, has_solver=True)
+@example(status="unresolved", has_quality=False, has_solver=False)
+@example(status="ambiguous", has_quality=True, has_solver=False)
+def test_pbt_quality_and_solver_follow_the_contract(status: str, has_quality: bool, has_solver: bool) -> None:
+    """The same rule as the TypeScript PBT-QUALITY-1, on the Python mirror."""
+    if status == "pending":
+        valid = not has_quality and not has_solver
+    else:
+        valid = (has_solver or status == "unresolved") and (has_quality or status not in ("calibrated", "approximate"))
+    if not valid:
+        with pytest.raises(ValueError):
+            _quality_rule_solution(status, has_quality, has_solver)
+        return
+    payload = _quality_rule_solution(status, has_quality, has_solver).to_contract_dict()
+    assert ("quality" in payload) == has_quality
+    assert ("solver" in payload) == has_solver
+    assert _none_paths(payload) == []
+
+
 def test_wcs_model_and_finding_record_refuse_missing_dimensions_or_limitations_or_out_of_range_distortion() -> None:
     with pytest.raises(TypeError):
         WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035, height=540)  # type: ignore[call-arg]
@@ -379,8 +464,9 @@ def test_pbt_solution_time_and_place_follow_the_contract(
             observer_lat=MOMENT["observer_lat"] if has_lat else None,
             observer_lon=MOMENT["observer_lon"] if has_lon else None,
             wcs=wcs if calibrated or status == "approximate" else None,
-            quality=quality, findings=findings,
-            solver=SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
+            # Nothing has run on a pending solution, so it counts nothing and names no solver
+            quality=None if status == "pending" else quality, findings=findings,
+            solver=None if status == "pending" else SolverIdentity(name="hand-built in this test", version="0", catalog_release="none"),
         )
 
     if not valid:
@@ -438,6 +524,12 @@ def build_contract_samples() -> dict[str, dict]:
         ),
         "horizon_approximate": solve_horizon_and_beacon_pose(moon_frame, **MOON_MOMENT, **_sources(moon_frame)),
         "horizon_predicted_only": solve_horizon_and_beacon_pose(no_moon_frame, **MOON_MOMENT, **_sources(no_moon_frame)),
+        # No Python solver returns this shape; the mirror builds it so both sides agree on a solution that no
+        # solver has run on yet: no quality, no solver, no findings
+        "pending_unsolved": ObservationSolution(
+            id="sol-pending", source_asset_id="synthetic-pending", source_sha256=RECORD_SHA, frame_time_sec=0.0,
+            revision=1, status="pending", wcs=None, quality=None, solver=None,
+        ),
     }
     out: dict[str, dict] = {}
     for name, sol in samples.items():

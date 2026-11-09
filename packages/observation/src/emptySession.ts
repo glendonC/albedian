@@ -98,14 +98,7 @@ export function createSessionForSourceAsset(
       observerLocation: location
         ? { latDeg: location.latDeg, lonDeg: location.lonDeg, placeName: location.placeName }
         : undefined,
-      solver: { name: 'none', version: '0', catalogRelease: 'none' },
-      quality: {
-        detectedCandidateCount: 0,
-        matchedInlierCount: 0,
-        heldOutPairCount: 0,
-        heldOutInliers: 0,
-        passedIndependentVerification: false,
-      },
+      // No solver has run yet: no solver is named and nothing is counted, so no zeros stand in for a solve
       findings: [],
       warnings: [],
     },

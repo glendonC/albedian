@@ -463,8 +463,9 @@ export function deriveEvidenceKind(
   }
 }
 
-/** The held-out residuals a solution measured, or that it measured none. */
+/** The held-out residuals a solution measured, that it measured none, or that no solver ran. */
 function describeHeldOutResiduals(quality: ObservationSolution['quality']): string {
+  if (quality === undefined) return 'No solver ran, so no held-out residual';
   const { medianResidualPx, p95ResidualPx, medianResidualArcsec, heldOutInliers } = quality;
   if (medianResidualPx === undefined || p95ResidualPx === undefined) {
     return 'No held-out star paired with the catalog, so no held-out residual';
@@ -554,7 +555,7 @@ export function buildFindingEvidenceRecords(
   };
 
   const wcsKind: EvidenceKind =
-    solution.status === 'calibrated' && solution.quality.passedIndependentVerification
+    solution.status === 'calibrated' && solution.quality?.passedIndependentVerification === true
       ? 'registered'
       : solution.status === 'approximate'
         ? 'reconstructed'
@@ -573,7 +574,7 @@ export function buildFindingEvidenceRecords(
     records.push({
       id: `${finding.id}:wcs:${solution.id}`,
       kind: wcsKind,
-      title: `WCS Sky Registration (${solution.solver.name} ${solution.solver.version})`,
+      title: `WCS Sky Registration (${solution.solver ? `${solution.solver.name} ${solution.solver.version}` : 'no solver ran'})`,
       sourceIdentifier: `${solution.id}@rev${solution.revision}`,
       license: 'Albedian Deterministic Astrometry Pipeline',
       observationTimeUtc: solution.observedAtUTC,
@@ -589,7 +590,7 @@ export function buildFindingEvidenceRecords(
         residualArcsec: 'arcsec',
       },
       uncertaintyDescription: `${describeHeldOutResiduals(solution.quality)}${finding.evidence.pixelResidualPx !== undefined ? `; target residual ±${finding.evidence.pixelResidualPx.toFixed(2)} px` : ''}`,
-      processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
+      processingDescription: `Solution status: ${solution.status}; independent holdout verification: ${solution.quality === undefined ? 'NOT RUN' : solution.quality.passedIndependentVerification ? 'PASSED' : 'NOT PASSED'}`,
       coverageDescription: registrationCoverage,
     });
   }
@@ -659,7 +660,7 @@ export function buildFindingEvidenceRecords(
           decDeg: 'deg',
           uncertaintyArcsec: 'arcsec',
         },
-        uncertaintyDescription: `Positional uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec; no static reference entry in ${solution.solver.catalogRelease} within match radius.`,
+        uncertaintyDescription: `Positional uncertainty ±${finding.skyPosition.uncertaintyArcsec.toFixed(1)} arcsec; no static reference entry in ${solution.solver?.catalogRelease ?? 'any catalog'} within match radius.`,
         processingDescription:
           'Differential photometry candidate (Observed ≠ Static Catalog Baseline)',
         coverageDescription: `RA ${finding.skyPosition.raDeg.toFixed(4)}°, Dec ${finding.skyPosition.decDeg.toFixed(4)}° outside bright-star baseline threshold`,
@@ -670,7 +671,7 @@ export function buildFindingEvidenceRecords(
       id: `${finding.id}:model:${solution.id}`,
       kind: deriveEvidenceKind(finding, solution.status),
       title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
-      sourceIdentifier: `${solution.solver.catalogRelease}:${finding.id}`,
+      sourceIdentifier: `${solution.solver?.catalogRelease ?? solution.id}:${finding.id}`,
       // Every prediction without a catalog record comes from services/science/ephemeris.py's two models
       license:
         'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request',

@@ -5,7 +5,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { dispatchAlbedianAction } from '@albedian/observation';
+import { createSessionForSourceAsset, dispatchAlbedianAction } from '@albedian/observation';
 import {
   createSyntheticCalibratedSession,
   createSyntheticUnresolvedSession,
@@ -75,8 +75,8 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
 
   it('renders calibrated solve receipt with held-out verification metrics, solver provenance, and dispatches sky.show (measured)', async () => {
     let latestSession = createSyntheticCalibratedSession();
-    const q = latestSession.observationSolution!.quality;
-    const solver = latestSession.observationSolution!.solver;
+    const q = latestSession.observationSolution!.quality!;
+    const solver = latestSession.observationSolution!.solver!;
 
     await act(async () => {
       root.render(
@@ -139,6 +139,26 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
     });
     expect(latestSession.machines.navigation).toBe('sky_registered');
     expect(latestSession.spatialView.mode).toBe('registered_sky');
+  });
+
+  it('says no solver ran on a stored file that has not been solved, instead of counting zeros (experience-9f)', async () => {
+    const asset = createSyntheticCalibratedSession().sourceAsset!;
+    const pending = createSessionForSourceAsset(asset, 'ready');
+    expect(pending.observationSolution!.status).toBe('pending');
+    expect(pending.observationSolution!.quality).toBeUndefined();
+    expect(pending.observationSolution!.solver).toBeUndefined();
+
+    await act(async () => {
+      root.render(React.createElement(ObservationSolveAndCompareHud, { session: pending, setSession: () => {} }));
+    });
+
+    const metricsEl = container.querySelector<HTMLElement>('[data-testid="solve-receipt-metrics"]');
+    expect(metricsEl?.textContent).toContain('No solver ran');
+    expect(metricsEl?.textContent).not.toMatch(/\d+ detected|matched inliers|held-out/);
+    const solverEl = container.querySelector<HTMLElement>('[data-testid="solve-receipt-solver"]');
+    expect(solverEl?.textContent).toContain('No solver ran');
+    expect(solverEl?.textContent).toContain('Status: pending');
+    expect(solverEl?.textContent).not.toMatch(/none|v0/);
   });
 
   it('renders predicted-only disclosure without held-out residuals and dispatches sky.show (predicted)', async () => {

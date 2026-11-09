@@ -171,9 +171,9 @@ export type WCSCalibrationModel = z.infer<typeof WCSCalibrationModelSchema>;
  */
 export function hasVerifiedWcs(solution: {
   wcs?: WCSCalibrationModel;
-  quality: { passedIndependentVerification: boolean };
+  quality?: { passedIndependentVerification: boolean };
 }): boolean {
-  return solution.wcs !== undefined && solution.quality.passedIndependentVerification;
+  return solution.wcs !== undefined && solution.quality?.passedIndependentVerification === true;
 }
 
 export const ObservationSolutionSchema = z
@@ -194,12 +194,18 @@ export const ObservationSolutionSchema = z
         placeName: z.string().optional(),
       })
       .optional(),
-    solver: z.object({
-      name: z.string().min(1),
-      version: z.string().min(1),
-      catalogRelease: z.string().min(1),
-    }),
+    // Who solved it: absent on a pending solution, which no solver has run on, and on an unresolved one
+    // whose attempt failed before any solver ran
+    solver: z
+      .object({
+        name: z.string().min(1),
+        version: z.string().min(1),
+        catalogRelease: z.string().min(1),
+      })
+      .optional(),
     wcs: WCSCalibrationModelSchema.optional(),
+    // What the solver measured: required on a calibrated or approximate solution and absent on a pending
+    // one, so no row of zeros ever stands in for a solve that did not happen
     quality: z.object({
       detectedCandidateCount: z.number().int().nonnegative(),
       matchedInlierCount: z.number().int().nonnegative(),
@@ -212,37 +218,72 @@ export const ObservationSolutionSchema = z
       p95ResidualPx: z.number().nonnegative().optional(),
       medianResidualArcsec: z.number().nonnegative().optional(),
       passedIndependentVerification: z.boolean(),
-    }),
+    }).optional(),
     findings: z.array(CelestialFindingSchema),
     warnings: z.array(z.string()),
   })
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
-    (['medianResidualPx', 'p95ResidualPx', 'medianResidualArcsec'] as const).forEach((key) => {
-      if ((quality[key] !== undefined) !== quality.heldOutPairCount > 0) {
+    if (solution.status === 'pending') {
+      if (quality !== undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['quality', key],
-          message:
-            quality.heldOutPairCount > 0
-              ? 'Held-out stars were paired, so their residual is reported.'
-              : 'No held-out star was paired, so there is no residual to report.',
+          path: ['quality'],
+          message: 'A pending solution has no quality: no solver has run, so nothing was counted.',
         });
       }
-    });
-    if (quality.heldOutInliers > quality.heldOutPairCount) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['quality', 'heldOutInliers'],
-        message: 'Held-out inliers are held-out pairs inside the inlier gate: there cannot be more of them than pairs.',
-      });
+      if (solution.solver !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['solver'],
+          message: 'A pending solution names no solver: none has run.',
+        });
+      }
+    } else {
+      // An unresolved solution may come from an attempt that failed before any solver ran (a file that
+      // would not decode); every other outcome was reached by a solver, which it names
+      if (solution.solver === undefined && solution.status !== 'unresolved') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['solver'],
+          message: 'Only a pending solution, or an unresolved one no solver reached, names no solver.',
+        });
+      }
+      if (quality === undefined && (solution.status === 'calibrated' || solution.status === 'approximate')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quality'],
+          message: 'A calibrated or approximate solution reports the quality it was judged on.',
+        });
+      }
     }
-    if (quality.passedIndependentVerification && (solution.wcs === undefined || quality.medianResidualPx === undefined)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['quality', 'passedIndependentVerification'],
-        message: 'Held-out verification passes only with a WCS and the held-out residuals it was judged on.',
+    if (quality !== undefined) {
+      (['medianResidualPx', 'p95ResidualPx', 'medianResidualArcsec'] as const).forEach((key) => {
+        if ((quality[key] !== undefined) !== quality.heldOutPairCount > 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['quality', key],
+            message:
+              quality.heldOutPairCount > 0
+                ? 'Held-out stars were paired, so their residual is reported.'
+                : 'No held-out star was paired, so there is no residual to report.',
+          });
+        }
       });
+      if (quality.heldOutInliers > quality.heldOutPairCount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quality', 'heldOutInliers'],
+          message: 'Held-out inliers are held-out pairs inside the inlier gate: there cannot be more of them than pairs.',
+        });
+      }
+      if (quality.passedIndependentVerification && (solution.wcs === undefined || quality.medianResidualPx === undefined)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['quality', 'passedIndependentVerification'],
+          message: 'Held-out verification passes only with a WCS and the held-out residuals it was judged on.',
+        });
+      }
     }
     if (solution.sourceSha256 === undefined && !(solution.status === 'pending' && solution.findings.length === 0)) {
       ctx.addIssue({

@@ -134,8 +134,10 @@ export function dispatchAlbedianAction(
       const fromSource = base.machines.navigation === 'source' || base.machines.navigation === 'comparison';
       const nextHistory = fromSource ? pushCheckpointIfDepartingSource(base, 'Departure from Source to Registered Sky') : base.navigationHistory;
       const isCal = base.observationSolution.status === 'calibrated';
-      const status = isCal
-        ? `Calibrated sky registered (${base.observationSolution.quality.heldOutInliers} held-out stars${base.observationSolution.quality.medianResidualPx !== undefined ? `, ${base.observationSolution.quality.medianResidualPx.toFixed(2)} px median residual` : ''}).`
+      // A calibrated solution always reports its quality (the contract requires it)
+      const quality = base.observationSolution.quality;
+      const status = isCal && quality
+        ? `Calibrated sky registered (${quality.heldOutInliers} held-out stars${quality.medianResidualPx !== undefined ? `, ${quality.medianResidualPx.toFixed(2)} px median residual` : ''}).`
         : 'Showing predicted sky model from recorded timestamp and location (separate from source pixels).';
 
       return completeAction(

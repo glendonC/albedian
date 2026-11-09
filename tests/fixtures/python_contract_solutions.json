@@ -1160,5 +1160,15 @@
     "warnings": [
       "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted for the given time and place, not placed in the frame."
     ]
+  },
+  "pending_unsolved": {
+    "id": "sol-pending",
+    "sourceAssetId": "synthetic-pending",
+    "sourceSha256": "3fe502ed6be5cb77f23cec2cb20fbb5ad9e03aba17700ca622e72f947c7420cf",
+    "frameTimeSec": 0.0,
+    "revision": 1,
+    "status": "pending",
+    "findings": [],
+    "warnings": []
   }
 }

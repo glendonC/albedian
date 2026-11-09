@@ -427,8 +427,11 @@ class ObservationSolution:
     revision: int
     status: str
     wcs: WCSModel | None
-    quality: SolutionQuality
-    solver: SolverIdentity
+    # What the solver measured and who solved it, as in the contract: neither on a pending solution (none has
+    # run), quality required on a calibrated or approximate one, and a solver on every outcome but an
+    # unresolved attempt that failed before any solver ran
+    quality: SolutionQuality | None
+    solver: SolverIdentity | None
     observed_at_utc: str | None = None
     observer_lat: float | None = None
     observer_lon: float | None = None
@@ -436,6 +439,16 @@ class ObservationSolution:
     warnings: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if self.status == "pending":
+            if self.quality is not None:
+                raise ValueError("A pending solution has no quality: no solver has run, so nothing was counted.")
+            if self.solver is not None:
+                raise ValueError("A pending solution names no solver: none has run.")
+        else:
+            if self.solver is None and self.status != "unresolved":
+                raise ValueError("Only a pending solution, or an unresolved one no solver reached, names no solver.")
+            if self.quality is None and self.status in ("calibrated", "approximate"):
+                raise ValueError("A calibrated or approximate solution reports the quality it was judged on.")
         if (self.observer_lat is None) != (self.observer_lon is None):
             raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
         has_place = self.observer_lat is not None and self.observer_lon is not None
@@ -448,7 +461,7 @@ class ObservationSolution:
                 "An approximate or predicted_only solution, or any solution with a predicted finding, "
                 "needs observed_at_utc, observer_lat and observer_lon."
             )
-        if self.quality.passed_independent_verification and self.wcs is None:
+        if self.quality is not None and self.quality.passed_independent_verification and self.wcs is None:
             raise ValueError("Held-out verification passes only with a WCS.")
         # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
         # sky position exactly when there is one, and a catalog match needs one
@@ -480,23 +493,23 @@ class ObservationSolution:
     def has_verified_wcs(self) -> bool:
         """Whether the WCS passed independent held-out verification, the only way this frame's pixels
         are placed on the sky."""
-        return self.wcs is not None and self.quality.passed_independent_verification
+        return self.wcs is not None and self.quality is not None and self.quality.passed_independent_verification
 
     @property
-    def held_out_inliers(self) -> int:
-        return self.quality.held_out_inliers
+    def held_out_inliers(self) -> int | None:
+        return None if self.quality is None else self.quality.held_out_inliers
 
     @property
     def median_residual_px(self) -> float | None:
-        return self.quality.median_residual_px
+        return None if self.quality is None else self.quality.median_residual_px
 
     @property
     def p95_residual_px(self) -> float | None:
-        return self.quality.p95_residual_px
+        return None if self.quality is None else self.quality.p95_residual_px
 
     @property
-    def matched_inlier_count(self) -> int:
-        return self.quality.matched_inlier_count
+    def matched_inlier_count(self) -> int | None:
+        return None if self.quality is None else self.quality.matched_inlier_count
 
     def to_contract_dict(self) -> dict:
         result: dict = {
@@ -514,10 +527,12 @@ class ObservationSolution:
                 "latDeg": float(self.observer_lat),
                 "lonDeg": float(self.observer_lon),
             }
+        if self.solver is not None:
+            result["solver"] = self.solver.to_contract_dict()
+        if self.quality is not None:
+            result["quality"] = self.quality.to_contract_dict()
         result.update(
             {
-                "solver": self.solver.to_contract_dict(),
-                "quality": self.quality.to_contract_dict(),
                 "findings": [f.to_contract_dict(source_asset_id=self.source_asset_id) for f in self.findings],
                 "warnings": list(self.warnings),
             }
