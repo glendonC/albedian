@@ -144,6 +144,8 @@ export function buildCislunarRegimeGroup(
     `,
     fragmentShader: /* glsl */ `
       uniform sampler2D uDayTex;
+      // three.js declares normalMatrix for vertex shaders only; the relief normal needs it here too
+      uniform mat3 normalMatrix;
       uniform sampler2D uNightTex;
       uniform sampler2D uNormalTex;
       uniform sampler2D uSpecTex;
@@ -211,7 +213,7 @@ export function buildCislunarRegimeGroup(
         ));
 
         vec3 N = normalize(vNormal);
-        vec3 surfaceN = normalize((modelViewMatrix * vec4(localN, 0.0)).xyz);
+        vec3 surfaceN = normalize(normalMatrix * localN);
         vec3 L = normalize(uSunDir);
         vec3 V = normalize(vViewDir);
 
