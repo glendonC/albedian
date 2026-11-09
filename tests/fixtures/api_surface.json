@@ -29,52 +29,29 @@
         }
       },
       "/api/science/sky-context": {
-        "get": {
-          "summary": "Get Science Sky Context",
+        "post": {
+          "summary": "Post Science Sky Context",
           "description": "Compute full 360-degree topocentric sky context for all 70+ navigational stars,\nSolar System ephemerides, and constellation stick-figure edges.",
-          "operationId": "get_science_sky_context_api_science_sky_context_get",
-          "parameters": [
-            {
-              "name": "obs_utc_iso",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "title": "Obs Utc Iso"
+          "operationId": "post_science_sky_context_api_science_sky_context_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkyContextRequest"
+                }
               }
             },
-            {
-              "name": "lat_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 90.0,
-                "minimum": -90.0,
-                "title": "Lat Deg"
-              }
-            },
-            {
-              "name": "lon_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 180.0,
-                "minimum": -180.0,
-                "title": "Lon Deg"
-              }
-            }
-          ],
+            "required": true
+          },
           "responses": {
             "200": {
               "description": "Successful Response",
               "content": {
                 "application/json": {
                   "schema": {
-                    "type": "object",
                     "additionalProperties": true,
-                    "title": "Response Get Science Sky Context Api Science Sky Context Get"
+                    "type": "object",
+                    "title": "Response Post Science Sky Context Api Science Sky Context Post"
                   }
                 }
               }
@@ -93,74 +70,29 @@
         }
       },
       "/api/science/radiometry-audit": {
-        "get": {
-          "summary": "Get Science Radiometry Audit",
+        "post": {
+          "summary": "Post Science Radiometry Audit",
           "description": "Return the Krisciunas & Schaefer (1991) sky brightness predicted at the stated target (its altitude and\nits separation from the Moon). No sensor limiting magnitude is estimated.",
-          "operationId": "get_science_radiometry_audit_api_science_radiometry_audit_get",
-          "parameters": [
-            {
-              "name": "obs_utc_iso",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "string",
-                "title": "Obs Utc Iso"
+          "operationId": "post_science_radiometry_audit_api_science_radiometry_audit_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadiometryAuditRequest"
+                }
               }
             },
-            {
-              "name": "lat_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 90.0,
-                "minimum": -90.0,
-                "title": "Lat Deg"
-              }
-            },
-            {
-              "name": "lon_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 180.0,
-                "minimum": -180.0,
-                "title": "Lon Deg"
-              }
-            },
-            {
-              "name": "target_sep_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 180.0,
-                "minimum": 0.5,
-                "title": "Target Sep Deg"
-              }
-            },
-            {
-              "name": "target_alt_deg",
-              "in": "query",
-              "required": true,
-              "schema": {
-                "type": "number",
-                "maximum": 90.0,
-                "minimum": 0.0,
-                "title": "Target Alt Deg"
-              }
-            }
-          ],
+            "required": true
+          },
           "responses": {
             "200": {
               "description": "Successful Response",
               "content": {
                 "application/json": {
                   "schema": {
-                    "type": "object",
                     "additionalProperties": true,
-                    "title": "Response Get Science Radiometry Audit Api Science Radiometry Audit Get"
+                    "type": "object",
+                    "title": "Response Post Science Radiometry Audit Api Science Radiometry Audit Post"
                   }
                 }
               }
@@ -764,6 +696,49 @@
           "type": "object",
           "title": "HTTPValidationError"
         },
+        "RadiometryAuditRequest": {
+          "properties": {
+            "observedAtUTC": {
+              "type": "string",
+              "title": "Observedatutc"
+            },
+            "latDeg": {
+              "type": "number",
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "title": "Latdeg"
+            },
+            "lonDeg": {
+              "type": "number",
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "title": "Londeg"
+            },
+            "targetSepDeg": {
+              "type": "number",
+              "maximum": 180.0,
+              "minimum": 0.5,
+              "title": "Targetsepdeg"
+            },
+            "targetAltDeg": {
+              "type": "number",
+              "maximum": 90.0,
+              "minimum": 0.0,
+              "title": "Targetaltdeg"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "observedAtUTC",
+            "latDeg",
+            "lonDeg",
+            "targetSepDeg",
+            "targetAltDeg"
+          ],
+          "title": "RadiometryAuditRequest",
+          "description": "Request payload for `POST /api/science/radiometry-audit`: a time and place, and the target asked about."
+        },
         "RestoreRequest": {
           "properties": {
             "profile": {
@@ -826,6 +801,35 @@
           ],
           "title": "RestoreRequest",
           "description": "Request payload for `POST /api/media/restore`."
+        },
+        "SkyContextRequest": {
+          "properties": {
+            "observedAtUTC": {
+              "type": "string",
+              "title": "Observedatutc"
+            },
+            "latDeg": {
+              "type": "number",
+              "maximum": 90.0,
+              "minimum": -90.0,
+              "title": "Latdeg"
+            },
+            "lonDeg": {
+              "type": "number",
+              "maximum": 180.0,
+              "minimum": -180.0,
+              "title": "Londeg"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "observedAtUTC",
+            "latDeg",
+            "lonDeg"
+          ],
+          "title": "SkyContextRequest",
+          "description": "Request payload for `POST /api/science/sky-context`. The time and place travel in the body, never in the\nURL, whose query string an access log prints."
         },
         "SolveRequest": {
           "properties": {
@@ -1069,18 +1073,18 @@
     {
       "path": "/api/science/sky-context",
       "methods": [
-        "GET"
+        "POST"
       ],
-      "name": "get_science_sky_context",
+      "name": "post_science_sky_context",
       "responseModel": "dict[str, typing.Any]",
       "includeInSchema": true
     },
     {
       "path": "/api/science/radiometry-audit",
       "methods": [
-        "GET"
+        "POST"
       ],
-      "name": "get_science_radiometry_audit",
+      "name": "post_science_radiometry_audit",
       "responseModel": "dict[str, typing.Any]",
       "includeInSchema": true
     },

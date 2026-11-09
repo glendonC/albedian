@@ -31,10 +31,12 @@ from services.science import catalog_tiles as ct
 TILES = Path(__file__).resolve().parents[2] / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3"
 # A synthetic moment and place that point at nobody (as in test_frontier_upgrades)
 MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "lat_deg": 30.0, "lon_deg": -40.0}
+# The same moment and place under the API's field names
+ROUTE_MOMENT = {"observedAtUTC": MOMENT["obs_utc_iso"], "latDeg": MOMENT["lat_deg"], "lonDeg": MOMENT["lon_deg"]}
 
 
 def _sky_context() -> dict:
-    response = TestClient(app).get("/api/science/sky-context", params=MOMENT)
+    response = TestClient(app).post("/api/science/sky-context", json=ROUTE_MOMENT)
     assert response.status_code == 200
     return response.json()
 
@@ -99,10 +101,10 @@ def test_the_sky_brightness_is_predicted_for_a_stated_target_without_a_limiting_
     assert "LimitingMag" not in json.dumps(body) and "apertureMm" not in json.dumps(body)
     client = TestClient(app)
     # The target is required in full: no default separation from the Moon and no default altitude
-    for partial in ({}, {"target_alt_deg": 50.0}, {"target_sep_deg": 40.0}):
-        assert client.get("/api/science/radiometry-audit", params={**MOMENT, **partial}).status_code == 422, partial
-    stated = client.get(
-        "/api/science/radiometry-audit", params={**MOMENT, "target_sep_deg": 40.0, "target_alt_deg": 50.0}
+    for partial in ({}, {"targetAltDeg": 50.0}, {"targetSepDeg": 40.0}):
+        assert client.post("/api/science/radiometry-audit", json={**ROUTE_MOMENT, **partial}).status_code == 422, partial
+    stated = client.post(
+        "/api/science/radiometry-audit", json={**ROUTE_MOMENT, "targetSepDeg": 40.0, "targetAltDeg": 50.0}
     ).json()
     assert stated["predictedSkyBrightness"]["target"] == "altitude 50 deg, 40 deg from the Moon"
     assert "sensorAudit" not in stated

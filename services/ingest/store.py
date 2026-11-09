@@ -35,6 +35,10 @@ STALE_PARTIAL_SEC = 24 * 3600
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 # Enough for an ISO base media `ftyp` box with its first compatible brands
 SNIFF_BYTES = 64
+# An original and its record can hold a capture time and a position: only the owner's account reads a stored
+# file, and only it lists or enters a store folder
+PRIVATE_FILE_MODE = 0o400
+PRIVATE_FOLDER_MODE = 0o700
 
 # ISO base media brands, by what the file holds
 HEIF_STILL_BRANDS = {b"heic", b"heix", b"heim", b"heis"}
@@ -129,6 +133,9 @@ class IngestStore:
         self.root = Path(root)
         self.max_bytes = max_bytes
         self.max_still_bytes = min(max_still_bytes, max_bytes)
+        # A root that already holds files from before is closed to other accounts as soon as the store opens it
+        if self.root.is_dir():
+            os.chmod(self.root, PRIVATE_FOLDER_MODE)
         self.sweep_partials()
 
     @classmethod
@@ -181,7 +188,7 @@ class IngestStore:
             if declared_length > limit:
                 raise _too_large(limit, "still" if still else None)
         partial_dir = self.root / ".partial"
-        partial_dir.mkdir(parents=True, exist_ok=True)
+        self._private_folder(partial_dir)
         partial = partial_dir / f"{secrets.token_hex(16)}.part"
         fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         digest = hashlib.sha256()
@@ -234,17 +241,28 @@ class IngestStore:
             self.discard(received)
             return existing, True
         folder = self.folder(received.sha256)
-        folder.mkdir(parents=True, exist_ok=True)
+        self._private_folder(folder)
         target = folder / f"original.{received.file_type.extension}"
         try:
             os.link(received.partial, target)
         except FileExistsError:
             self.discard(received)
             return target, True
-        os.chmod(target, 0o444)
+        os.chmod(target, PRIVATE_FILE_MODE)
         self.discard(received)
         _fsync_dir(folder)
         return target, False
+
+    def _private_folder(self, folder: Path) -> None:
+        """Make `folder` and each folder between it and the root, every one open to the owner alone. mkdir's own
+        mode leaves the parents it makes at the default and is cut by the umask, so each level is set here."""
+        level = self.root
+        level.mkdir(parents=True, exist_ok=True)
+        os.chmod(level, PRIVATE_FOLDER_MODE)
+        for part in folder.relative_to(self.root).parts:
+            level = level / part
+            level.mkdir(exist_ok=True)
+            os.chmod(level, PRIVATE_FOLDER_MODE)
 
     def read_record(self, sha256: str) -> Optional[dict]:
         """The stored record (asset and hints) for this hash, if there is one."""
@@ -256,7 +274,7 @@ class IngestStore:
     def write_record(self, sha256: str, record: dict) -> dict:
         """Write the record once; when one exists already, it stands and is returned."""
         folder = self.folder(sha256)
-        folder.mkdir(parents=True, exist_ok=True)
+        self._private_folder(folder)
         path = folder / "record.json"
         scratch = folder / f".record-{secrets.token_hex(8)}.tmp"
         with open(scratch, "x", encoding="utf-8") as handle:
@@ -265,7 +283,7 @@ class IngestStore:
             os.fsync(handle.fileno())
         try:
             os.link(scratch, path)
-            os.chmod(path, 0o444)
+            os.chmod(path, PRIVATE_FILE_MODE)
         except FileExistsError:
             pass
         finally:

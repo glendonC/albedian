@@ -152,6 +152,6 @@ def test_predictions_say_what_they_assume() -> None:
 
 def test_sky_endpoints_require_time_and_place() -> None:
     client = TestClient(app)
-    assert client.get("/api/science/sky-context").status_code == 422
+    assert client.post("/api/science/sky-context", json={}).status_code == 422
     assert client.post("/api/science/ephemeris", json={"bodies": ["Moon"]}).status_code == 422
     assert client.post("/api/science/solve", json={"width": 960, "height": 540}).status_code == 422

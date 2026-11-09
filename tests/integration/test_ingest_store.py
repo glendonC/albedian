@@ -219,6 +219,26 @@ def test_a_record_is_written_once(store: IngestStore) -> None:
     assert sorted(path.name for path in record.parent.iterdir()) == ["record.json"], "no scratch file is left"
 
 
+def test_only_the_owner_can_read_the_store(tmp_path: Path) -> None:
+    # An original and its record can hold a capture time and a position: no other account on the machine reads
+    # them, and no other account lists or enters a store folder, including a root that existed before the store
+    root = tmp_path / "store"
+    root.mkdir()
+    os.chmod(root, 0o755)
+    store = IngestStore(root, max_bytes=5_000_000)
+    assert root.stat().st_mode & 0o777 == 0o700, "an existing root is closed when the store opens it"
+    data = jpeg_bytes(shade=50)
+    sha = hashlib.sha256(data).hexdigest()
+    original, already = store.commit(asyncio.run(store.receive(_chunks(data, 100), "image/jpeg")))
+    assert already is False
+    record = store.folder(sha) / "record.json"
+    store.write_record(sha, {"title": "private"})
+    assert original.stat().st_mode & 0o777 == 0o400
+    assert record.stat().st_mode & 0o777 == 0o400
+    for folder in (root, root / ".partial", root / sha[:2], store.folder(sha)):
+        assert folder.stat().st_mode & 0o777 == 0o700, folder.relative_to(tmp_path)
+
+
 def test_the_file_name_is_only_a_title(client: TestClient, store: IngestStore, tmp_path: Path) -> None:
     data = jpeg_bytes(shade=40)
     sha = hashlib.sha256(data).hexdigest()

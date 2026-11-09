@@ -81,10 +81,10 @@ def test_the_routes_answer_422_with_the_range_outside_it() -> None:
     for moment, expected in ((LAST, 200), (AFTER, 422), (BEFORE, 422)):
         place = {"latDeg": 30.0, "lonDeg": -40.0}
         responses = [
-            client.get("/api/science/sky-context", params={"obs_utc_iso": moment, **PLACE}),
-            client.get(
+            client.post("/api/science/sky-context", json={"observedAtUTC": moment, **place}),
+            client.post(
                 "/api/science/radiometry-audit",
-                params={"obs_utc_iso": moment, **PLACE, "target_sep_deg": 40.0, "target_alt_deg": 50.0},
+                json={"observedAtUTC": moment, **place, "targetSepDeg": 40.0, "targetAltDeg": 50.0},
             ),
             client.post("/api/science/ephemeris", json={"observedAtUTC": moment, **place}),
             client.post(

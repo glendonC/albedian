@@ -167,8 +167,8 @@ def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date(
 
 
 def test_sky_context_sends_no_fixed_magnitude() -> None:
-    response = TestClient(app).get(
-        "/api/science/sky-context", params={"obs_utc_iso": "2030-11-01T22:32:00Z", "lat_deg": 30.0, "lon_deg": -40.0}
+    response = TestClient(app).post(
+        "/api/science/sky-context", json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0}
     )
     assert response.status_code == 200
     assert all("apparentMagnitude" not in body for body in response.json()["ephemerides"])

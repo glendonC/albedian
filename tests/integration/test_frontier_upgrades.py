@@ -265,14 +265,14 @@ def test_deep_engines_sky_brightness_and_coherent_stack() -> None:
     assert len(detected) >= 3
     assert all(r["coherentSnr"] >= 3.0 for r in detected)
 
-    # 4. FastAPI endpoint GET /api/science/radiometry-audit
+    # 4. FastAPI endpoint POST /api/science/radiometry-audit
     client = TestClient(app)
-    assert client.get("/api/science/radiometry-audit").status_code == 422
-    moment = {"obs_utc_iso": obs_utc, "lat_deg": obs_lat, "lon_deg": obs_lon}
+    assert client.post("/api/science/radiometry-audit", json={}).status_code == 422
+    moment = {"observedAtUTC": obs_utc, "latDeg": obs_lat, "lonDeg": obs_lon}
     # No target, no prediction: there is no default 8.2 degrees from the Moon
-    assert client.get("/api/science/radiometry-audit", params=moment).status_code == 422
-    r_rad = client.get(
-        "/api/science/radiometry-audit", params={**moment, "target_sep_deg": 8.2, "target_alt_deg": 32.0}
+    assert client.post("/api/science/radiometry-audit", json=moment).status_code == 422
+    r_rad = client.post(
+        "/api/science/radiometry-audit", json={**moment, "targetSepDeg": 8.2, "targetAltDeg": 32.0}
     )
     assert r_rad.status_code == 200
     rad_json = r_rad.json()

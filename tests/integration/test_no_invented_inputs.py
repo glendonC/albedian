@@ -100,7 +100,9 @@ def test_a_prediction_names_a_recording_only_when_one_stands_behind_it() -> None
     ephemeris = client.post(
         "/api/science/ephemeris", json={"observedAtUTC": moments["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0}
     )
-    context = client.get("/api/science/sky-context", params=moments)
+    context = client.post(
+        "/api/science/sky-context", json={"observedAtUTC": moments["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0}
+    )
     predictions = ephemeris.json()["findings"] + context.json()["ephemerides"]
     assert len(predictions) == 12
     assert all("sourceAssetSha256" not in p["evidence"] and "observationSolutionId" not in p for p in predictions)

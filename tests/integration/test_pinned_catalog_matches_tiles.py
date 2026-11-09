@@ -17,7 +17,7 @@ Covers:
 - No pinned Gaia DR3 id encodes a HEALPix pixel that misses its own star
 - A solved field's catalog matches describe each distance by its own source, format intervals with 'to' (never
   an en dash), and omit spectral types
-- GET /api/science/sky-context, voice star descriptions, and propagate_star_epoch omit absent fields cleanly
+- POST /api/science/sky-context, voice star descriptions, and propagate_star_epoch omit absent fields cleanly
 """
 
 from __future__ import annotations
@@ -175,9 +175,9 @@ def test_catalog_matches_describe_each_distance_by_its_own_source() -> None:
 
 def test_sky_context_and_voice_descriptions_omit_unmeasured_colour_radial_velocity_and_spectral_type() -> None:
     client = TestClient(app)
-    r_sky = client.get(
+    r_sky = client.post(
         "/api/science/sky-context",
-        params={"obs_utc_iso": "2030-11-01T22:32:00Z", "lat_deg": 30.0, "lon_deg": -40.0},
+        json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0},
     )
     assert r_sky.status_code == 200
     stars = r_sky.json()["stars"]

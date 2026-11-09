@@ -716,7 +716,7 @@ def test_fastapi_endpoints() -> None:
     assert r_voice_stale.json()["status"] == "rejected"
     assert r_voice_stale.json()["reason"] == "stale_revision"
 
-    # 6. GET /api/science/sky-context (All-Sky 70+ stars, ephemerides, and constellation edges)
+    # 6. POST /api/science/sky-context (All-Sky 70+ stars, ephemerides, and constellation edges)
     assert len(ALL_SKY_CATALOG_STARS) >= 65
     for st_entry in ALL_SKY_CATALOG_STARS:
         assert 0.0 < st_entry.lower_pc <= st_entry.median_pc <= st_entry.upper_pc
@@ -729,14 +729,7 @@ def test_fastapi_endpoints() -> None:
     assert "light-years" in str(lt_fomalhaut["description"])
     assert 24.5 <= float(lt_fomalhaut["lightYears"]) <= 25.6
 
-    r_sky = client.get(
-        "/api/science/sky-context",
-        params={
-            "obs_utc_iso": MOON_MOMENT["obs_utc_iso"],
-            "lat_deg": MOON_MOMENT["observer_lat"],
-            "lon_deg": MOON_MOMENT["observer_lon"],
-        },
-    )
+    r_sky = client.post("/api/science/sky-context", json=_as_request(MOON_MOMENT))
     assert r_sky.status_code == 200
     sky_data = r_sky.json()
     assert len(sky_data["stars"]) >= 65

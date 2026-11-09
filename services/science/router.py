@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -71,6 +71,24 @@ class EphemerisRequest(BaseModel):
     )
 
 
+class SkyContextRequest(BaseModel):
+    """Request payload for `POST /api/science/sky-context`. The time and place travel in the body, never in the
+    URL, whose query string an access log prints."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    obs_utc_iso: str = Field(alias="observedAtUTC")
+    lat_deg: float = Field(alias="latDeg", ge=-90.0, le=90.0)
+    lon_deg: float = Field(alias="lonDeg", ge=-180.0, le=180.0)
+
+
+class RadiometryAuditRequest(SkyContextRequest):
+    """Request payload for `POST /api/science/radiometry-audit`: a time and place, and the target asked about."""
+
+    target_sep_deg: float = Field(alias="targetSepDeg", ge=0.5, le=180.0)
+    target_alt_deg: float = Field(alias="targetAltDeg", ge=0.0, le=90.0)
+
+
 _NO_INPUT_DETAIL = "Send {inputs}; the API does not substitute synthetic input for a missing observation."
 
 
@@ -90,15 +108,12 @@ def _measured(detection: dict[str, Any], *keys: str) -> float:
     raise HTTPException(status_code=422, detail=f"Each detection needs a measured `{keys[-1]}`.")
 
 
-@router.get("/api/science/sky-context")
-def get_science_sky_context(
-    obs_utc_iso: str = Query(...),
-    lat_deg: float = Query(..., ge=-90.0, le=90.0),
-    lon_deg: float = Query(..., ge=-180.0, le=180.0),
-) -> dict[str, Any]:
+@router.post("/api/science/sky-context")
+def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
     """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
     Solar System ephemerides, and constellation stick-figure edges.
     """
+    obs_utc_iso, lat_deg, lon_deg = req.obs_utc_iso, req.lat_deg, req.lon_deg
     _within_ephemeris_range(obs_utc_iso)
     stars_out: list[dict[str, Any]] = []
     for st in ALL_SKY_CATALOG_STARS:
@@ -185,16 +200,12 @@ def get_science_sky_context(
     }
 
 
-@router.get("/api/science/radiometry-audit")
-def get_science_radiometry_audit(
-    obs_utc_iso: str = Query(...),
-    lat_deg: float = Query(..., ge=-90.0, le=90.0),
-    lon_deg: float = Query(..., ge=-180.0, le=180.0),
-    target_sep_deg: float = Query(..., ge=0.5, le=180.0),
-    target_alt_deg: float = Query(..., ge=0.0, le=90.0),
-) -> dict[str, Any]:
+@router.post("/api/science/radiometry-audit")
+def post_science_radiometry_audit(req: RadiometryAuditRequest) -> dict[str, Any]:
     """Return the Krisciunas & Schaefer (1991) sky brightness predicted at the stated target (its altitude and
     its separation from the Moon). No sensor limiting magnitude is estimated."""
+    obs_utc_iso, lat_deg, lon_deg = req.obs_utc_iso, req.lat_deg, req.lon_deg
+    target_sep_deg, target_alt_deg = req.target_sep_deg, req.target_alt_deg
     _within_ephemeris_range(obs_utc_iso)
     (moon,) = compute_solar_system_ephemerides(
         obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg, bodies=("Moon",)
