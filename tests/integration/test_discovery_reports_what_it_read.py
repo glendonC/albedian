@@ -38,7 +38,7 @@ from services.science.ephemeris import compute_solar_system_ephemerides
 
 ROOT = Path(__file__).resolve().parents[2]
 # A synthetic moment and place that point at nobody, as the tags of a recording
-SYNTHETIC_TAGS = {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"}
+SYNTHETIC_TAGS = {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2031-08-30T03:01:00Z"}
 
 
 def _discover(tmp_path: Path) -> dict:
@@ -87,7 +87,7 @@ def test_a_video_whose_frames_cannot_be_decoded_gets_no_solve(tmp_path: Path, mo
         "streams": [{"codec_type": "video", "width": 640, "height": 360, "codec_name": "hevc", "r_frame_rate": "30/1"}],
         "format": {
             "duration": "2.0",
-            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"},
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2031-08-30T03:01:00Z"},
         },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)
@@ -127,19 +127,19 @@ def _still_probed_with(tmp_path: Path, monkeypatch, tags: dict[str, str]) -> dic
 
 def test_a_file_time_alone_is_no_capture_moment(tmp_path: Path, monkeypatch) -> None:
     # QuickTime's creation_time is the file's own time, which may be when it was written or exported
-    item = _still_probed_with(tmp_path, monkeypatch, {"creation_time": "2030-11-01T22:32:00Z"})
+    item = _still_probed_with(tmp_path, monkeypatch, {"creation_time": "2031-08-30T03:01:00Z"})
     assert item["capturedAtUTC"] is None
     assert (item["ephemerides"], item["observationSolution"], item["predictedSkyBrightness"]) == ([], None, {})
     # Nor is the file's time reported as anything else: the upload path carries it as a labelled file_written hint
-    assert "2030-11-01" not in json.dumps(item)
+    assert "2031-08-30" not in json.dumps(item)
 
 
 def test_a_recorded_creationdate_is_the_capture_moment(tmp_path: Path, monkeypatch) -> None:
     item = _still_probed_with(
         tmp_path, monkeypatch,
-        {"com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z", "creation_time": "2031-01-01T00:00:00Z"},
+        {"com.apple.quicktime.creationdate": "2031-08-30T03:01:00Z", "creation_time": "2032-01-01T00:00:00Z"},
     )
-    assert item["capturedAtUTC"] == "2030-11-01T22:32:00Z"
+    assert item["capturedAtUTC"] == "2031-08-30T03:01:00Z"
     assert len(item["ephemerides"]) >= 6 and item["predictedSkyBrightness"]["target"] == "zenith"
     assert "2031-01-01" not in json.dumps(item)
 
@@ -199,16 +199,16 @@ def test_a_clip_solution_names_the_frame_it_decoded_and_that_frames_moment(tmp_p
         discovery, "predict_sky_brightness", lambda moment, **kwargs: asked.append(moment) or real_predict(moment, **kwargs)
     )
     item = _discover(tmp_path)["items"][0]
-    assert asked == ["2030-11-01T22:32:03Z"]
+    assert asked == ["2031-08-30T03:01:03Z"]
     solution = item["observationSolution"]
     # The frame is the one ffmpeg times at 3 s; the predictions are for its moment, 3 s after the recorded start, and
     # the item's capture moment stays the recorded start
     assert solution["frameTimeSec"] == 3.0
-    assert solution["observedAtUTC"] == "2030-11-01T22:32:03Z"
-    assert item["capturedAtUTC"] == "2030-11-01T22:32:00Z"
+    assert solution["observedAtUTC"] == "2031-08-30T03:01:03Z"
+    assert item["capturedAtUTC"] == "2031-08-30T03:01:00Z"
     moon = next(e for e in item["ephemerides"] if e["id"] == "finding-predicted-moon")
-    (at_frame,) = compute_solar_system_ephemerides("2030-11-01T22:32:03Z", 30.0, -40.0, bodies=("Moon",))
-    (at_start,) = compute_solar_system_ephemerides("2030-11-01T22:32:00Z", 30.0, -40.0, bodies=("Moon",))
+    (at_frame,) = compute_solar_system_ephemerides("2031-08-30T03:01:03Z", 30.0, -40.0, bodies=("Moon",))
+    (at_start,) = compute_solar_system_ephemerides("2031-08-30T03:01:00Z", 30.0, -40.0, bodies=("Moon",))
     # The sky turns about 0.0125 degrees in 3 s, far beyond the tolerance below
     assert abs(at_frame.alt_deg - at_start.alt_deg) > 0.005
     assert moon["skyPosition"]["altDeg"] == pytest.approx(at_frame.alt_deg, abs=1e-9)
@@ -216,9 +216,9 @@ def test_a_clip_solution_names_the_frame_it_decoded_and_that_frames_moment(tmp_p
 
 
 def test_a_frame_moment_keeps_a_fraction_of_a_second() -> None:
-    assert discovery._moment_plus("2030-11-01T22:32:00Z", 3.0) == "2030-11-01T22:32:03Z"
-    assert discovery._moment_plus("2030-11-01T22:32:00Z", 3.5) == "2030-11-01T22:32:03.500Z"
-    assert discovery._moment_plus("2030-11-01T22:32:59Z", 1.25) == "2030-11-01T22:33:00.250Z"
+    assert discovery._moment_plus("2031-08-30T03:01:00Z", 3.0) == "2031-08-30T03:01:03Z"
+    assert discovery._moment_plus("2031-08-30T03:01:00Z", 3.5) == "2031-08-30T03:01:03.500Z"
+    assert discovery._moment_plus("2031-08-30T03:01:59Z", 1.25) == "2031-08-30T03:02:00.250Z"
 
 
 def test_frames_ffmpeg_gives_no_time_for_are_not_used(tmp_path: Path, monkeypatch) -> None:

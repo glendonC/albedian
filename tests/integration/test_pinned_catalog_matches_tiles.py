@@ -177,7 +177,7 @@ def test_sky_context_and_voice_descriptions_omit_unmeasured_colour_radial_veloci
     client = TestClient(app)
     r_sky = client.post(
         "/api/science/sky-context",
-        json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0},
+        json={"observedAtUTC": "2031-08-30T03:01:00Z", "latDeg": 30.0, "lonDeg": -40.0},
     )
     assert r_sky.status_code == 200
     stars = r_sky.json()["stars"]

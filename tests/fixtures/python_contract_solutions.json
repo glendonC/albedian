@@ -120,7 +120,7 @@
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
-    "observedAtUTC": "2030-11-01T22:32:00Z",
+    "observedAtUTC": "2031-08-30T03:01:00Z",
     "observerLocation": {
       "latDeg": 30.0,
       "lonDeg": -40.0
@@ -833,7 +833,7 @@
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "approximate",
-    "observedAtUTC": "2030-11-01T22:32:00Z",
+    "observedAtUTC": "2031-08-30T03:01:00Z",
     "observerLocation": {
       "latDeg": 30.0,
       "lonDeg": -40.0
@@ -863,8 +863,8 @@
           "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
-          "angularResidualArcsec": 2.1163953576740562e-10,
-          "pixelResidualPx": 1.3877247074257982e-12,
+          "angularResidualArcsec": 1.735325950849539e-11,
+          "pixelResidualPx": 1.1368683772161603e-13,
           "limitations": [
             "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
             "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
@@ -890,11 +890,11 @@
         "title": "Moon (Predicted Ephemeris)",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 303.2093064286311,
-          "decDeg": -15.614643052079906,
+          "raDeg": 305.7567576461063,
+          "decDeg": -14.425614262700643,
           "uncertaintyArcsec": 1300.0,
-          "altDeg": 32.99874297206753,
-          "azDeg": 221.98524298792546
+          "altDeg": 33.022292605726314,
+          "azDeg": 224.28062158311732
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -904,7 +904,7 @@
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Geocentric: from this place the Moon appears about 2,962 arcsec lower than this position (its horizontal parallax, 3,532 arcsec, times the cosine of its altitude)."
+            "Geocentric: from this place the Moon appears about 3,045 arcsec lower than this position (its horizontal parallax, 3,632 arcsec, times the cosine of its altitude)."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -914,13 +914,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Dabih (Beta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +34.8° Az 220.7° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +32.4° Az 224.5° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 305.25325039220576,
-          "decDeg": -14.78135991488881,
+          "raDeg": 305.2532618485171,
+          "decDeg": -14.781356703490856,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 34.841355015176156,
-          "azDeg": 220.67071723468993
+          "altDeg": 32.43955343374613,
+          "azDeg": 224.46615838405938
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -944,16 +944,16 @@
           "bayerDesignation": "Beta Capricorni",
           "constellation": "Capricornus",
           "objectType": "star",
-          "coordinateEpoch": "J2030.8",
-          "raDeg": 305.25325039220576,
-          "decDeg": -14.78135991488881,
+          "coordinateEpoch": "J2031.7",
+          "raDeg": 305.2532618485171,
+          "decDeg": -14.781356703490856,
           "apparentMagnitude": 3.05,
           "properMotionRaMasYr": 48.36,
           "properMotionDecMasYr": 14.02,
           "bailerJonesDistancePc": {
-            "lower": 90.33423667825912,
-            "median": 100.20040080444173,
-            "upper": 112.48593926077935,
+            "lower": 90.33423667839783,
+            "median": 100.2004008045956,
+            "upper": 112.48593926095208,
             "method": "geometric_parallax"
           },
           "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
@@ -961,15 +961,15 @@
           "parallaxErrorMas": 1.09
         },
         "inferredDistancePc": {
-          "lower": 90.33423667825912,
-          "median": 100.20040080444173,
-          "upper": 112.48593926077935,
+          "lower": 90.33423667839783,
+          "median": 100.2004008045956,
+          "upper": 112.48593926095208,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          55.920861341152175,
-          -79.11666544682144,
-          -25.564249193162897
+          55.9208779876784,
+          -79.11665543563329,
+          -25.56424376288232
         ]
       },
       {
@@ -977,13 +977,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Algedi (Alpha2 Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +36.2° Az 223.0° · Inside Camera FOV",
+        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +33.7° Az 226.8° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 304.5141203857354,
-          "decDeg": -12.544826215893426,
+          "raDeg": 304.51413507773253,
+          "decDeg": -12.544825606572031,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 36.208591699394574,
-          "azDeg": 223.0178765167861
+          "altDeg": 33.70109446660578,
+          "azDeg": 226.83086893115396
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -1007,50 +1007,50 @@
           "bayerDesignation": "Alpha2 Capricorni",
           "constellation": "Capricornus",
           "objectType": "star",
-          "coordinateEpoch": "J2030.8",
-          "raDeg": 304.5141203857354,
-          "decDeg": -12.544826215893426,
+          "coordinateEpoch": "J2031.7",
+          "raDeg": 304.51413507773253,
+          "decDeg": -12.544825606572031,
           "apparentMagnitude": 3.57,
           "properMotionRaMasYr": 62.61,
           "properMotionDecMasYr": 2.66,
           "bailerJonesDistancePc": {
-            "lower": 33.15436000145484,
-            "median": 33.36440300146406,
-            "upper": 33.551090001472254,
+            "lower": 33.15436000153369,
+            "median": 33.364403001543415,
+            "upper": 33.55109000155205,
             "method": "photogeometric_bailer_jones_edr3"
           },
           "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
           "colorIndexBpRp": 1.1736479
         },
         "inferredDistancePc": {
-          "lower": 33.15436000145484,
-          "median": 33.36440300146406,
-          "upper": 33.551090001472254,
+          "lower": 33.15436000153369,
+          "median": 33.364403001543415,
+          "upper": 33.55109000155205,
           "method": "photogeometric_bailer_jones_edr3"
         },
         "cartesianParsecICRS": [
-          18.453260883828673,
-          -26.83549069024512,
-          -7.2468606866166745
+          18.45326780879584,
+          -26.835486021957117,
+          -7.246860340285498
         ]
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 2,962 arcsec lower, and the pose carries that offset."
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 3,045 arcsec lower, and the pose carries that offset."
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 292.4073180725688,
-      "crvalDecDeg": -45.41027183556745,
+      "crvalRaDeg": 294.05831380202756,
+      "crvalDecDeg": -43.954671181318346,
       "crpixX": 672.0,
       "crpixY": 896.0,
-      "scaleDegPerPx": 0.04236341662060802,
-      "rotationDeg": -39.079431808632,
+      "scaleDegPerPx": 0.04240024579867803,
+      "rotationDeg": -40.95208797272454,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
-      "fovHorizontalDeg": 52.842263845763064,
-      "fovVerticalDeg": 67.04778917238262
+      "fovHorizontalDeg": 52.881955023298765,
+      "fovVerticalDeg": 67.09364432826361
     }
   },
   "horizon_predicted_only": {
@@ -1060,7 +1060,7 @@
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "predicted_only",
-    "observedAtUTC": "2030-11-01T22:32:00Z",
+    "observedAtUTC": "2031-08-30T03:01:00Z",
     "observerLocation": {
       "latDeg": 30.0,
       "lonDeg": -40.0
@@ -1083,13 +1083,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 18.424 AU · Alt +1.5° · Above Horizon",
+        "subtitle": "Predicted Planet · 19.433 AU · Alt +1.1° · Above Horizon",
         "skyPosition": {
-          "raDeg": 81.24564475180148,
-          "decDeg": 23.2782684956807,
-          "uncertaintyArcsec": 134.0322607813228,
-          "altDeg": 1.5010050031862963,
-          "azDeg": 63.77908581171432
+          "raDeg": 86.00440911463527,
+          "decDeg": 23.513199276284404,
+          "uncertaintyArcsec": 127.2067576350946,
+          "altDeg": 1.108589635189006,
+          "azDeg": 63.268699429061044
         },
         "evidence": {
           "id": "ev-finding-predicted-uranus",
@@ -1109,13 +1109,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Saturn (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 8.192 AU · Alt +12.3° · Above Horizon",
+        "subtitle": "Predicted Planet · 9.259 AU · Alt +4.3° · Above Horizon",
         "skyPosition": {
-          "raDeg": 65.59186555566932,
-          "decDeg": 19.420393989022187,
-          "uncertaintyArcsec": 930.6120591121576,
-          "altDeg": 12.272688461188292,
-          "azDeg": 74.41387150088843
+          "raDeg": 80.79273929121504,
+          "decDeg": 21.65962949794677,
+          "uncertaintyArcsec": 821.9488399938678,
+          "altDeg": 4.253397556070398,
+          "azDeg": 67.35967902514284
         },
         "evidence": {
           "id": "ev-finding-predicted-saturn",
@@ -1137,11 +1137,11 @@
         "title": "Moon (Predicted Ephemeris)",
         "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Above Horizon",
         "skyPosition": {
-          "raDeg": 303.2093064286311,
-          "decDeg": -15.614643052079906,
+          "raDeg": 305.7567576461063,
+          "decDeg": -14.425614262700643,
           "uncertaintyArcsec": 1300.0,
-          "altDeg": 32.99874297206753,
-          "azDeg": 221.98524298792546
+          "altDeg": 33.022292605726314,
+          "azDeg": 224.28062158311732
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -1151,7 +1151,7 @@
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
             "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Geocentric: from this place the Moon appears about 2,962 arcsec lower than this position (its horizontal parallax, 3,532 arcsec, times the cosine of its altitude)."
+            "Geocentric: from this place the Moon appears about 3,045 arcsec lower than this position (its horizontal parallax, 3,632 arcsec, times the cosine of its altitude)."
           ],
           "verifiedByIndependentHoldout": false
         }

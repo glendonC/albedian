@@ -516,7 +516,7 @@ describe('@albedian/evidence: detections without a sky position', () => {
     ObservationSolutionSchema.parse({
       id: 'sol_02', sourceAssetId: sourceAsset.id, sourceSha256: sourceAsset.sha256, frameTimeSec: 0, revision: 1, status,
       ...(status === 'approximate' || status === 'predicted_only'
-        ? { observedAtUTC: '2030-11-01T22:32:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 } }
+        ? { observedAtUTC: '2031-08-30T03:01:00Z', observerLocation: { latDeg: 30.0, lonDeg: -40.0 } }
         : {}),
       solver: { name: 'AlbedianTriangleSolver', version: '1.0.0', catalogRelease: '18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)' },
       wcs,
@@ -538,7 +538,7 @@ describe('@albedian/evidence: detections without a sky position', () => {
             expect(records.map((r) => r.kind)).toEqual(['captured']);
             expect(records[0]?.title).toBe(`Sensor Pixel Centroid (${xPx.toFixed(1)}, ${yPx.toFixed(1)}) px`);
             expect(EvidenceRecordSchema.safeParse(records[0]).success).toBe(true);
-            expect(records[0]?.observationTimeUtc).toBe(status === 'predicted_only' ? '2030-11-01T22:32:00Z' : undefined);
+            expect(records[0]?.observationTimeUtc).toBe(status === 'predicted_only' ? '2031-08-30T03:01:00Z' : undefined);
             expect(JSON.stringify(records)).not.toMatch(/RA |Dec |raDeg/);
           }
         ),

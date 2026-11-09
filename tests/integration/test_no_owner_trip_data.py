@@ -14,7 +14,7 @@ tracked text file holds one of these:
   - a Python `datetime(y, m, d, ...)` argument list;
   - a JavaScript `Date.UTC(y, m, ...)` or `new Date(y, m, ...)` argument list (months from 0, read as UTC);
   - a month, day and time of day with no year (`-05-14T09:30`), compared with the clip's in every year.
-- A date within 2 days of one: a bare ISO date, or a date in words (1 November 2030, November 1, 2030, Nov 1 2030).
+- A date within 2 days of one: a bare ISO date, or a date in words (30 August 2031, August 30, 2031, Aug 30 2031).
 Lockfiles are exempt: their digits are package hashes, versions and upload times. A failure names only file:line
 (for a far pair, both lines) and the kind of match, never a value, a distance or a gap.
 
@@ -391,7 +391,7 @@ def tracked_text_files() -> Iterator[tuple[str, str]]:
 
 
 # Synthetic, pointing at nobody: the open North Atlantic, about 1,321 km from Flores in the Azores
-SYNTHETIC = [Capture(place=(30.0, -40.0), time=datetime(2030, 11, 1, 22, 32, tzinfo=timezone.utc))]
+SYNTHETIC = [Capture(place=(30.0, -40.0), time=datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc))]
 OTHER_SYNTHETIC = [Capture(place=(-20.0, 60.0), time=datetime(2031, 3, 5, 4, 10, tzinfo=timezone.utc))]
 
 
@@ -561,8 +561,8 @@ def test_a_planted_date_within_two_days_is_reported_in_every_form_and_one_beyond
 
 
 def test_a_time_with_no_year_is_compared_in_every_year_and_across_new_year() -> None:
-    assert [kind for _, kind in kinds('"-11-02T10:00:00Z"')] == ["time"]
-    assert kinds('"-11-05T10:00:00Z"') == []
+    assert [kind for _, kind in kinds('"-08-31T10:00:00Z"')] == ["time"]
+    assert kinds('"-09-03T10:00:00Z"') == []
     late = [Capture(place=None, time=datetime(2030, 12, 31, 23, 0, tzinfo=timezone.utc))]
     assert [kind for _, kind in kinds('"-01-01T10:00:00Z"', late)] == ["time"]
     # A full ISO date-time is read once, as a time, not again as a time with no year
@@ -570,8 +570,8 @@ def test_a_time_with_no_year_is_compared_in_every_year_and_across_new_year() -> 
 
 
 def test_month_and_year_alone_and_lockfiles_are_not_reported() -> None:
-    assert kinds("released in November 2030") == []
-    assert kinds("2030-11") == []
+    assert kinds("released in August 2031") == []
+    assert kinds("2031-08") == []
     lat, lon = destination(SYNTHETIC[0].place, 100.0, 0.0)
     planted = f"{lat:.4f}, {lon:.4f} {SYNTHETIC[0].time.isoformat()}"
     assert findings("uv.lock", planted, SYNTHETIC) == []

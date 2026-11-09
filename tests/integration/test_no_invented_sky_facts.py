@@ -30,7 +30,7 @@ from services.science import catalog_tiles as ct
 
 TILES = Path(__file__).resolve().parents[2] / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3"
 # A synthetic moment and place that point at nobody (as in test_frontier_upgrades)
-MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "lat_deg": 30.0, "lon_deg": -40.0}
+MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "lat_deg": 30.0, "lon_deg": -40.0}
 # The same moment and place under the API's field names
 ROUTE_MOMENT = {"observedAtUTC": MOMENT["obs_utc_iso"], "latDeg": MOMENT["lat_deg"], "lonDeg": MOMENT["lon_deg"]}
 

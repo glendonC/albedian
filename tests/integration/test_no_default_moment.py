@@ -19,7 +19,7 @@ from services.voice.intent import ActionContext
 
 # A synthetic moment and place that point at nobody: the open North Atlantic, about 1,321 km from Flores
 # in the Azores. The repo's ephemeris puts the Moon at 33.0 degrees altitude, azimuth 222 degrees, then.
-MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 
 def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:

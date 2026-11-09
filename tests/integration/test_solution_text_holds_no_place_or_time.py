@@ -65,8 +65,8 @@ def _free_text(solution: ObservationSolution) -> list[str]:
 
 
 def _names_the_moment_in_words(text: str, moment: datetime, *, any_hour: bool = False) -> bool:
-    """Whether `text` holds the moment's month and day in words with no year ("November 1", "1st of Nov") or its
-    time of day alone ("22:32", "22h32", "10:32 pm"): forms the trip guard's scanner does not read.
+    """Whether `text` holds the moment's month and day in words with no year ("August 30", "30th of Aug") or its
+    time of day alone ("03:01", "03h01", "3:01 am"): forms the trip guard's scanner does not read.
 
     With `any_hour`, a time of day with the moment's minute at any hour counts too, as written in a local time zone
     (the clips' captures are read in UTC); only ":" and "h" separate it then, so a decimal number never counts."""

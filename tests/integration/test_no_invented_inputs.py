@@ -35,7 +35,7 @@ from services.science.wcs_models import CelestialFindingRecord
 
 # Synthetic moments that point at nobody (as in test_no_default_moment)
 MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
-MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOON_MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 ROUTE_MOMENT = {"observedAtUTC": "2030-01-01T02:00:00Z", "latDeg": 30.0, "lonDeg": -40.0}
 
 
@@ -119,7 +119,7 @@ def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatc
     probe = {
         "streams": [{"codec_type": "video", "width": 640, "height": 360, "codec_name": "png"}],
         "format": {
-            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2030-11-01T22:32:00Z"},
+            "tags": {"location": "+30.0000-040.0000/", "com.apple.quicktime.creationdate": "2031-08-30T03:01:00Z"},
         },
     }
     monkeypatch.setattr(discovery, "_probe_media_metadata", lambda path: probe)

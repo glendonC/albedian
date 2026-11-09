@@ -37,7 +37,7 @@ WIDTH, HEIGHT = 960, 540
 # Synthetic moments at a place that points at nobody (the open North Atlantic, about 1,321 km from Flores in
 # the Azores): Orion high on a moonless night, and the Moon at 33 degrees altitude as in test_no_default_moment
 MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
-MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOON_MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 CONTRACT_FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_contract_solutions.json"
 # The SHA-256 the hand-built records below cite: of the words, since they belong to no recording
 RECORD_SHA = hashlib.sha256(b"hand-built test record").hexdigest()

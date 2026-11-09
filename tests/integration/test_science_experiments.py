@@ -56,7 +56,7 @@ from services.science.solver import (
 
 # Synthetic moments, passed explicitly because the solvers have no default place or time. The place points
 # at nobody: the open North Atlantic, about 1,321 km from Flores in the Azores. PLATE_MOMENT has Orion high
-# on a moonless night; MOON_MOMENT has the Moon at 33 degrees altitude, azimuth 222 degrees (repo ephemeris).
+# on a moonless night; MOON_MOMENT has the Moon at 33 degrees altitude, azimuth 224 degrees (repo ephemeris).
 PLATE_MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 
@@ -69,7 +69,7 @@ def _sources(frame: np.ndarray) -> dict[str, str]:
 def _request_sources(frame: np.ndarray) -> dict[str, str]:
     sources = _sources(frame)
     return {"sourceAssetId": sources["source_asset_id"], "sourceSha256": sources["source_sha256"]}
-MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOON_MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 
 def _as_request(moment: dict) -> dict:

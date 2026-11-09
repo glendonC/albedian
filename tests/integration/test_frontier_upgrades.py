@@ -188,7 +188,7 @@ def test_deep_engines_sky_brightness_and_coherent_stack() -> None:
     # 1. Radiometry (`services/science/radiometry.py`)
     # A synthetic moment and place that point at nobody (the open North Atlantic, about 1,321 km from
     # Flores in the Azores), with the Moon at 33 degrees altitude by the repo's ephemeris
-    obs_utc = "2030-11-01T22:32:00Z"
+    obs_utc = "2031-08-30T03:01:00Z"
     obs_lat, obs_lon = 30.0, -40.0
     phase = compute_lunar_phase_and_illumination(obs_utc)
     assert 0.0 <= float(phase["illuminationFraction"]) <= 1.0

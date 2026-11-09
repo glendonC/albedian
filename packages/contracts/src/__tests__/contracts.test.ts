@@ -122,7 +122,7 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
             protectObservedStarPoints: true,
           },
           nodes,
-          createdAtUTC: '2026-10-31T12:00:00Z',
+          createdAtUTC: '2031-02-17T12:00:00Z',
         };
         return graph;
       });
@@ -216,7 +216,7 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
               protectObservedStarPoints: true,
             },
             nodes,
-            createdAtUTC: '2026-10-31T12:00:00Z',
+            createdAtUTC: '2031-02-17T12:00:00Z',
           };
 
           const validation = validateProcessingGraphDAG(graph);
@@ -281,7 +281,7 @@ describe('@albedian/contracts — Domain Schemas & PBT Suite #4 (Processing DAG)
                 preservePointSources: true,
               },
             ],
-            createdAtUTC: '2026-10-31T12:00:00Z',
+            createdAtUTC: '2031-02-17T12:00:00Z',
           });
 
           const keysA = computeNodeCacheKeys(makeGraph(valA));

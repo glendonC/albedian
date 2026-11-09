@@ -46,7 +46,7 @@ BARYCENTRE_TO_GEOCENTRE_KM = 5000.0  # up to 406,700 km / 82.3 (Moon's greatest 
 AU_KM = 149597870.7
 C_AU_PER_DAY = 173.1446326846693
 # A synthetic moment and place that point at nobody (as in test_no_default_moment): the Moon at 33 degrees there
-MOON_MOMENT = {"obs_utc_iso": "2030-11-01T22:32:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
+MOON_MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 
 instant = st.floats(min_value=0.0, max_value=SPAN_S).map(lambda s: START + timedelta(seconds=s))
 
@@ -61,7 +61,7 @@ def _sep_arcsec(u, v) -> float:
 
 
 def test_no_output_names_horizons_or_de440_or_states_a_magnitude() -> None:
-    items = ephemeris.compute_solar_system_ephemerides("2030-11-01T22:32:00Z", 30.0, -40.0, bodies=(*PLANETS, "Moon"))
+    items = ephemeris.compute_solar_system_ephemerides("2031-08-30T03:01:00Z", 30.0, -40.0, bodies=(*PLANETS, "Moon"))
     payloads = [item.to_contract_dict(source_sha256=None) for item in items]
     text = json.dumps(payloads)
     assert "Horizons" not in text and "DE440" not in text and "JPL-" not in text and "sol-ephemeris" not in text
@@ -70,7 +70,7 @@ def test_no_output_names_horizons_or_de440_or_states_a_magnitude() -> None:
         for p in payloads
     )
     response = TestClient(app).post(
-        "/api/science/ephemeris", json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0}
+        "/api/science/ephemeris", json={"observedAtUTC": "2031-08-30T03:01:00Z", "latDeg": 30.0, "lonDeg": -40.0}
     )
     assert response.status_code == 200
     assert (
@@ -83,7 +83,7 @@ def test_no_output_names_horizons_or_de440_or_states_a_magnitude() -> None:
 
 @settings(max_examples=100, deadline=None)
 @given(when=instant, body=st.sampled_from(PLANETS))
-@example(when=datetime(2030, 11, 1, 22, 32, tzinfo=timezone.utc), body="Jupiter")
+@example(when=datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc), body="Jupiter")
 @example(when=datetime(2026, 10, 1, tzinfo=timezone.utc), body="Venus")
 def test_pbt_planet_uncertainty_covers_the_published_error_and_the_omitted_light_time(when: datetime, body: str) -> None:
     (item,) = ephemeris.compute_solar_system_ephemerides(_iso(when), 0.0, 0.0, bodies=(body,))
@@ -119,7 +119,7 @@ def test_pbt_planet_uncertainty_covers_the_published_error_and_the_omitted_light
 
 @settings(max_examples=100, deadline=None)
 @given(when=instant)
-@example(when=datetime(2030, 11, 1, 22, 32, tzinfo=timezone.utc))
+@example(when=datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc))
 def test_pbt_moon_bounds_cover_its_error_and_it_says_it_is_geocentric(when: datetime) -> None:
     (moon,) = ephemeris.compute_solar_system_ephemerides(_iso(when), 30.0, -40.0, bodies=("Moon",))
     jd_utc = am.julian_date(when)
@@ -151,7 +151,7 @@ def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date(
     assert not any("QuickTime" in limitation for f in sol.findings for limitation in f.limitations)
     assert any("geocentric" in warning.lower() for warning in sol.warnings)
     # Every predicted star sits where its proper motion has carried it by the date, not at its J2000 position
-    year = 2030.0 + (datetime(2030, 11, 1, 22, 32, tzinfo=timezone.utc) - datetime(2030, 1, 1, tzinfo=timezone.utc)).days / 365.25
+    year = 2031.0 + (datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc) - datetime(2031, 1, 1, tzinfo=timezone.utc)).days / 365.25
     by_id = {f.id: f for f in sol.findings}
     checked, largest_motion = 0, 0.0
     for star in get_all_sky_catalog_stars():
@@ -168,7 +168,7 @@ def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date(
 
 def test_sky_context_sends_no_fixed_magnitude() -> None:
     response = TestClient(app).post(
-        "/api/science/sky-context", json={"observedAtUTC": "2030-11-01T22:32:00Z", "latDeg": 30.0, "lonDeg": -40.0}
+        "/api/science/sky-context", json={"observedAtUTC": "2031-08-30T03:01:00Z", "latDeg": 30.0, "lonDeg": -40.0}
     )
     assert response.status_code == 200
     assert all("apparentMagnitude" not in body for body in response.json()["ephemerides"])
