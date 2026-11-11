@@ -60,9 +60,41 @@ Every landing ran all six gates on the lane commit through `.lead/locked_gates.z
 a scratch worktree (`.lead/kiro/land_batch.zsh`), and landed only when main's tree equalled the scratch tree.
 
 ### Spec
-- `.kiro/specs/ios-capture-companion/requirements.md` (a draft in the lead's working tree, not committed, waiting
-  for the owner's yes): a native iOS app for aiming and capture that records where the phone pointed as a solver
-  hint, never as evidence, with property tests derived from the requirements.
+- `.kiro/specs/ios-capture-companion/requirements.md` (a draft, committed 2026-11-11, still waiting for the owner's
+  yes): a native iOS app for aiming and capture that records where the phone pointed as a solver hint, never as
+  evidence, with property tests derived from the requirements.
+
+## What Kiro did (2026-11-10 evening to 2026-11-11)
+
+After the owner decided that every photo or clip must get a sky, visible stars or not, Kiro wrote a spec and built
+it with sub-agents, each unit in its own worktree, tests first, audited by a fresh `albedian-auditor`.
+
+### Spec: `.kiro/specs/predicted-sky-for-every-upload/`
+- `requirements.md` (REQ-SKY-1 to 7, with properties P-SKY-1 to 9 derived from them), `design.md` and `tasks.md`,
+  written by the Kiro lead from three Kiro `context-gatherer` analyses of the upload path, the horizon solver and the
+  solution contract, and the web display.
+- The three layers: the sky predicted for the file's time and place (`predicted`); the predicted sky lined up over
+  the photo from an approximate pose with its uncertainty (`predicted`, solution `approximate`); exact
+  `catalog_matched` only through the unchanged held-out verification.
+
+### Units
+| Unit | Written by | Audits | State |
+|---|---|---|---|
+| sky-2, predicted sky for every upload with a recorded time and place | Kiro builder agent | PASS | landed `eeab4d15` |
+| sky-1, the pose estimate contract (TS and Python) | Kiro builder, then a Kiro fix agent | FAIL, PASS | landed `cd10d044` |
+| sky-3, the head-worn Moon pose | Kiro builder, amended three times on the lead's decisions | not yet | branch `kiro/sky` |
+| sky-5, the web display of the layers | Kiro builder, then Kiro fix agents | FAIL | branch `kiro/sky-web`, fixed, re-audit next |
+| solver-10k, tile catalog in the triangle search | Kiro builder, then Kiro fix agents | FAIL, FAIL | split: the tile pass kept for 10k-b |
+| solver-10k-a, the pinned search made fast | Kiro fix agent | FAIL (non-finite input crash, a timing flake) | fixed on branch `claude/lane-solver-bf963f`, re-audit next |
+
+- What the auditors caught: a calibrated tile-pass solution naming stars 62 to 80 deg outside the field, through
+  radial terms that folded over (solver-10k); then wrong stars inside the field from fits pushed to the distortion
+  bound (solver-10k v3); a catalog-backed predicted finding with a pixel detection that no test would have refused
+  (sky-1); a clip gate keyed on a clock the stage never followed, and "too few stars" said of photos with many
+  (sky-5); a NaN detection that crashed the fast search where main returned a solution (solver-10k-a).
+- The real case, the owner's newest head-worn clip, counts only: before, `unresolved` with 146 pixel-only
+  detections; with sky-2 on main, `predicted_only` with 65 predicted findings; with sky-3 (not yet landed),
+  `approximate`, lined up from the Moon 3.30 s into the clip, within about 9 degrees near the Moon.
 
 ### Not done yet
 - Steering that carries the owner's rules (no trip data, no dashes, commit conventions), hooks for the checks
