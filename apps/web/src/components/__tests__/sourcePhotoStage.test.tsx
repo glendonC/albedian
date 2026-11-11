@@ -645,12 +645,14 @@ describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () =
 });
 
 describe('auditor fixes on the stage (experience-9e)', () => {
-  it('seeks a clip to the solved frame again when the source view comes back', () => {
+  it('seeks a clip to the session clock again when the source view comes back', () => {
+    // The builders open a clip with the clock on the solved frame (apiClient.ts); the stage shows the clock's frame
     const base = uploadedPhotoSession();
     const clip = {
       ...base,
       sourceAsset: { ...base.sourceAsset!, mediaKind: 'video', mimeType: 'video/mp4', durationMs: 12000 },
       observationSolution: { ...base.observationSolution!, frameTimeSec: 4.5 },
+      currentSourceTimeSec: 4.5,
     } as ObservationSession;
     const away = { ...clip, spatialView: { ...clip.spatialView, mode: 'catalog_3d' } } as ObservationSession;
     const show = (session: ObservationSession) =>
@@ -668,10 +670,13 @@ describe('auditor fixes on the stage (experience-9e)', () => {
     show(clip);
     const loaded = loadedVideo();
     expect(loaded.currentTime).toBe(4.5);
-    // A new solve of the same clip on another frame moves the loaded clip there too (experience-9h)
+    // A new solve of the same clip on another frame opens with the clock there, and the loaded clip moves too
+    // (experience-9h); so does a seek
     Object.defineProperty(loaded, 'readyState', { value: 1, configurable: true });
-    show({ ...clip, observationSolution: { ...clip.observationSolution!, frameTimeSec: 7.25 } } as ObservationSession);
+    show({ ...clip, observationSolution: { ...clip.observationSolution!, frameTimeSec: 7.25 }, currentSourceTimeSec: 7.25 } as ObservationSession);
     expect(loaded.currentTime).toBe(7.25);
+    show({ ...clip, currentSourceTimeSec: 9 } as ObservationSession);
+    expect(loaded.currentTime).toBe(9);
     show(away);
     expect(container.querySelector('[data-testid="source-photo-stage"] video')).toBeNull();
     // Back in the source view the clip is a new element, which must land on the solved frame too

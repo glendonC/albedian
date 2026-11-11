@@ -13,6 +13,7 @@ import {
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
 import { raDecToUnitVector } from '@albedian/camera-rig';
+import { skyLayerSentence, type SkyAssetFacts } from './skyLayerWords.js';
 
 export interface MediaAssetUrls {
   origUrl: string;
@@ -133,6 +134,41 @@ function calibrationStateForSolution(status: SolutionStatus): CalibrationMachine
 }
 
 /**
+ * A solved session as it opens. A clip opens paused with the session's clock on the frame its sky was solved on, so
+ * the stage shows that frame (SourcePhotoStage seeks to the clock), the anchor Back to Moment returns to is that
+ * frame, and the clip time gate of the markers reads it (P-SKY-9). An approximate or predicted_only solution turns
+ * the predicted layer on (REQ-SKY-6.2, 6.5).
+ */
+function openedAtSolvedFrame(session: ObservationSession, solution: ObservationSolution): ObservationSession {
+  const timeSec = session.sourceAsset?.mediaKind === 'video' ? solution.frameTimeSec : session.currentSourceTimeSec;
+  const predictedOn = solution.status === 'approximate' || solution.status === 'predicted_only';
+  const spatialView = predictedOn
+    ? {
+        ...session.spatialView,
+        activeOverlays: { ...session.spatialView.activeOverlays, predictedEphemerides: true },
+      }
+    : session.spatialView;
+  const history = session.navigationHistory;
+  const anchorId = history.anchorMomentCheckpoint.id;
+  const anchor = {
+    ...history.anchorMomentCheckpoint,
+    sourceTimeSec: timeSec,
+    playbackWasPlaying: session.isPlaying,
+    spatialView: structuredClone(spatialView),
+  };
+  return {
+    ...session,
+    currentSourceTimeSec: timeSec,
+    spatialView,
+    navigationHistory: {
+      ...history,
+      anchorMomentCheckpoint: anchor,
+      checkpoints: history.checkpoints.map((checkpoint) => (checkpoint.id === anchorId ? anchor : checkpoint)),
+    },
+  };
+}
+
+/**
  * Query the Python FastAPI backend (`GET /api/media/discover`) for any media files
  * dynamically present in `data/uploads/`. Returns an empty list when the backend is unavailable.
  * The kind, and a clip's frame rate and duration, are taken as discovery probed them: an item
@@ -241,23 +277,29 @@ export function buildSessionFromDiscoveredMedia(item: DiscoveredMediaItem): Obse
 
   const findings = withDerivedCartesianCoords(item.solution.findings);
 
-  return {
-    ...session,
-    title: item.title,
-    machines: { ...session.machines, calibration: calibrationStateForSolution(item.solution.status) },
-    observationSolution: { ...item.solution, findings },
-    lastStatusBanner: `Loaded "${item.filename}" (${shaLabel}). Sky solution: ${item.solution.status}.`,
-  };
+  return openedAtSolvedFrame(
+    {
+      ...session,
+      title: item.title,
+      machines: { ...session.machines, calibration: calibrationStateForSolution(item.solution.status) },
+      observationSolution: { ...item.solution, findings },
+      lastStatusBanner: `Loaded "${item.filename}" (${shaLabel}). ${skyLayerSentence(item.solution, session.sourceAsset)}`,
+    },
+    item.solution
+  );
 }
 
 /**
  * Format a `SolveJob`'s stage progress using its real work denominators (`done/total unit`),
- * or elapsed state when `total` is `null`, without inventing percentages.
+ * or elapsed state when `total` is `null`, without inventing percentages. Once the job ends, the
+ * banner says in plain words which layer the sky is, or why there is none (skyLayerWords.ts),
+ * from the solution and the recording's own facts.
  */
 export function formatSolveJobProgressBanner(
   filename: string,
   job: SolveJob,
-  solution?: ObservationSolution
+  solution?: ObservationSolution,
+  asset?: SkyAssetFacts
 ): string {
   const parsedJob = SolveJobSchema.parse(job);
   const stageParts = parsedJob.stages.map((entry) =>
@@ -267,10 +309,12 @@ export function formatSolveJobProgressBanner(
   );
   const stageSummary = stageParts.join(' · ');
   if (parsedJob.state === 'failed') {
-    return `Solve job ${parsedJob.id} failed for "${filename}": ${parsedJob.error ?? 'unknown error'} (${stageSummary}).`;
+    const stopped = skyLayerSentence(solution, asset, parsedJob).replace(/\.$/, '');
+    const reason = (parsedJob.error ?? 'the server gave no reason').replace(/\.$/, '');
+    return `Stored "${filename}" (${parsedJob.id}, ${stageSummary}). ${stopped}: ${reason}.`;
   }
   if (solution) {
-    return `Loaded "${filename}" (${parsedJob.id}, ${stageSummary}). Sky solution: ${solution.status}.`;
+    return `Loaded "${filename}" (${parsedJob.id}, ${stageSummary}). ${skyLayerSentence(solution, asset)}`;
   }
   return `Solving "${filename}" (${parsedJob.id}, ${parsedJob.state}): ${stageSummary}.`;
 }
@@ -304,7 +348,7 @@ export function buildSessionFromIngestReceipt(
         status: 'unresolved',
         warnings: [parsedJob.error ?? 'Solve job failed.'],
       },
-      lastStatusBanner: formatSolveJobProgressBanner(asset.title, parsedJob),
+      lastStatusBanner: formatSolveJobProgressBanner(asset.title, parsedJob, undefined, asset),
     });
   }
 
@@ -323,18 +367,23 @@ export function buildSessionFromIngestReceipt(
   const findings = withDerivedCartesianCoords(parsedSolution.findings);
   const shaLabel = `SHA-256 ${asset.sha256.slice(0, 12)}…`;
 
-  return ObservationSessionSchema.parse({
-    ...baseSession,
-    machines: {
-      ...baseSession.machines,
-      media: 'ready',
-      calibration: calibrationStateForSolution(parsedSolution.status),
-    },
-    observationSolution: { ...parsedSolution, findings },
-    lastStatusBanner: parsedJob
-      ? formatSolveJobProgressBanner(asset.title, parsedJob, parsedSolution)
-      : `Loaded "${asset.title}" (${shaLabel}). Sky solution: ${parsedSolution.status}.`,
-  });
+  return ObservationSessionSchema.parse(
+    openedAtSolvedFrame(
+      {
+        ...baseSession,
+        machines: {
+          ...baseSession.machines,
+          media: 'ready',
+          calibration: calibrationStateForSolution(parsedSolution.status),
+        },
+        observationSolution: { ...parsedSolution, findings },
+        lastStatusBanner: parsedJob
+          ? formatSolveJobProgressBanner(asset.title, parsedJob, parsedSolution, asset)
+          : `Loaded "${asset.title}" (${shaLabel}). ${skyLayerSentence(parsedSolution, asset)}`,
+      },
+      parsedSolution
+    )
+  );
 }
 
 /**

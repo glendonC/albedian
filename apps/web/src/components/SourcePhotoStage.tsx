@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
+import { goToMomentSentence, poseBasisSentence, poseUncertaintySentence } from '../services/skyLayerWords.js';
+import { linedUpSky } from './poseProjection.js';
 import {
   decodedFrameMatches,
   isSourcePhotoShown,
@@ -44,20 +46,23 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const asset = session.sourceAsset;
-  const frameTimeSec = session.observationSolution?.frameTimeSec ?? 0;
+  const clockSec = session.currentSourceTimeSec;
 
   const shown = asset !== undefined && isSourcePhotoShown(session);
-  const seekToSolvedFrame = (video: HTMLVideoElement) => {
-    if (Number.isFinite(frameTimeSec) && frameTimeSec >= 0) video.currentTime = frameTimeSec;
+  const seekToClock = (video: HTMLVideoElement) => {
+    if (Number.isFinite(clockSec) && clockSec >= 0) video.currentTime = clockSec;
   };
 
-  // A clip shows the frame the sky was solved on. Each video element seeks when its own metadata
-  // loads (onLoadedMetadata below), so a clip that leaves the source view and comes back lands on
-  // that frame again; one already loaded seeks here when the solved frame changes.
+  // A clip shows the frame the session's clock names, the one every marker's time gate reads
+  // (poseProjection.ts shownAtFrame). The builders open a clip with the clock on the solved frame
+  // (apiClient.ts); a seek by voice or the command box (media.seek) and Back to Moment set it. Each
+  // video element seeks when its own metadata loads (onLoadedMetadata below), so a clip that leaves
+  // the source view and comes back lands on the clock's frame again; one already loaded seeks here
+  // when the clock changes.
   useEffect(() => {
     const video = videoRef.current;
-    if (video && video.readyState >= 1) seekToSolvedFrame(video);
-  }, [asset?.uri, frameTimeSec, shown]);
+    if (video && video.readyState >= 1) seekToClock(video);
+  }, [asset?.uri, clockSec, shown]);
 
   if (!asset || !shown) return null;
 
@@ -92,6 +97,10 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   const failed = failedUri === asset.uri;
   const kind = asset.mediaKind === 'video' ? 'clip' : 'photo';
   const badge = getEpistemicBadgeDescriptor('observed');
+  // The predicted sky lined up by a pose (poseProjection.ts): drawn now, waiting for the clip to go to its
+  // frame, or not there. The markers are hidden over a mismatched frame, so nothing is said about them then
+  const linedUp = mismatched ? { kind: 'none' as const } : linedUpSky(session);
+  const predictedBadge = getEpistemicBadgeDescriptor('predicted');
 
   return (
     <div
@@ -138,7 +147,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
           style={mediaStyle}
           onError={() => setFailedUri(asset.uri)}
           onLoadedMetadata={(e) => {
-            seekToSolvedFrame(e.currentTarget);
+            seekToClock(e.currentTarget);
             reportDecodedSize(e.currentTarget.videoWidth, e.currentTarget.videoHeight);
           }}
         />
@@ -193,11 +202,38 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
         </span>
         <p className="alb-layer-credits">
           {failed
-            ? 'Each marker sits where its star was measured in the stored file.'
+            ? linedUp.kind === 'shown'
+              ? 'Each solid marker sits where its star was measured in the stored file; the dashed ones are drawn by the app.'
+              : 'Each marker sits where its star was measured in the stored file.'
             : mismatched
               ? 'Not enhanced or retouched. The markers are hidden because this view disagrees with the orientation tag.'
-              : 'Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.'}
+              : linedUp.kind === 'shown'
+                ? 'Shown as uploaded: not enhanced or retouched. Each solid marker sits on the pixel it was measured at; the dashed ones are drawn by the app.'
+                : 'Shown as uploaded: not enhanced or retouched. Each marker sits on the pixel it was measured at.'}
         </p>
+        {linedUp.kind === 'shown' && (
+          <p
+            className="alb-layer-credits"
+            data-testid="lined-up-sky-disclosure"
+            data-evidence-class="predicted"
+            role="note"
+          >
+            <span title={predictedBadge.label} style={{ fontFamily: 'var(--alb-font-mono)' }}>
+              {predictedBadge.shortCode}
+            </span>{' '}
+            · {poseBasisSentence(linedUp.pose, asset.mediaKind)} {poseUncertaintySentence(linedUp.pose)}
+          </p>
+        )}
+        {linedUp.kind === 'go_to' && (
+          <p
+            className="alb-layer-credits"
+            data-testid="lined-up-sky-go-to"
+            role="status"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {goToMomentSentence(linedUp.frameTimeSec)}
+          </p>
+        )}
       </div>
     </div>
   );
