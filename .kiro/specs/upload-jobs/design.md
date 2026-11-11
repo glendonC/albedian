@@ -271,13 +271,27 @@ and calls `runner.start`. [proposed: POST for cancel because the API allows only
 what conflicts; one job read route and one cancel route for every kind, so the web follows every job one way.]
 
 ### 3.7 Body limits (`services/api.py`)
-- One ASGI middleware, outermost after the host check, with a table from route to limit: the upload route keeps its
-  own caps (store.py:31-32) and is skipped here; routes with no body allow 0 bytes; every other route has a limit
-  set from the largest real body measured on its tests and the web's calls, times 4 [proposed: room for real growth
-  while still far below memory trouble; the measured sizes go in the unit's report], with a default of 1 MiB for a
-  route not in the table [open until measured]. The restoration's `RestoreRequest` route gets its row when it lands.
-  It counts bytes as they arrive, so a chunked body without `Content-Length` is caught, and answers 413 with "The
-  request body is larger than the N-byte limit for this route."
+- One ASGI middleware, `BodyLimit`, with a table `BODY_LIMITS` from path template to limit, in the order the app
+  matches them, first match first: the upload route keeps its own caps (store.py:31-32) and is skipped here; routes
+  with no body allow 0 bytes; every other route takes 4 times the largest real body measured on its tests and the
+  web's calls [proposed: room for real growth while still far below memory trouble; the measured sizes stand beside
+  each row and in platform-2's report]. When that is 64 KiB or less, the limit is 64 KiB [tested in platform-2:
+  uvicorn reads up to 64 KiB of a body before it stops reading the socket (`HIGH_WATER_LIMIT`,
+  uvicorn/protocols/http/flow_control.py), so a lower limit saves no memory]; when it is more, it is rounded up to
+  a whole MiB [proposed: readable round numbers]. A test computes every row from the measured sizes by this rule
+  [tested in platform-2 v2]. There is no default: `create_app` refuses to build when a route has no row or a row
+  has no route, and a request no route serves may send no body [tested in platform-2]. The restoration's
+  `RestoreRequest` route gets its row when it lands.
+- It refuses a declared `Content-Length` over the limit before the route runs, and counts bytes as they arrive, so
+  a body with no `Content-Length`, a false one or chunked transfer is caught at the first piece that passes; that
+  piece is never handed on (the route gets a disconnect, and its own answer to the cut body is dropped). A route
+  with a 0-byte limit never reads a body, so for it the middleware reads ahead until the body ends or its first
+  byte arrives, before the route runs. It answers 413 with "The request body is larger than the N-byte limit for
+  this route." [tested in platform-2] Only the route's error over the body it cut is dropped; any other route
+  error goes on to the server, which logs it with its traceback and answers 500 [tested in platform-2 v2].
+- It sits inside CORS and the foreign-origin guard, not outermost after the host check as first proposed
+  [tested in platform-2: CORS adds its headers to the 413 only from outside, so the web page can read the sentence;
+  the guard answers 403 without reading a body].
 - `tests/fixtures/api_surface.json` pins the middleware stack and the routes, so the unit regenerates it
   (`ALBEDIAN_UPDATE_API_SURFACE=1`, `tests/integration/test_api_surface.py`) and the diff is the review.
 

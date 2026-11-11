@@ -266,7 +266,5 @@ The spec was accepted as the plan with seven rulings. Each is written in where i
 ## What is open
 - [open] The solve kind's whole-job bound: its step bounds sum to 300 s, but detection, stacking and the predicted sky
   run in the server process untimed. Set in platform-5 from measured real-case durations.
-- [open] The body limit for a route not in the table (1 MiB proposed) until each route's largest real body is
-  measured in platform-2.
 - [open] Whether a solve slows enough beside a running restoration to need one slot for both groups; measured in
   platform-5 once the restoration exists.

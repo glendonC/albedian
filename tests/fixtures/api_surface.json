@@ -1237,6 +1237,33 @@
           "http://127.0.0.1:5173"
         ]
       }
+    },
+    {
+      "class": "services.api.BodyLimit",
+      "args": [],
+      "kwargs": {
+        "limits": {
+          "/openapi.json": 0,
+          "/docs": 0,
+          "/docs/oauth2-redirect": 0,
+          "/redoc": 0,
+          "/api/health": 0,
+          "/api/science/sky-context": 65536,
+          "/api/science/radiometry-audit": 65536,
+          "/api/science/solve": 17825792,
+          "/api/science/solve-horizon": 4194304,
+          "/api/science/ephemeris": 65536,
+          "/api/media/discover": 0,
+          "/api/media/restore": 5242880,
+          "/api/voice/command": 65536,
+          "/api/ingest": null,
+          "/api/ingest/{sha256}": 0,
+          "/api/ingest/{sha256}/original": 0,
+          "/api/ingest/{sha256}/solve": 0,
+          "/api/ingest/jobs/{job_id}": 0,
+          "/api/ingest/{sha256}/solution": 0
+        }
+      }
     }
   ],
   "responses": {
@@ -1473,6 +1500,26 @@
       "status": 400,
       "headers": {},
       "body": "Invalid host header"
+    },
+    "a body on a route that takes none": {
+      "request": "POST /api/ingest/0000000000000000000000000000000000000000000000000000000000000000/solve",
+      "status": 413,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "The request body is larger than the 0-byte limit for this route."
+      }
+    },
+    "a body over its route's limit": {
+      "request": "POST /api/voice/command",
+      "status": 413,
+      "headers": {
+        "vary": "Origin"
+      },
+      "body": {
+        "detail": "The request body is larger than the 65536-byte limit for this route."
+      }
     }
   }
 }

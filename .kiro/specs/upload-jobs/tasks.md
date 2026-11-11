@@ -16,7 +16,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - Beside the sky, solver, catalog and ephemeris lanes, and beside tasks 2 and 3.
   - _Requirements: REQ-JOB-2.2, 2.4, 2.6, 3.2, 3.7, 4.2, 5.8, 6.1_
 
-- [ ] 2. platform-2: one body limit table for every route (REQ-JOB-8; P-JOB-10)
+- [x] 2. platform-2: one body limit table for every route (REQ-JOB-8; P-JOB-10)
   - The limit middleware and its table in `services/api.py` (3.7); `tests/integration/test_body_limits.py`;
     `tests/fixtures/api_surface.json` regenerated (`ALBEDIAN_UPDATE_API_SURFACE=1`).
   - Measures the largest real body of each route from its tests and the web's calls and reports them; the limits
@@ -73,7 +73,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   restoration spec's lines that must change first are listed in `design.md` section 7.
 
 ## Order
-- Now: task 2. After contracts-1 and restore-1: task 1. After sky-3: task 3. Then 4, 5, 6 in order; 7 after the web.
+- Done: task 2. After contracts-1 and restore-1: task 1. After sky-3: task 3. Then 4, 5, 6 in order; 7 after the web.
 - Also queued for this lane, outside this spec: the capture time from a photo's GPS time stamp when the EXIF offset
   tag is missing (`services/ingest/metadata.py`, `services/ingest/router.py` `_asset`), after sky-3 lands; beside
   tasks 1 and 2.

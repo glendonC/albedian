@@ -58,6 +58,8 @@ PINNED_REQUESTS: list[tuple[str, str, str, dict[str, Any], int]] = [
     ("CORS preflight from a foreign origin", "OPTIONS", "/api/science/solve", {"headers": FOREIGN_PREFLIGHT}, 400),
     ("POST from a foreign origin", "POST", "/api/science/solve", {"headers": FOREIGN_ORIGIN, "json": MOMENT}, 403),
     ("a Host that does not name this machine", "GET", "/api/health", {"headers": {"Host": "evil.example"}}, 400),
+    ("a body on a route that takes none", "POST", f"/api/ingest/{'0' * 64}/solve", {"content": b"{}"}, 413),
+    ("a body over its route's limit", "POST", "/api/voice/command", {"content": b"x" * (64 * 1024 + 1)}, 413),
 ]
 PINNED_HEADERS = (
     "access-control-allow-credentials",
