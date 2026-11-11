@@ -947,21 +947,20 @@ def test_a_request_no_action_matches_is_a_question_nothing_answers_yet() -> None
     reply = _reply("hello there", BARE)
     assert (reply["status"], reply["reason"]) == ("rejected", "no_grounded_answer")
     assert "proposedAction" not in reply
-    assert parse_voice_intent("hello there", BARE, current_year=YEAR).action == {
-        "type": "question.ask", "requestId": reply["actionId"], "expectedViewRevision": 4, "question": "hello there",
-    }
+    # Each request carries its own id (tests/integration/test_voice_named_targets.py), so each is read on its own
     with_selected = {**BARE, "selectedFindingId": "finding-star-vega"}
-    assert parse_voice_intent("hello there", with_selected, current_year=YEAR).action == {
-        "type": "question.ask", "requestId": reply["actionId"], "expectedViewRevision": 4, "question": "hello there",
-    }
-    assert parse_voice_intent("that one", with_selected, current_year=YEAR).action == {
-        "type": "finding.select", "requestId": reply["actionId"], "expectedViewRevision": 4,
-        "findingId": "finding-star-vega",
-    }
-    assert parse_voice_intent("this one", with_selected, current_year=YEAR).action == {
-        "type": "finding.select", "requestId": reply["actionId"], "expectedViewRevision": 4,
-        "findingId": "finding-star-vega",
-    }
+    for context in (BARE, with_selected):
+        asked = parse_voice_intent("hello there", context, current_year=YEAR)
+        assert asked.action == {
+            "type": "question.ask", "requestId": asked.request_id, "expectedViewRevision": 4,
+            "question": "hello there",
+        }
+    for pointing in ("that one", "this one"):
+        selected = parse_voice_intent(pointing, with_selected, current_year=YEAR)
+        assert selected.action == {
+            "type": "finding.select", "requestId": selected.request_id, "expectedViewRevision": 4,
+            "findingId": "finding-star-vega",
+        }
 
 
 @pytest.mark.parametrize(

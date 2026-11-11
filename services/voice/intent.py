@@ -7,6 +7,12 @@ back "proposed", as the validated action, for the app's reducer to apply; a requ
 an action these checks refuse, comes back as a rejected or needs_input outcome with no action in it, and an
 action that fails the contract is refused as invalid_action with its issues, never its values. Every reply to
 a request parsed here names who interpreted it, as the contract's ActionInterpretation.
+
+The rules read a request as being about what it names. Every word of it must be read: a word the rules do not
+know may be a name no table holds, so the request is refused in plain words, as a word that was not understood,
+whatever else it names. What is pointed at, selected or focused is taken only when the request points at it or
+names nothing at all (`_target`); packages/observation/src/voiceParser.ts reads the same way, on the same words
+(tests/integration/test_voice_named_targets.py). The backend holds no photo, so it never says what a sky lacks.
 """
 
 from __future__ import annotations
@@ -15,7 +21,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import logging
 import re
-from typing import Any
+from typing import Any, Literal
+import uuid
 
 from services.contracts.voice import (
     ALBEDIAN_ACTION,
@@ -44,11 +51,15 @@ from services.voice.claude import (
     propose_action_with_claude,
 )
 from services.voice.names import (
+    EVERYDAY_WORD_NAMES,
     JAVASCRIPT_SPACE,
+    find_names,
     name_pattern,
     names_southern_cross,
+    read_wording,
     southern_cross_stars,
     spoken_names,
+    star_name_table,
     unbaked_object,
     unbaked_refusal,
     whole_word,
@@ -56,7 +67,12 @@ from services.voice.names import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_REQUEST_ID = "req-voice-1"
+
+def new_request_id() -> str:
+    """An id of its own for one request: no two requests share one."""
+    return f"req-{uuid.uuid4().hex}"
+
+
 # What the reducer answers for each action the app cannot do yet (packages/observation/src/reducer.ts)
 NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
     "ui.overlay": ("not_connected", "Voice cannot do this in the app yet."),
@@ -74,15 +90,54 @@ NOT_IN_THE_APP_YET: dict[str, tuple[str, str]] = {
 UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate", "invent star")
 
 
-# Every star name the pinned catalog and the baked IAU name table hold (services/voice/names.py), then the
-# ephemeris bodies; longest first so "Deneb Algedi" wins over "Deneb" and "Alpha Centauri" over nothing shorter
+# Every star name the pinned catalog and the baked IAU name table hold (services/voice/names.py)
 _STAR_NAMES: dict[str, str] = {star.common_name.lower(): f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
 for _spoken, _finding_id in spoken_names():
     _STAR_NAMES.setdefault(_spoken, _finding_id)
-_NAMED_FINDINGS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
-    (name_pattern(name), finding_id)
-    for name, finding_id in sorted(_STAR_NAMES.items(), key=lambda item: len(item[0]), reverse=True)
-) + tuple((whole_word(body), f"finding-predicted-{body}") for body in PREDICTED_BODY_KEYS)
+
+
+@dataclass(frozen=True)
+class _Named:
+    """One thing a request can name: the record a solved sky gives it, the record a predicted sky gives it where
+    that differs, and the name to show."""
+
+    finding_id: str
+    predicted_id: str | None
+    label: str
+
+
+# A sky that is predicted, not solved (the app sends an unverified pose as predicted_only too), holds a pinned
+# star as finding-predicted-<its catalog id> (services/science/predicted_sky.py); a solved sky holds the matched
+# star as finding-<its catalog id>. Only the pinned stars are ever predicted.
+_PREDICTED_SKY_STATES = ("predicted_only", "approximate")
+_PREDICTED_STAR_IDS = {f"finding-{star.id}": f"finding-predicted-{star.id}" for star in ALL_SKY_CATALOG_STARS}
+_SHOWN_NAMES = {spoken: shown for spoken, _id, shown in star_name_table()}
+# Every star name, then the bodies the ephemeris predicts; the longest name first, so "Deneb Algedi" is read
+# before "Deneb" and "Algedi"
+_NAME_TABLE: tuple[tuple[re.Pattern[str], _Named], ...] = tuple(
+    (pattern, named)
+    for _spoken, pattern, named in sorted(
+        [
+            (name, name_pattern(name), _Named(finding_id, _PREDICTED_STAR_IDS.get(finding_id), _SHOWN_NAMES[name]))
+            for name, finding_id in _STAR_NAMES.items()
+        ]
+        + [
+            (body, whole_word(body), _Named(f"finding-predicted-{body}", None, body.capitalize()))
+            for body in PREDICTED_BODY_KEYS
+        ],
+        key=lambda row: (-len(row[0]), row[0]),
+    )
+)
+
+
+# A star name that is also an everyday word, as a whole word with no cue: read as a name only beside another name
+_EVERYDAY_BARE_TABLE: tuple[tuple[re.Pattern[str], _Named], ...] = tuple(
+    (
+        whole_word(name),
+        _Named(_STAR_NAMES[name], _PREDICTED_STAR_IDS.get(_STAR_NAMES[name]), _SHOWN_NAMES[name]),
+    )
+    for name in sorted(EVERYDAY_WORD_NAMES, key=lambda name: (-len(name), name))
+)
 
 
 @dataclass(frozen=True)
@@ -198,6 +253,8 @@ class VoiceIntent:
     interpretation: dict[str, str]
     reason: str | None = None
     explanation: str | None = None
+    # The things to choose between when the request names several: then `explanation` is the question
+    choices: tuple[dict[str, str], ...] = ()
 
 
 def _rules_intent(
@@ -205,25 +262,43 @@ def _rules_intent(
     action: dict[str, Any] | None,
     reason: str | None = None,
     explanation: str | None = None,
+    choices: tuple[dict[str, str], ...] = (),
 ) -> VoiceIntent:
-    return VoiceIntent(request_id, action, {"parser": "rules"}, reason, explanation)
+    return VoiceIntent(request_id, action, {"parser": "rules"}, reason, explanation, choices)
 
 
-def _named_finding_id(utterance: str) -> str | None:
-    """The catalog star or predicted body the utterance names as a whole word, if any."""
-    lower = utterance.lower()
-    return next((finding_id for pattern, finding_id in _NAMED_FINDINGS if pattern.search(lower)), None)
+def _said(lower_text: str) -> tuple[list[_Named], str]:
+    """Each different thing the text names, in the order said, and the text with those names cut out.
+
+    A request that names something is read for every name it may say: beside another name, a star name that is
+    also an everyday word is a name without its cue ("how far is Rigel from Ran?"), so it is never dropped, as a
+    word that only describes, for the name beside it. With no other name it stays an everyday word."""
+    found, without_names = find_names(lower_text, _NAME_TABLE)
+    if found:
+        bare, without_names = find_names(without_names, _EVERYDAY_BARE_TABLE)
+        if bare:
+            found = sorted(found + bare, key=lambda hit: hit[0])
+    different: list[_Named] = []
+    for _start, named in found:
+        if all(named.finding_id != seen.finding_id for seen in different):
+            different.append(named)
+    return different, without_names
 
 
-def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | None:
-    """The object the utterance names, else the one pointed at, selected or focused, else None.
+def _names_something(utterance: str) -> bool:
+    """True when the utterance names a catalog star or a predicted body."""
+    return bool(_said(utterance.lower())[0])
 
-    Nothing else stands in: a request naming an object neither the catalog nor the ephemeris holds,
-    with nothing in view, has no target.
-    """
-    named = _named_finding_id(utterance)
-    if named is not None:
-        return named
+
+def _record_id(named: _Named, context: ActionContext) -> str:
+    """The id of the record a request for this thing acts on, in the sky the context says the app holds."""
+    if named.predicted_id is not None and context.calibration_state in _PREDICTED_SKY_STATES:
+        return named.predicted_id
+    return named.finding_id
+
+
+def _in_view(context: ActionContext) -> str | None:
+    """What is pointed at, else selected, else focused, else None."""
     pointer = fresh_pointer(context)
     if pointer is not None:
         if pointer.nearest_finding_id:
@@ -231,6 +306,68 @@ def _resolve_target_finding_id(utterance: str, context: ActionContext) -> str | 
         if len(pointer.overlapping_candidate_ids) == 1:
             return pointer.overlapping_candidate_ids[0]
     return context.selected_finding_id or context.focused_finding_id or None
+
+
+@dataclass(frozen=True)
+class _Target:
+    """What a request is about: one record, a question between several, or why it is about none."""
+
+    finding_id: str | None = None
+    choices: tuple[dict[str, str], ...] = ()
+    refusal: str | None = None
+
+
+def _view_target(context: ActionContext) -> _Target:
+    """What is in view, or that nothing is."""
+    in_view = _in_view(context)
+    return _Target(finding_id=in_view) if in_view is not None else _Target(refusal=NOTHING_IN_VIEW)
+
+
+def _named_target(named: list[_Named], context: ActionContext) -> _Target:
+    """One name is that thing; two different names are a question, never a guess."""
+    if len(named) == 1:
+        return _Target(finding_id=_record_id(named[0], context))
+    return _Target(
+        choices=tuple({"id": _record_id(each, context), "label": each.label} for each in named),
+        refusal="Which one did you mean: " + " or ".join(each.label for each in named) + "?",
+    )
+
+
+def _target(
+    named: list[_Named],
+    without_names: str,
+    context: ActionContext,
+    command: re.Pattern[str] | None,
+    *,
+    alone: Literal["view", "which"] | None,
+) -> _Target | None:
+    """What a command is about, read from the request's own words.
+
+    Every word must be read. A word no list holds may be a name the backend does not know, so the request is
+    refused as not understood, whatever else it names: never read as being about a name said beside the word, or
+    about what is in view. Then a name is that thing, and two different names are a question. With no name, what
+    is pointed at, selected or focused is taken only when a word points at it, or when the request describes and
+    asks nothing at all and the command, said alone, acts on what is in view (`alone` is "view": "explore", "how
+    far?"). A command that needs to be told which one says so when said alone (`alone` is "which": "select").
+    None means the words say nothing about a target: a question about no one thing ("what is 3d space?"), or a
+    command that is none on its own (`alone` is None). `command` is the rule's own words, cut out before the
+    rest is judged; None when the request holds no command.
+    """
+    without_command = without_names
+    if command is not None:
+        without_command = command.sub(lambda match: " " * len(match.group()), without_names)
+    wording = read_wording(without_names, without_command)
+    if wording.unknown:
+        return _Target(refusal=NOT_UNDERSTOOD.format(said=wording.unknown))
+    if named:
+        return _named_target(named, context)
+    if wording.points:
+        return _view_target(context)
+    if wording.describes:
+        return _Target(refusal=WHICH_ONE)
+    if wording.asks or alone is None:
+        return None
+    return _view_target(context) if alone == "view" else _Target(refusal=WHICH_ONE)
 
 
 # Years are read as packages/observation/src/voiceParser.ts reads them, so both parsers read the same phrases:
@@ -367,10 +504,12 @@ BRIGHTEST_KIND_REFUSAL = (
 )
 _BRIGHTEST_NEXT_WORD = re.compile(r"\bbrightest\b[\s-]*([a-z][a-z-]*)?")
 
-_NO_TARGET = (
-    "The request names no object the catalog or the ephemeris holds, and none is pointed at, selected "
-    "or focused."
-)
+# Why a request has no target, in words a person who is not an astronomer reads: no id, class or contract term.
+# A word the rules do not know is no evidence about any sky, and the backend holds no photo: it says only that it
+# did not understand the word, in the app parser's own sentence.
+NOT_UNDERSTOOD = 'I did not understand "{said}". Say a star\'s or a planet\'s name, or select one and say "that one".'
+WHICH_ONE = 'That does not say which one. Say its name, or select it and say "that one".'
+NOTHING_IN_VIEW = "Nothing is selected or pointed at. Select a star or planet first, or say its name."
 _SOUTHERN_CROSS_QUESTION = (
     "The Southern Cross is a constellation, not one star. Which of its stars did you mean: "
     + ", ".join(star.name for star in southern_cross_stars())
@@ -385,21 +524,44 @@ _DESCRIBE = re.compile(
     r"\b(?:what is|how far|where is|describe|tell me about|identify)\b",
     re.ASCII,
 )
+# The describing commands that stand alone and act on what is in view; "what is", "where is" and "tell me about"
+# need something after them
+_DESCRIBE_ALONE = re.compile(r"\b(?:how far|describe|identify)\b", re.ASCII)
 _SELECT = re.compile(r"\b(?:select|focus|lock|point|show me|that one|this one)\b", re.ASCII)
-_SKY_PREDICTED = re.compile(r"\b(?:predicted|planet|ephemeris)\b", re.ASCII)
-_SKY_MEASURED = re.compile(
-    r"\b(?:what were we looking at|what was overhead|show me what was overhead|"
-    r"identify the stars|calibrate|register the sky|show (?:the )?sky|"
-    r"what is in the sky|match the sky|constellation)\b",
+# The selecting words that are a command on their own. "Show me", "point", and "focus" or "lock" without "on",
+# also open other requests ("show me the predicted sky", "the focus is off"), so they select only a thing the
+# request names or points at in view; anything else is left to the rules after them, as the app's parser, which
+# has no such command, reads it.
+_SELECT_COMMAND = re.compile(r"\b(?:select|focus on|lock on(?:to)?|that one|this one)\b", re.ASCII)
+# The restore command, from whole words. "Noise" and "shadows" ask for it only after a verb that does something
+# to them, so "is that noise or a star?" proposes nothing.
+_RESTORE = re.compile(
+    r"\b(?:clean|denoise|restore|brighten|enhance)\b"
+    r"|\b(?:reduce|remove|lower|less|fix)\b[^.?!]*?\bnoise\b"
+    r"|\b(?:lift|raise|open|recover)\b[^.?!]*?\bshadows?\b",
     re.ASCII,
 )
+_RESTORE_TEMPORAL = re.compile(r"\b(?:temporal|stack)\b", re.ASCII)
+_RESTORE_NATURAL = re.compile(r"\b(?:natural|tone)\b", re.ASCII)
+_SKY_PREDICTED = re.compile(r"\b(?:predicted|planet|ephemeris)\b", re.ASCII)
+# The requests for the sky that say so in full, read before any target is looked for, as the app's parser reads
+# them: "what is in the sky" and "identify the stars" ask about no one star
+_SKY_PHRASES = re.compile(
+    r"\b(?:what were we looking at|what was overhead|show me what was overhead|"
+    r"identify the stars|calibrate|register the sky|show (?:the )?sky|"
+    r"what is in the sky|match the sky)\b",
+    re.ASCII,
+)
+# Read after the target commands, like "predicted" and "planet" above: one word that asks for the measured sky
+_SKY_MEASURED = re.compile(r"\bconstellation\b", re.ASCII)
 _HOW_MANY = re.compile(rf"\bhow{_S}+many\b", re.ASCII)
 
 
 def _parse_with_rules(
     utterance: str, ctx: ActionContext, request_id: str, rev: int, current_year: int
 ) -> VoiceIntent:
-    """Keyword families in a fixed order. A target comes only from a name or from the view, never a default."""
+    """Keyword families in a fixed order. A request is about what it names: a target comes from a name, or
+    from what is in view only when the request points at it or names nothing at all (`_target`)."""
     text = utterance.strip().lower()
     base = {"requestId": request_id, "expectedViewRevision": rev}
 
@@ -427,7 +589,7 @@ def _parse_with_rules(
     if said is not None:
         return _rules_intent(request_id, None, "invalid_epoch", _year_refusal(said))
 
-    if any(kw in text for kw in ("clean", "denoise", "restore", "brighten", "shadow", "noise", "enhance")):
+    if _RESTORE.search(text):
         if ctx.source_asset_id is None:
             return _rules_intent(
                 request_id,
@@ -435,8 +597,8 @@ def _parse_with_rules(
                 "missing_source",
                 "Restoring the recording needs its sourceAssetId in the request context.",
             )
-        profile = "temporal" if "temporal" in text or "stack" in text else "star_protected"
-        if "natural" in text or "tone" in text:
+        profile = "temporal" if _RESTORE_TEMPORAL.search(text) else "star_protected"
+        if _RESTORE_NATURAL.search(text):
             profile = "natural"
         return formed(
             "media.restore",
@@ -445,36 +607,55 @@ def _parse_with_rules(
             constraints={"preservePeople": True, "allowSyntheticSky": False, "protectStars": True},
         )
 
-    # A southern object named but not baked, or the Southern Cross, never falls through to the selection
-    if _named_finding_id(utterance) is None:
-        unbaked = unbaked_object(text)
-        if unbaked is not None:
-            return _rules_intent(request_id, None, "no_grounded_answer", unbaked_refusal(unbaked))
-        if names_southern_cross(text):
-            return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
+    named, without_names = _said(text)
+    # A southern object named but not baked, or the Southern Cross, is answered in its own words whatever else the
+    # request names: it never falls through to the selection, or to a star named beside it
+    unbaked = unbaked_object(text)
+    if unbaked is not None:
+        return _rules_intent(request_id, None, "no_grounded_answer", unbaked_refusal(unbaked))
+    if names_southern_cross(text):
+        return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
 
-    target = _resolve_target_finding_id(utterance, ctx)
+    def about(target: _Target, action_type: str, **fields: Any) -> VoiceIntent:
+        """The action on the target, the question between several, or the refusal that says why there is none."""
+        if target.finding_id is not None:
+            return formed(action_type, findingId=target.finding_id, **fields)
+        return _rules_intent(request_id, None, "ambiguous_target", target.refusal, target.choices)
+
+    if _SKY_PHRASES.search(text):
+        return formed("sky.show", mode="measured")
+
     if _SPACE_ENTER.search(text):
-        if target is None:
-            return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
-        return formed("space.enter", findingId=target, distancePolicy="measured_or_estimated")
+        target = _target(named, without_names, ctx, _SPACE_ENTER, alone="view")
+        if target is not None:
+            return about(target, "space.enter", distancePolicy="measured_or_estimated")
 
     if _DESCRIBE.search(text):
-        if target is None:
-            return _rules_intent(request_id, None, "ambiguous_target", _NO_TARGET)
-        return formed("finding.describe", findingId=target, fields=["distance", "type", "motion", "evidence"])
+        target = _target(
+            named, without_names, ctx, _DESCRIBE, alone="view" if _DESCRIBE_ALONE.search(text) else None
+        )
+        if target is not None:
+            return about(target, "finding.describe", fields=["distance", "type", "motion", "evidence"])
 
-    if target is not None and _SELECT.search(text):
-        return formed("finding.select", findingId=target)
+    if _SELECT.search(text):
+        command = _SELECT_COMMAND.search(text) is not None
+        target = _target(named, without_names, ctx, _SELECT, alone="which" if command else None)
+        if target is not None and (command or target.finding_id is not None or target.choices):
+            return about(target, "finding.select")
+
+    # A thing the request names is what it is about, before a single word could read it as a request for the sky
+    # ("is Rigel a planet?"), as the app's parser reads it; a word beside the name that was not understood still
+    # stops it ("is Rigel brighter than Andromeda?")
+    if named and not _HOW_MANY.search(text):
+        target = _target(named, without_names, ctx, None, alone=None)
+        if target is not None:
+            return about(target, "finding.select")
 
     if _SKY_PREDICTED.search(text):
         return formed("sky.show", mode="predicted")
 
     if _SKY_MEASURED.search(text):
         return formed("sky.show", mode="measured")
-
-    if _named_finding_id(utterance) is not None and not _HOW_MANY.search(text):
-        return formed("finding.select", findingId=target)
 
     question = utterance.strip()
     # The contract counts a question's length as JavaScript does, in UTF-16 code units
@@ -492,7 +673,7 @@ def _parse_with_rules(
 def parse_voice_intent(
     utterance: str,
     context: ActionContext | dict[str, Any],
-    request_id: str = DEFAULT_REQUEST_ID,
+    request_id: str | None = None,
     expected_view_revision: int | None = None,
     *,
     current_year: int | None = None,
@@ -501,9 +682,11 @@ def parse_voice_intent(
 
     A blank request forms no action and reaches no model. Otherwise the Claude path answers when it is
     enabled and forms a valid action, and the deterministic rules answer when it does not. `current_year`
-    stands in for the UTC clock's year.
+    stands in for the UTC clock's year. A request with no `request_id` gets an id of its own.
     """
     ctx = ActionContext.from_dict(context)
+    if request_id is None:
+        request_id = new_request_id()
     rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
     # Blank by Python's measure or JavaScript's, so a question formed from what is left always fits the contract
     if all(char.isspace() or char in JAVASCRIPT_SPACES for char in utterance):
@@ -661,11 +844,7 @@ def _southern_cross_choice(action_id: str) -> dict[str, Any]:
 def _pointer_disambiguation(
     utterance: str, pointer: PointerContext | None, action_id: str
 ) -> dict[str, Any] | None:
-    if (
-        pointer is None
-        or len(pointer.overlapping_candidate_ids) <= 1
-        or _named_finding_id(utterance) is not None
-    ):
+    if pointer is None or len(pointer.overlapping_candidate_ids) <= 1 or _names_something(utterance):
         return None
     choices = [
         {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
@@ -687,6 +866,7 @@ def _check(
     action_id: str,
     reason: str | None = None,
     explanation: str | None = None,
+    choices: tuple[dict[str, str], ...] = (),
 ) -> dict[str, Any]:
     """The backend's verdict on one action, or on a request that formed none.
 
@@ -709,12 +889,23 @@ def _check(
         }
 
     if action is None:
+        if choices and explanation:
+            # The request names several things: the question between them, never one picked for it
+            return {
+                "status": "needs_input",
+                "actionId": action_id,
+                "question": explanation,
+                "choices": [dict(choice) for choice in choices],
+            }
         if reason == "ambiguous_target":
             if explanation == _SOUTHERN_CROSS_QUESTION:
                 return _southern_cross_choice(action_id)
-            disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
-            if disambiguation is not None:
-                return disambiguation
+            # Only a request that points, or names nothing, is asked which of the findings under the pointer it
+            # means: one that names or describes something else is refused, never offered what the pointer overlaps
+            if explanation == NOTHING_IN_VIEW:
+                disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
+                if disambiguation is not None:
+                    return disambiguation
         hints = {
             "ambiguous_target": ["Name a catalog star or planet, or point at one"],
             "invalid_epoch": EPOCH_ADVICE,
@@ -806,10 +997,12 @@ def check_voice_command(
     ctx = ActionContext.from_dict(context)
     if proposed_action is not None:
         request_id = proposed_action.get("requestId") if isinstance(proposed_action, dict) else None
-        action_id = request_id if isinstance(request_id, str) and request_id else DEFAULT_REQUEST_ID
+        action_id = request_id if isinstance(request_id, str) and request_id else new_request_id()
         return _check(utterance, ctx, proposed_action, action_id)
 
     intent = parse_voice_intent(utterance, ctx, current_year=current_year)
-    reply = _check(utterance, ctx, intent.action, intent.request_id, intent.reason, intent.explanation)
+    reply = _check(
+        utterance, ctx, intent.action, intent.request_id, intent.reason, intent.explanation, intent.choices
+    )
     reply["interpretation"] = intent.interpretation
     return reply

@@ -14,15 +14,19 @@ the selected finding.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 import hashlib
 import json
 from pathlib import Path
 import re
+from typing import TypeVar
 
 from services.contracts.voice import JAVASCRIPT_SPACES
 from services.science.catalog import ALL_SKY_CATALOG_STARS
+
+T = TypeVar("T")
 
 ROOT = Path(__file__).resolve().parents[2]
 NAMES_PATH = ROOT / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3" / "names.json"
@@ -135,6 +139,187 @@ def name_pattern(name: str) -> re.Pattern[str]:
     return re.compile(
         rf"(?:(?<![a-z0-9])(?:{cues}){s}+(?:the{s}+)?(?:star{s}+)?|(?<![a-z0-9])star{s}+){literal}(?![a-z0-9])"
         rf"|(?<![a-z0-9]){literal}{s}+star(?![a-z0-9])"
+    )
+
+
+# --- Words that name nothing ---------------------------------------------------------------------------------
+# A request is about what it names. Once its names and its command are cut out, each word left is one of three
+# kinds, and any other word is one the parser did not understand. It may be a name no table holds, so the request
+# is then refused, whatever else it names: it is never read as being about what happens to be selected, or about
+# a name said beside it. packages/observation/src/voiceParser.ts holds the same three lists
+# (tests/integration/test_voice_named_targets.py keeps them equal), so both parsers read a sentence the same way.
+
+# Words that point at what is selected, focused or pointed at.
+POINTING_WORDS = (
+    "that", "this", "it", "its", "there", "here", "these", "those", "them", "selected", "selection", "current",
+)
+
+# Words that say something about a thing without naming it. They stand only beside a pointing word ("that bright
+# one", "how far is it in light years"); without one, the request does not say which thing it means.
+DESCRIBING_WORDS = (
+    # a thing with no name
+    "one", "ones", "star", "stars", "thing", "things", "object", "objects", "body", "bodies", "dot", "dots",
+    "point", "points", "light", "lights", "spot", "spots", "patch", "patches", "blob", "blobs", "speck", "smudge",
+    "streak", "glow", "marker", "markers",
+    # a kind of thing
+    "planet", "planets", "galaxy", "galaxies", "nebula", "nebulae", "nebulas", "cluster", "clusters",
+    "constellation", "constellations", "comet", "comets", "asteroid", "asteroids", "satellite", "satellites",
+    "meteor", "meteors", "plane", "planes", "airplane", "aeroplane",
+    # how it looks
+    "bright", "brighter", "dim", "dimmer", "faint", "fainter", "big", "bigger", "large", "larger", "small",
+    "smaller", "little", "tiny", "huge", "red", "reddish", "orange", "yellow", "yellowish", "white", "whitish",
+    "blue", "bluish", "green", "greenish", "fuzzy", "blurry", "hazy", "glowing", "shiny", "twinkling",
+    "flickering", "blinking", "moving",
+    # where it is on the screen or among the others
+    "left", "top", "bottom", "middle", "center", "centre", "upper", "lower", "corner", "edge", "above", "below",
+    "beside", "next", "nearest", "closest", "other", "another", "same", "first", "second", "last", "something",
+    "anything", "else",
+    # measures
+    "distance", "year", "years", "parsec", "parsecs", "kilometre", "kilometres", "kilometer", "kilometers", "km",
+    "mile", "miles", "au", "ly", "pc",
+    # the recording, the app and home
+    "photo", "photos", "picture", "pictures", "image", "images", "video", "videos", "clip", "recording", "shot",
+    "frame", "sky", "night", "screen", "view", "app", "solve", "solved", "space", "3d", "earth", "home",
+    # what the app parser's commands speak of ("another viewpoint", "orbit", "from the side", "how distant")
+    "orbit", "viewpoint", "angle", "side", "sightline", "different", "distant",
+)
+
+# Words that can be neither the thing asked about nor a description of it: grammar, politeness and the verbs a
+# request is wrapped in.
+FUNCTION_WORDS = (
+    # articles and determiners
+    "a", "an", "the", "my", "our", "your", "any", "some", "all", "every", "each", "both",
+    # people
+    "i", "me", "mine", "we", "us", "you",
+    # be, do, have and the helping verbs
+    "is", "are", "was", "were", "be", "been", "being", "am", "do", "does", "did", "done", "doing", "can", "could",
+    "will", "would", "shall", "should", "may", "might", "must", "have", "has", "had", "having", "get", "gets",
+    "got", "getting", "let", "lets",
+    # what is left of a contraction (what's, don't, I'm, we're, I'll, I've, I'd, isn't, won't)
+    "s", "t", "d", "m", "ll", "re", "ve", "don", "doesn", "didn", "isn", "aren", "wasn", "weren", "won", "couldn",
+    "wouldn", "shouldn", "im", "whats", "wheres",
+    # joining words
+    "and", "or", "but", "so", "then", "if", "as", "than", "because", "while", "when", "after", "before",
+    # place and direction words
+    "to", "of", "off", "in", "into", "on", "onto", "at", "from", "for", "with", "without", "by", "through",
+    "across", "around", "about", "near", "between", "like", "over", "under", "up", "down", "out", "away", "back",
+    "toward", "towards", "behind", "beyond", "past", "far", "close",
+    # asking words
+    "what", "which", "who", "whose", "where", "why", "how",
+    # manner, time and politeness
+    "please", "pls", "plz", "now", "today", "tonight", "again", "already", "still", "yet", "soon", "later",
+    "quickly", "fast", "slowly", "straight", "directly", "just", "only", "even", "ever", "really", "very", "quite",
+    "actually", "exactly", "roughly", "approximately", "nearly", "almost", "maybe", "perhaps", "probably", "right",
+    "sorry", "ok", "okay", "alright", "sure", "yes", "yeah", "yep", "no", "nope", "not", "never", "thanks", "thank",
+    "cheers", "hey", "hi", "hello", "um", "uh", "hmm", "ah", "oh", "wow", "cool", "nice", "great", "well", "also",
+    "too", "much", "many", "more", "less", "most", "closer", "nearer", "further", "farther", "deeper",
+    # the verbs a request is wrapped in
+    "want", "wants", "wanted", "wanna", "need", "needs", "love", "think", "thought", "guess",
+    "know", "wonder", "wondering", "curious", "mean", "meant", "try", "trying", "help", "see", "show", "find",
+    "locate", "look", "looking", "watch", "go", "going", "take", "bring", "travel", "zoom", "move", "jump",
+    "head", "come", "tell", "say", "said", "give", "explain", "describe", "identify", "select", "choose", "pick",
+    "focus", "inspect", "lock", "open", "enter", "explore", "visit", "make", "looks", "seems", "appears", "called",
+    "named", "name", "idea", "info", "information", "details", "mode",
+    # the other words of the two parsers' command phrases ("fly there", "what lies beyond", "translate viewpoint")
+    "fly", "lies", "along", "translate", "shift",
+    # the app's own name
+    "albedian",
+)
+
+# The plain words that ask. A request that asks, names nothing and points at nothing is a question about no one
+# thing ("what is an orbit?"), not a command for what is in view.
+ASKING_WORDS = ("what", "which", "who", "whose", "where", "why", "how")
+
+# A word is a run of letters and digits of any script, as JavaScript's \p{L} and \p{N} find them, so a name
+# written in another alphabet is a word no list holds, never nothing at all
+_WORD = re.compile(r"[^\W_]+")
+_POINTING = frozenset(POINTING_WORDS)
+_ASKING = frozenset(ASKING_WORDS)
+# An everyday-word name said without its cue names no star ("I ran the solve again"): it only describes
+_DESCRIBING = frozenset(DESCRIBING_WORDS) | frozenset(EVERYDAY_WORD_NAMES)
+_FUNCTION = frozenset(FUNCTION_WORDS)
+# "there is", "are there", "there's": something exists, and nothing is pointed at
+_EXISTS = frozenset({"is", "are", "was", "were"})
+# The most words, and the most characters, of a request quoted back in a refusal [proposed: enough for any name,
+# short enough to read on a phone]
+MAX_QUOTED_WORDS = 6
+MAX_QUOTED_CHARACTERS = 80
+
+
+def blank(text: str, start: int, end: int) -> str:
+    """`text` with the characters from `start` to `end` turned to spaces, so what is cut out no longer reads as
+    words and everything else keeps its place."""
+    return text[:start] + " " * (end - start) + text[end:]
+
+
+def find_names(lower_text: str, table: Sequence[tuple[re.Pattern[str], T]]) -> tuple[list[tuple[int, T]], str]:
+    """Every name of `table` the text says, each with where it starts, in the order said, and the text with those
+    names cut out.
+
+    `table` holds the longest name first, and a name found is cut out before a shorter one is looked for, so
+    "Deneb Algedi" is one name and never also "Deneb" and "Algedi"."""
+    found: list[tuple[int, T]] = []
+    for pattern, named in table:
+        spans = [match.span() for match in pattern.finditer(lower_text)]
+        for start, end in spans:
+            found.append((start, named))
+            lower_text = blank(lower_text, start, end)
+    return sorted(found, key=lambda hit: hit[0]), lower_text
+
+
+def points(lower_text: str) -> bool:
+    """True when a word of the text points at what is in view. "There" beside "is" or "are" points at nothing."""
+    words = _WORD.findall(lower_text)
+    for index, word in enumerate(words):
+        if word not in _POINTING:
+            continue
+        if word == "there":
+            before = words[index - 1] if index > 0 else ""
+            after = words[index + 1] if index + 1 < len(words) else ""
+            if before in _EXISTS or after in _EXISTS or after == "s":
+                continue
+        return True
+    return False
+
+
+@dataclass(frozen=True)
+class Wording:
+    """How the words of a request read once its names and its command are cut out.
+
+    `points`: a word points at what is in view. `describes`: a word describes a thing without naming it.
+    `asks`: a word outside the command asks. `unknown`: the first words that are none of these and not plain, as
+    said: the words the parser did not understand, which a refusal quotes; empty when there are none."""
+
+    points: bool
+    describes: bool
+    asks: bool
+    unknown: str
+
+
+def read_wording(without_names: str, without_names_or_command: str) -> Wording:
+    """Read the words left of a lower-cased request. A pointing word counts wherever it stands, the command's own
+    words included ("take me there"); the other words are judged with the command cut out too."""
+    words = _WORD.findall(without_names_or_command)
+    kinds = [
+        "plain" if word in _FUNCTION or word in _POINTING else "describes" if word in _DESCRIBING else "unknown"
+        for word in words
+    ]
+    unknown = ""
+    if "unknown" in kinds:
+        # Only the words that stopped the reading: the first unknown word and the unknown words right after it,
+        # so "the andromeda galaxy" quotes "andromeda", and "the milky way" quotes "milky way"
+        first = last = kinds.index("unknown")
+        while last + 1 < len(kinds) and kinds[last + 1] == "unknown":
+            last += 1
+        phrase = words[first : last + 1]
+        quoted = " ".join(phrase[:MAX_QUOTED_WORDS])
+        cut = len(phrase) > MAX_QUOTED_WORDS or len(quoted) > MAX_QUOTED_CHARACTERS
+        unknown = quoted[:MAX_QUOTED_CHARACTERS] + (" ..." if cut else "")
+    return Wording(
+        points=points(without_names),
+        describes="describes" in kinds,
+        asks=any(word in _ASKING for word in words),
+        unknown=unknown,
     )
 
 

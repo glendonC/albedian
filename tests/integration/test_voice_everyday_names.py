@@ -119,7 +119,7 @@ def test_a_naming_verb_name_or_star_inside_a_longer_word_names_nothing(utterance
 # (space, whether JavaScript's /\s/ takes it), labelled by code point
 SEPARATORS = [pytest.param(space, separates, id=label) for label, space, separates in ROWS["separators"]]
 # (utterance with {s} for the space, the everyday word): the space between the cue and the name or between "star"
-# and the name. Each asks to select, which both parsers read as finding.select.
+# and the name. Each asks to select, which both parsers read as finding.select when the word is cued or "it" points.
 SPACED = tuple((template, word) for template, word in ROWS["spaced"])
 
 
@@ -129,8 +129,14 @@ def test_a_space_around_a_cued_name_is_a_javascript_space(space: str, separates:
         utterance = template.format(s=space)
         assert (names.name_pattern(word).search(utterance) is not None) is separates, repr(utterance)
         reply = _reply(utterance)
+        if not separates and "select it" not in utterance:
+            # Not cued, so the word names no star, and nothing points: refused, never read as the selection
+            assert (reply["status"], reply["reason"]) == ("rejected", "ambiguous_target"), (utterance, reply)
+            assert "proposedAction" not in reply
+            continue
         assert reply["status"] == "proposed", (utterance, reply)
         assert reply["proposedAction"]["type"] == "finding.select", (utterance, reply)
+        # Cued, the star; not cued, what "it" points at
         expected = TABLE[word] if separates else CONTEXT["selectedFindingId"]
         assert reply["proposedAction"]["findingId"] == expected, (utterance, reply)
 

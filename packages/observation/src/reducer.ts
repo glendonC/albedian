@@ -89,11 +89,14 @@ export function dispatchAlbedianAction(
         return rejectAction(session, action.requestId, 'missing_source', `No MediaVariant available for profile "${action.profile}".`, ['Run restoration pipeline first']);
       }
       const status = `Applied ${variant.label} (${variant.summaryNote})`;
+      // Only what the session holds: the variant now shown, and that its audio is the source's when it records so.
+      // Nothing here restores anything, so no clarity, people or audio is claimed for it
+      const audio = variant.audioStreamCopiedFromSource ? ' Its audio is copied from the original recording.' : '';
       return completeAction(
         { ...base, viewRevision: nextRev, activeVariantId: variant.id, machines: { ...base.machines, restoration: 'ready' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
-        `Restored sky clarity using ${variant.label} while preserving people and original audio.`,
+        `Now showing ${variant.label}.${audio}`,
         status
       );
     }
@@ -131,7 +134,22 @@ export function dispatchAlbedianAction(
 
     case 'sky.show': {
       if (!base.observationSolution || base.machines.calibration === 'unresolved' || base.observationSolution.status === 'unresolved') {
-        return rejectAction(session, action.requestId, 'unresolved_sky', 'Sky registration is unresolved: insufficient star detections and no timestamp/location fallback.', ['Provide capture timestamp and location for predicted sky model']);
+        // In plain words, only what the session holds: that a solve from the stars did not come out, or that
+        // none has been made, and which of its time and place the recording lacks, only when it lacks one. The
+        // solver's own warnings are written for the solver's log, so none is passed on to a person
+        if (!base.sourceAsset) {
+          return rejectAction(session, action.requestId, 'unresolved_sky', 'There is no photo or video here yet, so there is no sky to show.', ['Import a recording first']);
+        }
+        const kind = base.sourceAsset.mediaKind === 'video' ? 'video' : 'photo';
+        const sky =
+          base.observationSolution?.status === 'unresolved'
+            ? `This ${kind}'s sky could not be worked out from its stars.`
+            : `This ${kind}'s sky has not been worked out yet.`;
+        const noTime = !base.sourceAsset.capturedAtUTC;
+        const noPlace = !base.sourceAsset.observerLocation;
+        const lacks = noTime && noPlace ? 'when or where' : noTime ? 'when' : noPlace ? 'where' : undefined;
+        const said = lacks ? `${sky} The ${kind} does not say ${lacks} it was taken.` : sky;
+        return rejectAction(session, action.requestId, 'unresolved_sky', said, []);
       }
       if (action.mode === 'measured' && (base.machines.calibration !== 'calibrated' || base.observationSolution.status !== 'calibrated')) {
         return rejectAction(session, action.requestId, 'unresolved_sky', `Direct measured pixel registration requires a calibrated WCS solution (current status: ${base.observationSolution.status}).`, ['Show predicted sky model instead (`mode: "predicted"`)']);

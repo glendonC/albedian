@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 import anthropic
 
 from services.science.catalog import ALL_SKY_CATALOG_STARS
+from services.science.predicted_sky import PREDICTED_BODIES
 from services.voice.names import UNBAKED_OBJECTS, named_stars
 
 if TYPE_CHECKING:
@@ -50,8 +51,10 @@ TIMEOUT_S = 20.0
 MAX_RETRIES = 1
 MAX_POINTER_RECENCY_MS = 10_000.0
 
-# Solar System bodies the ephemeris predicts. The rules parser in intent.py shares this vocabulary.
-PREDICTED_BODY_KEYS: tuple[str, ...] = ("jupiter", "uranus", "saturn", "mars", "venus", "moon")
+# The Solar System bodies a recording's sky is predicted with, from the ephemeris' own list
+# (services/science/predicted_sky.py), never retyped here: the Sun, the Moon and five planets. The rules
+# parser in intent.py shares this vocabulary.
+PREDICTED_BODY_KEYS: tuple[str, ...] = tuple(body.lower() for body in PREDICTED_BODIES)
 # The pinned catalog stars, then every star of the baked IAU name table (services/voice/names.py)
 CATALOG_STAR_NAMES: dict[str, str] = {star.common_name: f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
 for _star in named_stars():

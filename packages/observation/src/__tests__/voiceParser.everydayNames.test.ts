@@ -73,7 +73,7 @@ describe('@albedian/observation voice parser: star names that are everyday words
       const session = withStars(held);
       for (const utterance of ['zoom in, I ran out of room', 'show the fang shaped cloud']) {
         const result = parse(utterance, session);
-        expect(result.error ?? '', utterance).not.toMatch(/\b(Ran|Fang) is not among/);
+        expect(result.error ?? '', utterance).not.toMatch(/\b(Ran|Fang) was not found/);
         expect(targetOf(utterance, session), utterance).not.toBe(TABLE.get('ran')!.id);
         expect(targetOf(utterance, session), utterance).not.toBe(TABLE.get('fang')!.id);
       }
@@ -96,7 +96,7 @@ describe('@albedian/observation voice parser: star names that are everyday words
     expect(targetOf(utterance, withStars([word]))).toBe(TABLE.get(word)!.id);
     const lacking = parse(utterance, withStars([]));
     expect(lacking.action).toBeUndefined();
-    expect(lacking.error).toBe(`${TABLE.get(word)!.shown} is not among the findings in this sky solution.`);
+    expect(lacking.error).toBe(`${TABLE.get(word)!.shown} was not found in this video's sky.`);
   });
 
   it.each(EVERYDAY)('never takes "%s" as a star without a naming verb or the word star', (word) => {
@@ -112,7 +112,7 @@ describe('@albedian/observation voice parser: star names that are everyday words
       const { id, shown } = TABLE.get(word)!;
       for (const said of [utterance, `${utterance}, select it`]) {
         expect(targetOf(said, withStars([word])), said).not.toBe(id);
-        expect(parse(said, withStars([])).error ?? '', said).not.toContain(`${shown} is not among`);
+        expect(parse(said, withStars([])).error ?? '', said).not.toContain(`${shown} was not found`);
       }
     }
   );
@@ -120,18 +120,27 @@ describe('@albedian/observation voice parser: star names that are everyday words
   // [label, space, whether JavaScript's /\s/ takes it]
   const SEPARATORS = ROWS.separators;
   // [utterance with {s} for the space, the everyday word]: the space between the cue and the name or between "star"
-  // and the name. Each asks to select, which both parsers read as finding.select.
+  // and the name. Each asks to select, which both parsers read as finding.select when the word is cued or "it" points.
   const SPACED = ROWS.spaced;
 
   it.each(SEPARATORS)('reads %s around a cued name as the backend does', (_label, space, separates) => {
     for (const [template, word] of SPACED) {
       const utterance = template.replaceAll('{s}', space);
       const said = JSON.stringify(utterance);
+      if (!separates && !utterance.includes('select it')) {
+        // Not cued, so the word names no star, and nothing points: refused, never read as the selection
+        for (const session of [withStars([word]), withStars([])]) {
+          const refused = parse(utterance, session);
+          expect([refused.action, refused.reason], said).toEqual([undefined, 'ambiguous_target']);
+        }
+        continue;
+      }
       expect(parse(utterance, withStars([word])).action?.type, said).toBe('finding.select');
+      // Cued, the star; not cued, what "it" points at
       expect(targetOf(utterance, withStars([word])), said).toBe(separates ? TABLE.get(word)!.id : SELECTED);
       const lacking = parse(utterance, withStars([]));
       if (separates) {
-        expect(lacking.error, said).toBe(`${TABLE.get(word)!.shown} is not among the findings in this sky solution.`);
+        expect(lacking.error, said).toBe(`${TABLE.get(word)!.shown} was not found in this video's sky.`);
       } else {
         expect(lacking.action?.type, said).toBe('finding.select');
         expect(targetOf(utterance, withStars([])), said).toBe(SELECTED);
@@ -141,6 +150,6 @@ describe('@albedian/observation voice parser: star names that are everyday words
 
   it('keeps a famous star name that is also a word a plain name', () => {
     expect(targetOf('what is spica', withStars(['spica']))).toBe(TABLE.get('spica')!.id);
-    expect(parse('what is pollux', withStars([])).error).toBe('Pollux is not among the findings in this sky solution.');
+    expect(parse('what is pollux', withStars([])).error).toBe("Pollux was not found in this video's sky.");
   });
 });

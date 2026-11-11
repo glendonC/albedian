@@ -410,7 +410,8 @@ def test_a_refusal_hands_the_utterance_to_the_rules_parser(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     utterance = "Take me to Fomalhaut"
-    rules_answer = parse_voice_intent(utterance, CONTEXT)  # live path off
+    # The live path is off here. Each request gets its own id, so both are given one to compare the rest
+    rules_answer = parse_voice_intent(utterance, CONTEXT, request_id="req-rules")
 
     refusal = _reply(
         stop_reason="refusal",
@@ -419,7 +420,7 @@ def test_a_refusal_hands_the_utterance_to_the_rules_parser(
     api = _Api(refusal)
     _live(monkeypatch, api)
     with caplog.at_level(logging.INFO, logger=claude.logger.name):
-        assert parse_voice_intent(utterance, CONTEXT) == rules_answer
+        assert parse_voice_intent(utterance, CONTEXT, request_id="req-rules") == rules_answer
     assert len(api.requests) == 1
     assert rules_answer.action is not None and rules_answer.action["type"] == "space.enter"
     assert rules_answer.interpretation == {"parser": "rules"}
