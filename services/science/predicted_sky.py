@@ -3,19 +3,24 @@
 Every finding made here is `predicted`: catalog stars carried to the date by their proper motion, and the Sun, the
 Moon and five planets from the low-precision ephemeris (`services/science/ephemeris.py`), each placed for the
 recorded time and place by deterministic math and never measured in the recording. They carry no detection and no
-pixel position: without a pose nothing places them in the frame. A plate solver's outcome is completed with them
-after the solve, and nothing it measured changes.
-docs/science/PREDICTED_SKY.md describes the layer in plain words.
+pixel position. A plate solver's outcome is completed with them after the solve, and nothing it measured changes.
+When the solve is not calibrated and the camera has a head-worn profile, layer 2 lines them up over one frame from
+the Moon, the profile's field of view and a level head (`services/science/pose_estimate.py`): an `approximate`
+solution with its swept uncertainty, never checked against stars.
+docs/science/PREDICTED_SKY.md describes both layers in plain words.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import math
 from typing import Any
 
+import numpy as np
+
+from services.science.camera_profiles import head_worn_profile
 from services.science.catalog import (
     _iso_to_julian_date,
     get_all_sky_catalog_stars,
@@ -27,7 +32,24 @@ from services.science.ephemeris import (
     compute_solar_system_ephemerides,
     require_ephemeris_range,
 )
-from services.science.wcs_models import CelestialFindingRecord, ObservationSolution
+from services.science.pose_estimate import (
+    MIRRORED,
+    MOON_NOT_UP,
+    NO_PROFILE,
+    ROLL_LIMIT_DEG,
+    PoseResult,
+    Refusal,
+    is_mirrored,
+    moon_is_up,
+    pose_from_frames,
+)
+from services.science.wcs_models import (
+    CelestialFindingRecord,
+    ObservationSolution,
+    SolutionQuality,
+    SolverIdentity,
+    SourceDetection,
+)
 
 # A predicted star, carried to the date by its proper motion: the horizon transform leaves out nutation and annual
 # aberration (at most 37 arcsec, tests/integration/test_sky_transforms.py) and UT1 - UTC (at most 14 arcsec), and
@@ -232,7 +254,167 @@ def _place(asset: Mapping[str, Any]) -> tuple[float, float] | None:
     return float(lat), float(lon)
 
 
-def complete_sky(solution: ObservationSolution, asset: Mapping[str, Any]) -> ObservationSolution:
+FramesForPose = Callable[[], Sequence[tuple[float, np.ndarray]]]
+POSE_SOLVER = SolverIdentity(
+    name="AlbedianHeadWornMoonPose",
+    version="1.0.0",
+    catalog_release=(
+        "A camera profile's field of view (services/science/camera_profiles.py) and the low-precision Moon "
+        "ephemeris (Meeus 1998 chapter 47), lowered by its parallax"
+    ),
+)
+INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
+OUTSIDE_THE_FRAME = " · Outside the frame"
+LINED_UP_LIMITATION = (
+    "Placed in the frame only through the approximate pose lined up from the Moon, the camera profile's field of view "
+    "and a level head; not checked against stars."
+)
+# Two frame times are the same frame within a microsecond (the job writes n / fps for both)
+SAME_FRAME_SEC = 1e-6
+OTHER_FRAMES_KEPT = (
+    "Detections the detector made in other frames of the clip are kept as measured: the head moved between frames, "
+    "so this frame's Moon pixel does not say which of them, if any, is the Moon."
+)
+
+
+def _head_worn_pose(
+    asset: Mapping[str, Any], frames: FramesForPose, captured: str, moment: str, lat: float, lon: float
+) -> PoseResult | Refusal:
+    """Layer 2 for a head-worn camera: the camera profile, then the frames, read only when a pose could follow."""
+    profile = head_worn_profile(asset)
+    if profile is None:
+        return Refusal("no_profile", NO_PROFILE)
+    orientation = asset.get("displayOrientation")
+    if is_mirrored(orientation):
+        return Refusal("mirrored", MIRRORED)
+    # Checked at the solver's frame before any frame is read; each frame is checked again at its own moment
+    if not moon_is_up(moment, lat, lon):
+        return Refusal("moon_not_up", MOON_NOT_UP)
+    timed = []
+    for frame_time_sec, luma in frames():
+        frame_at = frame_moment(captured, frame_time_sec)
+        try:
+            require_ephemeris_range(frame_at)
+        except EphemerisOutOfRange:
+            continue
+        timed.append((float(frame_time_sec), frame_at, luma))
+    return pose_from_frames(
+        timed, lat=lat, lon=lon, profile=profile, orientation=orientation, is_clip=asset.get("mediaKind") == "video"
+    )
+
+
+def _lined_up(
+    solution: ObservationSolution, asset: Mapping[str, Any], pose: PoseResult, lat: float, lon: float
+) -> ObservationSolution:
+    """The approximate solution of a pose: the nominal WCS and its pose estimate, the frame's time and moment, the
+    detector's pixel-only findings minus those on the Moon in the same frame, the observed Moon, and the predicted
+    sky for the frame's moment, each saying whether the nominal WCS puts it inside the frame."""
+    blob, wcs, frame_time_sec = pose.blob, pose.wcs, pose.frame_time_sec
+    kept: list[CelestialFindingRecord] = []
+    other_frames = False
+    for finding in solution.findings:
+        detection = finding.source_detection
+        if finding.evidence_class != "observed" or detection is None:
+            continue
+        if abs(detection.frame_time_sec - frame_time_sec) <= SAME_FRAME_SEC:
+            # The Moon is listed once: a detection of the same frame inside the blob's radius is the Moon itself
+            if math.hypot(detection.x_px - blob.x_px, detection.y_px - blob.y_px) <= blob.radius_px:
+                continue
+        else:
+            other_frames = True
+        kept.append(finding)
+    is_clip = asset.get("mediaKind") == "video"
+    where = f"in the frame {frame_time_sec:.2f} s into the clip" if is_clip else "in the photo"
+    moon = CelestialFindingRecord(
+        id="finding-observed-moon",
+        observation_solution_id=solution.id,
+        evidence_class="observed",
+        title="Moon (Observed Bright Spot)",
+        subtitle=f"Measured at ({blob.x_px:.1f}, {blob.y_px:.1f}) px {where} · {blob.area_px} px above half its peak",
+        source_detection=SourceDetection(
+            x_px=blob.x_px,
+            y_px=blob.y_px,
+            flux=blob.flux,
+            snr=blob.snr,
+            fwhm_px=blob.fwhm_px,
+            centroid_uncertainty_px=blob.centroid_uncertainty_px,
+            asset_id=solution.source_asset_id,
+            frame_time_sec=frame_time_sec,
+            peak_to_total_ratio=blob.peak_to_total_ratio,
+        ),
+        verification_method=(
+            "Measured in the frame's pixels: the frame's brightest spot, about the Moon's size at half its peak and "
+            "with no rival of half its area there, matched to the Moon's predicted position; no star was matched or "
+            "held out"
+        ),
+        verified_by_holdout=False,
+        limitations=(
+            "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris "
+            "position.",
+            "The Moon's light centroid sits somewhere on its disk: overexposure spreads it, and a partly lit Moon's "
+            "sits toward its lit edge; the pose's centroid term, the Moon's predicted radius, covers that. Its flux "
+            "and SNR are lower bounds where its brightest pixels are clipped.",
+            *((OTHER_FRAMES_KEPT,) if other_frames else ()),
+        ),
+        source_sha256=solution.source_sha256,
+    )
+    predicted = []
+    for finding in predicted_sky_findings(
+        pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256
+    ):
+        x, y = wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
+        inside = math.isfinite(x) and math.isfinite(y) and 0.0 <= x < wcs.width and 0.0 <= y < wcs.height
+        predicted.append(
+            replace(
+                finding,
+                subtitle=finding.subtitle + (INSIDE_THE_FRAME if inside else OUTSIDE_THE_FRAME),
+                limitations=(*finding.limitations, LINED_UP_LIMITATION) if inside else finding.limitations,
+            )
+        )
+    estimate = pose.pose_estimate
+    low, high = pose.profile.fov_diagonal_deg_range
+    within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg)
+    lined_up = (
+        f"Lined up from the Moon at ({blob.x_px:.0f}, {blob.y_px:.0f}) px {where}, the camera profile's field of view "
+        f"of {low:g} to {high:g} degrees across the diagonal with no zoom, and a level head within {ROLL_LIMIT_DEG:g} "
+        "degrees: "
+        f"within about {within} degrees near the Moon, more toward the edges; not checked against stars."
+    )
+    (sun,) = compute_solar_system_ephemerides(pose.moment, lat, lon, bodies=("Sun",))
+    detected = (
+        solution.quality.detected_candidate_count
+        if solution.quality is not None
+        else sum(1 for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None)
+    )
+    return replace(
+        solution,
+        frame_time_sec=frame_time_sec,
+        status="approximate",
+        wcs=wcs,
+        # The Moon is the one detection matched, to its own predicted position; no star was held out
+        quality=SolutionQuality(
+            detected_candidate_count=detected,
+            matched_inlier_count=1,
+            held_out_pair_count=0,
+            held_out_inliers=0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
+            passed_independent_verification=False,
+        ),
+        solver=POSE_SOLVER,
+        observed_at_utc=pose.moment,
+        observer_lat=lat,
+        observer_lon=lon,
+        findings=[*kept, moon, *predicted],
+        warnings=[*solution.warnings, lined_up, sky_phase(sun.alt_deg).sentence],
+        pose_estimate=estimate,
+    )
+
+
+def complete_sky(
+    solution: ObservationSolution, asset: Mapping[str, Any], *, frames: FramesForPose | None = None
+) -> ObservationSolution:
     """A plate solver's outcome completed with the sky predicted for the recording's own capture time and place
     (`asset` is its SourceAsset): a new solution, the solver's left as it was.
 
@@ -240,8 +422,13 @@ def complete_sky(solution: ObservationSolution, asset: Mapping[str, Any]) -> Obs
       solution with one more warning saying which. No other time or place stands in.
     - Calibrated: status, WCS, quality and every finding stay; the predicted objects not already catalog_matched
       (same catalog id) are added.
-    - Unresolved or ambiguous: predicted_only, with the solver's findings (pixel-only observed ones), quality,
-      warnings and identity, and the predicted objects added.
+    - Unresolved or ambiguous, given `frames`, with a head-worn camera profile, the predicted Moon more than 5 degrees
+      up and one frame that passes the Moon test and the fit: approximate, lined up from that frame (`_lined_up`).
+      `frames` gives the frames to search, each as its time into the recording and its gray pixels, and is called
+      only when a pose could follow; None asks for no pose (layer 1 alone).
+    - Otherwise unresolved or ambiguous: predicted_only, with the solver's findings (pixel-only observed ones),
+      quality, warnings and identity, the predicted objects added, and, when `frames` was given, one warning saying
+      why no pose was found.
     The moment is the solution's frame (`capturedAtUTC` plus `frameTimeSec`), written as `observedAtUTC`, and the
     last warning says where the Sun was. No warning holds the capture time, the place or the file name."""
     if solution.status not in COMPLETED_STATUSES:
@@ -260,6 +447,12 @@ def complete_sky(solution: ObservationSolution, asset: Mapping[str, Any]) -> Obs
     except EphemerisOutOfRange:
         return replace(solution, warnings=[*solution.warnings, OUT_OF_RANGE])
     lat, lon = place
+    no_pose: list[str] = []
+    if solution.status != "calibrated" and frames is not None:
+        pose = _head_worn_pose(asset, frames, captured, moment, lat, lon)
+        if isinstance(pose, PoseResult):
+            return _lined_up(solution, asset, pose, lat, lon)
+        no_pose.append(pose.reason)
     matched = frozenset(
         f.catalog_star.id
         for f in solution.findings
@@ -281,5 +474,5 @@ def complete_sky(solution: ObservationSolution, asset: Mapping[str, Any]) -> Obs
         observer_lat=lat,
         observer_lon=lon,
         findings=[*solution.findings, *predicted],
-        warnings=[*solution.warnings, sky_phase(sun.alt_deg).sentence],
+        warnings=[*solution.warnings, *no_pose, sky_phase(sun.alt_deg).sentence],
     )

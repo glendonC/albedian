@@ -6,15 +6,18 @@ stored upload in `IngestStore`, recording a schema-validated `SolveJob` (`job.js
 Every stage reports a real denominator (`bytes` stored, `frames` decoded and detected, `candidates` evaluated
 in the triplet pool or `steps` when too few detections exist for triplet search, and `steps` for held-out
 verification). After the solve, the solution is completed with the sky predicted for the upload's own recorded time
-and place (`services/science/predicted_sky.py`), with no stage of its own.
+and place (`services/science/predicted_sky.py`), with no stage of its own; for a camera with a head-worn profile it
+is lined up from the Moon over one frame, searched among up to 16 frames spread over a clip (`_decode_spread_frames`).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import copy
 from dataclasses import replace
 from datetime import datetime, timezone
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -22,6 +25,7 @@ import secrets
 import subprocess
 import tempfile
 import threading
+import time
 from typing import Any, Callable, Optional
 
 import numpy as np
@@ -42,6 +46,8 @@ from services.science.predicted_sky import complete_sky
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 
 MAX_VIDEO_SOLVE_FRAMES = 8
+# The frames of a clip the head-worn Moon pose searches, spread over the whole clip (design component 6)
+MAX_POSE_FRAMES = 16
 # The searches run in a child process stopped at this bound; the 12 MP no-star solves measured here took 40 to 70 s
 SOLVE_TIME_LIMIT_SEC = 180.0
 # Exists only so tests can spy on the solvers: True runs the chain in the caller's process, unbounded. Never set in production
@@ -343,6 +349,59 @@ def _decode_luma_frames(
     return frames, None
 
 
+def _spread_frame_indices(frame_count: int, count: int = MAX_POSE_FRAMES) -> list[int]:
+    """Up to `count` frame indices spread evenly over a clip of `frame_count` frames: the frame holding the middle of
+    each of `count` equal spans, floor((k + 0.5) N / count). Floor rather than round keeps the last index inside the
+    clip (round would give N for N = 16) and needs no tie rule; a clip shorter than `count` gives each frame once."""
+    if frame_count <= 0:
+        return []
+    used = min(count, frame_count)
+    return [int(math.floor((k + 0.5) * frame_count / used)) for k in range(used)]
+
+
+def _decode_spread_frames(path: Path, asset: Mapping[str, Any]) -> list[tuple[float, np.ndarray]]:
+    """The frames the head-worn Moon pose searches in a clip, as (time into the clip, gray stored pixels).
+
+    Up to MAX_POSE_FRAMES frames spread over the whole clip by frame index, its frame count from its probed frame rate
+    and duration. Each is decoded alone by an accurate seek to half a frame before n / fps, at its stored size (no
+    scale filter, the display matrix left as metadata), and its time is n / fps. A frame that cannot be read, or of
+    another size, is skipped; all of them share DECODE_TIMEOUT_SEC. These frames are never stacked."""
+    numerator, denominator = asset.get("fpsNumerator"), asset.get("fpsDenominator")
+    duration_ms = asset.get("durationMs")
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0 for v in (numerator, denominator, duration_ms)):
+        return []
+    fps = float(numerator) / float(denominator)
+    width, height = int(asset["width"]), int(asset["height"])
+    deadline = time.monotonic() + DECODE_TIMEOUT_SEC
+    frames: list[tuple[float, np.ndarray]] = []
+    for index in _spread_frame_indices(int(math.floor(float(duration_ms) / 1000.0 * fps + 0.5))):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0.0:
+            break
+        seek_sec = max(0.0, (index - 0.5) / fps)
+        try:
+            proc = subprocess.run(
+                [
+                    "ffmpeg", "-v", "error", "-nostdin", "-noautorotate", "-ss", f"{seek_sec:.6f}", "-i", str(path),
+                    "-frames:v", "1", "-pix_fmt", "gray", "-f", "image2pipe", "-c:v", "pgm", "-",
+                ],
+                capture_output=True,
+                timeout=remaining,
+                stdin=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            break
+        if proc.returncode != 0 or not proc.stdout:
+            continue
+        try:
+            decoded = _parse_pgm_frames(proc.stdout)
+        except SolveJobError:
+            continue
+        if len(decoded) == 1 and decoded[0].shape == (height, width):
+            frames.append((index / fps, decoded[0].astype(np.float64)))
+    return frames
+
+
 def _solve_chain(
     solve_image: np.ndarray,
     detections: list,
@@ -615,10 +674,18 @@ def run_solve_job(
             stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)
 
-        # The sky predicted for the file's own recorded time and place, after the solve or its time limit; it adds
-        # no stage. A failure in it keeps what the solver found, with one generic warning
+        def pose_frames() -> list[tuple[float, np.ndarray]]:
+            # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
+            # clip's frames spread over its whole length, each alone and never stacked
+            if media_kind == "image":
+                return [(0.0, frames[0])]
+            return _decode_spread_frames(original, asset)
+
+        # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
+        # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
+        # one generic warning
         try:
-            solution = complete_sky(solution, asset)
+            solution = complete_sky(solution, asset, frames=pose_frames)
         except Exception:
             solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
 
