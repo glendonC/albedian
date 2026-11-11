@@ -1,6 +1,8 @@
 # Design: a sky for every upload
 
-Requirements: `requirements.md` in this folder. Every line reference below was read at `main` `db972af7`.
+Requirements: `requirements.md` in this folder. Every line reference below was read at `main` `db972af7`, except
+components 3, 4 and 6 and the limits of the head-worn pose, read again at the commit that landed sky-3 (`tasks.md`
+task 3).
 
 ## Overview
 
@@ -61,39 +63,78 @@ Layer 1 needs no contract change: `predicted_only` with `predicted` findings is 
   entry is added for a model nobody has uploaded.
 - Kept apart from `phone_photo_solver.py`'s `PUBLISHED_CAMERA_FOV_DEG`, which solver 10k edits.
 
-### 4. The head-worn Moon pose (`services/science/pose_estimate.py`, new)
-- `find_moon_blob(luma, *, min_diameter_px, max_diameter_px) -> MoonBlob | Refusal(reason)` (as built in sky-3 v3,
-  2026-11-11; the first rule, saturated pixels at 250 of 255, refused the owner's limited-range clip, whose Moon is a
-  soft peak): the candidate is the brightest peak after a 2.5 px Gaussian; its own code must be at least 200 of 255
-  and at least 10 noise units (1.4826 MAD) above the frame median [proposed]; its region is the 8-connected pixels
-  above median + (peak - median) / 2, the half-maximum contour that follows a resolved disk's edge whatever the
-  exposure; a region's equivalent diameter is `2 sqrt(area / pi)`. Refuse with "not confirmed as the Moon" when
-  another region above that level has half its area or more. The centroid is the background-subtracted flux-weighted
-  centroid over the region dilated by two pixels, its FWHM from second moments as in `horizon_solver.py`.
+### 4. The head-worn pose from a spot taken to be the Moon (`services/science/pose_estimate.py`, sky-3)
+As landed (REQ-SKY-3.1, 3.3, 3.5 and 3.8 to 3.12 name the tests). The checks for one frame, in order
+(`head_worn_moon_pose`): a mirrored frame refuses; the topocentric Moon at the frame's own moment; the predicted Moon
+more than 5 deg up (`MIN_MOON_ALT_DEG`, on the ephemeris altitude its predicted finding carries); the Sun's centre not
+above -50/60 deg (`SUNRISE_SUNSET_ALT_DEG`, USNO's sunrise and sunset altitude, which `predicted_sky.py` imports for
+its own check before any frame is read); the Moon test; the level-pose count at the nine swept values; the nine fits.
+Each refusal is a `Refusal(kind, reason, blob, frame_time_sec)`; nothing stands in for a pose.
+- The Moon test, `find_moon_blob(luma, *, min_diameter_px, max_diameter_px) -> MoonBlob | Refusal` (the first
+  rule, saturated pixels at 250 of 255, refused the owner's limited-range clip, whose Moon is a soft peak): the
+  candidate is the brightest point after a 2.5 px Gaussian; its own code must be at least 200 of 255 and at least
+  10 noise units above the frame median, the noise 1.4826 times the median absolute deviation floored at 1e-4
+  [proposed]; its region is the 8-connected pixels above median + (peak - median) / 2, the half-maximum contour that
+  follows a resolved disk's edge whatever the exposure; a region's equivalent diameter is `2 sqrt(area / pi)`. The
+  region is cut by the edge when its bounding box comes within 2 px (`BLOOM_DILATION_PX`) of a border, the same as
+  the region grown by 2 px reaching it. Rivals: each 8-connected group of pixels at 200 or more outside the
+  candidate's region is judged at its own brightest smoothed point by the same test at its own half-peak level, the
+  edge rule left out, so a rival cut by the edge still counts; a region at a rival's level that holds the
+  candidate's peak is the candidate's own halo and is skipped. One rival that passes refuses the frame. The centroid
+  is the background-subtracted, flux-weighted centroid over the region grown by 2 px, its FWHM from second moments
+  as in `horizon_solver.py`, its radius from the grown region's area.
 - Diameter limits: the Moon's predicted angular diameter `2 asin(1737.4 km / distance)` divided by the profile's
   scale at its widest field of view, times 0.8 for the minimum; at its narrowest field of view, times 8 for the
   maximum [proposed: wide enough for overexposure bloom, narrow enough to refuse a lit cloud or twilight band].
 - Scale from a diagonal field of view for the rectilinear (TAN) model: `scale_rad_per_px = 2 tan(fov / 2) / d`
   with `d` the frame diagonal in pixels.
-- The Moon's topocentric direction: the ephemeris position turned to altitude and azimuth, lowered by
-  `moon_parallax_shift_arcsec`, turned back with `altaz_to_icrs` (refraction is left out for the Moon and the stars
-  alike, so it cancels to first order; stated in the limitations).
-- The fit, for one (field of view, roll) pair: unknowns `crval_ra`, `crval_dec`, `rotation_deg` at fixed scale,
-  `parity -1`, `k1 = k2 = 0`, `crpix` the frame centre (the conventions of `horizon_solver.py` `_wcs_for`).
-  Residuals: the Moon's projection minus the blob centroid (2), and the roll constraint (1): two points at the
-  frame centre's altitude, 10 deg either side in azimuth, mapped to the upright frame (`displayOrientation`), have
-  a row difference equal to `tan(roll)` times their column difference. `scipy.optimize.least_squares(method="lm")`
-  from the closed-form start (centre altitude from the blob's row offset times the scale, azimuth from its column
-  offset over the cosine of the altitude). A fit whose largest residual is above 0.5 px is refused.
-- The sweep: field of view at the profile's two limits and middle, roll at -10, 0 and +10 deg [proposed]: nine fits.
-  Nominal is the middle field of view with roll 0. `maxCenterOffsetDeg` is the largest angle between the nominal
-  and any swept frame centre; `beaconCentroidUncertaintyDeg` is the Moon's predicted radius (an overexposed spot's
-  centroid sits somewhere on the disk, and a partial phase moves it toward the lit limb). The assumptions also say
-  the camera was not zoomed: the owner's clip's Moon region measures about 3 times its predicted size, from bloom,
-  motion blur or a zoom the file does not record [open].
-- Returns a `PoseResult(wcs, pose_estimate, beacon_finding, frame_time_sec)` or the refusal reason.
-- For a clip: `pose_from_frames(frames_with_times, ...)` tries each frame in time order and keeps the first that
-  passes the Moon test and the fit; the frames come from component 6.
+- The topocentric Moon (`topocentric_moon`): the ephemeris record's altitude lowered by
+  `moon_parallax_shift_arcsec` (first order: the parallax times the cosine of the altitude), turned back with
+  `altaz_to_icrs`; its distance from the place by the cosine rule, with the Earth's equatorial radius toward the
+  zenith; its uncertainty the record's own `uncertainty_arcsec`. Refraction is left out for the Moon and the stars
+  alike [inference: it cancels to first order near the Moon]. These lines change once the ephemeris record is
+  topocentric (`tasks.md` task 5).
+- The level poses in closed form (`level_centres`): the spot's upright offset from the frame centre (display turns
+  applied), the roll undone, times the scale in radians, gives its tangent offsets X (right) and Y (up) in a level
+  camera. A level camera pitched to a0 sees the Moon, at altitude h, there when
+  `sin(a0) + Y cos(a0) = sin(h) sqrt(1 + X^2 + Y^2)`, so `a0 + atan(Y)` is `asin(q)` or `180 deg - asin(q)`, with
+  `q = sin(h) sqrt(1 + X^2 / (1 + Y^2))`; each a0 strictly between -90 and 90 deg is a pose, its azimuth the one that
+  puts the Moon at X. None when q > 1, and none for a Moon at the zenith. Exactly one pose exists when
+  `sin(h) sqrt(1 + X^2 + Y^2) < 1`: the roll leaves `X^2 + Y^2` unchanged and a wider field of view only grows it, so
+  one pose at the widest swept field of view means one at every field of view and roll inside the ranges; which of
+  two or none it is otherwise moves with the roll [inference: derived from the closed form, as the verdict
+  sky-3-v5 note (a) says; that auditor's 4,000 truths were refused exactly when its own grid found a count other
+  than one]. Two at any swept value refuse first, then none at any (REQ-SKY-3.8), before any fit is run.
+- The fit (`fit_level_pose`), for one (field of view, roll): unknowns `crval_ra`, `crval_dec`, `rotation_deg` at
+  fixed scale, `parity -1`, `k1 = k2 = 0`, `crpix` the frame centre (the conventions of `horizon_solver.py`
+  `_wcs_for`). Residuals: the Moon's projection minus the centroid (2), and the level constraint (1): two points at
+  the frame centre's altitude, 10 deg either side in azimuth, mapped to the upright frame (`displayOrientation`),
+  have a row difference (right minus left) equal to `tan(roll)` times their column difference, so a positive roll
+  puts the horizon's right side lower. `scipy.optimize.least_squares(method="lm")` polishes the closed form's pose,
+  started with the rotation that gives the roll there; `_normalized` brings a declination past a pole back as the
+  same pointing (RA plus 180 deg, turned by half a turn). On the WCS returned, the fit is accepted only when every
+  residual is finite and at most 0.5 px, the level line points right in the upright frame (the sky not upside down)
+  and the centre is within 0.001 deg of the closed form's (`SAME_POSE_DEG`) [proposed]; else it is refused. A single
+  fit refuses two poses or none on its own too.
+- The sweep: field of view at the profile's two limits and middle, roll at -10, 0 and +10 deg [proposed]: nine fits;
+  any refused fit refuses the pose. Nominal is the middle field of view with roll 0. `maxCenterOffsetDeg` is the
+  largest angle between the nominal and any swept frame centre; `beaconCentroidUncertaintyDeg` is the Moon's
+  predicted radius (an overexposed spot's centroid sits somewhere on the disk, and a partial phase moves it toward
+  the lit limb) plus the record's stated uncertainty. The seven assumption sentences: the field of view range and
+  its swept values; no zoom (the owner's clip's spot measures about 3 times the Moon's predicted size, from bloom,
+  motion blur or a zoom the file does not record [open]); a level head, and that a second level pose or none at a
+  swept roll refuses; a rectilinear lens with no distortion; the spot taken to be the Moon, which a lamp or another
+  light of similar size would be too; the centroid on the disk and the beacon term; the topocentric Moon and
+  refraction.
+- Returns `PoseResult(wcs, pose_estimate, blob, moon, frame_time_sec, moment, profile)` or the refusal.
+- For a clip, `pose_from_frames(frames, ...)` sorts the frames by their own time and keeps the first that gives a
+  pose; with none, the refusal that says most (REQ-SKY-3.12), its sentence saying where the spot was ("in the frame
+  N s into the clip", "in the photo") or how many frames were searched. The frames come from component 6.
+- The solution (`services/science/predicted_sky.py` `_lined_up`): `approximate`, the nominal WCS, the pose
+  estimate, `frameTimeSec` and `observedAtUTC` of the pose's frame, solver `AlbedianHeadWornMoonPose`, quality with
+  the detector's count and nothing matched or held out; findings: the detector's observed ones less those of the
+  same frame inside the spot's radius, the spot, and the predicted sky for the frame's moment, each saying whether
+  the nominal WCS puts it inside the frame; warnings: the solver's, the lined-up sentence, the sky phase sentence.
 
 ### 5. The horizon pose for uploads (`services/science/horizon_solver.py`, unit sky-4)
 - The job calls `solve_horizon_and_beacon_pose` on the upload's frame when no head-worn pose was found; its star
@@ -107,12 +148,21 @@ Layer 1 needs no contract change: `predicted_only` with `predicted` findings is 
 - The Sun beacon and a horizon edge of either sign are unit sky-6, after a real daytime photo exists to test on.
 
 ### 6. Frames for the pose search (`services/ingest/jobs.py`)
-- Photos: the decoded luma frame.
-- Clips: up to 16 frames spread evenly over the clip by frame index (`n_k = round((k + 0.5) N / 16)` for a clip of
-  `N` frames from its probed frame rate and duration), each decoded at stored size by an accurate seek to half a
-  frame before `n_k / fps` (`ffmpeg -ss <t> -i <file> -frames:v 1 -noautorotate -pix_fmt gray`), no scale
-  filter, inside the existing decode timeout. The frame's time is `n_k / fps`. These frames are never stacked
-  (scientific-integrity rule 6 is about stacking; a single frame needs no de-skew).
+- Photos: the decoded luma frame, at time 0.
+- Clips (as landed, REQ-SKY-3.4; the first rule, an index over the average frame rate, gave the wrong frame's time
+  on a clip with uneven frame times): `_frame_timestamps` lists the clip's own frames with ffprobe
+  (`stream=time_base:format=start_time:packet=pts,flags`): the time base, every video packet's presentation
+  timestamp, sorted and without the packets flagged D to discard, and the file's start time. `_spread_frame_indices`
+  takes n = min(N, 16) of the `N` frames by index, `n_k = floor((k + 0.5) N / n)` for k = 0 to n - 1 (so a clip of
+  fewer than 16 frames gives each frame once). Each is decoded alone at stored size by an accurate seek to halfway
+  between it and the frame before, less
+  the file's start time, with the file's timestamps kept:
+  `ffmpeg -noautorotate -ss <t> -copyts -i <file> -vf select=gte(pts\,<stamp>),showinfo -frames:v 1 -pix_fmt gray`,
+  no scale filter. The frame is kept only when showinfo's first frame reports the timestamp asked for and the frame
+  has the stored size. Its time is that timestamp less the first frame's, in the time base, so the time and the
+  pixels are one frame's. The probe and every decode share `DECODE_TIMEOUT_SEC`; a failed or wrong frame is skipped,
+  and a timeout or a missing ffmpeg ends the search. These frames are never stacked (scientific-integrity rule 6 is
+  about stacking; a single frame needs no de-skew).
 - `complete_sky` runs after the bounded solve and before `solution.json` is written; the job's stages are unchanged.
 
 ### 7. The contract (`packages/contracts/src/astronomy.ts`, `services/science/wcs_models.py`, unit sky-1)
@@ -177,6 +227,31 @@ export const PoseEstimateSchema = z.object({
 - Any exception inside `complete_sky`: the job keeps the solver's solution unchanged and adds the generic warning
   "The predicted sky could not be computed." so the upload still ends `succeeded` with what the solver found. A test
   injects a failure and checks that fallback; the real-case run must show no such warning, so a bug cannot hide.
+
+## Limits of the head-worn pose (as landed in sky-3)
+True limits, kept on purpose or until a named unit, from the verdict `.lead/kiro/verdicts/sky-3-v5.md` and
+`docs/science/PREDICTED_SKY.md`:
+- A Moon on a bright twilight sky can be lost. The Moon test's noise is the whole frame's median absolute deviation,
+  so a sky graded across the frame counts as noise, and a clear Moon can fall under 10 noise units and be refused
+  (7.8 on the auditor's sky graded 120 to 160 codes; verdict note (c)). Safe, since no pose is made and nothing wrong
+  is drawn, but that Moon is lost.
+- The sweep takes each range at its limits and middle only, so a truth between the swept values can put a predicted
+  object up to about half a pixel outside the spread of its nine swept positions (0.47 px in the auditor's probe,
+  0.06 px against the unit's own topocentric Moon; verdict note (b)). The beacon term in the ring covers it, and
+  P-SKY-5 (a) checks the ring with that term.
+- The Moon is lowered by a first-order parallax, up to about 30 arcsec from the exact topocentric altitude; at a
+  swept corner the true centre lay up to 0.0091 deg beyond `maxCenterOffsetDeg` in the auditor's probe, inside the
+  beacon term (verdict item 3). Until the ephemeris record is topocentric (task 5), the predicted Moon finding also
+  carries the geocentric position, so on the nominal WCS its marker sits up to about a degree from the spot, toward
+  the zenith, and its ring need not hold the spot.
+- A clip's detector points come from the frames stacked at its start (time 0.0): they are left out on the spot only
+  when the pose's frame is the clip's first; from any other frame they are kept as measured, and the spot's finding
+  says so.
+- The job hands the Moon test 8-bit gray frames only; a frame on another scale would meet the 200 floor whatever it
+  shows.
+- A lamp, a lit cloud's edge or a glint of about the Moon's size, at 200 or more, the brightest and the only spot in
+  its frame that passes the Moon test, is taken to be the Moon, and the sentences say so (REQ-SKY-3.11). Lens
+  distortion is not modelled and head motion between frames is not tracked: the pose holds for its one frame.
 
 ## Testing strategy
 - Python unit tests per component under `tests/science/` (`test_predicted_sky.py`, `test_pose_estimate.py`,
