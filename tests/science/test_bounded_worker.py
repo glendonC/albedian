@@ -4,9 +4,10 @@ Covers:
 - A 30 s sleep with a 1 s bound raises WorkerTimeout within a stated margin, and the same worker then serves the
   next call from a fresh child.
 - Results, a child's exception (type and text) and progress events come back in order.
-- The benchmark's run_solver stops a running solve at its timeout and reports "timeout": after a warm-up call,
-  a dense simulated frame that takes about 2 s in this process is stopped at 0.5 s. SIGALRM could only act
-  between bytecodes and only on the main thread; the worker also runs off the main thread.
+- The benchmark's run_solver stops a running solver call at its timeout and reports "timeout": after a warm-up
+  call, a dense simulated frame is stopped at 0.1 s, while the child is still detecting its point sources (detection
+  takes at least 0.29 s there and the plate solve under 0.1 s, so the bound stops detection, not the plate solve).
+  SIGALRM could only act between bytecodes and only on the main thread; the worker also runs off the main thread.
 """
 
 from __future__ import annotations
@@ -109,8 +110,11 @@ def _dense_frame(width: int = 640, height: int = 480, sources: int = 1500) -> np
 
 
 DENSE_METADATA = {"utc": "2026-01-15T03:00:00Z", "latDeg": 35.0, "lonDeg": -110.0}
-# The 1600 x 1200 frame with 4000 sources takes about 2 s in this process [tested]; the bound stops it well before
-SLOW_TIMEOUT_S = 0.5
+# What the bound stops: the child's point-source detection, not the plate solve. On the 1600 x 1200 frame with 4000
+# sources, detection (`detect_point_sources`, 3678 detections) took 0.298 to 0.434 s and the plate solve after it
+# 0.041 to 0.077 s over 20 runs in one process, and the warmed worker's whole call 0.353 to 0.404 s over 10 runs
+# [tested]. The bound is about a third of the fastest detection, so the call is stopped while it detects
+SLOW_TIMEOUT_S = 0.1
 
 
 def test_run_solver_stops_a_slow_solve_at_its_timeout() -> None:

@@ -1,7 +1,7 @@
 """An upload's solve stops at its time limit and reports an honest unresolved result (solver-10j).
 
 Covers:
-- A dense simulated upload (many random point sources, no real sky) whose search runs far past a 3 s limit ends
+- A dense simulated upload (many random point sources, no real sky) whose search runs far past a 0.5 s limit ends
   within the limit plus a stated margin: the job succeeded, its contract is valid, and the solution is
   unresolved with a warning that names the limit, every detection kept as an observed finding.
 - The solve stage keeps only counts the child measured.
@@ -31,7 +31,9 @@ from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.solver import triangle_solver_identity
 
-LIMIT_S = 3.0
+# The triangle search on the dense upload, in the warmed shared child, ended 2.59 to 5.74 s after the bounded call
+# over 10 runs [tested]; the limit is under a fifth of the fastest
+LIMIT_S = 0.5
 # Detection and storage run before the bound starts; stopping the child takes a terminate and a join
 MARGIN_S = 4.0
 
@@ -68,6 +70,8 @@ def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: T
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
     seen: list[dict[str, Any]] = []
+    # Start the shared child first, so the bound below stops the search, not the child's start-up
+    ingest_jobs._SOLVE_WORKER.call(operator.add, (1, 1), timeout_s=30.0)
 
     started = time.monotonic()
     job = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append, solve_time_limit_s=LIMIT_S)

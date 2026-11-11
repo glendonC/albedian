@@ -4,7 +4,8 @@ Covers:
 - `solve_and_verify_field` accepts unknown `obs_utc_iso`, `observer_lat` and `observer_lon`, rejects a
   half-specified observer location, and reports real candidate-triplet counts (`0..comb(len(det_pool), 3)`)
 - PBT: candidate-triplet progress denominators equal `math.comb(min(len(psf_detections), 14), 3)` whenever
-  triangle matching runs, with monotonic `done <= total`
+  triangle matching runs, with monotonic `done <= total` in one run per pool searched (the pinned stars, then the
+  tile catalog's stars when the pinned stars do not calibrate)
 - `POST /api/ingest/{sha256}/solve`, `GET /api/ingest/jobs/{job_id}` and `GET /api/ingest/{sha256}/solution`
   run and persist a contract-validated `SolveJob` and `ObservationSolution`
 - PBT: every intermediate and terminal `SolveJob` snapshot emitted during a solve run obeys `SolveJob` and has
@@ -175,9 +176,20 @@ def test_pbt_candidate_progress_denominators_match_combinatorial_pool(
         assert events == []
     else:
         expected_total = math.comb(min(n_detections, 14), 3)
+        # One run of the same triplets per pool searched: the 18 pinned stars, then, when they did not calibrate,
+        # the tile catalog's pool, which counts every triplet before it verifies anything
+        runs: list[list[tuple[int, int]]] = []
+        for done, total in events:
+            if done == 0:
+                runs.append([])
+            runs[-1].append((done, total))
         assert events[0] == (0, expected_total)
-        assert events[-1] == (expected_total, expected_total)
-        assert [done for done, _ in events] == list(range(expected_total + 1))
+        assert len(runs) == (1 if sol.status == "calibrated" and "pinned" in sol.solver.catalog_release else 2)
+        for run in runs:
+            assert all(total == expected_total for _, total in run)
+            assert [done for done, _ in run] == list(range(len(run)))
+        if len(runs) == 2:
+            assert runs[-1][-1] == (expected_total, expected_total)
 
 
 def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated_starfield(

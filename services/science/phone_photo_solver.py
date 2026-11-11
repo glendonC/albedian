@@ -826,6 +826,81 @@ def _get_tile_index(release_dir: Path = DEFAULT_TILE_RELEASE_DIR) -> _TileStarIn
     return _TileStarIndex(release_dir)
 
 
+# The deepest V the tile pool helpers build and keep for a moment, so that a shallower limit is a slice of it
+# [proposed: the L0 tiles' G 6.5 edge; about 3,500 stars above 10 degrees at a synthetic moment, tested count]
+TILE_POOL_CACHED_V_LIMIT = 6.5
+
+
+@lru_cache(maxsize=8)
+def _tile_pool(
+    obs_utc_iso: str | None, lat_deg: float | None, lon_deg: float | None, min_alt_deg: float | None, v_depth: float
+) -> tuple[tuple[CatalogStar, ...], np.ndarray]:
+    """The tile stars brighter than V `v_depth` with a valid distance, in V order, with their V magnitudes.
+
+    With a time, positions move by proper motion to its epoch, else they stay at the tiles' own epoch. With a place
+    as well and `min_alt_deg`, only stars whose apparent (refracted) altitude is at least `min_alt_deg` are kept.
+    """
+    index = _get_tile_index()
+    if obs_utc_iso is not None:
+        epoch = 2000.0 + (_parse_iso_to_jd_utc(obs_utc_iso) - JD_J2000) / DAYS_PER_JYEAR
+    else:
+        epoch = index.epoch_jyear
+    rows, ra, dec, v_mag = index.query_bright(v_limit=v_depth, max_stars=int(index.data["v_mag"].size), epoch_jyear=epoch)
+    keep = np.ones(rows.size, dtype=bool)
+    if min_alt_deg is not None:
+        sky_frame = _ApparentSkyFrame.from_iso(obs_utc_iso, lat_deg, lon_deg)
+        enu = sky_frame.icrs_to_sky_vec(ra, dec)
+        keep &= np.degrees(np.arcsin(np.clip(enu[:, 2], -1.0, 1.0))) >= min_alt_deg
+    stars: list[CatalogStar] = []
+    mags: list[float] = []
+    for row, r, d, v in zip(rows[keep], ra[keep], dec[keep], v_mag[keep]):
+        star = index.to_catalog_star(int(row), float(r), float(d), epoch)
+        if star is not None:
+            stars.append(star)
+            mags.append(float(v))
+    return tuple(stars), np.asarray(mags, dtype=np.float64)
+
+
+def _check_v_limit(v_limit: float) -> float:
+    if not math.isfinite(v_limit):
+        raise ValueError(f"A V limit must be finite, not {v_limit!r}.")
+    return float(v_limit)
+
+
+def _slice_by_v(pool: tuple[tuple[CatalogStar, ...], np.ndarray], v_limit: float) -> list[CatalogStar]:
+    stars, mags = pool
+    return list(stars[: int(np.searchsorted(mags, v_limit, side="right"))])
+
+
+def tile_stars_above_horizon(
+    obs_utc_iso: str, lat_deg: float, lon_deg: float, v_limit: float, min_alt_deg: float
+) -> list[CatalogStar]:
+    """The G 12 tile catalog's stars (Gaia DR3 and Hipparcos 2007 rows) that are brighter than V `v_limit` and
+    stand at least `min_alt_deg` above the horizon at this moment and place, as CatalogStar rows, brightest first.
+
+    The altitude is the apparent one (`_ApparentSkyFrame`: precession, nutation, aberration and refraction).
+    Positions are ICRS, moved by proper motion to the moment's epoch. Only rows with a valid distance are kept
+    (a pinned star comes back as its pinned row, with its name and distance). V is the Hipparcos magnitude, or for a
+    Gaia row the G-to-V conversion `_v_from_gaia_mag`. A shallower limit returns a prefix of a deeper one.
+    """
+    v_limit = _check_v_limit(v_limit)
+    if not (math.isfinite(lat_deg) and -90.0 <= lat_deg <= 90.0 and math.isfinite(lon_deg)):
+        raise ValueError("The observer latitude must lie in [-90, 90] and the longitude must be finite.")
+    if not (math.isfinite(min_alt_deg) and -90.0 <= min_alt_deg <= 90.0):
+        raise ValueError(f"The altitude cut must lie in [-90, 90] degrees, not {min_alt_deg!r}.")
+    depth = max(TILE_POOL_CACHED_V_LIMIT, v_limit)
+    return _slice_by_v(_tile_pool(obs_utc_iso, float(lat_deg), float(lon_deg), float(min_alt_deg), depth), v_limit)
+
+
+def tile_stars_all_sky(v_limit: float, obs_utc_iso: str | None = None) -> list[CatalogStar]:
+    """The G 12 tile catalog's stars brighter than V `v_limit` over the whole sky, as CatalogStar rows, brightest
+    first: `tile_stars_above_horizon` without the place. With a time the positions move to its epoch; without one
+    they stay at the tiles' own epoch (J2016.0)."""
+    v_limit = _check_v_limit(v_limit)
+    depth = max(TILE_POOL_CACHED_V_LIMIT, v_limit)
+    return _slice_by_v(_tile_pool(obs_utc_iso, None, None, None, depth), v_limit)
+
+
 # =============================================================================================
 # Coincidence-weighed held-out verification gate (Lang et al. 2010, AJ 139, 1782)
 # =============================================================================================

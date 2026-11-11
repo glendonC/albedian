@@ -132,7 +132,8 @@ camera. Solver adapter `today-api`: the baseline 18-star triangle solver as expo
 `POST /api/science/solve`, on its default 18-star catalog, blind, with a 120 s limit per frame; 8 worker
 processes on an 18-core arm64 Mac. Machine-readable:
 `research/benchmarks/phone_photos/results/today-solver-baseline.json`.
-Any later change to the solver or its gate needs a re-run before these numbers describe it.
+Any later change to the solver or its gate needs a re-run before these numbers describe it. These numbers describe
+the search before solver-10k; what it does since then, and its new numbers, are at the end of this section.
 
 | Frames | Count | correct | imprecise | wrong | unresolved | timeout |
 |---|---|---|---|---|---|---|
@@ -166,6 +167,44 @@ whatever catalog it gets (`services/science/solver.py`, the `cat_pool` line) [ve
 code], so the larger list adds few triangles to a frame; and the horizon and Moon solver never claims
 held-out verification by design, so the benchmark would score every frame as no claim [inference].
 On the CI subset, `today-api` solved 0 of 4 positives and claimed nothing on its 4 negatives.
+
+### `today-api` since solver-10k
+
+The triangle search behind `today-api` (`solve_and_verify_field` in `services/science/solver.py`) runs the pinned
+pass first: the search above, on the 18 brightest pinned stars, made faster. When that pass does not calibrate, it
+searches the tile pool: the G 12 tiles' stars at apparent altitude 10 deg or more when the frame has a time and a
+place, else the whole sky. The V rule (`_tile_v_limit`) sets the pool's depth from the frame: the shallowest V, in
+0.1 mag steps, at which a 31 deg cone expects as many stars as the detections the search scores (at most 150), and
+never past V 6.5 [proposed thresholds]. A tile-pool result is kept only when it calibrates; on that pass, calibrating
+also needs the coincidence check and its dual-path agreement (`evaluate_coincidence_gate`), on top of the held-out
+gate. A given catalog is still searched alone, so `today-allsky` runs only the pinned pass.
+
+A tile-pool fit holds only over the frame's field: the cone of the frame corners' largest angle from its tangent
+point plus 1 deg (`FIELD_MARGIN_DEG`). Its held-out verification and the coincidence check's count of in-frame stars
+use only the pool's stars in that cone, and a fit whose radial terms fold over inside it (r (1 + k1 r^2 + k2 r^4)
+stops increasing before the cone's edge, `_folds_inside_field`) is refused. Without this, the free radial terms
+folded stars 62 to 80 deg from the tangent point onto detections: a frame scored correct by its field error still
+named such stars as catalog matches (pos-002 and pos-024 below, the unit's simulated Crux frame 12 h later and its
+Cygnus frame flipped either way) [tested, simulated].
+
+Re-run on 2026-11-11 with the 120 s limit and 4 worker processes [tested, 2026-11-11, simulated]. "Before" is the
+search before solver-10k. A catalog match is outside the field when its star lies further from the claimed WCS's
+centre than the frame corners plus 1 deg, and off when its detection sits more than 3 px from the star's true pixel:
+
+| Frames | Before: correct | After: correct | After: false claims | After: timeouts | After: time, median and max | Catalog matches on calibrated frames | Outside the field | Over 3 px off |
+|---|---|---|---|---|---|---|---|---|
+| The full suite's first 60 frames (all positives) | 0 (16 timeouts) | 21 | 0 | 0 | 3.09 s, 32.7 s | 3,506 on 21 frames | 0 | 1 |
+| 20 positives past frame 60 with observer latitude below 0 | 0 (3 timeouts) | 3 | 0 | 0 | 3.33 s, 8.55 s | 616 on 3 frames | 0 | 0 |
+| CI subset (4 positives, 4 hard negatives) | 0 | 0 | 0 | 0 | 1.14 s, 1.73 s | none (no claim) | 0 | 0 |
+
+The one match over 3 px off (pos-017) is a training pair 1,173 px from the frame's centre: its detection is another
+rendered star, 6.5 px from the matched star's true pixel, where the fit is 6.3 px off; the frame's median field error
+stays within 3 px [tested, simulated]. The same run of `phone-photo` on
+the CI subset: 3 of 4 positives correct, 0 false claims, 0 timeouts, 145 catalog matches, 0 outside the field and 0
+over 3 px off. Before the field's cone and the fold check (the auditor's run of the same frames), full60 had the same
+21 correct frames, and two of them named a star 68 and 80 deg from the tangent point [tested, simulated].
+
+The baseline table above was not re-run on all 270 frames [open].
 
 ## Results: G 12 tile-backed phone-photo solver (simulated)
 
