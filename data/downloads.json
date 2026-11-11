@@ -170,6 +170,606 @@
       "licence": "CC-BY-NC-3.0-IGO",
       "licenceUrl": "https://www.cosmos.esa.int/web/esdc/terms-and-conditions",
       "source": "ESA Gaia archive TAP (gea.esac.esa.int), one ADQL query: Hipparcos, the New Reduction (van Leeuwen 2007, public.hipparcos_newreduction) joined on hip with the Hipparcos Catalogue (ESA 1997, public.hipparcos) for the 226 stars the gaia-dr3 G 12 tiles take from Hipparcos; 226 rows of CSV, fetched 2026-11-09T21:13:20Z. Data hosted in the ESA Space Science Archives are distributed under CC BY-NC 3.0 IGO, credit ESA; commercial use needs ESA's prior authorisation. Baked by scripts/bake_bright_stars_3d.py."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-01/rp-a-01.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/be/Torrance_Barrens_Dark_Sky_Preserve1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 14540234,
+      "sha256": "cdc7f1a5fe4de5c91da39efd7b38630c921560a7aa8f595d54dbd86b27120e18",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Mustang Joe. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Torrance_Barrens_Dark_Sky_Preserve1.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-02/rp-a-02.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Milky_way_on_Al-Er_Dunes.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 18075615,
+      "sha256": "a152c81bbcf5c947ef27abf5e9f8dd8a34179ecf641dc06ee29d81bd14ecef37",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "Photograph by Valerian Guillot. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_way_on_Al-Er_Dunes.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-03/rp-a-03.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Starry_constellations_over_Glacier_National_Park_%2826368402193%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 20064959,
+      "sha256": "5bba130c1eeab16c5ffacf8054cc29da2f76fe8ac69e8f486f53481dabee1b12",
+      "licence": "Public domain",
+      "licenceUrl": "https://commons.wikimedia.org/wiki/Template:PD-USGov-NPS",
+      "source": "Photograph by Jacob W. Frank, National Park Service. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Starry_constellations_over_Glacier_National_Park_(26368402193).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-04/rp-a-04.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Forest-night-sky-spruce-trees-stars_-_West_Virginia_-_ForestWander.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 9821874,
+      "sha256": "4d585dc43455085a1d5dda10d0b3e560d1358240e30327202664307c941d9f00",
+      "licence": "CC BY-SA 3.0 us",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/3.0/us/deed.en",
+      "source": "Photograph by ForestWander. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Forest-night-sky-spruce-trees-stars_-_West_Virginia_-_ForestWander.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-05/rp-a-05.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/The_aurora_borealis_over_Vinnytsia_region.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 6408717,
+      "sha256": "e6025f3e59823ea52476ac5184ad11aaf6be49a4a5e537f53fa154f299a8b162",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Вікторія Сергійчук. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:The_aurora_borealis_over_Vinnytsia_region.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-06/rp-a-06.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/3c/%D0%85%D0%B2%D0%B5%D0%B7%D0%B4%D0%B5%D0%BD%D0%B0_%D0%9D%D0%BE%D1%9C.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 17497444,
+      "sha256": "c4c4944a10b2a3d9f250fba3ea43c7d611026f41654074ac3ade28d2b72f7d16",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "Photograph by DavidGjorgiev. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:%D0%85%D0%B2%D0%B5%D0%B7%D0%B4%D0%B5%D0%BD%D0%B0_%D0%9D%D0%BE%D1%9C.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-07/rp-a-07.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/22/Milky_Way_Over_Mababe_Depression.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 18428788,
+      "sha256": "0aa649480d98a9ca53c8741247f12d706ac5d753175b2d4fc4b5810280f513ff",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Eric Kilby. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_Over_Mababe_Depression.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-08/rp-a-08.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/8/83/Milky_way_above_the_kaitake_range_%2818980375643%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 7329733,
+      "sha256": "4fb98d442db198df0fd947d9f6d13828836bc8f2af30a02ba7a1c869009737d7",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "Photograph by Dave Young from New Zealand. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_way_above_the_kaitake_range_(18980375643).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-09/rp-a-09.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Aurora_Australis_%2853476861664%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 14884148,
+      "sha256": "b8e66535c3028f406ba39ca1c1d52e8332a90675e83a4cb35f8d1f0810ef20d7",
+      "licence": "CC BY-SA 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "source": "Photograph by cafuego. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Aurora_Australis_(53476861664).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-10/rp-a-10.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/68/Um_campo_de_futebol_sob_o_c%C3%A9u_estrelado.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 7789226,
+      "sha256": "a228f0f9d24bb8b9cd0116ad76ffd143d538ec4c72d86723ce7c7682e8c7f4fe",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Danilo Curado. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Um_campo_de_futebol_sob_o_c%C3%A9u_estrelado.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-11/rp-a-11.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/PARQUE_NACIONAL_DA_SERRA_DA_CANASTRA_-_ELVIO_GUSM%C3%83O_SANTOS_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 25767394,
+      "sha256": "ab4276d19ea90f735b5a323a2169dc8d911f0c414a66eae50e7fecea7774b755",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by ELVIO GUSMÃO SANTOS. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:PARQUE_NACIONAL_DA_SERRA_DA_CANASTRA_-_ELVIO_GUSM%C3%83O_SANTOS_(2).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-12/rp-a-12.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Milky_way_galaxy%2C_lake_Tekapo%2C_stargazing_view_3.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 15084321,
+      "sha256": "e3c9fa84aca69c478bf2bf24634c5d53e378215a14dc3c42b61ee593cba721eb",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Sky_xe. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_way_galaxy,_lake_Tekapo,_stargazing_view_3.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-a-13/rp-a-13.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/55/Two_aircrafts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 7147677,
+      "sha256": "10baf56cfc16e5b154e29580f633bd14da7c99a63586244badcf00777074e0c8",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Talesofaviewfinder. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Two_aircrafts.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-01/rp-b-01.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Crux_constellation%2C_Southern_Cross_seen_from_Noosa_North_Shore_beach%2C_2026%2C_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1350103,
+      "sha256": "2b38f0f6006832a38206946de87acf8d0c140f38d0a884b2985d16f62e35fa9d",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Chris Olszewski. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Crux_constellation,_Southern_Cross_seen_from_Noosa_North_Shore_beach,_2026,_01.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-02/rp-b-02.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Crux_constellation%2C_Southern_Cross_seen_from_Noosa_North_Shore_beach%2C_2026%2C_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1435195,
+      "sha256": "3fa8e0263229960c56ed7279d0eb2fcf1e8d766c29640841f883b576c37ffec8",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Chris Olszewski. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Crux_constellation,_Southern_Cross_seen_from_Noosa_North_Shore_beach,_2026,_02.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-03/rp-b-03.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Scorpius_above_M%E1%BB%B9_Tho_city%2C_Ti%E1%BB%81n_Giang_province%2C_Vi%E1%BB%87t_Nam.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2020717,
+      "sha256": "667ee7f432f89c40a669ed31963e2f96caae3705df591630d61c5efcb80eaa6a",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Kwozyn. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Scorpius_above_M%E1%BB%B9_Tho_city,_Ti%E1%BB%81n_Giang_province,_Vi%E1%BB%87t_Nam.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-04/rp-b-04.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Souther_Cross%2C_Crux_constellation_taken_with_iPhone%2C_Augathella%2C_Queensland%2C_2024.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1646428,
+      "sha256": "fdc80522c99562a825762a5adc78091cde373b571c3cad6a86316c2c2a5e0004",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Kgbo. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Souther_Cross,_Crux_constellation_taken_with_iPhone,_Augathella,_Queensland,_2024.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-05/rp-b-05.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/58/Southern_Cross_with_clouds.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1086200,
+      "sha256": "d91f2610d188c305a02de069ad0a65ec150b2e1e9ebf5d71566f70699845a0c6",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Dicklyon. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Southern_Cross_with_clouds.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-06/rp-b-06.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/b9/Stars_in_the_Night_Sky.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2382523,
+      "sha256": "4f055db773c14698f7bcd7f5db5e1165b9fe9bc7c2e03e9efed2f75a489ddc19",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Wrenalicious. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Stars_in_the_Night_Sky.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-07/rp-b-07.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/32/Winter_sky.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 5365219,
+      "sha256": "d38d7a5fa39e436ae828d7878e5d37eff3d402a72b66958138e84e6ef543eb48",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Paocharbo. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Winter_sky.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-08/rp-b-08.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9e/Starry_sky_from_Tekapo.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1926277,
+      "sha256": "27fdf1bba683e58fd49287633d6e30e4ddffa8fdce07f37463f032f309e8a3e1",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Butterflyyyyyyyy y y y. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Starry_sky_from_Tekapo.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-09/rp-b-09.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/5b/RPPN_Tuki-Lchfabbri%28001%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1876672,
+      "sha256": "d81c04f81b10a86ef06bdf898bac843525043ddb798e8d1a702033bf60713d5e",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Lchfabbri. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:RPPN_Tuki-Lchfabbri(001).jpeg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-10/rp-b-10.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d6/Milky_Way_against_treetops_at_Headlands_International_Dark_Sky_Park_MI_%2854705027488%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 8842878,
+      "sha256": "5780981dac75f7734f1c0c9c3cabe9021e250985b12e16c1d14c12d9cf249911",
+      "licence": "Public domain",
+      "licenceUrl": "https://commons.wikimedia.org/wiki/Template:PD-author-FlickrPDM",
+      "source": "Photograph by radicalespresso from St Clair Shores, MI. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_against_treetops_at_Headlands_International_Dark_Sky_Park_MI_(54705027488).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-11/rp-b-11.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Milky_Way_Galaxy_shot_on_Samsung_Galaxy_S26.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 5027532,
+      "sha256": "15e670033725ec5ec6ba50136cdf074447ddc99533b7d44ac151f17cd1ba3528",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by StarMatics. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_Galaxy_shot_on_Samsung_Galaxy_S26.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-12/rp-b-12.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Venus%2CMoon%2COrion.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2496548,
+      "sha256": "cde1cbe46a87d771241badfd48d05fc51fdc52e1515d31b8aed601c0a0e1b07f",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by YagnKambariya. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Venus,Moon,Orion.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-13/rp-b-13.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/90/Comet_Tsuchinshan-ATLAS_%2854072595893%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 4727590,
+      "sha256": "467515a395d8917d2e69545b9c4c06532846e0e4bff52115cc053162b4be6064",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "Photograph by makelessnoise. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Comet_Tsuchinshan-ATLAS_(54072595893).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-14/rp-b-14.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/70/Starry_sky_during_blackouts.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 14216297,
+      "sha256": "b72be6884751e46e4e6e42860c5c885bafa3b7573ab2ae7db7e906f3ea7234ed",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Oleh325. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Starry_sky_during_blackouts.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-15/rp-b-15.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Via_L%C3%A1ctea_e_contraste_com_a_Floresta.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2601114,
+      "sha256": "dd949543f2f5b51b86b432034a81bfe42bd419d6549e014841c808908e71919a",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Aelson Apolinário. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Via_L%C3%A1ctea_e_contraste_com_a_Floresta.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-16/rp-b-16.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/93/Starry_sky2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 5086516,
+      "sha256": "a97af11b3cbd09a0b258f638e797b0cd46d92a5027e31a5a11ef0423811d3b1e",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by TBOE PC Ohm. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Starry_sky2.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-17/rp-b-17.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/58/Milky_Way_using_android_phone_camera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2240737,
+      "sha256": "fdecd29bcd20ed6320e7671464f76e6c8b6ee7a8500659a667086fe126e9ba38",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "Photograph by Aruncmohan1987. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_using_android_phone_camera.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-18/rp-b-18.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/7e/Starry_night_at_the_Shore_of_Roxas_City.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 8185954,
+      "sha256": "3cda120c6ed0fda460708423133d80bcc2b682486118ae71898d5af986b8e690",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Kheon05. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Starry_night_at_the_Shore_of_Roxas_City.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-19/rp-b-19.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/49/Milky_Way_di_Gunung_Prau.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 390765,
+      "sha256": "23c9c9e3ef206e5873518d0874d27ed2d4cec240e379c838753069b2e8e3f334",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "Photograph by Irnabela. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_di_Gunung_Prau.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-20/rp-b-20.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/28/Night_sky%2C_Esino_Lario%2C_Wikimania_2016.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 6281812,
+      "sha256": "5faa95d07deb2e7b18cc6505bf3fdccc1af96fbe4b09e5ca859a0a4eec97d0dd",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Kenrick95. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Night_sky,_Esino_Lario,_Wikimania_2016.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-21/rp-b-21.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/32/Milky_Way_Over_Bali%27s_Sky.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2345340,
+      "sha256": "3a9cabfd84c40c85efe56f11a97eac8b3be2a694d30abb078761ea16ac635d69",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by I Gede Krisna Dharmayudha. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Milky_Way_Over_Bali%27s_Sky.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-b-22/rp-b-22.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Cielo_de_estrellas_con_astrophotography.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 634176,
+      "sha256": "e6240b13c729723d73f7c92d5f10925a877bc8b07367a90daa513a39f07f57cb",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Gari González. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Cielo_de_estrellas_con_astrophotography.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-01/rp-c-01.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/be/Puesta_de_sol_en_Santiago_con_Cordillera_de_los_Andes_nevada_y_luna_llena.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2346542,
+      "sha256": "3fc9c8a8e84811eb19933b6fdd619b289894157e1143b0d1c33e8e6ddeb7066c",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Nbendersky. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Puesta_de_sol_en_Santiago_con_Cordillera_de_los_Andes_nevada_y_luna_llena.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-02/rp-c-02.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Moonrise_in_Camboinhas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 4880016,
+      "sha256": "0c2629ea8a7e24d45caa2acf1f3227926b2a654085ab9ec7550f051119f6bdac",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Tombersax. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Moonrise_in_Camboinhas.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-03/rp-c-03.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/5/55/Moonrise_in_Prince_William_Sound-Chugach-DS-003_%2852502723106%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1048327,
+      "sha256": "84c6fdd8beab5e44fc048ba95ff6fba562a9b04bbd3a7eb91969c387e38f25be",
+      "licence": "Public domain",
+      "licenceUrl": "https://commons.wikimedia.org/wiki/Template:PD-USGov-USDA-FS",
+      "source": "Photograph by Forest Service Alaska Region, USDA. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Moonrise_in_Prince_William_Sound-Chugach-DS-003_(52502723106).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-04/rp-c-04.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/70/Moonrise_over_the_Eden_Estuary_SSSI.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1608135,
+      "sha256": "3c64ce3f9865f1ba3d1653690264942a80b816d50ee1701ba477cd21a736384b",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Drkirstyross. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Moonrise_over_the_Eden_Estuary_SSSI.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-05/rp-c-05.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/%D0%94%D0%BE%D1%80%D0%BE%D0%B3%D0%B0_%D0%9C%D1%96%D1%81%D1%8F%D1%86%D1%8F_%D0%B4%D0%BE%D0%B4%D0%BE%D0%BC%D1%83.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1241031,
+      "sha256": "975276cdbcb94564adc7e3154a9fb77e5c4d8abb4db3f5f43a457a94a7dccaeb",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by K.torri. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:%D0%94%D0%BE%D1%80%D0%BE%D0%B3%D0%B0_%D0%9C%D1%96%D1%81%D1%8F%D1%86%D1%8F_%D0%B4%D0%BE%D0%B4%D0%BE%D0%BC%D1%83.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-06/rp-c-06.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Fullmoon_captured_%40Bongao_Tawi-Tawi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1027397,
+      "sha256": "926e41248fbbb004155077dacc1e827f572b074b9c22951215f4988c47227ebd",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by MimiAhid. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Fullmoon_captured_@Bongao_Tawi-Tawi.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-07/rp-c-07.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Moonrise_Mt_Rainier_skyline_Seattle_dusk.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1563538,
+      "sha256": "ecac0140d1d3d809841bda9379773e0a432881b7700f9963ffda0baa16e84259",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "Photograph by Lianguanlun. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Moonrise_Mt_Rainier_skyline_Seattle_dusk.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-08/rp-c-08.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Moonrise_over_a_glacier_near_the_King_Citrine_Mine.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1572112,
+      "sha256": "2049d754e361e5bb5b6f56000a2bc460d08d8785314d4851209c177e334df0ce",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by AdamKelliher. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Moonrise_over_a_glacier_near_the_King_Citrine_Mine.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-09/rp-c-09.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c5/DZ6_3015_Sunrise_over_Pattaya_rooftops_-_morning_light_breaking_through_clouds_above_Na_Klueas_apartment_buildings.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 10038975,
+      "sha256": "153f35bfcd5c658d1b9b24e57f04fc53b50b3580dec6705a638764605f896084",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by PattayaPatrol. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:DZ6_3015_Sunrise_over_Pattaya_rooftops_-_morning_light_breaking_through_clouds_above_Na_Klueas_apartment_buildings.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-10/rp-c-10.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/65/Sunrise_over_Alicante_bay_%282026%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 23648315,
+      "sha256": "1a969a51d4e4b318c55beebfb18101470bed992841540f2a41c776fcf77c11e9",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Paul Colin Hennig firstdorsal.eu. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Sunrise_over_Alicante_bay_(2026).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-11/rp-c-11.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Dorchester_Heights_at_sunset_%28b70f6052-b691-44ab-af4d-5d2749f180fa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2156512,
+      "sha256": "d7181966bf78310399c876cb6088c6abb2c6878298a1b25c51bb4be483a2bf3e",
+      "licence": "Public domain",
+      "licenceUrl": "https://commons.wikimedia.org/wiki/Template:PD-USGov-NPS",
+      "source": "Photograph by NPS Photo. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Dorchester_Heights_at_sunset_(b70f6052-b691-44ab-af4d-5d2749f180fa).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-12/rp-c-12.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c9/The_Crimson_Orb_-_Verona_Horizon_at_Golden_Hour.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 956107,
+      "sha256": "b2e8dd2b479bfc280bd605b721287ca005e1e4dc7f569cd91bb847667e6afa97",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Eleneru. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:The_Crimson_Orb_-_Verona_Horizon_at_Golden_Hour.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-13/rp-c-13.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/ae/A_pleasant_evening.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2464956,
+      "sha256": "2d36359e57cffc3b2ab237aa525e4e318274317e0f13a28e0edd795e3db3e585",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Muhammad Wajih Ud Din. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:A_pleasant_evening.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-c-14/rp-c-14.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Colonia_del_Sacramento._Un_atardecer.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1830398,
+      "sha256": "6febc929992f6b2e4df1ce83b95439aef1b0c0b30e6ad8808df2c8d28ed4cfc4",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by Luciajimena1990. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Colonia_del_Sacramento._Un_atardecer.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-01/rp-d-01.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/1/13/Overcast_night_in_Hamburg.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 25513460,
+      "sha256": "8af3ef71c7a00cf42effefb1fe25b339f11ace23392c6a811a056a2732b54839",
+      "licence": "CC BY 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/4.0",
+      "source": "Photograph by Karlheinz Klingbeil. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Overcast_night_in_Hamburg.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-02/rp-d-02.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/7/78/DSC_6577_Fishing_boats_moored_at_a_quiet_harbor_under_a_cloudy_night_sky_lights_reflecting_on_the_water.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 15697963,
+      "sha256": "a1424b7417aee559eaa7c0ee08abf9de3b34e7e40806fa75d4cf0ba4efd0beb2",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by PattayaPatrol. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:DSC_6577_Fishing_boats_moored_at_a_quiet_harbor_under_a_cloudy_night_sky_lights_reflecting_on_the_water.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-03/rp-d-03.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Rowhouses_along_a_street_at_night%2C_Baltimore%2C_Maryland.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 4387197,
+      "sha256": "ba5702cc86e71bc6e91185ca519922142830c5204e04bb3d86044617fc88467e",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Z3lvs. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Rowhouses_along_a_street_at_night,_Baltimore,_Maryland.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-04/rp-d-04.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Fireworks_Burst_Through_the_Night_Sky.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2895733,
+      "sha256": "d8972ab5572fe9ad1300dfaa71d86b0bd72a6530fff84d6184d0ca691cf24280",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by CTracy0803. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Fireworks_Burst_Through_the_Night_Sky.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-05/rp-d-05.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/0/0c/DSC_6231_Brilliant_blue_fireworks_erupt_over_the_water_reflecting_shimmering_light_across_the_dark_night.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 14002534,
+      "sha256": "e1cdc60f4615ea50f93a17bd3a402dab8d6c33d95dd73e4c8129e5dd36cd0ff8",
+      "licence": "CC BY-SA 4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source": "Photograph by PattayaPatrol. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:DSC_6231_Brilliant_blue_fireworks_erupt_over_the_water_reflecting_shimmering_light_across_the_dark_night.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-06/rp-d-06.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/39/Airplane_light_trails_at_Fukuoka_Airport%3B_2016.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2480176,
+      "sha256": "8c12c91c31b77be54be9ffa4c2664a1e87bbf0c4f6b29a617d530c3a69d10dab",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "Photograph by tsuna72 from Fukuoka, Japan. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Airplane_light_trails_at_Fukuoka_Airport;_2016.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-07/rp-d-07.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Cuarto_oscuro_del_Cdf_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1596373,
+      "sha256": "9a66778763c167d01744d2dd742309e281cec4e4f40716f5314437aa6a656480",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Ine10. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Cuarto_oscuro_del_Cdf_01.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-08/rp-d-08.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Uranovy_Kvet_ve_Tme_po_Expozici.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 1031094,
+      "sha256": "300845fee48e11d2af064f0b322f8ca9e8e573ce9b582bf2f9abbc8dd88752b4",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Mojmir Churavy. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Uranovy_Kvet_ve_Tme_po_Expozici.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-09/rp-d-09.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Reading_mail_at_night_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2019828,
+      "sha256": "2e699a09ed6d9c683c1588ab08d51fabd56dd60fdb4289ccf9a8d02bd5038fb6",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Jay Wennington jaywennington. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Reading_mail_at_night_(Unsplash).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-10/rp-d-10.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/f/fa/ATM_blue_screen_of_death.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 2474951,
+      "sha256": "8f8f5b620583d070728f62d5ce745e10db586ce7e5a1db756f0aa049b03e6674",
+      "licence": "CC0",
+      "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source": "Photograph by Andrewthewikimedian. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:ATM_blue_screen_of_death.jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/real-photos/rp-d-11/rp-d-11.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Flight_Landing_%285650317313%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "bytes": 3674018,
+      "sha256": "3dad7a6cbb0fbb0b363d4ca78b2009b9c45e9518827383dfe49d0a2709edfd64",
+      "licence": "CC BY 2.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
+      "source": "Photograph by Koshy Koshy from Faridabad, Haryana, India. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Flight_Landing_(5650317313).jpg, retrieved 2026-11-11."
     }
   ]
 }
