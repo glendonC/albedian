@@ -6,15 +6,20 @@ stored upload in `IngestStore`, recording a schema-validated `SolveJob` (`job.js
 Every stage reports a real denominator (`bytes` stored, `frames` decoded and detected, `candidates` evaluated
 in the triplet pool or `steps` when too few detections exist for triplet search, and `steps` for held-out
 verification). After the solve, the solution is completed with the sky predicted for the upload's own recorded time
-and place (`services/science/predicted_sky.py`), with no stage of its own.
+and place (`services/science/predicted_sky.py`), with no stage of its own; for a camera with a head-worn profile it
+is lined up by taking one frame's bright spot to be the Moon, searched among up to 16 of a clip's own frames spread
+over it, each at its own presentation time (`_decode_spread_frames`).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import copy
 from dataclasses import replace
 from datetime import datetime, timezone
+from fractions import Fraction
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -22,6 +27,7 @@ import secrets
 import subprocess
 import tempfile
 import threading
+import time
 from typing import Any, Callable, Optional
 
 import numpy as np
@@ -42,6 +48,8 @@ from services.science.predicted_sky import complete_sky
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 
 MAX_VIDEO_SOLVE_FRAMES = 8
+# The frames of a clip the head-worn Moon pose searches, spread over the whole clip (design component 6)
+MAX_POSE_FRAMES = 16
 # The searches run in a child process stopped at this bound; the 12 MP no-star solves measured here took 40 to 70 s
 SOLVE_TIME_LIMIT_SEC = 180.0
 # Exists only so tests can spy on the solvers: True runs the chain in the caller's process, unbounded. Never set in production
@@ -343,6 +351,111 @@ def _decode_luma_frames(
     return frames, None
 
 
+def _spread_frame_indices(frame_count: int, count: int = MAX_POSE_FRAMES) -> list[int]:
+    """Up to `count` frame indices spread evenly over a clip of `frame_count` frames: the frame holding the middle of
+    each of `count` equal spans, floor((k + 0.5) N / count). Floor rather than round keeps the last index inside the
+    clip (round would give N for N = 16) and needs no tie rule; a clip shorter than `count` gives each frame once."""
+    if frame_count <= 0:
+        return []
+    used = min(count, frame_count)
+    return [int(math.floor((k + 0.5) * frame_count / used)) for k in range(used)]
+
+
+def _frame_timestamps(path: Path, deadline: float) -> tuple[Fraction, list[int], float] | None:
+    """A clip's own video frames, as ffprobe lists its packets: the stream's time base, every frame's presentation
+    timestamp in it, sorted, without the packets the demuxer marks to discard (flag D), and the file's start time,
+    which an input seek counts from. None when the probe fails, times out or lists no frame."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0.0:
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                "stream=time_base:format=start_time:packet=pts,flags", "-of", "json", str(path),
+            ],
+            capture_output=True,
+            timeout=remaining,
+            stdin=subprocess.DEVNULL,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    try:
+        info = json.loads(proc.stdout)
+        (stream,) = info["streams"]
+        numerator, denominator = (int(part) for part in str(stream["time_base"]).split("/"))
+        time_base = Fraction(numerator, denominator)
+        start = info.get("format", {}).get("start_time")
+        start_sec = 0.0 if start in (None, "N/A") else float(start)
+        stamps = sorted(
+            {int(p["pts"]) for p in info.get("packets", []) if isinstance(p.get("pts"), int) and "D" not in str(p.get("flags", ""))}
+        )
+    except (ValueError, KeyError, TypeError, ZeroDivisionError):
+        return None
+    if not stamps or time_base <= 0 or not math.isfinite(start_sec):
+        return None
+    return time_base, stamps, start_sec
+
+
+# The first frame showinfo passes on (n: 0) and its own presentation timestamp, in the stream's time base
+_SHOWN_PTS = re.compile(rb"\bn:\s*0\s+pts:\s*(-?\d+)\b")
+
+
+def _decode_spread_frames(path: Path, asset: Mapping[str, Any]) -> list[tuple[float, np.ndarray]]:
+    """The frames the head-worn Moon pose searches in a clip, as (time into the clip, gray stored pixels).
+
+    The clip's own frames are its packets' presentation timestamps (`_frame_timestamps`), and up to MAX_POSE_FRAMES
+    of them are spread over the whole clip by index (`_spread_frame_indices`). Each is decoded alone, at its stored
+    size (no scale filter, the display matrix left as metadata): an accurate seek to halfway between it and the frame
+    before, the file's own timestamps kept (-copyts), and the first frame at or after its timestamp passed on, whose
+    own timestamp showinfo reports. The frame is kept only when that is the timestamp asked for, so its pixels and
+    its time are one frame's; its time into the clip is that timestamp less the first frame's, in the stream's time
+    base. A frame that cannot be read, is of another size or is not the one asked for is skipped; the probe and all
+    the decodes share DECODE_TIMEOUT_SEC, and a timeout or a missing ffmpeg ends the search. These frames are never
+    stacked."""
+    width, height = int(asset["width"]), int(asset["height"])
+    deadline = time.monotonic() + DECODE_TIMEOUT_SEC
+    listed = _frame_timestamps(path, deadline)
+    if listed is None:
+        return []
+    time_base, stamps, start_sec = listed
+    frames: list[tuple[float, np.ndarray]] = []
+    for index in _spread_frame_indices(len(stamps)):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0.0:
+            break
+        stamp = stamps[index]
+        halfway = Fraction(stamp + stamps[max(index - 1, 0)], 2) * time_base
+        seek_sec = max(0.0, float(halfway) - start_sec)
+        try:
+            proc = subprocess.run(
+                [
+                    "ffmpeg", "-hide_banner", "-nostats", "-v", "info", "-nostdin", "-noautorotate",
+                    "-ss", f"{seek_sec:.6f}", "-copyts", "-i", str(path), "-vf", f"select=gte(pts\\,{stamp}),showinfo",
+                    "-frames:v", "1", "-pix_fmt", "gray", "-f", "image2pipe", "-c:v", "pgm", "-",
+                ],
+                capture_output=True,
+                timeout=remaining,
+                stdin=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            break
+        if proc.returncode != 0 or not proc.stdout:
+            continue
+        shown = _SHOWN_PTS.search(proc.stderr or b"")
+        if shown is None or int(shown.group(1)) != stamp:
+            continue
+        try:
+            decoded = _parse_pgm_frames(proc.stdout)
+        except SolveJobError:
+            continue
+        if len(decoded) == 1 and decoded[0].shape == (height, width):
+            frames.append((float((stamp - stamps[0]) * time_base), decoded[0].astype(np.float64)))
+    return frames
+
+
 def _solve_chain(
     solve_image: np.ndarray,
     detections: list,
@@ -615,10 +728,18 @@ def run_solve_job(
             stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)
 
-        # The sky predicted for the file's own recorded time and place, after the solve or its time limit; it adds
-        # no stage. A failure in it keeps what the solver found, with one generic warning
+        def pose_frames() -> list[tuple[float, np.ndarray]]:
+            # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
+            # clip's frames spread over its whole length, each alone and never stacked
+            if media_kind == "image":
+                return [(0.0, frames[0])]
+            return _decode_spread_frames(original, asset)
+
+        # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
+        # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
+        # one generic warning
         try:
-            solution = complete_sky(solution, asset)
+            solution = complete_sky(solution, asset, frames=pose_frames)
         except Exception:
             solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
 
