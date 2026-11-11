@@ -1175,23 +1175,21 @@ describe('@albedian/observation reducer: two sentences that say only what the se
     executeVoiceOrTextCommand(session, utterance, 'text', undefined, { now: NOW });
 
   it('says which variant is now shown after "restore", and claims no restoration, people or audio it cannot show', () => {
-    // The synthetic overcast session holds only the original recording: nothing was restored
+    // The synthetic overcast session holds no restoration, so nothing is shown and the refusal says so plainly
     const overcast = createSyntheticUnresolvedSession();
     const original = run(overcast, 'restore the video');
-    expect(original.outcome).toMatchObject({
-      status: 'completed',
-      spokenFeedback: 'Now showing Original Recording. Its audio is copied from the original recording.',
-    });
+    expect(original.outcome).toMatchObject({ status: 'rejected' });
+    expect(JSON.stringify(original.outcome)).toContain('No restored version of this recording exists yet.');
     const natural = run(base, 'restore the video');
     expect(natural.outcome).toMatchObject({
       status: 'completed',
-      spokenFeedback: 'Now showing Natural Tone + Star-Protected Denoise. Its audio is copied from the original recording.',
+      spokenFeedback: 'Now showing the restored version. Its audio is copied from the original recording.',
     });
-    // A variant that does not carry the source's audio makes no audio claim
-    const silent = { ...base, mediaVariants: base.mediaVariants.map((v) => ({ ...v, audioStreamCopiedFromSource: false })) };
+    // A variant that does not carry the source's audio, with the packet hashes ingest stored, makes no audio claim
+    const silent = { ...base, mediaVariants: base.mediaVariants.map((v) => ({ ...v, audioStreams: [] })) };
     expect(run(silent, 'restore the video').outcome).toMatchObject({
       status: 'completed',
-      spokenFeedback: 'Now showing Natural Tone + Star-Protected Denoise.',
+      spokenFeedback: 'Now showing the restored version.',
     });
     for (const result of [original, natural]) {
       expect(JSON.stringify(result.outcome)).not.toMatch(/Restored sky clarity|preserving people/);

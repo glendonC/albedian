@@ -234,70 +234,59 @@ export function computeStarAnchorNdc(
 }
 
 /**
+ * The resolution both records store an audio stream's start at: ingest writes `startPtsMs` rounded to three decimals
+ * of a millisecond (`services/ingest/probe.py`), and a variant's audio streams are that same shape.
+ */
+export const AUDIO_START_RESOLUTION_MS = 0.001;
+
+/**
  * Validates that a derived `MediaVariant` remains synchronized with the immutable
  * `SourceAsset` timeline (`PBT-SYNC-1`):
- * - Frame timestamps are strictly monotonic and finite
- * - Audio stream preservation matches source audio presence
- * - Audio/duration sync drift is bounded (`<= 42.0 ms`)
+ * - It is a variant of this source
+ * - Each audio stream of the source is in the variant with the packet hash ingest stored (REQ-RST-7.6)
+ * - Each audio stream starts as long after the video in the variant as in the source (REQ-RST-7.5). Neither record
+ *   stores the video's start; the variant's frame times equal the source's exactly (checked on the stored file by the
+ *   restoration job), so the two video starts are equal and each stream's offset is compared through its `startPtsMs`,
+ *   equal at the resolution both records store (`AUDIO_START_RESOLUTION_MS`). The packet hash cannot see a shift: the
+ *   same packets at other times hash the same.
+ * - Duration drift is bounded (`<= 42.0 ms`)
+ * The frame times themselves are checked on the stored file by the restoration job (REQ-RST-7.5); the
+ * record keeps only their hash, so there is no list of times to check here.
  */
 export function validateMediaTimelineSync(
   source: SourceAsset,
   variant: MediaVariant
 ): {
   valid: boolean;
-  monotonic: boolean;
   maxDriftMs: number;
   audioPreserved: boolean;
+  audioOffsetsKept: boolean;
+  maxAudioOffsetChangeMs: number;
 } {
-  const timestamps = variant.frameTimestampsMs;
-  let monotonic = timestamps.length > 0;
-  for (let i = 0; i < timestamps.length; i++) {
-    const t = timestamps[i];
-    if (t === undefined || !Number.isFinite(t) || t < 0) {
-      monotonic = false;
-      break;
-    }
-    const prev = i > 0 ? timestamps[i - 1] : undefined;
-    if (prev !== undefined && t <= prev) {
-      monotonic = false;
-      break;
-    }
-  }
+  const sameStreams = variant.audioStreams.length === source.audioStreams.length;
+  const audioPreserved = sameStreams && source.audioStreams.every((stream, i) => variant.audioStreams[i]?.sha256 === stream.sha256);
+  const steps = (ms: number) => Math.round(ms / AUDIO_START_RESOLUTION_MS);
+  const changes = source.audioStreams.map((stream, i) => {
+    const copied = variant.audioStreams[i];
+    return copied === undefined ? Infinity : Math.abs(steps(copied.startPtsMs) - steps(stream.startPtsMs));
+  });
+  const audioOffsetsKept = sameStreams && changes.every((change) => change === 0);
+  const maxAudioOffsetChangeMs = Number((Math.max(0, ...changes) * AUDIO_START_RESOLUTION_MS).toFixed(3));
 
-  const hasSourceAudio = source.audioStreams.length > 0;
-  const audioPreserved = !hasSourceAudio ? true : variant.audioStreamCopiedFromSource === true;
-  // Fail closed when a recording has audio and the variant carries no measured audio sync offset
-  const hasMeasuredAudioOffset =
-    !hasSourceAudio ||
-    (variant.audioSyncOffsetMs !== undefined && Number.isFinite(variant.audioSyncOffsetMs));
-
-  const durationDriftMs = Math.abs(variant.durationMs - source.durationMs);
-  const audioOffsetDriftMs =
-    variant.audioSyncOffsetMs !== undefined && Number.isFinite(variant.audioSyncOffsetMs)
-      ? Math.abs(variant.audioSyncOffsetMs)
-      : 0;
-  const lastFrameTs = timestamps.length > 0 ? timestamps[timestamps.length - 1] : undefined;
-  const lastFrameDriftMs =
-    lastFrameTs !== undefined && lastFrameTs > source.durationMs
-      ? lastFrameTs - source.durationMs
-      : 0;
-
-  const maxDriftMs = Number(
-    Math.max(durationDriftMs, audioOffsetDriftMs, lastFrameDriftMs).toFixed(4)
-  );
+  const maxDriftMs = Number(Math.abs(variant.durationMs - source.durationMs).toFixed(4));
 
   const sameSourceAsset = variant.sourceAssetId === source.id;
   const valid =
     sameSourceAsset &&
-    monotonic &&
     audioPreserved &&
-    hasMeasuredAudioOffset &&
+    audioOffsetsKept &&
     maxDriftMs <= MAX_ALLOWED_MEDIA_DRIFT_MS;
 
   return {
     valid,
-    monotonic,
     maxDriftMs,
     audioPreserved,
+    audioOffsetsKept,
+    maxAudioOffsetChangeMs,
   };
 }

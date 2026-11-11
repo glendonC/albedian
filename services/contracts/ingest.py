@@ -24,13 +24,13 @@ from typing import Annotated, Any, ClassVar, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
-SHA256_HEX_PATTERN = r"^[0-9a-f]{64}$"
+from services.contracts.wire import LOOSE_WIRE_CONFIG, SHA256_HEX_PATTERN, UTC_INSTANT_PATTERN, WIRE_CONFIG, WireInt, WireNumber, wire_length
+
 MIME_TYPE_PATTERN = r"^[a-z]+/[a-z0-9.+-]+$"
 METADATA_TAG_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$"
 _DATE = r"[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])"
 _TIME = r"(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{3})?"
 LOCAL_DATE_TIME_PATTERN = rf"^{_DATE}T{_TIME}$"
-UTC_INSTANT_PATTERN = rf"^{_DATE}T{_TIME}Z$"
 JOB_ID_PATTERN = r"^job_[0-9a-f]{16,64}$"
 # The pattern Zod's string().datetime() accepts by default: UTC with any fraction; dates checked on parse
 ZOD_DATETIME_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$"
@@ -136,13 +136,14 @@ class MetadataSource(_Model):
 
 
 class AudioStreamDescriptor(_Loose):
-    index: Annotated[int, Field(ge=0)]
+    model_config = LOOSE_WIRE_CONFIG
+    index: Annotated[WireInt, Field(ge=0)]
     codec: Text
-    sample_rate_hz: Annotated[int, Field(gt=0)]
-    channels: Annotated[int, Field(gt=0)]
-    start_pts_ms: float
-    duration_ms: Annotated[float, Field(ge=0)]
-    sha256: Annotated[str, StringConstraints(min_length=8)]
+    sample_rate_hz: Annotated[WireInt, Field(gt=0)]
+    channels: Annotated[WireInt, Field(gt=0)]
+    start_pts_ms: WireNumber
+    duration_ms: Annotated[WireNumber, Field(ge=0)]
+    sha256: wire_length(8)
 
 
 class ObserverLocation(_Loose):
@@ -168,7 +169,8 @@ class CameraMetadata(_Loose):
 class DisplayOrientation(_Model):
     """How to show stored pixels: mirror left to right if `mirrored`, then turn clockwise by quarter turns."""
 
-    quarter_turns_clockwise: Annotated[int, Field(ge=0, le=3)]
+    model_config = WIRE_CONFIG
+    quarter_turns_clockwise: Annotated[WireInt, Field(ge=0, le=3)]
     mirrored: bool
 
 

@@ -2,18 +2,22 @@ import {
   CameraCheckpoint,
   CatalogReference,
   CelestialFinding,
+  ColourDescription,
+  DISCLOSURES,
+  GraphParameter,
+  GraphStep,
   MediaVariant,
   ObservationSession,
   ObservationSessionSchema,
   ProcessingAttempt,
   ProcessingGraph,
+  RestoreRequest,
   SourceAsset,
   SpatialViewState,
-  computeNodeCacheKeys,
-  deterministicHexDigest,
-  validateProcessingGraphDAG,
+  variantUri,
 } from '@albedian/contracts';
 import { computeCartesianParsecICRS } from '../checkpoints.js';
+import { EMPTY_MEDIA_VARIANT_ID } from '../emptySession.js';
 
 /**
  * Synthetic observation sessions for tests, imported as `@albedian/observation/testing`.
@@ -72,9 +76,82 @@ const TEST_STARS: StarRow[] = [
 
 const SYNTHETIC_EVIDENCE_NOTE = 'Synthetic test data: nothing was measured, matched or computed for this record.';
 
-function buildFrameTimestampsMs(durationMs: number, fps: number): number[] {
-  const count = Math.round((durationMs / 1000) * fps);
-  return Array.from({ length: count }, (_, i) => Number(((i * 1000) / fps).toFixed(3)));
+// A synthetic H.264 clip's colour: BT.709 throughout, limited range, chroma halved both ways
+const SYNTHETIC_CLIP_COLOUR: ColourDescription = {
+  model: 'ycbcr', bitDepth: 8, range: 'limited', matrix: 'bt709', transfer: 'bt709', primaries: 'bt709',
+  chromaSubsampling: '420', chromaSiting: 'left', assumptions: [],
+};
+const RESTORATION_STEPS: GraphStep['kind'][] = [
+  'decode', 'find_stars', 'measure_noise', 'register', 'temporal_merge', 'spatial_denoise', 'dissolve_unconfirmed',
+];
+
+/**
+ * The records of two stored restorations of a synthetic clip: one at the default lift, one at the exposure a request
+ * asked for, each with its graph, its ready attempt and its variant. Every number is typed test data.
+ */
+function buildSyntheticRestorations(sourceAsset: SourceAsset, startedAtSec: number) {
+  const sourceSha256 = sourceAsset.sha256;
+  // Ids are the first 16 hex digits (32 for a job, as the upload job runner writes it), and hashes all 64, of the SHA-256
+  // of the label beside them
+  const restorations: {
+    request: RestoreRequest; lift: GraphParameter; gainAtBlack: number; decidedBy: 'noise_bound' | 'requested';
+    graphId: string; attemptId: string; jobId: string; variantId: string; variantSha256: string;
+  }[] = [
+    {
+      request: { kind: 'restoration' },
+      lift: { name: 'gainAtBlack', value: 2.8, origin: 'measured', basis: 'Solved for this file from its median and its measured bounds.' },
+      gainAtBlack: 2.8, decidedBy: 'noise_bound',
+      // 'albedian synthetic test media: calibrated field restoration graph', '... attempt', '... job', '...' and '... bytes'
+      graphId: 'graph_ea3dd03d56c44d38', attemptId: 'att_cf601f59643857cb', jobId: 'job_56954037ebf24abb566b0bc32cde5422',
+      variantId: 'var_d629fe5dff4c53d7', variantSha256: '49ffc65df30a9140acf4f95b79b485824346d5326d4ab2b7c7144279466b6493',
+    },
+    {
+      request: { kind: 'restoration', exposureEv: 1 },
+      lift: { name: 'exposureEv', value: 1, origin: 'requested', basis: 'exposureEv' },
+      gainAtBlack: 3.6, decidedBy: 'requested',
+      // The same five labels, each followed by ', exposure 1 EV'
+      graphId: 'graph_35088dcedd26985d', attemptId: 'att_56820a819b5bc129', jobId: 'job_80de33cf5554b0a435a59b4f6a0edd49',
+      variantId: 'var_1354eb12349b6fbd', variantSha256: '7d04d887e22437cd2df50f3fc887d0008b64c79a2e56b6a5d00bd7f865fb82e1',
+    },
+  ];
+  const at = (sec: number) => `2030-01-01T02:00:${String(sec).padStart(2, '0')}Z`;
+  const processingGraphs: ProcessingGraph[] = restorations.map((r) => ({
+    id: r.graphId, sourceSha256, kind: 'restoration', pipelineVersion: '1.0.0', request: r.request,
+    steps: [
+      ...RESTORATION_STEPS.map((kind) => ({ kind, version: '1.0.0', parameters: [] })),
+      { kind: 'lift', version: '1.0.0', parameters: [r.lift] },
+      { kind: 'encode', version: '1.0.0', parameters: [] },
+      { kind: 'copy_audio', version: '1.0.0', parameters: [] },
+    ],
+  }));
+  const processingAttempts: ProcessingAttempt[] = restorations.map((r, i) => ({
+    id: r.attemptId, sourceSha256, graphId: r.graphId, jobId: r.jobId, status: 'ready',
+    startedAtUTC: at(startedAtSec + 3 * i), finishedAtUTC: at(startedAtSec + 3 * i + 2), elapsedMs: 1840, cpuMs: 1620,
+    variantId: r.variantId,
+    measured: {
+      colour: SYNTHETIC_CLIP_COLOUR,
+      noise: { intensities: [0.002, 0.02, 0.2], sigma: { r: [0.001, 0.003, 0.009], g: [0.001, 0.002, 0.008], b: [0.002, 0.004, 0.01] }, blockCounts: [64, 48, 12] },
+      stars: { found: 24, confirmed: 20 },
+      lift: { gainAtBlack: r.gainAtBlack, decidedBy: r.decidedBy },
+      clip: { frameCount: 360, framesWithNeighbours: 354, exactRepeatShare: 0, pointsConfirmedOnFramesTogether: 0, pointsFixedToSensor: 0, streamsNotCopied: 0 },
+      notes: [],
+    },
+    gate: {
+      statistic: 'detector', variantThresholdSnr: 6, confirmThresholdSnr: 4.75, tilePx: 256, matchRadiusPx: 1.5, framesChecked: 360,
+      variantPointCount: 20, unconfirmedPointCount: 0, framesWithUnconfirmed: 0, clippedPointsLeftOut: 0, starsMeasured: 20,
+      starsOutsideFluxTolerance: 0, fluxToleranceSigma: 3, worstFluxChangeSigma: 1.2, medianFluxRatio: 1, passed: true,
+    },
+  }));
+  const mediaVariants: MediaVariant[] = restorations.map((r, i) => ({
+    id: r.variantId, kind: 'restoration', sourceSha256, sourceAssetId: sourceAsset.id, graphId: r.graphId, attemptId: r.attemptId,
+    sha256: r.variantSha256, uri: variantUri(sourceSha256, r.variantId), byteSize: 18874368, mimeType: 'video/mp4',
+    width: sourceAsset.width, height: sourceAsset.height, durationMs: sourceAsset.durationMs, frameCount: 360,
+    // SHA-256 of 'albedian synthetic test media: calibrated field frame times'
+    frameTimesSha256: 'f56412beae280969517c1ed7d23b4bea609366e1738e54e17fb5f5fc80cc727d',
+    audioStreams: sourceAsset.audioStreams, colour: SYNTHETIC_CLIP_COLOUR, disclosure: DISCLOSURES.restoration,
+    createdAtUTC: at(startedAtSec + 3 * i + 2),
+  }));
+  return { processingGraphs, processingAttempts, mediaVariants };
 }
 
 /** Distance bounds as the inverse of a test row's parallax and its error, in parsecs. */
@@ -85,14 +162,6 @@ function parallaxDistancePc(parallaxMas: number, parallaxErrorMas: number) {
     upper: Number((1000 / (parallaxMas - parallaxErrorMas)).toFixed(3)),
   };
 }
-
-const DEFAULT_FIDELITY_POLICY: ProcessingGraph['fidelityPolicy'] = {
-  noSyntheticSceneContent: true,
-  allowSyntheticSky: false,
-  preserveOriginalAudio: true,
-  preserveFacesAndPeople: true,
-  protectObservedStarPoints: true,
-};
 
 function buildCalibratedFindings(assetId: string, sourceSha256: string, solutionId: string): CelestialFinding[] {
   const matched: CelestialFinding[] = TEST_STARS.map(
@@ -201,16 +270,16 @@ function buildCalibratedFindings(assetId: string, sourceSha256: string, solution
 
 /**
  * A schema-valid calibrated session over a synthetic Orion field: 10 catalog-matched test stars,
- * 2 predicted test planets and 2 observed test detections, with three processing attempts.
+ * 2 predicted test planets and 2 observed test detections, with two stored restorations of its clip.
  */
 export function createSyntheticCalibratedSession(): ObservationSession {
-  const assetId = 'asset_synthetic_calibrated_field';
+  // As ingest names an asset: src_ and the first 16 hex digits of its SHA-256
+  const assetId = 'src_0daa8e7f6a078e20';
   // SHA-256 of 'albedian synthetic test media: calibrated field'
   const sourceSha256 = '0daa8e7f6a078e20329379d50ed100633cd4d9369e3f0680868fb7d1ffce44e1';
   // Synthetic moment: Orion high on a moonless night at the synthetic place
   const capturedAtUTC = '2030-01-01T02:00:00Z';
   const solutionId = 'sol_synthetic_calibrated_field';
-  const frameTimestampsMs = buildFrameTimestampsMs(12000, 30);
 
   const sourceAsset: SourceAsset = {
     id: assetId, title: 'Synthetic calibrated field (test data)', mediaKind: 'video', sha256: sourceSha256,
@@ -224,79 +293,8 @@ export function createSyntheticCalibratedSession(): ObservationSession {
     privacyClass: 'public_sample', immutable: true,
   };
 
-  const graphOriginal: ProcessingGraph = {
-    id: 'graph_original', sourceAssetId: assetId, sourceSha256,
-    revisionSha256: deterministicHexDigest(`${sourceSha256}:original`),
-    profileName: 'original', fidelityPolicy: DEFAULT_FIDELITY_POLICY, createdAtUTC: capturedAtUTC,
-    nodes: [
-      { nodeId: 'decode_root', kind: 'source_decode', operationVersion: '1.0.0', inputNodeIds: [], parameters: { colorSpace: 'rec709', passthrough: true }, preservePointSources: true },
-      { nodeId: 'mux_out', kind: 'encode_mux', operationVersion: '1.0.0', inputNodeIds: ['decode_root'], parameters: { copyAudio: true, crf: 14 }, preservePointSources: true },
-    ],
-  };
-
-  const graphNatural: ProcessingGraph = {
-    id: 'graph_natural', sourceAssetId: assetId, sourceSha256, parentGraphId: 'graph_original',
-    revisionSha256: deterministicHexDigest(`${sourceSha256}:star_protected`),
-    profileName: 'star_protected', fidelityPolicy: DEFAULT_FIDELITY_POLICY, createdAtUTC: capturedAtUTC,
-    nodes: [
-      { nodeId: 'decode_root', kind: 'source_decode', operationVersion: '1.0.0', inputNodeIds: [], parameters: { colorSpace: 'linear_rec709' }, preservePointSources: true },
-      { nodeId: 'mask_foreground', kind: 'region_mask', operationVersion: '1.1.0', inputNodeIds: ['decode_root'], parameters: { protectPeopleAndForeground: true, featherPx: 6 }, maskId: 'mask_horizon_people', preservePointSources: true },
-      { nodeId: 'tone_curve', kind: 'tone_transfer', operationVersion: '1.2.0', inputNodeIds: ['decode_root', 'mask_foreground'], parameters: { shadowLiftEv: 1.35, highlightRollOff: 0.85 }, preservePointSources: true },
-      { nodeId: 'chroma_denoise', kind: 'spatial_denoise', operationVersion: '1.2.0', inputNodeIds: ['tone_curve'], parameters: { lumaStrength: 0.32, chromaStrength: 0.68 }, preservePointSources: true },
-      { nodeId: 'star_guard', kind: 'star_protect_merge', operationVersion: '1.1.0', inputNodeIds: ['decode_root', 'chroma_denoise'], parameters: { minPointSnr: 3.2, psfRadiusPx: 3.0 }, preservePointSources: true },
-      { nodeId: 'mux_out', kind: 'encode_mux', operationVersion: '1.0.0', inputNodeIds: ['star_guard'], parameters: { copyAudio: true, crf: 15 }, preservePointSources: true },
-    ],
-  };
-
-  const graphTemporal: ProcessingGraph = {
-    id: 'graph_temporal', sourceAssetId: assetId, sourceSha256, parentGraphId: 'graph_natural',
-    revisionSha256: deterministicHexDigest(`${sourceSha256}:temporal`),
-    profileName: 'temporal', fidelityPolicy: DEFAULT_FIDELITY_POLICY, createdAtUTC: capturedAtUTC,
-    nodes: [
-      { nodeId: 'decode_root', kind: 'source_decode', operationVersion: '1.0.0', inputNodeIds: [], parameters: { colorSpace: 'linear_rec709' }, preservePointSources: true },
-      { nodeId: 'temporal_align', kind: 'temporal_stack', operationVersion: '1.3.0', inputNodeIds: ['decode_root'], parameters: { windowFrames: 9, motionCompensated: true, rejectOutlierSigma: 2.8 }, maskId: 'mask_horizon_people', preservePointSources: true },
-      { nodeId: 'tone_curve', kind: 'tone_transfer', operationVersion: '1.2.0', inputNodeIds: ['temporal_align'], parameters: { shadowLiftEv: 1.65, highlightRollOff: 0.88 }, preservePointSources: true },
-      { nodeId: 'star_guard', kind: 'star_protect_merge', operationVersion: '1.1.0', inputNodeIds: ['decode_root', 'tone_curve'], parameters: { minPointSnr: 3.0, psfRadiusPx: 2.8 }, preservePointSources: true },
-      { nodeId: 'mux_out', kind: 'encode_mux', operationVersion: '1.0.0', inputNodeIds: ['star_guard'], parameters: { copyAudio: true, crf: 15 }, preservePointSources: true },
-    ],
-  };
-
-  for (const g of [graphOriginal, graphNatural, graphTemporal]) {
-    const check = validateProcessingGraphDAG(g);
-    if (!check.valid) throw new Error(`Invalid ProcessingGraph ${g.id}: ${check.errors.join('; ')}`);
-  }
-
-  const processingAttempts: ProcessingAttempt[] = [
-    {
-      id: 'attempt_original', sourceAssetId: assetId, graphId: 'graph_original', label: 'Original Recording Passthrough',
-      status: 'ready', cacheKey: computeNodeCacheKeys(graphOriginal).mux_out ?? graphOriginal.revisionSha256,
-      startedAtUTC: '2030-01-01T02:00:01Z', completedAtUTC: '2030-01-01T02:00:02Z',
-      elapsedMs: 120, cpuMs: 95, gpuMs: 0, peakMemoryBytes: 67108864, outputVariantId: 'variant_original',
-      metrics: { evaluationMethod: 'synthetic_test_values', hasPairedReference: true, shadowSnrGainDb: 0, estimatedNoiseReductionPct: 0, pointSourceRetentionRatio: 1.0, falsePointArtifactCount: 0, faceRegionStabilityScore: 1.0, temporalFlickerIndex: 0.08, audioSyncOffsetMs: 0, validityNotes: ['Synthetic test values: nothing was measured.'] },
-    },
-    {
-      id: 'attempt_natural', sourceAssetId: assetId, graphId: 'graph_natural', parentAttemptId: 'attempt_original',
-      label: 'Natural Tone + Star-Protected Denoise', status: 'ready', cacheKey: computeNodeCacheKeys(graphNatural).mux_out ?? graphNatural.revisionSha256,
-      startedAtUTC: '2030-01-01T02:00:03Z', completedAtUTC: '2030-01-01T02:00:05Z',
-      elapsedMs: 1840, cpuMs: 620, gpuMs: 1120, peakMemoryBytes: 268435456, outputVariantId: 'variant_natural',
-      metrics: { evaluationMethod: 'synthetic_test_values', hasPairedReference: false, shadowSnrGainDb: 5.4, estimatedNoiseReductionPct: 58, pointSourceRetentionRatio: 0.98, falsePointArtifactCount: 0, faceRegionStabilityScore: 0.99, temporalFlickerIndex: 0.04, audioSyncOffsetMs: 0.4, validityNotes: ['Synthetic test values: nothing was measured.'] },
-    },
-    {
-      id: 'attempt_temporal', sourceAssetId: assetId, graphId: 'graph_temporal', parentAttemptId: 'attempt_natural',
-      label: 'Motion-Compensated Temporal Stack', status: 'ready', cacheKey: computeNodeCacheKeys(graphTemporal).mux_out ?? graphTemporal.revisionSha256,
-      startedAtUTC: '2030-01-01T02:00:06Z', completedAtUTC: '2030-01-01T02:00:09Z',
-      elapsedMs: 3120, cpuMs: 940, gpuMs: 2050, peakMemoryBytes: 536870912, outputVariantId: 'variant_temporal',
-      metrics: { evaluationMethod: 'synthetic_test_values', hasPairedReference: false, shadowSnrGainDb: 8.2, estimatedNoiseReductionPct: 76, pointSourceRetentionRatio: 0.99, falsePointArtifactCount: 0, faceRegionStabilityScore: 0.98, temporalFlickerIndex: 0.02, audioSyncOffsetMs: 0.6, validityNotes: ['Synthetic test values: nothing was measured.'] },
-    },
-  ];
-
-  const mediaVariants: MediaVariant[] = [
-    { id: 'variant_original', sourceAssetId: assetId, attemptId: 'attempt_original', graphId: 'graph_original', label: 'Original Recording', uri: 'synthetic://test/calibrated-field-1080p30.mp4', sha256: sourceSha256, width: 1920, height: 1080, durationMs: 12000, frameTimestampsMs, audioStreamCopiedFromSource: true, audioSyncOffsetMs: 0, summaryNote: 'Synthetic test variant: the original recording.' },
-    // SHA-256 of 'albedian synthetic test media: calibrated field natural variant'
-    { id: 'variant_natural', sourceAssetId: assetId, attemptId: 'attempt_natural', graphId: 'graph_natural', label: 'Natural Tone + Star-Protected Denoise', uri: 'synthetic://test/calibrated-field-natural.mp4', sha256: '7d7448fba6d0c7fba5774555de28f515d8257c8c7da58c0b63abc7fd27cd57c5', width: 1920, height: 1080, durationMs: 12000, frameTimestampsMs, audioStreamCopiedFromSource: true, audioSyncOffsetMs: 0.4, summaryNote: 'Synthetic test variant: tone transfer with star protection.' },
-    // SHA-256 of 'albedian synthetic test media: calibrated field temporal variant'
-    { id: 'variant_temporal', sourceAssetId: assetId, attemptId: 'attempt_temporal', graphId: 'graph_temporal', label: 'Motion-Compensated Temporal Stack', uri: 'synthetic://test/calibrated-field-temporal.mp4', sha256: '70af111522fc767777c68c8fd0abe22c036bd75a815dd4d4b5a2f979dd37ba0f', width: 1920, height: 1080, durationMs: 12000, frameTimestampsMs, audioStreamCopiedFromSource: true, audioSyncOffsetMs: 0.6, summaryNote: 'Synthetic test variant: temporal stack.' },
-  ];
+  const { processingGraphs, processingAttempts, mediaVariants } = buildSyntheticRestorations(sourceAsset, 1);
+  const activeVariantId = mediaVariants[0]!.id;
 
   const initialSpatialView: SpatialViewState = {
     mode: 'source_2d', transitionPhase: 'at_source', transitionProgress: 0,
@@ -309,16 +307,16 @@ export function createSyntheticCalibratedSession(): ObservationSession {
   const anchorCheckpoint: CameraCheckpoint = {
     id: 'chk_synthetic_calibrated_anchor_0', label: 'Original Moment · Synthetic calibrated field (04.2s)', createdAtMs: 4200,
     sourceAssetId: assetId, sourceTimeSec: 4.2, playbackWasPlaying: true, audioGain: 0.85,
-    mediaVariantId: 'variant_natural', cropTransform: { zoom: 1, panX: 0, panY: 0 },
+    mediaVariantId: activeVariantId, cropTransform: { zoom: 1, panX: 0, panY: 0 },
     selectedFindingId: null, navigationState: 'source', spatialView: structuredClone(initialSpatialView), viewRevision: 1,
   };
 
   return ObservationSessionSchema.parse({
     id: 'session_synthetic_calibrated_field', title: 'Synthetic calibrated field (test data)', viewRevision: 1,
     machines: { media: 'ready', restoration: 'ready', calibration: 'calibrated', navigation: 'source', voice: 'listening' },
-    sourceAsset, activeVariantId: 'variant_natural', compareWipePosition: 0.5,
+    sourceAsset, activeVariantId, compareWipePosition: 0.5,
     currentSourceTimeSec: 4.2, isPlaying: true, audioGain: 0.85, cropTransform: { zoom: 1, panX: 0, panY: 0 },
-    processingGraphs: [graphOriginal, graphNatural, graphTemporal], processingAttempts, mediaVariants,
+    processingGraphs, processingAttempts, mediaVariants,
     observationSolution: {
       id: solutionId, sourceAssetId: assetId, sourceSha256, frameTimeSec: 4.2, revision: 1, status: 'calibrated',
       observedAtUTC: capturedAtUTC, observerLocation: SYNTHETIC_PLACE,
@@ -346,7 +344,6 @@ export function createSyntheticUnresolvedSession(): ObservationSession {
   // Synthetic moment at the synthetic place
   const capturedAtUTC = '2030-06-15T23:05:00Z';
   const solutionId = 'sol_synthetic_overcast_field';
-  const frameTimestampsMs = buildFrameTimestampsMs(6000, 30);
 
   const sourceAsset: SourceAsset = {
     id: assetId, title: 'Synthetic overcast field (test data)', mediaKind: 'video', sha256: sourceSha256,
@@ -358,30 +355,6 @@ export function createSyntheticUnresolvedSession(): ObservationSession {
     observerLocation: { ...SYNTHETIC_PLACE, elevationM: 0, uncertaintyMeters: 25 },
     metadataSources: SYNTHETIC_METADATA_SOURCES,
     privacyClass: 'public_sample', immutable: true,
-  };
-
-  const graphOriginal: ProcessingGraph = {
-    id: 'graph_overcast_original', sourceAssetId: assetId, sourceSha256,
-    revisionSha256: deterministicHexDigest(`${sourceSha256}:original`),
-    profileName: 'original', fidelityPolicy: DEFAULT_FIDELITY_POLICY, createdAtUTC: capturedAtUTC,
-    nodes: [
-      { nodeId: 'decode_root', kind: 'source_decode', operationVersion: '1.0.0', inputNodeIds: [], parameters: { passthrough: true }, preservePointSources: true },
-      { nodeId: 'mux_out', kind: 'encode_mux', operationVersion: '1.0.0', inputNodeIds: ['decode_root'], parameters: { copyAudio: true }, preservePointSources: true },
-    ],
-  };
-
-  const attemptOriginal: ProcessingAttempt = {
-    id: 'attempt_overcast_original', sourceAssetId: assetId, graphId: 'graph_overcast_original',
-    label: 'Original Recording Passthrough', status: 'ready', cacheKey: computeNodeCacheKeys(graphOriginal).mux_out ?? graphOriginal.revisionSha256,
-    startedAtUTC: '2030-06-15T23:05:01Z', completedAtUTC: '2030-06-15T23:05:02Z',
-    elapsedMs: 95, cpuMs: 80, gpuMs: 0, peakMemoryBytes: 33554432, outputVariantId: 'variant_overcast_original',
-  };
-
-  const variantOriginal: MediaVariant = {
-    id: 'variant_overcast_original', sourceAssetId: assetId, attemptId: 'attempt_overcast_original',
-    graphId: 'graph_overcast_original', label: 'Original Recording', uri: 'synthetic://test/overcast-field-1080p30.mp4',
-    sha256: sourceSha256, width: 1920, height: 1080, durationMs: 6000, frameTimestampsMs,
-    audioStreamCopiedFromSource: true, audioSyncOffsetMs: 0, summaryNote: 'Synthetic test variant: the original recording.',
   };
 
   const vegaRef: CatalogReference = {
@@ -437,16 +410,17 @@ export function createSyntheticUnresolvedSession(): ObservationSession {
   const anchorCheckpoint: CameraCheckpoint = {
     id: 'chk_synthetic_overcast_anchor_0', label: 'Original Moment · Synthetic overcast field (01.5s)', createdAtMs: 1500,
     sourceAssetId: assetId, sourceTimeSec: 1.5, playbackWasPlaying: false, audioGain: 0.75,
-    mediaVariantId: 'variant_overcast_original', cropTransform: { zoom: 1, panX: 0, panY: 0 },
+    mediaVariantId: EMPTY_MEDIA_VARIANT_ID, cropTransform: { zoom: 1, panX: 0, panY: 0 },
     selectedFindingId: null, navigationState: 'source', spatialView: structuredClone(initialSpatialView), viewRevision: 1,
   };
 
   return ObservationSessionSchema.parse({
     id: 'session_synthetic_overcast_field', title: 'Synthetic overcast field (test data)', viewRevision: 1,
     machines: { media: 'ready', restoration: 'idle', calibration: 'predicted_only', navigation: 'source', voice: 'listening' },
-    sourceAsset, activeVariantId: 'variant_overcast_original', compareWipePosition: 0.5,
+    // Nothing restored this clip: the original is shown and the session holds no variant
+    sourceAsset, activeVariantId: EMPTY_MEDIA_VARIANT_ID, compareWipePosition: 0.5,
     currentSourceTimeSec: 1.5, isPlaying: false, audioGain: 0.75, cropTransform: { zoom: 1, panX: 0, panY: 0 },
-    processingGraphs: [graphOriginal], processingAttempts: [attemptOriginal], mediaVariants: [variantOriginal],
+    processingGraphs: [], processingAttempts: [], mediaVariants: [],
     observationSolution: {
       id: solutionId, sourceAssetId: assetId, sourceSha256, frameTimeSec: 1.5, revision: 1, status: 'predicted_only',
       observedAtUTC: capturedAtUTC, observerLocation: SYNTHETIC_PLACE,

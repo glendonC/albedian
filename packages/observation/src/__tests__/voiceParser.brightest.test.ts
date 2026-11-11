@@ -10,7 +10,7 @@ import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } fr
  * is selected. When the top fluxes agree within their measurement uncertainty (flux / SNR), the parser asks
  * which one rather than choosing. A brightest in anything other than the photo is refused.
  *
- * Synthetic calibrated session, measured on asset_synthetic_calibrated_field at 4.2 s: Sirius 42800 (SNR 98.7),
+ * Synthetic calibrated session, measured on its synthetic clip at 4.2 s: Sirius 42800 (SNR 98.7),
  * Rigel 22950, Procyon 19650, Betelgeuse 18420, ... Jupiter and Uranus are predicted, with no detection.
  */
 

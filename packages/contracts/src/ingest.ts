@@ -4,9 +4,11 @@ import {
   METADATA_TAG_PATTERN,
   MIME_TYPE_PATTERN,
   MetadataSourceSchema,
+  JOB_ID_PATTERN,
   SHA256_HEX_PATTERN,
   SourceAssetSchema,
 } from './media.js';
+import { UTC_INSTANT_PATTERN } from './wire.js';
 
 /**
  * Ingest contracts (roadmap Track 1 M1): what the backend returns when a photo or clip is uploaded,
@@ -32,9 +34,8 @@ export const INGEST_PATTERNS = {
   localDateTime:
     '^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?$',
   // An instant in UTC, written the one way both sides produce
-  utcInstant:
-    '^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?Z$',
-  jobId: '^job_[0-9a-f]{16,64}$',
+  utcInstant: UTC_INSTANT_PATTERN,
+  jobId: JOB_ID_PATTERN,
 } as const;
 
 const utcInstant = () => z.string().regex(new RegExp(INGEST_PATTERNS.utcInstant));

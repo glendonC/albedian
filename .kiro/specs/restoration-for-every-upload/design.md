@@ -760,8 +760,71 @@ this spec [open].
 - `ExportArtifactSchema.sessionId`, `outputUri`, `containerFormat`, `videoCodec`, `audioPreserved`, `audioCodec`,
   `audioSyncOffsetMs`, `processingGraphId`, `catalogCitations`, `epistemicSummary` (with `strictFidelityEnforced`).
 
-**The new shapes (Zod).** `sha256()` is `z.string().regex(new RegExp(SHA256_HEX_PATTERN))`; `utcInstant()` is the
-ingest contract's.
+**The wire rules** [decided 2026-11-11, after the restore-1 audit] live in one small module per language that imports no
+other contract file, `packages/contracts/src/wire.ts` and `services/contracts/wire.py`; the media contract and the two
+ingest shapes a media record embeds (an audio stream, a display orientation) use them:
+- Keys are camelCase and nothing else. A Python field name sent over the wire is refused at every level with the
+  message an unknown key gets; Python code builds a record by field name with `model_validate(data, by_name=True)`.
+- Every number is finite; an integer field holds a safe integer (magnitude at most 2^53 - 1) and anything larger is
+  refused; a whole number written as a float (1.0, 1e0) is that integer; minus zero is zero; a boolean is never a
+  number.
+- A length is counted in UTF-16 code units, and no string of a media record holds a lone surrogate.
+- A SHA-256 is 64 lower-case hex characters; the UTC instant is one form, with Z, on a real calendar day, defined once
+  in the wire module, which the ingest contract takes it from too.
+
+**No free text** [decided 2026-11-11, after the restore-1 audit: a list of forbidden shapes can never be complete].
+Every text a media record holds comes from a closed list both languages define and compare through the fixture; a
+template's `{slot}` holds a value of its list or a whole number in its range, written without a leading zero, so no
+date, clock time or coordinate fits in one:
+- `failureReason`: exactly one of the fixed sentences of section 11, with the runner's "The server stopped before this
+  job finished.": 10 templates; `{format}` takes one of 18 format names (section 1 for stills, section 10 and
+  restore-5's `clip_io` for clips) and `{capability}` one of 11 capabilities; 37 sentences in all.
+- `notes`: one of 8 fixed sentences [proposed], each from a requirement that asks for a note: the noise could not be
+  measured (REQ-RST-4.3); a clip recorded almost at black (REQ-RST-4.3, section 10); a requested exposure held by a
+  bound (REQ-RST-4.5); registration that did not hold for every frame (REQ-RST-7.2); points dissolved before the gate
+  (REQ-RST-6.3); clipped regions left out (REQ-RST-6.8); streams that are neither video nor audio (section 10); a lift
+  held by its maximum (REQ-RST-4.4).
+- An assumption's `reason`: the one sentence of its field and assumed value, from section 1's assumptions (8, one
+  per field and value: range limited or full, matrix BT.709 or BT.601, transfer sRGB or BT.709, primaries
+  unspecified, chroma siting left); `assumed` is one of the values an assumable field holds.
+- A parameter's `basis`, by its origin: `measured`, one of 10 sentences naming what on the file it was read or
+  measured from; `requested`, the request field (`exposureEv`); `default`, one of 5 templates naming its source
+  ("Proposed in design section {section}.", "Decided by the lead in design section {section}.", "Verified at its
+  source in design section {section}.", "Required by REQ-RST-{criterion}.", "The detector's own floor."), with
+  `{section}` 1 to 18 and `{criterion}` one of the spec's 84 acceptance criteria (1.1 to 12.4): 139 sentences.
+  [decided 2026-11-11, after the restore-1-v2 audit: two number slots read together as a date or a clock time, and
+  named criteria that do not exist.] The criteria are `RESTORATION_CRITERIA` in both languages, written from
+  `requirements.md` by `scripts/restoration_criteria.py`; the contract test fails when the spec and either list
+  differ, so a change to the requirements reruns the script.
+- A parameter's `name` is a row of the step parameter table and its `value` of that row's type and range
+  [proposed: the parameters sections 1 to 10 name, 38 rows; a unit that needs another adds its row first]:
+
+| Step | Parameter: type and range or values |
+|---|---|
+| decode | `transfer`, `matrix`, `range`, `primaries`, `chromaSubsampling`, `chromaSiting`: the colour enums; `pixelFormat`: 11 formats (also encode); `bitDepth`: integer 8 to 16 (also encode) |
+| encode | `container`: png, mov, mp4; `encoder`: png, libx264, libx265; `preset`: x264's 10 names; `crf`: integer 0 to 51; `zlibLevel`: integer 0 to 9 |
+| find_stars | `tilePx`: integer 16 to 4096; `overlapPx`: 0 to 1024; `confirmThresholdSnr`: 0 to 100; `matchRadiusPx`, `mergeRadiusPx`: 0 to 64; `footprintMaxPx`: integer 1 to 256; `clippedGrowPx`: integer 0 to 64; `statistic`: the gate's statistics (also dissolve_unconfirmed) |
+| measure_noise | `bins`: integer 3 to 24; `blockPx`: integer 2 to 4096 (also register) |
+| register | `windowFrames`: integer 0 to 30 (also temporal_merge); `closureMaxPx`, `blockResidualMaxPx`: 0 to 100 |
+| temporal_merge | `windowPx`: integer 1 to 31; `toleranceFactor`: 0 to 100 |
+| spatial_denoise | `levels`: integer 1 to 8; `sigmaScale`: 0 to 100 |
+| dissolve_unconfirmed | `maxPasses`: integer 0 to 3; `variantThresholdSnr`: 0 to 100 |
+| lift | `gainAtBlack`, `maximumGain`: 1 to 1000; `targetMedianCode`: integer 0 to 255; `quantisationBoundSteps`: 0 to 256; `exposureEv`: 0 to 6 |
+| copy_audio | `streams`: integer 0 to 64 |
+
+The ranges are bounds a value can never pass, not the values the design proposes. Ids and hashes have the exact form
+their minting code writes: `graph_`, `var_`, `att_` and 16 hex characters; `sourceAssetId` is `src_` and the source's
+first 16 hex characters, as ingest names an asset (`services/ingest/router.py`), and equals its own source's;
+`observationSolutionId` is `sol_` and the source's first 16 hex characters (REQ-JOB-5.8) and is the manifest
+source's; `jobId` is `JOB_ID_PATTERN`; a version's three parts are 0 to 99 with no leading zero [proposed]; a variant's
+audio stream has a 64 hex packet hash and a codec of lower-case letters, digits and underscore, at most 32 [proposed:
+as ffprobe names one], and is strict: the ingest shape it extends drops an unknown key, the variant's refuses one
+[decided 2026-11-11, after the restore-1-v2 audit]; a disclosure is one of the two fixed sentences.
+
+**The new shapes (Zod).** `sha256()`, `utcInstant()`, `wireNumber()` and `wireInt()` are the wire module's; the
+closed lists above are `FAILURE_SENTENCES`, `NOTES`, `ASSUMPTION_REASONS`, `BASES`, `TEMPLATE_SLOTS` and
+`STEP_PARAMETERS`. The numbers below are written `z.number()` for short; every one is `wireNumber()`, and every
+`.int()` one `wireInt()`.
 
 ```ts
 export const VARIANT_KINDS = ['display_copy', 'restoration'] as const;
@@ -773,6 +836,7 @@ export const GRAPH_STEP_KINDS = [
 export const MEDIA_ID_PATTERNS = {
   graph: '^graph_[0-9a-f]{16}$', variant: '^var_[0-9a-f]{16}$',
   attempt: '^att_[0-9a-f]{16}$',
+  sourceAsset: '^src_[0-9a-f]{16}$', solution: '^sol_[0-9a-f]{16}$',
 } as const;
 // The job id is the upload job runner's: JOB_ID_PATTERN moves to this file, beside SHA256_HEX_PATTERN, and
 // ingest.ts imports it from here (the upload jobs design 3.8)
@@ -788,12 +852,12 @@ export const RestoreRequestSchema = z
 
 export const GraphParameterSchema = z
   .object({
-    name: z.string().min(1).max(64),
-    value: z.union([z.number().finite(), z.string().max(256), z.boolean()]),
+    name: z.enum(PARAMETER_NAMES), // a row of the step parameter table
+    value: z.union([z.number().finite(), z.string(), z.boolean()]),
     origin: z.enum(PARAMETER_ORIGINS),
-    basis: z.string().min(1).max(300), // what it was measured from, the request field, or the source or reason
+    basis: z.string(), // what it was measured from, the request field, or the source: BASES[origin]
   })
-  .strict();
+  .strict(); // refined: the value is of its row's type and range; the basis is one its origin allows
 
 export const GraphStepSchema = z
   .object({
@@ -831,8 +895,8 @@ export const ColourDescriptionSchema = z
         z
           .object({
             field: z.enum(['range', 'matrix', 'transfer', 'primaries', 'chromaSiting']),
-            assumed: z.string().min(1).max(32),
-            reason: z.string().min(1).max(200),
+            assumed: z.enum(ASSUMABLE_COLOUR_VALUES),
+            reason: z.string(), // the ASSUMPTION_REASONS entry of this field and value
           })
           .strict()
       )
@@ -897,10 +961,10 @@ export const RestorationMeasurementsSchema = z
         pointsFixedToSensor: z.number().int().nonnegative(), // refused: same sensor pixel while the scene moved
         streamsNotCopied: z.number().int().nonnegative(),
       })
-      .strict()
+      .strict() // refined: points confirmed on frames together need frames with neighbours
       .optional(),
     peakMemoryBytes: z.number().int().positive().optional(),
-    notes: z.array(z.string().min(1).max(300)).max(8), // plain sentences for the person; none holds a path, time or place
+    notes: z.array(z.string()).max(8), // each one of NOTES
   })
   .strict(); // refined: exactly one of noise and noiseNotMeasured for a restoration
 
@@ -922,19 +986,20 @@ export const ProcessingAttemptSchema = z
     measured: RestorationMeasurementsSchema.optional(),
     gate: IntegrityGateResultSchema.optional(),
     rejection: z.enum(REJECTION_REASONS).optional(),
-    failureReason: z.string().min(1).max(200).optional(),
+    failureReason: z.string().optional(), // one of FAILURE_SENTENCES, its slots filled from their lists
   })
   .strict(); // refined: ready has variantId and measured and no rejection or failureReason; rejected has rejection
              // and measured and no variantId; failed has failureReason and no variantId; a gate is present for a
              // ready or rejected restoration, absent for a display copy; ready implies gate.passed when a gate is
-             // present; rejection unconfirmed_points or star_flux_changed implies a gate that did not pass
+             // present; rejection unconfirmed_points or star_flux_changed implies a gate that did not pass; an attempt
+             // whose gate refused is rejected, never failed; a gate measures no more stars than were found
 
 export const MediaVariantSchema = z
   .object({
     id: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.variant)),
     kind: z.enum(VARIANT_KINDS),
     sourceSha256: sha256(),
-    sourceAssetId: z.string().min(1),
+    sourceAssetId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.sourceAsset)),
     graphId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.graph)),
     attemptId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.attempt)),
     sha256: sha256(),
@@ -946,13 +1011,14 @@ export const MediaVariantSchema = z
     durationMs: z.number().nonnegative(),
     frameCount: z.number().int().positive(),
     frameTimesSha256: sha256().optional(), // of the time base and the integer frame times; a clip has it, a still not
-    audioStreams: z.array(AudioStreamDescriptorSchema),
+    audioStreams: z.array(VariantAudioStreamSchema), // the ingest shape made strict, with a codec name and a 64 hex packet hash
     colour: ColourDescriptionSchema,
     displayOrientation: DisplayOrientationSchema.optional(),
     disclosure: z.string().min(1),
     createdAtUTC: utcInstant(),
   })
-  .strict(); // refined: disclosure equals DISCLOSURES[kind]; a still has frameCount 1, durationMs 0, no audio and
+  .strict(); // refined: disclosure equals DISCLOSURES[kind]; sourceAssetId is the source's own; a still has
+             // frameCount 1, durationMs 0, no audio and
              // no frameTimesSha256; a clip has frameTimesSha256
 
 // No job schema here: a display copy or restoration job is the upload job runner's UploadJobSchema with kind
@@ -968,11 +1034,12 @@ export const ExportManifestSchema = z
     variant: MediaVariantSchema,
     graph: ProcessingGraphSchema,
     attempt: ProcessingAttemptSchema,
-    observationSolutionId: z.string().min(1).max(128).optional(),
+    observationSolutionId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.solution)).optional(),
     disclosure: z.string().min(1),
   })
   .strict(); // refined: the four hashes and ids agree across the parts; attempt.status is ready; disclosure equals
-             // variant.disclosure
+             // variant.disclosure; a measured clip has the variant's frame count; a still's gate checks one frame;
+             // the solution id is the source's
 
 export const ExportArtifactSchema = z
   .object({
@@ -983,14 +1050,14 @@ export const ExportArtifactSchema = z
   .strict(); // what a session remembers of a download; the manifest is the record of how the file was made
 ```
 
-**Python.** `services/contracts/media.py` mirrors every shape as a strict Pydantic model on the `_Model` base of
-`services/contracts/ingest.py:111-124` (camelCase aliases, no unknown key, null only where Zod allows it), with the
+**Python.** `services/contracts/media.py` mirrors every shape as a strict Pydantic model on the wire module's
+`WireModel` (camelCase keys only, no unknown key, null only where Zod allows it, finite and safe numbers), with the
 same rules as model validators and the same messages. The constants (`VARIANT_KINDS`, `GRAPH_STEP_KINDS`, the id
 patterns, the two disclosure sentences, the stage and state lists) are mirrored and compared through the fixture.
 `Sha256`, `UtcInstant`, `Text`, `AudioStreamDescriptor` and `DisplayOrientation` are the ingest module's own.
 
 ```python
-Semver = Annotated[str, StringConstraints(pattern=r"^\d+\.\d+\.\d+$")]
+Semver = Annotated[str, StringConstraints(pattern=r"^(?:0|[1-9][0-9]?)\.(?:0|[1-9][0-9]?)\.(?:0|[1-9][0-9]?)$")]
 GraphId = Annotated[str, StringConstraints(pattern=r"^graph_[0-9a-f]{16}$")]
 VariantId = Annotated[str, StringConstraints(pattern=r"^var_[0-9a-f]{16}$")]
 AttemptId = Annotated[str, StringConstraints(pattern=r"^att_[0-9a-f]{16}$")]
@@ -1008,7 +1075,7 @@ class GraphParameter(_Model):
     name: Annotated[str, StringConstraints(min_length=1, max_length=64)]
     value: Union[StrictBool, StrictFloat, StrictInt, Annotated[str, StringConstraints(max_length=256)]]
     origin: Literal["measured", "requested", "default"]
-    basis: Annotated[str, StringConstraints(min_length=1, max_length=300)]
+    basis: StrictStr  # refined with the value: BASES[origin]; the value of its row's type and range
 
 class GraphStep(_Model):
     kind: Literal["decode", "find_stars", "measure_noise", "register", "temporal_merge", "spatial_denoise",
@@ -1027,7 +1094,7 @@ class ProcessingGraph(_Model):
 class ColourAssumption(_Model):
     field: Literal["range", "matrix", "transfer", "primaries", "chromaSiting"]
     assumed: Annotated[str, StringConstraints(min_length=1, max_length=32)]
-    reason: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    reason: StrictStr  # the ASSUMPTION_REASONS entry of this field and assumed value
 
 class ColourDescription(_Model):
     model: Literal["rgb", "ycbcr"]
@@ -1096,7 +1163,7 @@ class RestorationMeasurements(_Model):
     lift: Optional[Lift] = None
     clip: Optional[ClipMeasurements] = None
     peak_memory_bytes: Optional[Positive] = None
-    notes: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=300)]], Field(max_length=8)]
+    notes: Annotated[list[Note], Field(max_length=8)]  # each one of NOTES
 
 class ProcessingAttempt(_Model):
     id: AttemptId
@@ -1113,13 +1180,13 @@ class ProcessingAttempt(_Model):
     gate: Optional[IntegrityGateResult] = None
     rejection: Optional[Literal["unconfirmed_points", "star_flux_changed", "frame_times_differ", "audio_differs",
                                 "copy_differs"]] = None
-    failure_reason: Optional[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = None
+    failure_reason: Optional[FailureReason] = None  # one of FAILURE_SENTENCES, its slots filled from their lists
 
 class MediaVariant(_Model):
     id: VariantId
     kind: VariantKind
     source_sha256: Sha256
-    source_asset_id: Text
+    source_asset_id: SourceAssetId  # src_ and the source's first 16 hex characters
     graph_id: GraphId
     attempt_id: AttemptId
     sha256: Sha256
@@ -1131,7 +1198,7 @@ class MediaVariant(_Model):
     duration_ms: NonNegative
     frame_count: Positive
     frame_times_sha256: Optional[Sha256] = None
-    audio_streams: list[AudioStreamDescriptor]
+    audio_streams: list[VariantAudioStream]
     colour: ColourDescription
     display_orientation: Optional[DisplayOrientation] = None
     disclosure: Text
@@ -1144,7 +1211,7 @@ class ExportManifest(_Model):
     variant: MediaVariant
     graph: ProcessingGraph
     attempt: ProcessingAttempt
-    observation_solution_id: Optional[Annotated[str, StringConstraints(min_length=1, max_length=128)]] = None
+    observation_solution_id: Optional[SolutionId] = None  # sol_ and the source's first 16 hex characters
     disclosure: Text
 
 class ExportArtifact(_Model):
@@ -1155,7 +1222,7 @@ class ExportArtifact(_Model):
 
 Each refinement noted beside the Zod shapes is a `model_validator(mode="after")` here with the same message.
 `AudioStreamDescriptor` is a loose model in the ingest module (it drops unknown keys), as its Zod schema is not
-strict; every new shape is strict on both sides.
+strict; every new shape is strict on both sides, `VariantAudioStream` (`WIRE_CONFIG`, `.strict()`) included.
 
 **Fixture.** `tests/fixtures/media_contract.json`, written from `build_media_samples()` in the Python module under
 an environment switch, as the ingest fixture is (`tests/integration/test_ingest_contract.py:1-8`), and parsed by
@@ -1163,7 +1230,8 @@ an environment switch, as the ingest fixture is (`tests/integration/test_ingest_
 restoration of a still, each with graph, attempt and variant; a clip restoration; a rejected attempt of each
 rejection reason; a failed attempt; a manifest. The job samples live in `tests/fixtures/ingest_contract.json`
 (platform-1). Invalid samples, each with its reason: one per
-refinement above. All values are synthetic (hashes typed for the test, no real upload).
+refinement above. Both sides add an unknown key and each wire key's Python name beside it to every object of every
+valid sample, the embedded shapes included, and refuse every such record (`addedKeys` holds the keys and the count). All values are synthetic (hashes typed for the test, no real upload).
 
 **The same unit adapts** every file that reads a removed field [verified: a search at `dcdbd65d` finds them in
 these files and in `services/media/models.py`, which restore-9 removes]:

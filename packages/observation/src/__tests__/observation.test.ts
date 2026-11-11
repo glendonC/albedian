@@ -9,6 +9,7 @@ import {
   MediaVariant,
 } from '@albedian/contracts';
 import {
+  AUDIO_START_RESOLUTION_MS,
   FLIGHT_STANDOFF_PC,
   computeStarAnchorNdc,
   returnCheckpointOf,
@@ -40,22 +41,23 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     expect(parsed.sourceAsset?.audioStreams).toHaveLength(1);
     expect(parsed.sourceAsset?.audioStreams[0]?.codec).toBe('aac');
 
-    expect(parsed.processingGraphs).toHaveLength(3);
-    expect(parsed.processingAttempts).toHaveLength(3);
-    expect(parsed.mediaVariants).toHaveLength(3);
+    expect(parsed.processingGraphs).toHaveLength(2);
+    expect(parsed.processingAttempts).toHaveLength(2);
+    expect(parsed.mediaVariants).toHaveLength(2);
 
-    const variantIds = parsed.mediaVariants.map((v) => v.id);
-    expect(variantIds).toEqual(['variant_original', 'variant_natural', 'variant_temporal']);
-
-    const naturalAttempt = parsed.processingAttempts.find((a) => a.id === 'attempt_natural');
-    expect(naturalAttempt?.metrics?.shadowSnrGainDb).toBe(5.4);
-    expect(naturalAttempt?.metrics?.pointSourceRetentionRatio).toBe(0.98);
-    expect(naturalAttempt?.metrics?.falsePointArtifactCount).toBe(0);
-
-    const temporalAttempt = parsed.processingAttempts.find((a) => a.id === 'attempt_temporal');
-    expect(temporalAttempt?.metrics?.shadowSnrGainDb).toBe(8.2);
-    expect(temporalAttempt?.metrics?.pointSourceRetentionRatio).toBe(0.99);
-    expect(temporalAttempt?.metrics?.falsePointArtifactCount).toBe(0);
+    // Two restorations of the clip, each from its own request, with its graph and its ready attempt
+    for (const variant of parsed.mediaVariants) {
+      const attempt = parsed.processingAttempts.find((a) => a.id === variant.attemptId);
+      const graph = parsed.processingGraphs.find((g) => g.id === variant.graphId);
+      expect(variant.kind).toBe('restoration');
+      expect(variant.sourceSha256).toBe(parsed.sourceAsset?.sha256);
+      expect(attempt?.status).toBe('ready');
+      expect(attempt?.variantId).toBe(variant.id);
+      expect(attempt?.gate?.passed).toBe(true);
+      expect(graph?.kind).toBe('restoration');
+    }
+    expect(parsed.processingGraphs.map((g) => g.request)).toEqual([{ kind: 'restoration' }, { kind: 'restoration', exposureEv: 1 }]);
+    expect(parsed.activeVariantId).toBe(parsed.mediaVariants[0]!.id);
 
     expect(parsed.observationSolution?.status).toBe('calibrated');
     expect(parsed.observationSolution?.quality?.heldOutInliers).toBe(10);
@@ -340,6 +342,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
   });
 
   it('PBT-NAV-1: Arbitrary sequences of sky.show, finding.select, space.enter, space.viewpoint, space.epoch, history.back(partial), media.seek and media.compare followed by source.return recover the exact state saved when the session last left the recording, from the source or the compare wipe (the initial state if it never left)', () => {
+    const [firstVariant, lastVariant] = createSyntheticCalibratedSession().mediaVariants.map((v) => v.id) as [string, string];
     const catalogStarIds = [
       'finding_betelgeuse',
       'finding_rigel',
@@ -391,8 +394,8 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       }),
       fc.record({
         kind: fc.constant('media.compare' as const),
-        variantAId: fc.constantFrom('variant_original', 'variant_natural', 'variant_temporal'),
-        variantBId: fc.constantFrom('variant_original', 'variant_natural', 'variant_temporal'),
+        variantAId: fc.constantFrom(firstVariant, lastVariant),
+        variantBId: fc.constantFrom(firstVariant, lastVariant),
       })
     );
 
@@ -402,7 +405,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
       cropZoom: fc.double({ min: 1, max: 5, noNaN: true }),
       cropPanX: fc.double({ min: -0.5, max: 0.5, noNaN: true }),
       cropPanY: fc.double({ min: -0.5, max: 0.5, noNaN: true }),
-      activeVariantId: fc.constantFrom('variant_original', 'variant_natural', 'variant_temporal'),
+      activeVariantId: fc.constantFrom('variant_none', firstVariant, lastVariant),
       selectedFindingId: fc.option(fc.constantFrom(...catalogStarIds), { nil: null }),
       isPlaying: fc.boolean(),
     });
@@ -558,7 +561,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
         examples: [
           // A star picked on the photo before flying is the selection Back to Moment brings back (experience-9m)
           [
-            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: 'variant_original', selectedFindingId: null, isPlaying: false },
+            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: firstVariant, selectedFindingId: null, isPlaying: false },
             [
               { kind: 'finding.select', findingId: 'finding_sirius' },
               { kind: 'space.enter', findingId: 'finding_sirius' },
@@ -566,10 +569,10 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
           ],
           // Seek, open the compare wipe and fly from it: Back to Moment brings back that time and variant
           [
-            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: 'variant_original', selectedFindingId: null, isPlaying: false },
+            { currentSourceTimeSec: 1.5, audioGain: 0.8, cropZoom: 1, cropPanX: 0, cropPanY: 0, activeVariantId: firstVariant, selectedFindingId: null, isPlaying: false },
             [
               { kind: 'media.seek', sourceTimeSec: 7.25 },
-              { kind: 'media.compare', variantAId: 'variant_original', variantBId: 'variant_temporal' },
+              { kind: 'media.compare', variantAId: firstVariant, variantBId: lastVariant },
               { kind: 'finding.select', findingId: 'finding_rigel' },
               { kind: 'sky.show' },
             ],
@@ -655,7 +658,7 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     );
   });
 
-  it('PBT-SYNC-1: Media timeline synchronization property test verifying monotonic frame timestamps and bounded audio drift', () => {
+  it('PBT-SYNC-1: a variant stays on its source timeline: the same source, every audio stream with the hash ingest stored and the same offset from the video, and a bounded duration drift', () => {
     const baseSession = createSyntheticCalibratedSession();
     const source: SourceAsset = baseSession.sourceAsset!;
 
@@ -663,92 +666,105 @@ describe('@albedian/observation: Golden Sessions & Core Property-Based Invariant
     for (const variant of baseSession.mediaVariants) {
       const check = validateMediaTimelineSync(source, variant);
       expect(check.valid).toBe(true);
-      expect(check.monotonic).toBe(true);
       expect(check.audioPreserved).toBe(true);
+      expect(check.audioOffsetsKept).toBe(true);
       expect(check.maxDriftMs).toBeLessThanOrEqual(42);
     }
 
-    // 2. Property test over arbitrary positive frame intervals and optional audio sync offsets
+    // 2. Valid exactly when each source audio stream is there with its ingest hash and its start, at the resolution both
+    // records store, and the duration is within 42 ms. The frame times themselves are checked on the stored file by
+    // the restoration job (REQ-RST-7.5), not here.
     const baseVariant = baseSession.mediaVariants[1]!;
+    const stream = source.audioStreams[0]!;
+    const audioCases = {
+      copied: [stream],
+      dropped: [],
+      other_hash: [{ ...stream, sha256: 'f'.repeat(64) }],
+      extra: [stream, { ...stream, index: 2 }],
+    };
+    type Audio = keyof typeof audioCases;
     fc.assert(
       fc.property(
-        fc.array(fc.double({ min: 8, max: 50, noNaN: true }), { minLength: 5, maxLength: 120 }),
-        fc.option(fc.double({ min: 0, max: 120, noNaN: true }), { nil: undefined }),
-        fc.boolean(),
-        (frameDeltas, audioSyncOffsetMs, audioCopied) => {
-          const timestamps: number[] = [];
-          let acc = 0;
-          for (const d of frameDeltas) {
-            timestamps.push(Number(acc.toFixed(3)));
-            acc += d;
-          }
-
-          const syntheticVariant: MediaVariant = {
-            ...baseVariant,
-            durationMs: source.durationMs,
-            frameTimestampsMs: timestamps,
-            audioStreamCopiedFromSource: audioCopied,
-            audioSyncOffsetMs,
-          };
-
-          const res = validateMediaTimelineSync(source, syntheticVariant);
-          expect(res.monotonic).toBe(true);
-          expect(res.audioPreserved).toBe(audioCopied);
-          expect(Number.isFinite(res.maxDriftMs)).toBe(true);
-          const lastTs = timestamps[timestamps.length - 1] ?? 0;
-          const expectedValid =
-            audioCopied &&
-            audioSyncOffsetMs !== undefined &&
-            audioSyncOffsetMs <= 42 &&
-            lastTs <= source.durationMs + 42;
-          expect(res.valid).toBe(expectedValid);
+        fc.integer({ min: -100, max: 100 }),
+        fc.constantFrom<Audio>('copied', 'dropped', 'other_hash', 'extra'),
+        // How much later the variant's audio starts, in thousandths of a millisecond: the same packets at other times
+        fc.oneof(fc.constant(0), fc.integer({ min: -600_000, max: 600_000 })),
+        (driftMs, audio, shiftSteps) => {
+          const shiftMs = shiftSteps * AUDIO_START_RESOLUTION_MS;
+          const streams = audioCases[audio].map((s) => ({ ...s, startPtsMs: s.startPtsMs + shiftMs }));
+          const variant: MediaVariant = { ...baseVariant, durationMs: source.durationMs + driftMs, audioStreams: streams };
+          const res = validateMediaTimelineSync(source, variant);
+          const offsetsKept = (audio === 'copied' || audio === 'other_hash') && shiftSteps === 0;
+          expect(res.audioPreserved).toBe(audio === 'copied');
+          expect(res.audioOffsetsKept).toBe(offsetsKept);
+          expect(res.maxDriftMs).toBe(Math.abs(driftMs));
+          expect(res.valid).toBe(audio === 'copied' && shiftSteps === 0 && Math.abs(driftMs) <= 42);
         }
       ),
       {
-        numRuns: 100,
+        seed: process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined,
+        numRuns: 200,
         examples: [
-          [[16, 16, 16, 16, 16], undefined, true],
-          [[16, 16, 16, 16, 16], 12.5, true],
+          [0, 'copied', 0],
+          [42, 'copied', 0],
+          [43, 'copied', 0],
+          [0, 'other_hash', 0],
+          // AUDIT lane C's case: the source's audio packets, 500 ms later, with the same hash
+          [0, 'copied', 500_000],
+          // One step of the stored resolution, either way
+          [0, 'copied', 1],
+          [0, 'copied', -1],
         ],
       }
     );
 
-    // A source with audio whose variant has no measured audio offset fails closed with a finite drift;
-    // a silent source needs no audio offset
-    const missingOffsetOnSourceWithAudio = validateMediaTimelineSync(source, {
-      ...baseVariant,
-      audioStreamCopiedFromSource: true,
-      audioSyncOffsetMs: undefined,
+    // A start written at the stored resolution compares equal however it was summed; a silent source needs no audio
+    // stream; and a variant of another recording never passes
+    const summed = [{ ...stream, startPtsMs: stream.startPtsMs + 0.1 + 0.2 }];
+    expect(validateMediaTimelineSync({ ...source, audioStreams: [{ ...stream, startPtsMs: stream.startPtsMs + 0.3 }] }, { ...baseVariant, audioStreams: summed }).audioOffsetsKept).toBe(true);
+    expect(validateMediaTimelineSync(source, { ...baseVariant, audioStreams: [{ ...stream, startPtsMs: stream.startPtsMs + 500 }] }).maxAudioOffsetChangeMs).toBe(500);
+    expect(validateMediaTimelineSync({ ...source, audioStreams: [] }, { ...baseVariant, audioStreams: [] }).valid).toBe(true);
+    expect(validateMediaTimelineSync(source, { ...baseVariant, sourceAssetId: 'src_0000000000000000' }).valid).toBe(false);
+  });
+
+  it('media.restore shows a stored restoration of this recording and refuses in plain words when there is none (REQ-RST-10.4)', () => {
+    const base = createSyntheticCalibratedSession();
+    const restore = (session: ObservationSession): AlbedianAction => ({
+      type: 'media.restore',
+      requestId: 'restore',
+      expectedViewRevision: session.viewRevision,
+      sourceAssetId: session.sourceAsset!.id,
+      profile: 'temporal',
+      constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
     });
-    expect(missingOffsetOnSourceWithAudio.valid).toBe(false);
-    expect(Number.isFinite(missingOffsetOnSourceWithAudio.maxDriftMs)).toBe(true);
-
-    const silentSourceVariant = validateMediaTimelineSync(
-      { ...source, audioStreams: [] },
-      { ...baseVariant, audioStreamCopiedFromSource: false, audioSyncOffsetMs: undefined }
-    );
-    expect(silentSourceVariant.valid).toBe(true);
-    expect(silentSourceVariant.audioPreserved).toBe(true);
-
-    // 3. Property test verifying non-monotonic timestamps are always rejected
-    fc.assert(
-      fc.property(
-        fc.double({ min: 100, max: 5000, noNaN: true }),
-        fc.double({ min: 1, max: 99, noNaN: true }),
-        (t1, backwardsDelta) => {
-          const badVariant: MediaVariant = {
-            ...baseVariant,
-            frameTimestampsMs: [0, t1, t1 - backwardsDelta, t1 + 100],
-            audioSyncOffsetMs: 0.5,
-            audioStreamCopiedFromSource: true,
-          };
-          const res = validateMediaTimelineSync(source, badVariant);
-          expect(res.monotonic).toBe(false);
-          expect(res.valid).toBe(false);
-        }
-      ),
-      { numRuns: 50 }
-    );
+    // A stored restoration of this recording is shown with its own disclosure, and nothing it did not do is claimed
+    const showingOriginal = { ...base, activeVariantId: 'variant_none' };
+    const shown = dispatchAlbedianAction(showingOriginal, restore(showingOriginal));
+    const restoration = base.mediaVariants.find((v) => v.kind === 'restoration')!;
+    expect(shown.outcome.status).toBe('completed');
+    expect(shown.session.activeVariantId).toBe(restoration.id);
+    expect(shown.session.machines.restoration).toBe('ready');
+    if (shown.outcome.status === 'completed') {
+      expect(shown.outcome.visualStatus).toContain(restoration.disclosure);
+      expect(`${shown.outcome.spokenFeedback} ${shown.outcome.visualStatus}`).not.toMatch(/people|clarity|temporal|stack|star.protect/i);
+    }
+    // No restoration of this recording: refused in plain words, the session left as it was
+    const without = [
+      { ...base, mediaVariants: [] },
+      // A display copy restores nothing
+      { ...base, mediaVariants: base.mediaVariants.map((v) => ({ ...v, kind: 'display_copy' as const })) },
+      // A restoration of another recording is not this one's
+      { ...base, mediaVariants: base.mediaVariants.map((v) => ({ ...v, sourceSha256: 'e'.repeat(64) })) },
+    ];
+    for (const session of without) {
+      const result = dispatchAlbedianAction(session, restore(session));
+      expect(result.outcome).toMatchObject({
+        status: 'rejected',
+        reason: 'missing_source',
+        explanation: 'No restored version of this recording exists yet.',
+      });
+      expect(result.session).toBe(session);
+    }
   });
 
   it('PBT-NAV-HISTBACK-CHAIN: Multi-step history.back partial-fraction chaining never overshoots the baseline checkpoint', () => {
@@ -968,7 +984,7 @@ describe('@albedian/observation: Back to Moment by voice and by button (experien
     }).session;
     const wipe = dispatchAlbedianAction(seeked, {
       type: 'media.compare', requestId: 'cmp', expectedViewRevision: seeked.viewRevision,
-      variantAId: 'variant_original', variantBId: 'variant_temporal', preserveTime: true,
+      variantAId: base.mediaVariants[0]!.id, variantBId: base.mediaVariants.at(-1)!.id, preserveTime: true,
     }).session;
     expect(wipe.machines.navigation).toBe('comparison');
     const finding = wipe.observationSolution!.findings.find(

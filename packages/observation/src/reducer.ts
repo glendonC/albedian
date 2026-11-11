@@ -83,20 +83,29 @@ export function dispatchAlbedianAction(
       if ((action.constraints as { allowSyntheticSky?: boolean }).allowSyntheticSky !== false) {
         return rejectAction(session, action.requestId, 'unsafe_synthetic_edit', 'Synthetic sky generation is forbidden by Albedian fidelity policy.', ['Use star_protected or temporal restoration profiles']);
       }
-      const graph = base.processingGraphs.find((g) => g.profileName === action.profile || (action.profile === 'natural' && g.profileName === 'star_protected'));
-      const variant = base.mediaVariants.find((v) => v.graphId === graph?.id) ?? base.mediaVariants[base.mediaVariants.length - 1];
+      // A stored restoration of this recording, by its kind and its source; nothing here restores anything, so the
+      // outcome claims only what the variant's own disclosure says
+      const sourceSha256 = base.sourceAsset.sha256;
+      const variant = base.mediaVariants.find((v) => v.kind === 'restoration' && v.sourceSha256 === sourceSha256);
       if (!variant) {
-        return rejectAction(session, action.requestId, 'missing_source', `No MediaVariant available for profile "${action.profile}".`, ['Run restoration pipeline first']);
+        return rejectAction(session, action.requestId, 'missing_source', 'No restored version of this recording exists yet.', ['Run restoration pipeline first']);
       }
-      const status = `Applied ${variant.label} (${variant.summaryNote})`;
-      // Only what the session holds: the variant now shown, and that its audio is the source's when it records so.
-      // Nothing here restores anything, so no clarity, people or audio is claimed for it
-      const audio = variant.audioStreamCopiedFromSource ? ' Its audio is copied from the original recording.' : '';
+      const name = 'the restored version';
+      const status = `Applied ${name} (${variant.disclosure})`;
+      // Only what the session holds: the variant now shown, and that its audio is the source's when it records so (each
+      // of the source's audio streams in it with the packet hash ingest stored). Nothing here restores anything, so no
+      // clarity, people or audio is claimed for it
+      const sourceAudio = base.sourceAsset.audioStreams;
+      const audioCopied =
+        sourceAudio.length > 0 &&
+        variant.audioStreams.length === sourceAudio.length &&
+        sourceAudio.every((stream, i) => variant.audioStreams[i]?.sha256 === stream.sha256);
+      const audio = audioCopied ? ' Its audio is copied from the original recording.' : '';
       return completeAction(
         { ...base, viewRevision: nextRev, activeVariantId: variant.id, machines: { ...base.machines, restoration: 'ready' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
-        `Now showing ${variant.label}.${audio}`,
+        `Now showing ${name}.${audio}`,
         status
       );
     }
@@ -107,12 +116,12 @@ export function dispatchAlbedianAction(
       if (!variantA || !variantB) {
         return rejectAction(session, action.requestId, 'missing_source', `Cannot compare missing media variants (${action.variantAId} vs ${action.variantBId}).`, ['Select valid media variants from session.mediaVariants']);
       }
-      const status = `Comparing ${variantA.label} with ${variantB.label} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
+      const status = `Comparing ${variantA.id} with ${variantB.id} at ${base.currentSourceTimeSec.toFixed(1)}s.`;
       return completeAction(
         { ...base, viewRevision: nextRev, activeVariantId: variantB.id, compareVariantId: variantA.id, compareWipePosition: 0.5, machines: { ...base.machines, navigation: 'comparison' }, lastStatusBanner: status },
         action.requestId,
         nextRev,
-        `Comparing ${variantA.label} and ${variantB.label}.`,
+        'Comparing the two versions.',
         status
       );
     }
