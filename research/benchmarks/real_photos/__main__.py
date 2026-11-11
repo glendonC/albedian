@@ -14,8 +14,9 @@ the rule the registry tests hold the tracked file to, or plain http on 127.0.0.1
 server listens. It reads the URL the way the request itself will be read, by urllib.request and http.client, and
 asks only when that reading names one of those two targets and the URL is plainly spelled: no user or password
 part, no other port, no other spelling of the host, no space, backslash, control character or fragment. Any other
-entry is refused before a request. What scripts/fetch_download.py does with the answer is its own: it follows a
-redirect, also one that leads to another host.
+entry is refused before a request. The loopback address is asked only when a test passes `loopback_for_tests` to
+`fetch_all`, which no command-line option, environment variable or registry field sets; scripts/fetch_download.py
+follows a redirect only to the scheme, host and port the URL names.
 
 Pace. Wikimedia Commons limits how fast originals may be fetched, so `fetch` asks for the first eight photos of a
 run 6 s apart and for the rest 70 s apart. When the server still answers 429 Too Many Requests, `fetch` reads the
@@ -26,7 +27,8 @@ still missing, and a later run goes on from where it stopped. At this pace the w
 
 Log. Of what a server answers, a line carries only the HTTP status code. The wait it names is this command's own
 number of whole seconds, never above 900. No header value, no reason phrase and no text of an error is printed: a
-failure without a status code is named in this command's own words or by the class of its Python error.
+failure without a status code is said in the shared script's own sentence, in this command's own words, or by the class
+of its Python error.
 """
 
 from __future__ import annotations
@@ -97,15 +99,15 @@ def _state(download: dict[str, Any], root: Path) -> str:
     return "present"
 
 
-def _may_ask(url: Any) -> bool:
+def _may_ask(url: Any, *, loopback_for_tests: bool = False) -> bool:
     """True when a request for this URL can only go where `fetch` may ask.
 
     The URL is read once, the way the request itself will be: urllib.request.Request, which the shared script
     builds, gives the scheme, the authority and the path with its query, and http.client, which opens the
     connection, takes the host and the port out of that authority. A user or password part stays in the host
     there, so it never passes for the host here. Two targets are allowed: https on upload.wikimedia.org, with no
-    port spelled and the path of a Commons original, and plain http on 127.0.0.1 with its port in plain digits,
-    where the tests' own server listens. The URL must also be exactly what that reading spells, with a plain path
+    port spelled and the path of a Commons original, and, only when a test passes `loopback_for_tests`, plain http
+    on 127.0.0.1 with its port in plain digits, where the tests' own server listens. The URL must also be exactly what that reading spells, with a plain path
     and query: an escaped dot, an upper-case scheme, a space, a backslash, a fragment or a wrapper is text that
     one reader of URLs keeps and another drops or reads differently, and is refused.
     """
@@ -119,7 +121,7 @@ def _may_ask(url: Any) -> bool:
         return False
     if request.type == "https":
         return request.host == COMMONS_HOST and COMMONS_ORIGINAL.fullmatch(f"https://{COMMONS_HOST}{request.selector}") is not None
-    return request.type == "http" and host == LOOPBACK_HOST and 0 < port < 65536 and request.host == f"{host}:{port}"
+    return loopback_for_tests and request.type == "http" and host == LOOPBACK_HOST and 0 < port < 65536 and request.host == f"{host}:{port}"
 
 
 def asked_wait_s(value: object) -> Optional[int]:
@@ -139,12 +141,13 @@ def asked_wait_s(value: object) -> Optional[int]:
 
 
 def _failure(script: ModuleType, error: Exception) -> str:
-    """What a line says of a fetch that failed without an HTTP status: this command's own words, or the class name of
-    the Python error. Never the error's own text, which can carry what a server sent."""
+    """What a line says of a fetch that failed without an HTTP status: the shared script's own sentence for what
+    stopped it (its FetchError's `failure`), this command's words for a refusal or a mismatch, or the class name of
+    any other Python error. Never an error's own text, which can carry what a server sent."""
     if isinstance(error, script.FetchError):
+        if error.failure is not None:
+            return error.failure
         return "refused by scripts/fetch_download.py, or the size or SHA-256 differs from the registry"
-    if isinstance(error, urllib.error.URLError) and isinstance(error.reason, Exception):
-        error = error.reason
     return type(error).__name__
 
 
@@ -153,6 +156,8 @@ def fetch_all(
     root: Path = ROOT,
     sleep: Callable[[float], None] = time.sleep,
     out: Optional[TextIO] = None,
+    *,
+    loopback_for_tests: bool = False,
 ) -> int:
     """Fetch each photo that is not present and matching; 0 when every photo then matches its entry."""
     out = out or sys.stdout
@@ -171,7 +176,7 @@ def fetch_all(
             continue
         if stopped:
             continue
-        if not _may_ask(download["url"]):
+        if not _may_ask(download["url"], loopback_for_tests=loopback_for_tests):
             failed += 1
             print(f"{path}: not fetched: the URL is not an original on https://upload.wikimedia.org", file=out, flush=True)
             continue
@@ -181,7 +186,7 @@ def fetch_all(
             waited = False
             requests += 1
             try:
-                script.fetch(script.Download.from_entry(download), root=root)
+                script.fetch(script.Download.from_entry(download), root=root, loopback_for_tests=loopback_for_tests)
             except urllib.error.HTTPError as error:
                 if error.code == TOO_MANY_REQUESTS:
                     asked = asked_wait_s(error.headers.get("Retry-After") if error.headers is not None else None)

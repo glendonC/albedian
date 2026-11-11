@@ -899,7 +899,7 @@ def test_fetch_gets_each_missing_photo_through_the_registry_fetch_six_seconds_ap
     present.write_bytes(PAYLOADS["/photo-2.jpg"])
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 0
     assert _Recorder.requests == [("/photo-1.jpg", "Albedian/0.1 (research prototype)"), ("/photo-3.jpg", "Albedian/0.1 (research prototype)")]
     assert waits == [cli.SECONDS_BETWEEN_REQUESTS] and cli.SECONDS_BETWEEN_REQUESTS == 6.0
     for download in downloads:
@@ -911,7 +911,7 @@ def test_fetch_gets_each_missing_photo_through_the_registry_fetch_six_seconds_ap
     ]
     # A second run makes no request and waits for nothing
     _Recorder.requests, waits[:] = [], []
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO()) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO(), loopback_for_tests=True) == 0
     assert _Recorder.requests == [] and waits == []
 
 
@@ -921,7 +921,7 @@ def test_fetch_keeps_nothing_that_differs_from_the_registry_and_goes_on_to_the_r
     downloads[1]["url"] = f"{server}/missing.jpg"
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 1
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 1
     assert [path for path, _ in _Recorder.requests] == ["/photo-1.jpg", "/missing.jpg", "/photo-3.jpg"]
     assert waits == [6.0, 6.0]
     assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["rp-a-03.jpg"]
@@ -933,9 +933,10 @@ def test_fetch_keeps_nothing_that_differs_from_the_registry_and_goes_on_to_the_r
     ]
 
 
-def test_fetch_writes_nothing_a_server_said_but_the_status_code(tmp_path: Path, server: str) -> None:
-    """An answer that is not HTTP, a redirect that urllib gives up on, a 404 and no answer at all each end as one plain
-    line: no traceback, none of the server's own words, and the run goes on to the next photo."""
+def test_fetch_writes_nothing_a_server_said_but_the_status_code(tmp_path: Path, server: str, wire: Wire) -> None:
+    """An answer that is not HTTP, a redirect the shared script refuses (to another scheme, to a target with no
+    address, to a port that is not a number), a 404 and no answer at all each end as one plain line: no traceback,
+    none of the server's own words, no connection past the redirect, and the run goes on to the next photo."""
     downloads = fake_downloads(server, count=7)
     odd = ["/not-http.jpg", "/to-another-scheme.jpg", "/to-no-address.jpg", "/to-no-port.jpg", "/missing.jpg"]
     for download, route in zip(downloads, odd):
@@ -943,20 +944,24 @@ def test_fetch_writes_nothing_a_server_said_but_the_status_code(tmp_path: Path, 
     downloads[5]["url"] = f"http://127.0.0.1:{closed_port()}/photo-6.jpg"
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 1
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 1
     assert [path for path, _ in _Recorder.requests] == [*odd, "/photo-7.jpg"]
     assert waits == [6.0] * 6
     assert log_lines(out) == [
-        f"{PHOTO[1]}: not fetched: BadStatusLine",
-        f"{PHOTO[2]}: not fetched: HTTP 302",
-        f"{PHOTO[3]}: not fetched: ValueError",
-        f"{PHOTO[4]}: not fetched: InvalidURL",
+        f"{PHOTO[1]}: not fetched: the server's answer does not begin with an HTTP status line",
+        # urllib itself declines a redirect to gopher, which the shared script says by the status number alone
+        f"{PHOTO[2]}: not fetched: the server answered HTTP 302, a redirect urllib does not follow or one with no Location",
+        *(f"{PHOTO[n]}: not fetched: refused by scripts/fetch_download.py, or the size or SHA-256 differs from the registry" for n in (3, 4)),
         f"{PHOTO[5]}: not fetched: HTTP 404",
-        f"{PHOTO[6]}: not fetched: ConnectionRefusedError",
+        f"{PHOTO[6]}: not fetched: the connection was refused",
         f"{PHOTO[7]}: {FETCHED}",
         "1 of 7 photos present and matching their checksum (1 fetched, 6 failed)",
     ]
     assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["rp-a-07.jpg"]
+    # Each refused redirect was asked of this server once and led nowhere else
+    port = int(server.rsplit(":", 1)[1])
+    assert set(wire.connections) == {("127.0.0.1", port), ("127.0.0.1", int(downloads[5]["url"].split(":")[2].split("/")[0]))}
+    assert len(wire.connections) == len(odd) + 2
 
 
 DOT = chr(0x3002)  # the ideographic full stop, which the resolver's own name handling reads as a dot
@@ -1100,7 +1105,7 @@ def test_fetch_refuses_before_any_request_a_url_that_is_not_a_commons_original(t
     downloads = [first, *turned_away, last]
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 1
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 1
     assert wire.connections == [("127.0.0.1", port)] * 2, "one connection for each of the two entries on this server"
     assert set(wire.lookups) == {"127.0.0.1"}, "no other name reached the resolver"
     assert [path for path, _ in _Recorder.requests] == ["/photo-1.jpg", "/photo-2.jpg"]
@@ -1135,9 +1140,9 @@ def test_fetch_asks_for_a_plainly_spelled_url_at_its_own_host_and_port(tmp_path:
     ]
     out = io.StringIO()
     with loopback_only(ports=set()) as wire:
-        assert cli.fetch_all(downloads, root=tmp_path, sleep=lambda seconds: None, out=out) == 1
+        assert cli.fetch_all(downloads, root=tmp_path, sleep=lambda seconds: None, out=out, loopback_for_tests=True) == 1
     assert wire.connections == [target for _, target in inside] and wire.lookups == []
-    assert log_lines(out)[:-1] == [f"{entry['path']}: not fetched: OSError" for entry in downloads]
+    assert log_lines(out)[:-1] == [f"{entry['path']}: not fetched: {CUT_OFF}" for entry in downloads]
 
 
 def test_fetch_asks_only_upload_wikimedia_org_for_every_photo_of_the_corpus(tmp_path: Path, wire: Wire) -> None:
@@ -1147,7 +1152,7 @@ def test_fetch_asks_only_upload_wikimedia_org_for_every_photo_of_the_corpus(tmp_
     assert cli.fetch_all(DOWNLOADS, root=tmp_path, sleep=waits.append, out=out) == 1
     assert wire.connections == [("upload.wikimedia.org", 443)] * len(DOWNLOADS) and wire.lookups == []
     assert log_lines(out) == [
-        *(f"{entry['path']}: not fetched: OSError" for entry in DOWNLOADS),
+        *(f"{entry['path']}: not fetched: {CUT_OFF}" for entry in DOWNLOADS),
         f"0 of {len(DOWNLOADS)} photos present and matching their checksum (0 fetched, {len(DOWNLOADS)} failed)",
     ]
     assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
@@ -1180,11 +1185,15 @@ def reached(url: object) -> tuple[list[tuple[str, int]], list[str], str]:
     it tried, the names it gave the resolver, and what it printed about the entry."""
     out = io.StringIO()
     with loopback_only(ports=set()) as wire, tempfile.TemporaryDirectory() as root:
-        code = cli.fetch_all([{**MADE_UP_ENTRY, "url": url}], root=Path(root), sleep=lambda seconds: None, out=out)
+        code = cli.fetch_all([{**MADE_UP_ENTRY, "url": url}], root=Path(root), sleep=lambda seconds: None, out=out, loopback_for_tests=True)
         kept = [path for path in Path(root).rglob("*") if path.is_file()]
     lines = out.getvalue().splitlines()
     assert code == 1 and kept == [] and len(lines) == 2 and lines[0].startswith(f"{MADE_UP_ENTRY['path']}: not fetched: ")
     return wire.connections, wire.lookups, lines[0].split(": not fetched: ", 1)[1]
+
+
+# What the shared script says of a connection this file's wire cuts with an OSError (its FAILURES table)
+CUT_OFF = "a network or file error stopped the download"
 
 
 def check_where_fetch_goes(url: object) -> None:
@@ -1197,7 +1206,7 @@ def check_where_fetch_goes(url: object) -> None:
     if target is None:
         assert (connections, said) == ([], REFUSED), ascii(url)
     else:
-        assert (connections, said) == ([target], "OSError"), ascii(url)
+        assert (connections, said) == ([target], CUT_OFF), ascii(url)
         split = urlsplit(url)
         assert (split.hostname, split.port or 443, split.username, split.password) == (*target, None, None), ascii(url)
 
@@ -1337,7 +1346,7 @@ def test_fetch_asks_for_the_first_eight_photos_six_seconds_apart_and_for_the_res
     present.write_bytes(PAYLOADS["/photo-5.jpg"])
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 0
     # Ten requests (the fifth photo is there already): seven fast pauses lead to the eighth request, then two slow ones
     assert [path for path, _ in _Recorder.requests] == [f"/photo-{n}.jpg" for n in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11)]
     assert waits == [6.0] * 7 + [70.0] * 2
@@ -1354,7 +1363,7 @@ def test_fetch_waits_as_long_as_a_429_asks_then_goes_on_at_the_slow_pace(tmp_pat
     _Recorder.refusals = {"/photo-1.jpg": 1, "/photo-3.jpg": 2}
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 0
     assert [path for path, _ in _Recorder.requests] == [
         "/photo-1.jpg", "/photo-1.jpg", "/photo-2.jpg", "/photo-3.jpg", "/photo-3.jpg", "/photo-3.jpg"
     ]  # fmt: skip
@@ -1378,7 +1387,7 @@ def refused_once(tmp_path: Path, server: str, header: str | None, count: int = 3
     _Recorder.refusals, _Recorder.retry_after = {"/photo-2.jpg": 1}, header
     waits: list[float] = []
     out = io.StringIO()
-    code = cli.fetch_all(fake_downloads(server, count), root=tmp_path, sleep=waits.append, out=out)
+    code = cli.fetch_all(fake_downloads(server, count), root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True)
     return code, waits, log_lines(out)
 
 
@@ -1435,7 +1444,7 @@ def test_fetch_stops_without_waiting_when_a_429_asks_for_more_than_fifteen_minut
     assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["rp-a-01.jpg", "rp-a-04.jpg"]
     # A later run goes on from where this one stopped
     _Recorder.requests, _Recorder.refusals, waits = [], {}, []
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO()) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO(), loopback_for_tests=True) == 0
     assert [path for path, _ in _Recorder.requests] == ["/photo-2.jpg", "/photo-3.jpg"] and waits == [6.0]
 
 
@@ -1463,7 +1472,7 @@ def test_fetch_stops_after_six_waits_and_asks_for_nothing_more(tmp_path: Path, s
     _Recorder.refusals = {"/photo-2.jpg": 99}
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 1
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 1
     # One good photo, then seven refusals of the second: six waited for, the seventh ends the run before the third
     assert [path for path, _ in _Recorder.requests] == ["/photo-1.jpg"] + ["/photo-2.jpg"] * 7
     assert waits == [6.0] + [37] * 6
@@ -1477,7 +1486,7 @@ def test_fetch_stops_after_six_waits_and_asks_for_nothing_more(tmp_path: Path, s
     assert sorted(path.name for path in tmp_path.rglob("*") if path.is_file()) == ["rp-a-01.jpg"]
     # A later run goes on from where this one stopped
     _Recorder.requests, _Recorder.refusals, waits[:] = [], {}, []
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO()) == 0
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=io.StringIO(), loopback_for_tests=True) == 0
     assert [path for path, _ in _Recorder.requests] == ["/photo-2.jpg", "/photo-3.jpg"] and waits == [6.0]
 
 
@@ -1486,21 +1495,56 @@ def test_a_429_that_carries_no_headers_at_all_is_waited_for_ten_minutes_each_tim
 ) -> None:
     """urllib hands over the headers of every answer; an error built without them must not break the command either."""
 
-    def urlopen(request: urllib.request.Request, *args: Any, **kwargs: Any) -> Any:
+    asked: list[str] = []
+
+    def open_(self: urllib.request.OpenerDirector, request: urllib.request.Request, *args: Any, **kwargs: Any) -> Any:
+        asked.append(request.full_url)
         raise urllib.error.HTTPError(request.full_url, 429, SERVER_WORDS, None, None)
 
-    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    # The shared script opens every request through its own OpenerDirector, which carries its redirect rule
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open", open_)
     downloads = fake_downloads(f"http://127.0.0.1:{closed_port()}", count=2)
     waits: list[float] = []
     out = io.StringIO()
-    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out) == 1
+    assert cli.fetch_all(downloads, root=tmp_path, sleep=waits.append, out=out, loopback_for_tests=True) == 1
     assert waits == [630] * 6 and wire.connections == []
+    assert asked == [downloads[0]["url"]] * 7, "the first request and one after each of the six waits"
     assert log_lines(out) == [
         *[f"{PHOTO[1]}: {waiting(630)}"] * 6,
         f"{PHOTO[1]}: not fetched: HTTP 429",
         "stopped: the server answered HTTP 429 again after 6 waits; 2 of 2 photos are still missing; run fetch again later",
         "0 of 2 photos present and matching their checksum (0 fetched, 1 failed)",
     ]
+
+
+def test_a_real_run_asks_the_loopback_address_of_no_entry_on_disk(
+    tmp_path: Path, server: str, wire: Wire, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The command's own main, with a registry on disk whose corpus entry names the tests' server, opens no
+    connection: the loopback address is only for a test that passes loopback_for_tests, and no command-line option,
+    environment variable or registry field sets it."""
+    # The command runs at the repository root, so the entry names a path the server answers 404: were the loopback
+    # ever asked, the request would end before a file or a folder is made in the shared cache
+    entry = {**fake_downloads(server, count=1)[0], "path": ".cache/real-photos/rp-z-99/rp-z-99.jpg", "url": f"{server}/never-served.jpg",
+             "loopbackForTests": True}  # fmt: skip
+    in_the_cache = rp.ROOT / entry["path"]
+    assert not in_the_cache.parent.exists()
+    registry = tmp_path / "downloads.json"
+    registry.write_text(json.dumps({"downloads": [entry]}), encoding="utf-8")
+    monkeypatch.setattr(cli, "corpus_downloads", lambda: rp.corpus_downloads(registry))
+    for name in ("ALBEDIAN_LOOPBACK_FOR_TESTS", "LOOPBACK_FOR_TESTS", "loopback_for_tests"):
+        monkeypatch.setenv(name, "1")
+    assert cli.main(["fetch"]) == 1
+    assert capsys.readouterr().out.splitlines()[0] == f"{entry['path']}: not fetched: {REFUSED}"
+    assert (_Recorder.requests, wire.connections, wire.lookups) == ([], [], [])
+    assert not in_the_cache.parent.exists()
+    assert cli._may_ask(entry["url"]) is False and cli._may_ask(entry["url"], loopback_for_tests=True) is True
+    assert cli.fetch_all.__kwdefaults__ == {"loopback_for_tests": False} and cli._may_ask.__kwdefaults__ == {"loopback_for_tests": False}
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+    assert "os.environ" not in source and "getenv" not in source
+    assert not [name for name in cli.main.__code__.co_names + cli.main.__code__.co_varnames if "loopback" in name]
+    with pytest.raises(SystemExit):
+        cli.main(["fetch", "--loopback-for-tests"])
 
 
 def test_status_counts_the_photos_that_are_present_and_match_their_checksum(tmp_path: Path, server: str) -> None:
