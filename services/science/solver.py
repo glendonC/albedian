@@ -11,6 +11,7 @@ from typing import Callable, Sequence
 
 import numpy as np
 from scipy import optimize
+from scipy.spatial import cKDTree
 
 from services.science.catalog import (
     CatalogStar,
@@ -73,6 +74,14 @@ INLIER_GATE_MAX_PX = 3.0
 MIN_HELD_OUT_INLIERS = 6
 MAX_HELD_OUT_MEDIAN_RESIDUAL_PX = 3.0
 MAX_HELD_OUT_P95_RESIDUAL_PX = 6.0
+# The held-out pairing above, and the triangle search's consensus pairing, measure only the stars a vectorized
+# projection (`_project`) puts within their radius plus this margin of a detection, each with
+# `WCSModel.world_to_pixel` as before, so they pair exactly as measuring every star does. The two projections agreed
+# to 0 px over 199,731 projections within 10,000 px of the frame, 3,000 random WCS [tested, 2026-11-11, macOS arm64];
+# another platform's trigonometry may differ by a few units in the last place [inference], far below this margin
+_PREFILTER_MARGIN_PX = 1e-3
+# A detector triangle matches a catalog triangle when both side ratios lie within this of the catalog's
+TRIANGLE_RATIO_TOLERANCE = 0.045
 
 
 @dataclass(frozen=True)
@@ -139,28 +148,56 @@ def verify_held_out(
     training_detections: Sequence[SourceDetection],
 ) -> HeldOutVerification:
     """Pair every detection with a catalog star under `wcs`, which was fitted on `training_detections` (the
-    same objects as in `detections`) and nothing else, and measure the held-out gate."""
+    same objects as in `detections`) and nothing else, and measure the held-out gate.
+
+    Each detection, in order, takes the nearest catalog star not yet taken (the first in catalog order on a tie)
+    when it lies within `ASSOCIATION_RADIUS_PX`. Only stars a vectorized projection puts within that radius plus
+    `_PREFILTER_MARGIN_PX` are measured, each with `wcs.world_to_pixel` as one at a time would: the same pairs and
+    residuals as measuring every star, in time that does not grow with detections times stars.
+
+    A detection at a NaN or infinite position, or a star projected to one, lies at a NaN or infinite distance, which
+    measuring every star never took as closer: it pairs with nothing, so it stays out of the KD-tree and its query.
+    """
     train_ids = {id(det) for det in training_detections}
+    stars = list(catalog)
+    active = [det for det in detections if not det.is_hot_pixel_impulse]
     associations: list[tuple[SourceDetection, CatalogStar, float, bool]] = []
     used_catalog_ids: set[str] = set()
-    for det in detections:
-        if det.is_hot_pixel_impulse:
-            continue
-        best_st: CatalogStar | None = None
-        best_res = float("inf")
-        for st in catalog:
-            if st.id in used_catalog_ids:
-                continue
-            px, py = wcs.world_to_pixel(st.ra_deg, st.dec_deg)
-            if math.isnan(px):
-                continue
-            res_px = math.hypot(px - det.x_px, py - det.y_px)
-            if res_px < best_res:
-                best_res = res_px
-                best_st = st
-        if best_st is not None and best_res <= ASSOCIATION_RADIUS_PX:
-            associations.append((det, best_st, best_res, id(det) in train_ids))
-            used_catalog_ids.add(best_st.id)
+    if stars and active:
+        px, py = _project(
+            wcs,
+            np.array([s.ra_deg for s in stars], dtype=np.float64),
+            np.array([s.dec_deg for s in stars], dtype=np.float64),
+        )
+        finite = np.flatnonzero(np.isfinite(px) & np.isfinite(py))
+        positions = np.array([[det.x_px, det.y_px] for det in active], dtype=np.float64)
+        placed = np.flatnonzero(np.isfinite(positions).all(axis=1))
+        near: list[list[int]] = [[] for _ in active]
+        if finite.size and placed.size:
+            tree = cKDTree(np.column_stack([px[finite], py[finite]]))
+            found = tree.query_ball_point(positions[placed], r=ASSOCIATION_RADIUS_PX + _PREFILTER_MARGIN_PX)
+            for i, hits in zip(placed, found):
+                near[i] = sorted(int(finite[k]) for k in hits)
+        exact: dict[int, tuple[float, float]] = {}
+        for det, candidates in zip(active, near):
+            best_st: CatalogStar | None = None
+            best_res = float("inf")
+            for j in candidates:
+                st = stars[j]
+                if st.id in used_catalog_ids:
+                    continue
+                if j not in exact:
+                    exact[j] = wcs.world_to_pixel(st.ra_deg, st.dec_deg)
+                sx, sy = exact[j]
+                if math.isnan(sx):
+                    continue
+                res_px = math.hypot(sx - det.x_px, sy - det.y_px)
+                if res_px < best_res:
+                    best_res = res_px
+                    best_st = st
+            if best_st is not None and best_res <= ASSOCIATION_RADIUS_PX:
+                associations.append((det, best_st, best_res, id(det) in train_ids))
+                used_catalog_ids.add(best_st.id)
 
     raw_residuals = np.array([res_px for _, _, res_px, _ in associations], dtype=np.float64)
     if raw_residuals.size > 0:
@@ -170,6 +207,131 @@ def verify_held_out(
     else:
         gate_px = INLIER_GATE_MAX_PX
     return HeldOutVerification(associations=tuple(associations), inlier_gate_px=gate_px)
+
+
+def _project(wcs: WCSModel, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """`wcs.world_to_pixel` over arrays, NaN where it returns NaN: `WCSModel`'s own formula in numpy. Any subclass
+    (which may project otherwise) is projected one star at a time with its own `world_to_pixel`, and so are the
+    cases where `WCSModel.world_to_pixel` raises for some stars only (a star at an infinite declination, which
+    `math.sin` refuses, or an infinite rotation or a zero scale, refused for the stars in front), so they raise where
+    measuring every star did. An infinite tangent declination raises here at `math.sin(dec0)` as it does there."""
+    ra_deg = np.asarray(ra_deg, dtype=np.float64)
+    dec_deg = np.asarray(dec_deg, dtype=np.float64)
+    if (
+        type(wcs) is not WCSModel
+        or wcs.scale_deg_per_px == 0
+        or math.isinf(wcs.rotation_deg)
+        or np.isinf(dec_deg).any()
+    ):
+        pairs = np.array([wcs.world_to_pixel(float(r), float(d)) for r, d in zip(ra_deg, dec_deg)], dtype=np.float64)
+        return pairs.reshape(-1, 2)[:, 0], pairs.reshape(-1, 2)[:, 1]
+    # A NaN or infinite RA, a NaN declination or a NaN in the WCS gives NaN here, as `world_to_pixel` returns it, with
+    # numpy's warnings for it off
+    with np.errstate(invalid="ignore", over="ignore", divide="ignore"):
+        ra = np.radians(np.mod(ra_deg, 360.0))
+        dec = np.radians(dec_deg)
+        ra0 = math.radians(float(wcs.crval_ra_deg) % 360.0)
+        dec0 = math.radians(float(wcs.crval_dec_deg))
+        dra = ra - ra0
+        cos_c = math.sin(dec0) * np.sin(dec) + math.cos(dec0) * np.cos(dec) * np.cos(dra)
+        front = cos_c > 1e-6
+        safe = np.where(front, cos_c, 1.0)
+        xi = wcs.parity * (np.cos(dec) * np.sin(dra)) / safe
+        eta = (math.cos(dec0) * np.sin(dec) - math.sin(dec0) * np.cos(dec) * np.cos(dra)) / safe
+        theta = math.radians(wcs.rotation_deg)
+        u = xi * math.cos(theta) - eta * math.sin(theta)
+        v = xi * math.sin(theta) + eta * math.cos(theta)
+        r2 = u * u + v * v
+        distort = 1.0 + wcs.k1 * r2 + wcs.k2 * (r2 * r2)
+        x = wcs.crpix_x + np.degrees(u * distort) / wcs.scale_deg_per_px
+        y = wcs.crpix_y - np.degrees(v * distort) / wcs.scale_deg_per_px
+    return np.where(front, x, np.nan), np.where(front, y, np.nan)
+
+
+class _RatioIndex:
+    """The catalog triangles' two side ratios in a KD-tree, so a detector triangle finds its matches without a
+    loop over every catalog triangle. A triangle with a NaN or infinite ratio (a star with no finite position) cannot
+    go into the tree; it is compared on every lookup instead."""
+
+    def __init__(self, ratios: Sequence[tuple[float, float]]) -> None:
+        self.ratios = np.asarray(ratios, dtype=np.float64).reshape(-1, 2)
+        in_tree = np.isfinite(self.ratios).all(axis=1)
+        self.tree_rows = np.flatnonzero(in_tree)
+        self.other_rows = np.flatnonzero(~in_tree)
+        self.tree = cKDTree(self.ratios[self.tree_rows]) if self.tree_rows.size else None
+
+    def lookup(self, dr1: float, dr2: float) -> np.ndarray:
+        """Indices, ascending, of the triangles whose two ratios are each within `TRIANGLE_RATIO_TOLERANCE` of
+        (dr1, dr2): a box query widened by 1e-9, then the comparison the loop over every triangle made.
+
+        That loop skipped a triangle when `abs(dr - r) > TRIANGLE_RATIO_TOLERANCE`, which is False when the difference
+        is NaN: a NaN ratio kept every triangle on its axis, and an infinite one kept a NaN or the same infinity. A NaN
+        or infinite (dr1, dr2) therefore skips the tree and is compared with every triangle."""
+        if not (math.isfinite(dr1) and math.isfinite(dr2)):
+            return self._kept(np.arange(self.ratios.shape[0], dtype=np.int64), dr1, dr2)
+        hits = self.other_rows
+        if self.tree is not None:
+            found = self.tree.query_ball_point([dr1, dr2], r=TRIANGLE_RATIO_TOLERANCE + 1e-9, p=np.inf)
+            hits = self.tree_rows[np.array(sorted(found), dtype=np.int64)]
+            if self.other_rows.size:
+                hits = np.union1d(hits, self.other_rows)
+        return self._kept(hits, dr1, dr2)
+
+    def _kept(self, hits: np.ndarray, dr1: float, dr2: float) -> np.ndarray:
+        """`hits` without the triangles the loop's comparison skipped, in their order."""
+        if hits.size == 0:
+            return hits
+        with np.errstate(invalid="ignore"):
+            outside = (np.abs(dr1 - self.ratios[hits, 0]) > TRIANGLE_RATIO_TOLERANCE) | (
+                np.abs(dr2 - self.ratios[hits, 1]) > TRIANGLE_RATIO_TOLERANCE
+            )
+        return hits[~outside]
+
+
+def _greedy_pairs(
+    wcs: WCSModel,
+    detections: Sequence[SourceDetection],
+    stars: Sequence[CatalogStar],
+    ra_deg: np.ndarray,
+    dec_deg: np.ndarray,
+    radius_px: float,
+) -> list[tuple[SourceDetection, CatalogStar, float]]:
+    """A candidate's consensus pairs: each detection in turn takes the nearest star not yet taken (the first in
+    order on a tie) when it lies closer than `radius_px` under `wcs.world_to_pixel`. `ra_deg` and `dec_deg` are the
+    stars' positions: all stars are projected once per candidate (`_project`), and only those it puts within
+    `radius_px` plus `_PREFILTER_MARGIN_PX` of a detection are measured with `wcs.world_to_pixel`, as `verify_held_out`
+    measures them. The pairs and distances are the ones measuring every star with `wcs.world_to_pixel` gives."""
+    if not detections or len(stars) == 0:
+        return []
+    px, py = _project(wcs, ra_deg, dec_deg)
+    dx = np.array([d.x_px for d in detections], dtype=np.float64)
+    dy = np.array([d.y_px for d in detections], dtype=np.float64)
+    # A NaN or infinite detection or projection gives a NaN or infinite distance, never closer than the radius
+    with np.errstate(invalid="ignore", over="ignore"):
+        dist = np.hypot(px[None, :] - dx[:, None], py[None, :] - dy[:, None])
+    close = np.isfinite(dist) & (dist < radius_px + _PREFILTER_MARGIN_PX)
+    ids = [s.id for s in stars]
+    used: set[str] = set()
+    exact: dict[int, tuple[float, float]] = {}
+    pairs: list[tuple[SourceDetection, CatalogStar, float]] = []
+    for i in np.flatnonzero(close.any(axis=1)):
+        det = detections[i]
+        best_j, best_d = -1, radius_px
+        for j in np.flatnonzero(close[i]):
+            if ids[j] in used:
+                continue
+            if j not in exact:
+                exact[j] = wcs.world_to_pixel(stars[j].ra_deg, stars[j].dec_deg)
+            sx, sy = exact[j]
+            if math.isnan(sx):
+                continue
+            d = math.hypot(sx - det.x_px, sy - det.y_px)
+            if d < best_d:
+                best_j, best_d = int(j), d
+        if best_j >= 0:
+            used.add(ids[best_j])
+            pairs.append((det, stars[best_j], best_d))
+    return pairs
 
 
 def _estimate_initial_wcs_from_triplet(
@@ -462,6 +624,9 @@ def solve_and_verify_field(
         v1 = (longest_set - {v0}).pop()
         v2 = ({i, j, k} - {v0, v1}).pop()
         cat_triangles.append((v0, v1, v2, pairs[1][1] / pairs[0][1], pairs[2][1] / pairs[0][1], pairs[0][1]))
+    ratio_index = _RatioIndex([(cr1, cr2) for _, _, _, cr1, cr2, _ in cat_triangles])
+    cat_ra = np.array([s.ra_deg for s in catalog], dtype=np.float64)
+    cat_dec = np.array([s.dec_deg for s in catalog], dtype=np.float64)
 
     det_pool = sorted(psf_detections, key=lambda d: d.snr, reverse=True)[:14]
     best_consensus_pairs: list[tuple[SourceDetection, CatalogStar]] = []
@@ -492,34 +657,15 @@ def solve_and_verify_field(
         dr2 = px_pairs[2][1] / px_pairs[0][1]
         det_tri = (det_pool[u0], det_pool[u1], det_pool[u2])
 
-        for v0, v1, v2, cr1, cr2, _ in cat_triangles:
-            if abs(dr1 - cr1) > 0.045 or abs(dr2 - cr2) > 0.045:
-                continue
+        for t in ratio_index.lookup(dr1, dr2):
+            v0, v1, v2 = cat_triangles[t][:3]
             cand_wcs = _estimate_initial_wcs_from_triplet(
                 det_tri, (cat_pool[v0], cat_pool[v1], cat_pool[v2]), width, height
             )
             if cand_wcs is None:
                 continue
 
-            matched_pairs: list[tuple[SourceDetection, CatalogStar, float]] = []
-            used_stars: set[str] = set()
-            for det in psf_detections:
-                best_star: CatalogStar | None = None
-                best_dist = 18.0
-                for st in catalog:
-                    if st.id in used_stars:
-                        continue
-                    px, py = cand_wcs.world_to_pixel(st.ra_deg, st.dec_deg)
-                    if math.isnan(px):
-                        continue
-                    dist = math.hypot(px - det.x_px, py - det.y_px)
-                    if dist < best_dist:
-                        best_dist = dist
-                        best_star = st
-                if best_star is not None:
-                    used_stars.add(best_star.id)
-                    matched_pairs.append((det, best_star, best_dist))
-
+            matched_pairs = _greedy_pairs(cand_wcs, psf_detections, catalog, cat_ra, cat_dec, 18.0)
             if len(matched_pairs) > len(best_consensus_pairs):
                 best_consensus_pairs = [(d, s) for d, s, _ in matched_pairs]
                 best_initial_wcs = cand_wcs

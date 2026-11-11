@@ -132,7 +132,8 @@ camera. Solver adapter `today-api`: the baseline 18-star triangle solver as expo
 `POST /api/science/solve`, on its default 18-star catalog, blind, with a 120 s limit per frame; 8 worker
 processes on an 18-core arm64 Mac. Machine-readable:
 `research/benchmarks/phone_photos/results/today-solver-baseline.json`.
-Any later change to the solver or its gate needs a re-run before these numbers describe it.
+Any later change to the solver or its gate needs a re-run before these numbers describe it. These numbers describe
+an earlier search; the same adapter on today's search, before and after solver-10k-a, is at the end of this section.
 
 | Frames | Count | correct | imprecise | wrong | unresolved | timeout |
 |---|---|---|---|---|---|---|
@@ -166,6 +167,40 @@ whatever catalog it gets (`services/science/solver.py`, the `cat_pool` line) [ve
 code], so the larger list adds few triangles to a frame; and the horizon and Moon solver never claims
 held-out verification by design, so the benchmark would score every frame as no claim [inference].
 On the CI subset, `today-api` solved 0 of 4 positives and claimed nothing on its 4 negatives.
+
+### `today-api` since solver-10k-a
+
+solver-10k-a makes the triangle search behind `today-api` (`solve_and_verify_field` in
+`services/science/solver.py`) fast without changing what it finds. It is still the search above, on the 18 brightest
+pinned stars, or on a given catalog alone. Three parts changed. A detector triangle finds its catalog triangles
+through a KD-tree on their two side ratios (`_RatioIndex`) instead of a loop over all of them. Each candidate
+projects the catalog once, vectorized (`_project`, `_greedy_pairs`), instead of once per detection and star. Held-out
+verification (`verify_held_out`) measures only the stars that projection puts near a detection. Every star either
+pairing keeps is measured with `WCSModel.world_to_pixel` as before, so the pairs are the same. On 62 runs (31
+inputs: the 8 CI frames, 13 rendered pinned-star fields, 7 of them wide or strongly distorted, and 10 dense Milky Way
+and random-dot inputs, each with the 18 pinned stars and with the 71-star list) the whole solution, from status and
+solver identity to every finding and warning, equals main's at `cd10d044` [tested, 2026-11-11, simulated]. So it
+does on 57 more runs whose detections carry NaN or infinite positions, fluxes or SNRs; a detection at a NaN or
+infinite position pairs with no star, as in main's loops [tested, 2026-11-11, simulated].
+
+The tile catalog's stars are not searched. solver-10k first added a second pass over them; on some benchmark frames
+that pass named wrong stars, so it is left for a later unit, solver-10k-b [open].
+
+Re-run on 2026-11-11 on all 270 frames with the 120 s limit and 4 worker processes: before is main at `cd10d044`
+(load averages 33 to 47 on 18 cores shared with other runs), after is solver-10k-a (load averages 14 to 25) [tested,
+2026-11-11, simulated]. Time is the solver's wall time per frame on one worker, detection included:
+
+| Frames | Before: correct, false, timeouts | After: correct, false, timeouts | Before: time, median and max | After: time, median and max |
+|---|---|---|---|---|
+| CI subset (4 positives, 4 hard negatives) | 0, 0, 0 | 0, 0, 0 | 0.36 s, 9.21 s | 0.07 s, 0.64 s |
+| The full suite's first 60 frames (all positives) | 0, 0, 15 | 0, 0, 0 | 8.78 s, 120.0 s | 1.01 s, 29.3 s |
+| 20 positives past frame 60 with observer latitude below 0 | 0, 0, 3 | 0, 0, 0 | 5.14 s, 120.0 s | 1.16 s, 7.22 s |
+| The other 190 frames past 60 (130 positives, 60 hard negatives) | 0, 0, 34 | 0, 0, 0 | 14.5 s, 130.2 s | 1.23 s, 39.4 s |
+
+Neither run calibrated any frame, so neither named a catalog star: 0 catalog matches, and so 0 wrong-star matches,
+on all 270 frames before and after. The 52 frames that hit the limit before (17 of them hard negatives) now finish,
+all without a claim; no other frame changed its outcome. The same runs of `phone-photo` on the CI subset are
+unchanged: 3 of 4 positives correct, 0 false claims, 0 timeouts, 145 catalog matches, none of them wrong-star.
 
 ## Results: G 12 tile-backed phone-photo solver (simulated)
 
