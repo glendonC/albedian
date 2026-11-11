@@ -16,6 +16,7 @@ from services.science.catalog import (
 )
 from services.science.detector import _to_luma_2d
 from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
+from services.science.predicted_sky import PREDICTED_STAR_UNCERTAINTY_ARCSEC
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
@@ -30,10 +31,6 @@ from services.science.wcs_models import (
 # The horizon fit is exactly determined (four constraints, four pose parameters), so a pose that
 # cannot reproduce its own constraints within this tolerance is rejected instead of reported
 MAX_POSE_FIT_RESIDUAL_PX = 3.0
-# A predicted star, carried to the date by its proper motion: the horizon transform leaves out nutation and annual
-# aberration (at most 37 arcsec, tests/integration/test_sky_transforms.py) and UT1 - UTC (at most 14 arcsec), and
-# the pinned positions sit within 3 arcsec of their catalog rows (test_pinned_catalog_matches_tiles.py)
-PREDICTED_STAR_UNCERTAINTY_ARCSEC = 55.0
 
 
 def solve_horizon_and_beacon_pose(

@@ -5,12 +5,14 @@ stored upload in `IngestStore`, recording a schema-validated `SolveJob` (`job.js
 `ObservationSolution` (`solution.json`) alongside the upload's `original.<ext>` and `record.json`.
 Every stage reports a real denominator (`bytes` stored, `frames` decoded and detected, `candidates` evaluated
 in the triplet pool or `steps` when too few detections exist for triplet search, and `steps` for held-out
-verification).
+verification). After the solve, the solution is completed with the sky predicted for the upload's own recorded time
+and place (`services/science/predicted_sky.py`), with no stage of its own.
 """
 
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 from datetime import datetime, timezone
 import json
 import os
@@ -36,6 +38,7 @@ from services.science.phone_photo_solver import (
     is_published_camera_label,
     solve_phone_photo,
 )
+from services.science.predicted_sky import complete_sky
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 
 MAX_VIDEO_SOLVE_FRAMES = 8
@@ -55,6 +58,8 @@ class SolveJobError(Exception):
 
 
 UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
+# Generic, so no capture value an error message might hold is stored
+PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
 # A stored reason stays short: the contract allows 2000 characters, and a decoder can print far more
 MAX_STORED_ERROR_CHARS = 500
 
@@ -609,6 +614,13 @@ def run_solve_job(
             # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
             stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
             emit("running", started_dt=started_dt)
+
+        # The sky predicted for the file's own recorded time and place, after the solve or its time limit; it adds
+        # no stage. A failure in it keeps what the solver found, with one generic warning
+        try:
+            solution = complete_sky(solution, asset)
+        except Exception:
+            solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
 
         _write_json(folder, "solution.json", solution.to_contract_dict(), read_only=True)
         finished_dt = max(datetime.now(timezone.utc), started_dt)

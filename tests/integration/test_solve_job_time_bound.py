@@ -149,7 +149,8 @@ def test_a_stopped_phone_photo_search_names_the_phone_solver(client: TestClient,
     job = ingest_jobs.run_solve_job(store, sha, solve_time_limit_s=limit)
     assert job["state"] == "succeeded"
     solution = ingest_jobs.read_solution(store, sha)
-    assert solution is not None and solution["status"] == "unresolved"
+    # The frame records a time and a place, so the stopped search ends with the sky predicted for them (REQ-SKY-1.2)
+    assert solution is not None and solution["status"] == "predicted_only"
     assert f"{limit:g} s limit" in " ".join(solution.get("warnings", []))
     assert solution["solver"]["name"] == ingest_jobs.PHONE_SOLVER_IDENTITY.name
     # The phone search had started counting candidates and was stopped part way

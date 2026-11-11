@@ -1,11 +1,12 @@
-"""Low-precision analytical ephemeris for the Moon and the planets, with its error bounds stated.
+"""Low-precision analytical ephemeris for the Sun, the Moon and the planets, with its error bounds stated.
 
 The planets come from the approximate Keplerian elements of Standish and Williams (1992), as JPL's Solar System
 Dynamics group publishes them for 1800 to 2050 ("Approximate Positions of the Planets"), seen from the Earth-Moon
-barycentre and without light-time correction. The Moon comes from Meeus (1998) chapter 47 cut to its 6 largest
-longitude, 4 latitude and 4 distance terms, seen from the Earth's centre. No JPL Horizons request and no DE440
-file is involved; magnitudes are not computed. Every finding is `predicted`: computed from time and place, never
-measured in an image.
+barycentre and without light-time correction. The Sun is the same elements' Earth-Moon barycentre position
+reversed, so it adds no model; it is asked for by name and is not in the default bodies. The Moon comes from
+Meeus (1998) chapter 47 cut to its 6 largest longitude, 4 latitude and 4 distance terms, seen from the Earth's
+centre. No JPL Horizons request and no DE440 file is involved; magnitudes are not computed. Every finding is
+`predicted`: computed from time and place, never measured in an image.
 
 It answers only for 1800-01-01 to 2050-12-31 UTC, where the planets' published elements and errors hold; the Moon's
 bound is measured over the same span against Meeus 47 (tests/integration/test_ephemeris_range.py). Any other
@@ -40,6 +41,10 @@ PLANET_METHOD = (
     "seen from the Earth-Moon barycentre without light-time correction"
 )
 MOON_METHOD = "Meeus (1998) chapter 47, its 6 largest longitude, 4 latitude and 4 distance terms, geocentric"
+SUN_METHOD = (
+    "The Earth-Moon barycentre's heliocentric position from the Standish and Williams (1992) approximate Keplerian "
+    "elements (JPL Solar System Dynamics, valid 1800 to 2050), reversed: the Sun seen from the Earth-Moon barycentre"
+)
 # Nominal heliocentric errors of those elements for 1800 to 2050, as published with them: longitude (arcsec),
 # latitude (arcsec), distance (1000 km). "Earth" is the Earth-Moon barycentre row.
 PUBLISHED_ERRORS_1800_2050: dict[str, tuple[float, float, float]] = {
@@ -406,6 +411,16 @@ def _planet_error_bound_au(
     return planet + earth + (BARYCENTRE_OFFSET_KM + EARTH_EQUATORIAL_RADIUS_KM) / AU_KM + light_time
 
 
+def _sun_error_bound_au(earth_au: np.ndarray) -> float:
+    """The most the Sun's position for an observer on the Earth's surface can be off, in AU: the published
+    heliocentric error of the Earth-Moon barycentre (its angular error as a displacement at its distance, plus its
+    distance error), the barycentre's offset from the Earth's centre, and the observer's offset from the Earth's
+    centre. The Sun is the elements' origin, so it brings no element error of its own."""
+    lon_e, lat_e, dist_e = PUBLISHED_ERRORS_1800_2050["Earth"]
+    earth = float(np.linalg.norm(earth_au)) * math.hypot(lon_e, lat_e) / ARCSEC_PER_RAD + dist_e * 1000.0 / AU_KM
+    return earth + (BARYCENTRE_OFFSET_KM + EARTH_EQUATORIAL_RADIUS_KM) / AU_KM
+
+
 class EphemerisOutOfRange(ValueError):
     """A moment outside 1800-01-01 to 2050-12-31 UTC, the span the ephemeris' method and its stated errors hold for."""
 
@@ -449,6 +464,15 @@ def compute_solar_system_ephemerides(
             uncertainty_arcsec = MOON_UNCERTAINTY_ARCSEC
             bound_au = MOON_DISTANCE_UNCERTAINTY_KM / AU_KM
             method = MOON_METHOD
+        elif body_name == "Sun":
+            # The elements are heliocentric, so the Sun seen from the Earth-Moon barycentre is minus its position
+            gx_eq, gy_eq, gz_eq = _ecliptic_to_equatorial_icrs(*(-earth_au))
+            dist_au = math.sqrt(gx_eq * gx_eq + gy_eq * gy_eq + gz_eq * gz_eq)
+            ra_deg, dec_deg = unit_vector_to_ra_dec((gx_eq, gy_eq, gz_eq))
+            obj_type = "sun"
+            bound_au = _sun_error_bound_au(earth_au)
+            uncertainty_arcsec = bound_au / dist_au * ARCSEC_PER_RAD
+            method = SUN_METHOD
         else:
             if body_name not in PLANET_ELEMENTS or body_name == "Earth":
                 raise KeyError(f"Unsupported Solar System body: {body_name}")
@@ -470,6 +494,15 @@ def compute_solar_system_ephemerides(
             limitations += (
                 f"Geocentric: from this place the Moon appears about {shift_arcsec:,.0f} arcsec lower than this "
                 f"position (its horizontal parallax, {parallax_arcsec:,.0f} arcsec, times the cosine of its altitude).",
+            )
+        elif body_name == "Sun":
+            lon_e, lat_e, dist_e = PUBLISHED_ERRORS_1800_2050["Earth"]
+            limitations += (
+                f"Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound holds the "
+                f"barycentre's published error ({lon_e:g} arcsec in longitude, {lat_e:g} in latitude, "
+                f"{dist_e * 1000.0:,.0f} km in distance), up to {BARYCENTRE_OFFSET_KM:,.0f} km for the "
+                f"barycentre-to-geocentre offset and {EARTH_EQUATORIAL_RADIUS_KM:,.3f} km for the observer's offset "
+                "from the geocentre.",
             )
         else:
             limitations += (

@@ -9,7 +9,7 @@ and computes each item's `ObservationSolution` and Solar System ephemerides.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
@@ -23,6 +23,8 @@ from services.science.coherent_stack import integrate_wcs_coherent_star_trajecto
 from services.science.ephemeris import compute_solar_system_ephemerides, require_ephemeris_range
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 from services.science.optical_flow import compute_video_pose_trajectory
+# The moment of a frame that many seconds into a clip that starts at a UTC instant (normalize_creation_utc's form)
+from services.science.predicted_sky import frame_moment as _moment_plus
 from services.science.radiometry import predict_sky_brightness
 from services.science.wcs_models import ObservationSolution
 
@@ -160,15 +162,6 @@ def normalize_creation_utc(raw_date: str | None) -> str | None:
         return dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
         return None
-
-
-def _moment_plus(utc_iso: str, seconds: float) -> str:
-    """`utc_iso`, as normalize_creation_utc writes it, plus `seconds`: the moment of a frame that many seconds into a
-    clip. In the same form, with milliseconds only when the moment has a fraction of a second."""
-    moment = datetime.strptime(utc_iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) + timedelta(seconds=seconds)
-    if moment.microsecond == 0:
-        return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def _probe_media_metadata(file_path: Path) -> dict[str, Any]:

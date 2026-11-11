@@ -14,6 +14,9 @@ Covers:
   says it is geocentric with that moment's parallax shift
 - The horizon solver claims no QuickTime source for a typed moment, places predicted stars at their position
   of the date, and its pose warning says the Moon it uses is geocentric
+- The Sun (the Earth-Moon barycentre's heliocentric place reversed) stands at declination 0 at USNO's equinoxes and
+  at the obliquity at its solstices, within its stated uncertainty; PBT: that uncertainty covers the barycentre's
+  published error and its offsets; the default bodies leave it out
 - The sky-context route sends no fixed magnitude
 """
 
@@ -27,12 +30,19 @@ import math
 from fastapi.testclient import TestClient
 from hypothesis import example, given, settings, strategies as st
 import numpy as np
+import pytest
 
 from research.benchmarks.phone_photos import astrometry as am
 from research.benchmarks.phone_photos import scene as sc
 from services.api import app
 from services.science import ephemeris
-from services.science.catalog import get_all_sky_catalog_stars, propagate_star_epoch, ra_dec_to_unit_vector
+from services.science.catalog import (
+    get_all_sky_catalog_stars,
+    mean_obliquity_iau1980_deg,
+    precession_matrix_iau1976,
+    propagate_star_epoch,
+    ra_dec_to_unit_vector,
+)
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 
 START = datetime(2017, 1, 1, tzinfo=timezone.utc)
@@ -164,6 +174,75 @@ def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date(
         largest_motion = max(largest_motion, _sep_arcsec(position, np.array(ra_dec_to_unit_vector(star.ra_deg, star.dec_deg))))
         checked += 1
     assert checked >= 10 and largest_motion > 10.0
+
+
+# USNO's "Earth's Seasons" data service (aa.usno.navy.mil/data/Earth_Seasons), read at source through the API it
+# names (aa.usno.navy.mil/api/seasons?year=2030 and ?year=1850): the moments in UT, to the minute. At an equinox the
+# Sun crosses the celestial equator (declination 0); at a solstice it stands at its greatest declination north or
+# south, the obliquity of the ecliptic, which USNO's "The Seasons and the Earth's Orbit"
+# (aa.usno.navy.mil/faq/seasons_orbit) gives as 23.4 degrees.
+USNO_SEASONS = (
+    ("2030-03-20T13:52:00Z", 0),
+    ("2030-06-21T07:31:00Z", 1),
+    ("2030-09-22T23:27:00Z", 0),
+    ("2030-12-21T20:09:00Z", -1),
+    ("1850-03-20T23:02:00Z", 0),
+    ("1850-06-21T19:59:00Z", 1),
+    ("1850-12-22T03:37:00Z", -1),
+)
+
+
+@pytest.mark.parametrize(("moment", "side"), USNO_SEASONS)
+def test_the_sun_stands_where_usno_puts_it_at_the_equinoxes_and_solstices(moment: str, side: int) -> None:
+    (sun,) = ephemeris.compute_solar_system_ephemerides(moment, 30.0, -40.0, bodies=("Sun",))
+    jd = ephemeris._iso_to_julian_date(moment)
+    # The table's moments are of the Sun's place of date, so the model's J2000 (ICRS) direction is turned to the
+    # mean equator of date (IAU 1976) before its declination is read
+    of_date = precession_matrix_iau1976(jd) @ np.array(ra_dec_to_unit_vector(sun.ra_deg, sun.dec_deg))
+    declination = math.degrees(math.asin(float(of_date[2])))
+    obliquity = mean_obliquity_iau1980_deg(jd)
+    assert abs(obliquity - 23.4) < 0.1
+    expected = side * obliquity
+    assert abs(declination - expected) * 3600.0 <= sun.uncertainty_arcsec, (declination - expected) * 3600.0
+    # Within its stated uncertainty, which here is under a minute of arc
+    assert sun.uncertainty_arcsec < 60.0
+
+
+@settings(max_examples=100, deadline=None)
+@given(when=instant)
+@example(when=datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc))
+def test_pbt_the_suns_uncertainty_covers_the_barycentres_published_error_and_its_offsets(when: datetime) -> None:
+    (sun,) = ephemeris.compute_solar_system_ephemerides(_iso(when), 30.0, -40.0, bodies=("Sun",))
+    t = (am.julian_date(when) - 2451545.0) / 36525.0
+    earth = np.array(ephemeris._heliocentric_ecliptic_xyz_au(ephemeris.PLANET_ELEMENTS["Earth"], t))
+    # The Sun is the elements' origin: its place from the barycentre is the barycentre's heliocentric place reversed
+    geo = np.array(ephemeris._ecliptic_to_equatorial_icrs(*(-earth)))
+    # Within a milliarcsecond: the two Julian dates here are computed in two ways from the same instant
+    assert _sep_arcsec(np.array(ra_dec_to_unit_vector(sun.ra_deg, sun.dec_deg)), geo) < 1e-3
+    e_lon, e_lat, e_dist = EARTH_MOON_BARYCENTRE
+    displacement_au = (
+        float(np.linalg.norm(earth)) * math.radians(math.hypot(e_lon, e_lat) / 3600.0)
+        + e_dist * 1000.0 / AU_KM
+        + BARYCENTRE_TO_GEOCENTRE_KM / AU_KM
+        + ephemeris.EARTH_EQUATORIAL_RADIUS_KM / AU_KM
+    )
+    assert sun.uncertainty_arcsec >= math.degrees(displacement_au / float(np.linalg.norm(geo))) * 3600.0 - 1e-9
+    assert sun.distance_lower_au <= sun.distance_au - e_dist * 1000.0 / AU_KM
+    assert sun.distance_upper_au >= sun.distance_au + e_dist * 1000.0 / AU_KM
+    assert 0.98 < sun.distance_au < 1.02
+    payload = sun.to_contract_dict(source_sha256=None)
+    assert payload["id"] == "finding-predicted-sun" and sun.object_type == "sun"
+    assert payload["skyPosition"]["uncertaintyArcsec"] == sun.uncertainty_arcsec
+    assert "Standish and Williams (1992)" in payload["evidence"]["verificationMethod"]
+    assert "Earth-Moon barycentre" in payload["evidence"]["verificationMethod"]
+    limitations_text = " ".join(payload["evidence"]["limitations"])
+    assert "5,000 km" in limitations_text and "6,378.137 km" in limitations_text
+    assert "Horizons" not in json.dumps(payload) and "apparentMagnitude" not in json.dumps(payload)
+
+
+def test_the_default_bodies_leave_out_the_sun() -> None:
+    names = [item.name for item in ephemeris.compute_solar_system_ephemerides(MOON_MOMENT["obs_utc_iso"], 30.0, -40.0)]
+    assert names == ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"]
 
 
 def test_sky_context_sends_no_fixed_magnitude() -> None:
