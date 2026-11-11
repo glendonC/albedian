@@ -12,6 +12,16 @@ Covers:
   the tile pass verifies and counts only the field's stars, and refuses a fit whose radial terms fold inside the field.
 - PBT: the fold guard refuses exactly the WCS whose r (1 + k1 r^2 + k2 r^4) stops increasing before the frame
   corners' angle plus 1 deg; the field's cone holds exactly the stars within that angle of the tangent point.
+- Each finding names its own star (solver-10k v4): on the benchmark's pos-089, pos-124, pos-136, pos-142, pos-017 and
+  pos-131 and the auditor's adversarial bounds frame, there is no claim or every catalog match's detection lies within
+  3 px of its star's true pixel and nearer it than any other star at V 6.5 or brighter.
+- v4's refusals: PBT, the bound rule refuses exactly the fits within 1 % of the 0.24 bound, a fit pushed past the bound
+  stops at it; PBT, a pair is ambiguous exactly when another direction projects within three inlier gates, a second
+  row at the same place is the same star, an ambiguous pair is neither an inlier nor a match; PBT, coverage refuses
+  exactly when the misses beat a 5 % rate at the consensus chance, over the frame or in a cell, and counts a miss only
+  on a clear, visible, held-out star inside the frame a magnitude above its depth; the dual-path grid reaches the
+  frame's edges and corners; the tile pass claims nothing when a refusal refuses every fit, and a claim passed each on
+  its own fit.
 - PBT: the ratio lookup returns exactly the catalog triangles within the 0.045 tolerance on both ratios.
 - PBT: `verify_held_out` pairs every detection as the one-by-one rule does (nearest unused star, 8 px).
 - PBT: the tile pool helpers return stars above the altitude cut with valid distances, brightest first, each V
@@ -321,11 +331,10 @@ class _VectorWcs:
         return out[:, 0], out[:, 1]
 
 
-@pytest.mark.parametrize("frame_id", ["pos-002", "pos-024"])
-def test_a_benchmark_frame_claim_names_only_stars_inside_the_field(frame_id: str) -> None:
-    # The phone photo benchmark's frames as its today-api adapter runs them (solvers.py): luma, default detection, the
-    # frame's own time and place
-    from research.benchmarks.phone_photos import render, score, solvers
+def _solve_benchmark_frame(frame_id: str):
+    """(rendered frame, solution) of a phone photo benchmark frame as its today-api adapter runs it (solvers.py): luma,
+    default detection, the frame's own time and place."""
+    from research.benchmarks.phone_photos import render, solvers
 
     frame = render.render_frame(_benchmark_specs()[frame_id], TileCatalog())
     luma = solvers._luma(frame.rgb)
@@ -335,6 +344,14 @@ def test_a_benchmark_frame_claim_names_only_stars_inside_the_field(frame_id: str
         detect_point_sources(luma), width, height, obs_utc_iso=meta["utc"], observer_lat=meta["latDeg"],
         observer_lon=meta["lonDeg"], **_sources(frame.rgb, f"benchmark-{frame_id}"),
     )
+    return frame, sol
+
+
+@pytest.mark.parametrize("frame_id", ["pos-002", "pos-024"])
+def test_a_benchmark_frame_claim_names_only_stars_inside_the_field(frame_id: str) -> None:
+    from research.benchmarks.phone_photos import score, solvers
+
+    frame, sol = _solve_benchmark_frame(frame_id)
     assert sol.status == "calibrated" and "tile stars above the horizon" in sol.solver.catalog_release
     # Still correct by the benchmark's own score: median field error at most 3 px
     errors = solvers.field_errors_px(frame.truth.camera_truth, _VectorWcs(sol.wcs), frame.truth.sky_mask)
@@ -346,6 +363,109 @@ def test_a_benchmark_frame_claim_names_only_stars_inside_the_field(frame_id: str
         if f.evidence_class == "catalog_matched":
             tx, ty = frame.truth.camera_truth.icrs_to_pixel(np.array([f.catalog_star.ra_deg]), np.array([f.catalog_star.dec_deg]))
             assert math.hypot(float(tx[0]) - f.source_detection.x_px, float(ty[0]) - f.source_detection.y_px) <= tolerance, f.title
+
+
+# =============================================================================================
+# Each finding names its own star: frames where a calibrated tile-pass claim once named, inside the field, a star 3 to
+# 42 px from its true pixel, often a neighbour whose own detection sat elsewhere
+# =============================================================================================
+
+# A catalog_matched finding names its own star when its detection lies within OWN_STAR_MAX_PX of that star's true
+# pixel and nearer to it than to the true pixel of any other star the tile pass could name: a rendered star at
+# NAMEABLE_V_LIMIT or brighter (TILE_V_CAP, the deepest pool) whose true pixel lies at least one PSF FWHM from the named
+# star's (closer, the two make one image). Fainter rendered stars are left out: the benchmark renders to V 12, about 0.07
+# stars per square pixel, so one lies within a pixel of any detection by chance
+OWN_STAR_MAX_PX = 3.0
+NAMEABLE_V_LIMIT = 6.5
+# The FWHM of `render_synthetic_starfield`'s Gaussian PSF (sigma 1.15 px)
+SYNTHETIC_FWHM_PX = 2.0 * math.sqrt(2.0 * math.log(2.0)) * 1.15
+
+
+def _assert_each_finding_names_its_own_star(sol, true_pixel, others_xy: np.ndarray, fwhm_px: float) -> None:
+    """No claim, or a claim in which every catalog_matched finding's detection lies within OWN_STAR_MAX_PX of its own
+    star's true pixel (`true_pixel(ra, dec)`, NaN where the truth puts it nowhere) and nearer to it than to the true
+    pixel of any star of `others_xy` lying at least `fwhm_px` from it."""
+    if sol.status != "calibrated":
+        _assert_no_claim(sol)
+        return
+    wrong = []
+    for f in sol.findings:
+        if f.evidence_class != "catalog_matched":
+            continue
+        tx, ty = true_pixel(f.catalog_star.ra_deg, f.catalog_star.dec_deg)
+        dx, dy = f.source_detection.x_px, f.source_detection.y_px
+        own = math.hypot(tx - dx, ty - dy)
+        apart = np.hypot(others_xy[:, 0] - tx, others_xy[:, 1] - ty) if math.isfinite(own) else np.full(len(others_xy), np.inf)
+        other = np.hypot(others_xy[:, 0] - dx, others_xy[:, 1] - dy)[apart >= fwhm_px]
+        nearest_other = float(other.min()) if other.size else math.inf
+        if not (own <= OWN_STAR_MAX_PX and own < nearest_other):
+            kind = "held out" if f.verified_by_holdout else "trained the fit"
+            wrong.append(f"{f.title} ({kind}): {own:.2f} px from its true pixel, another star's {nearest_other:.2f} px")
+    assert not wrong, wrong
+
+
+# pos-089, pos-136 and pos-142 named a neighbour or a star 6 to 42 px off on fits whose k2 sat at or near the 0.24
+# bound; pos-124 named stars the truth puts off the frame; pos-017 named a training pair 6.5 px off and a blend's fainter
+# star; pos-131 named the fainter of two stars 3.7 px apart [tested, 2026-11-11, on 5f8d1e43]
+@pytest.mark.parametrize("frame_id", ["pos-089", "pos-124", "pos-136", "pos-142", "pos-017", "pos-131"])
+def test_a_benchmark_frame_claim_names_each_star_at_its_own_true_pixel(frame_id: str) -> None:
+    from research.benchmarks.phone_photos import score, solvers
+
+    frame, sol = _solve_benchmark_frame(frame_id)
+    truth = frame.truth
+    bright = np.asarray(truth.star_v_mag) <= NAMEABLE_V_LIMIT
+
+    def true_pixel(ra: float, dec: float) -> tuple[float, float]:
+        tx, ty = truth.camera_truth.icrs_to_pixel(np.array([ra]), np.array([dec]))
+        return float(tx[0]), float(ty[0])
+
+    _assert_each_finding_names_its_own_star(sol, true_pixel, np.column_stack([truth.star_x[bright], truth.star_y[bright]]), truth.psf_fwhm_px)
+    if sol.status == "calibrated":
+        # And correct by the benchmark's own score (pos-089's claim was imprecise, a false claim there)
+        errors = solvers.field_errors_px(truth.camera_truth, _VectorWcs(sol.wcs), truth.sky_mask)
+        assert float(np.median(errors)) <= score.CORRECT_MEDIAN_PX
+
+
+@lru_cache(maxsize=1)
+def _adversarial_bounds_frame() -> tuple[np.ndarray, WCSModel, float, list]:
+    """The auditor's adversarial bounds frame (adv.py, ADV_ONLY="k2 -0.12 diag 70.0 N"), simulated: 1600 x 1200 px,
+    70 deg diagonal, barrel terms k1 = k2 = -0.12, rotated 30 deg, centred 55 deg up at azimuth 200 deg at CYGNUS_UP;
+    the tile stars to V 7.5 within the corners' angle plus 1 deg that are above the horizon. Returns the frame, the
+    truth, that reach and the rendered stars with their true pixels."""
+    from services.science.catalog import altaz_to_icrs
+
+    width, height, diag_deg = 1600, 1200, 70.0
+    when, lat, lon = CYGNUS_UP["obs_utc_iso"], CYGNUS_UP["observer_lat"], CYGNUS_UP["observer_lon"]
+    ra, dec = altaz_to_icrs(55.0, 200.0, lat, lon, when)
+    scale = math.degrees(math.tan(math.radians(diag_deg / 2.0))) / math.hypot(width / 2.0, height / 2.0)
+    truth = WCSModel(crval_ra_deg=ra % 360.0, crval_dec_deg=dec, crpix_x=width / 2.0, crpix_y=height / 2.0, scale_deg_per_px=scale,
+                     rotation_deg=30.0, k1=-0.12, k2=-0.12, parity=-1, width=width, height=height)
+    reach = _corner_angle_deg(truth) + 1.0
+    field = TileCatalog().cone(truth.crval_ra_deg, truth.crval_dec_deg, reach, mag_limit=8.5, epoch_jyear=_epoch_jyear(when))
+    stars = []
+    for r, d, v in zip(field.ra_deg, field.dec_deg, field.v_mag):
+        if math.isfinite(v) and v <= 7.5 and icrs_to_altaz(float(r), float(d), lat, lon, when)[0] >= 0.0:
+            stars.append(_RenderedStar(float(r), float(d), float(v)))
+    frame, _, projected = render_synthetic_starfield(width=width, height=height, wcs=truth, catalog_stars=stars, read_noise_sigma=2.0,
+                                                     flux_scale=950.0, seed=2)
+    return frame, truth, reach, projected
+
+
+def test_the_adversarial_bounds_frame_claim_names_each_star_at_its_own_true_pixel() -> None:
+    # Its claim on 5f8d1e43 fitted k2 0.240 (the truth's is -0.12) and named a held-out star 22.5 px off
+    frame, truth, reach, projected = _adversarial_bounds_frame()
+    detections = detect_point_sources(frame, snr_threshold=4.0)
+    sol = solve_and_verify_field(detections, truth.width, truth.height, **CYGNUS_UP, **_sources(frame, "adversarial-bounds-k-0.12"))
+
+    def true_pixel(ra: float, dec: float) -> tuple[float, float]:
+        if angular_separation_deg(ra, dec, truth.crval_ra_deg, truth.crval_dec_deg) > reach:
+            return math.nan, math.nan
+        return truth.world_to_pixel(ra, dec)
+
+    others = np.array([(x, y) for star, x, y in projected if star.mag <= NAMEABLE_V_LIMIT], dtype=np.float64).reshape(-1, 2)
+    _assert_each_finding_names_its_own_star(sol, true_pixel, others, SYNTHETIC_FWHM_PX)
+    if sol.status == "calibrated":
+        assert _field_error_px(truth, sol.wcs)[0] <= CORRECT_MEDIAN_PX
 
 
 def test_the_tile_pass_verifies_and_counts_only_the_stars_inside_the_field(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -690,6 +810,10 @@ def test_the_plan_s_values_are_the_ones_in_use() -> None:
     assert (sv.MIN_HELD_OUT_INLIERS, sv.MAX_HELD_OUT_MEDIAN_RESIDUAL_PX, sv.MAX_HELD_OUT_P95_RESIDUAL_PX) == (6, 3.0, 6.0)
     # The field's margin past the frame corners, as these tests state it
     assert sv.FIELD_MARGIN_DEG == FIELD_MARGIN_DEG
+    # solver-10k v4's refusals: three inlier gates, 1 % of the 0.24 bound, a 5 % miss rate weighed at the consensus
+    # chance over a 3 x 3 grid, a magnitude above the frame's depth, 1 arcsec for one star
+    assert (sv.AMBIGUITY_GATE_MULTIPLE, sv.RADIAL_COEFFICIENT_BOUND, sv.RADIAL_BOUND_FRACTION) == (3.0, 0.24, 0.01)
+    assert (sv.COVERAGE_MISS_RATE, sv.COVERAGE_GRID, sv.COVERAGE_V_MARGIN, sv.SAME_STAR_ARCSEC) == (0.05, 3, 1.0, 1.0)
 
 
 def test_the_v_limit_rule_on_the_real_tile_pool() -> None:
@@ -927,3 +1051,311 @@ def test_the_solver_identity_names_the_pool() -> None:
     assert blind.catalog_release == (
         f"{len(everywhere)} tile stars across the whole sky, V at most 3.5 (Gaia DR3 and Hipparcos 2007 rows of the G 12 tiles)"
     )
+
+
+# =============================================================================================
+# solver-10k v4's refusals: the radial bound, ambiguous pairs, coverage, the dual path to the corners
+# =============================================================================================
+
+
+@settings(max_examples=120, deadline=None)
+@given(k1=st.floats(min_value=-0.24, max_value=0.24), k2=st.floats(min_value=-0.24, max_value=0.24))
+# 99 % of the 0.24 bound is 0.2376: refused on either coefficient and either sign; 0.23759 is kept
+@example(k1=0.2376, k2=0.0)
+@example(k1=0.23759, k2=0.0)
+@example(k1=0.0, k2=-0.2376)
+@example(k1=0.0, k2=-0.23759)
+@example(k1=-0.23759, k2=0.23759)
+@example(k1=-0.24, k2=0.0)
+def test_pbt_the_bound_rule_refuses_exactly_the_fits_within_one_percent_of_the_bound(k1: float, k2: float) -> None:
+    wcs = replace(_orion_wcs_and_stars()[0], k1=k1, k2=k2)
+    assert sv._radial_term_at_bound(wcs) is (abs(k1) >= 0.2376 or abs(k2) >= 0.2376)
+
+
+def test_a_fit_its_pairs_push_past_the_bound_stops_at_the_bound_and_the_rule_names_it() -> None:
+    # Pairs drawn through k2 = 0.6, past the bound (WCSModel itself takes at most 0.25, so the radial factor is applied
+    # here by hand about the reference pixel): least squares stops at RADIAL_COEFFICIENT_BOUND
+    wcs, stars = _orion_wcs_and_stars()
+    tan = replace(wcs, k1=0.0, k2=0.0)
+    pairs = []
+    for star in stars[::3]:
+        x0, y0 = tan.world_to_pixel(star.ra_deg, star.dec_deg)
+        if math.isnan(x0):
+            continue
+        r = math.radians(math.hypot(x0 - tan.crpix_x, y0 - tan.crpix_y) * tan.scale_deg_per_px)
+        factor = 1.0 + 0.6 * r**4
+        x, y = tan.crpix_x + (x0 - tan.crpix_x) * factor, tan.crpix_y + (y0 - tan.crpix_y) * factor
+        if 0 <= x < 960 and 0 <= y < 540:
+            pairs.append((SourceDetection(x_px=x, y_px=y, flux=1.0, snr=10.0, fwhm_px=2.0, centroid_uncertainty_px=0.1), star))
+    refined = sv._refine_wcs_least_squares(tan, _spread_pairs(pairs, 16))
+    assert max(abs(refined.k1), abs(refined.k2)) <= sv.RADIAL_COEFFICIENT_BOUND + 1e-12
+    assert sv._radial_term_at_bound(refined), (refined.k1, refined.k2)
+
+
+def _spread_pairs(pairs: list, count: int) -> list:
+    """`count` of `pairs` spread from the 960 x 540 frame's edge in, as the tile pass picks training pairs."""
+    spread = sv._spread_by_radius([(d, s, 0.0) for d, s in pairs], 960, 540, count)
+    return [(d, s) for d, s, _ in spread]
+
+
+def _ambiguity_oracle(wcs: WCSModel, verification: HeldOutVerification, field: list[tuple[float, float]]) -> frozenset[int]:
+    """The detections with a direction of `field` more than 1 arcsec from their own star that `wcs.world_to_pixel`
+    puts within three inlier gates of them, one direction at a time."""
+    radius = 3.0 * verification.inlier_gate_px
+    out = set()
+    for det, star, _, _ in verification.associations:
+        for ra, dec in field:
+            if angular_separation_deg(ra, dec, star.ra_deg, star.dec_deg) * 3600.0 <= 1.0:
+                continue
+            x, y = wcs.world_to_pixel(ra, dec)
+            if not math.isnan(x) and math.hypot(x - det.x_px, y - det.y_px) <= radius:
+                out.add(id(det))
+                break
+    return frozenset(out)
+
+
+@settings(max_examples=40, deadline=None)
+@given(
+    picks=st.lists(st.tuples(st.integers(0, 10_000), st.floats(-2.0, 2.0), st.floats(-2.0, 2.0)), min_size=1, max_size=20),
+    extra=st.lists(st.tuples(st.integers(0, 10_000), st.floats(-12.0, 12.0), st.floats(-12.0, 12.0)), max_size=20),
+)
+# One detection on its star (gate 1.8 px, so three gates are 5.4 px): a second direction 5.3 px off makes it ambiguous,
+# one 5.5 px off does not
+@example(picks=[(0, 0.0, 0.0)], extra=[(0, 5.3, 0.0)])
+@example(picks=[(0, 0.0, 0.0)], extra=[(0, 5.5, 0.0)])
+@example(picks=[(0, 0.0, 0.0), (10, 0.5, 0.5), (11, -1.0, 0.0)], extra=[])
+def test_pbt_a_pair_is_ambiguous_exactly_when_another_star_projects_within_three_gates(picks, extra) -> None:
+    wcs, stars = _orion_wcs_and_stars()
+    placed = [(s, *wcs.world_to_pixel(s.ra_deg, s.dec_deg)) for s in stars]
+    in_frame = [(s, x, y) for s, x, y in placed if not math.isnan(x) and 20 <= x < 940 and 20 <= y < 520]
+    detections = []
+    for k, (pick, dx, dy) in enumerate(picks):
+        _, x, y = in_frame[pick % len(in_frame)]
+        detections.append(SourceDetection(x_px=x + dx, y_px=y + dy, flux=10.0 + k, snr=20.0, fwhm_px=2.0, centroid_uncertainty_px=0.1))
+    verification = verify_held_out(wcs, detections, [s for s, _, _ in in_frame], [])
+    field = [(s.ra_deg, s.dec_deg) for s, _, _ in in_frame]
+    for pick, dx, dy in extra:
+        det = detections[pick % len(detections)]
+        field.append(wcs.pixel_to_world(det.x_px + dx, det.y_px + dy))
+    got = sv._with_ambiguous_pairs(wcs, verification, np.array([r for r, _ in field]), np.array([d for _, d in field]))
+    assert got.ambiguous == _ambiguity_oracle(wcs, verification, field)
+    assert got.associations == verification.associations and got.inlier_gate_px == verification.inlier_gate_px
+    assert got.ambiguity_radius_px == pytest.approx(3.0 * verification.inlier_gate_px)
+
+
+def test_a_second_row_at_the_same_place_is_the_same_star_but_one_2_arcsec_off_is_another() -> None:
+    wcs, stars = _orion_wcs_and_stars()
+    # The made-up catalog's first twin in the frame: two rows at one place
+    star, twin = next(
+        (s, t) for s, t in zip(stars, stars[1:])
+        if t.id.startswith("made-up-twin") and 20 <= wcs.world_to_pixel(s.ra_deg, s.dec_deg)[0] < 940
+        and 20 <= wcs.world_to_pixel(s.ra_deg, s.dec_deg)[1] < 520
+    )
+    verification = verify_held_out(wcs, [_detection_at(*wcs.world_to_pixel(star.ra_deg, star.dec_deg))], [star, twin], [])
+    assert len(verification.associations) == 1
+    same = sv._with_ambiguous_pairs(wcs, verification, np.array([star.ra_deg, twin.ra_deg]), np.array([star.dec_deg, twin.dec_deg]))
+    assert same.ambiguous == frozenset()
+    # 2 arcsec north of it is another star, though a hundredth of a pixel away
+    other = sv._with_ambiguous_pairs(wcs, verification, np.array([star.ra_deg, star.ra_deg]), np.array([star.dec_deg, star.dec_deg + 2.0 / 3600.0]))
+    assert other.ambiguous == frozenset({id(verification.associations[0][0])})
+
+
+def test_an_ambiguous_pair_is_neither_an_inlier_nor_a_catalog_match_but_keeps_its_residual() -> None:
+    good = _verification([0.4, 0.6, 0.5, 0.7, 0.3, 0.5, 0.6, 0.4, 0.5, 0.6])
+    held = [det for det, _, _, is_train in good.associations if not is_train]
+    marked = replace(good, ambiguous=frozenset(id(d) for d in held[:5]), ambiguity_radius_px=9.0)
+    assert (good.held_out_inliers, marked.held_out_inliers) == (10, 5)
+    assert marked.held_out_residuals_px == good.held_out_residuals_px
+    assert (marked.median_residual_px, marked.p95_residual_px) == (good.median_residual_px, good.p95_residual_px)
+    assert set(marked.inliers) == set(good.inliers) - {id(d) for d in held[:5]}
+    # Five unambiguous held-out inliers are too few for the gate
+    assert good.passed and not marked.passed
+    # In a solution, each ambiguous detection is an observed finding that says why
+    wcs, stars = _orion_wcs_and_stars()
+    detections = [det for det, _, _, _ in good.associations]
+    sol = sv._solution_from_fit(
+        detections, wcs, marked, True, len(stars), triangle_solver_identity(stars), solution_id="sol-ambiguous",
+        frame_time_sec=0.0, obs_utc_iso=None, observer_lat=None, observer_lon=None, **_sources(np.zeros(1), "ambiguous"),
+    )
+    by_detection = {id(f.source_detection): f for f in sol.findings}
+    for det in held[:5]:
+        finding = by_detection[id(det)]
+        assert finding.evidence_class == "observed" and finding.catalog_star is None
+        assert "another catalog star sits within 9.00 px" in finding.limitations[0]
+    assert sum(f.evidence_class == "catalog_matched" for f in sol.findings) == len(detections) - 5
+    assert sol.quality.held_out_inliers == 5 and sol.quality.matched_inlier_count == len(detections) - 5
+    assert any("5 paired but with another catalog star within 9.00 px, so ambiguous" in w for w in sol.warnings)
+
+
+def _binomial_tail(k: int, n: int, p: float) -> float:
+    """P(X >= k) for X binomial over n at p, summed exactly."""
+    if k <= 0:
+        return 1.0
+    return float(sum(math.comb(n, j) * p**j * (1.0 - p) ** (n - j) for j in range(k, n + 1)))
+
+
+@settings(max_examples=150, deadline=None)
+@given(cells=st.lists(st.tuples(st.integers(0, 40), st.integers(0, 40)), min_size=9, max_size=9))
+# One cell missing 5 of 11 (chance 1.1e-4): refused, though the frame's 5 of 171 are not
+@example(cells=[(11, 5)] + [(20, 0)] * 8)
+# 4 of 14 (chance 4.2e-3): kept
+@example(cells=[(14, 4)] + [(20, 0)] * 8)
+# 4 of 30 in every cell (chance 0.061 each): kept cell by cell, but 36 of 270 over the frame are refused
+@example(cells=[(30, 4)] * 9)
+# All three missed (1.25e-4): refused; both of two (2.5e-3): kept
+@example(cells=[(3, 3)] + [(0, 0)] * 8)
+@example(cells=[(2, 2)] + [(0, 0)] * 8)
+@example(cells=[(0, 0)] * 9)
+def test_pbt_coverage_refuses_exactly_when_the_misses_beat_a_five_percent_rate_by_chance(cells) -> None:
+    expected = np.array([n for n, _ in cells], dtype=np.int64).reshape(3, 3)
+    missed = np.array([min(m, n) for n, m in cells], dtype=np.int64).reshape(3, 3)
+    tails = [_binomial_tail(int(missed.sum()), int(expected.sum()), 0.05)]
+    tails += [_binomial_tail(int(m), int(n), 0.05) for n, m in zip(expected.ravel(), missed.ravel())]
+    assert sv._coverage_refuses(expected, missed) is (min(tails) <= 1e-3)
+
+
+def _made_up_star(wcs: WCSModel, x: float, y: float, tag: str, mag: float) -> CatalogStar:
+    ra, dec = wcs.pixel_to_world(x, y)
+    return replace(get_catalog_stars()[0], id=f"made-up-{tag}", ra_deg=ra, dec_deg=dec, mag=mag)
+
+
+def _detection_at(x: float, y: float) -> SourceDetection:
+    return SourceDetection(x_px=x, y_px=y, flux=10.0, snr=20.0, fwhm_px=2.0, centroid_uncertainty_px=0.1)
+
+
+def test_coverage_counts_a_miss_only_on_a_clear_visible_held_out_star_inside_the_frame() -> None:
+    # The 960 x 540 WCS, where the tile match radius (the visibility radius) is 18 px
+    wcs = _orion_wcs_and_stars()[0]
+    places = {
+        "paired": (100.0, 100.0), "missed": (500.0, 270.0), "missed-corner": (900.0, 500.0), "edge": (4.0, 270.0),
+        "trained": (800.0, 400.0), "blended": (300.0, 400.0), "unseen": (700.0, 100.0),
+    }
+    stars = {name: _made_up_star(wcs, x, y, name, 3.0) for name, (x, y) in places.items()}
+    # Detections on the paired, trained, blended and edge stars, 12 px from the two missed ones (visible, but past the
+    # 8 px association radius), none within 18 px of the unseen one; and ten more along the bottom left, so that the
+    # PSF detections outnumber the stars and every V counts
+    dets = {name: _detection_at(*places[name]) for name in ("paired", "trained", "blended", "edge")}
+    dets["near-missed"] = _detection_at(512.0, 270.0)
+    dets["near-corner"] = _detection_at(900.0, 488.0)
+    extra = [_detection_at(40.0 + 40.0 * k, 525.0) for k in range(10)]
+    detections = [*dets.values(), *extra]
+    verification = verify_held_out(wcs, detections, list(stars.values()), [dets["trained"]])
+    # A second star 2 px from the blended one (in the field, not in the pool)
+    companion = wcs.pixel_to_world(302.0, 400.0)
+    field = [(s.ra_deg, s.dec_deg) for s in stars.values()] + [companion]
+    expected, missed = sv._coverage_cells(
+        wcs, sv._with_ambiguous_pairs(wcs, verification, np.array([r for r, _ in field]), np.array([d for _, d in field])),
+        list(stars.values()), detections, 960, 540, np.array([r for r, _ in field]), np.array([d for _, d in field]),
+    )
+    # Rows from the top: the paired star in the top left cell, the missed one in the centre, the other in the corner
+    assert expected.tolist() == [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    assert missed.tolist() == [[0, 0, 0], [0, 1, 0], [0, 0, 1]]
+
+
+def test_coverage_counts_only_stars_a_magnitude_above_the_frame_s_depth() -> None:
+    wcs = _orion_wcs_and_stars()[0]
+    stars = [
+        _made_up_star(wcs, 100.0, 100.0, "v3", 3.0), _made_up_star(wcs, 130.0, 100.0, "v4", 4.0),
+        _made_up_star(wcs, 400.0, 300.0, "v5", 5.0), _made_up_star(wcs, 430.0, 300.0, "v6", 6.0),
+    ]
+    # Two PSF detections, each 17 px from two stars (visible, unpaired): the frame's depth is the second brightest
+    # star's V, 4.0, so only the V 3.0 star, a magnitude above it, is expected
+    detections = [_detection_at(115.0, 108.0), _detection_at(415.0, 308.0)]
+    verification = verify_held_out(wcs, detections, stars, [])
+    assert verification.associations == ()
+    ra, dec = np.array([s.ra_deg for s in stars]), np.array([s.dec_deg for s in stars])
+    expected, missed = sv._coverage_cells(wcs, verification, stars, detections, 960, 540, ra, dec)
+    assert expected.tolist() == [[1, 0, 0], [0, 0, 0], [0, 0, 0]] and missed.tolist() == expected.tolist()
+
+
+def test_the_dual_path_grid_reaches_the_frame_s_edges_and_corners(monkeypatch: pytest.MonkeyPatch) -> None:
+    wcs, _ = _orion_wcs_and_stars()
+    good = _verification([0.4, 0.6, 0.5, 0.7, 0.3, 0.5, 0.6, 0.4, 0.5, 0.6])
+    # A held-out refit that differs from the fit by its k2 term alone: least at the centre, most at the corners
+    refit = replace(wcs, k2=wcs.k2 + 0.05)
+    trained_on: list[set[int]] = []
+
+    def fake_refit(initial, pairs, fit_distortion=True):
+        trained_on.append({id(d) for d, _ in pairs})
+        return refit
+
+    monkeypatch.setattr(sv, "_refine_wcs_least_squares", fake_refit)
+
+    def apart(xs, ys) -> np.ndarray:
+        out = []
+        for y in ys:
+            for x in xs:
+                ra, dec = wcs.pixel_to_world(float(x), float(y))
+                hx, hy = refit.world_to_pixel(ra, dec)
+                out.append(math.hypot(hx - x, hy - y))
+        return np.array(out).reshape(len(ys), len(xs))
+
+    grid = apart(np.linspace(0.0, 960.0, 5), np.linspace(0.0, 540.0, 5))
+    got = sv._dual_path_disagreement_px(wcs, good, 960, 540)
+    assert got == pytest.approx(float(np.median(grid)), abs=1e-6)
+    # The phone solver's grid, 15 to 85 % of the width by 15 to 75 % of the height, sees less of the difference
+    assert float(np.median(apart(np.linspace(144.0, 816.0, 5), np.linspace(81.0, 405.0, 5)))) < got
+    # The refit never trains on an ambiguous held-out inlier
+    held = [det for det, _, _, is_train in good.associations if not is_train]
+    marked = replace(good, ambiguous=frozenset(id(d) for d in held[:3]), ambiguity_radius_px=9.0)
+    sv._dual_path_disagreement_px(wcs, marked, 960, 540)
+    assert trained_on[-1] and not (trained_on[-1] & marked.ambiguous)
+
+
+@pytest.mark.parametrize("refusal", ["_radial_term_at_bound", "_coverage_refuses", "_with_ambiguous_pairs"])
+def test_the_tile_pass_claims_nothing_when_a_v4_refusal_refuses_every_fit(refusal: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, truth, _ = _crux()
+    detections = detect_point_sources(frame, snr_threshold=4.0)
+    if refusal == "_with_ambiguous_pairs":
+        # Every pair ambiguous: no held-out inlier is left
+        monkeypatch.setattr(sv, refusal, lambda wcs, ver, ra, dec: replace(ver, ambiguous=frozenset(id(d) for d, _, _, _ in ver.associations), ambiguity_radius_px=9.0))
+    else:
+        monkeypatch.setattr(sv, refusal, lambda *args: True)
+    _assert_no_claim(solve_and_verify_field(detections, truth.width, truth.height, **CRUX_UP, **_sources(frame, "crux")))
+
+
+def test_a_tile_pass_claim_passed_each_v4_refusal_on_its_own_fit(monkeypatch: pytest.MonkeyPatch) -> None:
+    frame, truth, _ = _crux()
+    bound, ambiguity, cells, verify = sv._radial_term_at_bound, sv._with_ambiguous_pairs, sv._coverage_cells, sv.verify_held_out
+    seen: dict[str, list] = {"bound": [], "ambiguity": [], "coverage": [], "verify": []}
+
+    def spy_bound(wcs):
+        seen["bound"].append(wcs)
+        return bound(wcs)
+
+    def spy_ambiguity(wcs, verification, ra, dec):
+        out = ambiguity(wcs, verification, ra, dec)
+        seen["ambiguity"].append((wcs, verification, out, len(ra)))
+        return out
+
+    def spy_cells(wcs, verification, *args):
+        out = cells(wcs, verification, *args)
+        seen["coverage"].append((wcs, verification, out))
+        return out
+
+    def spy_verify(wcs, dets, catalog, training):
+        out = verify(wcs, dets, catalog, training)
+        seen["verify"].append((wcs, len(catalog), out))
+        return out
+
+    monkeypatch.setattr(sv, "_radial_term_at_bound", spy_bound)
+    monkeypatch.setattr(sv, "_with_ambiguous_pairs", spy_ambiguity)
+    monkeypatch.setattr(sv, "_coverage_cells", spy_cells)
+    monkeypatch.setattr(sv, "verify_held_out", spy_verify)
+    sol = solve_and_verify_field(detect_point_sources(frame, snr_threshold=4.0), truth.width, truth.height, **CRUX_UP, **_sources(frame, "crux"))
+    assert sol.status == "calibrated" and "tile stars" in sol.solver.catalog_release
+    # The claimed fit is the last the bound rule saw, and not at the bound
+    assert seen["bound"][-1] == sol.wcs and not bound(sol.wcs)
+    # Its verification was marked for ambiguity over every tile row of the field (more than the pool's field stars it
+    # paired), and no catalog match is an ambiguous detection; each ambiguous one is an observed finding
+    wcs, raw, marked, rows = seen["ambiguity"][-1]
+    assert wcs == sol.wcs and raw is seen["verify"][-1][2] and rows > seen["verify"][-1][1]
+    assert marked.ambiguous, "the Crux frame has neighbours within three gates"
+    matched = {id(f.source_detection) for f in sol.findings if f.evidence_class == "catalog_matched"}
+    assert matched and not (matched & marked.ambiguous)
+    flagged = [f for f in sol.findings if f.evidence_class == "observed" and "which star it shows is open" in f.limitations[0]]
+    assert len(flagged) == len(marked.ambiguous)
+    assert sol.quality.held_out_inliers == marked.held_out_inliers
+    # And its coverage, on the marked verification, has expected stars and does not refuse
+    wcs, verification, (expected, missed) = seen["coverage"][-1]
+    assert wcs == sol.wcs and verification is marked and expected.sum() > 0 and not sv._coverage_refuses(expected, missed)

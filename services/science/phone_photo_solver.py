@@ -901,6 +901,27 @@ def tile_stars_all_sky(v_limit: float, obs_utc_iso: str | None = None) -> list[C
     return _slice_by_v(_tile_pool(obs_utc_iso, None, None, None, depth), v_limit)
 
 
+@lru_cache(maxsize=8)
+def _tile_positions(obs_utc_iso: str | None, v_depth: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    index = _get_tile_index()
+    if obs_utc_iso is not None:
+        epoch = 2000.0 + (_parse_iso_to_jd_utc(obs_utc_iso) - JD_J2000) / DAYS_PER_JYEAR
+    else:
+        epoch = index.epoch_jyear
+    _, ra, dec, v_mag = index.query_bright(v_limit=v_depth, max_stars=int(index.data["v_mag"].size), epoch_jyear=epoch)
+    return ra, dec, v_mag
+
+
+def tile_positions_all_sky(v_limit: float, obs_utc_iso: str | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """(RA deg, Dec deg, V) of every G 12 tile row brighter than V `v_limit` over the whole sky, brightest first, with
+    or without a valid distance: the stars a frame can show, whether or not a finding could name them
+    (`tile_stars_all_sky` keeps only the rows with a distance). Positions at the time's epoch, as there."""
+    v_limit = _check_v_limit(v_limit)
+    ra, dec, v_mag = _tile_positions(obs_utc_iso, max(TILE_POOL_CACHED_V_LIMIT, v_limit))
+    n = int(np.searchsorted(v_mag, v_limit, side="right"))
+    return ra[:n], dec[:n], v_mag[:n]
+
+
 # =============================================================================================
 # Coincidence-weighed held-out verification gate (Lang et al. 2010, AJ 139, 1782)
 # =============================================================================================

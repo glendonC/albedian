@@ -187,22 +187,41 @@ folded stars 62 to 80 deg from the tangent point onto detections: a frame scored
 named such stars as catalog matches (pos-002 and pos-024 below, the unit's simulated Crux frame 12 h later and its
 Cygnus frame flipped either way) [tested, simulated].
 
-Re-run on 2026-11-11 with the 120 s limit and 4 worker processes [tested, 2026-11-11, simulated]. "Before" is the
-search before solver-10k. A catalog match is outside the field when its star lies further from the claimed WCS's
-centre than the frame corners plus 1 deg, and off when its detection sits more than 3 px from the star's true pixel:
+Every catalog match must also name its own star (solver-10k v4). Inside the field, calibrated tile-pass claims still
+named a neighbour, a bright star the pool leaves out for want of a distance, or a star 3 to 42 px from its true pixel,
+on fits whose k2 sat at its 0.24 bound or which put the field's stars 11 to 56 px off in the corners [tested,
+simulated]. So a tile-pool fit is now also refused when a radial coefficient lies within 1 % of its bound
+(`_radial_term_at_bound`); a pair is ambiguous, neither an inlier nor a catalog match, when another tile row of the
+field (any row at V 6.5 or brighter, with or without a distance) projects within three inlier gates of its detection
+(`_with_ambiguous_pairs`); the dual path's grid covers the whole frame, its edges and corners included; and a fit is
+refused when its misses (isolated, visible, bright held-out stars it puts inside the frame that pair with nothing) beat
+a 5 % rate by chance (binomial tail at most 1e-3), over the frame or in any cell of a 3 x 3 grid (`_coverage_cells`,
+`_coverage_refuses`). Each threshold and its reason are in `solver.py` [proposed]; the held-out gate itself is
+unchanged.
 
-| Frames | Before: correct | After: correct | After: false claims | After: timeouts | After: time, median and max | Catalog matches on calibrated frames | Outside the field | Over 3 px off |
-|---|---|---|---|---|---|---|---|---|
-| The full suite's first 60 frames (all positives) | 0 (16 timeouts) | 21 | 0 | 0 | 3.09 s, 32.7 s | 3,506 on 21 frames | 0 | 1 |
-| 20 positives past frame 60 with observer latitude below 0 | 0 (3 timeouts) | 3 | 0 | 0 | 3.33 s, 8.55 s | 616 on 3 frames | 0 | 0 |
-| CI subset (4 positives, 4 hard negatives) | 0 | 0 | 0 | 0 | 1.14 s, 1.73 s | none (no claim) | 0 | 0 |
+Re-run on 2026-11-11 with the 120 s limit and 4 worker processes, on all 270 frames of the full suite, as three groups
+[tested, 2026-11-11, simulated]. "v3" is the unit before these refusals (5f8d1e43); the other columns are v4. Per
+catalog match: over 3 px when its detection sits more than 3 px from its star's true pixel; nearer another star when it
+sits nearer the true pixel of another rendered star at V 6.5 or brighter, at least one PSF FWHM from its own; outside
+the field when its star lies further from the claimed WCS's centre than the frame corners plus 1 deg.
 
-The one match over 3 px off (pos-017) is a training pair 1,173 px from the frame's centre: its detection is another
-rendered star, 6.5 px from the matched star's true pixel, where the fit is 6.3 px off; the frame's median field error
-stays within 3 px [tested, simulated]. The same run of `phone-photo` on
-the CI subset: 3 of 4 positives correct, 0 false claims, 0 timeouts, 145 catalog matches, 0 outside the field and 0
-over 3 px off. Before the field's cone and the fold check (the auditor's run of the same frames), full60 had the same
-21 correct frames, and two of them named a star 68 and 80 deg from the tangent point [tested, simulated].
+| Frames | v3: correct (frames with wrong-star matches) | correct | false claims | timeouts | time, median and max | catalog matches | over 3 px | nearer another star | outside the field |
+|---|---|---|---|---|---|---|---|---|---|
+| The full suite's first 60 frames (all positives) | 21 (1) | 21 | 0 | 0 | 3.07 s, 33.0 s | 3,268 on 21 frames | 0 | 0 | 0 |
+| 20 positives past frame 60 with observer latitude below 0 | 3 (2) | 3 | 0 | 0 | 3.07 s, 9.50 s | 534 on 3 frames | 0 | 0 | 0 |
+| The other 190 (130 positives, 60 hard negatives) | 24, and 1 imprecise (11) | 24 | 0 | 0 | 3.04 s, 41.9 s | 4,101 on 24 frames | 2 | 0 | 0 |
+| CI subset (4 positives, 4 hard negatives) | 0 (0) | 0 | 0 | 0 | 1.25 s, 2.05 s | none (no claim) | 0 | 0 | 0 |
+
+On v3 the same 270 frames carried 8,640 catalog matches, of which 10 sat over 3 px off and 21 nearer another star: 25
+wrong-star matches on 14 frames, none outside the field. v4 keeps all 48 frames v3 solved correctly, makes no claim on
+pos-089 (v3's imprecise claim) and claims nothing on the 60 hard negatives. It still names 2 wrong stars, both on
+pos-124: two bright stars its fit puts 1.4 and 10.0 px inside the frame's left edge, which the truth puts 14 px past
+that edge and 0.6 px inside it, paired with faint detections 21 and 13 px from those true pixels (signal-to-noise 8.9
+and 6.0, against a median of 26.8 for the claim's other matches within 0.3 mag) [tested, simulated]. None of the four
+refusals sees them, so this version is not one to land [open]. Holding each dual-path corner to 2.5 px as well removes
+them but makes no claim on 14 of the 48 frames, a rule found by looking at pos-124 [tested, simulated]. The same run of
+`phone-photo` on the CI subset: 3 of 4 positives correct, 0 false claims, 0 timeouts, 145 catalog matches, none of them
+wrong-star or outside the field.
 
 The baseline table above was not re-run on all 270 frames [open].
 

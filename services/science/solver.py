@@ -4,7 +4,7 @@ and public re-exports for point-source extraction, video calibration stacking, a
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 import itertools
 import math
@@ -44,6 +44,7 @@ from services.science.phone_photo_solver import (
     _max_valid_radial,
     evaluate_coincidence_gate,
     solve_phone_photo,
+    tile_positions_all_sky,
     tile_stars_above_horizon,
     tile_stars_all_sky,
 )
@@ -142,6 +143,44 @@ FIELD_MARGIN_DEG = 1.0
 # benchmark's pos-002 and pos-024) the median field error was 0.10 to 0.67 px with 16 and 0.05 to 1.20 px with 8,
 # lower with 16 on 6 of the 7 and with 8 on Crux alone, 0.05 against 0.36 px; tested, 2026-11-11]
 TILE_MAX_TRAINING_PAIRS = 16
+# The bound on each radial coefficient in the least-squares fit, as before solver-10k [verified: this file at db972af7]
+RADIAL_COEFFICIENT_BOUND = 0.24
+
+# solver-10k v4: refusals added to the tile pass after calibrated tile-pass claims named, inside the field, stars 3 to
+# 42 px from their true pixels (held-out inliers and training pairs alike), often a neighbour whose own detection sat
+# elsewhere or a bright star the pool leaves out for want of a distance, on fits whose k2 sat at or near its bound or
+# which put the field's stars 11 to 56 px off in the corners [tested, 2026-11-11, simulated: the benchmark's pos-017,
+# 089, 124, 131, 136 and 142 and the auditor's adversarial frame]. Each only refuses; the held-out gate's own rule (6
+# inliers, median 3 px, p95 6 px) is unchanged.
+#
+# Ambiguity [proposed]: a detection pairs with a star only when no other star of the field projects within
+# AMBIGUITY_GATE_MULTIPLE inlier gates of it; an ambiguous detection is neither an inlier nor a catalog match. The
+# multiple: the held-out gate admits a fit whose held-out p95 reaches MAX_HELD_OUT_P95_RESIDUAL_PX (6 px), twice the
+# largest inlier gate, so such a fit may put a star that far from its detection; a second star within the gate plus
+# that much (three gates) of a detection could then be the one it shows.
+AMBIGUITY_GATE_MULTIPLE = 1.0 + MAX_HELD_OUT_P95_RESIDUAL_PX / INLIER_GATE_MAX_PX
+# Radial bound [proposed]: a fit with a radial coefficient within RADIAL_BOUND_FRACTION of its bound is refused. The
+# solver keeps every iterate strictly inside the bounds, so a coefficient the residuals push past its bound ends just
+# short of it. 1 % of the bound (0.0024) moves the corners of a 2016 x 1512 frame 40 deg out by 2.1 px (k1) or 1.5 px
+# (k2) from a TAN fit, under the largest inlier gate [tested, 2026-11-11], so a coefficient that close cannot be told
+# from the bound: it is the fit wanting more than the model holds, not a measurement.
+RADIAL_BOUND_FRACTION = 0.01
+# Coverage [proposed]: a held-out star of the field that the fit puts inside the frame, at least ASSOCIATION_RADIUS_PX
+# from every edge (its detection could lie past the edge), with no other star of the field within the ambiguity radius
+# (a blend makes one detection of two stars), with some PSF detection within the tile match radius (the frame shows
+# sky there, not ground, cloud or glare), and at most COVERAGE_V_MARGIN brighter than the frame's depth, which pairs
+# with no detection, is a miss. The frame's depth: the V of the faintest of the brightest such stars that the frame has
+# PSF detections for, or every star of the pool when the detections outnumber them. The margin: detections include
+# noise and blends, so their count reaches deeper than the frame sees every star; a star a magnitude above that depth
+# is 2.5 times brighter.
+COVERAGE_V_MARGIN = 1.0
+# A fit is refused when its misses, over the frame or in any cell of a COVERAGE_GRID x COVERAGE_GRID grid of it (the
+# smallest grid with cells of their own at the four corners), exceed COVERAGE_MISS_RATE of the expected stars by more
+# than chance allows: P(X >= misses) <= CONSENSUS_MAX_CHANCE, X binomial over the expected stars at that rate. The rate:
+# the held-out gate lets 5 % of the held-out pairs lie past its p95 bound, and a miss is a held-out star more than
+# ASSOCIATION_RADIUS_PX off (or hidden); the chance is the consensus rule's.
+COVERAGE_MISS_RATE = 0.05
+COVERAGE_GRID = 3
 
 
 @dataclass(frozen=True)
@@ -157,6 +196,11 @@ class HeldOutVerification:
 
     associations: tuple[tuple[SourceDetection, CatalogStar, float, bool], ...]
     inlier_gate_px: float
+    # Detections (by identity) whose pair is ambiguous (`_with_ambiguous_pairs`, the tile pass only): another star of
+    # the field projects within `ambiguity_radius_px` of them. They are neither inliers nor catalog matches; their
+    # residuals still count in the median and p95.
+    ambiguous: frozenset[int] = frozenset()
+    ambiguity_radius_px: float | None = None
 
     @property
     def held_out_residuals_px(self) -> tuple[float, ...]:
@@ -168,7 +212,11 @@ class HeldOutVerification:
 
     @property
     def held_out_inliers(self) -> int:
-        return sum(res_px <= self.inlier_gate_px for res_px in self.held_out_residuals_px)
+        return sum(
+            res_px <= self.inlier_gate_px
+            for det, _, res_px, is_train in self.associations
+            if not is_train and id(det) not in self.ambiguous
+        )
 
     @property
     def median_residual_px(self) -> float | None:
@@ -186,7 +234,7 @@ class HeldOutVerification:
         return {
             id(det): (star, res_px, is_train)
             for det, star, res_px, is_train in self.associations
-            if res_px <= self.inlier_gate_px
+            if res_px <= self.inlier_gate_px and id(det) not in self.ambiguous
         }
 
     @property
@@ -429,7 +477,7 @@ def _refine_wcs_least_squares(
             max(-89.5, initial_wcs.crval_dec_deg - 25.0),
             initial_wcs.scale_deg_per_px * 0.7,
             initial_wcs.rotation_deg - 45.0,
-            -0.24, -0.24,
+            -RADIAL_COEFFICIENT_BOUND, -RADIAL_COEFFICIENT_BOUND,
         ],
         dtype=np.float64,
     )
@@ -439,7 +487,7 @@ def _refine_wcs_least_squares(
             min(89.5, initial_wcs.crval_dec_deg + 25.0),
             initial_wcs.scale_deg_per_px * 1.3,
             initial_wcs.rotation_deg + 45.0,
-            0.24, 0.24,
+            RADIAL_COEFFICIENT_BOUND, RADIAL_COEFFICIENT_BOUND,
         ],
         dtype=np.float64,
     )
@@ -811,16 +859,22 @@ def _spread_by_radius(
 
 def _dual_path_disagreement_px(wcs: WCSModel, verification: HeldOutVerification, width: int, height: int) -> float:
     """The phone solver's dual-path check, for a tile-pool fit: the fit refitted on held-out inliers alone (at most
-    `TILE_MAX_TRAINING_PAIRS` of them, spread from the edge in), and the median distance in pixels between where the
-    two put the sky of a 5 x 5 grid over 15 to 85 % of the width and 15 to 75 % of the height (the phone solver's
-    grid). 99 when fewer than `MIN_HELD_OUT_INLIERS` are held out. A fit that holds only where its stars are
-    disagrees with its own held-out refit away from them."""
-    held = [(d, s, r) for d, s, r, is_train in verification.associations if not is_train and r <= verification.inlier_gate_px]
+    `TILE_MAX_TRAINING_PAIRS` of them, spread from the edge in; never an ambiguous pair), and the median distance in
+    pixels between where the two put the sky of a 5 x 5 grid over the whole frame, its edges and corners included.
+    99 when fewer than `MIN_HELD_OUT_INLIERS` are held out. A fit that holds only where its stars are disagrees with its
+    own held-out refit away from them. (The phone solver's grid, over 15 to 85 % of the width and 15 to 75 % of the
+    height, left out the outer field, where tile-pass claims put the field's stars 11 to 56 px off [tested, 2026-11-11,
+    simulated]; solver-10k v4 takes the grid to the corners [proposed].)"""
+    held = [
+        (d, s, r)
+        for d, s, r, is_train in verification.associations
+        if not is_train and r <= verification.inlier_gate_px and id(d) not in verification.ambiguous
+    ]
     if len(held) < MIN_HELD_OUT_INLIERS:
         return 99.0
     pairs = _spread_by_radius(held, width, height, TILE_MAX_TRAINING_PAIRS)
     held_wcs = _refine_wcs_least_squares(wcs, [(d, s) for d, s, _ in pairs])
-    gx, gy = np.meshgrid(np.linspace(0.15 * width, 0.85 * width, 5), np.linspace(0.15 * height, 0.75 * height, 5))
+    gx, gy = np.meshgrid(np.linspace(0.0, float(width), 5), np.linspace(0.0, float(height), 5))
     sky = np.array([wcs.pixel_to_world(float(x), float(y)) for x, y in zip(gx.ravel(), gy.ravel())])
     hx, hy = _project(held_wcs, sky[:, 0], sky[:, 1])
     diffs = np.hypot(hx - gx.ravel(), hy - gy.ravel())
@@ -905,6 +959,122 @@ def _field_cone_members(wcs: WCSModel, pool_tree: cKDTree) -> list[int]:
         raise ValueError("the WCS folds over before the frame's corners, so it has no field's cone")
     centre = _unit_vectors(np.array([wcs.crval_ra_deg]), np.array([wcs.crval_dec_deg]))[0]
     return sorted(int(m) for m in pool_tree.query_ball_point(centre, float(_chord(corner_deg + FIELD_MARGIN_DEG))))
+
+
+def _radial_term_at_bound(wcs: WCSModel) -> bool:
+    """Whether a radial coefficient of `wcs` lies within `RADIAL_BOUND_FRACTION` of `RADIAL_COEFFICIENT_BOUND`."""
+    limit = (1.0 - RADIAL_BOUND_FRACTION) * RADIAL_COEFFICIENT_BOUND
+    return abs(wcs.k1) >= limit or abs(wcs.k2) >= limit
+
+
+# A tile row and the pool star made from it share one position; any direction within this of a star is that star
+# (a hundredth of a pixel at 0.03 deg/px) [proposed]
+SAME_STAR_ARCSEC = 1.0
+_SAME_STAR_COS = math.cos(math.radians(SAME_STAR_ARCSEC / 3600.0))
+
+
+def _projected_others(wcs: WCSModel, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[cKDTree | None, np.ndarray, np.ndarray]:
+    """(KD-tree of the pixels, unit vectors, indices into the arrays) of the directions `wcs` projects to a pixel."""
+    ra_deg = np.asarray(ra_deg, dtype=np.float64)
+    dec_deg = np.asarray(dec_deg, dtype=np.float64)
+    px, py = _project(wcs, ra_deg, dec_deg)
+    finite = np.flatnonzero(np.isfinite(px) & np.isfinite(py))
+    if finite.size == 0:
+        return None, np.zeros((0, 3)), finite
+    return cKDTree(np.column_stack([px[finite], py[finite]])), _unit_vectors(ra_deg[finite], dec_deg[finite]), finite
+
+
+def _others_within(tree: cKDTree | None, vec: np.ndarray, xy: tuple[float, float], star: CatalogStar, radius_px: float) -> bool:
+    """Whether a direction other than `star`'s (more than `SAME_STAR_ARCSEC` from it) projects within `radius_px` of
+    the pixel `xy` (`tree` and `vec` from `_projected_others`)."""
+    if tree is None:
+        return False
+    hits = tree.query_ball_point(xy, r=radius_px)
+    if not hits:
+        return False
+    own = _unit_vectors(np.array([star.ra_deg]), np.array([star.dec_deg]))[0]
+    return bool(np.any(vec[hits] @ own < _SAME_STAR_COS))
+
+
+def _with_ambiguous_pairs(
+    wcs: WCSModel, verification: HeldOutVerification, field_ra_deg: np.ndarray, field_dec_deg: np.ndarray
+) -> HeldOutVerification:
+    """`verification` with every detection marked ambiguous that has a star of the field (`field_ra_deg`,
+    `field_dec_deg`: every tile row of the field's cone, with or without a distance) other than its own projecting
+    within `AMBIGUITY_GATE_MULTIPLE` inlier gates of it under `wcs` (its residuals unchanged)."""
+    radius_px = AMBIGUITY_GATE_MULTIPLE * verification.inlier_gate_px
+    tree, vec, _ = _projected_others(wcs, field_ra_deg, field_dec_deg)
+    ambiguous = frozenset(
+        id(det)
+        for det, star, _, _ in verification.associations
+        if _others_within(tree, vec, (det.x_px, det.y_px), star, radius_px)
+    )
+    return replace(verification, ambiguous=ambiguous, ambiguity_radius_px=radius_px)
+
+
+def _coverage_cells(
+    wcs: WCSModel,
+    verification: HeldOutVerification,
+    stars: Sequence[CatalogStar],
+    detections: Sequence[SourceDetection],
+    width: int,
+    height: int,
+    field_ra_deg: np.ndarray,
+    field_dec_deg: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """(expected, missed): per cell of a `COVERAGE_GRID` x `COVERAGE_GRID` grid of the frame (rows from the top), the
+    held-out stars of `stars` (the field's pool stars, which `verification` paired) a miss can be counted on, and those
+    of them that `verification` paired with nothing.
+
+    Expected: not paired with a detection the fit trained on; put by `wcs` at least `ASSOCIATION_RADIUS_PX` inside every
+    edge; no other star of the field (`field_ra_deg`, `field_dec_deg`: every tile row of its cone) within the
+    ambiguity radius (`AMBIGUITY_GATE_MULTIPLE` inlier gates); a PSF detection within the tile match radius; and V at
+    most the frame's depth minus `COVERAGE_V_MARGIN`. The depth is the V of the N-th brightest of `stars` that `wcs`
+    puts in the frame, N the PSF detections, or no limit when N reaches them all."""
+    grid = np.zeros((COVERAGE_GRID, COVERAGE_GRID), dtype=np.int64)
+    missed = np.zeros_like(grid)
+    psf = [d for d in detections if not d.is_hot_pixel_impulse]
+    if not stars or not psf:
+        return grid, missed
+    px, py = _project(wcs, np.array([s.ra_deg for s in stars]), np.array([s.dec_deg for s in stars]))
+    finite = np.isfinite(px) & np.isfinite(py)
+    in_frame = finite & (px >= 0.0) & (px < width) & (py >= 0.0) & (py < height)
+    mags = np.array([s.mag for s in stars], dtype=np.float64)
+    frame_mags = np.sort(mags[in_frame])
+    depth = math.inf if len(psf) >= frame_mags.size else float(frame_mags[len(psf) - 1])
+    edge = ASSOCIATION_RADIUS_PX
+    with np.errstate(invalid="ignore"):
+        candidate = finite & (px >= edge) & (px < width - edge) & (py >= edge) & (py < height - edge) & (mags <= depth - COVERAGE_V_MARGIN)
+    trained = {s.id for _, s, _, is_train in verification.associations if is_train}
+    paired = {s.id for _, s, _, _ in verification.associations}
+    candidate &= np.array([s.id not in trained for s in stars])
+    if not np.any(candidate):
+        return grid, missed
+    tree, vec, _ = _projected_others(wcs, field_ra_deg, field_dec_deg)
+    radius_px = AMBIGUITY_GATE_MULTIPLE * verification.inlier_gate_px
+    det_tree = cKDTree(np.array([[d.x_px, d.y_px] for d in psf], dtype=np.float64))
+    visibility_px = _tile_match_radius_px(width, height)
+    for k in np.flatnonzero(candidate):
+        xy = (float(px[k]), float(py[k]))
+        if _others_within(tree, vec, xy, stars[k], radius_px):
+            continue
+        if not det_tree.query_ball_point(xy, r=visibility_px):
+            continue
+        col = min(COVERAGE_GRID - 1, int(COVERAGE_GRID * px[k] / width))
+        row = min(COVERAGE_GRID - 1, int(COVERAGE_GRID * py[k] / height))
+        grid[row, col] += 1
+        missed[row, col] += stars[k].id not in paired
+    return grid, missed
+
+
+def _coverage_refuses(expected: np.ndarray, missed: np.ndarray) -> bool:
+    """Whether the misses, over the frame or in any cell, exceed `COVERAGE_MISS_RATE` of the expected stars by more
+    than chance allows (`_chance_of_at_least` at most `CONSENSUS_MAX_CHANCE`)."""
+    expected = np.asarray(expected, dtype=np.int64).ravel()
+    missed = np.asarray(missed, dtype=np.int64).ravel()
+    counts = np.concatenate([[expected.sum()], expected])
+    misses = np.concatenate([[missed.sum()], missed])
+    return bool(np.any(_chance_of_at_least(misses, counts, COVERAGE_MISS_RATE) <= CONSENSUS_MAX_CHANCE))
 
 
 def _score_tile_candidates(
@@ -1031,6 +1201,7 @@ def _solution_from_fit(
     warnings: list[str] = []
     paired_by_id = {id(det): (st, res_px) for det, st, res_px, _ in verification.associations}
     impulse_count = 0
+    ambiguous_count = 0
     outside_gate_count = 0
     no_catalog_star_count = 0
 
@@ -1070,6 +1241,13 @@ def _solution_from_fit(
                     f"Skipped by catalog matching as a hot-pixel impulse "
                     f"(FWHM {det.fwhm_px:.2f} px, peak-to-total flux ratio {det.peak_to_total_ratio:.2f})."
                 )
+            elif id(det) in verification.ambiguous:
+                ambiguous_count += 1
+                paired_star, res_px = paired_by_id[id(det)]
+                unmatched_reason = (
+                    f"Paired with {paired_star.common_name} at {res_px:.2f} px residual, but another catalog star sits "
+                    f"within {verification.ambiguity_radius_px:.2f} px of it under the WCS, so which star it shows is open."
+                )
             elif id(det) in paired_by_id:
                 outside_gate_count += 1
                 paired_star, res_px = paired_by_id[id(det)]
@@ -1107,11 +1285,16 @@ def _solution_from_fit(
                 )
             )
 
-    unmatched_total = impulse_count + outside_gate_count + no_catalog_star_count
+    unmatched_total = impulse_count + ambiguous_count + outside_gate_count + no_catalog_star_count
     if unmatched_total > 0 and passed_verification:
         unmatched_parts: list[str] = []
         if impulse_count > 0:
             unmatched_parts.append(f"{impulse_count} skipped as hot-pixel impulse(s)")
+        if ambiguous_count > 0:
+            unmatched_parts.append(
+                f"{ambiguous_count} paired but with another catalog star within "
+                f"{verification.ambiguity_radius_px:.2f} px, so ambiguous"
+            )
         if outside_gate_count > 0:
             unmatched_parts.append(
                 f"{outside_gate_count} paired within {ASSOCIATION_RADIUS_PX:g} px "
@@ -1189,9 +1372,12 @@ def _tile_pool_search(
     triangle it matches is scored at once (`_score_tile_candidates`); those passing the consensus threshold are
     then verified best first (least chance first), at most `TILE_MAX_VERIFIED`: a TAN WCS from the triangle, the
     consensus pairs within the match radius among the stars in a cone around its field centre, a fit on training
-    pairs only, refused when its radial terms fold over inside the field (`_folds_inside_field`), and the held-out
-    gate on every detection together with the coincidence check (`_tile_pool_gate`), both on the pool's stars in the
-    field's cone only (`_field_cone_members`). The first candidate passing both is the solution.
+    pairs only, refused when its radial terms fold over inside the field (`_folds_inside_field`) or sit at their bound
+    (`_radial_term_at_bound`), and the held-out gate on every detection together with the coincidence check
+    (`_tile_pool_gate`, its dual-path grid taken to the corners), both on the pool's stars in the field's cone only
+    (`_field_cone_members`), with every pair that another tile row of the field could explain left ambiguous
+    (`_with_ambiguous_pairs`); then the coverage check (`_coverage_cells`, `_coverage_refuses`). The first candidate
+    passing all of them is the solution.
     """
     pool, v_limit, above_horizon = _tile_pool_for(len(score_dets), obs_utc_iso, observer_lat, observer_lon)
     if hint_ra_deg is not None and hint_dec_deg is not None:
@@ -1212,6 +1398,10 @@ def _tile_pool_search(
         top = list(members)[:TILE_SCORING_STARS]
         cell_stars[cell, : len(top)] = top
     cell_tree = cKDTree(centres)
+    # Every tile row to the deepest pool's V, with or without a distance (the pool keeps only rows with one): the
+    # stars a detection can show, for the ambiguity and coverage checks
+    others_ra, others_dec, _ = tile_positions_all_sky(TILE_V_CAP, obs_utc_iso)
+    others_tree = cKDTree(_unit_vectors(others_ra, others_dec))
     det_tree = cKDTree(np.array([[d.x_px, d.y_px] for d in score_dets], dtype=np.float64))
     radius_px = _tile_match_radius_px(width, height)
     chance = 1.0 - math.exp(-len(score_dets) / float(width * height) * math.pi * radius_px * radius_px)
@@ -1257,16 +1447,28 @@ def _tile_pool_search(
             continue
         second = _tile_training_pairs(pairs, width, height)
         refined = _refine_wcs_least_squares(tan_wcs, [(d, s) for d, s, _ in second])
-        # A fit whose radial terms fold over inside the field is refused; the rest is verified on the field's stars
-        if _folds_inside_field(refined):
+        # A fit whose radial terms fold over inside the field, or sit at their bound, is refused; the rest is verified
+        # on the field's stars
+        if _folds_inside_field(refined) or _radial_term_at_bound(refined):
             continue
         field = _field_cone_members(refined, pool_tree)
-        # Every detection either fit trained on stays out of the held-out set
+        field_stars = [pool[m] for m in field]
+        near = _field_cone_members(refined, others_tree)
+        # Every detection either fit trained on stays out of the held-out set; an ambiguous pair is no inlier
         trained = {id(d): d for d, _, _ in (*first, *second)}
-        verification = verify_held_out(refined, detections, [pool[m] for m in field], list(trained.values()))
+        verification = _with_ambiguous_pairs(
+            refined, verify_held_out(refined, detections, field_stars, list(trained.values())), others_ra[near], others_dec[near]
+        )
         _, passed, _ = _tile_pool_gate(verification, refined, detections, ra[field], dec[field], width, height)
-        if passed:
-            return _solution_from_fit(detections, refined, verification, True, len(pool), identity, **solution_kwargs)
+        if not passed:
+            continue
+        # And the fit must pair the bright held-out stars it puts in the frame, over the frame and in each cell of it
+        expected, missed = _coverage_cells(
+            refined, verification, field_stars, detections, width, height, others_ra[near], others_dec[near]
+        )
+        if _coverage_refuses(expected, missed):
+            continue
+        return _solution_from_fit(detections, refined, verification, True, len(pool), identity, **solution_kwargs)
     return None
 
 
