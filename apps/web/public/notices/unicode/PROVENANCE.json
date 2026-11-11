@@ -1,0 +1,94 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "unicode-ucd-15.1.0",
+      "title": "The Unicode Character Database, version 15.1.0",
+      "url": "https://www.unicode.org/Public/15.1.0/ucd/",
+      "version": "15.1.0",
+      "license": {
+        "spdx": "LicenseRef-Unicode-3.0",
+        "name": "Unicode License v3",
+        "url": "https://www.unicode.org/license.txt",
+        "conditions": "Use, copying, changes and redistribution are free, provided the copyright and permission notice appears with all copies or in their documentation: it is UNICODE-LICENSE.txt beside this record, served with the app at /notices/unicode/UNICODE-LICENSE.txt."
+      },
+      "credit": "Unicode, Inc.",
+      "note": "UnicodeData.txt (sha256 2fc713e6a31a87c4850a37fe2caffa4218180fadb5de86b43a143ddb4581fb86) and DerivedCoreProperties.txt (sha256 f55d0db69123431a7317868725b1fcbf1eab6b265d756d1bd7f0f6d9f9ee108b)."
+    },
+    {
+      "id": "unicode-ucd-15.0.0",
+      "title": "The Unicode Character Database, version 15.0.0",
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/",
+      "version": "15.0.0",
+      "license": {
+        "spdx": "LicenseRef-Unicode-3.0",
+        "name": "Unicode License v3",
+        "url": "https://www.unicode.org/license.txt",
+        "conditions": "Use, copying, changes and redistribution are free, provided the copyright and permission notice appears with all copies or in their documentation: it is UNICODE-LICENSE.txt beside this record, served with the app at /notices/unicode/UNICODE-LICENSE.txt."
+      },
+      "credit": "Unicode, Inc.",
+      "note": "UnicodeData.txt (sha256 806e9aed65037197f1ec85e12be6e8cd870fc5608b4de0fffd990f689f376a73) and DerivedCoreProperties.txt (sha256 d367290bc0867e6b484c68370530bdd1a08b6b32404601b8c7accaf83e05628d)."
+    },
+    {
+      "id": "unicode-ucd-16.0.0",
+      "title": "The Unicode Character Database, version 16.0.0",
+      "url": "https://www.unicode.org/Public/16.0.0/ucd/",
+      "version": "16.0.0",
+      "license": {
+        "spdx": "LicenseRef-Unicode-3.0",
+        "name": "Unicode License v3",
+        "url": "https://www.unicode.org/license.txt",
+        "conditions": "Use, copying, changes and redistribution are free, provided the copyright and permission notice appears with all copies or in their documentation: it is UNICODE-LICENSE.txt beside this record, served with the app at /notices/unicode/UNICODE-LICENSE.txt."
+      },
+      "credit": "Unicode, Inc.",
+      "note": "UnicodeData.txt (sha256 ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f) and DerivedCoreProperties.txt (sha256 39d35161f2954497f69e08bdb9e701493f476a3d30222de20028feda36c1dabd)."
+    },
+    {
+      "id": "unicode-ucd-17.0.0",
+      "title": "The Unicode Character Database, version 17.0.0",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/",
+      "version": "17.0.0",
+      "license": {
+        "spdx": "LicenseRef-Unicode-3.0",
+        "name": "Unicode License v3",
+        "url": "https://www.unicode.org/license.txt",
+        "conditions": "Use, copying, changes and redistribution are free, provided the copyright and permission notice appears with all copies or in their documentation: it is UNICODE-LICENSE.txt beside this record, served with the app at /notices/unicode/UNICODE-LICENSE.txt."
+      },
+      "credit": "Unicode, Inc.",
+      "note": "UnicodeData.txt (sha256 2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c) and DerivedCoreProperties.txt (sha256 24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08)."
+    }
+  ],
+  "files": [
+    {
+      "path": "letters-and-digits.json",
+      "sha256": "66800eda4a50e393e533608d458ccea5aafda5e9b52215aa2406cd6a55bb8caf",
+      "sources": [
+        "unicode-ucd-15.1.0",
+        "unicode-ucd-15.0.0",
+        "unicode-ucd-16.0.0",
+        "unicode-ucd-17.0.0"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/generate_letters_and_digits.py",
+        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>"
+      },
+      "note": "A byte-identical copy of packages/contracts/src/data/letters-and-digits.json, which both answer contracts read and the web bundle carries. The ranges are Unicode 15.1.0's; differsFrom lists where 15.0.0, 16.0.0 and 17.0.0 differ from them."
+    },
+    {
+      "path": "UNICODE-LICENSE.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+      "sources": [
+        "unicode-ucd-15.1.0"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/generate_letters_and_digits.py",
+        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>"
+      },
+      "note": "The script writes the notice from its own copy of the text, which is byte-equal to https://www.unicode.org/license.txt as fetched on 2026-11-11. It must travel with the data."
+    }
+  ],
+  "fileSets": []
+}

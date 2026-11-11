@@ -38,6 +38,8 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'SolveJobSchema',
   'VoiceCommandRequestSchema',
   'VoiceCommandResponseSchema',
+  'VoiceAnswerSchema',
+  'AnswerStatementSchema',
   'SolarEclipseCatalogSchema',
   'LunarEclipseCatalogSchema',
   'ExoplanetTableSchema',
