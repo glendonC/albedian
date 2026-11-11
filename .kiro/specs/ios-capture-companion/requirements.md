@@ -1,4 +1,4 @@
-# Requirements: iOS Capture Companion (proposed, waiting for the owner's yes)
+# Requirements: iOS Capture Companion
 
 Added after the owner's direction of 2026-11-10 (every photo gets a sky, visible stars or not): a saved photo with no
 visible stars SHALL get the predicted sky drawn over it from the recorded pointing, labelled predicted and

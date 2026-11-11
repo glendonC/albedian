@@ -47,6 +47,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'ConstellationLinesSchema',
   'ConstellationBoundariesSchema',
   'BrightStarSupplementSchema',
+  'PointingRecordSchema',
 ];
 
 const VALID_WHEN_TYPES = new Set([
