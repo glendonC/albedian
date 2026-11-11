@@ -55,12 +55,15 @@ from services.science.catalog import (
     unit_vector_to_ra_dec,
 )
 from services.science.catalog_model import (
+    BAILER_JONES_GEOMETRIC,
     BAILER_JONES_PHOTOGEOMETRIC,
-    GAIA_DR3_CITATION,
     GAIA_DR3_RELEASE,
-    HIPPARCOS_2007_CITATION,
+    GAIA_G,
     HIPPARCOS_2007_RELEASE,
+    HIPPARCOS_HP,
     INVERSE_PARALLAX,
+    gaia_dr3_citation,
+    hipparcos_2007_tile_citation,
 )
 from services.science.detector import (
     _estimate_background_and_noise,
@@ -90,6 +93,18 @@ JD_UNIX_EPOCH = 2440587.5
 TT_MINUS_UTC_S = 69.184
 ABERRATION_CONST_RAD = 20.49552 * ARCSEC_RAD
 REFRACTION_FLOOR_DEG = -2.0
+# A typical Gaia BP-RP, used only to rank a star whose row has no colour by an approximate V: the value the phone
+# photo benchmark renders such stars with (research/benchmarks/phone_photos/stars.py) [proposed: a typical colour at
+# G < 12, not the star's own; it never reaches a finding, a card or a reply]
+TYPICAL_BP_RP_FOR_RANKING = 0.82
+# The IAU constellation boundaries (Delporte, as Davenhall and Leggett 1989 tabulate them, VizieR VI/49): corners
+# shipped at J2000, each edge a constant right ascension or declination of equinox B1875
+CONSTELLATION_BOUNDS_PATH = (
+    Path(__file__).resolve().parents[2] / "apps" / "web" / "public" / "catalog" / "constellations" / "bounds.json"
+)
+# Besselian epoch B1875.0 as a Julian date, 2415020.31352 + (1875 - 1900) * 365.242198781: the Besselian year of
+# Lieske (1979, A&A 73, 282) [inference: the formula as commonly quoted, not read at its source in this unit]
+JD_B1875 = 2405889.258550475
 
 # Published diagonal fields of view (degrees) of phone cameras in the benchmark [verified]
 PUBLISHED_CAMERA_FOV_DEG: dict[str, tuple[float, tuple[str, ...]]] = {
@@ -609,7 +624,13 @@ class PhoneCameraWCS(WCSModel):
 
 
 def _v_from_gaia_mag(g_mag: np.ndarray, bp_rp: np.ndarray) -> np.ndarray:
-    c = np.clip(np.where(np.isfinite(bp_rp), bp_rp, 0.82), -0.5, 2.75)
+    """An approximate Johnson V from Gaia G, for the brightness cut and the ranking only; never output.
+
+    The polynomial is the G - V relation in BP-RP of Riello et al. (2021, A&A 649, A3, table C2), as the phone
+    photo benchmark cites it (research/benchmarks/phone_photos/stars.py). A row without BP-RP is ranked with
+    TYPICAL_BP_RP_FOR_RANKING inside this sum alone: the star's catalog reference then carries no colour.
+    """
+    c = np.clip(np.where(np.isfinite(bp_rp), bp_rp, TYPICAL_BP_RP_FOR_RANKING), -0.5, 2.75)
     return g_mag - (-0.02704 + 0.01424 * c - 0.2156 * c * c + 0.01426 * c**3)
 
 
@@ -687,13 +708,17 @@ class _TileStarIndex:
                         "ra0": ra0,
                         "dec0": dec0,
                         "mag": mag,
+                        "mag_hp": (flags & ct.FLAG_MAG_BAND_HP) != 0,
                         "v_mag": v_mag,
-                        "color": np.where(np.isfinite(color), color, 0.82),
+                        # A value the row lacks stays NaN here and is left out of the star's reference
+                        "color": color,
+                        "color_bv": color_bv,
                         "hip": hip,
                         "sid": sid,
-                        "pm_ra": np.nan_to_num(pm_ra),
-                        "pm_dec": np.nan_to_num(pm_dec),
-                        "rv": np.nan_to_num(rv),
+                        "pm_ra": pm_ra,
+                        "pm_dec": pm_dec,
+                        "rv": rv,
+                        "dist_kind": flags & ct.FLAG_DIST_KIND_MASK,
                         "lo_pc": lo_pc,
                         "med_pc": med_pc,
                         "hi_pc": hi_pc,
@@ -719,106 +744,189 @@ class _TileStarIndex:
         return idx, ra, dec, self.data["v_mag"][idx]
 
     def has_distance(self, row_idx: int) -> bool:
-        is_hip = bool(self.data["hip"][row_idx])
-        sid = int(self.data["sid"][row_idx])
-        cat_source_id = f"HIP {sid}" if is_hip else f"Gaia DR3 {sid}"
-        return cat_source_id in self._pinned_by_source or bool(self.data["valid_dist"][row_idx])
+        """Whether the row carries a distance; a pinned star's finding takes its distance from its row too."""
+        return bool(self.data["valid_dist"][row_idx])
+
+    def _row_value(self, key: str, row_idx: int) -> float | None:
+        """The row's own value, or None where the catalog gives none."""
+        value = float(self.data[key][row_idx])
+        return value if math.isfinite(value) else None
 
     def to_catalog_star(self, row_idx: int, ra_deg: float, dec_deg: float, epoch_jyear: float) -> CatalogStar | None:
+        """The star of one tile row, holding only what the row gives.
+
+        A value the row lacks is None: no colour, proper motion or radial velocity is filled in, a Hipparcos B-V is
+        not given as BP-RP, no spectral type is named (neither release carries one), the tiles' Hipparcos distance
+        is not turned back into a parallax, and the magnitude keeps its band (Hipparcos Hp or Gaia G). Names come
+        from the IAU name table, its full designation (never a raw Bayer abbreviation such as "alf"), and a star
+        without an IAU name has no designation beyond its id. Its constellation is the name table's, else the IAU
+        boundary that holds it. A pinned star takes every catalog value from its row too; its pinned record adds
+        only the star's id and names (common name, designation and constellation).
+        """
         if not self.has_distance(row_idx):
             return None
         is_hip = bool(self.data["hip"][row_idx])
         sid = int(self.data["sid"][row_idx])
         cat_source_id = f"HIP {sid}" if is_hip else f"Gaia DR3 {sid}"
-        if cat_source_id in self._pinned_by_source:
-            pinned = self._pinned_by_source[cat_source_id]
-            return CatalogStar(
-                id=pinned.id,
-                common_name=pinned.common_name,
-                bayer_designation=pinned.bayer_designation,
-                constellation=pinned.constellation,
-                provider=pinned.provider,
-                release_version=pinned.release_version,
-                catalog_source_id=pinned.catalog_source_id,
-                ra_deg=float(ra_deg) % 360.0,
-                dec_deg=float(dec_deg),
-                mag=pinned.mag,
-                bp_rp=pinned.bp_rp,
-                spectral_type=pinned.spectral_type,
-                pm_ra_mas_yr=pinned.pm_ra_mas_yr,
-                pm_dec_mas_yr=pinned.pm_dec_mas_yr,
-                rv_km_s=pinned.rv_km_s,
-                parallax_mas=pinned.parallax_mas,
-                parallax_error_mas=pinned.parallax_error_mas,
-                lower_pc=pinned.lower_pc,
-                median_pc=pinned.median_pc,
-                upper_pc=pinned.upper_pc,
-                distance_method=pinned.distance_method,
-                citation=pinned.citation,
-                epoch_year=float(epoch_jyear),
-            )
-
+        pinned = self._pinned_by_source.get(cat_source_id)
         name_entry = self._names_by_source.get((is_hip, sid))
         common_name = name_entry["name"] if name_entry else cat_source_id
-        bayer = (name_entry.get("bayer") or name_entry.get("designation") or cat_source_id) if name_entry else cat_source_id
-        constellation = (name_entry.get("constellation") or "ICRS") if name_entry else "ICRS"
-        star_id = f"hip-{sid}" if is_hip else f"gaia-dr3-{sid}"
-        med_pc = float(self.data["med_pc"][row_idx])
-        lo_pc = float(self.data["lo_pc"][row_idx])
-        hi_pc = float(self.data["hi_pc"][row_idx])
-        if is_hip:
-            plx = 1000.0 / med_pc
-            plx_err = max(1e-4, min(0.95 * plx, 0.5 * (1000.0 / lo_pc - 1000.0 / hi_pc)))
-            return CatalogStar(
-                id=star_id,
-                common_name=common_name,
-                bayer_designation=bayer,
-                constellation=constellation,
-                provider="Hipparcos",
-                release_version=HIPPARCOS_2007_RELEASE,
-                catalog_source_id=cat_source_id,
-                ra_deg=float(ra_deg) % 360.0,
-                dec_deg=float(dec_deg),
-                mag=float(self.data["mag"][row_idx]),
-                bp_rp=float(self.data["color"][row_idx]),
-                spectral_type="G",
-                pm_ra_mas_yr=float(self.data["pm_ra"][row_idx]),
-                pm_dec_mas_yr=float(self.data["pm_dec"][row_idx]),
-                rv_km_s=float(self.data["rv"][row_idx]),
-                parallax_mas=plx,
-                parallax_error_mas=plx_err,
-                lower_pc=lo_pc,
-                median_pc=med_pc,
-                upper_pc=hi_pc,
-                distance_method=INVERSE_PARALLAX,
-                citation=HIPPARCOS_2007_CITATION,
-                epoch_year=float(epoch_jyear),
-            )
+        designation = (name_entry.get("designation") or None) if name_entry else None
+        constellation = name_entry.get("constellation") if name_entry else None
+        if pinned is not None:
+            common_name, designation, constellation = pinned.common_name, pinned.bayer_designation, pinned.constellation
+        if not constellation:
+            constellation = iau_constellation_codes(
+                np.array([self.data["ra0"][row_idx]]), np.array([self.data["dec0"][row_idx]])
+            )[0]
+        kind = int(self.data["dist_kind"][row_idx])
+        if kind not in _DISTANCE_METHOD_BY_KIND:
+            raise ValueError(f"{cat_source_id}: tile distance kind {kind} has no method")
+        method = _DISTANCE_METHOD_BY_KIND[kind]
+        # A Hipparcos row's colour is Johnson B-V, which is not Gaia BP-RP
+        bp_rp = None if bool(self.data["color_bv"][row_idx]) else self._row_value("color", row_idx)
+        rv = self._row_value("rv", row_idx)
+        band = HIPPARCOS_HP if bool(self.data["mag_hp"][row_idx]) else GAIA_G
         return CatalogStar(
-            id=star_id,
+            id=pinned.id if pinned is not None else (f"hip-{sid}" if is_hip else f"gaia-dr3-{sid}"),
             common_name=common_name,
-            bayer_designation=bayer,
+            bayer_designation=designation,
             constellation=constellation,
-            provider="Gaia DR3",
-            release_version=GAIA_DR3_RELEASE,
+            provider="Hipparcos" if is_hip else "Gaia DR3",
+            release_version=HIPPARCOS_2007_RELEASE if is_hip else GAIA_DR3_RELEASE,
             catalog_source_id=cat_source_id,
             ra_deg=float(ra_deg) % 360.0,
             dec_deg=float(dec_deg),
             mag=float(self.data["mag"][row_idx]),
-            bp_rp=float(self.data["color"][row_idx]),
-            spectral_type="G",
-            pm_ra_mas_yr=float(self.data["pm_ra"][row_idx]),
-            pm_dec_mas_yr=float(self.data["pm_dec"][row_idx]),
-            rv_km_s=float(self.data["rv"][row_idx]),
+            bp_rp=bp_rp,
+            spectral_type=None,
+            pm_ra_mas_yr=self._row_value("pm_ra", row_idx),
+            pm_dec_mas_yr=self._row_value("pm_dec", row_idx),
+            rv_km_s=rv,
             parallax_mas=None,
             parallax_error_mas=None,
-            lower_pc=lo_pc,
-            median_pc=med_pc,
-            upper_pc=hi_pc,
-            distance_method=BAILER_JONES_PHOTOGEOMETRIC,
-            citation=GAIA_DR3_CITATION,
+            lower_pc=float(self.data["lo_pc"][row_idx]),
+            median_pc=float(self.data["med_pc"][row_idx]),
+            upper_pc=float(self.data["hi_pc"][row_idx]),
+            distance_method=method,
+            citation=(
+                hipparcos_2007_tile_citation(magnitude_band=band)
+                if is_hip
+                else gaia_dr3_citation(
+                    color=bp_rp is not None, radial_velocity=rv is not None, distance_method=method, magnitude_band=band
+                )
+            ),
             epoch_year=float(epoch_jyear),
+            magnitude_band=band,
         )
+
+
+# The tile flag's distance kind (services/science/catalog_tiles.py) and the method it names
+_DISTANCE_METHOD_BY_KIND = {
+    ct.DIST_KIND_BJ_PHOTOGEO: BAILER_JONES_PHOTOGEOMETRIC,
+    ct.DIST_KIND_BJ_GEO: BAILER_JONES_GEOMETRIC,
+    ct.DIST_KIND_PARALLAX_INVERSE: INVERSE_PARALLAX,
+}
+
+
+@dataclass(frozen=True)
+class _ConstellationRing:
+    """One IAU constellation's boundary at equinox B1875, right ascension unwrapped along the ring."""
+
+    code: str
+    ra_deg: np.ndarray
+    dec_deg: np.ndarray
+    ra_min: float
+    ra_max: float
+    dec_min: float
+    dec_max: float
+
+
+@lru_cache(maxsize=1)
+def _constellation_rings(path: Path = CONSTELLATION_BOUNDS_PATH) -> tuple[_ConstellationRing, ...]:
+    """The shipped boundary rings, taken back to B1875 where every edge is a constant right ascension or declination.
+
+    In B1875 coordinates each ring is a polygon with straight edges in the (right ascension, declination) plane, so
+    an even-odd test there is exact up to the file's 0.0001 degree corners. A ring whose right ascension turns a
+    full circle holds a celestial pole and is closed through it.
+    """
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if doc.get("vertexEquinox") != "J2000" or doc.get("edgeEquinox") != "B1875":
+        raise ValueError(f"{path}: expected J2000 corners on B1875 edges")
+    to_b1875 = _precession_matrix_iau1976(JD_B1875)
+    rings = []
+    for entry in doc["constellations"]:
+        ring = np.asarray(entry["ring"], dtype=np.float64)
+        ra, dec = _vec_to_radec_batch(_radec_to_vec_batch(ring[:, 0], ring[:, 1]) @ to_b1875.T)
+        steps = (np.diff(ra) + 180.0) % 360.0 - 180.0
+        ra_u = np.concatenate([[ra[0]], ra[0] + np.cumsum(steps)])
+        turn = ra_u[-1] - ra_u[0]
+        if abs(turn) > 180.0:
+            pole = 90.0 if float(np.mean(dec)) > 0.0 else -90.0
+            ra_u = np.concatenate([ra_u, [ra_u[-1], ra_u[0], ra_u[0]]])
+            dec = np.concatenate([dec, [pole, pole, dec[0]]])
+        # Serpens is one IAU constellation drawn as two rings, Caput (Se1) and Cauda (Se2)
+        code = "Ser" if entry["code"] in ("Se1", "Se2") else str(entry["code"])
+        rings.append(
+            _ConstellationRing(
+                code, ra_u, dec, float(ra_u.min()), float(ra_u.max()), float(dec.min()), float(dec.max())
+            )
+        )
+    return tuple(rings)
+
+
+def _inside_ring(ring: _ConstellationRing, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Even-odd test of points against one ring in its unwrapped (right ascension, declination) plane."""
+    inside = np.zeros(x.shape, dtype=bool)
+    x1, y1, x2, y2 = ring.ra_deg[:-1], ring.dec_deg[:-1], ring.ra_deg[1:], ring.dec_deg[1:]
+    for k in np.flatnonzero(y1 != y2):
+        crosses = (y1[k] > y) != (y2[k] > y)
+        x_at = x1[k] + (y - y1[k]) * (x2[k] - x1[k]) / (y2[k] - y1[k])
+        inside ^= crosses & (x < x_at)
+    return inside
+
+
+def iau_constellation_codes(ra_deg: np.ndarray, dec_deg: np.ndarray) -> list[str | None]:
+    """The IAU constellation (three-letter code) holding each ICRS direction, or None where not exactly one does.
+
+    The direction is precessed to B1875 (IAU 1976, Lieske et al. 1977) and tested against the Delporte boundaries
+    (Davenhall and Leggett 1989). Catalog data, not measured from any recording; a direction within about 0.0001
+    degree of a boundary can fall on either side, and frame bias and the star's motion since are ignored [inference].
+    """
+    ra_deg = np.atleast_1d(np.asarray(ra_deg, dtype=np.float64))
+    dec_deg = np.atleast_1d(np.asarray(dec_deg, dtype=np.float64))
+    ra, dec = _vec_to_radec_batch(_radec_to_vec_batch(ra_deg, dec_deg) @ _precession_matrix_iau1976(JD_B1875).T)
+    rings = _constellation_rings()
+    ra_min = np.array([r.ra_min for r in rings])
+    ra_max = np.array([r.ra_max for r in rings])
+    dec_min = np.array([r.dec_min for r in rings])
+    dec_max = np.array([r.dec_max for r in rings])
+    # Each direction's right ascension shifted by whole turns to the start of each ring's unwrapped span
+    lifted = ra_min[None, :] + (ra[:, None] - ra_min[None, :]) % 360.0
+    near = (dec[:, None] >= dec_min[None, :]) & (dec[:, None] <= dec_max[None, :]) & (lifted <= ra_max[None, :])
+    hits = np.zeros(ra.shape, dtype=np.int64)
+    found = np.full(ra.shape, -1, dtype=np.int64)
+    for ring_i in np.flatnonzero(near.any(axis=0)):
+        ring = rings[ring_i]
+        idx = np.flatnonzero(near[:, ring_i])
+        x, y = lifted[idx, ring_i], dec[idx]
+        # A ring that circles a pole can span more than one turn: the direction is inside when an odd number of its
+        # lifts are
+        inside = np.zeros(idx.shape, dtype=bool)
+        while np.any(x <= ring.ra_max):
+            inside ^= _inside_ring(ring, x, y) & (x <= ring.ra_max)
+            x = x + 360.0
+        hits[idx[inside]] += 1
+        found[idx[inside]] = ring_i
+    return [rings[f].code if n == 1 else None for n, f in zip(hits.tolist(), found.tolist(), strict=True)]
+
+
+def catalog_matched_subtitle(star: CatalogStar) -> str:
+    """Designation, spectral type and distance, leaving out what the catalog lacks and a designation that only
+    repeats the star's name."""
+    designation = star.bayer_designation if star.bayer_designation != star.common_name else None
+    distance = f"{star.median_pc:.1f} pc [{star.lower_pc:.1f}-{star.upper_pc:.1f} pc]"
+    return " · ".join(part for part in (designation, star.spectral_type, distance) if part)
 
 
 @lru_cache(maxsize=2)
@@ -1507,10 +1615,27 @@ def solve_phone_photo(
         if has_time_and_place
         else None
     )
-    epoch_jyear = sky_frame.epoch_jyear if sky_frame is not None else 2026.0
     fov_models = _candidate_fovs_and_models(camera_label, fov_diagonal_deg)
 
     tile_index = _get_tile_index()
+    # Stars move by their proper motion to the capture time when there is one; without one they stay at the
+    # catalog's own epoch, and each matched finding says so
+    if obs_utc_iso is not None:
+        epoch_jyear = 2000.0 + (_parse_iso_to_jd_utc(obs_utc_iso) - JD_J2000) / DAYS_PER_JYEAR
+    else:
+        epoch_jyear = tile_index.epoch_jyear
+    if obs_utc_iso is None:
+        epoch_limitations: tuple[str, ...] = (
+            f"The photo has no capture time, so the star is placed at the catalog epoch J{tile_index.epoch_jyear:.1f}, "
+            "not moved by its proper motion to the photo's date.",
+        )
+    elif not has_time_and_place:
+        epoch_limitations = (
+            "Moved by its catalog proper motion to the photo's capture time; the photo has no place, so the star has "
+            "no altitude or azimuth.",
+        )
+    else:
+        epoch_limitations = ()
     initial_wcs: PhoneCameraWCS | None = None
 
     if sky_frame is not None and catalog_stars is None:
@@ -1715,15 +1840,7 @@ def solve_phone_photo(
                     observation_solution_id=solution_id,
                     evidence_class="catalog_matched",
                     title=st.common_name,
-                    subtitle=" · ".join(
-                        part
-                        for part in (
-                            st.bayer_designation,
-                            st.spectral_type,
-                            f"{st.median_pc:.1f} pc [{st.lower_pc:.1f}-{st.upper_pc:.1f} pc]",
-                        )
-                        if part
-                    ),
+                    subtitle=catalog_matched_subtitle(st),
                     ra_deg=st.ra_deg,
                     dec_deg=st.dec_deg,
                     alt_deg=alt_deg,
@@ -1734,7 +1851,15 @@ def solve_phone_photo(
                     pixel_residual_px=res_px,
                     angular_residual_arcsec=ang_res_arcsec,
                     verified_by_holdout=not is_train,
-                    limitations=(f"Distance is {st.distance_source}, not measured from this image.",),
+                    limitations=(
+                        f"Distance is {st.distance_source}, not measured from this image.",
+                        *(
+                            (f"Apparent magnitude is {st.magnitude_band}, not Johnson V.",)
+                            if st.magnitude_band is not None
+                            else ()
+                        ),
+                        *epoch_limitations,
+                    ),
                     source_sha256=source_sha256,
                 )
             )
