@@ -13,7 +13,8 @@ are evidence for choices, not product code: each unit rebuilds what it needs tes
 
 ```
 POST /api/media/{sha256}/restore  (kind: display_copy | restoration)        services/media/router.py
-  job: background, one at a time, child process, time bound                   services/media/jobs.py
+  job: a kind of the upload job runner, its media group (one slot)           services/media/jobs.py,
+       child process, time bound                                              services/ingest/runner.py
      1  decode by the file's own colour tags -> linear light                  services/media/colour.py, decode.py
      2  confirmed stars and their footprints, on the original's own luma      services/media/stars.py
      3  noise table, per channel and intensity                                services/media/noise.py
@@ -182,9 +183,12 @@ returns RGB stills exactly and Y'CbCr within the tolerances of P-RST-6.
 - The store and the asset record: width, height, frame rate, `audioStreams` with each stream's packet hash,
   `displayOrientation` (`services/ingest/router.py:95-141`, `services/ingest/probe.py:178-208`).
 - The HEIC tile grid reader (`services/ingest/jobs.py:224-266`), imported, not copied.
-- `BoundedWorker` (`services/science/bounded_worker.py`) for the time bound, and the atomic JSON writer
-  (`services/ingest/jobs.py:82-96`).
-- The solution id, read from `solution.json` when it exists, for the manifest.
+- The `BoundedWorker` for the time bound and the record writer, from the upload job runner's context (the
+  upload jobs spec, design 3.2), not from `services/science/bounded_worker.py` and `services/ingest/jobs.py:82-96`
+  directly.
+- The solution id, for the manifest: from the job store's newest `succeeded` solve (`newest_solution_id`, the
+  upload jobs design 3.1), not from `solution.json` alone; it is the same `sol_<hash16>` for every solve of the
+  upload (REQ-JOB-5.8).
 - Not reused: the solve job's detections. It calls the detector without the tile calibration (M5) and, for a clip,
   on a stack of 8 frames (`jobs.py:521-523`), while restoration needs every frame's own points.
 
@@ -213,9 +217,10 @@ still it is `_to_luma_2d` of the RGB codes, as the solve job feeds the detector 
    overlapping footprints take the larger weight. Measured radii: medians of 3 to 12 px per crop (M12).
 
 The two detector helpers are private names of `services/science/detector.py`. `services/media/runtime.py:30-36`
-imports private names from the same lane today. restore-3 imports the two helpers for now; the lane that owns the
-detector will publish one shared function for the matched-filter noise, and restore switches to it when it lands
-[decided 2026-11-11: the same measure is needed to stop the detection flood in the solver (M5)].
+imports private names from the same lane today. The shared function for the matched-filter noise is unit
+realsky-3 of the REALSKY lane (`matched_filter_noise` in `services/science/detector.py`, request
+`.lead/kiro/requests/realsky-3.md`); restore-3 imports it once it has landed, and until then keeps the two
+private helpers [decided 2026-11-11: the same measure is needed to stop the detection flood in the solver (M5)].
 
 The statistic of steps 2 and 3 is the one restore-4 chooses for the gate (section 7): the stars, the points of the
 dissolve passes and the points of the gate are all found with the same one (REQ-RST-6.7). The steps above describe
@@ -503,7 +508,8 @@ refused, so the limit stays visible.
 ```
 <ingest root>/<aa>/<sha256>/                 0700   (exists)
   original.<ext>                             0400   (exists, never touched)
-  record.json, job.json, solution.json              (exist)
+  record.json, job.json, solution.json              (exist; the solve's records from before the runner)
+  solutions/                                 0700   the runner's solve results
   variants/                                  0700
     <variantId>/                             0700
       variant.<png|mp4|mov>                  0400
@@ -512,23 +518,25 @@ refused, so the limit stays visible.
       attempt.json                           0400   ProcessingAttempt, status ready
   attempts/                                  0700
     <attemptId>.json                         0400   every finished attempt: ready, rejected or failed
-  restore-jobs/                              0700
-    <jobId>.json                             0600 while it runs, 0400 once finished
+  jobs/                                      0700   the runner's job records, of every kind
+    <job_id>.json                            0600 while it runs, 0400 once finished
 ```
 
-- Files are written under the store root's `.partial/` (`services/ingest/store.py:190-193`), hashed while
-  written, then linked into place with `os.link`, which fails when the name exists, so nothing is overwritten;
-  folders through the store's own `_private_folder` rule (`store.py:256-265`). The store's sweep of old partial
-  files already covers a crashed job (`store.py:151-166`).
+- Files are written under the store root's `.partial/` (`ctx.partial`, the upload jobs design 3.1), hashed while
+  written; the variant folder is assembled there and renamed into place whole (`ctx.publish`), which fails when
+  the name exists, so nothing is overwritten and no variant folder is ever seen with some of its files; folders
+  through the store's own `_private_folder` rule (`store.py:256-265`). The runner removes a stopped job's
+  partial files when the job ends, not after a day.
 - Ids: `graph_<h>` and `var_<h>` with `h` the first 16 hex digits of the SHA-256 of the canonical JSON of
-  `{sourceSha256, kind, pipelineVersion, request}`; `att_<h2>` and `rjob_<h2>` with `h2` from the graph id and the
-  attempt's start time. `pipelineVersion` is one constant in `services/media/`, raised by any unit that changes
-  pixels.
+  `{sourceSha256, kind, pipelineVersion, request}`; `att_<h2>` with `h2` from the graph id and the attempt's
+  start time. The job id is the runner's `job_<hash16><16 hex>` (the upload jobs design 3.1). `pipelineVersion`
+  is one constant in `services/media/`, raised by any unit that changes pixels.
 - `GET /api/media/{sha256}/variants`: `{variants: [MediaVariant], attempts: [ProcessingAttempt]}`.
   `GET .../variants/{variantId}`: `{variant, graph, attempt}`. `GET .../variants/{variantId}/file`: the bytes with
   `Cache-Control: private, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`,
   `Content-Disposition: inline`, as the original is served (`services/ingest/router.py:226-234`), and byte
-  ranges for clips. A hash, variant id or job id that does not match its pattern is 422; an unknown one 404.
+  ranges for clips. A hash or variant id that does not match its pattern, or a job id that does not match
+  `JOB_ID_PATTERN`, is 422; an unknown one 404.
 - There is no listing across uploads: a variant is reached only through its original's full hash, as an original
   is.
 - `tests/fixtures/api_surface.json` gains the new routes and loses the old one in the units that add and remove
@@ -599,7 +607,8 @@ decodes the clip once, in order, and hands the frames out in runs of consecutive
 neighbours either side that its window needs [proposed: runs of 8 frames]. Each worker does everything between
 decode and encode for its run and returns the finished frames; the child writes them to the one encoder in frame
 order. The pool has a stated default size, half the machine's cores and at least one [proposed], and is bounded:
-no more runs are handed out than there are workers, so memory does not grow with the clip. The result must not
+no more runs are handed out than there are workers, so memory does not grow with the clip. The pool is in the job
+child's process group, so a cancel or the bound stops it (the upload jobs spec, design 3.3). The result must not
 depend on the pool's size: a test runs one clip with one worker and with two and compares the stored files'
 hashes. Two, because agents' test runs stay inside the lane's limit of two processes; only the timed run on the
 owner's clips uses the default pool, and the unit asks the lead for a time to run it [proposed].
@@ -665,15 +674,15 @@ would. A unit that cannot show an improvement there says "unsolved on real data"
 
 ### 11. The job (`services/media/jobs.py`)
 
-- `POST /api/media/{sha256}/restore` validates the request and computes the ids. When that variant is stored it
-  answers 200 with the finished job record that made it. Else it writes a `queued` job record, hands the job to
-  the one background worker thread and answers 202 with the record. The thread runs the work through a
-  `BoundedWorker` child, as the solve job runs its
-  searches (`services/ingest/jobs.py:576-606`): the child gets the store root, the hash and the request, sends
-  progress events, and returns records. Pixels never reach the API process; for a clip they pass only between the
-  child and its pool of workers (section 10).
+- `POST /api/media/{sha256}/restore` validates the request, computes the ids and calls
+  `runner.start(kind, subject=graphId, request)` (the upload jobs design 3.2 and 3.10). When that variant is
+  stored, the answer is the runner's current-job answer: 200 with the `succeeded` job that made it. A request
+  that matches an active job joins it; else the runner makes a `queued` job in its `media` group, and the route
+  answers 202 with it. The kind's work runs in the `BoundedWorker` child the runner's context gives it: the child
+  gets the store root, the hash and the request, sends progress events, and returns records. Pixels never reach
+  the API process; for a clip they pass only between the child and its pool of workers (section 10).
 - States: `queued`, `running`, `succeeded` (the attempt is `ready`), `rejected` (it ran to the end and a check
-  said no), `failed`.
+  said no), `failed`, and the runner's `canceled` (REQ-JOB-4) and `interrupted` (REQ-JOB-3.2).
 - Stages and their counts (REQ-RST-8.1): `decode` frames of the counted video packets; `measure` frames of the
   sampled frames; `restore` frames; `encode` frames; `write` bytes with a null total until the file is closed;
   `verify` frames. The job record is written when a stage completes and, for a clip, at most once a second while
@@ -690,7 +699,9 @@ would. A unit that cannot show an improvement there says "unsolved on real data"
 - At the bound, or on any failure, the partial file is removed and an attempt record with status `failed` is
   stored.
 - The original is hashed at the start and at the end (REQ-RST-1.2).
-- Fixed failure sentences, the only text a failed job stores:
+- Fixed failure sentences, the only text a failed job stores. The time-limit and internal-error sentences are the
+  kind's own, passed to the runner; a job a stopped server left `running` stores the runner's "The server stopped
+  before this job finished.":
   "The file could not be decoded."; "This kind of file is not supported yet: <format>." with `<format>` from a
   fixed list of format names; "This ffmpeg cannot do what this file needs: <capability>."; "A display copy is not
   made for a clip."; "The frame times could not be kept."; "An audio stream could not be copied unchanged.";
@@ -705,7 +716,7 @@ would. A unit that cannot show an improvement there says "unsolved on real data"
   `albedian-<variantId>.manifest.json`. It is built on request from the three stored records and the solution id
   read at that moment, so it is the same for the same stored state and holds no clock of its own.
 - Fields: `format` ("albedian.export-manifest"), `formatVersion` (1), `sourceSha256`, `variant`, `graph`,
-  `attempt`, `observationSolutionId` when `solution.json` exists, `disclosure`.
+  `attempt`, `observationSolutionId` when the upload has a `succeeded` solve (`newest_solution_id`), `disclosure`.
 - It holds no title, file name, capture time, place or path: the three records hold none (P-RST-19). The exported
   file carries no container tag of the original either [decided 2026-11-11: an export is made to be shared; the
   owner can ask for their own metadata later].
@@ -761,8 +772,10 @@ export const GRAPH_STEP_KINDS = [
 ] as const;
 export const MEDIA_ID_PATTERNS = {
   graph: '^graph_[0-9a-f]{16}$', variant: '^var_[0-9a-f]{16}$',
-  attempt: '^att_[0-9a-f]{16}$', job: '^rjob_[0-9a-f]{16}$',
+  attempt: '^att_[0-9a-f]{16}$',
 } as const;
+// The job id is the upload job runner's: JOB_ID_PATTERN moves to this file, beside SHA256_HEX_PATTERN, and
+// ingest.ts imports it from here (the upload jobs design 3.8)
 export const DISCLOSURES = {
   display_copy: "The original's own pixels, re-encoded without loss so a browser can show them. Nothing was restored.",
   restoration: "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
@@ -899,7 +912,7 @@ export const ProcessingAttemptSchema = z
     id: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.attempt)),
     sourceSha256: sha256(),
     graphId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.graph)),
-    jobId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.job)),
+    jobId: z.string().regex(new RegExp(JOB_ID_PATTERN)),
     status: z.enum(ATTEMPT_STATUSES),
     startedAtUTC: utcInstant(),
     finishedAtUTC: utcInstant(),
@@ -942,34 +955,10 @@ export const MediaVariantSchema = z
   .strict(); // refined: disclosure equals DISCLOSURES[kind]; a still has frameCount 1, durationMs 0, no audio and
              // no frameTimesSha256; a clip has frameTimesSha256
 
-export const RESTORE_JOB_STAGES = ['decode', 'measure', 'restore', 'encode', 'write', 'verify'] as const;
-export const RESTORE_JOB_STATES = ['queued', 'running', 'succeeded', 'rejected', 'failed'] as const;
-
-export const RestoreJobSchema = z
-  .object({
-    id: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.job)),
-    sourceAssetSha256: sha256(),
-    request: RestoreRequestSchema,
-    state: z.enum(RESTORE_JOB_STATES),
-    createdAtUTC: utcInstant(),
-    startedAtUTC: utcInstant().optional(),
-    finishedAtUTC: utcInstant().optional(),
-    stages: z.array(
-      z
-        .object({
-          stage: z.enum(RESTORE_JOB_STAGES),
-          unit: z.enum(['frames', 'bytes']),
-          done: z.number().int().nonnegative(),
-          total: z.number().int().positive().nullable(),
-        })
-        .strict()
-    ),
-    attemptId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.attempt)).optional(),
-    variantId: z.string().regex(new RegExp(MEDIA_ID_PATTERNS.variant)).optional(),
-    error: z.string().min(1).max(200).optional(),
-  })
-  .strict(); // refined as SolveJob is: fields fit the state; times run created, started, finished; stages once each
-             // in pipeline order; done <= total; write is in bytes and every other stage in frames
+// No job schema here: a display copy or restoration job is the upload job runner's UploadJobSchema with kind
+// 'display_copy' or 'restoration' (platform-1, the upload jobs design 3.8). Its stages and units are the same as
+// here: decode, measure, restore, encode and verify in frames, write in bytes (REQ-RST-8.1); a display copy has
+// decode, encode, write and verify (the upload jobs design 3.10).
 
 export const ExportManifestSchema = z
   .object({
@@ -1005,7 +994,7 @@ Semver = Annotated[str, StringConstraints(pattern=r"^\d+\.\d+\.\d+$")]
 GraphId = Annotated[str, StringConstraints(pattern=r"^graph_[0-9a-f]{16}$")]
 VariantId = Annotated[str, StringConstraints(pattern=r"^var_[0-9a-f]{16}$")]
 AttemptId = Annotated[str, StringConstraints(pattern=r"^att_[0-9a-f]{16}$")]
-RestoreJobId = Annotated[str, StringConstraints(pattern=r"^rjob_[0-9a-f]{16}$")]
+JobId = Annotated[str, StringConstraints(pattern=JOB_ID_PATTERN)]  # JOB_ID_PATTERN from services/contracts/ingest.py
 Count = Annotated[int, Field(ge=0)]
 Positive = Annotated[int, Field(gt=0)]
 NonNegative = Annotated[float, Field(ge=0)]
@@ -1113,7 +1102,7 @@ class ProcessingAttempt(_Model):
     id: AttemptId
     source_sha256: Sha256
     graph_id: GraphId
-    job_id: RestoreJobId
+    job_id: JobId
     status: Literal["ready", "rejected", "failed"]
     started_at_utc: UtcInstant = Field(alias="startedAtUTC")
     finished_at_utc: UtcInstant = Field(alias="finishedAtUTC")
@@ -1148,26 +1137,6 @@ class MediaVariant(_Model):
     disclosure: Text
     created_at_utc: UtcInstant = Field(alias="createdAtUTC")
 
-class RestoreStageProgress(_Model):
-    nullable: ClassVar[frozenset[str]] = frozenset({"total"})
-    stage: Literal["decode", "measure", "restore", "encode", "write", "verify"]
-    unit: Literal["frames", "bytes"]
-    done: Count
-    total: Optional[Positive]
-
-class RestoreJob(_Model):
-    id: RestoreJobId
-    source_asset_sha256: Sha256
-    request: RestoreRequest
-    state: Literal["queued", "running", "succeeded", "rejected", "failed"]
-    created_at_utc: UtcInstant = Field(alias="createdAtUTC")
-    started_at_utc: Optional[UtcInstant] = Field(default=None, alias="startedAtUTC")
-    finished_at_utc: Optional[UtcInstant] = Field(default=None, alias="finishedAtUTC")
-    stages: list[RestoreStageProgress]
-    attempt_id: Optional[AttemptId] = None
-    variant_id: Optional[VariantId] = None
-    error: Optional[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = None
-
 class ExportManifest(_Model):
     format: Literal["albedian.export-manifest"]
     format_version: Literal[1]
@@ -1192,7 +1161,8 @@ strict; every new shape is strict on both sides.
 an environment switch, as the ingest fixture is (`tests/integration/test_ingest_contract.py:1-8`), and parsed by
 `packages/contracts/src/__tests__/media.test.ts`. Valid samples: a request of each kind; a display copy and a
 restoration of a still, each with graph, attempt and variant; a clip restoration; a rejected attempt of each
-rejection reason; a failed attempt; a job in each state; a manifest. Invalid samples, each with its reason: one per
+rejection reason; a failed attempt; a manifest. The job samples live in `tests/fixtures/ingest_contract.json`
+(platform-1). Invalid samples, each with its reason: one per
 refinement above. All values are synthetic (hashes typed for the test, no real upload).
 
 **The same unit adapts** every file that reads a removed field [verified: a search at `dcdbd65d` finds them in
@@ -1201,8 +1171,8 @@ these files and in `services/media/models.py`, which restore-9 removes]:
 `packages/observation/src/reducer.ts` (`media.restore` picks a variant by kind, not by `profileName`),
 `packages/observation/src/checkpoints.ts` (`validateMediaTimelineSync` loses its list of frame times),
 `packages/observation/src/emptySession.ts`, `packages/observation/src/testing/syntheticSessions.ts`, the tests of
-those files, and `scripts/verify-contracts.mjs` (adds `RestoreRequestSchema`, `RestoreJobSchema`,
-`IntegrityGateResultSchema` and `ExportManifestSchema`). Those are shared files; `tasks.md` names them for
+those files, and `scripts/verify-contracts.mjs` (adds `RestoreRequestSchema`, `IntegrityGateResultSchema` and
+`ExportManifestSchema`; the job is the upload jobs spec's). Those are shared files; `tasks.md` names them for
 restore-1, so they are approved when the spec lands [decided 2026-11-11: one yes for the plan]. The session's
 `media.restore` stays honest: it still refuses plainly when no variant exists. The web app is wired to the new
 routes later, by its own lane [decided 2026-11-11: the session must not claim a variant it does not have, and the

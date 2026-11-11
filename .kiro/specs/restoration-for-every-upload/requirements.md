@@ -101,8 +101,10 @@ file and get back a stored file I can check, with my original untouched.
      with no stored original and 422 for any other body. No route SHALL take pixel arrays.
   2. THE job SHALL read the original only through the store, SHALL never open it for writing, and SHALL hash its
      bytes at the start and at the end of the job. WHEN either hash differs from the store's, THE job SHALL fail.
-  3. A variant SHALL be written at `<root>/<aa>/<sha256>/variants/<variantId>/`, linked into place without
-     overwriting, the file and each of its records with mode 0400 and every folder with mode 0700.
+  3. A variant SHALL be assembled under the store's `.partial/` and renamed into
+     `<root>/<aa>/<sha256>/variants/<variantId>/` whole, without overwriting, so a crash never leaves a variant
+     folder with some of its files (REQ-JOB-5.3); the file and each of its records with mode 0400 and every folder
+     with mode 0700 [decided 2026-11-11: the upload jobs spec, ruling 5].
   4. THE variant record SHALL carry the source's SHA-256, the variant file's own SHA-256 hashed from the written
      bytes, its byte size, its stored width and height (equal to the original's) and the ids of its graph and
      attempt.
@@ -294,19 +296,23 @@ reason when it fails.
      unknown (null) until the file is closed; `verify` in frames. A still counts as one frame.
   2. No stage SHALL report work it did not do, and a stage that did not run SHALL be absent.
   3. THE work SHALL run in a child process stopped at a time bound computed from the file's megapixels and frame
-     count at a stated rate. At the bound the job SHALL end `failed` with a generic reason, and every partial file
-     SHALL be removed.
-  4. THE job record SHALL be stored at each stage's completion and read by
-     `GET /api/media/restore-jobs/{jobId}`.
-  5. A failure reason SHALL be one of a fixed list of sentences. No stored record and no response SHALL hold a
-     path, a file name, a title, a capture time or a place.
+     count at a stated rate; the stop SHALL reach every process the child started (its pool, and their ffmpeg and
+     ffprobe children), not only the child (the upload jobs spec, design 3.3). At the bound the job SHALL end
+     `failed` with a generic reason, and every partial file SHALL be removed.
+  4. THE job record SHALL be stored at each stage's completion and read by `GET /api/ingest/jobs/{job_id}`, the
+     runner's route for a job of any kind (REQ-JOB-7.3).
+  5. A failure reason SHALL be one of a fixed list of sentences, which includes the runner's "The server stopped
+     before this job finished." for a job left `running` by a stopped server (REQ-JOB-3.2). No stored record and
+     no response SHALL hold a path, a file name, a title, a capture time or a place.
   6. `GET /api/media/{sha256}/variants` SHALL list the stored variants and attempts of an original;
      `GET /api/media/{sha256}/variants/{variantId}` SHALL return a variant's records; and
      `GET /api/media/{sha256}/variants/{variantId}/file` SHALL return its bytes, private, never sniffed, with byte
      ranges.
-  7. One restoration SHALL run at a time. A second request SHALL wait in the state `queued`.
+  7. One display copy or restoration SHALL run at a time: the upload job runner's `media` group has one slot
+     (REQ-JOB-1.1). A second request, of either kind, SHALL wait in the state `queued` in that group's queue.
   8. THE job SHALL reuse what the solve job already has: the store and its asset record (size, frame rate, audio
-     stream hashes, display orientation), the HEIC tile grid reader, the bounded worker, and the solution id.
+     stream hashes, display orientation), the HEIC tile grid reader, the upload job runner, which gives the kind
+     its bounded worker, and the solution id.
   9. Speed [decided 2026-11-11: the product may use the laptop's cores at run time; the limit of two processes in
      the lane contract is for agents' test runs, not for the app]. Unit restore-3 SHALL report the still path's
      seconds per megapixel on one core and bring it to a stated target [proposed: at most 0.5 s per megapixel on
@@ -314,6 +320,10 @@ reason when it fails.
      default size [proposed: half the cores] and SHALL report the time for each of the owner's clips against a
      target [proposed: a 15 second clip of 2.4 megapixel frames in under 10 minutes on this laptop]. A unit that
      misses its target SHALL say what dominates the time.
+  10. THE display copy and the restoration SHALL be kinds of the upload job runner (`.kiro/specs/upload-jobs/`,
+      REQ-JOB-1) and SHALL inherit its cancel (REQ-JOB-4) and its restart rules (REQ-JOB-3: a job a stopped server
+      left `running` becomes `interrupted` and never runs again by itself; a `queued` one runs) [decided
+      2026-11-11: the upload jobs spec, ruling 5].
 
 ### REQ-RST-9: Export
 **User Story:** As someone who wants to keep or share the result, I want the file and a plain account of how it was
@@ -398,7 +408,7 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
 
 - **P-RST-1** (REQ-RST-1.2, 1.3): for any stored original and any request, after the job the original's bytes
   hash to the same SHA-256, its mode is unchanged, and nothing under the upload's folder changed outside
-  `variants/`, `attempts/` and `restore-jobs/`.
+  `variants/`, `attempts/` and `jobs/`.
 - **P-RST-2** (REQ-RST-1.5, 4.7): every parameter of every step of a generated graph has an origin and a basis that
   is not empty; a parameter marked `measured` changes when the frame's noise is doubled, and none marked `default`
   does.

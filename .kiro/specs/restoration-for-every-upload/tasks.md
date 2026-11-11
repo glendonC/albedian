@@ -8,14 +8,15 @@ ones it lists included; a unit asks only before touching a file this document do
 real photos and, for clips, the owner's clips as counts only (REQ-RST-12), and writes its before and after
 pictures under `.cache/restore-review/<unit>/`.
 
-- [ ] 0. restore-0: this spec, and the corrections of the two older specs' task lists (decision 12)
+- [x] 0. restore-0: this spec, and the corrections of the two older specs' task lists (decision 12)
   - `.kiro/specs/restoration-for-every-upload/requirements.md`, `design.md`, `tasks.md`;
     `.kiro/specs/media-experiment-runtime/tasks.md`; `.kiro/specs/export-and-provenance/tasks.md`.
-  - Docs only. Measurements behind it: `design.md`, "Measured facts". Written; checked here when the lead lands
-    it.
+  - Docs only. Measurements behind it: `design.md`, "Measured facts". Landed on `main` as `b59ae181`.
 
 - [ ] 1. restore-1: the contracts (REQ-RST-10; P-RST-20)
-  - `packages/contracts/src/media.ts`: the shapes of `design.md` section 14, and the removals listed there.
+  - `packages/contracts/src/media.ts`: the shapes of `design.md` section 14, and the removals listed there. No job
+    schema and no job id pattern of its own: it adds the upload job runner's `JOB_ID_PATTERN`, which moves here
+    (the upload jobs spec, design 3.8); the job is `UploadJobSchema` (platform-1).
   - `services/contracts/media.py` (new) with `build_media_samples()`; `services/contracts/__init__.py`.
   - `tests/fixtures/media_contract.json` (new); `tests/integration/test_media_contract.py` (new);
     `packages/contracts/src/__tests__/media.test.ts` (new); the media cases of
@@ -39,9 +40,14 @@ pictures under `.cache/restore-review/<unit>/`.
   stills, REQ-RST-8; P-RST-1, 3, 4, 5, 6, 18, 19)
   - New: `services/media/colour.py` (the four transfer functions, the matrices, the ranges, chroma siting, ICC
     curves), `services/media/decode.py` (stills at 8 and 16 bits, HEIC tiles in colour),
-    `services/media/png16.py`, `services/media/variants.py`, `services/media/jobs.py`; tests under `tests/media/`.
-  - Changed: `services/media/router.py` (the restore, job, list, records and file routes; the old array route
-    stays until restore-9), `tests/fixtures/api_surface.json`.
+    `services/media/png16.py`, `services/media/variants.py`, `services/media/jobs.py` (registers the kinds
+    `display_copy` and `restoration` on the upload job runner, the upload jobs spec, design 3.10); tests under
+    `tests/media/`.
+  - Changed: `services/media/router.py` (the restore, list, records and file routes; a job is read through the
+    runner's `GET /api/ingest/jobs/{job_id}`, not a route here; the old array route stays until restore-9),
+    `tests/fixtures/api_surface.json`.
+  - It waits for platform-5 [decided 2026-11-11: the runner for the solve kind lands before the restoration lane
+    wires its job and routes to it].
   - Outside `services/media/`, named here for this unit: `services/ingest/metadata.py` (`read_heif` returns the
     primary item's colour property).
   - The job runs kind `display_copy` end to end for stills and refuses it for clips; kind `restoration` answers
@@ -54,17 +60,17 @@ pictures under `.cache/restore-review/<unit>/`.
   - Done when: a HEIC upload gets a PNG the browser draws, stored beside the original with modes 0400 and 0700,
     listed and served by its hash; a changed sample fails verification; the original's hash and mode are
     untouched.
-  - _Requirements: REQ-RST-1.1 to 1.7, 2.1 to 2.7, 3.1 to 3.6, 8.1 to 8.8_
+  - _Requirements: REQ-RST-1.1 to 1.7, 2.1 to 2.7, 3.1 to 3.6, 8.1 to 8.8, 8.10_
 
 - [ ] 3. restore-3: the photo path as pure functions (REQ-RST-4, REQ-RST-5, REQ-RST-6.1, 6.2, REQ-RST-8.9; P-RST-2,
   7, 8, 9, 10, 12)
   - New: `services/media/stars.py`, `services/media/noise.py`, `services/media/spatial.py`,
     `services/media/tone.py`; tests under `tests/media/`. These take arrays and return arrays and records; the
     lift takes the transfer's slope as an argument, so the unit imports nothing from restore-2.
-  - The detector's matched-filter noise: the unit imports the two private helpers of
-    `services/science/detector.py` for now, as `services/media/runtime.py` does today. The lane that owns the
-    detector will publish one shared function for it, and restore switches to it when it lands [decided
-    2026-11-11: the same measure is needed to stop the detection flood in the solver].
+  - The detector's matched-filter noise: the unit imports `matched_filter_noise` of
+    `services/science/detector.py` once unit realsky-3 has landed it, and until then the two private helpers, as
+    `services/media/runtime.py` does today [decided 2026-11-11: the same measure is needed to stop the detection
+    flood in the solver].
   - Speed: the unit reports the still path's seconds per megapixel on one core, per step, and brings it to the
     target [decided 2026-11-11 that it does; proposed: at most 0.5 s per megapixel on one core]. If it misses, it
     says what dominates the time.
@@ -139,6 +145,10 @@ pictures under `.cache/restore-review/<unit>/`.
     it remains. Two tests, one per guard: nothing present only in the neighbours (P-RST-14, on the stored clip),
     and nothing that stays on one sensor pixel while the registration says the scene moved (P-RST-24). P-RST-23
     shows the faint star that the frames together confirm.
+  - What the restore-5 audit found [decided 2026-11-11]: a job that ends a run stops its ffmpeg and ffprobe
+    children by their own process ids (a hung encoder outlived the worker in the audit); every decode and encode
+    child has a time bound of its own; and the variant is written under a partial name and renamed into place
+    only when its checks pass (a killed worker left a playable short clip at the output path).
   - Frames run in a bounded pool of worker processes, default half the cores [proposed], with the same stored
     file whatever the pool's size [decided 2026-11-11: the product may use the laptop's cores at run time; the
     limit of two processes is for agents' test runs]. So the unit's tests use a pool of at most two workers, and
@@ -184,7 +194,8 @@ pictures under `.cache/restore-review/<unit>/`.
 ## Order and what can run in parallel
 
 - restore-1 first, alone: everything else builds on its shapes.
-- Then restore-2, restore-3 and restore-5 together: they share no file.
+- Then restore-3 and restore-5 together: they share no file, and neither waits for the upload job runner.
+- restore-2 after platform-5 of the upload jobs spec, the runner and its routes [decided 2026-11-11].
 - restore-4 after restore-2 and restore-3. restore-6 after restore-3; it can run beside restore-4.
 - restore-7 after restore-4, restore-5 and restore-6. restore-8 after restore-4; it can run beside restore-7
   (`router.py` and `variants.py` against `jobs.py`, `gate.py` and `encode.py`).
@@ -195,9 +206,9 @@ pictures under `.cache/restore-review/<unit>/`.
 - The web app is wired to the new routes by its own lane (`apps/web/src/`, owner `experience`): it asks for a
   display copy after a HEIC or TIFF upload, shows variants and offers the export, once restore-2 has landed
   [decided 2026-11-11: the web app is that lane's files].
-- One shared function for the detector's matched-filter noise in `services/science/detector.py`, published by the
-  lane that owns the detector; restore switches to it when it lands [decided 2026-11-11: the solver needs the same
-  measure to stop its detection flood].
+- One shared function for the detector's matched-filter noise, `matched_filter_noise` in
+  `services/science/detector.py`: unit realsky-3 of the REALSKY lane; restore switches to it when it lands
+  [decided 2026-11-11: the solver needs the same measure to stop its detection flood].
 - A smaller 8 bit rendition of a still for a phone on a slow link: not part of this spec [open]; if one is ever
   served, it is gated as its own file.
 - OpenCV as a dependency (`design.md` section 18): proposed, not scheduled.
