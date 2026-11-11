@@ -132,7 +132,8 @@ camera. Solver adapter `today-api`: the baseline 18-star triangle solver as expo
 `POST /api/science/solve`, on its default 18-star catalog, blind, with a 120 s limit per frame; 8 worker
 processes on an 18-core arm64 Mac. Machine-readable:
 `research/benchmarks/phone_photos/results/today-solver-baseline.json`.
-Any later change to the solver or its gate needs a re-run before these numbers describe it.
+Any later change to the solver or its gate needs a re-run before these numbers describe it. These numbers describe
+an earlier search; the same adapter on today's search, before and after solver-10k-a, is at the end of this section.
 
 | Frames | Count | correct | imprecise | wrong | unresolved | timeout |
 |---|---|---|---|---|---|---|
@@ -166,6 +167,57 @@ whatever catalog it gets (`services/science/solver.py`, the `cat_pool` line) [ve
 code], so the larger list adds few triangles to a frame; and the horizon and Moon solver never claims
 held-out verification by design, so the benchmark would score every frame as no claim [inference].
 On the CI subset, `today-api` solved 0 of 4 positives and claimed nothing on its 4 negatives.
+
+### `today-api` since solver-10k-a
+
+solver-10k-a makes the triangle search behind `today-api` (`solve_and_verify_field` in
+`services/science/solver.py`) fast without changing what it finds. It is still the search above, on the 18 brightest
+pinned stars, or on a given catalog alone. Three parts changed. A detector triangle finds its catalog triangles
+through a KD-tree on their two side ratios (`_RatioIndex`) instead of a loop over all of them. Each candidate
+projects the catalog once, vectorized (`_project`, `_greedy_pairs`), instead of once per detection and star. Held-out
+verification (`verify_held_out`) measures only the stars that projection puts near a detection. Every star either
+pairing keeps is measured with `WCSModel.world_to_pixel` as before, so the pairs are the same.
+
+What the repository runs on this is `uv run pytest tests/science/test_triangle_dense_fields.py`. It compares each
+fast piece, and whole solutions from status and solver identity to every finding and warning and the candidate
+sequence, with the search before solver-10k-a, whose loops the test writes out one star and detection at a time. It
+does so on a CI frame, rendered pinned-star, wide and dense fields, and in properties over every float: NaN, the
+infinities, subnormals and finite values too large for a KD-tree, past a quarter of the square root of the largest
+float (about 3.4e153, where a squared distance could overflow), directly and through `POST /api/science/solve`
+[tested, simulated]. A detection at a NaN or infinite position pairs with no star, and a value past the limit is
+compared with every star, as in those loops. Before landing, on 2026-11-11, the lane also compared whole solutions
+with main's own `solver.py` at `cd10d044` (equal at `dcdbd65d`), loaded beside this one: 62 runs (31 inputs: the 8
+CI frames, 13 rendered pinned-star fields, 7 of them wide or strongly distorted, and 10 dense Milky Way and
+random-dot inputs, each with the 18 pinned stars and with the 71-star list), 57 more whose detections carry NaN or
+infinite positions, fluxes or SNRs, and 238 more with finite values past that limit, the boundary floats around it or
+random floats from every bit pattern, all equal [inference: that comparison script is not in the repository].
+
+The tile catalog's stars are not searched. solver-10k first added a second pass over them; on some benchmark frames
+that pass named wrong stars, so it is left for a later unit, solver-10k-b [open].
+
+Re-run on 2026-11-11 with the 120 s limit. Time is the solver's wall time per frame on one worker, detection
+included. The CI subset row is this version of solver-10k-a against main at `dcdbd65d` (its `solver.py` equals
+`cd10d044`'s), with `uv run python -m research.benchmarks.phone_photos run --suite ci --solver today-api --workers 2
+--timeout 120`, the before side run from a checkout of `dcdbd65d`, load averages 8.2 to 8.6 on 18 cores [tested,
+2026-11-11, simulated; times vary with the machine's load]. The other rows are the lane's measurement before landing
+of the unit's first version, which is not in the repository, against main at `cd10d044`, 4 worker processes, load
+averages 33 to 47 before and 14 to 25 after [inference: the before side can be run with `--suite full` from a checkout
+of `cd10d044`, the after side as measured cannot]. The later versions change only inputs a KD-tree cannot hold, NaN,
+infinite or past 3.4e153, which these frames do not carry [inference]:
+
+| Frames | Before: correct, false, timeouts | After: correct, false, timeouts | Before: time, median and max | After: time, median and max |
+|---|---|---|---|---|
+| CI subset (4 positives, 4 hard negatives) | 0, 0, 0 | 0, 0, 0 | 0.26 s, 6.07 s | 0.06 s, 0.56 s |
+| The full suite's first 60 frames (all positives) | 0, 0, 15 | 0, 0, 0 | 8.78 s, 120.0 s | 1.01 s, 29.3 s |
+| 20 positives past frame 60 with observer latitude below 0 | 0, 0, 3 | 0, 0, 0 | 5.14 s, 120.0 s | 1.16 s, 7.22 s |
+| The other 190 frames past 60 (130 positives, 60 hard negatives) | 0, 0, 34 | 0, 0, 0 | 14.5 s, 130.2 s | 1.23 s, 39.4 s |
+
+Neither run calibrated any frame, so neither named a catalog star: 0 catalog matches, and so 0 wrong-star matches,
+on all 270 frames before and after. The 52 frames that hit the limit before (17 of them hard negatives) now finish,
+all without a claim; no other frame changed its outcome [inference, as for those rows]. `phone-photo` on the CI
+subset, before and after alike in the same re-run as its row (the command above with `--solver phone-photo`): 3 of 4
+positives correct, 0 false claims, 0 timeouts, 145 catalog matches, none of them wrong-star, the matches summed from
+each frame's `matches` and `match_precision` in the run's `frames.jsonl` [tested, 2026-11-11, simulated].
 
 ## Results: G 12 tile-backed phone-photo solver (simulated)
 

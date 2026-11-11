@@ -4,9 +4,10 @@ Covers:
 - A 30 s sleep with a 1 s bound raises WorkerTimeout within a stated margin, and the same worker then serves the
   next call from a fresh child.
 - Results, a child's exception (type and text) and progress events come back in order.
-- The benchmark's run_solver stops a running solve at its timeout and reports "timeout": after a warm-up call,
-  a dense simulated frame that takes about 2 s in this process is stopped at 0.5 s. SIGALRM could only act
-  between bytecodes and only on the main thread; the worker also runs off the main thread.
+- The benchmark's run_solver stops a running solver call at its timeout and reports "timeout": after a warm-up
+  call, a dense simulated frame is stopped at 0.08 s, while the child detects its point sources (the plate solve
+  after detection is too short to stop with a margin). SIGALRM could only act between bytecodes and only on the main
+  thread; the worker also runs off the main thread.
 """
 
 from __future__ import annotations
@@ -109,8 +110,15 @@ def _dense_frame(width: int = 640, height: int = 480, sources: int = 1500) -> np
 
 
 DENSE_METADATA = {"utc": "2026-01-15T03:00:00Z", "latDeg": 35.0, "lonDeg": -110.0}
-# The 1600 x 1200 frame with 4000 sources takes about 2 s in this process [tested]; the bound stops it well before
-SLOW_TIMEOUT_S = 0.5
+# What the bound stops: the child's point-source detection on the 1600 x 1200 frame with 4000 sources. Before landing
+# (parent dcdbd65d, 2026-11-11, load averages 20 to 40 on 18 cores) the lane timed it in one process over 40 runs:
+# luma took 0.006 to 0.021 s, detection (`detect_point_sources`, 3678 detections) 0.311 to 0.816 s and the plate solve
+# after it 0.041 to 0.134 s; over 20 runs the frame's round trip to the warmed child took 0.007 to 0.020 s and the
+# whole warmed call 0.378 to 0.458 s [inference: that timing script is not in the repository]. So detection starts
+# within 0.041 s of the call and ends at least 0.317 s after it; the bound lies between, at under a third of that end.
+# What the repository runs is the test below: the call times out and returns within the bound plus STOP_MARGIN_S
+# [tested]
+SLOW_TIMEOUT_S = 0.08
 
 
 def test_run_solver_stops_a_slow_solve_at_its_timeout() -> None:

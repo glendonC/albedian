@@ -1,9 +1,10 @@
 """An upload's solve stops at its time limit and reports an honest unresolved result (solver-10j).
 
 Covers:
-- A dense simulated upload (many random point sources, no real sky) whose search runs far past a 3 s limit ends
-  within the limit plus a stated margin: the job succeeded, its contract is valid, and the solution is
-  unresolved with a warning that names the limit, every detection kept as an observed finding.
+- A dense simulated upload (many random point sources, no real sky) whose triangle search runs past a 0.1 s limit
+  is stopped by it, part way through that search or before the child counted its first triplet, and ends within the
+  limit plus a stated margin: the job succeeded, its contract is valid, and the solution is unresolved with a warning
+  that names the limit and the triangle solver, every detection kept as an observed finding.
 - The solve stage keeps only counts the child measured.
 - Production runs the searches in the worker: the in-process flag defaults to off and the router's call uses it.
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 import hashlib
 from datetime import datetime, timezone
 import io
+import math
 import operator
 from pathlib import Path
 import time
@@ -31,7 +33,15 @@ from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.solver import triangle_solver_identity
 
-LIMIT_S = 3.0
+# What the limit stops: the triangle search on the dense upload. Before landing (parent dcdbd65d, 2026-11-11) the
+# lane timed that search unbounded in the warmed shared child: its first count (0 of 364) came 0.009 to 0.013 s and
+# its end (triplet 52 of 364, its consensus rule met) 0.380 to 0.441 s after the bounded call, over 20 runs at load
+# averages 8 to 11 on 18 cores. The solver-10k-a audits saw its first counted triplet 0.021 to 0.036 s after the call
+# at load 23 to 28 and up to 0.100 s at load 131 to 199, and its first count as late as 0.247 s at load 15 to 32
+# [inference: those timing scripts and audits are not in the repository]. The limit lies under a third of that
+# earliest end, so it stops that search, and the test accepts a stop on either side of the first triplet. What the
+# repository runs is this file: the stop lands within the limit plus MARGIN_S, in the search or before it [tested]
+LIMIT_S = 0.1
 # Detection and storage run before the bound starts; stopping the child takes a terminate and a join
 MARGIN_S = 4.0
 
@@ -63,12 +73,27 @@ def _dense_png(width: int = 1600, height: int = 1200, sources: int = 2500) -> by
     return buf.getvalue()
 
 
+def _warm_the_solve_child() -> None:
+    """Start the shared child and load the solve chain's modules in it: the chain on no detections returns at once.
+    A bound that follows then stops a search, not the child's start-up or its imports."""
+    ingest_jobs._SOLVE_WORKER.call(
+        ingest_jobs._solve_chain,
+        (None, [], 1, 1),
+        dict(camera_meta=False, camera_label=None, fov_hint=None, obs_utc_iso=None, lat_deg=None, lon_deg=None,
+             source_asset_id="warm-up", sha256=hashlib.sha256(b"warm-up").hexdigest(), solution_id="warm-up"),
+        timeout_s=60.0,
+        progress_kwarg="on_event",
+        on_event=lambda *_: None,
+    )
+
+
 def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: TestClient, store: IngestStore) -> None:
     body = _dense_png()
     assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
     sha = hashlib.sha256(body).hexdigest()
     seen: list[dict[str, Any]] = []
 
+    _warm_the_solve_child()
     started = time.monotonic()
     job = ingest_jobs.run_solve_job(store, sha, on_transition=seen.append, solve_time_limit_s=LIMIT_S)
     elapsed = time.monotonic() - started
@@ -90,6 +115,12 @@ def test_a_dense_upload_stops_at_the_limit_with_an_unresolved_solution(client: T
     assert solve_points and solve_points[0][0] == 0
     assert all(total is None or done <= total for done, total in solve_points)
     assert "verify" not in {e["stage"] for e in job["stages"]}
+    # The stage records the stop wherever in the search it landed, and never a finished step: part way through the
+    # triplets of the 14 brightest detections, or before the child counted the first of them
+    solve = {entry["stage"]: entry for entry in job["stages"]}["solve"]
+    in_the_search = solve["unit"] == "candidates" and solve["total"] == math.comb(14, 3) and solve["done"] < solve["total"]
+    before_the_first = solve == {"stage": "solve", "unit": "steps", "done": 0, "total": 1}
+    assert in_the_search or before_the_first, solve
 
 
 def test_a_stop_before_any_candidate_is_not_a_finished_step(client: TestClient, store: IngestStore) -> None:
