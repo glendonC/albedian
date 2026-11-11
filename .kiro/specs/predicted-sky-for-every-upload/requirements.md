@@ -145,15 +145,18 @@ over my photo, as the laptop's own clips already get it.
 of it was found.
 - **Acceptance Criteria:**
   1. AFTER an upload, THE status line SHALL say in plain words which layer the result is, never a raw status name:
-     matched to N stars in the photo (`calibrated`); lined up from the Moon or Sun, within about N deg, not checked
-     against stars (`approximate`); for `predicted_only`, what the solver found ("Too few points of light to match
-     to stars." under 6 detections, else "Found N points of light, but could not match them to stars for sure.")
-     and that the sky shown is the one predicted for the photo's time and place; or why there is no sky (REQ-SKY-2).
+     matched to N stars in the photo (`calibrated`); lined up by taking a bright spot to be the Moon or the Sun,
+     within about N deg, not checked against stars (`approximate`); for `predicted_only`, what the solver found when
+     a star search ran ("Too few points of light to match to stars." under 6 detections, else "Found N points of
+     light, but could not match them to stars for sure.") and that the predicted sky can be opened ("You can open the
+     sky predicted for your photo's time and place."), never that it is being shown, since nothing is drawn over the
+     photo until the person opens it; or why there is no sky (REQ-SKY-2).
   2. WHEN the solution is `approximate` with a `poseEstimate`, THE photo view SHALL draw each predicted finding that
      projects inside the frame through the nominal WCS, with the predicted marker (dashed circle) and a ring whose
      radius covers its position under every swept WCS plus the centroid term.
-  3. THE photo view SHALL show, beside those markers, a disclosure naming the basis (for example "Lined up from the
-     Moon, the glasses' field of view and a level head; not checked against stars") and the uncertainty.
+  3. THE photo view SHALL show, beside those markers, a disclosure naming the basis (for example "Lined up by taking
+     a bright spot to be the Moon, with the camera's field of view and a level head; not checked against stars") and
+     the uncertainty. Nothing in one frame proves the spot is the Moon, so no sentence states it as fact.
   4. FOR a clip, THE stage SHALL show the frame the session's clock names, and every marker SHALL show only while
      the clip is not playing and the clock is within max(one frame, 0.05 s) of the marker's own frame; otherwise the
      view SHALL say, in seconds, where the sky is lined up and the words that go there ("Lined up 3.4 seconds into
@@ -161,6 +164,11 @@ of it was found.
   5. WHEN the solution is `predicted_only` or `approximate`, "Show Predicted Sky" SHALL open the sky for the
      solution's time and place, as it does today for the laptop's clips.
   6. No predicted marker SHALL be drawn over the photo without a `poseEstimate`.
+  7. No sentence SHALL call a marker's object a star unless its finding is `catalog_matched`: an unmatched point is a
+     point of light, and a marker sits "where its light was measured".
+  8. A session builder whose solver ran no star search (clips discovered on the laptop go only through the Moon and
+     horizon solver) SHALL make no statement about points of light. Whether a search ran is an explicit input, never
+     inferred from a solver name or a count.
 
 ### REQ-SKY-7: Real data and no invented values
 - **Acceptance Criteria:**
@@ -213,3 +221,11 @@ rare required cases seeded by `@example` or `examples`.
   for its modelled head-worn class (`research/benchmarks/phone_photos/cameras.py`), labelled [open].
 - An ambiguous plate solve becomes `predicted_only` when the predicted sky is added (its quality and warnings stay),
   so the person is offered the sky.
+
+## Decisions taken by the lead (2026-11-11), after the audits of sky-5
+- What the detector found is "points of light"; only a `catalog_matched` finding is called a star (REQ-SKY-6.7).
+- A `predicted_only` line offers the predicted sky ("You can open ...") and never says it is shown (REQ-SKY-6.1).
+- The line for a lined-up sky says a bright spot was taken to be the Moon or the Sun (REQ-SKY-6.1, 6.3).
+- The stage follows the session clock; a clip's markers show within max(one frame, 0.05 s) of their own frame, and
+  otherwise the line names the time in seconds and quotes the command to type (REQ-SKY-6.4).
+- A builder whose solver ran no star search says nothing about points of light (REQ-SKY-6.8).

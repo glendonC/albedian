@@ -145,7 +145,8 @@ export const PoseEstimateSchema = z.object({
 - `scripts/verify-contracts.mjs` lists exported schema names: add `PoseEstimateSchema` there.
 
 ### 8. The web (`apps/web/src`, unit sky-5, after sky-1 lands)
-- `apps/web/src/services/skyLayerWords.ts` (new, pure): `skyLayerSentence(solution, asset)` gives the plain line of
+- `apps/web/src/services/skyLayerWords.ts` (new, pure): `skyLayerSentence(solution, asset, search)`, where `search`
+  says whether a star search ran for this solution (REQ-SKY-6.8), gives the plain line of
   REQ-SKY-6.1; `formatSolveJobProgressBanner` and both session builders in `apiClient.ts` use it instead of
   `Sky solution: <status>`.
 - `apps/web/src/components/poseProjection.ts` (new, pure): `projectThroughPose(finding, solution)` returns the

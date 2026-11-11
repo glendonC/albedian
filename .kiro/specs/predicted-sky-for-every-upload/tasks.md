@@ -26,11 +26,12 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     `approximate`, lined up at 3.30 s, within about 9 degrees.
   - _Requirements: REQ-SKY-3.1 to 3.7, REQ-SKY-7_
 
-- [ ] 4. sky-5: what the person sees (REQ-SKY-6; P-SKY-8, P-SKY-9)
+- [x] 4. sky-5: what the person sees (REQ-SKY-6; P-SKY-8, P-SKY-9)
   - `apps/web/src/services/skyLayerWords.ts`, `apps/web/src/components/poseProjection.ts`, the overlay branch, the
     clip clock and gate, the disclosure line, the banners in `apiClient.ts`.
-  - One FAIL (clip gate, wording); fixed and amended (branch `kiro/sky-web`); a fresh audit is next.
-  - _Requirements: REQ-SKY-6.1 to 6.6_
+  - Landed as `9b0778c7` (audits: FAIL, FAIL, PASS). The lined-up drawing has no pose producer on main until sky-3
+    lands; until then it is exercised on the synthetic fixture only.
+  - _Requirements: REQ-SKY-6.1 to 6.8_
 
 - [ ] 5. sky-4: the Moon plus horizon pose for uploads and laptop clips, with its uncertainty (REQ-SKY-4.1, 4.2, 4.4)
   - Wire `solve_horizon_and_beacon_pose` into `complete_sky`; its findings from `predicted_sky_findings`
