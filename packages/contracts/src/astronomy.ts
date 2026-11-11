@@ -10,7 +10,7 @@ export const SourceSha256Schema = z
 
 /**
  * Astronomical Domain Entities: CatalogReference, ScientificEvidence,
- * SourceDetection, CelestialFinding, WCSCalibrationModel, and ObservationSolution.
+ * SourceDetection, CelestialFinding, WCSCalibrationModel, PoseEstimate, and ObservationSolution.
  */
 
 /**
@@ -139,7 +139,8 @@ function celestialFindingVariant<C extends EvidenceClass, P extends z.ZodTypeAny
  * `catalog_matched`, `predicted` and `simulated` findings always carry a sky position.
  * An `observed` finding is a pixel measurement: it carries one only when a verified WCS
  * maps its pixels to the sky (checked by `ObservationSolutionSchema`), and without one it
- * carries the `sourceDetection` that locates it in the frame.
+ * carries the `sourceDetection` that locates it in the frame. A `predicted` or `simulated`
+ * finding was not measured in the pixels, so it carries no `sourceDetection`.
  */
 export const CelestialFindingSchema = z
   .discriminatedUnion('evidenceClass', [
@@ -154,6 +155,13 @@ export const CelestialFindingSchema = z
         code: z.ZodIssueCode.custom,
         path: ['sourceDetection'],
         message: 'An observed finding without a sky position needs the source detection that locates it in pixels.',
+      });
+    }
+    if ((finding.evidenceClass === 'predicted' || finding.evidenceClass === 'simulated') && finding.sourceDetection !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sourceDetection'],
+        message: 'A predicted or simulated finding was not measured in the pixels, so it carries no source detection.',
       });
     }
     if ((finding.evidenceClass === 'observed' || finding.evidenceClass === 'catalog_matched') && !finding.observationSolutionId) {
@@ -188,6 +196,46 @@ export const WCSCalibrationModelSchema = z.object({
   fovVerticalDeg: z.number().positive().max(175),
 });
 export type WCSCalibrationModel = z.infer<typeof WCSCalibrationModelSchema>;
+
+// The beacon each pose method lines up from: the Moon for the two Moon methods, the Sun for sun_horizon
+const POSE_METHOD_BEACONS = {
+  moon_camera_profile_level_head: 'moon',
+  moon_horizon: 'moon',
+  sun_horizon: 'sun',
+} as const;
+
+/**
+ * An approximate pointing and its uncertainty, lined up from a beacon (the Moon or the Sun) and stated assumptions,
+ * never checked against stars: the frame centre's altitude and azimuth, the roll and the diagonal field of view of
+ * the solution's nominal WCS, where the field of view comes from, and the WCS swept over the assumptions' ranges.
+ * The method names its beacon, and the two uncertainties are finite. `ObservationSolutionSchema` lets it ride only
+ * on an approximate solution with a WCS, every swept WCS on that WCS's crpix. Its Python mirror is `PoseEstimate` in
+ * services/science/wcs_models.py.
+ */
+export const PoseEstimateSchema = z
+  .object({
+    method: z.enum(['moon_camera_profile_level_head', 'moon_horizon', 'sun_horizon']),
+    beacon: z.enum(['moon', 'sun']),
+    centerAltDeg: z.number().min(-90).max(90),
+    centerAzDeg: z.number().min(0).max(360),
+    rollDeg: z.number().min(-180).max(180),
+    fovDiagonalDeg: z.number().positive().max(175),
+    fovSource: z.string().min(1),
+    assumptions: z.array(z.string().min(1)).min(1),
+    sweptWcs: z.array(WCSCalibrationModelSchema).min(2).max(27),
+    maxCenterOffsetDeg: z.number().nonnegative().finite(),
+    beaconCentroidUncertaintyDeg: z.number().nonnegative().finite(),
+  })
+  .superRefine((pose, ctx) => {
+    if (POSE_METHOD_BEACONS[pose.method] !== pose.beacon) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['beacon'],
+        message: "A pose estimate's beacon is the one its method lines up from: the moon for moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon.",
+      });
+    }
+  });
+export type PoseEstimate = z.infer<typeof PoseEstimateSchema>;
 
 /**
  * Whether a solution's WCS passed independent held-out verification, the only way pixels
@@ -245,9 +293,33 @@ export const ObservationSolutionSchema = z
     }).optional(),
     findings: z.array(CelestialFindingSchema),
     warnings: z.array(z.string()),
+    // How far an approximate solution's WCS may be off: present only on an approximate solution with a WCS
+    poseEstimate: PoseEstimateSchema.optional(),
   })
   .superRefine((solution, ctx) => {
     const quality = solution.quality;
+    const pose = solution.poseEstimate;
+    if (pose !== undefined) {
+      if (solution.status !== 'approximate' || solution.wcs === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['poseEstimate'],
+          message: 'A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off.',
+        });
+      }
+      const nominal = solution.wcs;
+      if (nominal !== undefined) {
+        pose.sweptWcs.forEach((swept, index) => {
+          if (swept.crpixX !== nominal.crpixX || swept.crpixY !== nominal.crpixY) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['poseEstimate', 'sweptWcs', index],
+              message: "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame.",
+            });
+          }
+        });
+      }
+    }
     if (solution.status === 'pending') {
       if (quality !== undefined) {
         ctx.addIssue({

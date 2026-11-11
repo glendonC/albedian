@@ -102,6 +102,7 @@ describe('@albedian/observation voice parser: the brightest star in the photo', 
 
   it('never ranks a predicted finding, or a detection measured in another asset', () => {
     const odd = withFindings((f) => {
+      // The contract now refuses a predicted finding with a detection (REQ-SKY-5.2); this case checks the parser's own guard
       if (f.id === 'finding_jupiter') return { ...f, sourceDetection: { ...base.observationSolution!.findings[0]!.sourceDetection!, flux: 1e9, snr: 1e4 } };
       if (f.id === 'finding_sirius') return { ...f, sourceDetection: { ...f.sourceDetection!, assetId: 'asset_some_variant' } };
       return f;

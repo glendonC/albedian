@@ -4,7 +4,7 @@ import path from 'node:path';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EXIF_ORIENTATIONS, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
+import { CelestialFindingSchema, EXIF_ORIENTATIONS, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
@@ -507,7 +507,11 @@ describe('Go there key (hud-5)', () => {
     const session = createSyntheticCalibratedSession();
     const onRunUtterance = vi.fn();
     for (const evidenceClass of ['observed', 'predicted', 'simulated'] as const) {
-      const star = { ...betelgeuseIn(session), evidenceClass } as CelestialFinding;
+      // A predicted or simulated star was not measured in the pixels, so the relabelled one keeps no detection (REQ-SKY-5.2)
+      const detection = evidenceClass === 'observed' ? {} : { sourceDetection: undefined };
+      const star = { ...betelgeuseIn(session), evidenceClass, ...detection } as CelestialFinding;
+      // Each relabelled star is one the contract accepts
+      expect(CelestialFindingSchema.safeParse(star).success, evidenceClass).toBe(true);
       renderCard({ session, selectedFinding: star, onRunUtterance });
       expect(q<HTMLButtonElement>('target-card-go-there')!.disabled, evidenceClass).toBe(true);
       press('g');

@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 import math
+import numbers
 import re
 from typing import Any
 
@@ -293,7 +294,8 @@ class CelestialFindingRecord:
 
     `catalog_matched`, `predicted` and `simulated` findings always carry a sky position. An `observed`
     finding is a pixel measurement: it carries one only when a verified WCS maps its pixels to the sky
-    (checked by `ObservationSolution`), and without one it carries the detection that locates it.
+    (checked by `ObservationSolution`), and without one it carries the detection that locates it. A
+    `predicted` or `simulated` finding was not measured in the pixels, so it carries no detection.
     """
 
     id: str
@@ -335,6 +337,11 @@ class CelestialFindingRecord:
             )
         if not self.has_sky_position and self.evidence_class != "observed":
             raise ValueError(f"A {self.evidence_class} finding needs a sky position ({self.id}).")
+        if self.evidence_class in ("predicted", "simulated") and self.source_detection is not None:
+            raise ValueError(
+                f"A {self.evidence_class} finding was not measured in the pixels, so it carries no source detection "
+                f"({self.id})."
+            )
         if not self.has_sky_position and self.source_detection is None:
             raise ValueError(
                 f"An observed finding without a sky position needs the detection that locates it in pixels ({self.id})."
@@ -433,6 +440,114 @@ class SolverIdentity:
         return {"name": self.name, "version": self.version, "catalogRelease": self.catalog_release}
 
 
+# How an approximate pose was lined up, its beacon, and how many WCS it sweeps: the bounds of the contract's
+# PoseEstimateSchema (packages/contracts/src/astronomy.ts; .kiro/specs/predicted-sky-for-every-upload/design.md
+# section 7)
+POSE_METHODS = ("moon_camera_profile_level_head", "moon_horizon", "sun_horizon")
+POSE_BEACONS = ("moon", "sun")
+# The beacon each method lines up from, as POSE_METHOD_BEACONS in the contract
+POSE_METHOD_BEACONS = {
+    "moon_camera_profile_level_head": "moon",
+    "moon_horizon": "moon",
+    "sun_horizon": "sun",
+}
+MIN_SWEPT_WCS = 2
+MAX_SWEPT_WCS = 27
+
+
+def _is_number(value: object) -> bool:
+    """A number as the contract's z.number() takes one (a NumPy float too): no boolean, and no NaN, which the bounds
+    checks refuse."""
+    return isinstance(value, numbers.Real) and not isinstance(value, bool)
+
+
+@dataclass(frozen=True)
+class PoseEstimate:
+    """An approximate pointing and its uncertainty, as the contract's PoseEstimate: lined up from a beacon (the Moon
+    or the Sun) and stated assumptions, never checked against stars. It gives the frame centre's altitude and
+    azimuth, the roll and the diagonal field of view of the solution's nominal WCS, where that field of view comes
+    from, and the WCS swept over the assumptions' ranges. The method names its beacon, and the two uncertainties are
+    finite, so the contract dict is plain JSON. `ObservationSolution` lets it ride only on an approximate solution
+    with a WCS, every swept WCS on that WCS's crpix."""
+
+    method: str
+    beacon: str
+    center_alt_deg: float
+    center_az_deg: float
+    roll_deg: float
+    fov_diagonal_deg: float
+    fov_source: str
+    assumptions: tuple[str, ...]
+    swept_wcs: tuple[WCSModel, ...]
+    max_center_offset_deg: float
+    beacon_centroid_uncertainty_deg: float
+
+    def __post_init__(self) -> None:
+        if self.method not in POSE_METHODS:
+            raise ValueError(f"A pose estimate's method is one of {', '.join(POSE_METHODS)} (got {self.method!r}).")
+        if self.beacon not in POSE_BEACONS:
+            raise ValueError(f"A pose estimate's beacon is the moon or the sun (got {self.beacon!r}).")
+        if POSE_METHOD_BEACONS[self.method] != self.beacon:
+            raise ValueError(
+                "A pose estimate's beacon is the one its method lines up from: the moon for "
+                "moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon."
+            )
+        for name, value, lo, hi in (
+            ("center_alt_deg", self.center_alt_deg, -90.0, 90.0),
+            ("center_az_deg", self.center_az_deg, 0.0, 360.0),
+            ("roll_deg", self.roll_deg, -180.0, 180.0),
+        ):
+            if not _is_number(value) or not lo <= value <= hi:
+                raise ValueError(f"A pose estimate's {name} lies in [{lo:g}, {hi:g}] (got {value!r}).")
+        if not _is_number(self.fov_diagonal_deg) or not 0.0 < self.fov_diagonal_deg <= 175.0:
+            raise ValueError(
+                f"A pose estimate's fov_diagonal_deg is positive and at most 175 (got {self.fov_diagonal_deg!r})."
+            )
+        for name, value in (
+            ("max_center_offset_deg", self.max_center_offset_deg),
+            ("beacon_centroid_uncertainty_deg", self.beacon_centroid_uncertainty_deg),
+        ):
+            # Not negative and finite, as the contract's .nonnegative().finite(): NaN fails both comparisons, and
+            # json.dumps would write an infinity as Infinity, which is not JSON
+            if not _is_number(value) or not 0.0 <= value < math.inf:
+                raise ValueError(f"A pose estimate's {name} is finite and not negative (got {value!r}).")
+        if not isinstance(self.fov_source, str) or len(self.fov_source) == 0:
+            raise ValueError("A pose estimate names where its field of view comes from.")
+        # A list or tuple, as z.array takes: a string, a mapping (whose keys tuple() would take) or a set is refused
+        if not isinstance(self.assumptions, (list, tuple)):
+            raise ValueError(
+                f"A pose estimate's assumptions are a list or tuple of sentences (got {type(self.assumptions).__name__})."
+            )
+        assumptions = tuple(self.assumptions)
+        if len(assumptions) == 0 or any(not isinstance(a, str) or len(a) == 0 for a in assumptions):
+            raise ValueError("A pose estimate states at least one assumption, each in words.")
+        swept = tuple(self.swept_wcs)
+        if not MIN_SWEPT_WCS <= len(swept) <= MAX_SWEPT_WCS:
+            raise ValueError(
+                f"A pose estimate sweeps {MIN_SWEPT_WCS} to {MAX_SWEPT_WCS} WCS (got {len(swept)})."
+            )
+        if any(not isinstance(wcs, WCSModel) for wcs in swept):
+            raise ValueError("Each swept WCS of a pose estimate is a WCSModel.")
+        # Kept as tuples, so the frozen record cannot change after it was checked
+        object.__setattr__(self, "assumptions", assumptions)
+        object.__setattr__(self, "swept_wcs", swept)
+
+    def to_contract_dict(self) -> dict:
+        return {
+            "method": self.method,
+            "beacon": self.beacon,
+            "centerAltDeg": float(self.center_alt_deg),
+            "centerAzDeg": float(self.center_az_deg),
+            "rollDeg": float(self.roll_deg),
+            "fovDiagonalDeg": float(self.fov_diagonal_deg),
+            "fovSource": self.fov_source,
+            "assumptions": list(self.assumptions),
+            "sweptWcs": [wcs.to_contract_dict() for wcs in self.swept_wcs],
+            "maxCenterOffsetDeg": float(self.max_center_offset_deg),
+            "beaconCentroidUncertaintyDeg": float(self.beacon_centroid_uncertainty_deg),
+        }
+
+
 @dataclass(frozen=True)
 class ObservationSolution:
     """Authoritative WCS calibration and epistemic finding record."""
@@ -454,8 +569,24 @@ class ObservationSolution:
     observer_lon: float | None = None
     findings: list[CelestialFindingRecord] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # How far an approximate solution's WCS may be off: present only on an approximate solution with a WCS
+    pose_estimate: PoseEstimate | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        if self.pose_estimate is not None:
+            if self.status != "approximate" or self.wcs is None:
+                raise ValueError(
+                    "A pose estimate belongs only to an approximate solution with a WCS: "
+                    "it states how far that WCS may be off."
+                )
+            if any(
+                swept.crpix_x != self.wcs.crpix_x or swept.crpix_y != self.wcs.crpix_y
+                for swept in self.pose_estimate.swept_wcs
+            ):
+                raise ValueError(
+                    "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: "
+                    "all of them describe the same frame."
+                )
         if self.status == "pending":
             if self.quality is not None:
                 raise ValueError("A pending solution has no quality: no solver has run, so nothing was counted.")
@@ -562,6 +693,8 @@ class ObservationSolution:
         )
         if self.wcs is not None:
             result["wcs"] = self.wcs.to_contract_dict()
+        if self.pose_estimate is not None:
+            result["poseEstimate"] = self.pose_estimate.to_contract_dict()
         return result
 
 

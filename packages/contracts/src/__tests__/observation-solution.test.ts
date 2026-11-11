@@ -6,11 +6,14 @@ import {
   CelestialFindingSchema,
   EvidenceClass,
   ObservationSolutionSchema,
+  PoseEstimateSchema,
   SolutionStatus,
   SpatialViewStateSchema,
   hasVerifiedWcs,
 } from '../index.js';
 
+// ALBEDIAN_FC_SEED=1..20 reruns the properties that read it under fixed seeds
+const FC_SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
 const SHA = '0123456789abcdef'.repeat(4);
 const DETECTION = {
   assetId: 'src_01', frameTimeSec: 0, xPx: 412.5, yPx: 300.2, flux: 5000, snr: 25, fwhmPx: 2.5, centroidUncertaintyPx: 0.1,
@@ -21,8 +24,13 @@ const WCS = {
   rotationDeg: 0, radialDistortionK1: 0, radialDistortionK2: 0, parity: -1 as const, fovHorizontalDeg: 33.6, fovVerticalDeg: 18.9,
 };
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/python_contract_solutions.json');
+// A real catalog row (Rigel, Hipparcos 2007) as the Python solver serializes it, for the catalog-backed findings that
+// production predicted stars are
+const CATALOG_REF = (
+  JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as Record<string, { findings: { id: string; catalogRef?: unknown }[] }>
+)['plate_calibrated']!.findings.find((f) => f.id === 'finding-star-rigel')!.catalogRef;
 
-function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof SKY; detection?: boolean }) {
+function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof SKY; detection?: boolean; catalog?: boolean }) {
   return {
     id,
     observationSolutionId: 'sol_01',
@@ -30,6 +38,7 @@ function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof
     title: `Finding ${id}`,
     subtitle: 'Generated',
     ...(parts.detection ? { sourceDetection: DETECTION } : {}),
+    ...(parts.catalog ? { catalogRef: CATALOG_REF } : {}),
     ...(parts.sky ? { skyPosition: parts.sky } : {}),
     evidence: {
       id: `ev_${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: SHA,
@@ -95,6 +104,8 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
         { nil: undefined }
       ),
       detection: fc.boolean(),
+      // A catalog row behind the finding, as production predicted stars carry: it changes no rule
+      catalog: fc.boolean(),
     });
     const solutionSpecArb = fc.record({
       wcs: fc.boolean(),
@@ -108,14 +119,17 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
         const verified = spec.wcs && spec.passed;
         // Model-based oracle: catalog, predicted and simulated positions are required, and a catalog
         // match needs a verified WCS; an observed detection is on the sky exactly when a verified WCS
-        // puts it there, and otherwise in pixels
+        // puts it there, and otherwise in pixels; a predicted or simulated finding carries no detection
+        // (REQ-SKY-5.2)
         // ... and held-out verification passes only with a WCS (the helper always carries the residuals)
         const obeysContract =
           (!spec.passed || spec.wcs) &&
           spec.findings.every((f) =>
             f.evidenceClass === 'observed'
               ? (f.sky !== undefined) === verified && (f.sky !== undefined || f.detection)
-              : f.sky !== undefined && (f.evidenceClass !== 'catalog_matched' || verified)
+              : f.sky !== undefined &&
+                (f.evidenceClass !== 'catalog_matched' || verified) &&
+                (f.evidenceClass === 'catalog_matched' || !f.detection)
           );
         const parsed = ObservationSolutionSchema.safeParse(
           solution({ ...spec, findings: spec.findings.map((f, i) => finding(`f${i}`, f.evidenceClass, f)) })
@@ -129,12 +143,18 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
         }
       }),
       {
+        seed: FC_SEED,
         numRuns: 400,
         // Random specs hit this case only about 1 in 120 runs, so seed it every time: an
         // unverified solution holding a pixel-only observed detection, with and without a WCS
         examples: [
-          [{ wcs: false, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true }] }],
-          [{ wcs: true, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true }] }],
+          [{ wcs: false, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true, catalog: false }] }],
+          [{ wcs: true, passed: false, findings: [{ evidenceClass: 'observed', sky: undefined, detection: true, catalog: false }] }],
+          // A predicted or simulated finding with a detection, refused whatever the WCS, with or without a catalog row
+          [{ wcs: true, passed: true, findings: [{ evidenceClass: 'predicted', sky: SKY, detection: true, catalog: false }] }],
+          [{ wcs: false, passed: false, findings: [{ evidenceClass: 'simulated', sky: SKY, detection: true, catalog: false }] }],
+          [{ wcs: true, passed: true, findings: [{ evidenceClass: 'predicted', sky: SKY, detection: true, catalog: true }] }],
+          [{ wcs: false, passed: false, findings: [{ evidenceClass: 'simulated', sky: SKY, detection: true, catalog: true }] }],
         ],
       }
     );
@@ -598,5 +618,327 @@ describe('@albedian/contracts: what a solver measured (experience-9f)', () => {
         ],
       }
     );
+  });
+});
+
+describe('@albedian/contracts: the pose estimate of an approximate solution (REQ-SKY-5)', () => {
+  const STATUSES: SolutionStatus[] = ['pending', 'calibrated', 'approximate', 'predicted_only', 'unresolved', 'ambiguous'];
+  const samples = JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as Record<string, unknown>;
+  // Synthetic values for contract tests only, describing no real camera: swept WCS i varies the scale by 10 percent
+  // and the rotation by 3 deg about the nominal WCS, on its crpix (tests/integration/test_pose_estimate_contract.py
+  // builds the same ones)
+  const sweptWcs = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      ...WCS,
+      scaleDegPerPx: WCS.scaleDegPerPx * (0.9 + 0.1 * (i % 3)),
+      rotationDeg: WCS.rotationDeg + 3 * ((Math.floor(i / 3) % 3) - 1),
+    }));
+  const poseEstimate = (count = 9, overrides: Record<string, unknown> = {}) => ({
+    method: 'moon_camera_profile_level_head',
+    beacon: 'moon',
+    centerAltDeg: 33,
+    centerAzDeg: 224,
+    rollDeg: 0,
+    fovDiagonalDeg: 38.2,
+    fovSource: 'A synthetic camera profile for contract tests',
+    assumptions: ['The head is level.'],
+    sweptWcs: sweptWcs(count),
+    maxCenterOffsetDeg: 0.4,
+    beaconCentroidUncertaintyDeg: 0.004,
+    ...overrides,
+  });
+  // An approximate solution by default: a published WCS that did not pass held-out verification
+  const posed = (parts: { status?: SolutionStatus; wcs?: boolean; pose?: unknown; findings?: unknown[] } = {}) => ({
+    ...asStatus(solution({ wcs: parts.wcs ?? true, passed: false, findings: parts.findings ?? [] }), parts.status ?? 'approximate'),
+    ...(parts.pose === undefined ? {} : { poseEstimate: parts.pose }),
+  });
+  const BEACON_RULE =
+    "A pose estimate's beacon is the one its method lines up from: the moon for moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon.";
+  // The numeric fields of PoseEstimateSchema (snake_case in the Python test)
+  const POSE_NUMBER_FIELDS = ['centerAltDeg', 'centerAzDeg', 'rollDeg', 'fovDiagonalDeg', 'maxCenterOffsetDeg', 'beaconCentroidUncertaintyDeg'];
+  // One field outside the bounds of PoseEstimateSchema each; the Python test refuses the same ones
+  const POSE_FIELD_FAULTS: Record<string, Record<string, unknown>> = {
+    method: { method: 'guessed' },
+    beacon: { beacon: 'jupiter' },
+    centerAltHigh: { centerAltDeg: 90.5 },
+    centerAltLow: { centerAltDeg: -90.5 },
+    centerAzNegative: { centerAzDeg: -0.5 },
+    centerAzHigh: { centerAzDeg: 360.5 },
+    rollHigh: { rollDeg: 180.5 },
+    rollLow: { rollDeg: -180.5 },
+    fovZero: { fovDiagonalDeg: 0 },
+    fovWide: { fovDiagonalDeg: 175.5 },
+    fovSourceEmpty: { fovSource: '' },
+    assumptionsEmpty: { assumptions: [] },
+    assumptionBlank: { assumptions: [''] },
+    offsetNegative: { maxCenterOffsetDeg: -0.01 },
+    centroidNegative: { beaconCentroidUncertaintyDeg: -0.01 },
+    // z.number() takes no NaN, boolean or text, on every numeric field
+    ...Object.fromEntries(
+      POSE_NUMBER_FIELDS.flatMap((key) => [
+        [`${key}NaN`, { [key]: NaN }],
+        [`${key}True`, { [key]: true }],
+        [`${key}Text`, { [key]: 'x' }],
+      ])
+    ),
+    // Finite, so no producer writes an Infinity that JSON cannot carry
+    maxCenterOffsetDegInfinity: { maxCenterOffsetDeg: Infinity },
+    beaconCentroidUncertaintyDegInfinity: { beaconCentroidUncertaintyDeg: Infinity },
+    // The method lines up from its own beacon
+    levelHeadWithTheSun: { beacon: 'sun' },
+    moonHorizonWithTheSun: { method: 'moon_horizon', beacon: 'sun' },
+    sunHorizonWithTheMoon: { method: 'sun_horizon' },
+    // A list of sentences, not a mapping
+    assumptionsMapping: { assumptions: { 'The head is level.': 1 } },
+  };
+
+  it('accepts an approximate solution whose pose estimate sweeps 2 to 27 WCS on the nominal crpix', () => {
+    for (const count of [2, 9, 27]) {
+      const parsed = ObservationSolutionSchema.safeParse(posed({ pose: poseEstimate(count) }));
+      expect(issuePaths(parsed), String(count)).toEqual([]);
+      expect(parsed.data?.poseEstimate?.sweptWcs, String(count)).toHaveLength(count);
+    }
+    // The pose estimate stays optional: an approximate solution without one is what the solvers send today
+    expect(issuePaths(ObservationSolutionSchema.safeParse(posed()))).toEqual([]);
+  });
+
+  it('refuses a pose estimate on any solution but an approximate one', () => {
+    for (const status of STATUSES.filter((s) => s !== 'approximate')) {
+      const parsed = ObservationSolutionSchema.safeParse(posed({ status, pose: poseEstimate() }));
+      expect(issuePaths(parsed), status).toEqual(['poseEstimate']);
+      expect(parsed.error?.issues[0]?.message, status).toBe(
+        'A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off.'
+      );
+    }
+  });
+
+  it('refuses a pose estimate on an approximate solution without a WCS', () => {
+    expect(issuePaths(ObservationSolutionSchema.safeParse(posed({ wcs: false, pose: poseEstimate() })))).toEqual(['poseEstimate']);
+  });
+
+  it('refuses fewer than two or more than 27 swept WCS', () => {
+    for (const count of [0, 1, 28]) {
+      expect(issuePaths(ObservationSolutionSchema.safeParse(posed({ pose: poseEstimate(count) }))), String(count)).toEqual([
+        'poseEstimate.sweptWcs',
+      ]);
+    }
+  });
+
+  it('refuses a swept WCS on another crpixX or crpixY than the nominal WCS', () => {
+    for (const key of ['crpixX', 'crpixY'] as const) {
+      const pose = poseEstimate(9);
+      pose.sweptWcs[4] = { ...pose.sweptWcs[4]!, [key]: WCS[key] + 0.5 };
+      const parsed = ObservationSolutionSchema.safeParse(posed({ pose }));
+      expect(issuePaths(parsed), key).toEqual(['poseEstimate.sweptWcs.4']);
+      expect(parsed.error?.issues[0]?.message, key).toBe(
+        "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame."
+      );
+    }
+  });
+
+  it.each(['predicted', 'simulated'] as const)('refuses a source detection on a %s finding, which no pixel measured', (evidenceClass) => {
+    // With and without a catalog row behind it: the predicted stars the solvers send carry one
+    for (const catalog of [false, true]) {
+      const label = catalog ? 'catalog-backed' : 'no catalog row';
+      const withDetection = CelestialFindingSchema.safeParse(finding('f', evidenceClass, { sky: SKY, detection: true, catalog }));
+      expect(issuePaths(withDetection), label).toEqual(['sourceDetection']);
+      expect(withDetection.error?.issues[0]?.message, label).toBe(
+        'A predicted or simulated finding was not measured in the pixels, so it carries no source detection.'
+      );
+      expect(issuePaths(CelestialFindingSchema.safeParse(finding('f', evidenceClass, { sky: SKY, catalog }))), label).toEqual([]);
+      // Inside a solution the refusal names the finding
+      const inside = ObservationSolutionSchema.safeParse(
+        solution({ wcs: false, passed: false, findings: [finding('f', evidenceClass, { sky: SKY, detection: true, catalog })] })
+      );
+      expect(issuePaths(inside), label).toEqual(['findings.0.sourceDetection']);
+    }
+  });
+
+  it('ties the method to its beacon: the Moon for the two Moon methods, the Sun for sun_horizon', () => {
+    const beacons = { moon_camera_profile_level_head: 'moon', moon_horizon: 'moon', sun_horizon: 'sun' } as const;
+    for (const [method, beacon] of Object.entries(beacons)) {
+      expect(issuePaths(PoseEstimateSchema.safeParse(poseEstimate(9, { method, beacon }))), method).toEqual([]);
+      const refused = PoseEstimateSchema.safeParse(poseEstimate(9, { method, beacon: beacon === 'moon' ? 'sun' : 'moon' }));
+      expect(issuePaths(refused), method).toEqual(['beacon']);
+      expect(refused.error?.issues[0]?.message, method).toBe(BEACON_RULE);
+    }
+    // Inside a solution the refusal names the pose estimate's field
+    expect(issuePaths(ObservationSolutionSchema.safeParse(posed({ pose: poseEstimate(9, { beacon: 'sun' }) })))).toEqual([
+      'poseEstimate.beacon',
+    ]);
+  });
+
+  it('refuses an infinite centre offset or centroid uncertainty, which JSON cannot carry, and takes the largest finite one', () => {
+    for (const key of ['maxCenterOffsetDeg', 'beaconCentroidUncertaintyDeg']) {
+      expect(issuePaths(PoseEstimateSchema.safeParse(poseEstimate(9, { [key]: Infinity }))), key).toEqual([key]);
+      expect(issuePaths(PoseEstimateSchema.safeParse(poseEstimate(9, { [key]: Number.MAX_VALUE }))), key).toEqual([]);
+    }
+  });
+
+  it('keeps the source detection of observed and catalog-matched findings', () => {
+    expect(issuePaths(CelestialFindingSchema.safeParse(finding('o', 'observed', { detection: true })))).toEqual([]);
+    expect(issuePaths(CelestialFindingSchema.safeParse(finding('c', 'catalog_matched', { sky: SKY, detection: true })))).toEqual([]);
+  });
+
+  it('refuses a pose estimate with a field outside its bounds, and accepts the bounds themselves', () => {
+    for (const [name, fault] of Object.entries(POSE_FIELD_FAULTS)) {
+      expect(PoseEstimateSchema.safeParse(poseEstimate(9, fault)).success, name).toBe(false);
+    }
+    expect(PoseEstimateSchema.safeParse(poseEstimate(9, { sweptWcs: [...sweptWcs(8), { ...WCS, projection: 'SIN' }] })).success).toBe(false);
+    const edges = [
+      { centerAltDeg: -90 }, { centerAltDeg: 90 }, { centerAzDeg: 0 }, { centerAzDeg: 360 }, { rollDeg: -180 }, { rollDeg: 180 },
+      { fovDiagonalDeg: 175 }, { maxCenterOffsetDeg: 0, beaconCentroidUncertaintyDeg: 0 }, { method: 'moon_horizon' },
+      { method: 'sun_horizon', beacon: 'sun' },
+    ];
+    for (const edge of edges) {
+      expect(issuePaths(PoseEstimateSchema.safeParse(poseEstimate(9, edge))), JSON.stringify(edge)).toEqual([]);
+    }
+  });
+
+  it('parses the Python pose_moon_level_head sample: nine swept WCS on the nominal crpix, the Moon in pixels only', () => {
+    const sample = ObservationSolutionSchema.parse(samples['pose_moon_level_head']);
+    expect(sample.status).toBe('approximate');
+    expect(hasVerifiedWcs(sample)).toBe(false);
+    const pose = sample.poseEstimate!;
+    expect(pose.method).toBe('moon_camera_profile_level_head');
+    expect(pose.beacon).toBe('moon');
+    expect(pose.sweptWcs).toHaveLength(9);
+    expect(pose.sweptWcs.every((w) => w.crpixX === sample.wcs!.crpixX && w.crpixY === sample.wcs!.crpixY)).toBe(true);
+    const observed = sample.findings.filter((f) => f.evidenceClass === 'observed');
+    expect(observed.map((f) => f.id)).toEqual(['finding-observed-moon']);
+    expect(observed[0]!.skyPosition).toBeUndefined();
+    expect(observed[0]!.sourceDetection).toBeDefined();
+    const predicted = sample.findings.filter((f) => f.evidenceClass === 'predicted');
+    expect(predicted.length).toBeGreaterThanOrEqual(2);
+    expect(predicted.every((f) => f.sourceDetection === undefined)).toBe(true);
+  });
+
+  it('gives the pose sample a sweep a consumer can test rings on: the Moon off crpix, catalog stars, swept crval', () => {
+    const sample = ObservationSolutionSchema.parse(samples['pose_moon_level_head']);
+    const pose = sample.poseEstimate!;
+    const moon = sample.findings.find((f) => f.id === 'finding-observed-moon')!;
+    // Nothing in the sample reads as a measurement: the Moon says it is a synthetic fixture
+    expect(moon.title).toMatch(/synthetic fixture/);
+    expect(moon.evidence.verificationMethod).toMatch(/synthetic fixture/);
+    const { xPx, yPx } = moon.sourceDetection!;
+    expect(Math.hypot(xPx - sample.wcs!.crpixX, yPx - sample.wcs!.crpixY)).toBeGreaterThan(100);
+    // The swept WCS differ in where they point, their scale and their rotation (Python checks the projections)
+    expect(new Set(pose.sweptWcs.map((w) => `${w.crvalRaDeg.toFixed(6)},${w.crvalDecDeg.toFixed(6)}`)).size).toBe(9);
+    expect(new Set(pose.sweptWcs.map((w) => w.scaleDegPerPx.toFixed(9))).size).toBe(3);
+    expect(new Set(pose.sweptWcs.map((w) => w.rotationDeg.toFixed(6))).size).toBe(9);
+    expect(pose.maxCenterOffsetDeg).toBeGreaterThan(0);
+    // At least three catalog-backed predicted stars, none with a detection
+    const stars = sample.findings.filter((f) => f.evidenceClass === 'predicted' && f.catalogRef?.objectType === 'star');
+    expect(stars.length).toBeGreaterThanOrEqual(3);
+    expect(stars.every((f) => f.sourceDetection === undefined)).toBe(true);
+  });
+
+  it('finds a pose estimate in the pose sample of the Python fixture alone', () => {
+    const withPose = Object.entries(samples)
+      .filter(([, sample]) => 'poseEstimate' in (sample as Record<string, unknown>))
+      .map(([name]) => name);
+    expect(withPose).toEqual(['pose_moon_level_head']);
+  });
+
+  it('P-SKY-7: a pose estimate rides only on an approximate solution with a WCS, sweeps 2 to 27 WCS on its crpix, and no predicted or simulated finding carries a detection', () => {
+    const faultNames = Object.keys(POSE_FIELD_FAULTS);
+    const poseSpecArb = fc.record({
+      count: fc.integer({ min: 0, max: 30 }),
+      offIndex: fc.oneof({ arbitrary: fc.constant(undefined), weight: 3 }, { arbitrary: fc.nat({ max: 29 }), weight: 1 }),
+      offKey: fc.constantFrom<'crpixX' | 'crpixY'>('crpixX', 'crpixY'),
+      offBy: fc.double({ min: 0.001, max: 500, noNaN: true }),
+      offSign: fc.constantFrom(1, -1),
+      fieldFault: fc.oneof({ arbitrary: fc.constant(undefined), weight: 4 }, { arbitrary: fc.constantFrom(...faultNames), weight: 1 }),
+    });
+    type PoseSpec = { count: number; offIndex: number | undefined; offKey: 'crpixX' | 'crpixY'; offBy: number; offSign: number; fieldFault: string | undefined };
+    const specArb = fc.record({
+      status: fc.oneof({ arbitrary: fc.constant<SolutionStatus>('approximate'), weight: 3 }, { arbitrary: fc.constantFrom(...STATUSES), weight: 2 }),
+      wcs: fc.boolean(),
+      pose: fc.oneof({ arbitrary: fc.constant(undefined), weight: 1 }, { arbitrary: poseSpecArb, weight: 2 }),
+      findings: fc.array(
+        fc.record({
+          evidenceClass: fc.constantFrom<EvidenceClass>('observed', 'predicted', 'simulated'),
+          detection: fc.oneof({ arbitrary: fc.constant(false), weight: 3 }, { arbitrary: fc.constant(true), weight: 1 }),
+          // A catalog row behind a predicted or simulated finding, as the predicted stars the solvers send carry
+          catalog: fc.boolean(),
+        }),
+        { maxLength: 4 }
+      ),
+    });
+    const REASONS = [
+      'accepted with a pose', 'accepted without a pose', 'status', 'no wcs', 'fewer than two', 'more than 27', 'other crpix',
+      'field', 'predicted with a detection', 'simulated with a detection', 'catalog-backed predicted with a detection',
+      'catalog-backed simulated with a detection',
+    ];
+    const seen = new Set<string>();
+    const okPose: PoseSpec = { count: 9, offIndex: undefined, offKey: 'crpixX', offBy: 1, offSign: 1, fieldFault: undefined };
+    fc.assert(
+      fc.property(specArb, (spec) => {
+        // An observed finding is located by its detection (no verified WCS here); the others carry a sky position
+        const findings = spec.findings.map((f, i) =>
+          finding(
+            `f${i}`,
+            f.evidenceClass,
+            f.evidenceClass === 'observed' ? { detection: true } : { sky: SKY, detection: f.detection, catalog: f.catalog }
+          )
+        );
+        const p = spec.pose;
+        let pose: ReturnType<typeof poseEstimate> | undefined;
+        if (p !== undefined) {
+          pose = poseEstimate(p.count, p.fieldFault === undefined ? {} : (POSE_FIELD_FAULTS[p.fieldFault] ?? {}));
+          if (p.offIndex !== undefined && p.offIndex < p.count) {
+            pose.sweptWcs[p.offIndex] = { ...pose.sweptWcs[p.offIndex]!, [p.offKey]: WCS[p.offKey] + p.offSign * p.offBy };
+          }
+        }
+        const crpixMoved = p !== undefined && p.offIndex !== undefined && p.offIndex < p.count;
+        const poseOk =
+          p === undefined ||
+          (spec.status === 'approximate' && spec.wcs && p.count >= 2 && p.count <= 27 && !crpixMoved && p.fieldFault === undefined);
+        const detectionOn = spec.findings.map((f) => f.evidenceClass !== 'observed' && f.detection);
+        const expected = poseOk && !detectionOn.some(Boolean);
+
+        const parsed = ObservationSolutionSchema.safeParse(posed({ status: spec.status, wcs: spec.wcs, pose, findings }));
+        expect(parsed.success).toBe(expected);
+        const paths = issuePaths(parsed);
+        expect(paths.some((path) => path === 'poseEstimate' || path.startsWith('poseEstimate.'))).toBe(!poseOk);
+        detectionOn.forEach((on, i) => expect(paths.includes(`findings.${i}.sourceDetection`)).toBe(on));
+        if (parsed.success) expect(parsed.data.poseEstimate).toEqual(pose);
+
+        if (expected) seen.add(p === undefined ? 'accepted without a pose' : 'accepted with a pose');
+        if (p !== undefined && spec.status !== 'approximate') seen.add('status');
+        if (p !== undefined && !spec.wcs) seen.add('no wcs');
+        if (p !== undefined && p.count < 2) seen.add('fewer than two');
+        if (p !== undefined && p.count > 27) seen.add('more than 27');
+        if (crpixMoved) seen.add('other crpix');
+        if (p?.fieldFault !== undefined) seen.add('field');
+        spec.findings.forEach((f, i) => {
+          if (detectionOn[i]) seen.add(`${f.catalog ? 'catalog-backed ' : ''}${f.evidenceClass} with a detection`);
+        });
+      }),
+      {
+        seed: FC_SEED,
+        numRuns: 300,
+        // Every refusal and both acceptances, seeded so that no run can miss one
+        examples: [
+          [{ status: 'approximate', wcs: true, pose: okPose, findings: [{ evidenceClass: 'observed', detection: true, catalog: false }, { evidenceClass: 'predicted', detection: false, catalog: true }, { evidenceClass: 'simulated', detection: false, catalog: false }] }],
+          [{ status: 'approximate', wcs: true, pose: undefined, findings: [{ evidenceClass: 'predicted', detection: false, catalog: false }] }],
+          [{ status: 'calibrated', wcs: true, pose: okPose, findings: [] }],
+          [{ status: 'predicted_only', wcs: false, pose: okPose, findings: [] }],
+          [{ status: 'approximate', wcs: false, pose: okPose, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, count: 1 }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, count: 0 }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, count: 28 }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, offIndex: 4, offKey: 'crpixY' }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, fieldFault: 'fovZero' }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, fieldFault: 'sunHorizonWithTheMoon' }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: { ...okPose, fieldFault: 'maxCenterOffsetDegInfinity' }, findings: [] }],
+          [{ status: 'approximate', wcs: true, pose: okPose, findings: [{ evidenceClass: 'predicted', detection: true, catalog: false }] }],
+          [{ status: 'unresolved', wcs: false, pose: undefined, findings: [{ evidenceClass: 'simulated', detection: true, catalog: false }] }],
+          [{ status: 'approximate', wcs: true, pose: okPose, findings: [{ evidenceClass: 'predicted', detection: true, catalog: true }] }],
+          [{ status: 'unresolved', wcs: false, pose: undefined, findings: [{ evidenceClass: 'simulated', detection: true, catalog: true }] }],
+        ],
+      }
+    );
+    expect([...seen].sort()).toEqual([...REASONS].sort());
   });
 });

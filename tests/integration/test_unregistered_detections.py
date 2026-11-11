@@ -26,7 +26,18 @@ from hypothesis import example, given, settings, strategies as st
 import numpy as np
 import pytest
 
-from services.science.horizon_solver import solve_horizon_and_beacon_pose
+from scipy import optimize
+from services.science.catalog import (
+    _iso_to_julian_date,
+    altaz_to_icrs,
+    angular_separation_deg,
+    get_all_sky_catalog_stars,
+    get_star_by_name,
+    icrs_to_altaz,
+    propagate_star_epoch,
+)
+from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
+from services.science.horizon_solver import PREDICTED_STAR_UNCERTAINTY_ARCSEC, solve_horizon_and_beacon_pose
 from services.science.solver import (
     SourceDetection,
     WCSModel,
@@ -34,7 +45,13 @@ from services.science.solver import (
     render_synthetic_starfield,
     solve_and_verify_field,
 )
-from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SolutionQuality, SolverIdentity
+from services.science.wcs_models import (
+    CelestialFindingRecord,
+    ObservationSolution,
+    PoseEstimate,
+    SolutionQuality,
+    SolverIdentity,
+)
 
 WIDTH, HEIGHT = 960, 540
 # Synthetic moments at a place that points at nobody (the open North Atlantic, about 1,321 km from Flores in
@@ -140,7 +157,15 @@ def _optional_float(lo: float, hi: float) -> st.SearchStrategy[float | None]:
     uncertainty_arcsec=_optional_float(0.0, 3600.0),
     alt_deg=_optional_float(-90.0, 90.0),
     with_detection=st.booleans(),
+    # A catalog row behind the finding, as the solvers' predicted stars carry: it changes no rule
+    with_catalog_star=st.booleans(),
 )
+# A predicted or simulated finding with a sky position and a detection: refused for the detection alone, with or
+# without a catalog row behind it
+@example(evidence_class="predicted", ra_deg=78.6, dec_deg=-8.2, uncertainty_arcsec=14.2, alt_deg=None, with_detection=True, with_catalog_star=False)
+@example(evidence_class="simulated", ra_deg=78.6, dec_deg=-8.2, uncertainty_arcsec=14.2, alt_deg=40.0, with_detection=True, with_catalog_star=False)
+@example(evidence_class="predicted", ra_deg=78.6, dec_deg=-8.2, uncertainty_arcsec=14.2, alt_deg=None, with_detection=True, with_catalog_star=True)
+@example(evidence_class="simulated", ra_deg=78.6, dec_deg=-8.2, uncertainty_arcsec=14.2, alt_deg=40.0, with_detection=True, with_catalog_star=True)
 def test_pbt_finding_records_follow_the_sky_position_contract(
     evidence_class: str,
     ra_deg: float | None,
@@ -148,14 +173,17 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
     uncertainty_arcsec: float | None,
     alt_deg: float | None,
     with_detection: bool,
+    with_catalog_star: bool,
 ) -> None:
     sky = (ra_deg, dec_deg, uncertainty_arcsec)
     has_sky = None not in sky
     complete = has_sky or all(v is None for v in (*sky, alt_deg))
+    # A predicted or simulated finding was not measured in the pixels, so it carries no detection (REQ-SKY-5.2)
     valid = (
         evidence_class in ("observed", "catalog_matched", "predicted", "simulated")
         and complete
         and (has_sky or (evidence_class == "observed" and with_detection))
+        and not (evidence_class in ("predicted", "simulated") and with_detection)
     )
 
     def build() -> CelestialFindingRecord:
@@ -168,6 +196,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
                 if with_detection
                 else None
             ),
+            catalog_star=get_star_by_name("Rigel") if with_catalog_star else None,
             limitations=("Synthetic test finding limitation.",),
             source_sha256=RECORD_SHA,
         )
@@ -500,10 +529,186 @@ def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
     return frame
 
 
+# The pose sample's camera profile, which describes no real camera [proposed: a sample for the contract only; unit
+# sky-3 takes the real ranges from a camera profile]: a 70 deg diagonal field of view over the 960 x 540 frame, swept
+# by 10 percent either way, and a level head, its roll swept by 3 deg either way. 70 deg is chosen so that at least
+# three stars of the app's bright list stay inside the frame under every swept WCS (at 40 deg two do) [tested:
+# .lanetools exploration in the sky-1 fix]. The Moon is hand-placed well away from crpix, so the swept WCS point at
+# different places and the stars move across the sweep.
+POSE_SAMPLE_FOV_DIAGONAL_DEG = 70.0
+POSE_SAMPLE_FOV_FACTORS = (0.9, 1.0, 1.1)
+POSE_SAMPLE_ROLLS_DEG = (-3.0, 0.0, 3.0)
+POSE_SAMPLE_MOON_PX = (700.0, 160.0)
+# A star is kept in the sample when it projects at least this far inside the frame's edge under every WCS of the sweep
+POSE_SAMPLE_EDGE_MARGIN_PX = 10.0
+
+
+def _pose_moon_level_head_sample() -> ObservationSolution:
+    """A synthetic fixture: an approximate solution lined up from a hand-placed Moon off the frame centre, the camera
+    profile above and a level head. No Python producer makes this shape yet (unit sky-3 will), so it is built here at
+    the synthetic Moon moment and open-ocean place. Each WCS of the sweep is fitted so that the Moon projects onto its
+    hand-placed pixel at that field of view and roll; every other number is computed from the moment, the place, the
+    profile and the catalog. Only the Moon's detection is hand-built."""
+    solution_id = "sol-pose-moon-level-head"
+    sources = _sources("pose_moon_level_head")
+    lat, lon, moment = MOON_MOMENT["observer_lat"], MOON_MOMENT["observer_lon"], MOON_MOMENT["obs_utc_iso"]
+    bodies = compute_solar_system_ephemerides(
+        obs_utc_iso=moment, lat_deg=lat, lon_deg=lon, observation_solution_id=solution_id
+    )
+    moon = next(b for b in bodies if b.name == "Moon")
+    crpix_x, crpix_y = WIDTH / 2.0, HEIGHT / 2.0
+    moon_x, moon_y = POSE_SAMPLE_MOON_PX
+
+    def wcs_pointing_at(alt_deg: float, az_deg: float, scale: float, roll_deg: float) -> WCSModel:
+        """The frame centre at this altitude and azimuth, the point 1 deg above it straight up the frame (a level
+        head), then the frame turned by the roll about its centre."""
+        ra, dec = altaz_to_icrs(alt_deg, az_deg, lat, lon, moment)
+        up_ra, up_dec = altaz_to_icrs(alt_deg + 1.0, az_deg, lat, lon, moment)
+        unrotated = WCSModel(
+            crval_ra_deg=ra, crval_dec_deg=dec, crpix_x=crpix_x, crpix_y=crpix_y, scale_deg_per_px=scale,
+            width=WIDTH, height=HEIGHT,
+        )
+        up_x, up_y = unrotated.world_to_pixel(up_ra, up_dec)
+        level_deg = math.degrees(math.atan2(up_x - crpix_x, crpix_y - up_y))
+        return replace(unrotated, rotation_deg=level_deg + roll_deg)
+
+    def lined_up(fov_diagonal_deg: float, roll_deg: float) -> tuple[WCSModel, float, float]:
+        """The WCS at this field of view and roll that puts the Moon on its hand-placed pixel, and the altitude and
+        azimuth of its frame centre."""
+        # TAN: a pixel r px from crpix lies atan(radians(r * scale)) from the frame centre
+        scale = math.degrees(math.tan(math.radians(fov_diagonal_deg / 2.0))) / math.hypot(crpix_x, crpix_y)
+        # The closed-form start: the Moon's offset from crpix in pixels times the scale
+        start_alt = moon.alt_deg - (crpix_y - moon_y) * scale
+        start = np.array([start_alt, moon.az_deg - (moon_x - crpix_x) * scale / math.cos(math.radians(start_alt))])
+
+        def residuals(params: np.ndarray) -> np.ndarray:
+            wcs = wcs_pointing_at(float(params[0]), float(params[1]), scale, roll_deg)
+            x, y = wcs.world_to_pixel(moon.ra_deg, moon.dec_deg)
+            return np.array([x - moon_x, y - moon_y])
+
+        fit = optimize.least_squares(residuals, start, method="lm", xtol=1e-14, ftol=1e-14, gtol=1e-14)
+        if float(np.max(np.abs(residuals(fit.x)))) > 1e-6:
+            raise RuntimeError(f"The pose sample's fit at {fov_diagonal_deg} deg and roll {roll_deg} missed the Moon.")
+        alt_deg, az_deg = float(fit.x[0]), float(fit.x[1]) % 360.0
+        return wcs_pointing_at(alt_deg, az_deg, scale, roll_deg), alt_deg, az_deg
+
+    nominal, centre_alt_deg, centre_az_deg = lined_up(POSE_SAMPLE_FOV_DIAGONAL_DEG, 0.0)
+    fovs = [POSE_SAMPLE_FOV_DIAGONAL_DEG * factor for factor in POSE_SAMPLE_FOV_FACTORS]
+    swept = tuple(lined_up(fov, roll)[0] for fov in fovs for roll in POSE_SAMPLE_ROLLS_DEG)
+    centre = nominal.pixel_to_world(crpix_x, crpix_y)
+    # Hand-built, standing in for a Moon measured off the frame centre: these numbers are test inputs
+    detection = SourceDetection(x_px=moon_x, y_px=moon_y, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
+    pose = PoseEstimate(
+        method="moon_camera_profile_level_head",
+        beacon="moon",
+        center_alt_deg=centre_alt_deg,
+        center_az_deg=centre_az_deg,
+        roll_deg=0.0,
+        fov_diagonal_deg=POSE_SAMPLE_FOV_DIAGONAL_DEG,
+        fov_source="A synthetic camera profile for this contract sample; it describes no real camera.",
+        assumptions=(
+            f"The camera profile's diagonal field of view, swept from {min(fovs):.1f} to {max(fovs):.1f} deg.",
+            f"A level head, its roll swept {max(POSE_SAMPLE_ROLLS_DEG):.0f} deg either way.",
+            "The Moon's light centroid is at its predicted position, which is geocentric: from this place the Moon "
+            f"appears about {moon_parallax_shift_arcsec(moon.distance_au, moon.alt_deg)[1]:,.0f} arcsec lower, and "
+            "this sample does not apply that offset.",
+        ),
+        swept_wcs=swept,
+        max_center_offset_deg=max(angular_separation_deg(*centre, *w.pixel_to_world(crpix_x, crpix_y)) for w in swept),
+        beacon_centroid_uncertainty_deg=detection.centroid_uncertainty_px * nominal.scale_deg_per_px,
+    )
+    observed_moon = CelestialFindingRecord(
+        id="finding-observed-moon", observation_solution_id=solution_id, evidence_class="observed",
+        title="Moon (Observed, synthetic fixture)",
+        subtitle=f"Hand-placed at ({detection.x_px:.1f}, {detection.y_px:.1f}) px in a synthetic fixture",
+        source_detection=detection,
+        verification_method="Hand-placed in this synthetic fixture; no pixel was measured.",
+        limitations=(
+            "A synthetic fixture: the detection is hand-placed for this contract sample, standing in for a measured one.",
+            "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
+        ),
+        source_sha256=sources["source_sha256"],
+    )
+
+    def predicted_body(b: Any) -> CelestialFindingRecord:
+        return CelestialFindingRecord(
+            id=b.id, observation_solution_id=solution_id, evidence_class="predicted", title=b.title,
+            subtitle=b.subtitle, ra_deg=b.ra_deg, dec_deg=b.dec_deg, alt_deg=b.alt_deg, az_deg=b.az_deg,
+            uncertainty_arcsec=b.uncertainty_arcsec, limitations=b.limitations, source_sha256=sources["source_sha256"],
+        )
+
+    def inside_under_every_wcs(ra_deg: float, dec_deg: float) -> bool:
+        m = POSE_SAMPLE_EDGE_MARGIN_PX
+        return all(
+            m <= x <= WIDTH - m and m <= y <= HEIGHT - m
+            for x, y in (w.world_to_pixel(ra_deg, dec_deg) for w in (nominal, *swept))
+        )
+
+    # The bright stars inside the frame under every WCS of the sweep, carried to the date and built as the horizon
+    # solver builds its predicted stars: each stands on its catalog row and carries no detection
+    year = 2000.0 + (_iso_to_julian_date(moment) - 2451545.0) / 365.25
+    stars = []
+    for star in (propagate_star_epoch(s, year) for s in get_all_sky_catalog_stars()):
+        if not inside_under_every_wcs(star.ra_deg, star.dec_deg):
+            continue
+        alt, az = icrs_to_altaz(star.ra_deg, star.dec_deg, lat, lon, moment)
+        stars.append(
+            CelestialFindingRecord(
+                id=f"finding-predicted-{star.id}", observation_solution_id=solution_id, evidence_class="predicted",
+                title=(
+                    star.common_name
+                    if star.bayer_designation == star.common_name
+                    else f"{star.common_name} ({star.bayer_designation})"
+                ),
+                subtitle=(
+                    f"Predicted Star ({star.constellation}) · {star.median_pc:.1f} pc · Alt {alt:+.1f}° Az {az:.1f}° · "
+                    "Inside Camera FOV"
+                ),
+                ra_deg=star.ra_deg, dec_deg=star.dec_deg, alt_deg=alt, az_deg=az,
+                uncertainty_arcsec=PREDICTED_STAR_UNCERTAINTY_ARCSEC, catalog_star=star,
+                limitations=(
+                    "Predicted from its catalog position, carried to the date, for this synthetic fixture's time, "
+                    "place and lined-up pose; not measured in any pixel.",
+                ),
+                source_sha256=sources["source_sha256"],
+            )
+        )
+    stars.sort(key=lambda f: f.catalog_star.mag)
+    # The predicted Moon first, then the stars in the frame, then the other bodies above the horizon
+    predicted = [
+        predicted_body(moon),
+        *stars,
+        *(predicted_body(b) for b in bodies if b.alt_deg > 0.0 and b.name != "Moon"),
+    ]
+    return ObservationSolution(
+        id=solution_id, **sources, frame_time_sec=0.0, revision=1, status="approximate",
+        observed_at_utc=moment, observer_lat=lat, observer_lon=lon, wcs=nominal,
+        # The Moon is the one detection, matched to its predicted position; no star was held out
+        quality=SolutionQuality(
+            detected_candidate_count=1, matched_inlier_count=1, held_out_pair_count=0, held_out_inliers=0,
+            median_residual_px=None, p95_residual_px=None, median_residual_arcsec=None,
+            passed_independent_verification=False,
+        ),
+        solver=SolverIdentity(
+            name="hand-built contract sample", version="0",
+            catalog_release=(
+                f"{len(get_all_sky_catalog_stars())} pinned bright stars and the low-precision ephemeris "
+                "(Standish and Williams 1992; Meeus 1998 chapter 47)"
+            ),
+        ),
+        findings=[observed_moon, *predicted],
+        warnings=[
+            "A synthetic fixture: lined up from a hand-placed Moon, a synthetic camera profile and a level head; "
+            "not checked against stars."
+        ],
+        pose_estimate=pose,
+    )
+
+
 def build_contract_samples() -> dict[str, dict]:
     """Contract dicts for each solution shape Python produces. The TypeScript contract tests parse
-    `CONTRACT_FIXTURE` with `ObservationSolutionSchema`; each sample keeps its first three findings of
-    each evidence class to stay small."""
+    `CONTRACT_FIXTURE` with `ObservationSolutionSchema`; each sample but the pose sample keeps its first three
+    findings of each evidence class to stay small, and every sample is plain JSON (no NaN or Infinity)."""
     too_few = [
         SourceDetection(x_px=x, y_px=y, flux=4200.0, snr=18.0, fwhm_px=2.4, centroid_uncertainty_px=0.12)
         for x, y in [(120.0, 80.0), (480.5, 260.25), (800.0, 410.0), (300.0, 444.0)]
@@ -543,17 +748,21 @@ def build_contract_samples() -> dict[str, dict]:
             id="sol-pending", source_asset_id="synthetic-pending", source_sha256=RECORD_SHA, frame_time_sec=0.0,
             revision=1, status="pending", wcs=None, quality=None, solver=None,
         ),
+        "pose_moon_level_head": _pose_moon_level_head_sample(),
     }
     out: dict[str, dict] = {}
     for name, sol in samples.items():
         payload = sol.to_contract_dict()
-        kept: list[dict] = []
-        for finding in payload["findings"]:
-            if sum(f["evidenceClass"] == finding["evidenceClass"] for f in kept) < 3:
-                kept.append(finding)
-        payload["findings"] = kept
+        # The pose sample is built small (the Moon, the bright stars inside its frame and the other bodies above the
+        # horizon) and kept whole, so a consumer has every predicted star its sweep places in the frame
+        if name != "pose_moon_level_head":
+            kept: list[dict] = []
+            for finding in payload["findings"]:
+                if sum(f["evidenceClass"] == finding["evidenceClass"] for f in kept) < 3:
+                    kept.append(finding)
+            payload["findings"] = kept
         out[name] = payload
-    return json.loads(json.dumps(out))
+    return json.loads(json.dumps(out, allow_nan=False))
 
 
 def _differences(actual: Any, stored: Any, path: str = "") -> list[str]:

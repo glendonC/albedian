@@ -329,7 +329,8 @@ describe('VoiceCommandHud ask palette (hud-4)', () => {
   });
 
   it('offers Take me there only for a star the app can fly to', () => {
-    for (const star of [starOf('observed'), starOf('catalog_matched', { evidenceClass: 'predicted' }), starOf('catalog_matched', { inferredDistancePc: undefined })]) {
+    // A predicted star was not measured in the pixels, so the relabelled one keeps no detection (REQ-SKY-5.2)
+    for (const star of [starOf('observed'), starOf('catalog_matched', { evidenceClass: 'predicted', sourceDetection: undefined }), starOf('catalog_matched', { inferredDistancePc: undefined })]) {
       renderHud({ selectedFinding: star });
       press('/');
       const texts = [...container.querySelectorAll('[data-testid="ask-suggestions"] .alb-ask-text')].map((o) => o.textContent);

@@ -14,6 +14,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'ProcessingGraphSchema',
   'ProcessingAttemptSchema',
   'ObservationSolutionSchema',
+  'PoseEstimateSchema',
   'CelestialFindingSchema',
   'CatalogReferenceSchema',
   'ScientificEvidenceSchema',
