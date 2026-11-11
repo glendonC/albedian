@@ -7,6 +7,7 @@ import {
   type Vec3,
 } from '@albedian/camera-rig';
 import { getMarkerVisualSpec, type MarkerVisualSpec } from '@albedian/design-system';
+import { linedUpProjection, shownAtFrame } from './poseProjection.js';
 import { sourcePixelToViewport, useViewportSize } from './sourcePhotoRect.js';
 
 export interface CelestialMarkerOverlayProps {
@@ -26,15 +27,23 @@ export interface ProjectedMarkerPosition {
   yPct: number;
   xPx: number;
   yPx: number;
+  /** For a predicted finding lined up by a pose: its uncertainty ring's radius on screen, in CSS pixels. */
+  ringPx?: number;
 }
+
+const hidden = (): ProjectedMarkerPosition => ({ visible: false, xPct: 0, yPct: 0, xPx: 0, yPx: 0 });
 
 /**
  * Projects a `CelestialFinding` onto the viewport (`source_2d` pixel coordinates or
  * `registered_sky` / `catalog_3d` camera projection).
  *
  * Scientific honesty rules:
- * - In `source_2d`, only findings with an actual `sourceDetection` in camera pixels are placed;
- *   predicted or simulated findings without a pixel detection are never drawn over raw pixels.
+ * - In `source_2d`, a finding with a `sourceDetection` is placed on the pixel it was measured at. A predicted
+ *   finding is placed only through a pose estimate (poseProjection.ts), with the predicted layer on, at the nominal
+ *   WCS projection with its uncertainty ring; without a pose estimate nothing predicted or simulated is drawn over
+ *   the photo (REQ-SKY-6.6). On a clip, each shows only while the clip is not playing and the session's clock,
+ *   whose frame the stage shows, is within one frame (at least 0.05 s) of the frame it was measured or lined up on
+ *   (P-SKY-9, poseProjection.ts shownAtFrame).
  * - In sky/3D modes, `activeOverlays.observedMarkers` and `activeOverlays.predictedEphemerides`
  *   gate observed-only and predicted findings respectively.
  */
@@ -50,38 +59,48 @@ export function projectFindingToViewport(
 
   if (mode === 'source_2d') {
     const det = finding.sourceDetection;
-    if (!det) {
-      return { visible: false, xPct: 0, yPct: 0, xPx: 0, yPx: 0 };
-    }
+    const lined = det ? null : linedUpProjection(finding, session);
+    const stored = det ?? lined;
+    if (!stored) return hidden();
+    const frameTimeSec = det ? det.frameTimeSec : session.observationSolution!.frameTimeSec;
+    if (!shownAtFrame(session, frameTimeSec)) return hidden();
     // The same rectangle SourcePhotoStage draws the photo in: shape kept, letterboxed, then zoomed and panned
     const srcW = Math.max(1, session.sourceAsset?.width ?? safeW);
     const srcH = Math.max(1, session.sourceAsset?.height ?? safeH);
-    const p = sourcePixelToViewport(
-      det.xPx,
-      det.yPx,
-      srcW,
-      srcH,
-      safeW,
-      safeH,
-      session.cropTransform,
-      session.sourceAsset?.displayOrientation
-    );
+    const toViewport = (xPx: number, yPx: number) =>
+      sourcePixelToViewport(
+        xPx,
+        yPx,
+        srcW,
+        srcH,
+        safeW,
+        safeH,
+        session.cropTransform,
+        session.sourceAsset?.displayOrientation
+      );
+    const p = toViewport(stored.xPx, stored.yPx);
     const visible = p.xPx >= 0 && p.xPx <= safeW && p.yPx >= 0 && p.yPx <= safeH;
-    return {
+    const position: ProjectedMarkerPosition = {
       visible,
       xPct: (p.xPx / safeW) * 100,
       yPct: (p.yPx / safeH) * 100,
       xPx: Math.round(p.xPx),
       yPx: Math.round(p.yPx),
     };
+    if (lined) {
+      // The ring's radius through the same mapping: a turn keeps lengths, so one offset point measures the scale
+      const edge = toViewport(lined.xPx + lined.ringPx, lined.yPx);
+      position.ringPx = Math.hypot(edge.xPx - p.xPx, edge.yPx - p.yPx);
+    }
+    return position;
   }
 
   const overlays = session.spatialView?.activeOverlays;
   if (finding.evidenceClass === 'observed' && overlays?.observedMarkers === false) {
-    return { visible: false, xPct: 0, yPct: 0, xPx: 0, yPx: 0 };
+    return hidden();
   }
   if (finding.evidenceClass === 'predicted' && overlays?.predictedEphemerides === false) {
-    return { visible: false, xPct: 0, yPct: 0, xPx: 0, yPx: 0 };
+    return hidden();
   }
 
   let worldPoint: Vec3 | null = resolveFindingParsecPosition(finding);
@@ -253,6 +272,50 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
       data-testid="celestial-marker-overlay"
       aria-label="Celestial findings in view"
     >
+      {/* Each lined-up prediction's uncertainty ring, faint and dashed, under every marker */}
+      {ordered.map(({ finding, pos }) => {
+        if (pos.ringPx === undefined) return null;
+        const spec = getMarkerVisualSpec({
+          evidenceClass: finding.evidenceClass,
+          title: finding.title,
+          isSelected: false,
+          isFocused: false,
+          isHovered: false,
+        });
+        const r = pos.ringPx;
+        return (
+          <svg
+            key={`ring-${finding.id}`}
+            className="alb-marker-ring"
+            data-testid={`celestial-marker-ring-${finding.id}`}
+            data-evidence-class={finding.evidenceClass}
+            data-ring-radius-px={r.toFixed(2)}
+            aria-hidden="true"
+            width={2 * r + 2}
+            height={2 * r + 2}
+            viewBox={`${-r - 1} ${-r - 1} ${2 * r + 2} ${2 * r + 2}`}
+            style={{
+              position: 'absolute',
+              left: `${pos.xPct.toFixed(2)}%`,
+              top: `${pos.yPct.toFixed(2)}%`,
+              transform: 'translate(-50%, -50%)',
+              overflow: 'visible',
+              pointerEvents: 'none',
+            }}
+          >
+            <circle
+              cx="0"
+              cy="0"
+              r={r}
+              fill="none"
+              stroke={spec.colorHex}
+              strokeOpacity={0.45}
+              strokeWidth="1"
+              strokeDasharray="2 4"
+            />
+          </svg>
+        );
+      })}
       {ordered.map(({ finding, pos }) => {
         const isLabelled = labelledIds.has(finding.id);
 

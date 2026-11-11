@@ -74,6 +74,14 @@ afterEach(() => {
   container.remove();
 });
 
+/**
+ * The synthetic session is a clip that is playing; a playing clip shows no markers in the source view (P-SKY-9), so
+ * these placement and label tests pause it on the frame their detections were measured on.
+ */
+function pausedOnFrame(session: ObservationSession, frameTimeSec: number): ObservationSession {
+  return { ...session, isPlaying: false, currentSourceTimeSec: frameTimeSec };
+}
+
 function buildFourClassFindings(baseSession: ObservationSession): CelestialFinding[] {
   const sha = baseSession.sourceAsset!.sha256;
   const solId = baseSession.observationSolution!.id;
@@ -176,7 +184,7 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
     const base = createSyntheticCalibratedSession();
     const findings = buildFourClassFindings(base);
     const session: ObservationSession = {
-      ...base,
+      ...pausedOnFrame(base, 0),
       sourceAsset: { ...base.sourceAsset!, width: 1920, height: 1080 },
       spatialView: { ...base.spatialView, mode: 'source_2d' },
       observationSolution: { ...base.observationSolution!, findings },
@@ -331,7 +339,9 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
   });
 
   it('wires CelestialMarkerOverlay into SpatialObservatoryViewport once past the landing overlay', () => {
-    const base = createSyntheticCalibratedSession();
+    // Paused on the frame the synthetic detections were measured on
+    const playing = createSyntheticCalibratedSession();
+    const base = pausedOnFrame(playing, playing.observationSolution!.frameTimeSec);
     const onSelectFinding = vi.fn();
     const noop = () => {};
 
@@ -462,7 +472,7 @@ function buildCrowdedSession(namedCount: number, unnamedCount: number, observedC
     } as CelestialFinding);
   }
   return {
-    ...base,
+    ...pausedOnFrame(base, 0),
     sourceAsset: { ...base.sourceAsset!, width: 1920, height: 1080 },
     spatialView: { ...base.spatialView, mode: 'source_2d' },
     observationSolution: { ...base.observationSolution!, findings },
