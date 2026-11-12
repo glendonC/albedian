@@ -12,9 +12,9 @@ import { z } from 'zod';
  * - A length is counted in UTF-16 code units, which is what a JavaScript string's length is.
  * - A SHA-256 is 64 lower-case hex characters, and a UTC instant is one form, with Z, on a real calendar day.
  *
- * This module imports no other contract file, so every contract can use it. Today `media.ts` and the two shapes a
- * media record embeds (an audio stream and a display orientation) do; moving the other contracts onto it is a later
- * unit of the contracts lane.
+ * This module imports no other contract file, so every contract can use it. `media.ts`, the two shapes a media
+ * record embeds (an audio stream and a display orientation) and `pointing.ts` do; moving the other contracts onto it
+ * is the contracts lane's contracts-2 units.
  */
 
 /** A SHA-256 digest as 64 lowercase hex characters: the identity of every source file. */
@@ -33,10 +33,31 @@ export const WIRE_MESSAGES = {
   calendar: 'not a real calendar day',
 } as const;
 
-/** A finite number. */
-export const wireNumber = () => z.number().finite({ message: WIRE_MESSAGES.notFinite });
-/** A safe integer: whole (so finite), and at most 2^53 - 1 in size. */
-export const wireInt = () => z.number().int().safe({ message: WIRE_MESSAGES.notSafe });
+/**
+ * A number that reads minus zero as zero, as wire.py's WireNumber and WireInt do, and keeps that reading through
+ * every check chained on it. Zod 3 builds each chained number schema in `_addCheck` (int, finite, safe, positive,
+ * multipleOf and the rest) or `setLimit` (min, max, gt, lt and their aliases), so this class builds itself again in
+ * those two; every other reading is ZodNumber's own. packages/contracts/src/__tests__/wire.test.ts checks each check.
+ */
+class ZodWireNumber extends z.ZodNumber {
+  override _parse(input: z.ParseInput): z.ParseReturnType<number> {
+    // zod's input reads its path through a getter, so the new input is built field by field, never by a spread
+    return super._parse(Object.is(input.data, -0) ? { data: 0, path: input.path, parent: input.parent } : input);
+  }
+
+  override _addCheck(check: z.ZodNumberCheck): ZodWireNumber {
+    return new ZodWireNumber(super._addCheck(check)._def);
+  }
+
+  protected override setLimit(kind: 'min' | 'max', value: number, inclusive: boolean, message?: string): ZodWireNumber {
+    return new ZodWireNumber(super.setLimit(kind, value, inclusive, message)._def);
+  }
+}
+
+/** A finite number; minus zero is zero. */
+export const wireNumber = () => new ZodWireNumber(z.number()._def).finite({ message: WIRE_MESSAGES.notFinite });
+/** A safe integer: whole (so finite), and at most 2^53 - 1 in size; minus zero is zero. */
+export const wireInt = () => new ZodWireNumber(z.number()._def).int().safe({ message: WIRE_MESSAGES.notSafe });
 
 export const wireSha256 = () => z.string().regex(new RegExp(SHA256_HEX_PATTERN));
 

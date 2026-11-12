@@ -187,6 +187,14 @@ function propertyOracle(spec: PropertyCase, applied: boolean): boolean {
   return headingOk && motionOk && variantOk;
 }
 
+/** A record as the wire module reads it back: unchanged, but for minus zero, which is zero (WIRE_RULES.md rule 2). */
+function zeroed(value: unknown): unknown {
+  if (Object.is(value, -0)) return 0;
+  if (Array.isArray(value)) return value.map(zeroed);
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, zeroed(v)]));
+  return value;
+}
+
 describe('@albedian/contracts: the pointing record (REQ-IOS-7)', () => {
   it('shares its format, limits, enums, rule words and evidence statement with the Pydantic mirror', () => {
     expect(fixture.format).toBe(POINTING_RECORD_FORMAT);
@@ -419,7 +427,7 @@ describe('@albedian/contracts: the pointing record (REQ-IOS-7)', () => {
         const parsed = PointingRecordSchema.safeParse(record);
         expect(parsed.success, JSON.stringify(parsed.error?.issues)).toBe(propertyOracle(spec, applied));
         if (parsed.success && !applied) {
-          expect(parsed.data).toEqual(record);
+          expect(parsed.data).toEqual(zeroed(record));
           expect('altitude' in parsed.data.location).toBe(spec.location === 'allowed' && spec.altitude);
         }
       }),

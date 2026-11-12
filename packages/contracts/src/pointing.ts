@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { INGEST_PATTERNS } from './ingest.js';
-import { SHA256_HEX_PATTERN } from './media.js';
+import { wireInt, wireNumber, wireSha256, wireUtcInstant } from './wire.js';
 
 /**
  * The pointing record (spec `ios-capture-companion`, REQ-IOS-1.2, 1.3, 2, 6 and 7): what the phone's own sensors
@@ -142,8 +141,9 @@ export const POINTING_RULES = {
   placeholderSha256: 'A SHA-256 of 64 zeros is a placeholder, not a hash.',
 } as const;
 
-const finite = () => z.number().finite();
-const dimension = () => z.number().int().positive().max(POINTING_DIMENSION_MAX_PX);
+// Numbers are the wire module's: finite, minus zero read as zero, whole numbers safe integers
+const finite = () => wireNumber();
+const dimension = () => wireInt().positive().max(POINTING_DIMENSION_MAX_PX);
 const dimensions = () => z.object({ width: dimension(), height: dimension() }).strict();
 /** The device as a machine identifier and a system version, never by a name a person gave it. */
 const DeviceIdentitySchema = z
@@ -181,8 +181,8 @@ const MeasuredHeadingSchema = z
         quaternion: AttitudeQuaternionSchema,
       })
       .strict(),
-    trueHeadingDeg: z.number().min(0).lt(360),
-    headingAccuracyDeg: z.number().nonnegative().finite(),
+    trueHeadingDeg: wireNumber().min(0).lt(360),
+    headingAccuracyDeg: wireNumber().nonnegative(),
     headingOrientation: z.enum(HEADING_ORIENTATIONS),
     eventOffsetFromPhotoSec: finite(),
   })
@@ -193,7 +193,7 @@ const NoHeadingSchema = z
   .object({
     state: z.literal('none'),
     reason: z.enum(NO_HEADING_REASONS),
-    reportedHeadingAccuracyDeg: z.number().nonnegative().finite().optional(),
+    reportedHeadingAccuracyDeg: wireNumber().nonnegative().optional(),
   })
   .strict();
 
@@ -208,15 +208,15 @@ export type PointingHeading = z.infer<typeof PointingHeadingSchema>;
 const AllowedPlaceSchema = z
   .object({
     state: z.literal('allowed'),
-    latDeg: z.number().min(-90).max(90),
-    lonDeg: z.number().min(-180).max(180),
-    horizontalAccuracyM: z.number().nonnegative().finite(),
+    latDeg: wireNumber().min(-90).max(90),
+    lonDeg: wireNumber().min(-180).max(180),
+    horizontalAccuracyM: wireNumber().nonnegative(),
     accuracyAuthorization: z.enum(ACCURACY_AUTHORIZATIONS),
     altitude: z
       .object({
         aboveMeanSeaLevelM: finite(),
         aboveEllipsoidM: finite(),
-        verticalAccuracyM: z.number().positive().finite(),
+        verticalAccuracyM: wireNumber().positive(),
       })
       .strict()
       .optional(),
@@ -242,10 +242,10 @@ export const PointingCameraSchema = z
     activeFormatDimensionsPx: dimensions(),
     photoDimensionsPx: dimensions(),
     fieldOfView: z.discriminatedUnion('state', [
-      z.object({ state: z.literal('reported'), horizontalDeg: z.number().positive().lt(180), distortionCorrected: z.boolean() }).strict(),
+      z.object({ state: z.literal('reported'), horizontalDeg: wireNumber().positive().lt(180), distortionCorrected: z.boolean() }).strict(),
       z.object({ state: z.literal('unknown') }).strict(),
     ]),
-    videoZoomFactor: z.number().min(1).finite(),
+    videoZoomFactor: wireNumber().min(1),
     contentAwareDistortionCorrection: z.boolean(),
   })
   .strict();
@@ -267,8 +267,8 @@ export const PointingMotionSchema = z
       .object({
         startOffsetSec: finite(),
         endOffsetSec: finite(),
-        sampleCount: z.number().int().positive().max(POINTING_SAMPLE_COUNT_MAX),
-        maxRotationRateRadPerSec: z.number().nonnegative().finite(),
+        sampleCount: wireInt().positive().max(POINTING_SAMPLE_COUNT_MAX),
+        maxRotationRateRadPerSec: wireNumber().nonnegative(),
       })
       .strict(),
   })
@@ -280,17 +280,9 @@ export const PointingRecordSchema = z
     format: z.literal(POINTING_RECORD_FORMAT),
     formatVersion: z.literal(POINTING_RECORD_FORMAT_VERSION),
     // The photo's SHA-256 over the bytes the camera wrote and the app sends, never bytes inside the photo
-    sourceAssetSha256: z
-      .string()
-      .regex(new RegExp(SHA256_HEX_PATTERN))
-      .refine((value) => !/^0+$/.test(value), { message: POINTING_RULES.placeholderSha256 }),
-    // The device clock's reading at the photo's timestamp, in UTC, on a real calendar day; no year 0, which the Python
-    // datetime has not either
-    capturedAtDeviceClockUTC: z
-      .string()
-      .datetime()
-      .regex(new RegExp(INGEST_PATTERNS.utcInstant))
-      .refine((value) => !value.startsWith('0000'), { message: 'No device clock reads year 0.' }),
+    sourceAssetSha256: wireSha256().refine((value) => !/^0+$/.test(value), { message: POINTING_RULES.placeholderSha256 }),
+    // The device clock's reading at the photo's timestamp, in UTC, on a real calendar day from year 1
+    capturedAtDeviceClockUTC: wireUtcInstant(),
     device: DeviceIdentitySchema,
     camera: PointingCameraSchema,
     motion: PointingMotionSchema,

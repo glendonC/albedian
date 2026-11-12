@@ -166,6 +166,14 @@ function renamed(record: unknown, at: Path, name: string): Rec {
   return out;
 }
 
+/** A record as the wire module reads it back: unchanged, but for minus zero, which is zero (WIRE_RULES.md rule 2). */
+function zeroed(value: unknown): unknown {
+  if (Object.is(value, -0)) return 0;
+  if (Array.isArray(value)) return value.map(zeroed);
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, zeroed(v)]));
+  return value;
+}
+
 describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', () => {
   it('shares its patterns, enums, lists, disclosures and refinement messages with the Pydantic mirror', () => {
     expect(fixture.patterns).toEqual(MEDIA_PATTERNS);
@@ -184,14 +192,14 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it('parses every record the Python side wrote, unchanged', () => {
+  it('parses every record the Python side wrote, unchanged but for minus zero, which is zero', () => {
     expect(Object.keys(VALID).sort()).toEqual(Object.keys(SCHEMAS).sort());
     for (const [name, records] of Object.entries(VALID) as [SchemaName, Rec[]][]) {
       expect(records.length, name).toBeGreaterThan(0);
       for (const record of records) {
         const parsed = SCHEMAS[name].safeParse(record);
         expect(parsed.success, `${name}: ${JSON.stringify(parsed.error?.issues)}`).toBe(true);
-        expect(parsed.data).toEqual(record);
+        expect(parsed.data).toEqual(zeroed(record));
       }
     }
   });
@@ -879,5 +887,41 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
       }),
       { seed: SEED, numRuns: 200, examples: [['display_copy', 1.5]] }
     );
+  });
+});
+
+describe("GraphParameter's value keeps its type (an order-dependent union on the Python side)", () => {
+  const value = (GraphParameterSchema._def.schema as z.AnyZodObject).shape.value as z.ZodTypeAny;
+  // JSON text, the value as JSON.parse reads it, and the type the union keeps
+  const reads: [string, number | string | boolean, string][] = [
+    ['0', 0, 'number'],
+    ['5', 5, 'number'],
+    [String(2 ** 53), 2 ** 53, 'number'],
+    ['-7', -7, 'number'],
+    ['5.5', 5.5, 'number'],
+    ['true', true, 'boolean'],
+    ['"x"', 'x', 'string'],
+  ];
+  it.each(reads)('reads %s as itself', (text, expected, kind) => {
+    const read = value.safeParse(JSON.parse(text));
+    expect(read.success && read.data === expected && typeof read.data === kind).toBe(true);
+    expect(read.success && JSON.stringify(read.data)).toBe(text);
+  });
+
+  it('reads a whole number past what a float holds exactly as JSON.parse gives it, still whole', () => {
+    const read = value.safeParse(JSON.parse(String(2n ** 53n + 1n)));
+    expect(read.success && Number.isInteger(read.data) && read.data === 2 ** 53).toBe(true);
+  });
+
+  it.each([
+    ['bitDepth', 8],
+    ['bitDepth', 16],
+    ['maxPasses', 0],
+    ['maxPasses', 3],
+    ['tilePx', 4096],
+  ] as const)('writes %s = %s back as the same whole number', (name, whole) => {
+    const sample = (VALID.GraphParameter as Rec[]).find((parameter) => parameter.name === name) as Rec;
+    const read = GraphParameterSchema.safeParse({ ...sample, value: whole });
+    expect(read.success && JSON.stringify(read.data.value)).toBe(String(whole));
   });
 });

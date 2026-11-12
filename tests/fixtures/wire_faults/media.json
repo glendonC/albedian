@@ -645,7 +645,7 @@
     {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "1e400", "python": "refused"},
     {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "a 401 digit integer", "python": "refused"},
     {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "2^53 + 1", "python": "refused"},
-    {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "minus zero", "python": "accepted as minus zero"},
+    {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "minus zero", "python": "accepted"},
     {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "true", "python": "refused"},
     {"sample": "/valid/ExportManifest/2", "pointer": "/graph/steps/1/parameters/0/value", "fault": "text", "python": "refused"},
     {"sample": "/valid/ExportManifest/2", "pointer": "/attempt/variantId", "fault": "rename", "to": "variant_id", "python": "refused"},

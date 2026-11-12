@@ -26,7 +26,7 @@ import re
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictFloat, StrictInt, StrictStr, StringConstraints, model_validator
+from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictInt, StrictStr, StringConstraints, model_validator
 
 from services.contracts.ingest import JOB_ID_PATTERN, AudioStreamDescriptor, DisplayOrientation
 from services.contracts.wire import (
@@ -524,7 +524,7 @@ class RestoreRequest(_Record):
 
 class GraphParameter(_Record):
     name: Literal[*PARAMETER_NAMES]
-    value: Union[StrictBool, StrictInt, StrictFloat, StrictStr]
+    value: Union[StrictBool, StrictInt, WireNumber, StrictStr]  # a number is the wire's: finite, minus zero is zero
     origin: Literal[*PARAMETER_ORIGINS]
     # What on this file it was measured from, the request field, or the default's source
     basis: StrictStr

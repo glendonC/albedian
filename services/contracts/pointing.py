@@ -14,22 +14,22 @@ and parsed by packages/contracts/src/__tests__/pointing.test.ts, so a rule that 
 test. As in the Zod schema: unknown keys are refused, an optional field is absent and never null, no number is
 infinite or not a number, and a whole number may be written with a zero fraction (4032.0), as JSON lets Zod read it.
 
-The wire rules (.lead/briefs/WIRE_RULES.md) are held here until the shared wire module is on main: wire names only,
-camelCase as the Zod schema reads them (no populate_by_name, so a Python field name on the wire is an unknown key);
-every whole number bounded, so it is a safe integer on both sides; the two device labels exact ASCII patterns, so a
-length counts the same in UTF-16 units and code points and a lone surrogate never fits; no year 0.
+The wire rules (.lead/briefs/WIRE_RULES.md) are the shared wire module's (services/contracts/wire.py, the mirror of
+packages/contracts/src/wire.ts): wire names only, camelCase as the Zod schema reads them, so a Python field name on
+the wire is an unknown key; every number finite and minus zero read as zero; every whole number a bounded safe
+integer, 1.0 read as 1; a SHA-256 of 64 lower-case hex characters; a UTC instant with Z on a real calendar day, no
+year 0. The two device labels are exact ASCII patterns, so a length counts the same in UTF-16 units and code points
+and a lone surrogate never fits.
 """
 
 from __future__ import annotations
 
 import math
-from datetime import datetime
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints, field_validator, model_validator
-from pydantic.alias_generators import to_camel
+from pydantic import BeforeValidator, Field, StringConstraints, field_validator, model_validator
 
-from services.contracts.ingest import SHA256_HEX_PATTERN, UTC_INSTANT_PATTERN
+from services.contracts.wire import Sha256, UtcInstant, WireInt, WireModel, WireNumber, wire_int
 
 POINTING_RECORD_FORMAT = "albedian.pointing-record"
 POINTING_RECORD_FORMAT_VERSION = 1
@@ -91,39 +91,18 @@ POINTING_RULES = {
 }
 
 
-def _whole(value: Any) -> Any:
-    """A whole number written with a zero fraction is that whole number, as Zod reads JSON; true and false are not
-    numbers, as Zod refuses them (a Literal[1] alone would take True, since True == 1 in Python)."""
-    if isinstance(value, bool):
-        raise ValueError("a whole number, not true or false")
-    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
-        return int(value)
-    return value
-
-
-Finite = Annotated[float, Field(strict=True, allow_inf_nan=False)]
-NonNegative = Annotated[float, Field(strict=True, ge=0.0, allow_inf_nan=False)]
-Positive = Annotated[float, Field(strict=True, gt=0.0, allow_inf_nan=False)]
-DimensionPx = Annotated[int, BeforeValidator(_whole), Field(strict=True, gt=0, le=POINTING_DIMENSION_MAX_PX)]
-SampleCount = Annotated[int, BeforeValidator(_whole), Field(strict=True, gt=0, le=POINTING_SAMPLE_COUNT_MAX)]
+Finite = WireNumber
+NonNegative = Annotated[WireNumber, Field(ge=0.0)]
+Positive = Annotated[WireNumber, Field(gt=0.0)]
+DimensionPx = Annotated[WireInt, Field(gt=0, le=POINTING_DIMENSION_MAX_PX)]
+SampleCount = Annotated[WireInt, Field(gt=0, le=POINTING_SAMPLE_COUNT_MAX)]
 HardwareModel = Annotated[str, StringConstraints(strict=True, max_length=POINTING_LABEL_MAX_UTF16, pattern=POINTING_HARDWARE_MODEL_PATTERN)]
 SystemVersion = Annotated[str, StringConstraints(strict=True, max_length=POINTING_SYSTEM_VERSION_MAX_UTF16, pattern=POINTING_SYSTEM_VERSION_PATTERN)]
 
 
-class _Model(BaseModel):
-    """Strict, camelCase on the wire and nothing else (no populate_by_name: a Python field name on the wire is an
-    unknown key, as the Zod schema reads it); no unknown keys; an optional field is absent, never null."""
-
-    model_config = ConfigDict(alias_generator=to_camel, strict=True, extra="forbid")
-
-    @model_validator(mode="before")
-    @classmethod
-    def _no_null_for_optional(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if value is None:
-                    raise ValueError(f"{key} may be absent but not null")
-        return data
+class _Model(WireModel):
+    """The wire module's strict record: camelCase on the wire and nothing else, no unknown keys, an optional field
+    absent and never null."""
 
 
 class DeviceVector(_Model):
@@ -162,7 +141,7 @@ class MeasuredHeading(_Model):
 
     state: Literal["measured"]
     attitude: TrueNorthAttitude
-    true_heading_deg: Annotated[float, Field(strict=True, ge=0.0, lt=360.0, allow_inf_nan=False)]
+    true_heading_deg: Annotated[WireNumber, Field(ge=0.0, lt=360.0)]
     heading_accuracy_deg: NonNegative
     heading_orientation: Literal[HEADING_ORIENTATIONS]
     event_offset_from_photo_sec: Finite
@@ -188,8 +167,8 @@ class AllowedPlace(_Model):
     accuracy granted, the altitudes only when valid, and the fix's offset from the photo."""
 
     state: Literal["allowed"]
-    lat_deg: Annotated[float, Field(strict=True, ge=-90.0, le=90.0, allow_inf_nan=False)]
-    lon_deg: Annotated[float, Field(strict=True, ge=-180.0, le=180.0, allow_inf_nan=False)]
+    lat_deg: Annotated[WireNumber, Field(ge=-90.0, le=90.0)]
+    lon_deg: Annotated[WireNumber, Field(ge=-180.0, le=180.0)]
     horizontal_accuracy_m: NonNegative
     accuracy_authorization: Literal[ACCURACY_AUTHORIZATIONS]
     altitude: Optional[Altitude] = None
@@ -208,7 +187,7 @@ class Dimensions(_Model):
 
 class ReportedFieldOfView(_Model):
     state: Literal["reported"]
-    horizontal_deg: Annotated[float, Field(strict=True, gt=0.0, lt=180.0, allow_inf_nan=False)]
+    horizontal_deg: Annotated[WireNumber, Field(gt=0.0, lt=180.0)]
     distortion_corrected: bool
 
 
@@ -224,7 +203,7 @@ class PointingCamera(_Model):
     active_format_dimensions_px: Dimensions
     photo_dimensions_px: Dimensions
     field_of_view: Annotated[Union[ReportedFieldOfView, UnknownFieldOfView], Field(discriminator="state")]
-    video_zoom_factor: Annotated[float, Field(strict=True, ge=1.0, allow_inf_nan=False)]
+    video_zoom_factor: Annotated[WireNumber, Field(ge=1.0)]
     content_aware_distortion_correction: bool
 
 
@@ -259,11 +238,9 @@ class PointingEvidence(_Model):
 
 class PointingRecord(_Model):
     format: Literal["albedian.pointing-record"]
-    format_version: Annotated[Literal[1], BeforeValidator(_whole)]
-    source_asset_sha256: Annotated[str, StringConstraints(strict=True, pattern=SHA256_HEX_PATTERN)]
-    captured_at_device_clock_utc: Annotated[str, StringConstraints(strict=True, pattern=UTC_INSTANT_PATTERN)] = Field(
-        alias="capturedAtDeviceClockUTC"
-    )
+    format_version: Annotated[Literal[1], BeforeValidator(wire_int)]
+    source_asset_sha256: Sha256
+    captured_at_device_clock_utc: UtcInstant = Field(alias="capturedAtDeviceClockUTC")
     device: DeviceIdentity
     camera: PointingCamera
     motion: PointingMotion
@@ -276,13 +253,6 @@ class PointingRecord(_Model):
     def _not_a_placeholder(cls, value: str) -> str:
         if set(value) == {"0"}:
             raise ValueError(POINTING_RULES["placeholderSha256"])
-        return value
-
-    @field_validator("captured_at_device_clock_utc")
-    @classmethod
-    def _a_calendar_instant(cls, value: str) -> str:
-        # A real calendar day; datetime has no year 0, as the Zod schema refuses it too
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
         return value
 
     @model_validator(mode="after")

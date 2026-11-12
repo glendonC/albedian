@@ -848,3 +848,31 @@ def test_pbt_rst_20_a_request_is_accepted_exactly_when_its_option_fits_its_kind(
     request = {"kind": kind} if exposure is None else {"kind": kind, "exposureEv": exposure}
     expected = exposure is None or (kind == "restoration" and 0 <= exposure <= 6)
     assert accepts(media.RestoreRequest, request) == expected
+
+
+# A union whose order decides a value's type: GraphParameter.value (StrictBool, StrictInt, WireNumber, StrictStr). A
+# whole number stays a whole number, also past what a float holds exactly; a float stays a float; a flag a flag.
+# Every other union of the contracts on the wire module is decided by a tag, or by literals, or is Optional.
+VALUE_READS = [
+    ("0", int), ("5", int), (str(2**53), int), (str(2**53 + 1), int), ("-7", int),
+    ("5.0", float), ("5.5", float), ("-0.0", float), ("true", bool), ("false", bool), ('"x"', str),
+]  # fmt: skip
+
+
+@pytest.mark.parametrize(("text", "kind"), VALUE_READS, ids=[text for text, _ in VALUE_READS])
+def test_a_graph_parameters_value_keeps_the_type_its_json_text_has(text: str, kind: type) -> None:
+    from pydantic import ConfigDict, TypeAdapter
+
+    adapter = TypeAdapter(media.GraphParameter.model_fields["value"].annotation, config=ConfigDict(strict=True))
+    read = adapter.validate_python(json.loads(text))
+    assert type(read) is kind
+    written = json.dumps(adapter.dump_python(read, mode="json"))
+    assert written == ("0.0" if text == "-0.0" else text)  # minus zero is zero (rule 2); everything else as sent
+
+
+@pytest.mark.parametrize(("name", "value"), [("bitDepth", 8), ("bitDepth", 16), ("maxPasses", 0), ("maxPasses", 3), ("tilePx", 4096)])
+def test_a_whole_number_parameter_is_written_back_whole_at_its_rows_edges(name: str, value: int) -> None:
+    sample = next(p for p in VALID["GraphParameter"] if p["name"] == name)
+    record = media.GraphParameter.model_validate({**sample, "value": value})
+    dumped = record.model_dump(by_alias=True)["value"]
+    assert type(dumped) is int and dumped == value
