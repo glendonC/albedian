@@ -9,7 +9,9 @@ import {
   ObservationSession,
   VoiceAction,
   VoiceActionSchema,
+  type VoiceRefusal,
   deterministicHexDigest,
+  refusalSentence,
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
 import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
@@ -49,6 +51,8 @@ export interface VoiceParseResult {
   error?: string;
   /** Why no action was formed, as the contract's rejection reason; set whenever `error` is. */
   reason?: RejectionReason;
+  /** Why the request has no target, as the contract's VoiceRefusal: then `error` is its sentence. */
+  refusal?: VoiceRefusal;
   /** Said before the reducer's own banner when the action completes: how its target was chosen. */
   note?: string;
 }
@@ -261,7 +265,7 @@ export const UNBAKED_OBJECTS: Readonly<Record<string, readonly string[]>> = {
  * services/science/predicted_sky.py; tests/integration/test_voice_named_targets.py keeps the two equal), each by
  * the name a refusal writes for it. A solution holds one as finding-predicted-<body>.
  */
-const PREDICTED_BODY_NAMES: Readonly<Record<string, string>> = {
+export const PREDICTED_BODY_NAMES: Readonly<Record<string, string>> = {
   sun: 'the Sun',
   moon: 'the Moon',
   venus: 'Venus',
@@ -544,7 +548,7 @@ interface NamesRead {
   /** Each name of a finding, in the order said, with the findings it stands for. */
   present: Array<{ at: number; ids: string[] }>;
   /** Each star or body named that the solution does not hold, in the order said, by the name to show. */
-  absent: Array<{ at: number; shown: string }>;
+  absent: Array<{ at: number; shown: string; spoken: string }>;
   without: string;
 }
 
@@ -563,7 +567,7 @@ function readNames(normalizedUtterance: string, session: ObservationSession): Na
     const spans = [...read.without.matchAll(pattern)].map((match) => [match.index, match.index + match[0].length] as const);
     for (const [start, end] of spans) {
       if (name.ids.length > 0) read.present.push({ at: start, ids: name.ids });
-      else if (name.absent) read.absent.push({ at: start, shown: name.absent });
+      else if (name.absent) read.absent.push({ at: start, shown: name.absent, spoken: name.spoken });
       read.without = blank(read.without, start, end);
     }
   };
@@ -580,9 +584,16 @@ function readNames(normalizedUtterance: string, session: ObservationSession): Na
 }
 
 function unbakedObjectIn(normalizedUtterance: string): string | undefined {
-  return Object.entries(UNBAKED_OBJECTS).find(([, spoken]) =>
-    spoken.some((name) => namesWholeWord(normalizedUtterance, name))
-  )?.[0];
+  return unbakedObjectSaid(normalizedUtterance)?.[0];
+}
+
+/** The southern object voice cannot reach yet that the request names, and the spelling it says. */
+function unbakedObjectSaid(normalizedUtterance: string): [string, string] | undefined {
+  for (const [label, spoken] of Object.entries(UNBAKED_OBJECTS)) {
+    const said = spoken.find((name) => namesWholeWord(normalizedUtterance, name));
+    if (said !== undefined) return [label, said];
+  }
+  return undefined;
 }
 
 /**
@@ -602,13 +613,17 @@ export const UNBAKED_DEEP_SKY_ROWS: Readonly<Record<string, string | null>> = {
 };
 
 /** Why voice cannot act on this object: where the baked data holds it, or that no table holds it by name. */
-export function unbakedRefusal(label: string): string {
-  const subject = `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
+/** The contract's refusal for this object: the deep-sky row that holds it, or that no table holds it by name. */
+export function unbakedRefusalRecord(label: string, said: string): VoiceRefusal {
   const row = UNBAKED_DEEP_SKY_ROWS[label];
-  if (row) {
-    return `${subject} is in the app's deep-sky catalogue (OpenNGC ${row}), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.`;
-  }
-  return `${subject} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.`;
+  return row
+    ? { kind: 'deep_sky_out_of_reach', said, name: label, catalogRow: row }
+    : { kind: 'no_named_row', said, name: label };
+}
+
+/** Why voice cannot act on this object, as the contract's sentence for its refusal. */
+export function unbakedRefusal(label: string): string {
+  return refusalSentence(unbakedRefusalRecord(label, label));
 }
 
 interface TargetResolutionResult {
@@ -616,6 +631,12 @@ interface TargetResolutionResult {
   disambiguation?: { question: string; choices: Array<{ id: string; label: string }> };
   error?: string;
   reason?: RejectionReason;
+  refusal?: VoiceRefusal;
+}
+
+/** A refusal, its contract reason, and its sentence in this recording's media word. */
+function refused(refusal: VoiceRefusal, reason: RejectionReason, session: ObservationSession): TargetResolutionResult {
+  return { error: refusalSentence(refusal, mediaWord(session)), reason, refusal };
 }
 
 /** The brightest family: services/voice/intent.py refuses the same words, since it never sees the fluxes. */
@@ -735,13 +756,6 @@ function brightestTarget(normalizedUtterance: string, session: ObservationSessio
  * services/voice/intent.py says the same sentences for the same cases, bar the one about what this sky lacks: the
  * backend holds no photo.
  */
-const WHICH_ONE = 'That does not say which one. Say its name, or select it and say "that one".';
-const NOTHING_IN_VIEW = 'Nothing is selected or pointed at. Select a star or planet first, or say its name.';
-
-/** A word the parser does not know is no evidence about the sky: it says only that it did not understand the word. */
-function notUnderstood(said: string): string {
-  return `I did not understand "${said}". Say a star's or a planet's name, or select one and say "that one".`;
-}
 
 /**
  * True when this session holds a sky that was worked out, from its stars or from the recording's time and place,
@@ -754,12 +768,6 @@ function skyWasWorkedOut(context: ActionContext, session: ObservationSession): b
     context.calibrationState !== 'unresolved' &&
     (status === 'calibrated' || status === 'approximate' || status === 'predicted_only')
   );
-}
-
-/** An unresolved sky places nothing, so nothing in it has a name; a point of light can still be selected. */
-function unresolvedSky(session: ObservationSession, what: 'no name' | 'nothing in view'): string {
-  const sky = `The sky in this ${mediaWord(session)} has not been worked out yet`;
-  return what === 'no name' ? `${sky}, so nothing in it can be found by name.` : `${sky}, and nothing is selected or pointed at.`;
 }
 
 /** What is pointed at, then selected, then focused: the ids a pointing word can mean, the nearest first. */
@@ -794,9 +802,9 @@ function targetInView(context: ActionContext, session: ObservationSession): Targ
 
   // Nothing else stands in: not the solution's only finding, and not any default star
   if (context.calibrationState === 'unresolved') {
-    return { error: unresolvedSky(session, 'nothing in view'), reason: 'unresolved_sky' };
+    return refused({ kind: 'nothing_in_view_sky_not_worked_out' }, 'unresolved_sky', session);
   }
-  return { error: NOTHING_IN_VIEW, reason: 'ambiguous_target' };
+  return refused({ kind: 'nothing_in_view' }, 'ambiguous_target', session);
 }
 
 /**
@@ -832,8 +840,8 @@ function whatIsNotHeld(
   said: NamesRead,
   unknown: string
 ): TargetResolutionResult | undefined {
-  const unbaked = unbakedObjectIn(normalizedUtterance);
-  if (unbaked) return { error: unbakedRefusal(unbaked), reason: 'no_grounded_answer' };
+  const unbaked = unbakedObjectSaid(normalizedUtterance);
+  if (unbaked) return refused(unbakedRefusalRecord(...unbaked), 'no_grounded_answer', session);
   if (SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(normalizedUtterance, name))) {
     const findings = session.observationSolution?.findings ?? [];
     const choices = SOUTHERN_CROSS_STARS.flatMap((name) => {
@@ -841,10 +849,7 @@ function whatIsNotHeld(
       return finding ? [{ id: finding.id, label: name }] : [];
     });
     if (choices.length > 0) return { disambiguation: { question: SOUTHERN_CROSS_QUESTION, choices } };
-    return {
-      error: `The Southern Cross is a constellation, not one star, and none of its stars (${SOUTHERN_CROSS_STARS.join(', ')}) is in the sky solution.`,
-      reason: 'ambiguous_target',
-    };
+    return refused({ kind: 'southern_cross_not_in_this_sky' }, 'ambiguous_target', session);
   }
   const missing = said.absent[0];
   if (missing) {
@@ -852,12 +857,11 @@ function whatIsNotHeld(
     // yet. The reason is the unresolved sky where the view marks it so, else the one a missing name always had
     if (!skyWasWorkedOut(context, session)) {
       const reason = context.calibrationState === 'unresolved' ? 'unresolved_sky' : 'ambiguous_target';
-      return { error: unresolvedSky(session, 'no name'), reason };
+      return refused({ kind: 'sky_not_worked_out' }, reason, session);
     }
-    const shown = `${missing.shown.charAt(0).toUpperCase()}${missing.shown.slice(1)}`;
-    return { error: `${shown} was not found in this ${mediaWord(session)}'s sky.`, reason: 'ambiguous_target' };
+    return refused({ kind: 'not_in_this_sky', said: missing.spoken, name: missing.shown }, 'ambiguous_target', session);
   }
-  if (unknown) return { error: notUnderstood(unknown), reason: 'ambiguous_target' };
+  if (unknown) return refused({ kind: 'not_understood', said: unknown }, 'ambiguous_target', session);
   return undefined;
 }
 
@@ -893,9 +897,9 @@ function resolveTargetFinding(
   if (said.present.length > 0) return namedTarget(said.present, context, session);
 
   if (wording.points) return targetInView(context, session);
-  if (wording.describes) return { error: WHICH_ONE, reason: 'ambiguous_target' };
+  if (wording.describes) return refused({ kind: 'which_one' }, 'ambiguous_target', session);
   if (wording.asks) return undefined;
-  return alone === 'view' ? targetInView(context, session) : { error: WHICH_ONE, reason: 'ambiguous_target' };
+  return alone === 'view' ? targetInView(context, session) : refused({ kind: 'which_one' }, 'ambiguous_target', session);
 }
 
 /**
@@ -1033,7 +1037,7 @@ function parseWithRules(
   ) {
     const resolved = resolveTargetFinding(norm, context, session, named, undefined, 'which');
     if (resolved?.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (resolved && !resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (resolved && !resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
   }
 
   const seekMatch = norm.match(/\b(?:seek|jump|scrub)\s+(?:to\s+)?(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\b/i);
@@ -1065,7 +1069,7 @@ function parseWithRules(
   if (aroundWhat) {
     const resolved = aroundWhat;
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.viewpoint',
@@ -1083,7 +1087,7 @@ function parseWithRules(
   if (howFarWhat) {
     const resolved = howFarWhat;
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.describe',
@@ -1099,7 +1103,7 @@ function parseWithRules(
   if (behindWhat) {
     const resolved = behindWhat;
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.describe',
@@ -1115,7 +1119,7 @@ function parseWithRules(
   if (toWhat) {
     const resolved = toWhat;
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
     return {
       action: AlbedianActionSchema.parse({
         type: 'space.enter',
@@ -1135,7 +1139,7 @@ function parseWithRules(
   if (selectWhat) {
     const resolved = selectWhat;
     if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason };
+    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
     return {
       action: AlbedianActionSchema.parse({
         type: 'finding.select',

@@ -113,7 +113,7 @@ def _nonzero_year(year: int) -> int:
 def _exactly(expected: bool) -> AfterValidator:
     def check(value: bool) -> bool:
         if value is not expected:
-            raise ValueError(f"must be {str(expected).lower()}")
+            raise ValueError(f"must be {'true' if expected else 'false'}")
         return value
 
     return AfterValidator(check)
@@ -374,6 +374,152 @@ class NeedsInputVoiceReply(_Strict):
     scientific_explanation: Optional[Text] = None
 
 
+# Why a request has no target, as a kind a screen or a test reads without reading English: the mirror of
+# REFUSAL_KINDS in packages/contracts/src/voice-command.ts. Each kind names the rejection reasons it goes out under,
+# whether it carries `said` (the person's own words as read, in lower case), `name` (the name of the app's tables they
+# stand for, which the sentence shows) and `catalogRow`, and whether the backend can know it:
+# the backend holds no photo, so the kinds that need the photo's sky are the app parser's alone and a voice reply
+# never carries one. The sentence shown is made from the refusal by `refusal_sentence`, on both sides.
+REFUSAL_KINDS: dict[str, dict[str, Any]] = {
+    # A word no list holds: it may be a name the parser does not know
+    "not_understood": {"reasons": ["ambiguous_target"], "said": True, "name": False, "catalogRow": False, "backend": True},
+    # A star or body the name tables know, not in this photo's sky
+    "not_in_this_sky": {"reasons": ["ambiguous_target"], "said": True, "name": True, "catalogRow": False, "backend": False},
+    # A deep-sky object a catalogue holds, which voice cannot reach yet
+    "deep_sky_out_of_reach": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": True, "backend": True},
+    # A sky name no catalogue of the app holds by name
+    "no_named_row": {"reasons": ["no_grounded_answer"], "said": True, "name": True, "catalogRow": False, "backend": True},
+    # The Southern Cross, none of whose stars this sky holds
+    "southern_cross_not_in_this_sky": {"reasons": ["ambiguous_target"], "said": False, "name": False, "catalogRow": False, "backend": False},
+    # A thing described but not named, so it could be any of several
+    "which_one": {"reasons": ["ambiguous_target"], "said": False, "name": False, "catalogRow": False, "backend": True},
+    # A pointing word, or a command said alone, with nothing selected, focused or pointed at
+    "nothing_in_view": {"reasons": ["ambiguous_target"], "said": False, "name": False, "catalogRow": False, "backend": True},
+    # A name asked for in a sky not worked out, so nothing in it has a name yet
+    "sky_not_worked_out": {"reasons": ["ambiguous_target", "unresolved_sky"], "said": False, "name": False, "catalogRow": False, "backend": False},
+    # Nothing in view, in a sky the view marks unresolved
+    "nothing_in_view_sky_not_worked_out": {"reasons": ["unresolved_sky"], "said": False, "name": False, "catalogRow": False, "backend": False},
+}
+# [proposed] What a refusal quotes back: at most six words and 80 characters with " ..." (services/voice/names.py
+# MAX_QUOTED_*), so 80 astral characters and the cut mark fit. Counted in UTF-16 code units.
+REFUSAL_SAID_MAX_UTF16 = 200
+CATALOG_ROW_MAX_UTF16 = 32
+# [proposed] A name of the app's tables, as long as any text of the answer contract may be
+REFUSAL_NAME_MAX_UTF16 = 128
+# An OpenNGC row name as the baked table writes it (NGC0292, ESO056-115, C099)
+CATALOG_ROW_PATTERN = r"^[A-Za-z0-9]+(?:[- ][A-Za-z0-9]+)*$"
+# The Southern Cross asterism's stars, as the refusal names them (services/voice/names.py SOUTHERN_CROSS_STARS)
+SOUTHERN_CROSS_STAR_NAMES = ("Acrux", "Mimosa", "Gacrux", "Imai", "Ginan")
+REFUSAL_MEDIA = ("photo", "video")
+# The 55 code points whose simple upper-case mapping (UnicodeData.txt field 12) differs between Unicode 15.0.0, which
+# CI's Python 3.12 uses, and 17.0.0, which Node 24 uses: read from the two pinned files in .cache/unicode/ucd (AUDIT J
+# found them for answers-3). The fixture holds a name starting with each, refused on both sides
+UNEVEN_CASE_CODE_POINTS = (
+    0x019B, 0x0264, 0x1C8A, 0xA7CD, 0xA7CF, 0xA7D3, 0xA7D5, 0xA7DB,
+    *range(0x10D70, 0x10D86),
+    *range(0x16EBB, 0x16ED4),
+)
+
+
+def _wire_text(maximum: int, pattern: str | None = None) -> AfterValidator:
+    """1 to `maximum` UTF-16 units, no lone surrogate, no control character, and the whole text matching `pattern`."""
+    compiled = re.compile(pattern.removeprefix("^").removesuffix("$")) if pattern is not None else None
+
+    def check(text: str) -> str:
+        length = utf16_length(text)
+        if not 1 <= length <= maximum:
+            raise ValueError(f"is {length} UTF-16 code units long, outside 1 to {maximum}")
+        if any(0xD800 <= ord(char) <= 0xDFFF for char in text):
+            raise ValueError("holds a lone surrogate")
+        if any(ord(char) <= 0x1F or 0x7F <= ord(char) <= 0x9F for char in text):
+            raise ValueError("holds a control character")
+        if compiled is not None and compiled.fullmatch(text) is None:
+            raise ValueError(f"does not match {pattern}")
+        return text
+
+    return AfterValidator(check)
+
+
+# What may stand between two letters of a name, as the name tables write names ("Eta Carinae", "Al Na'ir")
+REFUSAL_NAME_SEPARATORS = (" ", "'")
+
+
+def is_table_name(name: str) -> bool:
+    """A name as the name tables write it: an ASCII letter or digit first, then letters and digits of the tracked
+    letters table, with one space or apostrophe between two of them (the mirror of isTableName in voice-command.ts).
+    The first character is ASCII so the sentence's capital is made by a fixed rule, the same in every runtime."""
+    if not name or not ("a" <= name[0] <= "z" or "A" <= name[0] <= "Z" or "0" <= name[0] <= "9"):
+        return False
+    for index, char in enumerate(name):
+        if char in REFUSAL_NAME_SEPARATORS:
+            if index + 1 == len(name) or name[index + 1] in REFUSAL_NAME_SEPARATORS:
+                return False
+        elif not is_letter_or_digit(ord(char)):
+            return False
+    return True
+
+
+def _table_name(name: str) -> str:
+    if not is_table_name(name):
+        raise ValueError("a name is written as the name tables write it")
+    return name
+
+
+class VoiceRefusal(_Strict):
+    kind: Literal[tuple(REFUSAL_KINDS)]  # type: ignore[valid-type]
+    said: Optional[Annotated[str, _wire_text(REFUSAL_SAID_MAX_UTF16)]] = None
+    name: Optional[Annotated[str, _wire_text(REFUSAL_NAME_MAX_UTF16), AfterValidator(_table_name)]] = None
+    catalog_row: Optional[Annotated[str, _wire_text(CATALOG_ROW_MAX_UTF16, CATALOG_ROW_PATTERN)]] = None
+
+    @model_validator(mode="after")
+    def _says_what_its_kind_says(self) -> VoiceRefusal:
+        spec = REFUSAL_KINDS[self.kind]
+        if spec["said"] != (self.said is not None):
+            raise ValueError(f"a {self.kind} refusal {'quotes' if spec['said'] else 'quotes nothing'} said")
+        if spec["name"] != (self.name is not None):
+            raise ValueError(f"a {self.kind} refusal {'names' if spec['name'] else 'names no'} the name it stands for")
+        if spec["catalogRow"] != (self.catalog_row is not None):
+            raise ValueError(f"a {self.kind} refusal {'names' if spec['catalogRow'] else 'names no'} catalogue row")
+        return self
+
+
+def _capitalized(text: str) -> str:
+    """`text` with an ASCII small letter first raised to its capital, and any other first character left as it is: a
+    fixed rule, never this Python's case tables, so both languages make the same sentence."""
+    return chr(ord(text[0]) - 0x20) + text[1:] if text and "a" <= text[0] <= "z" else text
+
+
+def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
+    """The one sentence a refusal is shown as, from its kind, what was said, and the recording's media word."""
+    kind, said, row = refusal["kind"], refusal.get("said", ""), refusal.get("catalogRow", "")
+    name = refusal.get("name", "")
+    if kind == "not_understood":
+        return f'I did not understand "{said}". Say a star\'s or a planet\'s name, or select one and say "that one".'
+    if kind == "not_in_this_sky":
+        return f"{_capitalized(name)} was not found in this {media}'s sky."
+    if kind == "deep_sky_out_of_reach":
+        return (
+            f"{_capitalized(name)} is in the app's deep-sky catalogue (OpenNGC {row}), but voice does not reach "
+            "deep-sky objects yet, so it cannot be selected, described or flown to."
+        )
+    if kind == "no_named_row":
+        return f"{_capitalized(name)} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    if kind == "southern_cross_not_in_this_sky":
+        return (
+            "The Southern Cross is a constellation, not one star, and none of its stars "
+            f"({', '.join(SOUTHERN_CROSS_STAR_NAMES)}) is in the sky solution."
+        )
+    if kind == "which_one":
+        return 'That does not say which one. Say its name, or select it and say "that one".'
+    if kind == "nothing_in_view":
+        return "Nothing is selected or pointed at. Select a star or planet first, or say its name."
+    if kind == "sky_not_worked_out":
+        return f"The sky in this {media} has not been worked out yet, so nothing in it can be found by name."
+    if kind == "nothing_in_view_sky_not_worked_out":
+        return f"The sky in this {media} has not been worked out yet, and nothing is selected or pointed at."
+    raise ValueError(f"no sentence for a {kind} refusal")
+
+
 class RejectedVoiceReply(_Strict):
     status: Literal["rejected"]
     action_id: Text
@@ -395,11 +541,25 @@ class RejectedVoiceReply(_Strict):
     scientific_explanation: Optional[Text] = None
     # For an invalid_action refusal only: how the action failed the schema
     issues: Optional[Annotated[list[ActionIssue], Field(min_length=1)]] = None
+    # Why the request has no target: every ambiguous_target refusal says so, and its explanation is the sentence
+    refusal: Optional[VoiceRefusal] = None
 
     @model_validator(mode="after")
     def _issues_only_for_invalid_actions(self) -> RejectedVoiceReply:
         if (self.reason == "invalid_action") != (self.issues is not None):
             raise ValueError("an invalid_action refusal lists its issues, and no other refusal does")
+        refusal = self.refusal
+        if refusal is None:
+            if self.reason == "ambiguous_target":
+                raise ValueError("an ambiguous_target refusal says which kind it is")
+            return self
+        spec = REFUSAL_KINDS[refusal.kind]
+        if not spec["backend"]:
+            raise ValueError(f"a {refusal.kind} refusal needs the photo's sky, which the backend does not hold")
+        if self.reason not in spec["reasons"]:
+            raise ValueError(f"a {refusal.kind} refusal goes out as {' or '.join(spec['reasons'])}")
+        if self.explanation != refusal_sentence(refusal.model_dump(by_alias=True, exclude_none=True)):
+            raise ValueError("a refusal's explanation is its sentence")
         return self
 
 
@@ -422,6 +582,7 @@ REJECTION_REASONS: tuple[str, ...] = get_args(RejectedVoiceReply.model_fields["r
 ALBEDIAN_ACTION: TypeAdapter[Any] = TypeAdapter(AlbedianAction)
 VOICE_COMMAND_REQUEST: TypeAdapter[Any] = TypeAdapter(VoiceCommandRequest)
 VOICE_COMMAND_RESPONSE: TypeAdapter[Any] = TypeAdapter(VoiceCommandResponse)
+VOICE_REFUSAL: TypeAdapter[Any] = TypeAdapter(VoiceRefusal)
 
 
 # Answers: the mirror of packages/contracts/src/voice-answer.ts. An answer is either "answered", one short plain
@@ -634,26 +795,6 @@ def is_letter_or_digit(code_point: int) -> bool:
     """Whether the table counts this code point as a letter or a digit."""
     index = bisect_right(_LETTER_FIRSTS, code_point) - 1
     return index >= 0 and code_point <= _LETTER_LASTS[index]
-
-
-def _wire_text(maximum: int, pattern: str | None = None) -> AfterValidator:
-    """1 to `maximum` UTF-16 units, no lone surrogate, no control character, and the whole text matching `pattern`."""
-    compiled = re.compile(pattern.removeprefix("^").removesuffix("$")) if pattern is not None else None
-
-    def check(text: str) -> str:
-        length = utf16_length(text)
-        if not 1 <= length <= maximum:
-            raise ValueError(f"is {length} UTF-16 code units long, outside 1 to {maximum}")
-        if any(0xD800 <= ord(char) <= 0xDFFF for char in text):
-            raise ValueError("holds a lone surrogate")
-        if any(ord(char) <= 0x1F or 0x7F <= ord(char) <= 0x9F for char in text):
-            raise ValueError("holds a control character")
-        if compiled is not None and compiled.fullmatch(text) is None:
-            raise ValueError(f"does not match {pattern}")
-        return text
-
-    return AfterValidator(check)
-
 
 def _says_something(text: str) -> str:
     """At least one letter or digit of the table: it shows."""
@@ -976,6 +1117,43 @@ def build_voice_samples() -> dict[str, Any]:
         "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
     }
     refusal = {"status": "rejected", "actionId": "req-sample-1", "explanation": "A made-up explanation.", "nextActions": []}
+    # One refusal of each kind, with what a person might have said
+    refusals = [
+        {"kind": "not_understood", "said": "zorblax"},
+        {"kind": "not_understood", "said": "milky way"},
+        {"kind": "not_understood", "said": "a b c d e f ..."},
+        {"kind": "not_understood", "said": "\u0441\u0438\u0440\u0438\u0443\u0441"},
+        {"kind": "not_understood", "said": "\U0001d400" * 80 + " ..."},
+        {"kind": "not_in_this_sky", "said": "vega", "name": "Vega"},
+        {"kind": "not_in_this_sky", "said": "alpha centauri", "name": "Rigil Kentaurus"},
+        {"kind": "deep_sky_out_of_reach", "said": "lmc", "name": "the Large Magellanic Cloud", "catalogRow": "ESO056-115"},
+        {"kind": "deep_sky_out_of_reach", "said": "omega cen", "name": "Omega Centauri", "catalogRow": "NGC5139"},
+        {"kind": "deep_sky_out_of_reach", "said": "coal sack", "name": "the Coalsack", "catalogRow": "C099"},
+        {"kind": "no_named_row", "said": "magellanic clouds", "name": "the Magellanic Clouds"},
+        {"kind": "no_named_row", "said": "eta car", "name": "Eta Carinae"},
+        {"kind": "southern_cross_not_in_this_sky"},
+        {"kind": "which_one"},
+        {"kind": "nothing_in_view"},
+        {"kind": "sky_not_worked_out"},
+        {"kind": "nothing_in_view_sky_not_worked_out"},
+    ]
+    backend_refusals = [r for r in refusals if REFUSAL_KINDS[r["kind"]]["backend"]]
+    # The sentence of every refusal, in each media word, and of names whose first letter the ASCII rule raises or
+    # leaves (a digit), with letters of the letters table and an apostrophe inside
+    sentences = [
+        {"refusal": r, "media": media, "sentence": refusal_sentence(r, media)}
+        for r in [
+            *refusals,
+            {"kind": "not_in_this_sky", "said": "tx", "name": "tx"},
+            {"kind": "not_in_this_sky", "said": "the moon", "name": "the Moon"},
+            {"kind": "not_in_this_sky", "said": "bibha", "name": "Bibh\u0101"},
+            {"kind": "not_in_this_sky", "said": "al na'ir", "name": "al Na'ir"},
+            {"kind": "not_in_this_sky", "said": "7 star", "name": "7 star"},
+            {"kind": "no_named_row", "said": "z", "name": "z"},
+            {"kind": "not_understood", "said": 'say "x"'},
+        ]
+        for media in REFUSAL_MEDIA
+    ]
     stale = {
         **refusal,
         "reason": "stale_revision",
@@ -989,8 +1167,12 @@ def build_voice_samples() -> dict[str, Any]:
     rejections = [
         stale,
         {**refusal, "reason": "unresolved_sky", "interpretation": model},
-        {**refusal, "reason": "ambiguous_target", "interpretation": rules,
-         "nextActions": ["Name a catalog star or planet, or point at one"]},
+        *[
+            {**refusal, "reason": REFUSAL_KINDS[r["kind"]]["reasons"][0], "interpretation": rules,
+             "explanation": refusal_sentence(r), "refusal": r,
+             "nextActions": ["Name a catalog star or planet, or point at one"]}
+            for r in backend_refusals
+        ],
         {**refusal, "reason": "no_distance_estimate", "interpretation": fallback},
         {**refusal, "reason": "invalid_epoch", "interpretation": rules},
         {**refusal, "reason": "missing_source"},
@@ -1129,6 +1311,87 @@ def build_voice_samples() -> dict[str, Any]:
     bad(reply, _with(needs_input, ["choices", 0, "label"], ""), "an empty choice label")
     bad(reply, _with(needs_input, ["question"], ""), "an empty question")
     bad(reply, {**needs_input, "visualStatus": "Waiting"}, "an unknown key on a strict question")
+    # Refusals
+    understood = next(r for r in rejections if r.get("refusal", {}).get("kind") == "not_understood")
+    out_of_reach = next(r for r in rejections if r.get("refusal", {}).get("kind") == "deep_sky_out_of_reach")
+    which = next(r for r in rejections if r.get("refusal", {}).get("kind") == "which_one")
+    bad(reply, _with(understood, ["refusal"], _DROP), "an ambiguous_target refusal says its kind")
+    bad(reply, _with(understood, ["refusal", "kind"], "not_heard"), "an unknown refusal kind")
+    bad(reply, _with(understood, ["refusal", "kind"], _DROP), "a refusal has a kind")
+    bad(reply, _with(understood, ["refusal"], None), "a refusal is absent, never null")
+    bad(reply, _with(understood, ["reason"], "no_grounded_answer"), "a word not understood is ambiguous_target")
+    bad(reply, _with(out_of_reach, ["reason"], "ambiguous_target"), "an object out of reach is no_grounded_answer")
+    bad(reply, _with(understood, ["explanation"], "I did not understand that."), "the explanation is the sentence")
+    bad(reply, _with(understood, ["refusal", "said"], "other"), "the sentence quotes what was said")
+    bad(reply, _with(out_of_reach, ["refusal", "catalogRow"], "NGC0001"), "the sentence names the row")
+    bad(reply, _with(understood, ["refusal", "said"], _DROP), "a word not understood quotes what was said")
+    bad(reply, _with(which, ["refusal", "said"], "that"), "which one quotes nothing")
+    bad(reply, _with(out_of_reach, ["refusal", "catalogRow"], _DROP), "an object out of reach names its row")
+    bad(reply, _with(understood, ["refusal", "catalogRow"], "NGC0292"), "a word not understood names no row")
+    bad(reply, _with(out_of_reach, ["refusal", "name"], _DROP), "an object out of reach names what it is")
+    bad(reply, _with(out_of_reach, ["refusal", "name"], "Somewhere Else"), "the sentence shows the name")
+    bad(reply, _with(understood, ["refusal", "name"], "Zorblax"), "a word not understood stands for no name")
+    for kind in ("not_in_this_sky", "southern_cross_not_in_this_sky", "sky_not_worked_out", "nothing_in_view_sky_not_worked_out"):
+        app_refusal = next(r for r in refusals if r["kind"] == kind)
+        bad(reply, {**understood, "reason": REFUSAL_KINDS[kind]["reasons"][0], "explanation": refusal_sentence(app_refusal),
+                    "refusal": app_refusal}, f"the backend holds no photo, so it never says {kind}")
+    bad(reply, {**understood, "proposedAction": select}, "a refusal carries no action")
+    bad(reply, {**described, "refusal": understood["refusal"]}, "an action carries no refusal")
+    bad(reply, {**needs_input, "refusal": understood["refusal"]}, "a question carries no refusal")
+    bad(reply, {**understood, "refusal": {**understood["refusal"], "note": "x"}}, "an unknown key on a strict refusal")
+    refusal_schema = "VoiceRefusal"
+    bad(refusal_schema, {"kind": "not_understood", "said": ""}, "an empty said")
+    bad(refusal_schema, {"kind": "not_understood", "said": "x" * (REFUSAL_SAID_MAX_UTF16 + 1)}, "said of 201 units")
+    bad(refusal_schema, {"kind": "not_understood", "said": "\U0001d400" * 100 + "x"}, "said of 201 units, astral")
+    bad(refusal_schema, {"kind": "not_understood", "said": "zorb\nlax"}, "said with a control character")
+    bad(refusal_schema, {"kind": "not_understood", "said": "zorb\ud800"}, "said with a lone surrogate")
+    bad(refusal_schema, {"kind": "not_understood", "said": 7}, "said as a number")
+    bad(refusal_schema, {"kind": "no_named_row", "said": "x", "name": ""}, "an empty name")
+    bad(refusal_schema, {"kind": "no_named_row", "said": "x", "name": "n" * (REFUSAL_NAME_MAX_UTF16 + 1)}, "a name of 129 units")
+    bad(refusal_schema, {"kind": "no_named_row", "said": "x", "name": "Eta\x00Carinae"}, "a name with a control character")
+    for code_point in UNEVEN_CASE_CODE_POINTS:
+        bad(refusal_schema, {"kind": "no_named_row", "said": "x", "name": chr(code_point) + "x"},
+            f"a name starting with U+{code_point:04X}, whose case maps differ between Unicode 15.0.0 and 17.0.0")
+    for name, why in (("\u00e9toile", "a first letter outside ASCII"), ("\u00dfeta", "a first letter outside ASCII"),
+                      ("\u01c6ubhe", "a first letter outside ASCII"), ("\U00010428x", "a first letter outside the basic plane"),
+                      (" Vega", "a leading space"), ("Vega ", "a trailing space"), ("Eta  Carinae", "two spaces"),
+                      ("'Vega", "a leading apostrophe"), ("Na''ir", "two apostrophes"), ("Na' ir", "an apostrophe before a space"),
+                      ("Eta-Carinae", "a hyphen, which no name holds"), ("Eta.", "a period"), ("Vega!", "a sign"),
+                      ("Ve\u0301ga", "a combining mark, which is no letter of the table"), ("Vega\u00a0x", "a space that is not ASCII"),
+                      ("x\U0001f600", "a sign outside the basic plane")):
+        bad(refusal_schema, {"kind": "no_named_row", "said": "x", "name": name}, f"a name with {why}")
+    bad(refusal_schema, {"kind": "no_named_row", "name": "Eta Carinae"}, "a name with nothing said")
+    bad(refusal_schema, {"kind": "deep_sky_out_of_reach", "said": "x", "name": "X", "catalogRow": "NGC 0292;"}, "a row from no table")
+    bad(refusal_schema, {"kind": "deep_sky_out_of_reach", "said": "x", "name": "X", "catalogRow": "N" * 33}, "a row of 33 units")
+    bad(refusal_schema, {"kind": "deep_sky_out_of_reach", "said": "x", "name": "X", "catalogRow": "NGC0292\n"}, "a row with a newline")
+    bad(refusal_schema, {"kind": "which_one", "catalog_row": "NGC0292"}, "snake_case is not the contract's")
+    bad(refusal_schema, {"kind": "Not_Understood", "said": "x"}, "kinds are exact")
+    bad(refusal_schema, {}, "no kind")
+    # Edges from one table: every bound and pattern of a refusal at its inside end (valid) and just outside (refused)
+    understood_base = {"kind": "not_understood"}
+    named_base = {"kind": "no_named_row", "said": "x"}
+    row_base = {"kind": "deep_sky_out_of_reach", "said": "x", "name": "X"}
+    refusal_edges = [
+        ("said", understood_base, "said", "x" * REFUSAL_SAID_MAX_UTF16, "x" * (REFUSAL_SAID_MAX_UTF16 + 1)),
+        ("said in astral letters", understood_base, "said", "\U0001d400" * (REFUSAL_SAID_MAX_UTF16 // 2),
+         "\U0001d400" * (REFUSAL_SAID_MAX_UTF16 // 2) + "x"),
+        ("said of one unit", understood_base, "said", "x", ""),
+        ("name", named_base, "name", "n" * REFUSAL_NAME_MAX_UTF16, "n" * (REFUSAL_NAME_MAX_UTF16 + 1)),
+        ("name of one unit", named_base, "name", "n", ""),
+        ("name starting with a digit", named_base, "name", "4x", "\u0664x"),
+        ("name with a letter of the table inside", named_base, "name", "Bibh\u0101", "Bibh\u0101\u0301"),
+        ("name with a space between words", named_base, "name", "Eta Carinae", "Eta Carinae "),
+        ("name with an apostrophe between letters", named_base, "name", "Na'ir", "Na'"),
+        ("row", row_base, "catalogRow", "N" * CATALOG_ROW_MAX_UTF16, "N" * (CATALOG_ROW_MAX_UTF16 + 1)),
+        ("row of one unit", row_base, "catalogRow", "N", ""),
+        ("row of two parts", row_base, "catalogRow", "NGC 0292", "NGC 0292 "),
+        ("row joined by a hyphen", row_base, "catalogRow", "ESO056-115", "ESO056--115"),
+        ("row starting with a part", row_base, "catalogRow", "C099", "-C099"),
+    ]
+    refusal_edge_valid = []
+    for label, base_refusal, key, inside, outside in refusal_edges:
+        refusal_edge_valid.append({**base_refusal, key: inside})
+        bad(refusal_schema, {**base_refusal, key: outside}, f"edge {label} just outside its bound")
 
     stripped = [
         {"schema": action, "sample": {**select, "colour": "blue", "note": None}, "parsed": select},
@@ -1158,7 +1421,18 @@ def build_voice_samples() -> dict[str, Any]:
             "fractionMin": FRACTION_MIN,
             "fractionMax": FRACTION_MAX,
         },
-        "valid": {"AlbedianAction": actions, "VoiceCommandRequest": requests, "VoiceCommandResponse": replies},
+        "refusalKinds": REFUSAL_KINDS,
+        "refusalLimits": {
+            "saidMaxUtf16": REFUSAL_SAID_MAX_UTF16,
+            "catalogRowMaxUtf16": CATALOG_ROW_MAX_UTF16,
+            "nameMaxUtf16": REFUSAL_NAME_MAX_UTF16,
+            "catalogRowPattern": CATALOG_ROW_PATTERN,
+            "southernCrossStars": list(SOUTHERN_CROSS_STAR_NAMES),
+            "media": list(REFUSAL_MEDIA),
+        },
+        "refusalSentences": sentences,
+        "valid": {"AlbedianAction": actions, "VoiceCommandRequest": requests, "VoiceCommandResponse": replies,
+                  "VoiceRefusal": refusals + refusal_edge_valid},
         "invalid": invalid,
         "stripped": stripped,
     }

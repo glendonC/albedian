@@ -16,10 +16,11 @@ from typing import Any
 
 import anthropic
 import httpx2
+from hypothesis import given, settings, strategies as st
 import pytest
 
 from services.contracts import voice as contract
-from services.voice import claude
+from services.voice import claude, intent
 from services.voice.intent import ActionContext, check_voice_command, parse_voice_intent
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_voice_actions.json"
@@ -452,7 +453,9 @@ def test_a_model_abstention_reaches_rules_that_invent_no_target(
     api = _Api(reply)
     _live(monkeypatch, api)
     bare = {"viewRevision": 3, "calibrationState": "calibrated"}
-    outcome = check_voice_command("take me to the Andromeda galaxy", bare)
+    # A sentence no word of which stops it, so the model is asked; "take me to the Andromeda galaxy" is refused for
+    # its word "andromeda" before any model is (test_pbt_a_sentence_the_rules_refuse_for_a_word_or_a_name_reaches_no_model)
+    outcome = check_voice_command("take me there", bare)
     contract.VOICE_COMMAND_RESPONSE.validate_python(outcome)
     assert len(api.requests) == 1
     assert (outcome["status"], outcome["reason"]) == ("rejected", "ambiguous_target")
@@ -617,3 +620,132 @@ def test_python_voice_action_fixture_is_current() -> None:
         f"{FIXTURE.name} no longer matches the composed actions; regenerate it with "
         f"{UPDATE_FIXTURE_ENV}=1 uv run pytest tests/integration/test_voice_claude_path.py"
     )
+
+
+# The model reads nothing the rules do not read first (answers-3). For a sentence the rules refuse for a word or a
+# name, whatever the model would answer, the reply is the rules' refusal and the model is never asked; for a
+# sentence the rules accept, a model target the sentence neither names nor points at is overruled by the rules.
+REFUSED_FOR_A_WORD = ["zorblax", "andromeda", "the milky way", "kepler-22b", "tatooine", "omega centauri", "lmc",
+                      "the coalsack", "the magellanic clouds"]
+REFUSING_TEMPLATES = ["take me to {w}", "what is {w}?", "select {w}", "how far is {w}?", "tell me about {w}",
+                      "describe {w}", "fly to {w}", "focus on {w}", "take me there, {w}", "how far is Rigel from {w}?"]
+NAMED = ["Rigel", "Fomalhaut", "Vega", "Sirius", "Saturn", "the Moon"]
+NAMING_TEMPLATES = ["take me to {n}", "what is {n}?", "select {n}", "how far is {n}?", "tell me about {n}",
+                    "fly to {n}", "focus on {n}"]
+MODEL_TOOL_CALLS = [
+    ("finding_select", {"findingId": "finding-obs-7"}),  # the selection
+    ("finding_describe", {"findingId": "finding-obs-9", "fields": ["type"]}),  # what the pointer is near
+    ("space_enter", {"findingId": "finding-star-fomalhaut"}),
+    ("finding_select", {"findingId": "finding-predicted-saturn"}),
+    ("sky_show", {"mode": "measured"}),
+]
+
+
+def _without_ids(reply: dict[str, Any]) -> dict[str, Any]:
+    """A reply with its request id taken out: each request gets its own."""
+    out = {key: value for key, value in reply.items() if key != "actionId"}
+    if "proposedAction" in out:
+        out["proposedAction"] = {k: v for k, v in out["proposedAction"].items() if k != "requestId"}
+    return out
+
+
+def _live_reply(utterance: str, tool: tuple[str, dict[str, Any]]) -> tuple[dict[str, Any], int]:
+    """The reply with the live path on and the fake model answering `tool`, and how many times it was asked."""
+    api = _Api(_reply(THINKING, _tool_use(*tool)))
+    with pytest.MonkeyPatch.context() as patch:
+        _live(patch, api)
+        reply = check_voice_command(utterance, CONTEXT, current_year=2026)
+    contract.VOICE_COMMAND_RESPONSE.validate_python(reply)
+    return reply, len(api.requests)
+
+
+@settings(max_examples=120, deadline=None)
+@given(template=st.sampled_from(REFUSING_TEMPLATES), word=st.sampled_from(REFUSED_FOR_A_WORD),
+       tool=st.sampled_from(MODEL_TOOL_CALLS))
+def test_pbt_a_sentence_the_rules_refuse_for_a_word_or_a_name_reaches_no_model(
+    template: str, word: str, tool: tuple[str, dict[str, Any]]
+) -> None:
+    utterance = template.format(w=word)
+    rules = check_voice_command(utterance, CONTEXT, current_year=2026)
+    assert rules["status"] == "rejected" and rules["interpretation"] == {"parser": "rules"}, utterance
+    live, asked = _live_reply(utterance, tool)
+    assert asked == 0, f"the model was asked about {utterance!r}"
+    assert _without_ids(live) == _without_ids(rules)
+
+
+@settings(max_examples=120, deadline=None)
+@given(template=st.sampled_from(NAMING_TEMPLATES), name=st.sampled_from(NAMED),
+       tool=st.sampled_from(MODEL_TOOL_CALLS))
+def test_pbt_a_model_target_the_sentence_neither_names_nor_points_at_is_overruled(
+    template: str, name: str, tool: tuple[str, dict[str, Any]]
+) -> None:
+    utterance = template.format(n=name)
+    rules = check_voice_command(utterance, CONTEXT, current_year=2026)
+    live, asked = _live_reply(utterance, tool)
+    assert asked == 1
+    target = tool[1].get("findingId")
+    named = parse_voice_intent(utterance, CONTEXT, current_year=2026).action or {}
+    if target is not None and target != named.get("findingId"):
+        # Not what the sentence names, and the sentence points at nothing: the rules' reading stands
+        assert _without_ids(live) == _without_ids(rules), (utterance, tool)
+        assert live["interpretation"] == {"parser": "rules"}
+    elif target is not None:
+        assert live["interpretation"] == _model()
+
+
+def test_two_names_reach_no_model_and_are_asked_which() -> None:
+    utterance = "how far is Rigel from Sirius?"
+    rules = check_voice_command(utterance, CONTEXT, current_year=2026)
+    assert rules["status"] == "needs_input"
+    for tool in (("finding_select", {"findingId": "finding-star-rigel"}), ("space_enter", {"findingId": "finding-star-sirius"})):
+        live, asked = _live_reply(utterance, tool)
+        assert asked == 0 and _without_ids(live) == _without_ids(rules), tool
+
+
+def test_the_model_acting_on_the_named_record_is_kept_and_on_its_other_form_is_overruled() -> None:
+    kept, asked = _live_reply("take me to Fomalhaut", ("space_enter", {"findingId": "finding-star-fomalhaut"}))
+    assert asked == 1 and kept["interpretation"] == _model() and kept["proposedAction"]["findingId"] == "finding-star-fomalhaut"
+    # A sky that is predicted holds a pinned star as its predicted record: the solved sky's id is not what is named
+    predicted = ActionContext.from_dict({"viewRevision": 3, "calibrationState": "predicted_only"})
+    api = _Api(_reply(THINKING, _tool_use("finding_select", {"findingId": "finding-star-rigel"})))
+    with pytest.MonkeyPatch.context() as patch:
+        _live(patch, api)
+        overruled = check_voice_command("select Rigel", predicted, current_year=2026)
+    assert len(api.requests) == 1 and overruled["interpretation"] == {"parser": "rules"}
+    assert overruled["proposedAction"]["findingId"] == "finding-predicted-star-rigel"
+
+
+# Every clause of intent._the_words_decide, with sentences that reach it: (sentence, how the rules' reading shows it)
+WORDS_DECIDE = [
+    ("take me to zorblax", "kind not_understood"),
+    ("take me to omega centauri", "kind deep_sky_out_of_reach"),
+    ("take me to the magellanic clouds", "kind no_named_row"),
+    ("how far is Rigel from Sirius?", "choices"),
+    ("select the southern cross", "the Southern Cross question"),
+    ("take me to the southern cross", "the Southern Cross question"),
+    ("what is crux", "the Southern Cross question"),
+]
+
+
+@pytest.mark.parametrize("utterance, clause", WORDS_DECIDE, ids=[row[0] for row in WORDS_DECIDE])
+def test_every_clause_where_the_words_decide_reaches_no_model(utterance: str, clause: str) -> None:
+    rules = parse_voice_intent(utterance, CONTEXT, current_year=2026)
+    if clause.startswith("kind "):
+        assert rules.refusal is not None and rules.refusal["kind"] == clause.removeprefix("kind "), rules
+    elif clause == "choices":
+        assert rules.choices, rules
+    else:
+        assert rules.explanation == intent._SOUTHERN_CROSS_QUESTION and rules.refusal is None and not rules.choices, rules
+    for tool in MODEL_TOOL_CALLS:
+        _live, asked = _live_reply(utterance, tool)
+        assert asked == 0, f"the model was asked about {utterance!r} ({clause})"
+
+
+def test_the_table_reaches_every_kind_the_words_decide_and_the_model_is_asked_otherwise() -> None:
+    kinds = {clause.removeprefix("kind ") for _utterance, clause in WORDS_DECIDE if clause.startswith("kind ")}
+    assert kinds == intent._WORD_OR_NAME_KINDS
+    # The stand-in counts: a refusal the words do not decide (nothing named, a thing only described) is the model's
+    rules = parse_voice_intent("describe the red star", CONTEXT, current_year=2026)
+    assert rules.refusal == {"kind": "which_one"} and not intent._the_words_decide(rules)
+    _live, asked = _live_reply("describe the red star", MODEL_TOOL_CALLS[0])
+    assert asked == 1

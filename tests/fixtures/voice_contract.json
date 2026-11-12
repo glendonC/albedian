@@ -52,6 +52,515 @@
     "fractionMin": 0.05,
     "fractionMax": 1.0
   },
+  "refusalKinds": {
+    "not_understood": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
+    },
+    "not_in_this_sky": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": false
+    },
+    "deep_sky_out_of_reach": {
+      "reasons": [
+        "no_grounded_answer"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": true,
+      "backend": true
+    },
+    "no_named_row": {
+      "reasons": [
+        "no_grounded_answer"
+      ],
+      "said": true,
+      "name": true,
+      "catalogRow": false,
+      "backend": true
+    },
+    "southern_cross_not_in_this_sky": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": false
+    },
+    "which_one": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
+    },
+    "nothing_in_view": {
+      "reasons": [
+        "ambiguous_target"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
+    },
+    "sky_not_worked_out": {
+      "reasons": [
+        "ambiguous_target",
+        "unresolved_sky"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": false
+    },
+    "nothing_in_view_sky_not_worked_out": {
+      "reasons": [
+        "unresolved_sky"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": false
+    }
+  },
+  "refusalLimits": {
+    "saidMaxUtf16": 200,
+    "catalogRowMaxUtf16": 32,
+    "nameMaxUtf16": 128,
+    "catalogRowPattern": "^[A-Za-z0-9]+(?:[- ][A-Za-z0-9]+)*$",
+    "southernCrossStars": [
+      "Acrux",
+      "Mimosa",
+      "Gacrux",
+      "Imai",
+      "Ginan"
+    ],
+    "media": [
+      "photo",
+      "video"
+    ]
+  },
+  "refusalSentences": [
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "zorblax"
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "zorblax"
+      },
+      "media": "video",
+      "sentence": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "milky way"
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "milky way"
+      },
+      "media": "video",
+      "sentence": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "a b c d e f ..."
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "a b c d e f ..."
+      },
+      "media": "video",
+      "sentence": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
+      },
+      "media": "video",
+      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
+      },
+      "media": "video",
+      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "vega",
+        "name": "Vega"
+      },
+      "media": "photo",
+      "sentence": "Vega was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "vega",
+        "name": "Vega"
+      },
+      "media": "video",
+      "sentence": "Vega was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "alpha centauri",
+        "name": "Rigil Kentaurus"
+      },
+      "media": "photo",
+      "sentence": "Rigil Kentaurus was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "alpha centauri",
+        "name": "Rigil Kentaurus"
+      },
+      "media": "video",
+      "sentence": "Rigil Kentaurus was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "lmc",
+        "name": "the Large Magellanic Cloud",
+        "catalogRow": "ESO056-115"
+      },
+      "media": "photo",
+      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "lmc",
+        "name": "the Large Magellanic Cloud",
+        "catalogRow": "ESO056-115"
+      },
+      "media": "video",
+      "sentence": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "omega cen",
+        "name": "Omega Centauri",
+        "catalogRow": "NGC5139"
+      },
+      "media": "photo",
+      "sentence": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "omega cen",
+        "name": "Omega Centauri",
+        "catalogRow": "NGC5139"
+      },
+      "media": "video",
+      "sentence": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "coal sack",
+        "name": "the Coalsack",
+        "catalogRow": "C099"
+      },
+      "media": "photo",
+      "sentence": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "coal sack",
+        "name": "the Coalsack",
+        "catalogRow": "C099"
+      },
+      "media": "video",
+      "sentence": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "magellanic clouds",
+        "name": "the Magellanic Clouds"
+      },
+      "media": "photo",
+      "sentence": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "magellanic clouds",
+        "name": "the Magellanic Clouds"
+      },
+      "media": "video",
+      "sentence": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "eta car",
+        "name": "Eta Carinae"
+      },
+      "media": "photo",
+      "sentence": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "eta car",
+        "name": "Eta Carinae"
+      },
+      "media": "video",
+      "sentence": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "southern_cross_not_in_this_sky"
+      },
+      "media": "photo",
+      "sentence": "The Southern Cross is a constellation, not one star, and none of its stars (Acrux, Mimosa, Gacrux, Imai, Ginan) is in the sky solution."
+    },
+    {
+      "refusal": {
+        "kind": "southern_cross_not_in_this_sky"
+      },
+      "media": "video",
+      "sentence": "The Southern Cross is a constellation, not one star, and none of its stars (Acrux, Mimosa, Gacrux, Imai, Ginan) is in the sky solution."
+    },
+    {
+      "refusal": {
+        "kind": "which_one"
+      },
+      "media": "photo",
+      "sentence": "That does not say which one. Say its name, or select it and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "which_one"
+      },
+      "media": "video",
+      "sentence": "That does not say which one. Say its name, or select it and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "nothing_in_view"
+      },
+      "media": "photo",
+      "sentence": "Nothing is selected or pointed at. Select a star or planet first, or say its name."
+    },
+    {
+      "refusal": {
+        "kind": "nothing_in_view"
+      },
+      "media": "video",
+      "sentence": "Nothing is selected or pointed at. Select a star or planet first, or say its name."
+    },
+    {
+      "refusal": {
+        "kind": "sky_not_worked_out"
+      },
+      "media": "photo",
+      "sentence": "The sky in this photo has not been worked out yet, so nothing in it can be found by name."
+    },
+    {
+      "refusal": {
+        "kind": "sky_not_worked_out"
+      },
+      "media": "video",
+      "sentence": "The sky in this video has not been worked out yet, so nothing in it can be found by name."
+    },
+    {
+      "refusal": {
+        "kind": "nothing_in_view_sky_not_worked_out"
+      },
+      "media": "photo",
+      "sentence": "The sky in this photo has not been worked out yet, and nothing is selected or pointed at."
+    },
+    {
+      "refusal": {
+        "kind": "nothing_in_view_sky_not_worked_out"
+      },
+      "media": "video",
+      "sentence": "The sky in this video has not been worked out yet, and nothing is selected or pointed at."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "tx",
+        "name": "tx"
+      },
+      "media": "photo",
+      "sentence": "Tx was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "tx",
+        "name": "tx"
+      },
+      "media": "video",
+      "sentence": "Tx was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "the moon",
+        "name": "the Moon"
+      },
+      "media": "photo",
+      "sentence": "The Moon was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "the moon",
+        "name": "the Moon"
+      },
+      "media": "video",
+      "sentence": "The Moon was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "bibha",
+        "name": "Bibh\u0101"
+      },
+      "media": "photo",
+      "sentence": "Bibh\u0101 was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "bibha",
+        "name": "Bibh\u0101"
+      },
+      "media": "video",
+      "sentence": "Bibh\u0101 was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "al na'ir",
+        "name": "al Na'ir"
+      },
+      "media": "photo",
+      "sentence": "Al Na'ir was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "al na'ir",
+        "name": "al Na'ir"
+      },
+      "media": "video",
+      "sentence": "Al Na'ir was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "7 star",
+        "name": "7 star"
+      },
+      "media": "photo",
+      "sentence": "7 star was not found in this photo's sky."
+    },
+    {
+      "refusal": {
+        "kind": "not_in_this_sky",
+        "said": "7 star",
+        "name": "7 star"
+      },
+      "media": "video",
+      "sentence": "7 star was not found in this video's sky."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "z",
+        "name": "z"
+      },
+      "media": "photo",
+      "sentence": "Z has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "no_named_row",
+        "said": "z",
+        "name": "z"
+      },
+      "media": "video",
+      "sentence": "Z has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "say \"x\""
+      },
+      "media": "photo",
+      "sentence": "I did not understand \"say \"x\"\". Say a star's or a planet's name, or select one and say \"that one\"."
+    },
+    {
+      "refusal": {
+        "kind": "not_understood",
+        "said": "say \"x\""
+      },
+      "media": "video",
+      "sentence": "I did not understand \"say \"x\"\". Say a star's or a planet's name, or select one and say \"that one\"."
+    }
+  ],
   "valid": {
     "AlbedianAction": [
       {
@@ -432,13 +941,199 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "A made-up explanation.",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
         "reason": "ambiguous_target",
         "interpretation": {
           "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "milky way"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "a b c d e f ..."
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "name": "the Large Magellanic Cloud",
+          "catalogRow": "ESO056-115"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Omega Centauri is in the app's deep-sky catalogue (OpenNGC NGC5139), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "omega cen",
+          "name": "Omega Centauri",
+          "catalogRow": "NGC5139"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Coalsack is in the app's deep-sky catalogue (OpenNGC C099), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "coal sack",
+          "name": "the Coalsack",
+          "catalogRow": "C099"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Magellanic Clouds has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_named_row",
+          "said": "magellanic clouds",
+          "name": "the Magellanic Clouds"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Eta Carinae has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "no_named_row",
+          "said": "eta car",
+          "name": "Eta Carinae"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "That does not say which one. Say its name, or select it and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "which_one"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Nothing is selected or pointed at. Select a star or planet first, or say its name.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "nothing_in_view"
         }
       },
       {
@@ -532,6 +1227,153 @@
             "message": "List should have at least 1 item after validation, not 0"
           }
         ]
+      }
+    ],
+    "VoiceRefusal": [
+      {
+        "kind": "not_understood",
+        "said": "zorblax"
+      },
+      {
+        "kind": "not_understood",
+        "said": "milky way"
+      },
+      {
+        "kind": "not_understood",
+        "said": "a b c d e f ..."
+      },
+      {
+        "kind": "not_understood",
+        "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
+      },
+      {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
+      },
+      {
+        "kind": "not_in_this_sky",
+        "said": "vega",
+        "name": "Vega"
+      },
+      {
+        "kind": "not_in_this_sky",
+        "said": "alpha centauri",
+        "name": "Rigil Kentaurus"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "lmc",
+        "name": "the Large Magellanic Cloud",
+        "catalogRow": "ESO056-115"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "omega cen",
+        "name": "Omega Centauri",
+        "catalogRow": "NGC5139"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "coal sack",
+        "name": "the Coalsack",
+        "catalogRow": "C099"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "magellanic clouds",
+        "name": "the Magellanic Clouds"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "eta car",
+        "name": "Eta Carinae"
+      },
+      {
+        "kind": "southern_cross_not_in_this_sky"
+      },
+      {
+        "kind": "which_one"
+      },
+      {
+        "kind": "nothing_in_view"
+      },
+      {
+        "kind": "sky_not_worked_out"
+      },
+      {
+        "kind": "nothing_in_view_sky_not_worked_out"
+      },
+      {
+        "kind": "not_understood",
+        "said": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+      },
+      {
+        "kind": "not_understood",
+        "said": "x"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "n"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "4x"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Bibh\u0101"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta Carinae"
+      },
+      {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Na'ir"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "N"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NGC 0292"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "ESO056-115"
+      },
+      {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "C099"
       }
     ]
   },
@@ -1853,6 +2695,1410 @@
         "visualStatus": "Waiting"
       },
       "reason": "an unknown key on a strict question"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      "reason": "an ambiguous_target refusal says its kind"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_heard",
+          "said": "zorblax"
+        }
+      },
+      "reason": "an unknown refusal kind"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "said": "zorblax"
+        }
+      },
+      "reason": "a refusal has a kind"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": null
+      },
+      "reason": "a refusal is absent, never null"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        }
+      },
+      "reason": "a word not understood is ambiguous_target"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "name": "the Large Magellanic Cloud",
+          "catalogRow": "ESO056-115"
+        }
+      },
+      "reason": "an object out of reach is no_grounded_answer"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand that.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        }
+      },
+      "reason": "the explanation is the sentence"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "other"
+        }
+      },
+      "reason": "the sentence quotes what was said"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "name": "the Large Magellanic Cloud",
+          "catalogRow": "NGC0001"
+        }
+      },
+      "reason": "the sentence names the row"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood"
+        }
+      },
+      "reason": "a word not understood quotes what was said"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "That does not say which one. Say its name, or select it and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "which_one",
+          "said": "that"
+        }
+      },
+      "reason": "which one quotes nothing"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "name": "the Large Magellanic Cloud"
+        }
+      },
+      "reason": "an object out of reach names its row"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax",
+          "catalogRow": "NGC0292"
+        }
+      },
+      "reason": "a word not understood names no row"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "catalogRow": "ESO056-115"
+        }
+      },
+      "reason": "an object out of reach names what it is"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Large Magellanic Cloud is in the app's deep-sky catalogue (OpenNGC ESO056-115), but voice does not reach deep-sky objects yet, so it cannot be selected, described or flown to.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "no_grounded_answer",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "deep_sky_out_of_reach",
+          "said": "lmc",
+          "name": "Somewhere Else",
+          "catalogRow": "ESO056-115"
+        }
+      },
+      "reason": "the sentence shows the name"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax",
+          "name": "Zorblax"
+        }
+      },
+      "reason": "a word not understood stands for no name"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "Vega was not found in this photo's sky.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_in_this_sky",
+          "said": "vega",
+          "name": "Vega"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says not_in_this_sky"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The Southern Cross is a constellation, not one star, and none of its stars (Acrux, Mimosa, Gacrux, Imai, Ginan) is in the sky solution.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "southern_cross_not_in_this_sky"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says southern_cross_not_in_this_sky"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The sky in this photo has not been worked out yet, so nothing in it can be found by name.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "sky_not_worked_out"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says sky_not_worked_out"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "The sky in this photo has not been worked out yet, and nothing is selected or pointed at.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "unresolved_sky",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "nothing_in_view_sky_not_worked_out"
+        }
+      },
+      "reason": "the backend holds no photo, so it never says nothing_in_view_sky_not_worked_out"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        },
+        "proposedAction": {
+          "type": "finding.select",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-star-vega"
+        }
+      },
+      "reason": "a refusal carries no action"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "proposed",
+        "actionId": "req-sample-1",
+        "proposedAction": {
+          "type": "finding.describe",
+          "requestId": "req-sample-1",
+          "expectedViewRevision": 3,
+          "findingId": "finding-predicted-saturn",
+          "fields": [
+            "distance",
+            "type",
+            "motion",
+            "evidence",
+            "behind_sightline"
+          ]
+        },
+        "visualStatus": "Checked finding.describe; not applied",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "scientificExplanation": "Saturn's position depends on when and where you are observing, and no observation time and location are set yet.",
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        }
+      },
+      "reason": "an action carries no refusal"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "needs_input",
+        "actionId": "req-sample-1",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "question": "Multiple celestial objects overlap that pointer region. Which one did you mean?",
+        "choices": [
+          {
+            "id": "finding-obs-1",
+            "label": "Finding-obs-1"
+          },
+          {
+            "id": "finding-obs-2",
+            "label": "Finding-obs-2"
+          }
+        ],
+        "scientificExplanation": "Deictic pointer region overlaps multiple catalog objects; disambiguation required.",
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax"
+        }
+      },
+      "reason": "a question carries no refusal"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_understood",
+          "said": "zorblax",
+          "note": "x"
+        }
+      },
+      "reason": "an unknown key on a strict refusal"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": ""
+      },
+      "reason": "an empty said"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "reason": "said of 201 units"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00x"
+      },
+      "reason": "said of 201 units, astral"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "zorb\nlax"
+      },
+      "reason": "said with a control character"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "zorb\ud800"
+      },
+      "reason": "said with a lone surrogate"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": 7
+      },
+      "reason": "said as a number"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": ""
+      },
+      "reason": "an empty name"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      },
+      "reason": "a name of 129 units"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta\u0000Carinae"
+      },
+      "reason": "a name with a control character"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u019bx"
+      },
+      "reason": "a name starting with U+019B, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u0264x"
+      },
+      "reason": "a name starting with U+0264, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u1c8ax"
+      },
+      "reason": "a name starting with U+1C8A, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ua7cdx"
+      },
+      "reason": "a name starting with U+A7CD, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ua7cfx"
+      },
+      "reason": "a name starting with U+A7CF, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ua7d3x"
+      },
+      "reason": "a name starting with U+A7D3, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ua7d5x"
+      },
+      "reason": "a name starting with U+A7D5, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ua7dbx"
+      },
+      "reason": "a name starting with U+A7DB, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd70x"
+      },
+      "reason": "a name starting with U+10D70, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd71x"
+      },
+      "reason": "a name starting with U+10D71, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd72x"
+      },
+      "reason": "a name starting with U+10D72, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd73x"
+      },
+      "reason": "a name starting with U+10D73, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd74x"
+      },
+      "reason": "a name starting with U+10D74, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd75x"
+      },
+      "reason": "a name starting with U+10D75, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd76x"
+      },
+      "reason": "a name starting with U+10D76, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd77x"
+      },
+      "reason": "a name starting with U+10D77, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd78x"
+      },
+      "reason": "a name starting with U+10D78, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd79x"
+      },
+      "reason": "a name starting with U+10D79, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7ax"
+      },
+      "reason": "a name starting with U+10D7A, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7bx"
+      },
+      "reason": "a name starting with U+10D7B, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7cx"
+      },
+      "reason": "a name starting with U+10D7C, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7dx"
+      },
+      "reason": "a name starting with U+10D7D, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7ex"
+      },
+      "reason": "a name starting with U+10D7E, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd7fx"
+      },
+      "reason": "a name starting with U+10D7F, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd80x"
+      },
+      "reason": "a name starting with U+10D80, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd81x"
+      },
+      "reason": "a name starting with U+10D81, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd82x"
+      },
+      "reason": "a name starting with U+10D82, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd83x"
+      },
+      "reason": "a name starting with U+10D83, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd84x"
+      },
+      "reason": "a name starting with U+10D84, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud803\udd85x"
+      },
+      "reason": "a name starting with U+10D85, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udebbx"
+      },
+      "reason": "a name starting with U+16EBB, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udebcx"
+      },
+      "reason": "a name starting with U+16EBC, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udebdx"
+      },
+      "reason": "a name starting with U+16EBD, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udebex"
+      },
+      "reason": "a name starting with U+16EBE, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udebfx"
+      },
+      "reason": "a name starting with U+16EBF, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec0x"
+      },
+      "reason": "a name starting with U+16EC0, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec1x"
+      },
+      "reason": "a name starting with U+16EC1, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec2x"
+      },
+      "reason": "a name starting with U+16EC2, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec3x"
+      },
+      "reason": "a name starting with U+16EC3, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec4x"
+      },
+      "reason": "a name starting with U+16EC4, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec5x"
+      },
+      "reason": "a name starting with U+16EC5, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec6x"
+      },
+      "reason": "a name starting with U+16EC6, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec7x"
+      },
+      "reason": "a name starting with U+16EC7, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec8x"
+      },
+      "reason": "a name starting with U+16EC8, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udec9x"
+      },
+      "reason": "a name starting with U+16EC9, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udecax"
+      },
+      "reason": "a name starting with U+16ECA, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udecbx"
+      },
+      "reason": "a name starting with U+16ECB, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udeccx"
+      },
+      "reason": "a name starting with U+16ECC, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udecdx"
+      },
+      "reason": "a name starting with U+16ECD, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udecex"
+      },
+      "reason": "a name starting with U+16ECE, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\udecfx"
+      },
+      "reason": "a name starting with U+16ECF, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\uded0x"
+      },
+      "reason": "a name starting with U+16ED0, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\uded1x"
+      },
+      "reason": "a name starting with U+16ED1, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\uded2x"
+      },
+      "reason": "a name starting with U+16ED2, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud81b\uded3x"
+      },
+      "reason": "a name starting with U+16ED3, whose case maps differ between Unicode 15.0.0 and 17.0.0"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u00e9toile"
+      },
+      "reason": "a name with a first letter outside ASCII"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u00dfeta"
+      },
+      "reason": "a name with a first letter outside ASCII"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u01c6ubhe"
+      },
+      "reason": "a name with a first letter outside ASCII"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\ud801\udc28x"
+      },
+      "reason": "a name with a first letter outside the basic plane"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": " Vega"
+      },
+      "reason": "a name with a leading space"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Vega "
+      },
+      "reason": "a name with a trailing space"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta  Carinae"
+      },
+      "reason": "a name with two spaces"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "'Vega"
+      },
+      "reason": "a name with a leading apostrophe"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Na''ir"
+      },
+      "reason": "a name with two apostrophes"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Na' ir"
+      },
+      "reason": "a name with an apostrophe before a space"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta-Carinae"
+      },
+      "reason": "a name with a hyphen, which no name holds"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta."
+      },
+      "reason": "a name with a period"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Vega!"
+      },
+      "reason": "a name with a sign"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Ve\u0301ga"
+      },
+      "reason": "a name with a combining mark, which is no letter of the table"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Vega\u00a0x"
+      },
+      "reason": "a name with a space that is not ASCII"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "x\ud83d\ude00"
+      },
+      "reason": "a name with a sign outside the basic plane"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "name": "Eta Carinae"
+      },
+      "reason": "a name with nothing said"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NGC 0292;"
+      },
+      "reason": "a row from no table"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+      },
+      "reason": "a row of 33 units"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NGC0292\n"
+      },
+      "reason": "a row with a newline"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "which_one",
+        "catalog_row": "NGC0292"
+      },
+      "reason": "snake_case is not the contract's"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "Not_Understood",
+        "said": "x"
+      },
+      "reason": "kinds are exact"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {},
+      "reason": "no kind"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "reason": "edge said just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00x"
+      },
+      "reason": "edge said in astral letters just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "not_understood",
+        "said": ""
+      },
+      "reason": "edge said of one unit just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+      },
+      "reason": "edge name just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": ""
+      },
+      "reason": "edge name of one unit just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "\u0664x"
+      },
+      "reason": "edge name starting with a digit just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Bibh\u0101\u0301"
+      },
+      "reason": "edge name with a letter of the table inside just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Eta Carinae "
+      },
+      "reason": "edge name with a space between words just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "no_named_row",
+        "said": "x",
+        "name": "Na'"
+      },
+      "reason": "edge name with an apostrophe between letters just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+      },
+      "reason": "edge row just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": ""
+      },
+      "reason": "edge row of one unit just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "NGC 0292 "
+      },
+      "reason": "edge row of two parts just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "ESO056--115"
+      },
+      "reason": "edge row joined by a hyphen just outside its bound"
+    },
+    {
+      "schema": "VoiceRefusal",
+      "sample": {
+        "kind": "deep_sky_out_of_reach",
+        "said": "x",
+        "name": "X",
+        "catalogRow": "-C099"
+      },
+      "reason": "edge row starting with a part just outside its bound"
     }
   ],
   "stripped": [

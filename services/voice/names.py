@@ -23,7 +23,7 @@ from pathlib import Path
 import re
 from typing import TypeVar
 
-from services.contracts.voice import JAVASCRIPT_SPACES
+from services.contracts.voice import JAVASCRIPT_SPACES, refusal_sentence
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 
 T = TypeVar("T")
@@ -443,22 +443,31 @@ def names_southern_cross(lower_utterance: str) -> bool:
 
 def unbaked_object(lower_utterance: str) -> str | None:
     """The southern object the utterance names that voice cannot reach yet, if any."""
+    said = unbaked_object_said(lower_utterance)
+    return None if said is None else said[0]
+
+
+def unbaked_object_said(lower_utterance: str) -> tuple[str, str] | None:
+    """The southern object voice cannot reach yet that the utterance names, and the spelling it says, if any."""
     for label, spoken in UNBAKED_OBJECTS.items():
-        if any(whole_word(name).search(lower_utterance) for name in spoken):
-            return label
+        for name in spoken:
+            if whole_word(name).search(lower_utterance):
+                return label, name
     return None
 
 
-def unbaked_refusal(label: str) -> str:
-    """Why voice cannot act on this object: where the baked data holds it, or that no table holds it by name."""
-    subject = f"{label[0].upper()}{label[1:]}"
+def unbaked_refusal_record(label: str, said: str) -> dict[str, str]:
+    """The contract's refusal for this object, said as `said`: the deep-sky row that holds it, or that no table
+    holds it by name."""
     row = UNBAKED_DEEP_SKY_ROWS.get(label)
     if row is not None:
-        return (
-            f"{subject} is in the app's deep-sky catalogue (OpenNGC {row}), but voice does not reach deep-sky "
-            "objects yet, so it cannot be selected, described or flown to."
-        )
-    return f"{subject} has no named row in the app's catalogues yet, so it cannot be selected, described or flown to by name."
+        return {"kind": "deep_sky_out_of_reach", "said": said, "name": label, "catalogRow": row}
+    return {"kind": "no_named_row", "said": said, "name": label}
+
+
+def unbaked_refusal(label: str) -> str:
+    """Why voice cannot act on this object, as the contract's sentence for its refusal."""
+    return refusal_sentence(unbaked_refusal_record(label, label))
 
 
 def main(argv: list[str] | None = None) -> int:

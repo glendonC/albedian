@@ -32,6 +32,7 @@ from services.contracts.voice import (
     JAVASCRIPT_SPACES,
     QUESTION_MAX_UTF16,
     action_issues,
+    refusal_sentence,
     utf16_length,
 )
 from services.science.catalog import (
@@ -56,12 +57,13 @@ from services.voice.names import (
     find_names,
     name_pattern,
     names_southern_cross,
+    points,
     read_wording,
     southern_cross_stars,
     spoken_names,
     star_name_table,
-    unbaked_object,
-    unbaked_refusal,
+    unbaked_object_said,
+    unbaked_refusal_record,
     whole_word,
 )
 
@@ -255,6 +257,8 @@ class VoiceIntent:
     explanation: str | None = None
     # The things to choose between when the request names several: then `explanation` is the question
     choices: tuple[dict[str, str], ...] = ()
+    # Why the request has no target, as the contract's VoiceRefusal: then `explanation` is its sentence
+    refusal: dict[str, str] | None = None
 
 
 def _rules_intent(
@@ -263,8 +267,11 @@ def _rules_intent(
     reason: str | None = None,
     explanation: str | None = None,
     choices: tuple[dict[str, str], ...] = (),
+    refusal: dict[str, str] | None = None,
 ) -> VoiceIntent:
-    return VoiceIntent(request_id, action, {"parser": "rules"}, reason, explanation, choices)
+    if refusal is not None:
+        explanation = refusal_sentence(refusal)
+    return VoiceIntent(request_id, action, {"parser": "rules"}, reason, explanation, choices, refusal)
 
 
 def _said(lower_text: str) -> tuple[list[_Named], str]:
@@ -314,13 +321,15 @@ class _Target:
 
     finding_id: str | None = None
     choices: tuple[dict[str, str], ...] = ()
-    refusal: str | None = None
+    # The question between `choices`
+    question: str | None = None
+    refusal: dict[str, str] | None = None
 
 
 def _view_target(context: ActionContext) -> _Target:
     """What is in view, or that nothing is."""
     in_view = _in_view(context)
-    return _Target(finding_id=in_view) if in_view is not None else _Target(refusal=NOTHING_IN_VIEW)
+    return _Target(finding_id=in_view) if in_view is not None else _Target(refusal={"kind": "nothing_in_view"})
 
 
 def _named_target(named: list[_Named], context: ActionContext) -> _Target:
@@ -329,7 +338,7 @@ def _named_target(named: list[_Named], context: ActionContext) -> _Target:
         return _Target(finding_id=_record_id(named[0], context))
     return _Target(
         choices=tuple({"id": _record_id(each, context), "label": each.label} for each in named),
-        refusal="Which one did you mean: " + " or ".join(each.label for each in named) + "?",
+        question="Which one did you mean: " + " or ".join(each.label for each in named) + "?",
     )
 
 
@@ -358,16 +367,16 @@ def _target(
         without_command = command.sub(lambda match: " " * len(match.group()), without_names)
     wording = read_wording(without_names, without_command)
     if wording.unknown:
-        return _Target(refusal=NOT_UNDERSTOOD.format(said=wording.unknown))
+        return _Target(refusal={"kind": "not_understood", "said": wording.unknown})
     if named:
         return _named_target(named, context)
     if wording.points:
         return _view_target(context)
     if wording.describes:
-        return _Target(refusal=WHICH_ONE)
+        return _Target(refusal={"kind": "which_one"})
     if wording.asks or alone is None:
         return None
-    return _view_target(context) if alone == "view" else _Target(refusal=WHICH_ONE)
+    return _view_target(context) if alone == "view" else _Target(refusal={"kind": "which_one"})
 
 
 # Years are read as packages/observation/src/voiceParser.ts reads them, so both parsers read the same phrases:
@@ -507,9 +516,9 @@ _BRIGHTEST_NEXT_WORD = re.compile(r"\bbrightest\b[\s-]*([a-z][a-z-]*)?")
 # Why a request has no target, in words a person who is not an astronomer reads: no id, class or contract term.
 # A word the rules do not know is no evidence about any sky, and the backend holds no photo: it says only that it
 # did not understand the word, in the app parser's own sentence.
-NOT_UNDERSTOOD = 'I did not understand "{said}". Say a star\'s or a planet\'s name, or select one and say "that one".'
-WHICH_ONE = 'That does not say which one. Say its name, or select it and say "that one".'
-NOTHING_IN_VIEW = "Nothing is selected or pointed at. Select a star or planet first, or say its name."
+NOT_UNDERSTOOD = refusal_sentence({"kind": "not_understood", "said": "{said}"})
+WHICH_ONE = refusal_sentence({"kind": "which_one"})
+NOTHING_IN_VIEW = refusal_sentence({"kind": "nothing_in_view"})
 _SOUTHERN_CROSS_QUESTION = (
     "The Southern Cross is a constellation, not one star. Which of its stars did you mean: "
     + ", ".join(star.name for star in southern_cross_stars())
@@ -610,9 +619,9 @@ def _parse_with_rules(
     named, without_names = _said(text)
     # A southern object named but not baked, or the Southern Cross, is answered in its own words whatever else the
     # request names: it never falls through to the selection, or to a star named beside it
-    unbaked = unbaked_object(text)
+    unbaked = unbaked_object_said(text)
     if unbaked is not None:
-        return _rules_intent(request_id, None, "no_grounded_answer", unbaked_refusal(unbaked))
+        return _rules_intent(request_id, None, "no_grounded_answer", refusal=unbaked_refusal_record(*unbaked))
     if names_southern_cross(text):
         return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
 
@@ -620,7 +629,9 @@ def _parse_with_rules(
         """The action on the target, the question between several, or the refusal that says why there is none."""
         if target.finding_id is not None:
             return formed(action_type, findingId=target.finding_id, **fields)
-        return _rules_intent(request_id, None, "ambiguous_target", target.refusal, target.choices)
+        return _rules_intent(
+            request_id, None, "ambiguous_target", target.question, target.choices, refusal=target.refusal
+        )
 
     if _SKY_PHRASES.search(text):
         return formed("sky.show", mode="measured")
@@ -709,22 +720,59 @@ def parse_voice_intent(
             request_id, None, "no_grounded_answer", BRIGHTEST_KIND_REFUSAL if unranked else BRIGHTEST_REFUSAL
         )
 
-    proposal = propose_action_with_claude(utterance, ctx, request_id, rev, current_year=current_year)
-    if proposal is not None:
-        return VoiceIntent(request_id, proposal.action, proposal.interpretation)
-
+    # The names and words are read first, by the rules: the model never widens what a sentence may act on
     year = current_year if current_year is not None else datetime.now(timezone.utc).year
-    return _parse_with_rules(utterance, ctx, request_id, rev, year)
+    rules = _parse_with_rules(utterance, ctx, request_id, rev, year)
+    if _the_words_decide(rules):
+        return rules
+    proposal = propose_action_with_claude(utterance, ctx, request_id, rev, current_year=current_year)
+    if proposal is not None and _names_or_points_at(proposal.action, utterance, ctx):
+        return VoiceIntent(request_id, proposal.action, proposal.interpretation)
+    return rules
 
 
-def _rejected(action_id: str, reason: str, explanation: str, next_actions: list[str]) -> dict[str, Any]:
-    return {
+# The refusals the words of a sentence decide: a word not understood, or a name the data does not hold or voice
+# cannot reach. No model is asked about such a sentence
+_WORD_OR_NAME_KINDS = frozenset({"not_understood", "deep_sky_out_of_reach", "no_named_row"})
+
+
+def _the_words_decide(rules: VoiceIntent) -> bool:
+    """True when the rules stop the sentence for a word or a name, or it names several things and asks which:
+    what any model answered would be a guess about the very words that stopped it."""
+    if rules.refusal is not None and rules.refusal["kind"] in _WORD_OR_NAME_KINDS:
+        return True
+    return bool(rules.choices) or rules.explanation == _SOUTHERN_CROSS_QUESTION
+
+
+def _names_or_points_at(action: dict[str, Any], utterance: str, ctx: ActionContext) -> bool:
+    """True when a model's action acts on nothing, or on a thing the sentence names or points at."""
+    finding_id = action.get("findingId")
+    if finding_id is None:
+        return True
+    named, without_names = _said(utterance.lower())
+    # The record the rules would act on for each name: in a predicted sky a star's predicted record, never the solved
+    # one, which that sky does not hold
+    allowed = {_record_id(each, ctx) for each in named}
+    if points(without_names):
+        in_view = _in_view(ctx)
+        if in_view is not None:
+            allowed.add(in_view)
+    return finding_id in allowed
+
+
+def _rejected(
+    action_id: str, reason: str, explanation: str, next_actions: list[str], refusal: dict[str, str] | None = None
+) -> dict[str, Any]:
+    reply: dict[str, Any] = {
         "status": "rejected",
         "actionId": action_id,
         "reason": reason,
         "explanation": explanation,
         "nextActions": next_actions,
     }
+    if refusal is not None:
+        reply["refusal"] = dict(refusal)
+    return reply
 
 
 def _as_whole(value: Any) -> int | None:
@@ -867,6 +915,7 @@ def _check(
     reason: str | None = None,
     explanation: str | None = None,
     choices: tuple[dict[str, str], ...] = (),
+    refusal: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """The backend's verdict on one action, or on a request that formed none.
 
@@ -902,7 +951,7 @@ def _check(
                 return _southern_cross_choice(action_id)
             # Only a request that points, or names nothing, is asked which of the findings under the pointer it
             # means: one that names or describes something else is refused, never offered what the pointer overlaps
-            if explanation == NOTHING_IN_VIEW:
+            if refusal is not None and refusal["kind"] == "nothing_in_view":
                 disambiguation = _pointer_disambiguation(utterance, fresh_pointer(ctx), action_id)
                 if disambiguation is not None:
                     return disambiguation
@@ -916,6 +965,7 @@ def _check(
             reason or "no_grounded_answer",
             explanation or "The request formed no action.",
             list(hints.get(reason or "", [])),
+            refusal,
         )
 
     if not isinstance(action, dict):
@@ -1002,7 +1052,14 @@ def check_voice_command(
 
     intent = parse_voice_intent(utterance, ctx, current_year=current_year)
     reply = _check(
-        utterance, ctx, intent.action, intent.request_id, intent.reason, intent.explanation, intent.choices
+        utterance,
+        ctx,
+        intent.action,
+        intent.request_id,
+        intent.reason,
+        intent.explanation,
+        intent.choices,
+        intent.refusal,
     )
     reply["interpretation"] = intent.interpretation
     return reply

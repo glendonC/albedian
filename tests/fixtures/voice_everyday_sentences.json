@@ -1,0 +1,1409 @@
+{
+  "about": "Sentences a person might say to a night photo, written by the answers lane for answers-3-prep (2026-11-11) and made up: they name no real person, place or time. `everyday` names no sky thing the voice tables lack; `skyname` names one they lack. With the 217 natural sentences of packages/observation/src/__tests__/voiceParser.namedTargets.test.ts they are the 568 sentences both parsers are held to the same refusal kinds and sentences on (tests/integration/test_voice_refusal_parity.py).",
+  "sentences": [
+    {
+      "text": "what's that really bright one up there",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that star twinkling or is it my camera",
+      "kind": "everyday"
+    },
+    {
+      "text": "why does that one look kind of purple",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's the faint fuzzy thing near the trees",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a plane blinking or a star",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you tell me what this dot is",
+      "kind": "everyday"
+    },
+    {
+      "text": "what am I seeing in the corner",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that light pollution from the town",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is the sky orange near the bottom",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's that smear across the middle",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a star or just a bit of dust on the lens",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far away is the bright one on the left",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far is that from us",
+      "kind": "everyday"
+    },
+    {
+      "text": "how many years would light take to get here from that",
+      "kind": "everyday"
+    },
+    {
+      "text": "how long ago did that light leave",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that one closer than the others",
+      "kind": "everyday"
+    },
+    {
+      "text": "which one is the closest to earth",
+      "kind": "everyday"
+    },
+    {
+      "text": "how big is that compared to the sun",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that bigger than jupiter",
+      "kind": "everyday"
+    },
+    {
+      "text": "what kind of star is that",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a young star or an old one",
+      "kind": "everyday"
+    },
+    {
+      "text": "how hot is the red one",
+      "kind": "everyday"
+    },
+    {
+      "text": "why are some stars blue and some red",
+      "kind": "everyday"
+    },
+    {
+      "text": "what colour would that be up close",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it actually that colour or is it the camera",
+      "kind": "everyday"
+    },
+    {
+      "text": "could that be a planet instead",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that planet moving",
+      "kind": "everyday"
+    },
+    {
+      "text": "why isn't that one twinkling",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that the brightest thing in the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's the second brightest one",
+      "kind": "everyday"
+    },
+    {
+      "text": "which is the faintest star you can find",
+      "kind": "everyday"
+    },
+    {
+      "text": "how many stars did you find in this picture",
+      "kind": "everyday"
+    },
+    {
+      "text": "did you find any planets",
+      "kind": "everyday"
+    },
+    {
+      "text": "are there any galaxies in my photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you show me where the planets would be",
+      "kind": "everyday"
+    },
+    {
+      "text": "what was overhead when I took this",
+      "kind": "everyday"
+    },
+    {
+      "text": "what would I have seen if it was darker",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you label everything",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you name all the bright ones",
+      "kind": "everyday"
+    },
+    {
+      "text": "just tell me the names of the stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me the names please",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you point out the constellations",
+      "kind": "everyday"
+    },
+    {
+      "text": "what constellation is the bright one in",
+      "kind": "everyday"
+    },
+    {
+      "text": "which constellation is this part of the sky",
+      "kind": "everyday"
+    },
+    {
+      "text": "is the moon in this picture",
+      "kind": "everyday"
+    },
+    {
+      "text": "where would the moon have been",
+      "kind": "everyday"
+    },
+    {
+      "text": "what phase was the moon",
+      "kind": "everyday"
+    },
+    {
+      "text": "was the moon up when I took this",
+      "kind": "everyday"
+    },
+    {
+      "text": "how full was the moon",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is the moon so big here",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that the moon or a streetlight",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's that glow on the horizon",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a sunset glow or a city",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that the sun setting",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you make the photo less noisy",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you clean this up a bit",
+      "kind": "everyday"
+    },
+    {
+      "text": "the picture is really grainy",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you brighten the stars without making it look fake",
+      "kind": "everyday"
+    },
+    {
+      "text": "make it look like what I actually saw",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you get rid of the noise but keep the stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "compare it with the original",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me the before and after",
+      "kind": "everyday"
+    },
+    {
+      "text": "put it back the way it was",
+      "kind": "everyday"
+    },
+    {
+      "text": "go back to the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "take me back to where I was",
+      "kind": "everyday"
+    },
+    {
+      "text": "undo that",
+      "kind": "everyday"
+    },
+    {
+      "text": "stop that please",
+      "kind": "everyday"
+    },
+    {
+      "text": "never mind",
+      "kind": "everyday"
+    },
+    {
+      "text": "that's enough",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you go closer to that one",
+      "kind": "everyday"
+    },
+    {
+      "text": "fly over to that star",
+      "kind": "everyday"
+    },
+    {
+      "text": "what would it look like if I flew there",
+      "kind": "everyday"
+    },
+    {
+      "text": "can I see it in 3d",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me it from a different side",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's on the other side of it",
+      "kind": "everyday"
+    },
+    {
+      "text": "is there anything behind it",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's further away behind that star",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far would I have to travel to get there",
+      "kind": "everyday"
+    },
+    {
+      "text": "how long would it take a rocket to get there",
+      "kind": "everyday"
+    },
+    {
+      "text": "could we ever go there",
+      "kind": "everyday"
+    },
+    {
+      "text": "does that star have planets",
+      "kind": "everyday"
+    },
+    {
+      "text": "could there be life around that star",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that star like our sun",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that star going to die soon",
+      "kind": "everyday"
+    },
+    {
+      "text": "has that star already exploded",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that star still there",
+      "kind": "everyday"
+    },
+    {
+      "text": "how old is the light I'm seeing",
+      "kind": "everyday"
+    },
+    {
+      "text": "what is the dimmest one you can see",
+      "kind": "everyday"
+    },
+    {
+      "text": "are you sure that's right",
+      "kind": "everyday"
+    },
+    {
+      "text": "how confident are you about that one",
+      "kind": "everyday"
+    },
+    {
+      "text": "how do you know which star that is",
+      "kind": "everyday"
+    },
+    {
+      "text": "did you work that out from my photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that measured or a guess",
+      "kind": "everyday"
+    },
+    {
+      "text": "did you just make that up",
+      "kind": "everyday"
+    },
+    {
+      "text": "where does that number come from",
+      "kind": "everyday"
+    },
+    {
+      "text": "what does predicted mean",
+      "kind": "everyday"
+    },
+    {
+      "text": "why does it say predicted",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's the difference between measured and predicted",
+      "kind": "everyday"
+    },
+    {
+      "text": "can I trust this",
+      "kind": "everyday"
+    },
+    {
+      "text": "why couldn't you find any stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "why didn't it work",
+      "kind": "everyday"
+    },
+    {
+      "text": "what went wrong",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is it saying not solved",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you try again",
+      "kind": "everyday"
+    },
+    {
+      "text": "try it again please",
+      "kind": "everyday"
+    },
+    {
+      "text": "what do I need to do to get it to work",
+      "kind": "everyday"
+    },
+    {
+      "text": "should I take a longer exposure next time",
+      "kind": "everyday"
+    },
+    {
+      "text": "what settings should I use next time",
+      "kind": "everyday"
+    },
+    {
+      "text": "was my phone steady enough",
+      "kind": "everyday"
+    },
+    {
+      "text": "is my photo too blurry",
+      "kind": "everyday"
+    },
+    {
+      "text": "is there too much light in my photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you tell which way I was facing",
+      "kind": "everyday"
+    },
+    {
+      "text": "which way is east in this picture",
+      "kind": "everyday"
+    },
+    {
+      "text": "which way was I pointing the camera",
+      "kind": "everyday"
+    },
+    {
+      "text": "how high up is that star",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far above the horizon is it",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that near the horizon",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it rising or setting",
+      "kind": "everyday"
+    },
+    {
+      "text": "when will it be back in the same place",
+      "kind": "everyday"
+    },
+    {
+      "text": "can I see it every night",
+      "kind": "everyday"
+    },
+    {
+      "text": "will it be there next month",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that visible all year",
+      "kind": "everyday"
+    },
+    {
+      "text": "can I see it from where I live",
+      "kind": "everyday"
+    },
+    {
+      "text": "can I see it without binoculars",
+      "kind": "everyday"
+    },
+    {
+      "text": "would binoculars help",
+      "kind": "everyday"
+    },
+    {
+      "text": "would a telescope show more",
+      "kind": "everyday"
+    },
+    {
+      "text": "what would it look like through a telescope",
+      "kind": "everyday"
+    },
+    {
+      "text": "how much brighter is that than the others",
+      "kind": "everyday"
+    },
+    {
+      "text": "how bright is it compared to the moon",
+      "kind": "everyday"
+    },
+    {
+      "text": "what is its magnitude",
+      "kind": "everyday"
+    },
+    {
+      "text": "what does magnitude mean",
+      "kind": "everyday"
+    },
+    {
+      "text": "how big is that in the sky",
+      "kind": "everyday"
+    },
+    {
+      "text": "how wide is the whole picture",
+      "kind": "everyday"
+    },
+    {
+      "text": "how many degrees across is this photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's the angle between those two",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far apart are those two stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "are those two stars close together in space",
+      "kind": "everyday"
+    },
+    {
+      "text": "are those two actually near each other",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a double star",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that two stars or one",
+      "kind": "everyday"
+    },
+    {
+      "text": "why are there so many stars in that patch",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a cluster of stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that cloud a nebula",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that a galaxy or a cloud",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that smudge a comet",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that streak a meteor",
+      "kind": "everyday"
+    },
+    {
+      "text": "did I catch a shooting star",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that line a satellite",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that the space station going over",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is there a line across the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "what made that trail",
+      "kind": "everyday"
+    },
+    {
+      "text": "was that a plane going past",
+      "kind": "everyday"
+    },
+    {
+      "text": "hello can you help me with this photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "hi there what am I looking at",
+      "kind": "everyday"
+    },
+    {
+      "text": "hey what's the bright one",
+      "kind": "everyday"
+    },
+    {
+      "text": "okay so tell me about the red one",
+      "kind": "everyday"
+    },
+    {
+      "text": "right so where's the moon",
+      "kind": "everyday"
+    },
+    {
+      "text": "so what's this one then",
+      "kind": "everyday"
+    },
+    {
+      "text": "alright what's next to it",
+      "kind": "everyday"
+    },
+    {
+      "text": "ok cool and how far is that one",
+      "kind": "everyday"
+    },
+    {
+      "text": "wow that's amazing how far is it",
+      "kind": "everyday"
+    },
+    {
+      "text": "that's so cool what is it",
+      "kind": "everyday"
+    },
+    {
+      "text": "that is beautiful what star is that",
+      "kind": "everyday"
+    },
+    {
+      "text": "i love this photo what's in it",
+      "kind": "everyday"
+    },
+    {
+      "text": "my kid wants to know what the bright one is",
+      "kind": "everyday"
+    },
+    {
+      "text": "my partner thinks that one is a planet",
+      "kind": "everyday"
+    },
+    {
+      "text": "we were camping and saw this what is it",
+      "kind": "everyday"
+    },
+    {
+      "text": "we took this from the beach what are we looking at",
+      "kind": "everyday"
+    },
+    {
+      "text": "I took this from my backyard what's that",
+      "kind": "everyday"
+    },
+    {
+      "text": "I took this with my phone is that a star",
+      "kind": "everyday"
+    },
+    {
+      "text": "this was taken through a window does that matter",
+      "kind": "everyday"
+    },
+    {
+      "text": "I think that's a planet am I right",
+      "kind": "everyday"
+    },
+    {
+      "text": "I reckon that's the moon",
+      "kind": "everyday"
+    },
+    {
+      "text": "pretty sure that one's a satellite",
+      "kind": "everyday"
+    },
+    {
+      "text": "no I meant the other one",
+      "kind": "everyday"
+    },
+    {
+      "text": "not that one the one next to it",
+      "kind": "everyday"
+    },
+    {
+      "text": "the one above it",
+      "kind": "everyday"
+    },
+    {
+      "text": "the one just below that",
+      "kind": "everyday"
+    },
+    {
+      "text": "the one to the right of the bright one",
+      "kind": "everyday"
+    },
+    {
+      "text": "the little one beside it",
+      "kind": "everyday"
+    },
+    {
+      "text": "the bigger one",
+      "kind": "everyday"
+    },
+    {
+      "text": "the dimmer one",
+      "kind": "everyday"
+    },
+    {
+      "text": "the reddish one on the edge",
+      "kind": "everyday"
+    },
+    {
+      "text": "the third one from the left",
+      "kind": "everyday"
+    },
+    {
+      "text": "the one in the middle",
+      "kind": "everyday"
+    },
+    {
+      "text": "the top one",
+      "kind": "everyday"
+    },
+    {
+      "text": "yes that one",
+      "kind": "everyday"
+    },
+    {
+      "text": "no the other one",
+      "kind": "everyday"
+    },
+    {
+      "text": "that's the one",
+      "kind": "everyday"
+    },
+    {
+      "text": "perfect thanks",
+      "kind": "everyday"
+    },
+    {
+      "text": "great thanks a lot",
+      "kind": "everyday"
+    },
+    {
+      "text": "thank you that's really helpful",
+      "kind": "everyday"
+    },
+    {
+      "text": "cheers mate",
+      "kind": "everyday"
+    },
+    {
+      "text": "how about that one",
+      "kind": "everyday"
+    },
+    {
+      "text": "and what about this one",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's that one called",
+      "kind": "everyday"
+    },
+    {
+      "text": "does it have a name",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's its proper name",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it named after someone",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is it called that",
+      "kind": "everyday"
+    },
+    {
+      "text": "what does the name mean",
+      "kind": "everyday"
+    },
+    {
+      "text": "what language is the name from",
+      "kind": "everyday"
+    },
+    {
+      "text": "who named it",
+      "kind": "everyday"
+    },
+    {
+      "text": "when was it discovered",
+      "kind": "everyday"
+    },
+    {
+      "text": "who discovered it",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that star famous",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it in any stories or myths",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's special about it",
+      "kind": "everyday"
+    },
+    {
+      "text": "tell me something interesting about it",
+      "kind": "everyday"
+    },
+    {
+      "text": "give me a fun fact about that star",
+      "kind": "everyday"
+    },
+    {
+      "text": "explain it simply please",
+      "kind": "everyday"
+    },
+    {
+      "text": "explain like I'm five",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you say that more simply",
+      "kind": "everyday"
+    },
+    {
+      "text": "say it again",
+      "kind": "everyday"
+    },
+    {
+      "text": "repeat that please",
+      "kind": "everyday"
+    },
+    {
+      "text": "what did you say",
+      "kind": "everyday"
+    },
+    {
+      "text": "sorry I didn't catch that",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you speak slower",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you turn the sound down",
+      "kind": "everyday"
+    },
+    {
+      "text": "mute the music",
+      "kind": "everyday"
+    },
+    {
+      "text": "turn the music up",
+      "kind": "everyday"
+    },
+    {
+      "text": "is there music playing",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's that sound",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you turn off the voice",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me the sky as it was",
+      "kind": "everyday"
+    },
+    {
+      "text": "show the sky now",
+      "kind": "everyday"
+    },
+    {
+      "text": "what would the sky look like in a thousand years",
+      "kind": "everyday"
+    },
+    {
+      "text": "how did the sky look 2000 years ago",
+      "kind": "everyday"
+    },
+    {
+      "text": "what about 500 years from now",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you show me the stars moving",
+      "kind": "everyday"
+    },
+    {
+      "text": "speed it up",
+      "kind": "everyday"
+    },
+    {
+      "text": "slow it down",
+      "kind": "everyday"
+    },
+    {
+      "text": "pause it",
+      "kind": "everyday"
+    },
+    {
+      "text": "play it again",
+      "kind": "everyday"
+    },
+    {
+      "text": "skip ahead a bit",
+      "kind": "everyday"
+    },
+    {
+      "text": "go to the start",
+      "kind": "everyday"
+    },
+    {
+      "text": "go to the end of the video",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me the frame with the most stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "is the video better than the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "why does the video look different",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you stack the frames",
+      "kind": "everyday"
+    },
+    {
+      "text": "make a cleaner version of the video",
+      "kind": "everyday"
+    },
+    {
+      "text": "save this",
+      "kind": "everyday"
+    },
+    {
+      "text": "export the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "share this with my friend",
+      "kind": "everyday"
+    },
+    {
+      "text": "download the cleaned version",
+      "kind": "everyday"
+    },
+    {
+      "text": "how do I save it",
+      "kind": "everyday"
+    },
+    {
+      "text": "is this photo good enough",
+      "kind": "everyday"
+    },
+    {
+      "text": "how could I take a better one",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it too cloudy",
+      "kind": "everyday"
+    },
+    {
+      "text": "were there clouds",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that haze or cloud",
+      "kind": "everyday"
+    },
+    {
+      "text": "is it the camera or the sky",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is there a green tint",
+      "kind": "everyday"
+    },
+    {
+      "text": "why is the photo so dark",
+      "kind": "everyday"
+    },
+    {
+      "text": "why are the stars blurry",
+      "kind": "everyday"
+    },
+    {
+      "text": "why do the stars look like lines",
+      "kind": "everyday"
+    },
+    {
+      "text": "did the earth move while I took it",
+      "kind": "everyday"
+    },
+    {
+      "text": "how long was the exposure",
+      "kind": "everyday"
+    },
+    {
+      "text": "was this a long exposure",
+      "kind": "everyday"
+    },
+    {
+      "text": "does my phone do night mode",
+      "kind": "everyday"
+    },
+    {
+      "text": "is night mode cheating",
+      "kind": "everyday"
+    },
+    {
+      "text": "did the phone add those stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "did you add any stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "is any of this made up",
+      "kind": "everyday"
+    },
+    {
+      "text": "show me only what's really in the photo",
+      "kind": "everyday"
+    },
+    {
+      "text": "hide the predicted stuff",
+      "kind": "everyday"
+    },
+    {
+      "text": "turn off the labels",
+      "kind": "everyday"
+    },
+    {
+      "text": "turn the labels back on",
+      "kind": "everyday"
+    },
+    {
+      "text": "show the lines between the stars",
+      "kind": "everyday"
+    },
+    {
+      "text": "hide the lines",
+      "kind": "everyday"
+    },
+    {
+      "text": "show the grid",
+      "kind": "everyday"
+    },
+    {
+      "text": "hide everything",
+      "kind": "everyday"
+    },
+    {
+      "text": "show everything again",
+      "kind": "everyday"
+    },
+    {
+      "text": "zoom out",
+      "kind": "everyday"
+    },
+    {
+      "text": "zoom in a bit more",
+      "kind": "everyday"
+    },
+    {
+      "text": "go back out",
+      "kind": "everyday"
+    },
+    {
+      "text": "move left a little",
+      "kind": "everyday"
+    },
+    {
+      "text": "pan over to the right",
+      "kind": "everyday"
+    },
+    {
+      "text": "center on the bright one",
+      "kind": "everyday"
+    },
+    {
+      "text": "reset the view",
+      "kind": "everyday"
+    },
+    {
+      "text": "what am I looking at now",
+      "kind": "everyday"
+    },
+    {
+      "text": "where am I",
+      "kind": "everyday"
+    },
+    {
+      "text": "how do I get back",
+      "kind": "everyday"
+    },
+    {
+      "text": "is this a real view or a drawing",
+      "kind": "everyday"
+    },
+    {
+      "text": "is this what it really looks like from there",
+      "kind": "everyday"
+    },
+    {
+      "text": "is this simulated",
+      "kind": "everyday"
+    },
+    {
+      "text": "what's real and what's drawn here",
+      "kind": "everyday"
+    },
+    {
+      "text": "how far from earth are we now",
+      "kind": "everyday"
+    },
+    {
+      "text": "where is earth from here",
+      "kind": "everyday"
+    },
+    {
+      "text": "can you show me where we are",
+      "kind": "everyday"
+    },
+    {
+      "text": "take me home",
+      "kind": "everyday"
+    },
+    {
+      "text": "back to earth please",
+      "kind": "everyday"
+    },
+    {
+      "text": "is that the north star",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the big dipper",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me the plough",
+      "kind": "skyname"
+    },
+    {
+      "text": "where's the little dipper",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me orions belt",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the milky way",
+      "kind": "skyname"
+    },
+    {
+      "text": "can you see the milky way in my photo",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the andromeda galaxy",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that andromeda",
+      "kind": "skyname"
+    },
+    {
+      "text": "take me to the pleiades",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the seven sisters",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me the summer triangle",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the winter hexagon",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that cassiopeia",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the w shape",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me ursa major",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that ursa minor",
+      "kind": "skyname"
+    },
+    {
+      "text": "where's scorpius",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the scorpion",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that sagittarius",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the teapot",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that taurus",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that gemini",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me leo",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that virgo",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is libra",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that cancer",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that capricorn",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me aquarius",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that pisces",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that aries",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that lyra",
+      "kind": "skyname"
+    },
+    {
+      "text": "where's cygnus",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the northern cross",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that perseus",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me pegasus",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the great square",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is draco",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that hercules",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me corona borealis",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the beehive cluster",
+      "kind": "skyname"
+    },
+    {
+      "text": "take me to the orion nebula",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the crab nebula",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is the ring nebula",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the triangulum galaxy",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that a black hole",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is halley's comet",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the hubble telescope",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that starlink",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the iss",
+      "kind": "skyname"
+    },
+    {
+      "text": "where is pluto",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that mercury",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that neptune",
+      "kind": "skyname"
+    },
+    {
+      "text": "show me the false cross",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the diamond cross",
+      "kind": "skyname"
+    },
+    {
+      "text": "where are the pointers",
+      "kind": "skyname"
+    },
+    {
+      "text": "take me to the large magellanic cloud",
+      "kind": "skyname"
+    },
+    {
+      "text": "is that the coal sack",
+      "kind": "skyname"
+    }
+  ]
+}

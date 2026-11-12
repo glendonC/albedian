@@ -4,7 +4,17 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   AlbedianActionSchema,
+  CATALOG_ROW_MAX_UTF16,
+  CATALOG_ROW_PATTERN,
   FINDING_ACTION_TYPES,
+  REFUSAL_KINDS,
+  REFUSAL_NAME_MAX_UTF16,
+  REFUSAL_SAID_MAX_UTF16,
+  SOUTHERN_CROSS_STAR_NAMES,
+  VoiceRefusalSchema,
+  refusalSentence,
+  type RefusalMedia,
+  type VoiceRefusal,
   RejectedOutcomeSchema,
   UTTERANCE_MAX_MESSAGE,
   UTTERANCE_MAX_UTF16,
@@ -18,7 +28,7 @@ import {
  */
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/voice_contract.json');
 
-type SchemaName = 'AlbedianAction' | 'VoiceCommandRequest' | 'VoiceCommandResponse';
+type SchemaName = 'AlbedianAction' | 'VoiceCommandRequest' | 'VoiceCommandResponse' | 'VoiceRefusal';
 
 interface VoiceFixture {
   enums: { replyStatuses: string[]; rejectionReasons: string[]; actionTypes: string[]; findingActionTypes: string[] };
@@ -32,6 +42,9 @@ interface VoiceFixture {
     fractionMin: number;
     fractionMax: number;
   };
+  refusalKinds: Record<string, unknown>;
+  refusalLimits: { saidMaxUtf16: number; catalogRowMaxUtf16: number; nameMaxUtf16: number; catalogRowPattern: string; southernCrossStars: string[]; media: string[] };
+  refusalSentences: { refusal: VoiceRefusal; media: RefusalMedia; sentence: string }[];
   valid: Record<SchemaName, unknown[]>;
   invalid: { schema: SchemaName; sample: unknown; reason: string }[];
   stripped: { schema: SchemaName; sample: unknown; parsed: unknown }[];
@@ -46,6 +59,7 @@ const SCHEMAS = {
   AlbedianAction: AlbedianActionSchema,
   VoiceCommandRequest: VoiceCommandRequestSchema,
   VoiceCommandResponse: VoiceCommandResponseSchema,
+  VoiceRefusal: VoiceRefusalSchema,
 };
 
 type Reply = Record<string, unknown> & { status: string; proposedAction?: Record<string, unknown> };
@@ -180,7 +194,8 @@ describe('@albedian/contracts: the voice command reply', () => {
         fc.constantFrom(...actions),
         (reason, issues, action) => {
           const reply = { ...refusal, reason, ...(issues ? { issues } : {}) };
-          expect(parses('VoiceCommandResponse', reply)).toBe((reason === 'invalid_action') === (issues !== undefined));
+          // An ambiguous_target refusal also says its kind (answers-3), so without one it is refused
+          expect(parses('VoiceCommandResponse', reply)).toBe((reason === 'invalid_action') === (issues !== undefined) && reason !== 'ambiguous_target');
           expect(parses('VoiceCommandResponse', { ...reply, proposedAction: action })).toBe(false);
         }
       ),
@@ -226,6 +241,102 @@ describe('@albedian/contracts: the voice command reply', () => {
           }
         }
       ),
+      { seed: SEED, numRuns: NUM_RUNS }
+    );
+  });
+});
+
+describe('@albedian/contracts: typed refusals', () => {
+  it('makes its verdict and its sentence with no case mapping and no Unicode property of the runtime', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../voice-command.ts'), 'utf8');
+    expect(source.match(/toUpperCase|toLowerCase|toLocale[A-Za-z]*Case|\.normalize\(|\\[pP]\{|\\[wWdDsSbB]|\/[a-z]*i[a-z]*\.test/g)).toBeNull();
+  });
+
+  it('shares its kinds, limits and every sentence with the Pydantic mirror', () => {
+    expect(fixture.refusalKinds).toEqual(REFUSAL_KINDS);
+    expect(fixture.refusalLimits).toEqual({
+      saidMaxUtf16: REFUSAL_SAID_MAX_UTF16,
+      catalogRowMaxUtf16: CATALOG_ROW_MAX_UTF16,
+      nameMaxUtf16: REFUSAL_NAME_MAX_UTF16,
+      catalogRowPattern: CATALOG_ROW_PATTERN.source,
+      southernCrossStars: [...SOUTHERN_CROSS_STAR_NAMES],
+      media: ['photo', 'video'],
+    });
+    const kinds = new Set(fixture.refusalSentences.map((s) => `${s.refusal.kind}/${s.media}`));
+    expect(kinds.size).toBe(Object.keys(REFUSAL_KINDS).length * 2);
+    for (const { refusal, media, sentence } of fixture.refusalSentences) {
+      expect(VoiceRefusalSchema.safeParse(refusal).success, JSON.stringify(refusal)).toBe(true);
+      expect(refusalSentence(refusal, media)).toBe(sentence);
+    }
+  });
+
+  const understood = { kind: 'not_understood' as const, said: 'zorblax' };
+  const reply = {
+    status: 'rejected',
+    actionId: 'req-1',
+    reason: 'ambiguous_target',
+    nextActions: [],
+    refusal: understood,
+    explanation: refusalSentence(understood),
+  };
+
+  it('refuses an unknown key and a Python name on every refusal and the reply that carries it', () => {
+    // The levels this unit adds: the refusal, and the rejected reply (an interpretation drops unknown keys by design)
+    const snake = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+    const targets: [SchemaName, Record<string, unknown>, string[]][] = [
+      ...(fixture.valid.VoiceRefusal as Record<string, unknown>[]).map((r): [SchemaName, Record<string, unknown>, string[]] => ['VoiceRefusal', r, []]),
+      ...replies.filter((r) => 'refusal' in r).flatMap((r): [SchemaName, Record<string, unknown>, string[]][] => [['VoiceCommandResponse', r, []], ['VoiceCommandResponse', r, ['refusal']]]),
+    ];
+    let refused = 0;
+    for (const [schema, record, at] of targets) {
+      let node = record;
+      for (const step of at) node = node[step] as Record<string, unknown>;
+      const changes: [string, string | null][] = [['unknownKey', null], ...Object.keys(node).filter((k) => snake(k) !== k).map((k): [string, string] => [k, snake(k)])];
+      for (const [key, renamed] of changes) {
+        const copy = structuredClone(record);
+        let target = copy;
+        for (const step of at) target = target[step] as Record<string, unknown>;
+        if (renamed === null) target[key] = 1;
+        else { target[renamed] = target[key]; delete target[key]; }
+        expect(parses(schema, copy), `${schema} ${at.join('/')} ${key}`).toBe(false);
+        refused += 1;
+      }
+    }
+    expect(refused).toBeGreaterThanOrEqual(60);
+  });
+
+  it('PBT: an unknown refusal kind is refused', () => {
+    fc.assert(
+      fc.property(fc.string({ minLength: 1, maxLength: 40 }).filter((k) => !Object.hasOwn(REFUSAL_KINDS, k)), (kind) => {
+        expect(parses('VoiceRefusal', { kind })).toBe(false);
+        expect(parses('VoiceCommandResponse', { ...reply, refusal: { kind, said: 'zorblax' } })).toBe(false);
+      }),
+      { seed: SEED, numRuns: NUM_RUNS }
+    );
+  });
+
+  it('PBT: a refusal carries no action, and an action carries no refusal', () => {
+    fc.assert(
+      fc.property(fc.constantFrom(...actions), fc.stringOf(fc.constantFrom('a', 'b', 'x', ' '), { minLength: 1, maxLength: 20 }).filter((s) => s.trim() !== ''), (action, said) => {
+        const refusal = { kind: 'not_understood' as const, said };
+        const refused = { ...reply, refusal, explanation: refusalSentence(refusal) };
+        expect(parses('VoiceCommandResponse', refused)).toBe(true);
+        expect(parses('VoiceCommandResponse', { ...refused, proposedAction: action })).toBe(false);
+        const offered = { status: 'proposed', actionId: action.requestId, proposedAction: action, visualStatus: 'Checked; not applied' };
+        expect(parses('VoiceCommandResponse', offered)).toBe(true);
+        expect(parses('VoiceCommandResponse', { ...offered, refusal })).toBe(false);
+      }),
+      { seed: SEED, numRuns: NUM_RUNS }
+    );
+  });
+
+  it('PBT: said is bounded in UTF-16 units, with no control character or lone surrogate', () => {
+    const char = fc.oneof(fc.fullUnicode(), fc.constantFrom('\n', '\x85', '\ud800', '\udc00', 'a', '\u{1D400}'));
+    fc.assert(
+      fc.property(fc.array(char, { maxLength: 210 }).map((cs) => cs.join('')), (said) => {
+        const expected = said.length >= 1 && said.length <= REFUSAL_SAID_MAX_UTF16 && ![...said].some((c) => /\p{Cs}|\p{Cc}/u.test(c));
+        expect(parses('VoiceRefusal', { kind: 'not_understood', said })).toBe(expected);
+      }),
       { seed: SEED, numRuns: NUM_RUNS }
     );
   });

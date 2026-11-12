@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
 import type { ActionContext, AlbedianAction, ObservationSession, VoiceCommandResponse } from '@albedian/contracts';
-import { VoiceCommandResponseSchema } from '@albedian/contracts';
+import { VoiceCommandResponseSchema, refusalSentence } from '@albedian/contracts';
 import { buildActionContext, createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { applyVoiceBackendReply, askVoiceBackend, BACKEND_MAY_RESOLVE, VOICE_BACKEND_TIMEOUT_MS } from '../voice/voiceBackend';
@@ -59,12 +59,16 @@ const proposed = (action: AlbedianAction, extras: Record<string, unknown> = {}):
     ...extras,
   });
 
+const WHICH_ONE = refusalSentence({ kind: 'which_one' });
+
 const rejected = (extras: Record<string, unknown> = {}): VoiceCommandResponse =>
   VoiceCommandResponseSchema.parse({
     status: 'rejected',
     actionId: 'req-made-up',
     reason: 'ambiguous_target',
-    explanation: 'Made-up refusal: nothing names a target.',
+    // Every ambiguous_target refusal says its kind, and its explanation is that kind's sentence (answers-3)
+    refusal: { kind: 'which_one' },
+    explanation: WHICH_ONE,
     nextActions: [],
     ...extras,
   });
@@ -242,10 +246,10 @@ describe('@albedian/web voice backend: applying a reply', () => {
 
   it('shows a refusal or a question as the backend words it, and names the model that interpreted the words', () => {
     const byRules = applyVoiceBackendReply(base, rejected({ interpretation: { parser: 'rules' } }));
-    expect(byRules.session).toEqual({ ...base, lastStatusBanner: 'Made-up refusal: nothing names a target.' });
+    expect(byRules.session).toEqual({ ...base, lastStatusBanner: WHICH_ONE });
     expect(byRules.outcome).toBeUndefined();
     const byModel = applyVoiceBackendReply(base, rejected({ interpretation: model }));
-    expect(byModel.session.lastStatusBanner).toBe('Made-up refusal: nothing names a target. Interpreted by model-made-up.');
+    expect(byModel.session.lastStatusBanner).toBe(`${WHICH_ONE} Interpreted by model-made-up.`);
     const asked = applyVoiceBackendReply(
       base,
       VoiceCommandResponseSchema.parse({

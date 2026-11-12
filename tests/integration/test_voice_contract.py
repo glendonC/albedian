@@ -15,14 +15,17 @@ Covers:
 - PBT: a proposed reply carrying a state version is refused, and only a finding action is described
 - PBT: an integral float passes as an integer, as it does in JavaScript; a fraction or a boolean never does
 - NaN and the infinities, which standard JSON cannot carry, are refused
+- The mirror defines each top-level name once and reads no Unicode data of the Python running it
 - PBT: an invalid action's issues name field paths and never a value from it, and fit the refusal
 """
 
 from __future__ import annotations
 
+import ast
 import json
 import math
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +40,7 @@ FIXTURE = ROOT / "tests" / "fixtures" / "voice_contract.json"
 CLAUDE_ACTIONS = ROOT / "tests" / "fixtures" / "python_voice_actions.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_VOICE_FIXTURE"
 ADAPTERS = {
+    "VoiceRefusal": voice.VOICE_REFUSAL,
     "AlbedianAction": voice.ALBEDIAN_ACTION,
     "VoiceCommandRequest": voice.VOICE_COMMAND_REQUEST,
     "VoiceCommandResponse": voice.VOICE_COMMAND_RESPONSE,
@@ -48,6 +52,41 @@ ECMASCRIPT_SPACES = frozenset(
     "\t\v\f﻿              "
     "  　\n\r  "
 )
+
+
+def _accepts(name: str, sample: Any) -> bool:
+    try:
+        ADAPTERS[name].validate_python(sample)
+    except ValidationError:
+        return False
+    return True
+
+
+def test_an_unknown_key_and_a_python_name_are_refused_on_every_refusal_and_its_reply() -> None:
+    """The levels this unit adds: the refusal, and the rejected reply that carries it (the interpretation inside a
+    reply drops unknown keys by the contract's own design, so it is not one)."""
+    samples = voice.build_voice_samples()
+    refused = 0
+    replies = [r for r in samples["valid"]["VoiceCommandResponse"] if "refusal" in r]
+    for schema, record, at in [("VoiceRefusal", r, ()) for r in samples["valid"]["VoiceRefusal"]] + [
+        ("VoiceCommandResponse", r, at) for r in replies for at in ((), ("refusal",))
+    ]:
+        node = record
+        for step in at:
+            node = node[step]
+        renames = {key: re.sub(r"[A-Z]", lambda m: "_" + m.group().lower(), key) for key in node}
+        for key, snake in [("unknownKey", None), *((k, s) for k, s in renames.items() if s != k)]:
+            changed = json.loads(json.dumps(record))
+            target = changed
+            for step in at:
+                target = target[step]
+            if snake is None:
+                target[key] = 1
+            else:
+                target[snake] = target.pop(key)
+            assert not _accepts(schema, changed), (schema, at, key)
+            refused += 1
+    assert refused >= 60
 
 
 def _round_trip(name: str, sample: Any) -> Any:
@@ -348,3 +387,121 @@ def test_issues_for_what_is_not_an_action() -> None:
         assert voice.action_issues({"type": kind, "requestId": "req"}) == [
             {"path": ["type"], "message": "Not one of the contract's action types"}
         ]
+
+
+# Typed refusals (answers-3): a closed list of kinds, each with its reasons, what it quotes, and whether the backend
+# can know it; one sentence per refusal, the same in both languages (the fixture's refusalSentences)
+def test_every_refusal_kind_has_a_sample_and_a_sentence_in_each_media_word() -> None:
+    samples = voice.build_voice_samples()
+    kinds = set(voice.REFUSAL_KINDS)
+    assert {r["kind"] for r in samples["valid"]["VoiceRefusal"]} == kinds
+    assert {(s["refusal"]["kind"], s["media"]) for s in samples["refusalSentences"]} == {
+        (kind, media) for kind in kinds for media in voice.REFUSAL_MEDIA
+    }
+    for sample in samples["refusalSentences"]:
+        assert voice.refusal_sentence(sample["refusal"], sample["media"]) == sample["sentence"]
+    replied = {r["refusal"]["kind"] for r in samples["valid"]["VoiceCommandResponse"] if "refusal" in r}
+    assert replied == {kind for kind, spec in voice.REFUSAL_KINDS.items() if spec["backend"]}
+
+
+def test_the_refusal_kinds_hold_the_leads_list() -> None:
+    kinds = voice.REFUSAL_KINDS
+    # A word not understood, a known name this sky lacks, a name no data holds, which one, nothing in view, the sky
+    # not worked out
+    assert {"not_understood", "not_in_this_sky", "no_named_row", "which_one", "nothing_in_view",
+            "sky_not_worked_out"} <= set(kinds)
+    for kind, spec in kinds.items():
+        assert spec["reasons"] and set(spec["reasons"]) <= set(voice.REJECTION_REASONS), kind
+        # Every kind that quotes what was said says it in its sentence
+        # The sentence shows the name a kind stands for, else what was said
+        shown = voice.refusal_sentence({"kind": kind, "said": "qsaid-mark", "name": "qname-mark", "catalogRow": "R1"})
+        if spec["name"]:
+            assert "name-mark" in shown and "said-mark" not in shown, kind
+        elif spec["said"]:
+            assert "said-mark" in shown, kind
+        # A kind that stands for a name also says what was said
+        assert not spec["name"] or spec["said"], kind
+    # The backend holds no photo: no kind that needs the photo's sky is the backend's
+    assert {k for k, spec in kinds.items() if not spec["backend"]} == {
+        "not_in_this_sky", "southern_cross_not_in_this_sky", "sky_not_worked_out", "nothing_in_view_sky_not_worked_out"}
+
+
+_REFUSAL_REPLY = {"status": "rejected", "actionId": "req-1", "reason": "ambiguous_target", "nextActions": [],
+                  "refusal": {"kind": "not_understood", "said": "zorblax"},
+                  "explanation": voice.refusal_sentence({"kind": "not_understood", "said": "zorblax"})}
+
+
+@settings(max_examples=200, deadline=None)
+@given(kind=st.text(min_size=1, max_size=40).filter(lambda k: k not in voice.REFUSAL_KINDS))
+def test_pbt_an_unknown_refusal_kind_is_refused(kind: str) -> None:
+    assert not _accepts("VoiceRefusal", {"kind": kind})
+    assert not _accepts("VoiceCommandResponse", {**_REFUSAL_REPLY, "refusal": {"kind": kind, "said": "zorblax"}})
+
+
+@settings(max_examples=200, deadline=None)
+@given(action=contract_actions(), said=st.text(alphabet="abcxyz ", min_size=1, max_size=20).filter(str.strip))
+def test_pbt_a_refusal_carries_no_action_and_an_action_carries_no_refusal(action: dict[str, Any], said: str) -> None:
+    refusal = {"kind": "not_understood", "said": said}
+    reply = {**_REFUSAL_REPLY, "refusal": refusal, "explanation": voice.refusal_sentence(refusal)}
+    assert _accepts("VoiceCommandResponse", reply)
+    assert not _accepts("VoiceCommandResponse", {**reply, "proposedAction": action})
+    proposed = {"status": "proposed", "actionId": action["requestId"], "proposedAction": action,
+                "visualStatus": "Checked; not applied"}
+    assert _accepts("VoiceCommandResponse", proposed)
+    assert not _accepts("VoiceCommandResponse", {**proposed, "refusal": refusal})
+
+
+def _units(text: str) -> int:
+    return sum(2 if ord(char) > 0xFFFF else 1 for char in text)
+
+
+@settings(max_examples=300, deadline=None)
+@given(said=st.text(min_size=0, max_size=210))
+def test_pbt_said_is_bounded_in_utf16_units_with_no_control_or_lone_surrogate(said: str) -> None:
+    expected = (
+        1 <= _units(said) <= voice.REFUSAL_SAID_MAX_UTF16
+        and not any(0xD800 <= ord(c) <= 0xDFFF or ord(c) <= 0x1F or 0x7F <= ord(c) <= 0x9F for c in said)
+    )
+    assert _accepts("VoiceRefusal", {"kind": "not_understood", "said": said}) == expected
+
+
+def test_the_mirror_defines_each_name_once_and_reads_no_runtime_unicode_data() -> None:
+    # A second definition would silently replace the first for every model built after it, and the runtime's own
+    # unicodedata differs between Pythons (the letters-and-digits table and fixed code point ranges decide instead)
+    tree = ast.parse(Path(voice.__file__).read_text(encoding="utf-8"))
+    defined = [node.name for node in tree.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))]
+    assert sorted(name for name in set(defined) if defined.count(name) > 1) == []
+    imported = {alias.name for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom))
+                for alias in node.names} | {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+    assert "unicodedata" not in imported
+    # Nor any case mapping, normalisation or character class of str: each reads this Python's own Unicode tables
+    runtime = {"upper", "lower", "casefold", "title", "capitalize", "swapcase", "isalpha", "isalnum", "isdigit",
+               "isnumeric", "isdecimal", "isspace", "isupper", "islower", "istitle", "isidentifier", "isprintable"}
+    called = sorted({node.func.attr for node in ast.walk(tree)
+                     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in runtime})
+    assert called == []
+
+
+def test_every_name_the_backends_tables_hold_is_a_table_name() -> None:
+    from services.science.predicted_sky import PREDICTED_BODIES
+    from services.voice import names
+
+    held = {shown for _spoken, _finding_id, shown in names.star_name_table()} | set(names.UNBAKED_OBJECTS)
+    held |= set(PREDICTED_BODIES)
+    assert len(held) > 400
+    assert [name for name in sorted(held) if not voice.is_table_name(name)] == []
+    # The ASCII rule raises a first small letter and leaves a digit; nothing else is ever case-mapped
+    assert voice.refusal_sentence({"kind": "no_named_row", "said": "x", "name": "the Magellanic Clouds"}).startswith("The ")
+    assert voice.refusal_sentence({"kind": "no_named_row", "said": "x", "name": "47 Tucanae"}).startswith("47 ")
+
+
+@pytest.mark.local_dataset(".cache/unicode/ucd/15.0.0/UnicodeData.txt", ".cache/unicode/ucd/17.0.0/UnicodeData.txt")
+def test_the_uneven_case_code_points_are_those_unicode_15_and_17_map_differently() -> None:
+    def upper(version: str) -> dict[int, str]:
+        rows = (ROOT / ".cache" / "unicode" / "ucd" / version / "UnicodeData.txt").read_text(encoding="utf-8").splitlines()
+        return {int(fields[0], 16): fields[12] for fields in (row.split(";") for row in rows)}
+
+    old, new = upper("15.0.0"), upper("17.0.0")
+    differ = sorted(cp for cp in old.keys() | new.keys() if old.get(cp, "") != new.get(cp, ""))
+    assert tuple(differ) == voice.UNEVEN_CASE_CODE_POINTS
+    assert len(differ) == 55
