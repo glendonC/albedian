@@ -417,7 +417,7 @@ def read_facts(path: Path) -> dict[str, Any]:
         "focalLength35mmEquivMm": camera.get("focalLength35mmMm"),
         "exposureTimeSec": camera.get("exposureTimeSec"),
         "hasCaptureTime": time is not None,
-        "hasUtcOffset": time is not None and time["utcOffsetMinutes"] is not None,
+        "hasUtcOffset": time is not None and time["utcOffsetMinutes"] is not None and time["source"].get("basis", {}).get("offsetSource") != "place_time_zone_agrees_with_gps_time_stamp",
         "hasPlace": place is not None,
         "hemisphere": None if place is None else ("south" if place["latDeg"] < 0 else "north"),
     }

@@ -24,7 +24,7 @@ from typing import Annotated, Any, ClassVar, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
-from services.contracts.wire import LOOSE_WIRE_CONFIG, SHA256_HEX_PATTERN, UTC_INSTANT_PATTERN, WIRE_CONFIG, WireInt, WireNumber, wire_length
+from services.contracts.wire import LOOSE_WIRE_CONFIG, SHA256_HEX_PATTERN, UTC_INSTANT_PATTERN, WIRE_CONFIG, WireInt, WireModel, WireNumber, wire_length
 
 MIME_TYPE_PATTERN = r"^[a-z]+/[a-z0-9.+-]+$"
 METADATA_TAG_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$"
@@ -79,6 +79,57 @@ JOB_STAGES = ("store", "decode", "detect", "solve", "verify")
 PROGRESS_UNITS = ("bytes", "frames", "candidates", "steps")
 JOB_STATES = ("queued", "running", "succeeded", "failed", "canceled")
 UTC_OFFSET_LIMIT_MINUTES = 840
+# A capture time's zone worked out from two independent sources: the time zone at the photo's GPS position, which
+# must offer exactly one offset at the local time, and the GPS time stamp. Local time minus the fix's instant minus
+# the zone's offset must be within this many seconds (measured for unit capture-time-1 on the corpus photos that
+# carry the offset tag and the GPS stamps: 15 of 17 within 209 s, the other 2 old by about 30 and 91 minutes; 300 s
+# stays under half the 15 minutes between any two offsets in use since 1979). The basis of a capture time's offset
+# says where it came from and what each GPS source said: against the offset tag when there is one, else against each
+# other. Each label names its cause: no_usable_position and no_usable_time_stamp (none in the file, malformed, a
+# position at (0, 0), or a fix dated on the calendar's first or last day; a fix the receiver marked void gives no
+# basis at all); outside_every_time_zone (no zone of the
+# boundary data holds the point); time_zone_data_unavailable (the system's zone database could not load a zone the
+# point lies in); no_whole_minute_offset (an offset at the place then was not a whole number of minutes, as before
+# standard time); more_than_one_offset (the place offers more than one offset at the local time: two zones at a
+# border, or a wall time a clock change repeats or skips; a fix as old as their difference would agree with the wrong
+# one, so nothing is derived); unchecked (nothing to check it against). Absent: no usable GPS position and no usable
+# GPS time stamp, and the offset, if any, is the file's.
+GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC = 300
+# A tagged photo's EXIF time counts whole seconds. From a GPS time stamp that agrees, the capture instant's stated
+# uncertainty is this second plus the leftover, rounded up to the whole second: never less than a tagged photo's.
+# It takes the camera's clock as a tagged photo's does: the stamp bounds only how far the fix's age and the clock's
+# error differ, so a clock as slow as an old fix is old leaves nothing over.
+TIME_STAMP_RESOLUTION_SEC = 1
+CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC = TIME_STAMP_RESOLUTION_SEC + GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC
+CAPTURE_OFFSET_SOURCES = ("offset_tag", "place_time_zone_agrees_with_gps_time_stamp")
+PLACE_TIME_ZONE_CHECKS = ("agrees", "disagrees", "unchecked", "no_usable_position", "outside_every_time_zone",
+                          "time_zone_data_unavailable", "no_whole_minute_offset", "more_than_one_offset")
+GPS_TIME_STAMP_CHECKS = ("agrees", "disagrees", "unchecked", "no_usable_time_stamp")
+# The (placeTimeZone, gpsTimeStamp) pairs each offset source allows; None: no offset was found
+CAPTURE_TIME_BASIS_PAIRS: dict[Optional[str], frozenset[tuple[str, str]]] = {
+    "offset_tag": frozenset(
+        (place, gps)
+        for place in ("agrees", "disagrees", "no_usable_position", "outside_every_time_zone",
+                      "time_zone_data_unavailable", "no_whole_minute_offset")
+        for gps in ("agrees", "disagrees", "no_usable_time_stamp")
+        if (place, gps) != ("no_usable_position", "no_usable_time_stamp")
+    ),
+    "place_time_zone_agrees_with_gps_time_stamp": frozenset({("agrees", "agrees")}),
+    None: frozenset({
+        ("disagrees", "disagrees"),
+        ("unchecked", "no_usable_time_stamp"),
+        ("no_usable_position", "unchecked"),
+        ("outside_every_time_zone", "unchecked"),
+        ("outside_every_time_zone", "no_usable_time_stamp"),
+        ("time_zone_data_unavailable", "unchecked"),
+        ("time_zone_data_unavailable", "no_usable_time_stamp"),
+        ("no_whole_minute_offset", "unchecked"),
+        ("no_whole_minute_offset", "no_usable_time_stamp"),
+        ("more_than_one_offset", "unchecked"),
+        ("more_than_one_offset", "no_usable_time_stamp"),
+    }),
+}
+GPS_STAMP_TAGS = ("GPSDateStamp", "GPSTimeStamp")
 CAMERA_HINT_FIELDS = (
     "make",
     "model",
@@ -130,9 +181,32 @@ class _Loose(_Model):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, strict=True, extra="ignore")
 
 
+class CaptureTimeBasis(WireModel):
+    """Where a capture time's offset came from and what the GPS position's time zone and the GPS time stamp said,
+    and, from a GPS time stamp that agrees, the capture instant's stated uncertainty in whole seconds: a second plus
+    how far the camera's clock and the GPS time stamp differ, rounded up (TIME_STAMP_RESOLUTION_SEC)."""
+
+    offset_source: Optional[Literal["offset_tag", "place_time_zone_agrees_with_gps_time_stamp"]] = None
+    place_time_zone: Literal[*PLACE_TIME_ZONE_CHECKS]
+    gps_time_stamp: Literal[*GPS_TIME_STAMP_CHECKS]
+    # The second a tagged photo's EXIF time counts plus how far the camera's clock and the GPS time stamp differ,
+    # rounded up. It covers a wrong camera clock with a fresh fix, and an old fix with a right clock. It cannot cover a
+    # wrong clock that an old fix hides: the two cancel (a clock 290 s slow with a fix 290 s old states 1 s, 290 s off)
+    uncertainty_sec: Optional[Annotated[WireInt, Field(ge=TIME_STAMP_RESOLUTION_SEC, le=CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC)]] = None
+
+    @model_validator(mode="after")
+    def _fits_its_source(self) -> "CaptureTimeBasis":
+        if (self.place_time_zone, self.gps_time_stamp) not in CAPTURE_TIME_BASIS_PAIRS[self.offset_source]:
+            raise ValueError("what the place's time zone and the GPS time stamp said does not fit the offset's source")
+        if (self.gps_time_stamp == "agrees") != (self.uncertainty_sec is not None):
+            raise ValueError("an uncertainty comes only from a GPS time stamp that agrees")
+        return self
+
+
 class MetadataSource(_Model):
     container: Literal["exif", "quicktime", "heif", "xmp", "user", "synthetic"]
     tags: Annotated[list[Annotated[str, StringConstraints(pattern=METADATA_TAG_PATTERN)]], Field(min_length=1, max_length=8)]
+    basis: Optional[CaptureTimeBasis] = None
 
 
 class AudioStreamDescriptor(_Loose):
@@ -231,6 +305,8 @@ class SourceAsset(_Loose):
             sourced = sources is not None and getattr(sources, field) is not None
             if present != sourced:
                 raise ValueError(f"{field} needs its metadata source" if present else f"a source for {field}, which is absent")
+            if field != "captured_at_utc" and sourced and getattr(sources, field).basis is not None:
+                raise ValueError("only a capture time's source has a basis")
         return self
 
 
@@ -258,6 +334,14 @@ class CaptureTimeHint(_Model):
             expected = (local - timedelta(minutes=self.utc_offset_minutes)).replace(tzinfo=timezone.utc)
             if _parse_utc(self.utc) != expected:
                 raise ValueError("utc must be the local time minus the offset")
+        basis = self.source.basis
+        if basis is not None:
+            if self.marks != "recorded" or self.source.container != "exif" or self.local_date_time is None:
+                raise ValueError("a basis belongs to a recorded EXIF capture time")
+            if (basis.offset_source is None) != (self.utc_offset_minutes is None):
+                raise ValueError("a basis names the offset's source exactly when the offset is known")
+            if (basis.gps_time_stamp != "no_usable_time_stamp") != all(tag in self.source.tags for tag in GPS_STAMP_TAGS):
+                raise ValueError("a basis names the GPS date and time stamps among its tags exactly when it read them")
         return self
 
 
@@ -300,6 +384,13 @@ class MetadataHints(_Model):
     location: Optional[LocationHint] = None
     camera: Optional[CameraHint] = None
     orientation: Optional[OrientationHint] = None
+
+    @model_validator(mode="after")
+    def _only_the_capture_time_has_a_basis(self) -> "MetadataHints":
+        for hint in (self.location, self.camera, self.orientation):
+            if hint is not None and hint.source.basis is not None:
+                raise ValueError("only a capture time's source has a basis")
+        return self
 
 
 class JobStageProgress(_Model):
@@ -495,7 +586,46 @@ def build_ingest_samples() -> dict[str, Any]:
         {"sourceAsset": clip_file_time, "hints": {"captureTime": file_written_time}, "alreadyStored": False},
         {"sourceAsset": portrait_photo, "hints": {**hints_full, "orientation": orientation_hints[0]}, "alreadyStored": False},
     ]
-    capture_times = [hints_full["captureTime"], receipts[1]["hints"]["captureTime"], recorded_clip_time, file_written_time]
+    # A photo with no offset tag whose zone came from its GPS position, agreeing with its GPS time stamp; the labels
+    # each GPS source gives an offset tag; and zoneless times that say why no zone was found
+    stamp_tags = ["DateTimeOriginal", "GPSDateStamp", "GPSTimeStamp"]
+    zoned_basis = {"offsetSource": "place_time_zone_agrees_with_gps_time_stamp", "placeTimeZone": "agrees",
+                   "gpsTimeStamp": "agrees", "uncertaintySec": 13}
+    zoned_time = {"container": "exif", "tags": stamp_tags, "basis": zoned_basis}
+    zoned_capture = {"localDateTime": "2031-05-02T05:42:18", "utcOffsetMinutes": 120, "utc": "2031-05-02T03:42:18Z",
+                     "marks": "recorded", "source": zoned_time}
+    zoned_photo = {**photo, "id": "src_6a7b8c9d0e1f2a3b", "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+                   "sha256": "6a7b8c9d0e1f2a3b" * 4, "uri": "/api/ingest/assets/" + "6a7b8c9d0e1f2a3b" * 4,
+                   "capturedAtUTC": "2031-05-02T03:42:18Z",
+                   "metadataSources": {**photo["metadataSources"], "capturedAtUTC": copy.deepcopy(zoned_time)}}
+    receipts.append({"sourceAsset": zoned_photo, "hints": {**hints_full, "captureTime": zoned_capture}, "alreadyStored": False})
+    tag_only = ["DateTimeOriginal", "OffsetTimeOriginal"]
+    tag_stamps = [*tag_only, "GPSDateStamp", "GPSTimeStamp"]
+    capture_times = [hints_full["captureTime"], receipts[1]["hints"]["captureTime"], recorded_clip_time, file_written_time,
+                     zoned_capture]
+    # The stated uncertainty's edges, from one table: each inside end, the same written as a float, and one step past
+    # each end, whole and by half a second; the refused ones go to `bad` below
+    uncertainty_edges = [
+        (TIME_STAMP_RESOLUTION_SEC, None), (CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC, None), (float(TIME_STAMP_RESOLUTION_SEC), None),
+        (float(CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC), None),
+        (TIME_STAMP_RESOLUTION_SEC - 1, "an uncertainty below the second a tagged photo's time counts"),
+        (CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC + 1, "an uncertainty past a second plus the leftover bound"),
+        (TIME_STAMP_RESOLUTION_SEC + 0.5, "an uncertainty is whole seconds, rounded up"),
+        (CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC - 0.5, "an uncertainty is whole seconds, rounded up"),
+    ]
+    for value, refused in uncertainty_edges:
+        if refused is None:
+            capture_times.append({**zoned_capture, "source": {**zoned_time, "basis": {**zoned_basis, "uncertaintySec": value}}})
+    for (place, gps) in sorted(CAPTURE_TIME_BASIS_PAIRS["offset_tag"]):
+        basis = {"offsetSource": "offset_tag", "placeTimeZone": place, "gpsTimeStamp": gps}
+        if gps == "agrees":
+            basis["uncertaintySec"] = 1
+        capture_times.append({**zoned_capture, "source": {"container": "exif", "tags": tag_only if gps == "no_usable_time_stamp" else tag_stamps,
+                                                          "basis": basis}})
+    zoneless = {"localDateTime": "2031-05-02T05:42:18", "utcOffsetMinutes": None, "utc": None, "marks": "recorded"}
+    for (place, gps) in sorted(CAPTURE_TIME_BASIS_PAIRS[None]):
+        capture_times.append({**zoneless, "source": {"container": "exif", "tags": ["DateTimeOriginal"] if gps == "no_usable_time_stamp" else stamp_tags,
+                                                     "basis": {"placeTimeZone": place, "gpsTimeStamp": gps}}})
     sha = clip["sha256"]
     jobs = [
         {"id": "job_0a1b2c3d4e5f6071", "sourceAssetSha256": sha, "state": "queued", "createdAtUTC": "2031-05-02T19:20:00Z", "stages": []},
@@ -591,6 +721,81 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("IngestReceipt", with_(receipts[5], ["hints", "orientation"], _DROP), "an orientation the hints do not hold")
     bad("IngestReceipt", with_(receipts[5], ["sourceAsset", "metadataSources", "displayOrientation"], {"container": "heif", "tags": ["irot"]}),
         "the asset's orientation source differs from its hint's")
+    for change, reason in [
+        ({"uncertaintySec": _DROP}, "an agreeing GPS time stamp states the uncertainty"),
+        ({"gpsTimeStamp": "disagrees"}, "a zone worked out needs the GPS time stamp to agree"),
+        ({"placeTimeZone": "unchecked"}, "a zone worked out needs the place's time zone"),
+        ({"offsetSource": "gps_time_stamp"}, "the GPS time stamp alone is no offset source"),
+        ({"offsetSource": _DROP}, "an offset that is known names its source"),
+        ({"placeTimeZone": _DROP}, "what the place's time zone said is required"),
+        ({"gpsTimeStamp": _DROP}, "what the GPS time stamp said is required"),
+        *(({"uncertaintySec": value}, refused) for value, refused in uncertainty_edges if refused is not None),
+        ({"uncertaintySec": -0.0}, "minus zero is zero, below a second"),
+        ({"uncertaintySec": 12.0004}, "a fraction of a millisecond past a whole second"),
+        ({"uncertaintySec": 9007199254740993}, "an integer past 2^53"),
+        ({"uncertaintySec": 10**400}, "a 400 digit integer"),
+        ({"uncertaintySec": True}, "a boolean is not a number"),
+        ({"uncertaintySec": "12"}, "a string is not a number"),
+        ({"uncertaintySec": None}, "null where the field may only be absent"),
+        ({"placeTimeZone": "agrees\U0001d4a2"}, "a character outside the basic plane"),
+        ({"place_time_zone": "agrees", "placeTimeZone": _DROP}, "a Python field name on the wire"),
+        ({"uncertainty_sec": 12.0, "uncertaintySec": _DROP}, "a Python field name on the wire"),
+        ({"note": "x"}, "an unknown basis key"),
+    ]:
+        changed = copy.deepcopy(zoned_capture)
+        for key, value in change.items():
+            if value is _DROP:
+                del changed["source"]["basis"][key]
+            else:
+                changed["source"]["basis"][key] = value
+        bad("CaptureTimeHint", changed, reason)
+    tag_agrees = {**zoned_capture, "source": {"container": "exif", "tags": tag_stamps, "basis": {
+        "offsetSource": "offset_tag", "placeTimeZone": "agrees", "gpsTimeStamp": "disagrees"}}}
+    bad("CaptureTimeHint", with_(tag_agrees, ["source", "basis", "uncertaintySec"], 3), "a disagreeing GPS time stamp gives no uncertainty")
+    bad("CaptureTimeHint", with_(tag_agrees, ["source", "basis", "placeTimeZone"], "unchecked"), "an offset tag is checked, not unchecked")
+    bad("CaptureTimeHint", {**zoned_capture, "source": {"container": "exif", "tags": tag_only, "basis": {
+        "offsetSource": "offset_tag", "placeTimeZone": "no_usable_position", "gpsTimeStamp": "no_usable_time_stamp"}}}, "no GPS source at all gives no basis")
+    bad("CaptureTimeHint", with_(with_(zoned_capture, ["source", "basis", "gpsTimeStamp"], "disagrees"), ["source", "basis", "uncertaintySec"], _DROP),
+        "a zone worked out needs the GPS time stamp to agree, uncertainty or not")
+    bad("MetadataHints", with_(hints_full, ["location", "source", "basis"], zoned_basis), "a basis on a place hint's source")
+    bad("MetadataHints", with_(hints_full, ["camera", "source", "basis"], zoned_basis), "a basis on a camera hint's source")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "agrees", "gpsTimeStamp": "agrees", "uncertaintySec": 2}}},
+        "agreeing sources give an offset")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags, "basis": zoned_basis}},
+        "a zone worked out without its offset")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": ["DateTimeOriginal"],
+                                                   "basis": {"placeTimeZone": "no_usable_position", "gpsTimeStamp": "no_usable_time_stamp"}}},
+        "no GPS source at all gives no basis")
+    bad("CaptureTimeHint", with_(zoned_capture, ["source", "basis"], None), "a basis is absent, never null")
+    bad("CaptureTimeHint", with_(zoned_capture, ["source", "tags"], ["DateTimeOriginal"]), "a GPS time stamp read is named among the tags")
+    bad("CaptureTimeHint", with_(zoned_capture, ["source", "tags"], ["DateTimeOriginal", "GPSDateStamp"]), "both GPS stamps are named, not one")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "unchecked", "gpsTimeStamp": "no_usable_time_stamp"}}},
+        "a GPS time stamp named that the basis says is absent")
+    bad("CaptureTimeHint", {**file_written_time, "source": {**file_time, "basis": zoned_basis}}, "a basis on a file's own time")
+    bad("CaptureTimeHint", {**recorded_clip_time, "source": {"container": "quicktime", "tags": ["GPSDateStamp", "GPSTimeStamp"],
+                                                             "basis": zoned_basis}}, "a basis on a QuickTime time")
+    bad("SourceAsset", with_(zoned_photo, ["metadataSources", "observerLocation", "basis"], zoned_basis), "a basis on a place's source")
+    bad("IngestReceipt", with_(receipts[6], ["sourceAsset", "metadataSources", "capturedAtUTC", "basis", "uncertaintySec"], 14),
+        "the asset's basis differs from its hint's")
+    # The second version's label for two offsets that both fit is retired: a place that offers two derives nothing
+    # first. The label that replaces it belongs to no offset tag and to no GPS time stamp
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "more_than_one_offset_fits", "gpsTimeStamp": "more_than_one_offset_fits"}}},
+        "a retired label")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "more_than_one_offset", "gpsTimeStamp": "more_than_one_offset"}}},
+        "the GPS time stamp says nothing of the place's offsets")
+    bad("CaptureTimeHint", {**zoned_capture, "source": {"container": "exif", "tags": tag_stamps, "basis": {
+        "offsetSource": "offset_tag", "placeTimeZone": "more_than_one_offset", "gpsTimeStamp": "agrees", "uncertaintySec": 2}}},
+        "an offset tag is checked against every offset the place offers")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "more_than_one_offset", "gpsTimeStamp": "disagrees"}}},
+        "the GPS time stamp is not checked against a place that offers more than one offset")
+    bad("IngestReceipt", with_(receipts[6], ["sourceAsset", "metadataSources", "capturedAtUTC", "basis"], _DROP),
+        "the asset keeps its hint's basis")
+    bad("IngestReceipt", with_(receipts[6], ["hints", "location", "source", "basis"], zoned_basis), "a basis on a place hint's source")
     bad("SolveJob", with_(jobs[0], ["startedAtUTC"], "2031-05-02T19:20:01Z"), "a queued job has not started")
     bad("SolveJob", with_(jobs[1], ["startedAtUTC"], _DROP), "a running job has a start time")
     bad("SolveJob", with_(jobs[2], ["solutionId"], _DROP), "a succeeded job names its solution")
@@ -612,13 +817,17 @@ def build_ingest_samples() -> dict[str, Any]:
         "enums": {
             "metadataContainers": list(METADATA_CONTAINERS),
             "captureTimeMarks": list(CAPTURE_TIME_MARKS),
+            "captureOffsetSources": list(CAPTURE_OFFSET_SOURCES),
+            "placeTimeZoneChecks": list(PLACE_TIME_ZONE_CHECKS),
+            "gpsTimeStampChecks": list(GPS_TIME_STAMP_CHECKS),
             "jobStages": list(JOB_STAGES),
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
         },
-        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated],
+        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated, zoned_photo],
                   "IngestReceipt": receipts,
-                  "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints, "SolveJob": jobs},
+                  "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints,
+                  "MetadataHints": [hints_full, {**hints_full, "captureTime": zoned_capture}], "SolveJob": jobs},
         "orientations": {"exif": {str(value): form for value, form in EXIF_ORIENTATIONS.items()}},
         "invalid": invalid,
     }

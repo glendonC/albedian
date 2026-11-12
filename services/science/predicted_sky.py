@@ -80,6 +80,40 @@ OUT_OF_RANGE = (
 )
 # Only a plate solver's outcomes are completed; a pose's (approximate) comes with its own predicted sky
 COMPLETED_STATUSES = ("calibrated", "ambiguous", "unresolved")
+# How far the sky turns in the horizon frame per second of time: 360 degrees per sidereal day of 86,164.0905 s (IERS
+# Conventions 2010, the Earth's rotation rate), an upper bound for any star, reached on the celestial equator
+SKY_TURN_ARCSEC_PER_SEC = 360 * 3600 / 86164.0905
+
+
+def sky_turn_deg(seconds: float) -> float:
+    """How far the sky turns, in degrees, in `seconds` of time (SKY_TURN_ARCSEC_PER_SEC over the 3,600 arcsec of a
+    degree): one degree in a 360th of a sidereal day."""
+    return SKY_TURN_ARCSEC_PER_SEC * seconds / 3600
+
+
+def _worked_out_time_sec(asset: Mapping[str, Any]) -> float | None:
+    """The capture instant's stated uncertainty in seconds when its time zone was taken from the GPS position's time
+    zone, which agrees with the GPS time stamp (services/ingest/metadata.py); None when the file gave its own offset."""
+    source = (asset.get("metadataSources") or {}).get("capturedAtUTC") or {}
+    basis = source.get("basis") or {}
+    worked_out = basis.get("offsetSource") == "place_time_zone_agrees_with_gps_time_stamp"
+    return float(basis["uncertaintySec"]) if worked_out else None
+
+
+def time_zone_from_gps(uncertainty_sec: float) -> str:
+    """The sentence for a capture time whose time zone was taken from the GPS position and agrees with the GPS time
+    stamp. It holds no time, place, zone or file name. It says the zone agrees, not that the instant is confirmed:
+    the stamp bounds only how far the fix's age and the camera clock's error differ, so an old fix can hide a wrong
+    clock, as nothing checks a tagged photo's clock either."""
+    return (
+        "The file names no time zone for its capture time: it was taken from the time zone at the photo's GPS "
+        "position, which agrees with its GPS time stamp. The capture time is taken to be within "
+        f"{uncertainty_sec:g} s, a second plus how far the camera's clock and the GPS time stamp differ, which can "
+        f"move the predicted sky by up to {SKY_TURN_ARCSEC_PER_SEC * uncertainty_sec:.0f} arcsec; an old GPS fix "
+        "can hide a wrong camera clock."
+    )
+
+
 STAR_POSITION_LIMITATION = (
     "Its position leaves out nutation, annual aberration and UT1 - UTC, which its 55 arcsec uncertainty covers, and "
     "its altitude leaves out refraction, which lifts what is near the horizon."
@@ -172,15 +206,24 @@ def predicted_sky_findings(
     solution_id: str,
     source_sha256: str,
     exclude_ids: frozenset[str] = frozenset(),
+    time_uncertainty_sec: float | None = None,
 ) -> list[CelestialFindingRecord]:
     """The Sun, the Moon, the five planets and the pinned all-sky bright stars (stars carried to the date by their
     proper motion) above the horizon at `moment` from (`lat_deg`, `lon_deg`), as predicted findings of the solution
     `solution_id`: bodies first in `PREDICTED_BODIES` order, then stars brightest first.
 
     Above the horizon means a geometric (airless) altitude above 0. `exclude_ids` names catalog stars to leave
-    out, by catalog id. Raises EphemerisOutOfRange outside 1800 to 2050."""
+    out, by catalog id. `time_uncertainty_sec`, for a capture time whose time zone was worked out from the GPS position
+    and time stamp, is added to each uncertainty as the sky's turn in that time and named in each limitation. Raises
+    EphemerisOutOfRange outside 1800 to 2050."""
     require_ephemeris_range(moment)
     findings: list[CelestialFindingRecord] = []
+    time_arcsec = 0.0 if time_uncertainty_sec is None else SKY_TURN_ARCSEC_PER_SEC * time_uncertainty_sec
+    time_said = (
+        "the recorded capture time"
+        if time_uncertainty_sec is None
+        else "the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp,"
+    )
     for body in compute_solar_system_ephemerides(
         moment, lat_deg, lon_deg, bodies=PREDICTED_BODIES, observation_solution_id=solution_id
     ):
@@ -197,11 +240,10 @@ def predicted_sky_findings(
                 dec_deg=body.dec_deg,
                 alt_deg=body.alt_deg,
                 az_deg=body.az_deg,
-                uncertainty_arcsec=body.uncertainty_arcsec,
+                uncertainty_arcsec=body.uncertainty_arcsec + time_arcsec,
                 verified_by_holdout=False,
                 limitations=(
-                    f"Predicted with {body.method}, for the recorded capture time and place; not measured in the "
-                    "recording.",
+                    f"Predicted with {body.method}, for {time_said} and place; not measured in the recording.",
                     *body.limitations[1:],
                 ),
                 source_sha256=source_sha256,
@@ -234,12 +276,12 @@ def predicted_sky_findings(
                 dec_deg=star.dec_deg,
                 alt_deg=alt,
                 az_deg=az,
-                uncertainty_arcsec=PREDICTED_STAR_UNCERTAINTY_ARCSEC,
+                uncertainty_arcsec=PREDICTED_STAR_UNCERTAINTY_ARCSEC + time_arcsec,
                 catalog_star=star,
                 verified_by_holdout=False,
                 limitations=(
                     f"Predicted from its {star.release_version} catalog position, carried to the date by its proper "
-                    "motion, for the recorded capture time and place; not measured in the recording.",
+                    f"motion, for {time_said} and place; not measured in the recording.",
                     STAR_POSITION_LIMITATION,
                 ),
                 source_sha256=source_sha256,
@@ -369,9 +411,11 @@ def _lined_up(
         ),
         source_sha256=solution.source_sha256,
     )
+    time_sec = _worked_out_time_sec(asset)
     predicted = []
     for finding in predicted_sky_findings(
-        pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256
+        pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
+        time_uncertainty_sec=time_sec,
     ):
         x, y = wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
         inside = math.isfinite(x) and math.isfinite(y) and 0.0 <= x < wcs.width and 0.0 <= y < wcs.height
@@ -385,7 +429,9 @@ def _lined_up(
     estimate = pose.pose_estimate
     low, high = pose.profile.fov_diagonal_deg_range
     # The bound counts the beacon term: where the spot's light sits on the Moon's disk and where the Moon itself is
-    within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg)
+    # and, for a time zone worked out from the GPS position and time stamp, how far the sky turns in the time's uncertainty
+    time_deg = 0.0 if time_sec is None else sky_turn_deg(time_sec)
+    within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg + time_deg)
     lined_up = (
         f"Lined up by taking the bright spot at ({blob.x_px:.0f}, {blob.y_px:.0f}) px {where} to be the Moon, with the "
         f"camera profile's field of view of {low:g} to {high:g} degrees across the diagonal with no zoom and a level "
@@ -419,7 +465,12 @@ def _lined_up(
         observer_lat=lat,
         observer_lon=lon,
         findings=[*kept, moon, *predicted],
-        warnings=[*solution.warnings, lined_up, sky_phase(sun.alt_deg).sentence],
+        warnings=[
+            *solution.warnings,
+            lined_up,
+            *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            sky_phase(sun.alt_deg).sentence,
+        ],
         pose_estimate=estimate,
     )
 
@@ -472,10 +523,12 @@ def complete_sky(
         if f.evidence_class == "catalog_matched" and f.catalog_star is not None
     )
     present = {f.id for f in solution.findings}
+    time_sec = _worked_out_time_sec(asset)
     predicted = [
         f
         for f in predicted_sky_findings(
-            moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256, exclude_ids=matched
+            moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256, exclude_ids=matched,
+            time_uncertainty_sec=time_sec,
         )
         if f.id not in present
     ]
@@ -487,5 +540,10 @@ def complete_sky(
         observer_lat=lat,
         observer_lon=lon,
         findings=[*solution.findings, *predicted],
-        warnings=[*solution.warnings, *no_pose, sky_phase(sun.alt_deg).sentence],
+        warnings=[
+            *solution.warnings,
+            *no_pose,
+            *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            sky_phase(sun.alt_deg).sentence,
+        ],
     )

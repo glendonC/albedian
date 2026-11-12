@@ -20,6 +20,26 @@
       "recorded",
       "file_written"
     ],
+    "captureOffsetSources": [
+      "offset_tag",
+      "place_time_zone_agrees_with_gps_time_stamp"
+    ],
+    "placeTimeZoneChecks": [
+      "agrees",
+      "disagrees",
+      "unchecked",
+      "no_usable_position",
+      "outside_every_time_zone",
+      "time_zone_data_unavailable",
+      "no_whole_minute_offset",
+      "more_than_one_offset"
+    ],
+    "gpsTimeStampChecks": [
+      "agrees",
+      "disagrees",
+      "unchecked",
+      "no_usable_time_stamp"
+    ],
     "jobStages": [
       "store",
       "decode",
@@ -328,6 +348,75 @@
             "sha256": "aa11bb22cc33dd44"
           }
         ],
+        "privacyClass": "private",
+        "immutable": true
+      },
+      {
+        "id": "src_6a7b8c9d0e1f2a3b",
+        "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+        "mediaKind": "image",
+        "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+        "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+        "byteSize": 3184211,
+        "mimeType": "image/jpeg",
+        "width": 4032,
+        "height": 3024,
+        "durationMs": 0,
+        "videoCodec": "mjpeg",
+        "audioStreams": [],
+        "capturedAtUTC": "2031-05-02T03:42:18Z",
+        "observerLocation": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861
+        },
+        "cameraMetadata": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600
+        },
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "GPSDateStamp",
+              "GPSTimeStamp"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          },
+          "observerLocation": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          },
+          "cameraMetadata": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        },
         "privacyClass": "private",
         "immutable": true
       }
@@ -798,6 +887,137 @@
           }
         },
         "alreadyStored": false
+      },
+      {
+        "sourceAsset": {
+          "id": "src_6a7b8c9d0e1f2a3b",
+          "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+          "mediaKind": "image",
+          "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
       }
     ],
     "CaptureTimeHint": [
@@ -850,6 +1070,630 @@
             "creation_time"
           ]
         }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 301
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1.0
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 301.0
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "disagrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "disagrees",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "disagrees",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_usable_position",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_usable_position",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_whole_minute_offset",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_whole_minute_offset",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_whole_minute_offset",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "time_zone_data_unavailable",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "time_zone_data_unavailable",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "time_zone_data_unavailable",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "disagrees",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "more_than_one_offset",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "more_than_one_offset",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "no_usable_position",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "no_whole_minute_offset",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "no_whole_minute_offset",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "time_zone_data_unavailable",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "time_zone_data_unavailable",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "unchecked",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
       }
     ],
     "OrientationHint": [
@@ -891,6 +1735,120 @@
           "tags": [
             "tkhd"
           ]
+        }
+      }
+    ],
+    "MetadataHints": [
+      {
+        "captureTime": {
+          "localDateTime": "2031-05-02T05:42:18.120",
+          "utcOffsetMinutes": 120,
+          "utc": "2031-05-02T03:42:18.120Z",
+          "marks": "recorded",
+          "source": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          }
+        },
+        "location": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861,
+          "altitudeM": 3466,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          }
+        },
+        "camera": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        }
+      },
+      {
+        "captureTime": {
+          "localDateTime": "2031-05-02T05:42:18",
+          "utcOffsetMinutes": 120,
+          "utc": "2031-05-02T03:42:18Z",
+          "marks": "recorded",
+          "source": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "GPSDateStamp",
+              "GPSTimeStamp"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          }
+        },
+        "location": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861,
+          "altitudeM": 3466,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          }
+        },
+        "camera": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
         }
       }
     ],
@@ -4413,6 +5371,1530 @@
         "alreadyStored": false
       },
       "reason": "the asset's orientation source differs from its hint's"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees"
+          }
+        }
+      },
+      "reason": "an agreeing GPS time stamp states the uncertainty"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "disagrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a zone worked out needs the GPS time stamp to agree"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "unchecked",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a zone worked out needs the place's time zone"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "the GPS time stamp alone is no offset source"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "an offset that is known names its source"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "what the place's time zone said is required"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "what the GPS time stamp said is required"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 0
+          }
+        }
+      },
+      "reason": "an uncertainty below the second a tagged photo's time counts"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 302
+          }
+        }
+      },
+      "reason": "an uncertainty past a second plus the leftover bound"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1.5
+          }
+        }
+      },
+      "reason": "an uncertainty is whole seconds, rounded up"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 300.5
+          }
+        }
+      },
+      "reason": "an uncertainty is whole seconds, rounded up"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": -0.0
+          }
+        }
+      },
+      "reason": "minus zero is zero, below a second"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 12.0004
+          }
+        }
+      },
+      "reason": "a fraction of a millisecond past a whole second"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 9007199254740993
+          }
+        }
+      },
+      "reason": "an integer past 2^53"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+          }
+        }
+      },
+      "reason": "a 400 digit integer"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": true
+          }
+        }
+      },
+      "reason": "a boolean is not a number"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": "12"
+          }
+        }
+      },
+      "reason": "a string is not a number"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": null
+          }
+        }
+      },
+      "reason": "null where the field may only be absent"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees\ud835\udca2",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a character outside the basic plane"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13,
+            "place_time_zone": "agrees"
+          }
+        }
+      },
+      "reason": "a Python field name on the wire"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertainty_sec": 12.0
+          }
+        }
+      },
+      "reason": "a Python field name on the wire"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13,
+            "note": "x"
+          }
+        }
+      },
+      "reason": "an unknown basis key"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "disagrees",
+            "uncertaintySec": 3
+          }
+        }
+      },
+      "reason": "a disagreeing GPS time stamp gives no uncertainty"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "unchecked",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      "reason": "an offset tag is checked, not unchecked"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "no_usable_position",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      "reason": "no GPS source at all gives no basis"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      "reason": "a zone worked out needs the GPS time stamp to agree, uncertainty or not"
+    },
+    {
+      "schema": "MetadataHints",
+      "sample": {
+        "captureTime": {
+          "localDateTime": "2031-05-02T05:42:18.120",
+          "utcOffsetMinutes": 120,
+          "utc": "2031-05-02T03:42:18.120Z",
+          "marks": "recorded",
+          "source": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          }
+        },
+        "location": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861,
+          "altitudeM": 3466,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          }
+        },
+        "camera": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        }
+      },
+      "reason": "a basis on a place hint's source"
+    },
+    {
+      "schema": "MetadataHints",
+      "sample": {
+        "captureTime": {
+          "localDateTime": "2031-05-02T05:42:18.120",
+          "utcOffsetMinutes": 120,
+          "utc": "2031-05-02T03:42:18.120Z",
+          "marks": "recorded",
+          "source": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "SubSecTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          }
+        },
+        "location": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861,
+          "altitudeM": 3466,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          }
+        },
+        "camera": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          }
+        }
+      },
+      "reason": "a basis on a camera hint's source"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 2
+          }
+        }
+      },
+      "reason": "agreeing sources give an offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a zone worked out without its offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "no_usable_position",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      "reason": "no GPS source at all gives no basis"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": null
+        }
+      },
+      "reason": "a basis is absent, never null"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a GPS time stamp read is named among the tags"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "both GPS stamps are named, not one"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "unchecked",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      "reason": "a GPS time stamp named that the basis says is absent"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": "2031-05-02T19:31:40Z",
+        "marks": "file_written",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a basis on a file's own time"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T21:30:00",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T19:30:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "agrees",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 13
+          }
+        }
+      },
+      "reason": "a basis on a QuickTime time"
+    },
+    {
+      "schema": "SourceAsset",
+      "sample": {
+        "id": "src_6a7b8c9d0e1f2a3b",
+        "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+        "mediaKind": "image",
+        "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+        "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+        "byteSize": 3184211,
+        "mimeType": "image/jpeg",
+        "width": 4032,
+        "height": 3024,
+        "durationMs": 0,
+        "videoCodec": "mjpeg",
+        "audioStreams": [],
+        "capturedAtUTC": "2031-05-02T03:42:18Z",
+        "observerLocation": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861
+        },
+        "cameraMetadata": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600
+        },
+        "metadataSources": {
+          "capturedAtUTC": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "GPSDateStamp",
+              "GPSTimeStamp"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          },
+          "observerLocation": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ],
+            "basis": {
+              "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+              "placeTimeZone": "agrees",
+              "gpsTimeStamp": "agrees",
+              "uncertaintySec": 13
+            }
+          },
+          "cameraMetadata": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        },
+        "privacyClass": "private",
+        "immutable": true
+      },
+      "reason": "a basis on a place's source"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_6a7b8c9d0e1f2a3b",
+          "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+          "mediaKind": "image",
+          "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 14
+              }
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "the asset's basis differs from its hint's"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "more_than_one_offset_fits",
+            "gpsTimeStamp": "more_than_one_offset_fits"
+          }
+        }
+      },
+      "reason": "a retired label"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "more_than_one_offset",
+            "gpsTimeStamp": "more_than_one_offset"
+          }
+        }
+      },
+      "reason": "the GPS time stamp says nothing of the place's offsets"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "more_than_one_offset",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 2
+          }
+        }
+      },
+      "reason": "an offset tag is checked against every offset the place offers"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "more_than_one_offset",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      "reason": "the GPS time stamp is not checked against a place that offers more than one offset"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_6a7b8c9d0e1f2a3b",
+          "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+          "mediaKind": "image",
+          "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ]
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ]
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "the asset keeps its hint's basis"
+    },
+    {
+      "schema": "IngestReceipt",
+      "sample": {
+        "sourceAsset": {
+          "id": "src_6a7b8c9d0e1f2a3b",
+          "title": "Photo zoned by its GPS position and time stamp (synthetic)",
+          "mediaKind": "image",
+          "sha256": "6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "uri": "/api/ingest/assets/6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b6a7b8c9d0e1f2a3b",
+          "byteSize": 3184211,
+          "mimeType": "image/jpeg",
+          "width": 4032,
+          "height": 3024,
+          "durationMs": 0,
+          "videoCodec": "mjpeg",
+          "audioStreams": [],
+          "capturedAtUTC": "2031-05-02T03:42:18Z",
+          "observerLocation": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861
+          },
+          "cameraMetadata": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600
+          },
+          "metadataSources": {
+            "capturedAtUTC": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            },
+            "observerLocation": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            },
+            "cameraMetadata": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          },
+          "privacyClass": "private",
+          "immutable": true
+        },
+        "hints": {
+          "captureTime": {
+            "localDateTime": "2031-05-02T05:42:18",
+            "utcOffsetMinutes": 120,
+            "utc": "2031-05-02T03:42:18Z",
+            "marks": "recorded",
+            "source": {
+              "container": "exif",
+              "tags": [
+                "DateTimeOriginal",
+                "GPSDateStamp",
+                "GPSTimeStamp"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            }
+          },
+          "location": {
+            "latDeg": 46.5197,
+            "lonDeg": 7.9861,
+            "altitudeM": 3466,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "GPSLatitude",
+                "GPSLatitudeRef",
+                "GPSLongitude",
+                "GPSLongitudeRef"
+              ],
+              "basis": {
+                "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                "placeTimeZone": "agrees",
+                "gpsTimeStamp": "agrees",
+                "uncertaintySec": 13
+              }
+            }
+          },
+          "camera": {
+            "make": "Synthetic",
+            "model": "Test Phone",
+            "lensModel": "Main 24 mm",
+            "focalLengthMm": 6.9,
+            "focalLength35mmMm": 24,
+            "exposureTimeSec": 10,
+            "fNumber": 1.78,
+            "iso": 1600,
+            "source": {
+              "container": "exif",
+              "tags": [
+                "Make",
+                "Model",
+                "LensModel",
+                "FocalLength",
+                "FocalLengthIn35mmFilm",
+                "FNumber",
+                "ExposureTime",
+                "ISO"
+              ]
+            }
+          }
+        },
+        "alreadyStored": false
+      },
+      "reason": "a basis on a place hint's source"
     },
     {
       "schema": "SolveJob",

@@ -16,6 +16,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "anthropic>=2.4.0",
     "pyerfa>=2.0.1.5",
+    "tzfpy>=2.1.2",
 ]
 
 [dependency-groups]

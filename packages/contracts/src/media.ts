@@ -36,10 +36,97 @@ export type AudioStreamDescriptor = z.infer<typeof AudioStreamDescriptorSchema>;
  */
 export const METADATA_CONTAINERS = ['exif', 'quicktime', 'heif', 'xmp', 'user', 'synthetic'] as const;
 export const METADATA_TAG_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$';
+
+/**
+ * A capture time's zone worked out from two independent sources: the time zone at the photo's GPS position, which must
+ * offer exactly one offset at the local time, and the GPS time stamp. Local time minus the fix's instant minus the
+ * zone's offset must be within this many seconds (unit capture-time-1 measured it on the corpus photos that carry the
+ * offset tag and the GPS stamps: 15 of 17 within 209 s; 300 s stays under half the 15 minutes between any two offsets
+ * in use since 1979). Mirrors services/contracts/ingest.py.
+ */
+export const GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC = 300;
+/**
+ * A tagged photo's EXIF time counts whole seconds. From a GPS time stamp that agrees, the capture instant's stated
+ * uncertainty is this second plus the leftover, rounded up to the whole second: never less than a tagged photo's. It
+ * takes the camera's clock as a tagged photo's does: the stamp bounds only how far the fix's age and the clock's error
+ * differ, so a clock as slow as an old fix is old leaves nothing over.
+ */
+export const TIME_STAMP_RESOLUTION_SEC = 1;
+export const CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC = TIME_STAMP_RESOLUTION_SEC + GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC;
+export const CAPTURE_OFFSET_SOURCES = ['offset_tag', 'place_time_zone_agrees_with_gps_time_stamp'] as const;
+export const PLACE_TIME_ZONE_CHECKS = [
+  'agrees',
+  'disagrees',
+  'unchecked',
+  'no_usable_position',
+  'outside_every_time_zone',
+  'time_zone_data_unavailable',
+  'no_whole_minute_offset',
+  'more_than_one_offset',
+] as const;
+export const GPS_TIME_STAMP_CHECKS = ['agrees', 'disagrees', 'unchecked', 'no_usable_time_stamp'] as const;
+type PlaceCheck = (typeof PLACE_TIME_ZONE_CHECKS)[number];
+type GpsCheck = (typeof GPS_TIME_STAMP_CHECKS)[number];
+const pairs = (list: [PlaceCheck, GpsCheck][]) => new Set(list.map(([place, gps]) => `${place}/${gps}`));
+/** The (placeTimeZone, gpsTimeStamp) pairs each offset source allows; `none`: no offset was found. */
+export const CAPTURE_TIME_BASIS_PAIRS = {
+  offset_tag: pairs(
+    (['agrees', 'disagrees', 'no_usable_position', 'outside_every_time_zone', 'time_zone_data_unavailable', 'no_whole_minute_offset'] as const).flatMap((place) =>
+      (['agrees', 'disagrees', 'no_usable_time_stamp'] as const)
+        .filter((gps) => !(place === 'no_usable_position' && gps === 'no_usable_time_stamp'))
+        .map((gps): [PlaceCheck, GpsCheck] => [place, gps])
+    )
+  ),
+  place_time_zone_agrees_with_gps_time_stamp: pairs([['agrees', 'agrees']]),
+  none: pairs([
+    ['disagrees', 'disagrees'],
+    ['unchecked', 'no_usable_time_stamp'],
+    ['no_usable_position', 'unchecked'],
+    ['outside_every_time_zone', 'unchecked'],
+    ['outside_every_time_zone', 'no_usable_time_stamp'],
+    ['time_zone_data_unavailable', 'unchecked'],
+    ['time_zone_data_unavailable', 'no_usable_time_stamp'],
+    ['no_whole_minute_offset', 'unchecked'],
+    ['no_whole_minute_offset', 'no_usable_time_stamp'],
+    ['more_than_one_offset', 'unchecked'],
+    ['more_than_one_offset', 'no_usable_time_stamp'],
+  ]),
+};
+
+/**
+ * Where a capture time's offset came from and what the GPS position's time zone and the GPS time stamp said: against
+ * the offset tag when there is one, else against each other. From a GPS time stamp that agrees, the capture instant's
+ * stated uncertainty in whole seconds: a second plus how far the camera's clock and the GPS time stamp differ, rounded
+ * up (TIME_STAMP_RESOLUTION_SEC). Each label names its cause, as services/contracts/ingest.py lists them. Absent: no
+ * usable GPS position and no usable GPS time stamp.
+ */
+export const CaptureTimeBasisSchema = z
+  .object({
+    offsetSource: z.enum(CAPTURE_OFFSET_SOURCES).optional(),
+    placeTimeZone: z.enum(PLACE_TIME_ZONE_CHECKS),
+    gpsTimeStamp: z.enum(GPS_TIME_STAMP_CHECKS),
+    // The second a tagged photo's EXIF time counts plus how far the camera's clock and the GPS time stamp differ,
+    // rounded up. It covers a wrong camera clock with a fresh fix, and an old fix with a right clock. It cannot cover a
+    // wrong clock that an old fix hides: the two cancel (a clock 290 s slow with a fix 290 s old states 1 s, 290 s off)
+    uncertaintySec: wireInt().min(TIME_STAMP_RESOLUTION_SEC).max(CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC).optional(),
+  })
+  .strict()
+  .superRefine((basis, ctx) => {
+    const fail = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    if (!CAPTURE_TIME_BASIS_PAIRS[basis.offsetSource ?? 'none'].has(`${basis.placeTimeZone}/${basis.gpsTimeStamp}`)) {
+      fail("what the place's time zone and the GPS time stamp said does not fit the offset's source");
+    }
+    if ((basis.gpsTimeStamp === 'agrees') !== (basis.uncertaintySec !== undefined)) {
+      fail('an uncertainty comes only from a GPS time stamp that agrees');
+    }
+  });
+export type CaptureTimeBasis = z.infer<typeof CaptureTimeBasisSchema>;
+
 export const MetadataSourceSchema = z
   .object({
     container: z.enum(METADATA_CONTAINERS),
     tags: z.array(z.string().regex(new RegExp(METADATA_TAG_PATTERN))).min(1).max(8),
+    basis: CaptureTimeBasisSchema.optional(),
   })
   .strict();
 export type MetadataSource = z.infer<typeof MetadataSourceSchema>;
@@ -210,6 +297,9 @@ export const SourceAssetSchema = z
           path: ['metadataSources', field],
           message: present ? `${field} needs the metadata source it came from` : `a source for ${field}, which is absent`,
         });
+      }
+      if (field !== 'capturedAtUTC' && asset.metadataSources?.[field]?.basis !== undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['metadataSources', field, 'basis'], message: "only a capture time's source has a basis" });
       }
     }
   });

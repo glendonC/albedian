@@ -51,6 +51,8 @@ export const UTC_OFFSET_LIMIT_MINUTES = 840;
  * recorded. Only a recorded time becomes the asset's `capturedAtUTC`.
  */
 export const CAPTURE_TIME_MARKS = ['recorded', 'file_written'] as const;
+/** The EXIF GPS tags an offset's basis is read from. */
+export const GPS_STAMP_TAGS = ['GPSDateStamp', 'GPSTimeStamp'] as const;
 
 /**
  * A capture time as the file writes it: a local time, a UTC instant, or both. The offset is known
@@ -79,6 +81,17 @@ export const CaptureTimeHintSchema = z
       const expected = Date.parse(`${hint.localDateTime}Z`) - hint.utcOffsetMinutes * 60_000;
       if (Date.parse(hint.utc) !== expected) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utc'], message: 'utc must be the local time minus the offset' });
+      }
+    }
+    const basis = hint.source.basis;
+    if (basis !== undefined) {
+      const issue = (path: string[], message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+      if (hint.marks !== 'recorded' || hint.source.container !== 'exif' || hint.localDateTime === null) {
+        issue(['source', 'basis'], 'a basis belongs to a recorded EXIF capture time');
+      } else if ((basis.offsetSource === undefined) !== (hint.utcOffsetMinutes === null)) {
+        issue(['source', 'basis', 'offsetSource'], "a basis names the offset's source exactly when the offset is known");
+      } else if ((basis.gpsTimeStamp !== 'no_usable_time_stamp') !== GPS_STAMP_TAGS.every((tag) => hint.source.tags.includes(tag))) {
+        issue(['source', 'tags'], 'a basis names the GPS date and time stamps among its tags exactly when it read them');
       }
     }
   });
@@ -135,7 +148,14 @@ export const MetadataHintsSchema = z
     camera: CameraHintSchema.optional(),
     orientation: OrientationHintSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((hints, ctx) => {
+    for (const key of ['location', 'camera', 'orientation'] as const) {
+      if (hints[key]?.source.basis !== undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key, 'source', 'basis'], message: "only a capture time's source has a basis" });
+      }
+    }
+  });
 export type MetadataHints = z.infer<typeof MetadataHintsSchema>;
 
 export const JOB_STAGES = ['store', 'decode', 'detect', 'solve', 'verify'] as const;

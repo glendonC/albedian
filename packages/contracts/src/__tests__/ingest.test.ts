@@ -3,13 +3,18 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+  CAPTURE_OFFSET_SOURCES,
   CAPTURE_TIME_MARKS,
+  GPS_TIME_STAMP_CHECKS,
+  GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC,
+  PLACE_TIME_ZONE_CHECKS,
   CaptureTimeHintSchema,
   composeDisplayOrientations,
   type DisplayOrientation,
   EXIF_ORIENTATIONS,
   INGEST_PATTERNS,
   IngestReceiptSchema,
+  MetadataHintsSchema,
   invertDisplayOrientation,
   JOB_STAGES,
   JOB_STATES,
@@ -32,7 +37,7 @@ const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED)
  */
 const PYTHON_FIXTURE = path.resolve(__dirname, '../../../../tests/fixtures/ingest_contract.json');
 
-type SchemaName = 'SourceAsset' | 'IngestReceipt' | 'CaptureTimeHint' | 'OrientationHint' | 'SolveJob';
+type SchemaName = 'SourceAsset' | 'IngestReceipt' | 'CaptureTimeHint' | 'OrientationHint' | 'MetadataHints' | 'SolveJob';
 
 interface IngestFixture {
   patterns: Record<string, string>;
@@ -48,6 +53,7 @@ const SCHEMAS = {
   IngestReceipt: IngestReceiptSchema,
   CaptureTimeHint: CaptureTimeHintSchema,
   OrientationHint: OrientationHintSchema,
+  MetadataHints: MetadataHintsSchema,
   SolveJob: SolveJobSchema,
 };
 
@@ -70,6 +76,9 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
     expect(fixture.enums).toEqual({
       metadataContainers: [...METADATA_CONTAINERS],
       captureTimeMarks: [...CAPTURE_TIME_MARKS],
+      captureOffsetSources: [...CAPTURE_OFFSET_SOURCES],
+      placeTimeZoneChecks: [...PLACE_TIME_ZONE_CHECKS],
+      gpsTimeStampChecks: [...GPS_TIME_STAMP_CHECKS],
       jobStages: [...JOB_STAGES],
       progressUnits: [...PROGRESS_UNITS],
       jobStates: [...JOB_STATES],
@@ -254,5 +263,46 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
     const { metadataSources: _sources, ...unsourced } = asset;
     expect(SourceAssetSchema.safeParse(unsourced).success).toBe(false);
     expect(SourceAssetSchema.safeParse({ ...asset, sha256: 'a8f5c2d9104e8b771234567890abcdef' }).success).toBe(false);
+  });
+
+  it("states a capture time's uncertainty in whole seconds, from one to one past the leftover bound (capture-time-1 v3)", () => {
+    type Hint = { source: { basis?: { offsetSource?: string; uncertaintySec?: unknown } } };
+    const zoned = (fixture.valid.CaptureTimeHint as Hint[]).find(
+      (hint) => hint.source.basis?.offsetSource === 'place_time_zone_agrees_with_gps_time_stamp'
+    )!;
+    const edges: [unknown, boolean][] = [
+      [1, true],
+      [GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC + 1, true],
+      [0, false],
+      [GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC + 2, false],
+      [12.5, false],
+      [1.5, false],
+      [-1, false],
+      [true, false],
+      ['13', false],
+    ];
+    for (const [value, ok] of edges) {
+      const hint = structuredClone(zoned);
+      hint.source.basis!.uncertaintySec = value;
+      expect(CaptureTimeHintSchema.safeParse(hint).success, String(value)).toBe(ok);
+    }
+  });
+
+  it('retires the label for two offsets that both fit: a place that offers two derives nothing first', () => {
+    expect(PLACE_TIME_ZONE_CHECKS).toContain('more_than_one_offset');
+    expect([...PLACE_TIME_ZONE_CHECKS, ...GPS_TIME_STAMP_CHECKS]).not.toContain('more_than_one_offset_fits');
+    const zoneless = {
+      localDateTime: '2031-05-02T05:42:18',
+      utcOffsetMinutes: null,
+      utc: null,
+      marks: 'recorded',
+      source: { container: 'exif', tags: ['DateTimeOriginal', 'GPSDateStamp', 'GPSTimeStamp'] },
+    };
+    const withBasis = (placeTimeZone: string, gpsTimeStamp: string) => ({
+      ...zoneless,
+      source: { ...zoneless.source, basis: { placeTimeZone, gpsTimeStamp } },
+    });
+    expect(CaptureTimeHintSchema.safeParse(withBasis('more_than_one_offset', 'unchecked')).success).toBe(true);
+    expect(CaptureTimeHintSchema.safeParse(withBasis('more_than_one_offset_fits', 'more_than_one_offset_fits')).success).toBe(false);
   });
 });

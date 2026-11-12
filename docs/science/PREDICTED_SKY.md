@@ -42,6 +42,59 @@ was lined up from. [tested]
 - A recorded capture time: EXIF `DateTimeOriginal` with its UTC offset, or QuickTime
   `com.apple.quicktime.creationdate`. A file's own written time (QuickTime `creation_time`) and an EXIF time without
   its offset are not capture times, and no other time (the upload time, the computer's clock) stands in. [tested]
+- An EXIF time without an offset tag whose zone two independent sources agree on (unit capture-time-1,
+  `services/ingest/metadata.py`): the time zone at the photo's own GPS position (tzfpy's boundary data,
+  docs/architecture/THIRD_PARTY.md, with the zone's offset at the local time from `zoneinfo`), which must offer
+  exactly one offset, and the GPS time stamp: the local time minus the fix's instant minus that offset must be within
+  300 s. Both agreeing: the offset is derived and the capture time's source says
+  `place_time_zone_agrees_with_gps_time_stamp`, with the instant's stated uncertainty in whole seconds: the second a
+  tagged photo's EXIF time counts, plus how far the camera's clock and the GPS time stamp differ, rounded up.
+  Otherwise nothing is derived, and the record's capture time says why, each label naming its cause [tested]:
+  - `placeTimeZone`: `no_usable_position` (none in the file, malformed, or at (0, 0)); `outside_every_time_zone` (no
+    zone of the boundary data holds the point); `time_zone_data_unavailable` (the system's zone database, which
+    `zoneinfo` reads, could not load a zone the point lies in, as on a machine without it); `no_whole_minute_offset`
+    (an offset at the place then was not a whole number of minutes, as before standard time); `more_than_one_offset`
+    (the place offers more than one offset at the local time: two zones at a border point, or a wall time a clock
+    change repeats or skips); `unchecked` (no usable GPS time stamp to check it against).
+  - `gpsTimeStamp`: `no_usable_time_stamp` (none, malformed, or dated on the calendar's first or last day, where
+    the instant it would give may lie past the calendar's end); `unchecked` (no single place offset to check it
+    against). `disagrees` on both: the GPS time and the place's time zone disagree; an old fix and a camera clock not
+    set to local time look the same, so it does not say which.
+  - A fix the receiver marked void gives neither source, and the capture time then has no basis at all.
+  The GPS instant is never the capture time, and the GPS stamps alone never give an offset: a fix an hour old would
+  look like the neighbouring zone, and the sky would be wrong by 15 degrees with a small stated uncertainty. For the
+  same reason the GPS time stamp never picks between two offsets the place offers: a fix as old as their difference
+  would pick the other one. Two zones that
+  give the same offset at the local time count as one. An offset tag always wins; each source then only labels it
+  `agrees` (the tag is one of the place's offsets, or the GPS time is within 300 s of it) or `disagrees`, and
+  changes nothing. [tested]
+  - The bound and the corpus [tested, counts and seconds only]: of the 60 corpus photos, 17 carry the offset tag and
+    the GPS stamps. Read again without the tag, 14 derive their tag and 3 derive nothing: the 2 old fixes (their GPS
+    time about 30 and 91 minutes from the tag and the place's zone) and 1 whose place's zone is 6 hours from its tag
+    while its GPS time agrees with the tag (a camera kept on another zone). 7 more tagged photos have a position but
+    no time stamp and derive nothing. None derives an offset other than its tag. Of the 12 photos with no tag and a
+    GPS source, 8 gain a capture instant (stated uncertainty 3 to 34 s), 3 have a position but no time stamp, and 1
+    is refused: its GPS time is 59.8 minutes from its place's zone. The GPS stamps alone, the rule first proposed,
+    would have given that photo the neighbouring hour's offset. No corpus photo stands where the place offers more
+    than one offset at its local time. 300 s holds the 15 GPS time stamps that agree with their tag (all within
+    209 s) and stays under half the 15 minutes between any two offsets in use since 1979.
+  - What the stated uncertainty means: the GPS time stamp bounds only how far the fix's age and the camera clock's
+    error differ. A camera clock 290 s slow with a fix 290 s old leaves nothing over, and the instant is then 290 s
+    off with 1 s stated. So the derived instant states never less than a tagged photo's whole second, the leftover is
+    added to it, and it takes the camera's clock as a tagged photo's time does: it is right when the clock is right or
+    the fix is fresh. The sky's sentence says the zone agrees with the GPS time stamp, not that the instant is
+    confirmed.
+  - What the rule cannot see: a camera clock wrong by less than 300 s (it passes; an old fix can hide it, as above);
+    and a wrong boundary where both sources happen to agree, for example a camera that crossed a border near which
+    the simplified boundary (within about 111 m of the true one) puts it on the wrong side while its clock shows the
+    other zone. In the corpus, 2 of the 17 tagged photos with GPS stamps (12 percent) show an old fix; both are
+    refused.
+  - The predicted sky says so: one warning says the time zone was taken from the GPS position and agrees with the
+    GPS time stamp, the time's stated uncertainty and how far it can move the sky, and that an old GPS fix can hide a
+    wrong camera clock; every predicted finding's limitation says where the zone came from, and its uncertainty gains
+    the sky's turn in the time's stated uncertainty (15.04 arcsec per second, 360 degrees per sidereal day). A pose's
+    "within about N degrees" counts it too; the pose estimate's own swept bounds do not (`pose_estimate.py`).
+    [tested]
 - A recorded place: EXIF GPS, or a QuickTime ISO 6709 location. [tested]
 - No warning, job record or error holds the capture time, the place or the file name: they say "the recorded
   capture time" and "the recorded place". [tested]

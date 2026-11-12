@@ -34,6 +34,7 @@ MODELS = {
     "IngestReceipt": ingest.IngestReceipt,
     "CaptureTimeHint": ingest.CaptureTimeHint,
     "OrientationHint": ingest.OrientationHint,
+    "MetadataHints": ingest.MetadataHints,
     "SolveJob": ingest.SolveJob,
 }
 FORMS = [{"quarterTurnsClockwise": q, "mirrored": m} for m in (False, True) for q in range(4)]
