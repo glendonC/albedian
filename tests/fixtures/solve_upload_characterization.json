@@ -34022,7 +34022,7 @@
      "warnings": [
       "WCS solution did not pass independent held-out calibration gate.",
       "The photo's sky sits near its darkest value, where the black clip cuts the noise; on such a sky the detector finds more points on pure noise than its stated rate, so the count of detected points is points above the threshold on a frame whose false rate is not controlled.",
-      "The sky is not lined up over the picture: the camera has no head-worn camera profile, so its field of view is not known.",
+      "The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.",
       "The Sun was about 78 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
      ]
     }
@@ -38290,7 +38290,7 @@
      ],
      "warnings": [
       "The search stopped at its 180 s limit before a verified calibration was found.",
-      "The sky is not lined up over the picture: the camera has no head-worn camera profile, so its field of view is not known.",
+      "The sky is not lined up over the picture: the Moon was not more than 5 degrees above the horizon.",
       "The Sun was about 78 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
      ]
     }

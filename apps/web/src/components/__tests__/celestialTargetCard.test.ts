@@ -846,15 +846,11 @@ describe('the residual is called held out only when its evidence says so (contra
     expect(pixelRowText()).not.toContain('held out');
   });
 
-  it.each([
-    ["the horizon solver's own Moon", 'python_contract_solutions.json', (data: Record<string, unknown>) => data['horizon_approximate']],
-    [
-      "the contract's approximate sample with an observed fit residual",
+  it("never calls the contract's approximate sample with an observed fit residual held out", () => {
+    const solution = fixtureSolution(
       'observation_solution_contract.json',
       (data: Record<string, unknown>) => (data['valid'] as Record<string, unknown>)['approximate_with_an_observed_fit_residual'],
-    ],
-  ])('never calls %s held out', (_name, file, read) => {
-    const solution = fixtureSolution(file, read);
+    );
     expect(solution.status).toBe('approximate');
     const fitted = solution.findings.filter((f) => f.evidenceClass === 'observed' && f.evidence.pixelResidualPx !== undefined);
     expect(fitted.length).toBeGreaterThanOrEqual(1);
@@ -864,6 +860,21 @@ describe('the residual is called held out only when its evidence says so (contra
       expect(q('target-card-pixel-row'), finding.id).not.toBeNull();
       expect(pixelRowText(), finding.id).not.toContain('held out');
       expect(pixelRowText(), finding.id).not.toContain('off its solved spot');
+    }
+  });
+
+  it("omits the 4-for-4 fit residual on the horizon solver's own Moon and never calls it held out", () => {
+    const solution = fixtureSolution('python_contract_solutions.json', (data: Record<string, unknown>) => data['horizon_approximate']);
+    expect(solution.status).toBe('approximate');
+    const observed = solution.findings.filter((f) => f.evidenceClass === 'observed');
+    expect(observed).toHaveLength(1);
+    for (const moon of observed) {
+      expect(moon.evidence.pixelResidualPx).toBeUndefined();
+      expect(moon.evidence.verifiedByIndependentHoldout).toBe(false);
+      renderCard({ session: { ...createSyntheticCalibratedSession(), observationSolution: solution }, selectedFinding: moon });
+      expect(q('target-card-pixel-row'), moon.id).not.toBeNull();
+      expect(pixelRowText(), moon.id).not.toContain('held out');
+      expect(pixelRowText(), moon.id).not.toContain('off its solved spot');
     }
   });
 });

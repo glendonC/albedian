@@ -269,7 +269,7 @@ def test_pbt_the_moons_bounds_hold_its_documented_error_and_it_says_where_it_is_
 def _night_frame(height: int, width: int) -> np.ndarray:
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
-    frame[118:126, 930:938] = 240.0
+    frame[115:129, 927:941] = 240.0
     return frame
 
 
@@ -280,18 +280,29 @@ def test_horizon_solver_claims_no_quicktime_source_and_places_stars_at_the_date(
     )
     assert sol.status == "approximate"
     assert not any("QuickTime" in limitation for f in sol.findings for limitation in f.limitations)
-    assert any("The Moon's predicted position is topocentric" in warning for warning in sol.warnings)
-    # Every predicted star sits where its proper motion has carried it by the date, not at its J2000 position
+    # Since sky-4 the pose's own assumptions say which Moon it lined up: the record as it is, topocentric
+    assert any(
+        "The Moon is placed where it is seen from the place (topocentric): the ephemeris record as it is" in assumption
+        for assumption in sol.pose_estimate.assumptions
+    )
+    # Every predicted star sits where its proper motion has carried its J2016.0 catalog tile row by the date, not at
+    # its catalog epoch; the 71 pinned J2000 records sit within 3 arcsec of their tile rows (test_pinned_catalog_matches_tiles.py)
+    from services.science.predicted_sky import _sky_rows
+
     year = 2031.0 + (datetime(2031, 8, 30, 3, 1, tzinfo=timezone.utc) - datetime(2031, 1, 1, tzinfo=timezone.utc)).days / 365.25
     by_id = {f.id: f for f in sol.findings}
+    tile_by_id = {s.id: s for s in _sky_rows().stars}
     checked, largest_motion = 0, 0.0
     for star in get_all_sky_catalog_stars():
         finding = by_id.get(f"finding-predicted-{star.id}")
         if finding is None:
             continue
         moved = propagate_star_epoch(star, year)
+        tile_star = tile_by_id[star.id]
+        tile_moved = propagate_star_epoch(tile_star, year)
         position = np.array(ra_dec_to_unit_vector(finding.ra_deg, finding.dec_deg))
-        assert _sep_arcsec(position, np.array(ra_dec_to_unit_vector(moved.ra_deg, moved.dec_deg))) < 0.5, star.common_name
+        assert _sep_arcsec(position, np.array(ra_dec_to_unit_vector(tile_moved.ra_deg, tile_moved.dec_deg))) < 0.1, star.common_name
+        assert _sep_arcsec(position, np.array(ra_dec_to_unit_vector(moved.ra_deg, moved.dec_deg))) < 3.0, star.common_name
         largest_motion = max(largest_motion, _sep_arcsec(position, np.array(ra_dec_to_unit_vector(star.ra_deg, star.dec_deg))))
         checked += 1
     assert checked >= 10 and largest_motion > 10.0

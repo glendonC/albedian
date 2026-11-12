@@ -545,7 +545,7 @@ def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
     if moon:
-        frame[118:126, 930:938] = 240.0
+        frame[115:129, 927:941] = 240.0
     return frame
 
 

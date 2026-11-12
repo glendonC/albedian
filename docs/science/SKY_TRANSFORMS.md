@@ -30,11 +30,12 @@ and its round trip is exact within 1e-9 arcsec. [tested, a property under 20 see
 seen.
 
 `anchored_horizon_rotation` turns it by the least rotation that puts one beacon exactly where it is seen. A screen that
-draws catalog positions through one TAN WCS draws them through one such rotation, so the head-worn pose
-(`services/science/pose_estimate.py`) uses it for that alone: the WCS is its camera seen through the rotation anchored
-on the Moon. Everything else about the pose is on the apparent sky: the camera is level in the true horizon, the
-closed form takes the Moon's apparent altitude and azimuth and gives the camera's pointing there exactly, and the
-centre the pose states (`centerAltDeg`, `centerAzDeg`) is that pointing, where the camera's centre is seen.
+draws catalog positions through one TAN WCS draws them through one such rotation, so the two poses
+(`services/science/pose_estimate.py`: the head-worn pose and, since sky-4, the Moon plus horizon pose) use it for that
+alone: the WCS is the camera seen through the rotation anchored on the Moon. Everything else about a pose is on the
+apparent sky: the camera is level in the true horizon, the closed form (the head-worn pose) or the fit's start (the
+Moon plus horizon pose) takes the Moon's apparent altitude and azimuth, and the centre a pose states (`centerAltDeg`,
+`centerAzDeg`) is its pointing in the apparent horizon, where the camera's centre is seen.
 [tested: the pose's truth is the apparent sky]
 
 ## How far apart they are
@@ -81,7 +82,7 @@ the rest of a pose's bound (degrees, from the swept field of view and roll) it i
 The ephemeris record (`services/science/ephemeris.py`) is topocentric whenever a place is given: its parallax is
 applied once, at the source, and no pose shifts it again. The Moon each pose path uses (the head-worn pose's and the
 horizon pose's) lies within the record's stated uncertainty of ERFA's own topocentric chain (eraAtco13, given the
-Moon with its parallax), the Moon near the horizon included, and the head-worn pose's frame rotation takes it to where
+Moon with its parallax), the Moon near the horizon included, and either pose's frame rotation takes it to where
 ERFA sees it. [tested, a property under 20 seeds]
 
 ## A place

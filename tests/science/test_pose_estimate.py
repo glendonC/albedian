@@ -55,6 +55,7 @@ import functools
 from dataclasses import dataclass, replace
 import hashlib
 import math
+import re
 from typing import Any
 
 from hypothesis import HealthCheck, assume, example, given, settings, strategies as st
@@ -79,7 +80,13 @@ from services.science.pose_estimate import (
     scale_deg_per_px,
     topocentric_moon,
 )
-from services.science.predicted_sky import complete_sky, frame_moment, predicted_sky_findings, sky_phase
+from services.science.predicted_sky import (
+    OTHER_FRAMES_KEPT,
+    complete_sky,
+    frame_moment,
+    predicted_sky_findings,
+    sky_phase,
+)
 from services.science.solver import _build_unresolved_solution, triangle_solver_identity
 from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SourceDetection, WCSModel
 
@@ -569,6 +576,39 @@ def _own_test(luma: np.ndarray, x: int, y: int) -> bool:
             and limits["min_diameter_px"] <= diameter <= limits["max_diameter_px"])
 
 
+def test_the_candidate_is_the_brightest_point_after_a_gaussian_of_2_5_px() -> None:
+    """REQ-SKY-3.3 (row 3.3-2 of sky-3b-v4's statement table, which no test pinned): a 5 x 5 block at 255, too small
+    for the Moon test, beside a Moon of the predicted size peaking at 220. After a Gaussian of 1.5 px the block is
+    the brightest point, after 2 px or more the Moon is; the Moon test takes the Moon, and its width is 2.5 px."""
+    luma = _soft_moon(500.3, 700.6, peak=220.0)
+    luma[300:305, 1100:1105] = 255.0
+
+    def brightest(sigma: float) -> tuple[int, int]:
+        y, x = np.unravel_index(int(np.argmax(ndimage.gaussian_filter(luma, sigma=sigma))), luma.shape)
+        return int(x), int(y)
+
+    assert abs(brightest(1.5)[0] - 1102) <= 2 and abs(brightest(2.0)[0] - 500) <= 10
+    blob = find_moon_blob(luma, **_limits())
+    assert isinstance(blob, MoonBlob) and math.hypot(blob.x_px - 500.3, blob.y_px - 700.6) < 1.0, blob
+    assert pe.PEAK_SMOOTHING_SIGMA_PX == 2.5
+
+
+def test_a_rival_is_judged_at_its_brightest_point_after_the_same_smoothing() -> None:
+    """REQ-SKY-3.3 (verdict sky-3b-v3 note (a), its mutant M1): a small rival whose one pixel at 255 lies beside its
+    core's centre, beside a Moon of the predicted size. At its brightest point after the 2.5 px Gaussian, the core's
+    centre, it passes the Moon test on its own; at its raw maximum, the 255 pixel, its half-peak region is under the
+    minimum. The frame is refused, so the rival was judged at the smoothed point."""
+    luma = _soft_moon(1200.0, 300.0, 3.5, peak=205.0, blur=1.0, luma=_soft_moon(500.3, 700.6))
+    luma[300, 1201] = 255.0
+    group, _ = ndimage.label(luma >= 200.0, structure=EIGHT)
+    assert group[300, 1201] == group[300, 1200] != 0
+    smoothed = ndimage.gaussian_filter(luma, sigma=2.5)
+    assert tuple(int(v) for v in ndimage.maximum_position(smoothed, group, index=int(group[300, 1200]))) == (300, 1200)
+    assert _own_test(luma, 1200, 300) and not _own_test(luma, 1201, 300)
+    refusal = find_moon_blob(luma, **_limits())
+    assert isinstance(refusal, Refusal) and "more than one spot passes the Moon test on its own" in refusal.reason
+
+
 def test_a_rival_is_judged_by_the_moon_test_on_its_own_not_by_its_area_beside_the_first() -> None:
     """Each other spot is judged by the Moon test itself: its own peak, its own half-peak region and the same limits.
     One that passes refuses the frame, whatever its area beside the brightest; one that fails on its own does not."""
@@ -648,6 +688,23 @@ def test_a_spot_cut_by_the_edge_of_the_frame_is_refused() -> None:
     # Whole, the same soft Moon near a corner is found
     near = find_moon_blob(_soft_moon(radius + 12.0, radius + 12.0), **_limits())
     assert isinstance(near, MoonBlob)
+
+
+def test_the_two_pixel_edge_margin_holds_on_every_edge() -> None:
+    """The margin on each of the four edges (the sky-3 audit's surviving mutants C7, E1 and E2 weakened it on the top,
+    bottom and right): a flat 10 x 10 disk whose region ends 3 px from the edge is whole, 2 px from it is cut."""
+    cut = "The frame's bright spots were not confirmed as the Moon: the brightest spot is cut by the edge of the frame."
+    for gap, whole in ((3, True), (2, False)):
+        for edge, rect in (
+            ("top", (800, gap, 10, 10)),
+            ("bottom", (800, HEIGHT - gap - 10, 10, 10)),
+            ("right", (WIDTH - gap - 10, 800, 10, 10)),
+            ("left", (gap, 800, 10, 10)),
+        ):
+            result = find_moon_blob(_rects(rect), min_diameter_px=5.0, max_diameter_px=50.0)
+            assert isinstance(result, MoonBlob) is whole, (edge, gap, result)
+            if not whole:
+                assert result.reason == cut, (edge, result)
 
 
 def test_a_peak_under_200_is_refused_and_200_is_enough() -> None:
@@ -949,6 +1006,55 @@ def _pose(luma: np.ndarray, turns: int = 0, frame_time: float = 0.0) -> PoseResu
     )
 
 
+def test_each_fit_starts_at_the_closed_forms_pose(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REQ-SKY-3.9 (row 3.9-4 of sky-3b-v4's statement table, which no test pinned): each of the nine fits is started
+    at the one level pose the closed form gives for its swept field of view and roll."""
+    starts: list[np.ndarray] = []
+    real = pe.optimize.least_squares
+
+    def recording(fun: Any, x0: Any, **kwargs: Any) -> Any:
+        starts.append(np.array(x0, dtype=np.float64))
+        return real(fun, x0, **kwargs)
+
+    monkeypatch.setattr(pe.optimize, "least_squares", recording)
+    pose = _pose(_frame(500.0, 700.0, 6.0))
+    assert isinstance(pose, PoseResult) and len(starts) == 9
+    swept = [(fov, roll) for fov in (80.0, 95.0, 110.0) for roll in (-10.0, 0.0, 10.0)]
+    frame = pe.pose_frame(pose.moon, LAT, LON, MOON_MOMENT)
+    for (fov, roll), start in zip(swept, starts):
+        ((alt, az),) = pe.level_centres(
+            pose.moon.alt_deg, pose.moon.az_deg, pose.blob.x_px, pose.blob.y_px, width=WIDTH, height=HEIGHT,
+            fov_diagonal_deg=fov, roll_deg=roll, turns=0,
+        )
+        start_alt, start_az = catalog.icrs_to_frame_altaz(frame, start[0], start[1])
+        assert angular_separation_deg(start_az, start_alt, az, alt) < 1e-9, (fov, roll)
+
+
+def test_the_head_worn_pose_states_its_assumptions_with_the_numbers_it_used() -> None:
+    """REQ-SKY-3.5 (rows 3.5-7 and 3.5-9 of sky-3b-v4's statement table, which no test pinned): the level head with the
+    swept rolls, and the beacon term with the Moon's radius from its distance and the uncertainty its ephemeris record
+    states, word for word."""
+    pose = _pose(_frame(500.0, 700.0, 6.0))
+    assert isinstance(pose, PoseResult)
+    assumptions = pose.pose_estimate.assumptions
+    assert len(assumptions) == 7
+    assert assumptions[2] == (
+        "The head was level: the horizon's roll in the upright frame is within 10 degrees either way; the sweep takes "
+        "-10, 0 and +10 degrees, and a second level pose or none at any of them refuses the pose."
+    )
+    (record,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",))
+    swept = pose.pose_estimate.swept_wcs
+    term = pe.frame_term_arcsec(pose.moon, swept, [_fov_of(w) for w in swept], LAT, LON, MOON_MOMENT)
+    assert assumptions[5] == (
+        "The spot's light centroid is taken to lie on the Moon's disk, and the Moon where its ephemeris puts it: the "
+        f"beacon term, the Moon's predicted radius of {_topocentric(MOON_MOMENT)[2]:.2f} degrees plus the ephemeris's "
+        f"stated uncertainty of {record.uncertainty_arcsec:,.0f} arcsec plus {term:,.0f} arcsec for drawing every "
+        "position through one rotation, is taken to cover overexposure, which spreads the light, a partial phase, "
+        "which moves it toward the lit edge, the ephemeris's own error, and the aberration and light deflection that "
+        "differ across the frame from the Moon's, which one rotation cannot follow."
+    )
+
+
 def test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees_either_way() -> None:
     assert pe.SWEPT_ROLLS_DEG == (-10.0, 0.0, 10.0)
     pose = _pose(_frame(500.0, 700.0, 6.0))
@@ -1226,6 +1332,43 @@ def test_a_fit_that_leaves_the_closed_forms_pose_is_refused(monkeypatch: pytest.
     assert isinstance(refused, Refusal) and refused.kind == "fit"
 
 
+def test_the_fit_stays_within_0_001_degree_of_the_closed_forms_pose(monkeypatch: pytest.MonkeyPatch) -> None:
+    """REQ-SKY-3.9's bound itself (verdict sky-3b-v4 finding 1): handed a closed-form centre 0.0009 degree too high,
+    the fit still reaches the one true pose, 0.0009 degree from the closed form's, and is kept; 0.0011 degree too
+    high, it is refused."""
+    ra, dec, _ = _topocentric(MOON_MOMENT)
+    moon = topocentric_moon(MOON_MOMENT, LAT, LON)
+    truth = _truth_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, 95.0, 0.0, 0, MOON_MOMENT)
+    mx, my = truth.world_to_pixel(ra, dec)
+    kwargs = dict(width=WIDTH, height=HEIGHT, fov_diagonal_deg=95.0, roll_deg=0.0, orientation=None,
+                  moment=MOON_MOMENT, lat=LAT, lon=LON)
+    real = pe.level_centres
+    for shift, kept in ((0.0009, True), (0.0011, False)):
+        monkeypatch.setattr(
+            pe, "level_centres", lambda *a, shift=shift, **k: tuple((alt + shift, az) for alt, az in real(*a, **k))
+        )
+        result = fit_level_pose(moon, mx, my, **kwargs)
+        assert isinstance(result, WCSModel) is kept, (shift, result)
+    assert pe.SAME_POSE_DEG == 1e-3
+
+
+def test_two_frame_times_are_the_same_frame_within_a_microsecond() -> None:
+    """REQ-SKY-3.6's same frame (rows 3.6-8a and 3.6-8b of sky-3b-v5's table): a detection on the spot 0.75
+    microseconds from the pose's frame time is the spot itself, left out; one 1.5 microseconds away is another
+    frame's, kept, with the sentence that says why."""
+    frame_time = 3.0
+    luma = _frame(500.0, 700.0, 8.0)
+    blob = _pose(luma, frame_time=frame_time).blob
+    for offset, kept in ((0.75e-6, False), (1.5e-6, True)):
+        detection = SourceDetection(blob.x_px, blob.y_px, 900.0, 40.0, 3.0, 0.1, asset_id=ASSET_ID,
+                                    frame_time_sec=frame_time + offset)
+        out = complete_sky(_solver_solution([detection]), _asset(), frames=lambda: [(frame_time, luma)])
+        assert out.status == "approximate", out.warnings
+        others = [f for f in out.findings if f.evidence_class == "observed" and f.id != "finding-observed-moon"]
+        (spot,) = [f for f in out.findings if f.id == "finding-observed-moon"]
+        assert (len(others), spot.limitations[-1] == OTHER_FRAMES_KEPT) == ((1, True) if kept else (0, False)), offset
+
+
 def test_a_swept_value_with_no_level_pose_refuses_with_a_sentence_that_is_true(monkeypatch: pytest.MonkeyPatch) -> None:
     """One level pose at the nominal field of view and roll, none at the widest field of view (the Moon about 58
     degrees up, the spot low and right, found by the lane's search): the nominal fit exists, so the sentence says the
@@ -1310,6 +1453,83 @@ def _daytime_place() -> tuple[float, float]:
         if _sun_alt(MOON_MOMENT, lat, lon) > 5.0:
             return lat, lon
     raise AssertionError("no daytime place with the Moon up at the fixtures' moment")
+
+
+def test_frames_that_mix_the_moon_not_up_and_by_day_answer_by_day() -> None:
+    """REQ-SKY-3.12 as the code states it (the sky-3b audit's finding): with no spot searched, the Moon is said to be
+    not up only when it is not up in every frame; frames that mix the Moon not up and by day answer by day, in
+    either order. At the daytime place the fixtures' moment has the Moon up and the Sun up; a later hour has the Moon
+    down."""
+    lat, lon = _daytime_place()
+    day = MOON_MOMENT
+    down = next(
+        moment
+        for moment in (frame_moment(MOON_MOMENT, hours * 3600.0) for hours in range(1, 25))
+        if compute_solar_system_ephemerides(moment, lat, lon, bodies=("Moon",))[0].alt_deg <= pe.MIN_MOON_ALT_DEG
+    )
+    luma = _soft_moon(500.3, 700.6)
+
+    def answer(*moments: str) -> Refusal:
+        result = pe.pose_from_frames([(float(i), m, luma) for i, m in enumerate(moments)], lat=lat, lon=lon,
+                                     profile=PROFILE, orientation=None)
+        assert isinstance(result, Refusal)
+        return result
+
+    for moments in ((down, day), (day, down), (day, day)):
+        refusal = answer(*moments)
+        assert (refusal.kind, refusal.reason) == ("daytime", pe.DAYTIME), moments
+    refusal = answer(down, down)
+    assert (refusal.kind, refusal.reason) == ("moon_not_up", pe.MOON_NOT_UP)
+
+
+def test_by_day_with_the_moon_down_the_reason_given_is_that_the_moon_was_not_up() -> None:
+    """REQ-SKY-3.10 as the code states it (verdict sky-3b-v3 finding 1): the Moon is checked before the Sun, at the
+    solution's moment as at each frame's own, so by day with the Moon down, the usual daytime case, the reason given
+    is that the Moon was not up, and no frame is read. The same for a camera with no head-worn profile, whose frames
+    the Moon plus horizon pose would search, and for that pose on one frame."""
+    lat, lon = next(
+        p for p in (_place_with_moon(-30.0, float(b)) for b in range(0, 360, 10)) if _sun_alt(MOON_MOMENT, *p) > 5.0
+    )
+    assert -90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0, (lat, lon)
+    assert compute_solar_system_ephemerides(MOON_MOMENT, lat, lon, bodies=("Moon",))[0].alt_deg < 0.0
+    luma = _soft_moon(500.3, 700.6, peak=255.0)
+    calls: list[int] = []
+
+    def frames() -> list:
+        calls.append(1)
+        return [(0.0, luma)]
+
+    for model in (META_RAY_BAN_DISPLAY_MODEL, None):
+        solver, asset = _solver_solution(lat=lat, lon=lon), _asset(lat=lat, lon=lon, model=model)
+        out = complete_sky(solver, asset, frames=frames)
+        assert out.status == "predicted_only" and out.pose_estimate is None, (model, out.warnings)
+        assert out.warnings[-2] == pe.MOON_NOT_UP and pe.DAYTIME not in out.warnings, (model, out.warnings)
+    assert calls == []
+    for result in (
+        pe.pose_from_frames([(0.0, MOON_MOMENT, luma)], lat=lat, lon=lon, profile=PROFILE, orientation=None),
+        pe.horizon_moon_pose(luma, frame_time_sec=0.0, moment=MOON_MOMENT, lat=lat, lon=lon, orientation=None),
+    ):
+        assert isinstance(result, Refusal) and (result.kind, result.reason) == ("moon_not_up", pe.MOON_NOT_UP)
+
+
+def test_a_spot_that_gave_no_pose_says_more_than_a_frame_not_confirmed_and_the_first_such_frame_is_named(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """REQ-SKY-3.12's order across kinds (verdict sky-3b-v2 note (a)): frames that mix a spot that passed the Moon test
+    but gave no pose (every fit refused here) with frames not confirmed answer with the spot's reason, whatever the
+    order the frames come in; with two such spots, the first in time order is named, by its own time and place."""
+    monkeypatch.setattr(pe, "fit_level_pose", lambda *args, **kwargs: Refusal("fit", "refused for the test"))
+    first, later = _soft_moon(500.3, 700.6), _soft_moon(800.3, 900.6)
+    for frames in (
+        [(0.0, _noise()), (1.5, first), (3.0, later)],
+        [(3.0, later), (1.5, first), (0.0, _noise())],
+        [(1.5, first), (3.0, _noise()), (4.5, later)],
+    ):
+        result = pe.pose_from_frames([(t, frame_moment(MOON_MOMENT, t), luma) for t, luma in frames], lat=LAT,
+                                     lon=LON, profile=PROFILE, orientation=None)
+        assert isinstance(result, Refusal) and result.kind == "fit", result
+        assert result.frame_time_sec == 1.5 and abs(result.blob.x_px - 500.3) < 1.0, result
+        assert result.reason == pe.fit_reason(result.blob.x_px, result.blob.y_px, "in the frame 1.50 s into the clip")
 
 
 def test_by_day_no_moon_pose_is_tried_and_the_reason_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1804,15 +2024,28 @@ def test_a_photo_is_lined_up_from_its_one_frame_and_says_so() -> None:
 # Sentences that state as fact what the pose only assumes (verdict finding 3)
 SAYS_IT_IS_THE_MOON = (
     "was confirmed as the Moon", "Lined up from the Moon", "Moon (Observed", "The spot is the Moon",
-    "matched to the Moon's predicted position", "about the Moon's size", "the Moon at (",
+    "matched to the Moon's predicted position", "about the Moon's size", "the Moon at (", "Moon pixel",
 )
 
 
 def test_no_text_says_the_bright_spot_is_the_moon() -> None:
     """Nothing in one frame proves the spot is the Moon: every title, warning, limitation, assumption and
-    verification text says it was taken to be the Moon."""
-    out = complete_sky(_solver_solution(), _asset(), frames=lambda: [(2.0, _soft_moon(500.3, 700.6))])
+    verification text that names the spot as the Moon says it was taken to be the Moon. The solver kept a detection
+    from another frame of the clip, so the spot's limitations end with the sentence that says why it is kept
+    (verdict sky-3b-v3 note (c): that sentence once called the spot "this frame's Moon pixel")."""
+    other = SourceDetection(1200.0, 100.0, 70.0, 10.0, 2.0, 0.2, asset_id=ASSET_ID, frame_time_sec=0.0)
+    out = complete_sky(_solver_solution([other]), _asset(), frames=lambda: [(2.0, _soft_moon(500.3, 700.6))])
     assert out.status == "approximate", out.warnings
+    (spot,) = [f for f in out.findings if f.id == "finding-observed-moon"]
+    assert spot.limitations[-1] == OTHER_FRAMES_KEPT
+    assert "this frame's bright spot, taken to be the Moon," in OTHER_FRAMES_KEPT
+    # The subtitle and the second limitation, which name the spot without taking it for the Moon, word for word (rows
+    # 3.11-8 and 3.11-9 of sky-3b-v5's table: other words would pass the list of phrases below)
+    assert re.fullmatch(r"Measured at \(\d+\.\d, \d+\.\d\) px in the frame 2\.00 s into the clip · \d+ px above "
+                        r"half its peak", spot.subtitle), spot.subtitle
+    assert spot.limitations[1] == (
+        "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position."
+    )
     texts = [*out.warnings, *out.pose_estimate.assumptions, out.pose_estimate.fov_source]
     for finding in out.findings:
         texts += [finding.title, finding.subtitle, *finding.limitations, finding.verification_method or ""]
@@ -1870,12 +2103,16 @@ def _assert_sky_2_plus(out: ObservationSolution, solver: ObservationSolution, as
 
 
 def test_without_a_head_worn_profile_there_is_no_pose_and_the_reason_is_given() -> None:
+    """No head-worn pose without a head-worn profile. Since sky-4 the Moon plus horizon pose is tried on the same
+    frames instead (REQ-SKY-4.1), so the reason given is that pose's: here a frame with no skyline. The head-worn
+    profile's own refusal is not said, since it is not why the sky was not lined up."""
     solver = _solver_solution()
     for model in (None, "iPhone 17 Pro"):
         asset = _asset(model=model)
         out = complete_sky(solver, asset, frames=lambda: [(0.0, _frame(500.0, 700.0, 8.0))])
         assert out.status == "predicted_only" and out.pose_estimate is None
-        assert out.warnings == [*solver.warnings, pe.NO_PROFILE, out.warnings[-1]]
+        assert out.warnings == [*solver.warnings, pe.NO_SKYLINE, out.warnings[-1]]
+        assert pe.NO_PROFILE not in out.warnings
         assert pe.NO_PROFILE == (
             "The sky is not lined up over the picture: the camera has no head-worn camera profile, so its field of "
             "view is not known."

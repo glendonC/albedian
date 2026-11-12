@@ -68,13 +68,19 @@ def test_a_pinned_star_the_iau_table_does_not_list_shows_its_bayer_designation_a
 def test_the_horizon_title_does_not_repeat_a_name_that_is_its_designation() -> None:
     frame = np.zeros((1792, 1344), dtype=np.float64)
     frame[int(1792 * 0.55) :, :] = 40.0 / 255.0
-    frame[118:126, 930:938] = 240.0 / 255.0
+    frame[115:129, 927:941] = 240.0 / 255.0
     pose = solve_horizon_and_beacon_pose(
-        frame, **MOMENT, source_asset_id="synthetic-night", source_sha256=hashlib.sha256(frame.tobytes()).hexdigest()
+        frame, **MOMENT, source_asset_id="synthetic-night", source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
+        full_scale=1.0,
     )
-    titles = {finding.id: finding.title for finding in pose.findings}
-    assert titles["finding-predicted-star-gamma-cas"] == "Gamma Cassiopeiae"
-    assert titles["finding-predicted-star-polaris"] == "Polaris (Alpha Ursae Minoris)"
+    assert pose.status == "approximate"
+    by_id = {finding.id: finding for finding in pose.findings}
+    gamma_cas = by_id["finding-predicted-star-gamma-cas"]
+    assert gamma_cas.title == "Gamma Cassiopeiae"
+    assert "27 Cas · HIP 4427 ·" in gamma_cas.subtitle and "Gamma Cassiopeiae" not in gamma_cas.subtitle
+    polaris = by_id["finding-predicted-star-polaris"]
+    assert polaris.title == "Polaris"
+    assert "Alpha Ursae Minoris · 1 UMi · HR 424 · HIP 11767 ·" in polaris.subtitle and "Polaris" not in polaris.subtitle
 
 
 def test_the_voice_description_does_not_repeat_a_name_that_is_its_designation() -> None:

@@ -73,7 +73,7 @@ def test_a_signal_where_an_unverified_pose_puts_a_star_stays_predicted() -> None
 def _night_frame(height: int, width: int) -> np.ndarray:
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
-    frame[118:126, 930:938] = 240.0
+    frame[115:129, 927:941] = 240.0
     return frame
 
 
@@ -83,7 +83,7 @@ def test_discovery_never_calls_a_star_observed_through_the_horizon_pose(tmp_path
 
     height, width = 1792, 1344
     frame = _night_frame(height, width) / 255.0
-    pose = solve_horizon_and_beacon_pose(frame, **_sources(frame), **MOON_MOMENT)
+    pose = solve_horizon_and_beacon_pose(frame, **_sources(frame), **MOON_MOMENT, full_scale=1.0)
     assert pose.status == "approximate" and pose.wcs is not None
     # A bright point wherever the unverified pose puts a pinned star in the upper half of the frame
     for star in get_all_sky_catalog_stars():

@@ -106,6 +106,32 @@ def test_frame_moment_adds_the_frame_offset_in_the_contract_form() -> None:
     assert frame_moment("2030-01-01T02:00:00.120Z", 0.88) == "2030-01-01T02:00:01Z"
 
 
+def test_frame_moment_writes_a_four_digit_year_on_every_platform() -> None:
+    """A year below 1000 keeps its leading zeros, which strftime's %Y leaves to the platform (Linux drops them under
+    Python 3.12; this Mac keeps them), so frame_moment writes no date through strftime (the TIME lane's search)."""
+    import inspect
+
+    from services.science import predicted_sky
+
+    assert frame_moment("0999-06-01T00:00:00Z", 2.0) == "0999-06-01T00:00:02Z"
+    assert frame_moment("0099-06-01T00:00:00Z", 0.5) == "0099-06-01T00:00:00.500Z"
+    assert ".strftime(" not in inspect.getsource(predicted_sky.frame_moment)
+
+
+def test_a_frame_past_the_calendars_last_second_is_out_of_the_ephemeris_range_not_an_error() -> None:
+    """A recording that starts in the calendar's last second: its frame's moment lies past the year 9999 a UTC instant
+    is written in, which is outside the ephemeris' range too, so the solution says that, as for any moment outside
+    1800 to 2050, rather than failing (the TIME lane's search)."""
+    start = "9999-12-31T23:59:59Z"
+    solution = _build_unresolved_solution(
+        [], "sol_synthetic", ASSET_ID, SHA, 2.0, start, 0.0, 0.0, "No detections.", "Pixel position only.",
+        triangle_solver_identity(get_catalog_stars()),
+    )
+    out = complete_sky(solution, _asset(start, 0.0, 0.0))
+    assert out.status == "unresolved" and out.warnings[-1] == OUT_OF_RANGE
+    assert not any(f.evidence_class == "predicted" for f in out.findings)
+
+
 def test_frame_moment_refuses_a_moment_not_in_utc_without_echoing_it() -> None:
     for not_utc in ("2030-01-01T02:00:00+02:00", "2030-01-01T02:00:00", "2030-01-01T02:00:00X", "2030-01-01T02:00:00z"):
         with pytest.raises(ValueError) as refused:

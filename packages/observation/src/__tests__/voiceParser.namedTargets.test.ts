@@ -51,6 +51,8 @@ const SHARED_JSON = String.raw`
     "finding-predicted-star-deneb-algedi": ["Deneb Algedi"],
     "finding-predicted-star-nashira": ["Nashira"],
     "finding-predicted-star-albali": ["Albali"],
+    "finding-predicted-hip-92855": ["Nunki"],
+    "finding-predicted-hip-89931": ["Kaus Media"],
     "finding-star-rigel": ["Rigel"],
     "finding-star-betelgeuse": ["Betelgeuse"],
     "finding-star-aldebaran": ["Aldebaran"]
@@ -118,7 +120,7 @@ const SHARED_JSON = String.raw`
   "rows": [
     ["plate_calibrated", "finding-star-rigel", "how far is the Moon?", {"refused": true}, {"target": "finding-predicted-moon"}],
     ["horizon_predicted_only", "finding-predicted-saturn", "how far is the Moon?", {"target": "finding-predicted-moon"}],
-    ["horizon_approximate", "finding-predicted-star-dabih", "how far is the Moon?", {"target": "finding-predicted-moon"}],
+    ["horizon_approximate", "finding-predicted-hip-92855", "how far is the Moon?", {"target": "finding-predicted-moon"}],
     ["pose_moon_level_head", "finding-observed-moon", "how far is the Moon?", {"target": "finding-predicted-moon"}],
     ["pose_moon_level_head", "finding-predicted-star-fomalhaut", "take me to the Moon", {"target": "finding-predicted-moon"}],
     ["plate_calibrated", "finding-star-rigel", "take me to Jupiter", {"refused": true}, {"target": "finding-predicted-jupiter"}],
@@ -132,7 +134,8 @@ const SHARED_JSON = String.raw`
     ["pose_moon_level_head", "finding-predicted-saturn", "tell me about Fomalhaut", {"target": "finding-predicted-star-fomalhaut"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "select Nashira", {"target": "finding-predicted-star-nashira"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "what is Albali?", {"target": "finding-predicted-star-albali"}],
-    ["horizon_approximate", "finding-predicted-moon", "select Algedi", {"target": "finding-predicted-star-algedi"}],
+    ["horizon_approximate", "finding-predicted-moon", "select Nunki", {"target": "finding-predicted-hip-92855"}, {"target": "finding-hip-92855"}],
+    ["horizon_approximate", "finding-predicted-moon", "what is Kaus Media?", {"target": "finding-predicted-hip-89931"}, {"target": "finding-hip-89931"}],
     ["plate_calibrated", "finding-star-rigel", "how far is Betelgeuse?", {"target": "finding-star-betelgeuse"}],
     ["plate_calibrated", "finding-star-rigel", "take me to Aldebaran", {"target": "finding-star-aldebaran"}],
     ["plate_calibrated", "finding-star-betelgeuse", "what is Rigel?", {"target": "finding-star-rigel"}],
@@ -771,10 +774,10 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
   });
 
   it('takes a body or star name as its predicted record, and the measured Moon by pointing or by its whole title', () => {
-    // The horizon solver's own titles: "Moon (Observed Sensor Beacon + Ephemeris Lock)" and "Moon (Predicted Ephemeris)"
-    const horizon = sessionOf('horizon_approximate', 'finding-predicted-star-dabih');
+    // The horizon solver's own titles since sky-4: "Bright Spot (Taken To Be The Moon)" and "Moon (Predicted Ephemeris)"
+    const horizon = sessionOf('horizon_approximate', 'finding-predicted-hip-92855');
     expect(readingOf('select the Moon', horizon)).toEqual({ target: 'finding-predicted-moon' });
-    expect(readingOf('select Moon (Observed Sensor Beacon + Ephemeris Lock)', horizon)).toEqual({ target: 'finding-observed-moon' });
+    expect(readingOf('select Bright Spot (Taken To Be The Moon)', horizon)).toEqual({ target: 'finding-observed-moon' });
     expect(readingOf('what is that?', { ...horizon, selectedFindingId: 'finding-observed-moon' })).toEqual({
       target: 'finding-observed-moon',
     });
@@ -782,7 +785,7 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
     // finding-predicted-<body>, "<Body> (Predicted Ephemeris)" (tests/integration/test_voice_named_targets.py
     // checks the Sun's), so a Sun is made here from the Moon's record
     const moon = horizon.observationSolution!.findings.find((f) => f.id === 'finding-predicted-moon')!;
-    const dabih = horizon.observationSolution!.findings.find((f) => f.id === 'finding-predicted-star-dabih')!;
+    const nunki = horizon.observationSolution!.findings.find((f) => f.id === 'finding-predicted-hip-92855')!;
     const made = [
       ...['Sun', 'Venus', 'Mars', 'Jupiter'].map((body) => ({
         ...structuredClone(moon),
@@ -790,7 +793,7 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
         title: `${body} (Predicted Ephemeris)`,
       })),
       // A predicted star is "<name> (<Bayer designation>)" under finding-predicted-<its catalog id> (predicted_sky.py)
-      { ...structuredClone(dabih), id: 'finding-predicted-star-vega', title: 'Vega (Alpha Lyrae)' },
+      { ...structuredClone(nunki), id: 'finding-predicted-star-vega', title: 'Vega (Alpha Lyrae)' },
     ];
     const day = { ...horizon, observationSolution: { ...horizon.observationSolution!, findings: [...horizon.observationSolution!.findings, ...made] } };
     for (const said of ['how far is the Sun?', 'select the sun', 'where is the Sun']) {

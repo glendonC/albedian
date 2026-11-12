@@ -23,11 +23,12 @@ MOMENT = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer
 
 
 def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
-    """Dark sky over a brighter foreground starting at 55% of the frame, with an optional Moon blob."""
+    """Dark sky over a brighter foreground starting at 55% of the frame, with an optional Moon blob 14 px across
+    (near the Moon's predicted size at the scale its skyline gives, as sky-3's Moon test asks since sky-4)."""
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
     if moon:
-        frame[118:126, 930:938] = 240.0
+        frame[115:129, 927:941] = 240.0
     return frame
 
 
@@ -84,17 +85,19 @@ def test_horizon_solver_without_moon_assumes_no_pointing() -> None:
     assert sol.findings
     assert all(f.evidence_class == "predicted" for f in sol.findings)
     assert all(f.source_detection is None for f in sol.findings)
-    assert "camera pointing is unknown" in sol.warnings[0]
+    # A skyline, and nothing above it that passes the Moon test: the sky is not lined up, and the reason says why
+    assert "not confirmed as the Moon" in sol.warnings[0]
 
 
 def test_horizon_solver_rejects_a_pose_that_misses_its_constraints() -> None:
-    # 307 px between Moon and horizon at 33 degrees needs about 0.107 deg/px, outside the lens range
-    frame = _night_frame(780, 1440, moon=True)
+    # 164 px between the Moon (33 degrees up) and the skyline in a 1440 x 520 frame needs about 0.2 deg/px, a field of
+    # view near 139 degrees across the diagonal, outside the 20 to 130 a camera is taken to have (sky-4)
+    frame = _night_frame(520, 1440, moon=True)
     sol = solve_horizon_and_beacon_pose(frame, **MOMENT, **_sources(frame))
     assert sol.status == "predicted_only"
     assert sol.wcs is None
-    assert "do not fit one camera pose" in sol.warnings[0]
-    assert "not confirmed as the Moon" in sol.warnings[0]
+    assert "is outside the 20 to 130 degrees a camera is taken to have" in sol.warnings[0]
+    assert "taken to be the Moon" in sol.warnings[0]
     assert all(f.evidence_class == "predicted" for f in sol.findings)
 
 
@@ -107,10 +110,13 @@ def test_horizon_solver_reports_measured_fit_residuals() -> None:
     assert sol.quality.median_residual_px is None and sol.quality.p95_residual_px is None
     assert sol.quality.passed_independent_verification is False
     moon = next(f for f in sol.findings if f.evidence_class == "observed")
-    assert moon.pixel_residual_px is not None and moon.pixel_residual_px <= MAX_POSE_FIT_RESIDUAL_PX
     assert moon.source_detection is not None
-    # An 8 x 8 px uniform blob has a per-axis variance of (8**2 - 1) / 12 px**2
-    assert moon.source_detection.fwhm_px == pytest.approx(2.355 * math.sqrt(63.0 / 12.0), abs=0.05)
+    # The fit met its constraints: the predicted Moon lands on the spot within the fit's residual limit
+    predicted_moon = next(f for f in sol.findings if f.id == "finding-predicted-moon")
+    mx, my = sol.wcs.world_to_pixel(predicted_moon.ra_deg, predicted_moon.dec_deg)
+    assert math.hypot(mx - moon.source_detection.x_px, my - moon.source_detection.y_px) <= MAX_POSE_FIT_RESIDUAL_PX
+    # A 14 x 14 px uniform blob has a per-axis variance of (14**2 - 1) / 12 px**2
+    assert moon.source_detection.fwhm_px == pytest.approx(2.355 * math.sqrt(195.0 / 12.0), abs=0.05)
     # Predicted objects carry no detection record: nothing was measured where they project
     assert all(f.source_detection is None for f in sol.findings if f.evidence_class == "predicted")
     # The pose is not independently verified, so the detection has no sky position of its own;

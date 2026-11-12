@@ -197,6 +197,8 @@ describe('the banner of a clip discovered on the laptop (verdict finding 2)', ()
     for (const [name, solution] of [
       ['horizon_predicted_only', sample('horizon_predicted_only')],
       ['horizon_approximate', sample('horizon_approximate')],
+      // The horizon sample without the pose estimate it carries since sky-4 (REQ-SKY-4.4)
+      ['an approximate result without a pose estimate', { ...sample('horizon_approximate'), poseEstimate: undefined }],
       ['a Moon and horizon pose', horizonPose],
       ['plate_too_few_sources', sample('plate_too_few_sources')],
     ] as const) {
@@ -206,8 +208,11 @@ describe('the banner of a clip discovered on the laptop (verdict finding 2)', ()
       expect(line, name).not.toMatch(RAW_STATUS);
       expect(line.replace(/taking a bright spot to be the (Moon|Sun)/g, ''), name).not.toMatch(/Moon|Sun/);
     }
-    expect(lines.get('horizon_approximate')).toBe(
+    expect(lines.get('an approximate result without a pose estimate')).toBe(
       'Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your clip.'
+    );
+    expect(lines.get('horizon_approximate')).toMatch(
+      /^Lined up by taking a bright spot to be the Moon, with the skyline taken to be level, within about \d+ degrees?; not checked against stars\.$/
     );
     expect(lines.get('a Moon and horizon pose')).toBe(
       'Lined up by taking a bright spot to be the Moon, with the skyline taken to be level, within about 3 degrees; not checked against stars.'

@@ -162,7 +162,8 @@ describe('the photo view draws the predicted sky lined up by a pose (REQ-SKY-6.2
     for (const session of [
       poseSession({ ...POSE, poseEstimate: undefined }),
       poseSession(sample('horizon_predicted_only')),
-      poseSession(sample('horizon_approximate')),
+      // The horizon sample without the pose estimate it carries since sky-4 (REQ-SKY-4.4)
+      poseSession({ ...sample('horizon_approximate'), poseEstimate: undefined }),
     ]) {
       expect(session.spatialView.activeOverlays.predictedEphemerides).toBe(true);
       renderOverlay(session);

@@ -842,11 +842,15 @@ describe('@albedian/contracts: the pose estimate of an approximate solution (REQ
     expect(stars.every((f) => f.sourceDetection === undefined)).toBe(true);
   });
 
-  it('finds a pose estimate in the pose sample of the Python fixture alone', () => {
+  it('finds a pose estimate in the pose samples of the Python fixture alone', () => {
+    // The head-worn sample, and since sky-4 the Moon plus horizon sample (REQ-SKY-4.4), each with its own method
     const withPose = Object.entries(samples)
       .filter(([, sample]) => 'poseEstimate' in (sample as Record<string, unknown>))
-      .map(([name]) => name);
-    expect(withPose).toEqual(['pose_moon_level_head']);
+      .map(([name, sample]) => [name, (sample as { poseEstimate: { method: string } }).poseEstimate.method]);
+    expect(withPose).toEqual([
+      ['horizon_approximate', 'moon_horizon'],
+      ['pose_moon_level_head', 'moon_camera_profile_level_head'],
+    ]);
   });
 
   it('P-SKY-7: a pose estimate rides only on an approximate solution with a WCS, sweeps 2 to 27 WCS on its crpix, and no predicted or simulated finding carries a detection', () => {

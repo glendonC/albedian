@@ -47,7 +47,7 @@ def _night_frame(height: int, width: int, moon: bool) -> np.ndarray:
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
     if moon:
-        frame[118:126, 930:938] = 240.0
+        frame[115:129, 927:941] = 240.0
     return frame
 
 
@@ -172,5 +172,7 @@ def test_no_solution_reports_a_residual_it_did_not_measure() -> None:
     for sol in (plate, horizon_none, horizon_pose):
         assert sol.quality.median_residual_px is None and sol.quality.p95_residual_px is None
         assert not {"medianResidualPx", "p95ResidualPx", "medianResidualArcsec"} & sol.to_contract_dict()["quality"].keys()
+    # Since sky-4 the spot carries no fit residual either: four constraints met by four pose parameters measure
+    # nothing, so none is reported as if it did
     moon = next(f for f in horizon_pose.findings if f.evidence_class == "observed")
-    assert moon.pixel_residual_px is not None
+    assert moon.pixel_residual_px is None and moon.angular_residual_arcsec is None

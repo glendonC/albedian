@@ -3506,15 +3506,18 @@ def test_more_than_a_thousand_hostile_requests_are_answered_or_refused_in_a_sent
 SYNTHETIC_MOMENTS = [f"2030-01-{day:02d}T{hour:02d}:00:00Z" for day in range(1, 29) for hour in (2, 8, 14, 20)]
 
 
-def _black_frame_with_a_lit_spot(spot: int) -> list[list[float]]:
-    """A drawn frame, black but for one lit spot `spot` pixels wide and high."""
-    luma = np.zeros((180, 240), dtype=np.float64)
-    luma[20 : 20 + spot, 150 : 150 + spot] = 240.0
+def _skyline_frame_with_a_lit_spot(spot: int, *, sky: float = 0.0, ground: float = 40.0) -> list[list[float]]:
+    """A drawn frame with dark sky above a lit foreground from 55% of the height (so find_skyline finds the skyline
+    and find_moon_blob judges the spot above it) and one lit spot `spot` pixels wide and high."""
+    luma = np.full((180, 240), sky, dtype=np.float64)
+    luma[int(180 * 0.55) :, :] = ground
+    if spot:
+        luma[20 : 20 + spot, 150 : 150 + spot] = 240.0
     return luma.tolist()
 
 
 # One of the frames is drawn to make the solver's own sums overflow, and NumPy says so
-@pytest.mark.filterwarnings("ignore:overflow encountered in reduce:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_a_beacon_of_no_width_is_no_beacon() -> None:
     """The horizon solver takes a bright spot's width from its second moments and its centroid's uncertainty from
     that width. A spot with all of its light in one pixel has no width: it is no beacon, then, and the answer is the
@@ -3522,31 +3525,33 @@ def test_a_beacon_of_no_width_is_no_beacon() -> None:
     The same holds for a spot whose uncertainty comes out as zero or as no finite number for any other reason. A
     spot two pixels wide has a width and is taken as it was."""
     client = TestClient(app, raise_server_exceptions=False)
-    no_width, two_wide = _black_frame_with_a_lit_spot(1), _black_frame_with_a_lit_spot(2)
-    # A pixel so bright beside its neighbour that the spot's width, though above zero, leaves its centroid an
-    # uncertainty too small for any number but zero
-    width_lost = np.zeros((180, 240), dtype=np.float64)
-    width_lost[20, 150], width_lost[20, 151] = 1e300, 1.0
-    # Two pixels so bright, over a sky that is not flat, that the second moments of the spot are beyond any number:
-    # a width, and so an uncertainty, that is infinite
-    beyond_number = np.zeros((180, 240), dtype=np.float64)
-    beyond_number[:, ::2] = 1e303
-    beyond_number[5, 3], beyond_number[5, 14] = 5e306, 5e306
+    no_width, two_wide = _skyline_frame_with_a_lit_spot(1), _skyline_frame_with_a_lit_spot(2)
+    # Two pixels carry the light, one of them by the smallest step above the sky a number can take: the second
+    # moments come out as zero, and so does the uncertainty
+    width_lost = np.asarray(_skyline_frame_with_a_lit_spot(0), dtype=np.float64)
+    width_lost[20, 150], width_lost[20, 151] = 255.0, 5e-324
+    # A block of 5 by 5 whose corners hold nearly all of its light: the second moments pass beyond any number while
+    # the summed light, the centroid and the SNR stay ordinary numbers, so the uncertainty is infinite
+    beyond_number = np.asarray(_skyline_frame_with_a_lit_spot(0), dtype=np.float64)
+    beyond_number[18:23, 148:153] = 3.0 * 2.0**1012
+    beyond_number[20, 150] = 2.0**1014
+    for y, x in ((18, 148), (18, 152), (22, 148), (22, 152)):
+        beyond_number[y, x] = 5.0 * 2.0**1017
     # One lit pixel on a flat sky whose level no binary fraction writes exactly: the centroid, a product divided
     # back by its own weight, then lands a rounding step off the pixel (column 3 is one where it does), and the
     # second moments give a width of about 1e-15 px. The light is in one pixel all the same
-    width_of_rounding = np.full((180, 240), 7.3, dtype=np.float64)
+    width_of_rounding = np.asarray(_skyline_frame_with_a_lit_spot(0, sky=7.3, ground=60.0), dtype=np.float64)
     width_of_rounding[20, 3] = 240.0
     assert (3 * (240.0 - 7.3)) / (240.0 - 7.3) != 3
     # Two lit pixels side by side: the least light a width can be measured in
-    two_pixels = np.zeros((180, 240), dtype=np.float64)
+    two_pixels = np.asarray(_skyline_frame_with_a_lit_spot(0), dtype=np.float64)
     two_pixels[20, 150:152] = 240.0
     no_beacon = ("no width", "width lost", "width beyond any number", "width of rounding alone")
     frames = (
         ("no width", no_width), ("width lost", width_lost.tolist()), ("width beyond any number", beyond_number.tolist()),
         ("width of rounding alone", width_of_rounding.tolist()), ("two wide", two_wide), ("two pixels", two_pixels.tolist()),
     )
-    moon_up = 0
+    moon_up, lined_up = 0, 0
     for moment in SYNTHETIC_MOMENTS:
         body = {**PLACE, **ROUTE_SOURCE, "observedAtUTC": moment}
         answers: dict[str, dict[str, Any]] = {}
@@ -3555,24 +3560,40 @@ def test_a_beacon_of_no_width_is_no_beacon() -> None:
             assert answer.status_code == 200, (name, moment, answer.status_code)
             answers[name] = answer.json()
             assert refusal(answers[name]) is None
-            assert answers[name]["status"] == "predicted_only"
-            assert all("sourceDetection" not in finding for finding in answers[name]["findings"])
-        (said,), (said_of_two_wide,) = answers["no width"]["warnings"], answers["two wide"]["warnings"]
+            assert len(answers[name]["warnings"]) == 2
+        said, sun_said = answers["no width"]["warnings"]
+        said_of_two_wide, sun_two = answers["two wide"]["warnings"]
+        assert sun_said == sun_two
         for name in no_beacon:
-            assert answers[name]["warnings"] == [said], (name, moment)
+            assert answers[name]["status"] == "predicted_only", (name, moment)
+            assert answers[name]["quality"]["detectedCandidateCount"] == 0, (name, moment)
+            assert all("sourceDetection" not in finding for finding in answers[name]["findings"])
         if answers["two wide"]["quality"]["detectedCandidateCount"] == 1:
-            # The Moon is up: the spot two pixels wide is a bright source the solver names, with no horizon to fit
+            # The Moon is up and the Sun is down: the two-pixel spots pass the Moon test, while the zero-width and
+            # non-finite-width spots are refused with their own sentences and zero candidates
             moon_up += 1
-            assert said_of_two_wide.startswith("No horizon line found") and "A bright source at" in said_of_two_wide
-            assert said.startswith("No compact bright source found") and "A bright source at" not in said
-            for name in no_beacon:
-                assert answers[name]["quality"]["detectedCandidateCount"] == 0, (name, moment)
-            assert answers["two pixels"]["quality"]["detectedCandidateCount"] == 1
-            assert "A bright source at" in answers["two pixels"]["warnings"][0]
+            assert answers["no width"]["warnings"] == [NO_WIDTH, sun_said]
+            assert answers["width of rounding alone"]["warnings"] == [NO_WIDTH, sun_said]
+            assert answers["width lost"]["warnings"] == [WIDTH_NO_NUMBER, sun_said]
+            assert answers["width beyond any number"]["warnings"] == [WIDTH_NO_NUMBER, sun_said]
+            for valid_name in ("two wide", "two pixels"):
+                valid = answers[valid_name]
+                assert valid["quality"]["detectedCandidateCount"] == 1, (valid_name, moment)
+                assert "bright spot at (150," in valid["warnings"][0] and valid["warnings"][1] == sun_said
+                if valid["status"] == "approximate":
+                    lined_up += int(valid_name == "two wide")
+                    (observed,) = [f for f in valid["findings"] if f["evidenceClass"] == "observed"]
+                    assert observed["sourceDetection"]["centroidUncertaintyPx"] > 0.0
+                else:
+                    assert valid["status"] == "predicted_only"
+                    assert all("sourceDetection" not in finding for finding in valid["findings"])
         else:
-            assert said == said_of_two_wide and said.startswith("The Moon is not above")
-    # Both kinds of moment are among them, or the loop above showed nothing
-    assert 0 < moon_up < len(SYNTHETIC_MOMENTS)
+            assert said in (pose_estimate.MOON_NOT_UP, pose_estimate.DAYTIME)
+            for name, _ in frames:
+                assert answers[name]["status"] == "predicted_only"
+                assert answers[name]["warnings"] == [said, sun_said], (name, moment)
+    # Both kinds of moment are among them, and at least one night moment lines up the two-wide spot
+    assert 0 < moon_up < len(SYNTHETIC_MOMENTS) and lined_up >= 1
 
 
 # The pose tests' synthetic moment, with the Moon up and the Sun down over the open-ocean place
@@ -3982,10 +4003,10 @@ def test_the_horizon_beacon_keeps_the_centroid_uncertainty_its_width_gives() -> 
     """The Moon finding a horizon solve writes carries the beacon's detection as measured, its centroid's uncertainty
     its width over 2.355 times its SNR (a Gaussian's FWHM is 2.355 sigma), the number main writes."""
     # The frame of tests/integration/test_no_default_moment.py that the solver lines up: dark sky over a lit foreground
-    # from 55% of the height, an 8 px block taken to be the Moon, at the pose tests' synthetic moment and place
+    # from 55% of the height, a 14 px block taken to be the Moon, at the pose tests' synthetic moment and place
     frame = np.zeros((1792, 1344), dtype=np.float64)
     frame[int(1792 * 0.55):, :] = 40.0
-    frame[118:126, 930:938] = 240.0
+    frame[115:129, 927:941] = 240.0
     solution = horizon_solver.solve_horizon_and_beacon_pose(
         frame, obs_utc_iso=MOON_MOMENT, observer_lat=PLACE["latDeg"], observer_lon=PLACE["lonDeg"],
         source_asset_id=ROUTE_SOURCE["sourceAssetId"], source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),

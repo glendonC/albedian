@@ -140,18 +140,15 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      `test_the_region_is_above_the_half_peak_level_and_the_centroid_is_measured_over_it_grown_by_two`,
      `test_the_blob_must_be_at_least_its_minimum_and_at_most_its_maximum_equivalent_diameter`,
      `test_the_size_limits_are_the_moons_predicted_diameter_at_the_profiles_two_limits`,
-     `test_a_spot_cut_by_the_edge_of_the_frame_is_refused` (the 2 px margin is pinned on the left edge only; on the
-     other three edges only a spot touching the edge is, verdict sky-3-v5 item 8; tests for sky-4, task 5),
+     `test_a_spot_cut_by_the_edge_of_the_frame_is_refused`, `test_the_two_pixel_edge_margin_holds_on_every_edge`,
      `test_a_rival_is_judged_by_the_moon_test_on_its_own_not_by_its_area_beside_the_first`,
      `test_every_other_spot_is_judged_by_the_same_limits_on_its_own`,
      `test_a_lamp_twice_the_moons_width_beside_a_moon_sized_spot_is_refused`,
      `test_a_rival_cut_by_the_frames_edge_still_refuses_and_the_moons_own_halo_is_no_rival`,
-     `test_a_peak_under_200_gives_no_pose_with_the_rule_in_plain_words`; P-SKY-6. That a rival is judged at its
-     brightest point after the same smoothing, not at its raw maximum, no named test pins (the audit found that a
-     rival taken at its raw maximum passes them all, and that a small rival with one brighter pixel at the edge of
-     its core tells the two apart) [open, verdict sky-3b-v3 note (a); a test for sky-4, task 5]. Nor does any test
-     pin the smoothing's width of 2.5 px: with a Gaussian of 1.5 px every test of the three files still passes [open;
-     a test for sky-4, task 5].
+     `test_a_peak_under_200_gives_no_pose_with_the_rule_in_plain_words`; P-SKY-6; a rival judged at its brightest
+     point after the same smoothing, not at its raw maximum:
+     `test_a_rival_is_judged_at_its_brightest_point_after_the_same_smoothing`; the smoothing's width of 2.5 px:
+     `test_the_candidate_is_the_brightest_point_after_a_gaussian_of_2_5_px`.
   4. FOR a clip, THE job SHALL take the clip's own frames from its video packets' presentation timestamps (ffprobe,
      sorted, without the packets flagged D to discard), spread n = min(N, 16) of its N frames over the whole clip by
      index (`floor((k + 0.5) N / n)` for k = 0 to n - 1, so a clip of fewer than 16 frames gives each frame once), and
@@ -172,12 +169,12 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      `test_a_spread_frame_that_times_out_ends_the_search_without_raising`,
      `test_every_spread_frame_shares_the_decoders_one_time_bound`,
      `test_a_photo_from_the_glasses_with_the_moon_is_lined_up_from_its_own_frame`,
-     `test_a_head_worn_clip_whose_spread_frames_cannot_be_read_keeps_the_predicted_sky_and_says_why`. No test has a
-     clip whose first frame is after 0 s, so the subtraction of the first frame's timestamp and the file's start
-     time in the seek are not pinned [open, verdict sky-3-v5 item 8; tests for sky-4, task 5]. Nor is the probe's
-     share of the one time bound: the *ingest* test `test_every_spread_frame_shares_the_decoders_one_time_bound`
-     records the decodes' time bounds only, and a probe given the whole bound passes every test of the three files
-     [open, verdict sky-3b-v4 finding 2; a test for sky-4, task 5].
+     `test_a_head_worn_clip_whose_spread_frames_cannot_be_read_keeps_the_predicted_sky_and_says_why`; the first
+     frame's timestamp subtracted and the file's start time in the seek, on a clip whose first frame is after 0 s:
+     *ingest* `test_on_a_clip_whose_first_frame_is_after_0_s_each_time_is_counted_from_its_first_frame`,
+     `test_each_spread_frame_is_sought_halfway_to_the_frame_before_less_the_files_start`; the probe's share of the
+     one time bound: *ingest* `test_every_spread_frame_shares_the_decoders_one_time_bound`, which records the
+     probe's time bound beside the decodes'.
   5. THE pose estimate SHALL record: the method, the nominal centre altitude and azimuth, roll and field of view,
      every assumption in plain words (the field of view range, no zoom, a level head, a rectilinear lens, the spot
      taken to be the Moon, the beacon term, the topocentric Moon), the field of view's source, the nine swept WCS
@@ -187,17 +184,15 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      N = ceil(`maxCenterOffsetDeg` + `beaconCentroidUncertaintyDeg`). Tests:
      `test_the_beacon_term_is_the_moons_radius_plus_its_stated_uncertainty_read_at_run_time`,
      `test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees_either_way`,
-     `test_the_approximate_solution_carries_the_pose_the_moon_and_the_predicted_sky`. The words of two assumptions,
-     the level head and the beacon term, no test pins: each reworded, every test of the three files still passes
-     [open; a test for sky-4, task 5].
+     `test_the_approximate_solution_carries_the_pose_the_moon_and_the_predicted_sky`; the words of the level-head and
+     beacon-term assumptions: `test_the_head_worn_pose_states_its_assumptions_with_the_numbers_it_used`.
   6. THE spot SHALL be an `observed` finding (`finding-observed-moon`) with its measured centroid and no sky
      position, `verifiedByIndependentHoldout` false, and a verification method that claims no held-out check
      ("Measured in the frame's pixels: ... nothing was matched to a catalog and no held-out check was made"); a
      detector detection of the same frame within the spot's radius SHALL be left out so the spot is not listed twice.
      Tests: `test_the_approximate_solution_carries_the_pose_the_moon_and_the_predicted_sky`,
-     `test_under_a_pose_only_the_detectors_observed_findings_are_kept`. Two frame times are the same frame within a
-     microsecond; that microsecond doubled or halved passes the tests 3.6 names, which put other frames' detections
-     seconds away [open, a test for sky-4, task 5].
+     `test_under_a_pose_only_the_detectors_observed_findings_are_kept`; two frame times the same frame within a
+     microsecond: `test_two_frame_times_are_the_same_frame_within_a_microsecond`.
   7. A pose estimate SHALL never set `passedIndependentVerification`, never make any finding `catalog_matched` and
      never give an `observed` finding a sky position; its quality SHALL count no matched star and no held-out pair
      (`matchedInlierCount` 0: an assumed beacon is matched to no catalog). Tests:
@@ -226,12 +221,9 @@ sky lined up over my clip, with an honest sense of how far off it may be.
      `test_a_fit_that_leaves_the_closed_forms_pose_is_refused`, `test_any_refused_swept_fit_refuses_the_pose`,
      `test_a_refused_fit_gives_no_pose_with_the_reason`,
      `test_a_centre_past_a_pole_is_the_same_pointing_brought_back_inside_the_range`,
-     `test_a_fit_that_ends_past_a_pole_is_brought_back_inside_the_contracts_range`. That each fit starts at the
-     closed form's pose no test pins: a fit started 2 deg higher is polished back to that pose, which the 0.001 deg
-     rule holds, and every test of the three files still passes [open; a test for sky-4, task 5]. Nor is that
-     rule's 0.001 deg: `test_a_fit_that_leaves_the_closed_forms_pose_is_refused` moves the centre by a whole degree,
-     and the bound doubled or halved passes the tests 3.9 names [open, verdict sky-3b-v4 finding 1; a test for sky-4,
-     task 5].
+     `test_a_fit_that_ends_past_a_pole_is_brought_back_inside_the_contracts_range`; each fit started at the closed
+     form's pose: `test_each_fit_starts_at_the_closed_forms_pose`; the 0.001 deg bound itself:
+     `test_the_fit_stays_within_0_001_degree_of_the_closed_forms_pose`.
   10. WHEN the Sun's centre is above -50/60 deg (the USNO sunrise and sunset altitude, the day limit of
       REQ-SKY-1.6) at the solution's moment or at a frame's own moment, no Moon pose SHALL be tried there. The Moon
       is checked before the Sun, at the solution's moment as at each frame's own: when the predicted Moon is not more
@@ -239,8 +231,8 @@ sky lined up over my clip, with an honest sense of how far off it may be.
       SHALL say that "the Sun was above the horizon at the frame's moment, and by day a bright spot may be the Sun"
       when the Moon is more than 5 deg up and the Sun is up at the solution's moment, and otherwise where the order
       of 3.12 comes to it. Test: `test_by_day_no_moon_pose_is_tried_and_the_reason_is_given` (the Moon 15 deg up).
-      By day with the Moon down, the usual daytime case, no named test sees which reason is given [open, not yet
-      tested; a test for sky-4, `tasks.md` task 5].
+      By day with the Moon down, the usual daytime case:
+      `test_by_day_with_the_moon_down_the_reason_given_is_that_the_moon_was_not_up`.
   11. Nothing in one frame proves the spot is the Moon, so no title, subtitle, warning, limitation, assumption or
       verification text SHALL say it is; those that name the spot as the Moon say it was taken to be the Moon. The
       spot's title SHALL be "Bright Spot (Taken To Be The Moon)"; the warning SHALL begin "Lined up by taking the
@@ -250,15 +242,11 @@ sky lined up over my clip, with an honest sense of how far off it may be.
       `test_no_text_says_the_bright_spot_is_the_moon`,
       `test_the_approximate_solution_carries_the_pose_the_moon_and_the_predicted_sky`,
       `test_a_soft_peaked_moon_at_244_is_lined_up_from_it`; the pose's assumption about the spot:
-      `test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees_either_way`. One landed sentence
-      breaks the rule: `OTHER_FRAMES_KEPT` (`services/science/predicted_sky.py`), the spot's limitation whenever
-      detections from other frames of the clip are kept, calls the spot "this frame's Moon pixel" without "taken to
-      be", and `test_no_text_says_the_bright_spot_is_the_moon` builds a solver with no detections, so it never sees
-      that text [open, a known gap, verdict sky-3b-v3 note (c); the sentence and its test are fixed in sky-4, task 5].
-      Nor is the rule held for every wording: `test_no_text_says_the_bright_spot_is_the_moon` refuses a list of
-      phrases, and the spot's subtitle or second limitation reworded to name the spot as the Moon in other words
-      ("The Moon, measured at", "the Moon has no sky position") passes the tests 3.11 names [open; a test for sky-4,
-      task 5, that holds those two texts word for word].
+      `test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees_either_way`. Since sky-4,
+      `OTHER_FRAMES_KEPT` (`services/science/predicted_sky.py`), the spot's limitation whenever detections from other
+      frames of the clip are kept, names "this frame's bright spot, taken to be the Moon", and
+      `test_no_text_says_the_bright_spot_is_the_moon` keeps a detection from another frame and holds that sentence,
+      the spot's subtitle and its second limitation word for word.
   12. WHEN no searched frame gives a pose, THE solution SHALL stay `predicted_only` (REQ-SKY-1.2) with one more
       warning, the one that says most: a spot that passed the Moon test but gave no pose (3.8, 3.9), with the time of
       the first such frame in time order; else not confirmed as the Moon, counting the frames searched; else the Moon
@@ -269,9 +257,9 @@ sky lined up over my clip, with an honest sense of how far off it may be.
       `test_a_spot_not_confirmed_as_the_moon_gives_no_pose_with_the_reason` (two frames not confirmed, counted),
       `test_a_frame_whose_moment_is_past_2050_is_not_searched` (one frame not confirmed, "in the frame searched"),
       `test_with_the_moon_down_there_is_no_pose_and_no_frame_is_read` (one frame with the Moon not up) and
-      `test_by_day_no_moon_pose_is_tried_and_the_reason_is_given` (one frame by day). No test mixes kinds of refusal
-      across frames, so the order between kinds is not yet tested, nor which frame's time is said when several spots
-      gave no pose; these are tests for sky-4 (`tasks.md` task 5) [open].
+      `test_by_day_no_moon_pose_is_tried_and_the_reason_is_given` (one frame by day); across kinds, and the first of
+      several spots by its time: `test_frames_that_mix_the_moon_not_up_and_by_day_answer_by_day`,
+      `test_a_spot_that_gave_no_pose_says_more_than_a_frame_not_confirmed_and_the_first_such_frame_is_named`.
 
 ### REQ-SKY-4: Lined up from the Moon or Sun plus the horizon (uploads)
 **User Story:** As someone who photographed the Moon or the Sun above a skyline, I want the predicted sky lined up

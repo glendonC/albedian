@@ -50,7 +50,7 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     surviving (verdict `sky-3-v5.md` item 8): B2, the frame time not less the first frame's timestamp, and B5, the
     file's start time left out of the seek (both need a clip whose first frame is after 0 s); B4, the seek at the
     frame's own timestamp instead of halfway; C7, E1 and E2, the 2 px edge margin on the top, bottom and right edges
-    (REQ-SKY-3.3, 3.4).
+    (REQ-SKY-3.3, 3.4). Done in sky-4 (REQ-SKY-3 names each test).
   - Tests to add there, left by the audit of sky-3b's third version (verdict `sky-3b-v3.md`): by day with the Moon
     down, the reason given is that the Moon was not up (REQ-SKY-3.10); a rival is judged at its brightest point after
     the same smoothing, not at its raw maximum (REQ-SKY-3.3, the audit's M1); and `OTHER_FRAMES_KEPT` says the spot
@@ -59,13 +59,14 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
     REQ-SKY-3, P-SKY-5 and P-SKY-6 that the fourth version of sky-3b made (its report has the counts), the four
     statements no test of the three files pins: the smoothing's width of 2.5 px (REQ-SKY-3.3); the words of the
     level-head and beacon-term assumptions (REQ-SKY-3.5); each fit started at the closed form's pose (REQ-SKY-3.9).
+    Done in sky-4, with the one-sentence fix of `OTHER_FRAMES_KEPT` (REQ-SKY-3 names each test).
   - And from sky-3b's fifth version (verdict `sky-3b-v4.md` and every number of that table moved one step each way):
     the fit's 0.001 deg bound on the closed form's pose (REQ-SKY-3.9); the probe's share of the one time bound
     (REQ-SKY-3.4); the microsecond within which two frame times are the same frame (REQ-SKY-3.6); the spot's subtitle
-    and second limitation held word for word (REQ-SKY-3.11).
+    and second limitation held word for word (REQ-SKY-3.11). Done in sky-4 (REQ-SKY-3 names each test).
   - Also there: `docs/science/PREDICTED_SKY.md` labels the roll claim (that the level-pose count did not change
     between the swept rolls) "[tested, not proven]", while the design derives the one-pose test from the closed form
-    [inference] (verdict `sky-3b.md`, left alone (3)); bring the two into line.
+    [inference] (verdict `sky-3b.md`, left alone (3)); bring the two into line. Done in sky-4: both say [inference].
   - _Requirements: REQ-SKY-4.1, 4.2, 4.4, 5.4_
 
 - [ ] 6. sky-6: the Sun as the beacon in daytime photos (REQ-SKY-4.3)

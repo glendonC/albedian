@@ -440,8 +440,14 @@ def test_a_star_of_a_predicted_sky_is_named_by_its_predicted_record() -> None:
         assert _reading("where is the Moon?", _context(state)) == {"target": "finding-predicted-moon"}
     for sample in ("horizon_approximate", "pose_moon_level_head"):
         for finding in SOLUTIONS[sample]["findings"]:
+            expected = (
+                finding["id"]
+                if finding["id"].startswith("finding-predicted-star-")
+                or finding["id"].removeprefix("finding-predicted-") in intent.PREDICTED_BODY_KEYS
+                else finding["id"].replace("finding-predicted-", "finding-")
+            )
             for name in SHARED["names"].get(finding["id"], []):
-                assert _reading(f"tell me about {name}", _context(_state(sample))) == {"target": finding["id"]}
+                assert _reading(f"tell me about {name}", _context(_state(sample))) == {"target": expected}
 
 
 def test_the_explicit_sky_phrases_are_read_before_a_target_is_looked_for() -> None:

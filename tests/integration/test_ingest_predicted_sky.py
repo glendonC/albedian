@@ -52,7 +52,7 @@ from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.camera_profiles import META_RAY_BAN_DISPLAY_MODEL
 from services.science.detector import NOISE_LIMIT_WORDS
-from services.science.pose_estimate import NO_FRAMES, NO_PROFILE
+from services.science.pose_estimate import MOON_NOT_UP, NO_FRAMES, NO_PROFILE
 from services.science.predicted_sky import NO_PLACE, NO_TIME, OUT_OF_RANGE, frame_moment, sky_phase
 from services.science.solver import render_synthetic_starfield, triangle_solver_identity
 
@@ -167,10 +167,11 @@ def test_a_photo_whose_stars_do_not_solve_shows_the_sky_for_its_time_and_place(c
         assert any("not measured in the recording" in text for text in finding["evidence"]["limitations"])
         assert finding["evidence"]["verifiedByIndependentHoldout"] is False
     # 02:00 UTC at 40 degrees west in midwinter: the Sun is down, and the last warning says where it was. Before
-    # it, why the sky is not lined up over the photo: the file names no camera with a head-worn profile
+    # it, why the sky is not lined up over the photo: no camera with a head-worn profile, so the Moon plus horizon
+    # pose was tried (sky-4), and the Moon was not up at that moment
     assert not any(f["id"] == "finding-predicted-sun" for f in predicted)
     assert len(solution["warnings"]) == 4 and solution["warnings"][1:2] == FEW_STARS_FLAGS
-    assert solution["warnings"][2] == NO_PROFILE and "poseEstimate" not in solution
+    assert solution["warnings"][2] == MOON_NOT_UP and "poseEstimate" not in solution
     assert "night" in solution["warnings"][-1] and "USNO" in solution["warnings"][-1]
     _assert_no_leak(solution, job)
 
@@ -317,12 +318,13 @@ BIT_PX = 16
 
 def _clip_from_frames(
     folder: Path, frames: list[np.ndarray], fps: int, *metadata: str, gop: int = 12, long_gaps_at: tuple[int, ...] = (),
-    rotation: int | None = None,
+    rotation: int | None = None, start_sec: float | None = None,
 ) -> bytes:
     """A QuickTime clip of these gray frames (mpeg4 at its best quality, a key frame every `gop` frames), so a seek
     must decode from a key frame to reach a frame between them. Frames from each index in `long_gaps_at` on come 4
     frame periods later (a gap of 5 periods before that frame, as a clip that dropped frames has), in a time base of
-    1/30000 s; `rotation` stores a display matrix turning the clip by that many degrees, the pixels left as they are."""
+    1/30000 s; `rotation` stores a display matrix turning the clip by that many degrees, the pixels left as they are;
+    `start_sec` makes the first frame's timestamp, and the file's start time, that many seconds."""
     height, width = frames[0].shape
     path = folder / "synthetic-frames.mov"
     command = [FFMPEG, "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "gray", "-s", f"{width}x{height}", "-r", str(fps),
@@ -331,6 +333,8 @@ def _clip_from_frames(
         shift = "".join(f"+if(gte(N\\,{n})\\,4/({fps}*TB)\\,0)" for n in long_gaps_at)
         command += ["-vf", f"setpts=N/({fps}*TB){shift}", "-fps_mode", "vfr", "-video_track_timescale", "30000"]
     command += ["-c:v", "mpeg4", "-q:v", "1", "-g", str(gop), "-bf", "0", "-movflags", "use_metadata_tags"]
+    if start_sec is not None:
+        command += ["-output_ts_offset", str(start_sec)]
     for item in metadata:
         command += ["-metadata", item]
     raw = b"".join(np.clip(np.round(frame), 0, 255).astype(np.uint8).tobytes() for frame in frames)
@@ -395,6 +399,70 @@ def test_the_spread_frames_are_the_frames_their_index_names(
         assert _read_index(luma) == n, (time_sec, n)
 
 
+def _stamps(path: Path) -> tuple[Fraction, list[int], float]:
+    """The clip's time base, its packets' timestamps sorted, and the file's start time, read apart from the job."""
+    try:
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+             "stream=time_base:format=start_time:packet=pts", "-of", "json", str(path)],
+            capture_output=True, check=True, timeout=60.0,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail("ffprobe exceeded its 60 s bound while reading synthetic clip packet timestamps")
+    info = json.loads(probe.stdout)
+    return (Fraction(info["streams"][0]["time_base"]), sorted(int(p["pts"]) for p in info["packets"]),
+            float(info["format"]["start_time"]))
+
+
+def test_on_a_clip_whose_first_frame_is_after_0_s_each_time_is_counted_from_its_first_frame(
+    client: TestClient, store: IngestStore, tmp_path: Path
+) -> None:
+    """A clip whose first frame and start time are at 1.5 s (as a cut or a stream copy can leave it): every spread
+    frame is still the one its index names, and its time is counted from the first frame, 0 at the first (the sky-3
+    audit's surviving mutants B2, the time not less the first frame's, and B5, the start time left out of the seek)."""
+    assert FFMPEG is not None, "ffmpeg is on every CI runner and on the laptop"
+    body = _clip_from_frames(tmp_path, [_indexed_frame(n) for n in range(40)], 25, start_sec=1.5)
+    path = tmp_path / "started.mov"
+    path.write_bytes(body)
+    base, stamps, start = _stamps(path)
+    assert start == pytest.approx(1.5, abs=1e-6) and float(stamps[0] * base) == pytest.approx(1.5, abs=1e-6)
+    sha, asset = _upload(client, body, "video/quicktime")
+    frames = ingest_jobs._decode_spread_frames(store.original(sha), asset)
+    expected = ingest_jobs._spread_frame_indices(40)
+    assert [_read_index(luma) for _, luma in frames] == expected
+    for (time_sec, _), n in zip(frames, expected):
+        assert time_sec == pytest.approx(n / 25.0, abs=1e-9), (n, time_sec)
+
+
+def test_each_spread_frame_is_sought_halfway_to_the_frame_before_less_the_files_start(
+    client: TestClient, store: IngestStore, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The decode's accurate seek is to halfway between the frame and the one before, less the file's start time
+    (design component 6), so a timestamp rounded to the microsecond in the seek can never step past the frame. Read
+    from the ffmpeg arguments, since ffmpeg itself rounds both to the microsecond and finds the frame either way (the
+    sky-3 audit's surviving mutant B4, a seek at the frame's own timestamp)."""
+    assert FFMPEG is not None, "ffmpeg is on every CI runner and on the laptop"
+    body = _clip_from_frames(tmp_path, [_indexed_frame(n) for n in range(40)], 25, start_sec=1.5)
+    sha, asset = _upload(client, body, "video/quicktime")
+    base, stamps, start = _stamps(store.original(sha))
+    calls: list[list[str]] = []
+    real = subprocess.run
+
+    def spy(args: Any, *rest: Any, **kwargs: Any) -> Any:
+        if isinstance(args, list) and args and args[0] == "ffmpeg":
+            calls.append([str(a) for a in args])
+        return real(args, *rest, **kwargs)
+
+    monkeypatch.setattr(ingest_jobs.subprocess, "run", spy)
+    frames = ingest_jobs._decode_spread_frames(store.original(sha), asset)
+    assert len(frames) == len(calls) == 16
+    for argv in calls:
+        stamp = int(re.search(r"select=gte\(pts\\,(\d+)\)", argv[argv.index("-vf") + 1]).group(1))
+        before = stamps[max(stamps.index(stamp) - 1, 0)]
+        halfway = float(Fraction(stamp + before, 2) * base) - start
+        assert float(argv[argv.index("-ss") + 1]) == pytest.approx(max(0.0, halfway), abs=1e-6), (stamp, argv)
+
+
 @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
 def test_on_a_clip_with_uneven_frame_times_each_time_is_the_own_time_of_the_frame_decoded(
     client: TestClient, store: IngestStore, tmp_path: Path
@@ -429,13 +497,15 @@ def test_a_clip_stored_turned_is_decoded_as_stored(client: TestClient, store: In
 
 class _Decodes:
     """subprocess.run as the job calls it, with the n-th one-frame decode (counted from 1) changed by `change`;
-    ffprobe and every other decode run as they are. Records each decode's timeout."""
+    ffprobe and every other decode run as they are. Records each decode's timeout, and ffprobe's apart."""
 
     def __init__(self, change: Any) -> None:
-        self.change, self.count, self.timeouts = change, 0, []
+        self.change, self.count, self.timeouts, self.probe_timeouts = change, 0, [], []
         self.real = subprocess.run
 
     def __call__(self, args: list[str], **kwargs: Any) -> Any:
+        if args[0] == "ffprobe":
+            self.probe_timeouts.append(kwargs.get("timeout"))
         if args[0] != "ffmpeg" or "-frames:v" not in args:
             return self.real(args, **kwargs)
         self.count += 1
@@ -564,6 +634,9 @@ def test_every_spread_frame_shares_the_decoders_one_time_bound(
     assert ingest_jobs.DECODE_TIMEOUT_SEC == 60
     assert 1 <= decodes.count <= 2 and len(frames) <= 2
     assert all(0.0 < timeout <= 60.0 - 25.0 for timeout in decodes.timeouts), decodes.timeouts
+    # The probe too (verdict sky-3b-v4 finding 2): the clock read once to set the deadline and once for the probe, so
+    # it is given the 35 s left of the 60
+    assert decodes.probe_timeouts == [60.0 - 25.0], decodes.probe_timeouts
 
 
 def _moon_frames(count: int, width: int = 336, height: int = 448, x: float = 200.0, y: float = 150.0) -> list[np.ndarray]:
@@ -680,17 +753,21 @@ def test_a_limited_range_head_worn_clip_whose_moon_is_a_soft_peak_is_lined_up_fr
     assert FILE_NAME not in json.dumps(job)
 
 
-@pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")
-def test_a_clip_from_a_camera_without_a_head_worn_profile_reads_no_spread_frame(
+def test_a_clip_from_a_camera_without_a_head_worn_profile_is_searched_for_the_moon_over_a_skyline(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Since sky-4 (REQ-SKY-4.1) a clip from a camera with no head-worn profile is searched for the Moon over a
+    skyline in its spread frames, read once; here none can be read, and it says so, never that the camera has no
+    head-worn profile."""
+    assert FFMPEG is not None, "ffmpeg is on every CI runner and on the laptop"
     calls: list[str] = []
     monkeypatch.setattr(ingest_jobs, "_decode_spread_frames", lambda *args, **kwargs: calls.append("read") or [])
     body = _clip_from_frames(tmp_path, _moon_frames(20), 25, MOON_TIME_TAG, PLACE_TAG, "com.apple.quicktime.model=iPhone 17 Pro")
     sha, _ = _upload(client, body, "video/quicktime")
     _, solution = _solve(client, sha)
     assert solution["status"] == "predicted_only" and "poseEstimate" not in solution
-    assert solution["warnings"][-2] == NO_PROFILE and calls == []
+    assert solution["warnings"][-2] == NO_FRAMES and calls == ["read"]
+    assert NO_PROFILE not in solution["warnings"]
 
 
 @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg is not installed")

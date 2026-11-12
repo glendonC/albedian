@@ -823,10 +823,11 @@ def test_fastapi_endpoints() -> None:
 
     # 7. POST /api/science/solve-horizon. The test draws its own narrow portrait frame (Moon blob
     # above a foreground at 55% height) so the Moon's height above the horizon implies a lens
-    # scale inside the solver's range; the API no longer plants a Moon in a blank frame.
+    # scale inside the solver's range, and a Moon 14 px across, near its predicted size at that scale (sky-4: the
+    # Moon test refuses a spot much smaller than the Moon); the API no longer plants a Moon in a blank frame.
     horizon_frame = np.zeros((1792, 64), dtype=np.float64)
     horizon_frame[int(1792 * 0.55) :, :] = 40.0
-    horizon_frame[118:126, 28:36] = 240.0
+    horizon_frame[115:129, 25:39] = 240.0
     horizon_moment = {**_as_request(MOON_MOMENT), **_request_sources(horizon_frame)}
     assert client.post(
         "/api/science/solve-horizon", json={"width": 64, "height": 1792, **horizon_moment}

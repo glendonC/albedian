@@ -198,8 +198,17 @@ def test_a_clip_solution_names_the_frame_it_decoded_and_that_frames_moment(tmp_p
     monkeypatch.setattr(
         discovery, "predict_sky_brightness", lambda moment, **kwargs: asked.append(moment) or real_predict(moment, **kwargs)
     )
+    # How the pose is asked for: the frame as decoded to [0, 1], read with white at 1.0, named as a clip's frame
+    called: list[dict] = []
+    real_pose = discovery.solve_horizon_and_beacon_pose
+    monkeypatch.setattr(
+        discovery, "solve_horizon_and_beacon_pose", lambda **kwargs: called.append(kwargs) or real_pose(**kwargs)
+    )
     item = _discover(tmp_path)["items"][0]
     assert asked == ["2031-08-30T03:01:03Z"]
+    (call,) = called
+    assert (call["full_scale"], call["media_kind"]) == (1.0, "video")
+    assert 0.0 <= float(call["image"].min()) and float(call["image"].max()) <= 1.0
     solution = item["observationSolution"]
     # The frame is the one ffmpeg times at 3 s; the predictions are for its moment, 3 s after the recorded start, and
     # the item's capture moment stays the recorded start
@@ -303,7 +312,7 @@ def test_discovery_solves_on_a_native_decode_of_the_picked_frame(tmp_path: Path,
     subprocess.run(
         ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r=10:d=6", "-vf",
          f"drawbox=x=0:y={y_hor}:w={width}:h={height - y_hor}:color=0x282828:t=fill,"
-         "drawbox=x=930:y=118:w=8:h=8:color=0xf0f0f0:t=fill:enable='between(t,3,3.9)'",
+         "drawbox=x=927:y=115:w=14:h=14:color=0xf0f0f0:t=fill:enable='between(t,3,3.9)'",
          "-c:v", "mpeg4", "-q:v", "1", str(clip)],
         check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )

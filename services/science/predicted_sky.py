@@ -56,9 +56,12 @@ from services.science.pose_estimate import (
     MOON_NOT_UP,
     NO_PROFILE,
     ROLL_LIMIT_DEG,
+    SKYLINE_ALTS_DEG,
     SUNRISE_SUNSET_ALT_DEG,
     PoseResult,
     Refusal,
+    horizon_moon_pose,
+    horizon_pose_from_frames,
     is_mirrored,
     moon_is_up,
     pose_from_frames,
@@ -72,8 +75,9 @@ from services.science.wcs_models import (
     SourceDetection,
 )
 
-# The bound the horizon solver (services/science/horizon_solver.py) still states for its own pinned stars, set when the
-# transform left out nutation and annual aberration; the predicted sky below no longer uses it [open: the horizon lane]
+# The bound the synthetic pose sample (tests/integration/test_unregistered_detections.py) still states for its 71
+# pinned stars, set when the transform left out nutation and annual aberration; neither the predicted sky nor the
+# horizon solver uses it [proposed]
 PREDICTED_STAR_UNCERTAINTY_ARCSEC = 55.0
 # The predicted stars come from the catalog tiles' L0 and L1 rows (Gaia DR3 and Hipparcos 2007, to G 8,
 # apps/web/public/catalog/stars/gaia-dr3): every row to an approximate V of 4.5 that is above the horizon, about 400 to
@@ -525,18 +529,35 @@ POSE_SOLVER = SolverIdentity(
         "(eraMoon98, Meeus 1998), topocentric"
     ),
 )
+HORIZON_POSE_SOLVER = SolverIdentity(
+    name="AlbedianHorizonMoonPose",
+    version="2.0.0",
+    catalog_release=(
+        "The ERFA Moon ephemeris (eraMoon98, Meeus 1998), topocentric, and a skyline taken to be level ground, with "
+        "the field of view fitted from the two"
+    ),
+)
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
 OUTSIDE_THE_FRAME = " · Outside the frame"
 LINED_UP_LIMITATION = (
     "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon, "
     "with the camera profile's field of view and a level head; not checked against stars."
 )
+HORIZON_LINED_UP_LIMITATION = (
+    "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon "
+    "and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
+)
 # Two frame times are the same frame within a microsecond: the pose's frame carries its own presentation time as the
 # job decodes it, and the detector's findings carry 0.0, the start of the stack they were found in
 SAME_FRAME_SEC = 1e-6
 OTHER_FRAMES_KEPT = (
     "Detections the detector made in other frames of the clip are kept as measured: the head moved between frames, "
-    "so this frame's Moon pixel does not say which of them, if any, is the Moon."
+    "so the place of this frame's bright spot, taken to be the Moon, does not say which of them, if any, is the Moon."
+)
+OTHER_FRAMES_KEPT_CAMERA = (
+    "Detections the detector made in other frames of the clip are kept as measured: the camera may have moved between "
+    "frames, so the place of this frame's bright spot, taken to be the Moon, does not say which of them, if any, is "
+    "the Moon."
 )
 
 
@@ -555,6 +576,14 @@ def _head_worn_pose(
         return Refusal("moon_not_up", MOON_NOT_UP)
     if sun_is_up(moment, lat, lon):
         return Refusal("daytime", DAYTIME)
+    return pose_from_frames(
+        _timed(frames, captured), lat=lat, lon=lon, profile=profile, orientation=orientation,
+        is_clip=asset.get("mediaKind") == "video",
+    )
+
+
+def _timed(frames: FramesForPose, captured: str) -> list[tuple[float, str, np.ndarray]]:
+    """Each frame with its own moment, the frames whose moment lies past the ephemeris range left out."""
     timed = []
     for frame_time_sec, luma in frames():
         frame_at = frame_moment(captured, frame_time_sec)
@@ -563,8 +592,71 @@ def _head_worn_pose(
         except EphemerisOutOfRange:
             continue
         timed.append((float(frame_time_sec), frame_at, luma))
-    return pose_from_frames(
-        timed, lat=lat, lon=lon, profile=profile, orientation=orientation, is_clip=asset.get("mediaKind") == "video"
+    return timed
+
+
+# The head-worn refusals after which the Moon plus horizon pose is tried on the same frames (REQ-SKY-4.1): no
+# head-worn profile, or a head-worn search that found no pose in frames it read. The others (the Moon not up, by day,
+# a mirrored frame, no frame read) would refuse the horizon pose for the same reason
+HORIZON_AFTER = ("no_profile", "not_moon", "two_poses", "ranges", "fit")
+
+
+def _read_once(frames: FramesForPose) -> FramesForPose:
+    """The frames, read on the first call only, so both poses search the same frames and a clip is decoded once."""
+    cache: list[Sequence[tuple[float, np.ndarray]]] = []
+
+    def read() -> Sequence[tuple[float, np.ndarray]]:
+        if not cache:
+            cache.append(list(frames()))
+        return cache[0]
+
+    return read
+
+
+def horizon_pose_solution(
+    solution: ObservationSolution, luma: np.ndarray, *, moment: str, lat: float, lon: float, media_kind: str = "image"
+) -> ObservationSolution:
+    """The Moon plus horizon pose on one upright frame recorded at `moment` (a frame time already counted in), as a
+    solution built on `solution` (a pose solver's empty outcome): approximate with its pose estimate, the spot and the
+    predicted sky, as `complete_sky` lines one up; or predicted_only with the predicted sky and the reason, and the
+    sentence for where the Sun was. For services/science/horizon_solver.py, which discovery and the science router
+    call."""
+    lat, lon = require_place(lat, lon)
+    asset = {"mediaKind": media_kind}
+    pose = horizon_moon_pose(
+        luma, frame_time_sec=solution.frame_time_sec, moment=moment, lat=lat, lon=lon, orientation=None,
+        where=f"in the frame {solution.frame_time_sec:.2f} s into the clip" if media_kind == "video" else "in the photo",
+    )
+    if isinstance(pose, PoseResult):
+        return _lined_up(solution, asset, pose, lat, lon)
+    (sun,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Sun",))
+    return replace(
+        solution,
+        status="predicted_only",
+        wcs=None,
+        quality=replace(solution.quality, detected_candidate_count=1 if pose.blob is not None else 0),
+        observed_at_utc=moment,
+        observer_lat=lat,
+        observer_lon=lon,
+        findings=predicted_sky_findings(moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256),
+        warnings=[*solution.warnings, pose.reason, sky_phase(sun.alt_deg).sentence],
+    )
+
+
+def _horizon_pose(
+    asset: Mapping[str, Any], frames: FramesForPose, captured: str, moment: str, lat: float, lon: float
+) -> PoseResult | Refusal:
+    """Layer 2 from the Moon and a skyline (REQ-SKY-4.1): the frames read only when a pose could follow."""
+    orientation = asset.get("displayOrientation")
+    if is_mirrored(orientation):
+        return Refusal("mirrored", MIRRORED)
+    if not moon_is_up(moment, lat, lon):
+        return Refusal("moon_not_up", MOON_NOT_UP)
+    if sun_is_up(moment, lat, lon):
+        return Refusal("daytime", DAYTIME)
+    return horizon_pose_from_frames(
+        _timed(frames, captured), lat=lat, lon=lon, orientation=orientation,
+        is_clip=asset.get("mediaKind") == "video",
     )
 
 
@@ -576,6 +668,8 @@ def _lined_up(
     Moon, and the predicted sky for the frame's moment, each saying whether the nominal WCS puts it inside the
     frame."""
     blob, wcs, frame_time_sec = pose.blob, pose.wcs, pose.frame_time_sec
+    # A head-worn pose assumed a camera profile; a Moon plus horizon pose lined up to a skyline instead
+    head_worn = pose.profile is not None
     kept: list[CelestialFindingRecord] = []
     other_frames = False
     for finding in solution.findings:
@@ -623,7 +717,7 @@ def _lined_up(
             "partly lit Moon's sits toward its lit edge; the pose's beacon term, the Moon's predicted radius plus its "
             "ephemeris's stated uncertainty, is taken to cover that. Its flux and SNR are lower bounds where its "
             "brightest pixels are clipped.",
-            *((OTHER_FRAMES_KEPT,) if other_frames else ()),
+            *(((OTHER_FRAMES_KEPT if head_worn else OTHER_FRAMES_KEPT_CAMERA),) if other_frames else ()),
         ),
         source_sha256=solution.source_sha256,
     )
@@ -639,21 +733,39 @@ def _lined_up(
             replace(
                 finding,
                 subtitle=finding.subtitle + (INSIDE_THE_FRAME if inside else OUTSIDE_THE_FRAME),
-                limitations=(*finding.limitations, LINED_UP_LIMITATION) if inside else finding.limitations,
+                limitations=(
+                    (*finding.limitations, LINED_UP_LIMITATION if head_worn else HORIZON_LINED_UP_LIMITATION)
+                    if inside
+                    else finding.limitations
+                ),
             )
         )
+    if not head_worn:
+        # The horizon solver's own order, kept for its callers: what lies inside the frame first (bodies, then stars
+        # brightest first, as the predicted sky lists them), then the rest above the horizon
+        predicted.sort(key=lambda f: f.subtitle.endswith(OUTSIDE_THE_FRAME))
     estimate = pose.pose_estimate
-    low, high = pose.profile.fov_diagonal_deg_range
     # The bound counts the beacon term: where the spot's light sits on the Moon's disk and where the Moon itself is
     # and, for a time zone worked out from the GPS position and time stamp, how far the sky turns in the time's uncertainty
     time_deg = 0.0 if time_sec is None else sky_turn_deg(time_sec)
     within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg + time_deg)
-    lined_up = (
-        f"Lined up by taking the bright spot at ({blob.x_px:.0f}, {blob.y_px:.0f}) px {where} to be the Moon, with the "
-        f"camera profile's field of view of {low:g} to {high:g} degrees across the diagonal with no zoom and a level "
-        f"head within {ROLL_LIMIT_DEG:g} degrees: within about {within} degrees near the bright spot, more toward the "
-        "edges; not checked against stars."
-    )
+    if head_worn:
+        low, high = pose.profile.fov_diagonal_deg_range
+        lined_up = (
+            f"Lined up by taking the bright spot at ({blob.x_px:.0f}, {blob.y_px:.0f}) px {where} to be the Moon, with "
+            f"the camera profile's field of view of {low:g} to {high:g} degrees across the diagonal with no zoom and a "
+            f"level head within {ROLL_LIMIT_DEG:g} degrees: within about {within} degrees near the bright spot, more "
+            "toward the edges; not checked against stars."
+        )
+    else:
+        skyline = pose.skyline
+        lined_up = (
+            f"Lined up by taking the bright spot at ({blob.x_px:.0f}, {blob.y_px:.0f}) px {where} to be the Moon and the "
+            f"skyline at row {skyline.row:.0f} of the upright picture, within {skyline.half_width_px:.0f} px, to be level "
+            f"ground {SKYLINE_ALTS_DEG[0]:g} to {SKYLINE_ALTS_DEG[-1]:g} degrees above the true horizon, with the field "
+            f"of view fitted from them ({estimate.fov_diagonal_deg:.0f} degrees across the diagonal): within about "
+            f"{within} degrees near the bright spot, more toward the edges; not checked against stars."
+        )
     (sun,) = compute_solar_system_ephemerides(pose.moment, lat, lon, bodies=("Sun",))
     detected = (
         solution.quality.detected_candidate_count
@@ -676,7 +788,7 @@ def _lined_up(
             median_residual_arcsec=None,
             passed_independent_verification=False,
         ),
-        solver=POSE_SOLVER,
+        solver=POSE_SOLVER if head_worn else HORIZON_POSE_SOLVER,
         observed_at_utc=pose.moment,
         observer_lat=lat,
         observer_lon=lon,
@@ -704,11 +816,15 @@ def complete_sky(
     - Unresolved or ambiguous, given `frames`, with a head-worn camera profile, the predicted Moon more than 5 degrees
       up, the Sun down, and one frame whose bright spot passes the Moon test and fits exactly one level pose at each
       swept value: approximate, lined up from that frame (`_lined_up`).
+    - Else, with no head-worn profile or a head-worn search that found no pose in its frames (HORIZON_AFTER): the
+      Moon plus horizon pose on the same frames, the first whose bright spot above a skyline passes the Moon test and
+      fits at each swept skyline altitude and row: approximate, lined up from that frame.
       `frames` gives the frames to search, each as its time into the recording and its gray pixels, and is called
-      only when a pose could follow; None asks for no pose (layer 1 alone).
+      at most once, only when a pose could follow; None asks for no pose (layer 1 alone).
     - Otherwise unresolved or ambiguous: predicted_only, with the solver's findings (pixel-only observed ones),
-      quality, warnings and identity, the predicted objects added, and, when `frames` was given, one warning saying
-      why no pose was found.
+      quality, warnings and identity, the predicted objects added, and, when `frames` was given, a warning saying why
+      each pose tried found none (the head-worn one's unless the camera has no profile, the horizon one's unless
+      after a head-worn refusal it found no skyline).
     The moment is the solution's frame (`capturedAtUTC` plus `frameTimeSec`), written as `observedAtUTC`, and the
     last warning says where the Sun was. No warning holds the capture time, the place or the file name."""
     if solution.status not in COMPLETED_STATUSES:
@@ -721,18 +837,29 @@ def complete_sky(
     if not has_time or place is None:
         reason = NO_TIME_OR_PLACE if not has_time and place is None else (NO_TIME if not has_time else NO_PLACE)
         return replace(solution, warnings=[*solution.warnings, reason])
-    moment = frame_moment(captured, solution.frame_time_sec)
     try:
+        # The frame's own moment is judged (a recording that starts at 1799's last second has its frames in 1800); one
+        # past the year 9999 a UTC instant is written in has no moment at all, and lies outside the range as surely
+        moment = frame_moment(captured, solution.frame_time_sec)
         require_ephemeris_range(moment)
-    except EphemerisOutOfRange:
+    except (EphemerisOutOfRange, OverflowError):
         return replace(solution, warnings=[*solution.warnings, OUT_OF_RANGE])
     lat, lon = place
     no_pose: list[str] = []
     if solution.status != "calibrated" and frames is not None:
-        pose = _head_worn_pose(asset, frames, captured, moment, lat, lon)
+        read = _read_once(frames)
+        pose = _head_worn_pose(asset, read, captured, moment, lat, lon)
         if isinstance(pose, PoseResult):
             return _lined_up(solution, asset, pose, lat, lon)
-        no_pose.append(pose.reason)
+        if pose.kind != "no_profile":
+            no_pose.append(pose.reason)
+        if pose.kind in HORIZON_AFTER:
+            horizon = _horizon_pose(asset, read, captured, moment, lat, lon)
+            if isinstance(horizon, PoseResult):
+                return _lined_up(solution, asset, horizon, lat, lon)
+            # After a head-worn refusal, a frame with no skyline adds nothing to say
+            if pose.kind == "no_profile" or horizon.kind != "no_skyline":
+                no_pose.append(horizon.reason)
     matched = frozenset(
         f.catalog_star.id
         for f in solution.findings

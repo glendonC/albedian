@@ -662,6 +662,10 @@ def discover_uploaded_media_report(
                     source_sha256=sha256,
                     frame_time_sec=frame_time_sec,
                     solution_id=solution_id,
+                    # A clip's frame is named by its time into the clip in the pose's sentences; the luma is
+                    # decoded to [0, 1] (_extract_representative_luma), so white is 1.0
+                    media_kind=media_type,
+                    full_scale=1.0,
                 )
             ephem_objs = compute_solar_system_ephemerides(
                 obs_utc_iso=frame_moment,

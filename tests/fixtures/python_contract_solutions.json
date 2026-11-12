@@ -964,8 +964,8 @@
   },
   "horizon_approximate": {
     "id": "sol-horizon-beacon",
-    "sourceAssetId": "synthetic-d46cb7a0ae83",
-    "sourceSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
+    "sourceAssetId": "synthetic-03dc20b3e95e",
+    "sourceSha256": "03dc20b3e95e8b266fbdb7544833c63ad5162ad05fe0e83c1d681d48fb86aa5b",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "approximate",
@@ -976,12 +976,12 @@
     },
     "solver": {
       "name": "AlbedianHorizonMoonPose",
-      "version": "1.0.0",
-      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
+      "version": "2.0.0",
+      "catalogRelease": "The ERFA Moon ephemeris (eraMoon98, Meeus 1998), topocentric, and a skyline taken to be level ground, with the field of view fitted from the two"
     },
     "quality": {
       "detectedCandidateCount": 1,
-      "matchedInlierCount": 1,
+      "matchedInlierCount": 0,
       "heldOutPairCount": 0,
       "heldOutInliers": 0,
       "passedIndependentVerification": false
@@ -991,32 +991,30 @@
         "id": "finding-observed-moon",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "observed",
-        "title": "Moon (Observed Sensor Beacon + Ephemeris Lock)",
-        "subtitle": "Measured at (933.5, 121.5) px · pose fit residual 0.00 px",
+        "title": "Bright Spot (Taken To Be The Moon)",
+        "subtitle": "Measured at (933.5, 121.5) px in the photo · 196 px above half its peak",
         "evidence": {
           "id": "ev-finding-observed-moon",
           "evidenceClass": "observed",
-          "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
+          "verificationMethod": "Measured in the frame's pixels: the frame's brightest spot passed the Moon test and was taken to be the Moon; nothing was matched to a catalog and no held-out check was made",
+          "sourceAssetSha256": "03dc20b3e95e8b266fbdb7544833c63ad5162ad05fe0e83c1d681d48fb86aa5b",
           "wcsSolutionId": "sol-horizon-beacon",
-          "angularResidualArcsec": 7.515758155316005e-11,
-          "pixelResidualPx": 5.084229945850415e-13,
           "limitations": [
-            "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
+            "Taken to be the Moon, not shown to be: nothing in one frame proves the spot is the Moon, and a lamp or another light of similar size, as bright and the only spot in its frame that passes the Moon test, would be taken the same way.",
             "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
-            "The light centroid of a partly lit or saturated Moon is offset from the disk center; that bias is not modeled."
+            "If the spot is the Moon, its light centroid sits somewhere on its disk: overexposure spreads it, and a partly lit Moon's sits toward its lit edge; the pose's beacon term, the Moon's predicted radius plus its ephemeris's stated uncertainty, is taken to cover that. Its flux and SNR are lower bounds where its brightest pixels are clipped."
           ],
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-d46cb7a0ae83",
+          "assetId": "synthetic-03dc20b3e95e",
           "frameTimeSec": 0.0,
           "xPx": 933.5,
           "yPx": 121.5,
-          "flux": 15360.0,
-          "snr": 1882648.2535130244,
-          "fwhmPx": 5.395982880810501,
-          "centroidUncertaintyPx": 1.217055731575122e-06
+          "flux": 47040.0,
+          "snr": 3.4641016151377544,
+          "fwhmPx": 9.493308498621541,
+          "centroidUncertaintyPx": 1.1636866703140785
         }
       },
       {
@@ -1024,7 +1022,7 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Inside Camera FOV",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon · Inside the frame (lined up, approximate)",
         "skyPosition": {
           "raDeg": 305.20320198123784,
           "decDeg": -15.105873059765592,
@@ -1036,160 +1034,315 @@
           "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
           "verificationMethod": "Predicted for the given time and place; not measured in the image",
-          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
+          "sourceAssetSha256": "03dc20b3e95e8b266fbdb7544833c63ad5162ad05fe0e83c1d681d48fb86aa5b",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Predicted with Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time, for the recorded capture time and place; not measured in the recording.",
             "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
             "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
             "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
-            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so.",
+            "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
           ],
           "verifiedByIndependentHoldout": false
         }
       },
       {
-        "id": "finding-predicted-star-dabih",
+        "id": "finding-predicted-hip-92855",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Dabih (Beta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 100.2 pc · Alt +32.4° Az 224.5° · Inside Camera FOV",
+        "title": "Nunki",
+        "subtitle": "Predicted Star (Sgr) · Sigma Sagittarii · 34 Sgr · HR 7121 · HIP 92855 · 69.8 pc · Alt +10.3° Az 231.4° · Above Horizon · Inside the frame (lined up, approximate)",
         "skyPosition": {
-          "raDeg": 305.2532618485171,
-          "decDeg": -14.781356703490856,
-          "uncertaintyArcsec": 55.0,
-          "altDeg": 32.44521008746673,
-          "azDeg": 224.4643615314681
+          "raDeg": 283.81650892741226,
+          "decDeg": -26.297194029375074,
+          "uncertaintyArcsec": 15.367986996661807,
+          "altDeg": 10.265067245723856,
+          "azDeg": 231.41873426132872
         },
         "evidence": {
-          "id": "ev-finding-predicted-star-dabih",
+          "id": "ev-finding-predicted-hip-92855",
           "evidenceClass": "predicted",
           "verificationMethod": "Predicted for the given time and place; not measured in the image",
-          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
+          "sourceAssetSha256": "03dc20b3e95e8b266fbdb7544833c63ad5162ad05fe0e83c1d681d48fb86aa5b",
           "wcsSolutionId": "sol-horizon-beacon",
-          "catalogReferenceId": "star-dabih",
-          "distanceUncertaintyNote": "Distance interval [90.3, 112.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+          "catalogReferenceId": "hip-92855",
+          "distanceUncertaintyNote": "Distance interval [68.4, 71.3] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Predicted from its catalog position, carried to the date, for the given time and place and the horizon pose; not claimed as recovered sensor pixels."
+            "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time and place; not measured in the recording.",
+            "Apparent magnitude is Hipparcos Hp, not Johnson V.",
+            "Placed by ERFA's apparent place for the recorded place at sea level (catalog.py icrs_to_altaz). Its stated uncertainty adds UT1 - UTC (up to 13.5 arcsec), polar motion, its own parallax, which is left out, the stored precision of its motion, and the motion a row without a proper motion or radial velocity may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it. Its altitude leaves out refraction, which lifts what is near the horizon.",
+            "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
           ],
           "verifiedByIndependentHoldout": false
         },
         "catalogRef": {
-          "id": "star-dabih",
+          "id": "hip-92855",
           "provider": "Hipparcos",
           "releaseVersion": "Hipparcos 2007",
-          "catalogSourceId": "HIP 100345",
-          "commonName": "Dabih",
-          "bayerDesignation": "Beta Capricorni",
-          "constellation": "Capricornus",
+          "catalogSourceId": "HIP 92855",
+          "commonName": "Nunki",
+          "bayerDesignation": "Sigma Sagittarii",
+          "flamsteedNumber": 34,
+          "constellation": "Sgr",
           "objectType": "star",
           "coordinateEpoch": "J2031.7",
-          "raDeg": 305.2532618485171,
-          "decDeg": -14.781356703490856,
-          "apparentMagnitude": 3.05,
-          "properMotionRaMasYr": 48.36,
-          "properMotionDecMasYr": 14.02,
+          "raDeg": 283.81650892741226,
+          "decDeg": -26.297194029375074,
+          "apparentMagnitude": 2.01,
+          "properMotionRaMasYr": 15.140625,
+          "properMotionDecMasYr": -53.4375,
           "bailerJonesDistancePc": {
-            "lower": 90.33423667839783,
-            "median": 100.2004008045956,
-            "upper": 112.48593926095208,
+            "lower": 68.42291738388089,
+            "median": 69.8393196540885,
+            "upper": 71.25572192429611,
             "method": "geometric_parallax"
           },
-          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
-          "parallaxMas": 9.98,
-          "parallaxErrorMas": 1.09
+          "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
         },
         "inferredDistancePc": {
-          "lower": 90.33423667839783,
-          "median": 100.2004008045956,
-          "upper": 112.48593926095208,
+          "lower": 68.42291738388089,
+          "median": 69.8393196540885,
+          "upper": 71.25572192429611,
           "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          55.9208779876784,
-          -79.11665543563329,
-          -25.56424376288232
+          14.952461011187317,
+          -60.7998853748454,
+          -30.940724262055284
         ]
       },
       {
-        "id": "finding-predicted-star-algedi",
+        "id": "finding-predicted-hip-89931",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Algedi (Alpha2 Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 33.4 pc · Alt +33.7° Az 226.8° · Inside Camera FOV",
+        "title": "Kaus Media",
+        "subtitle": "Predicted Star (Sgr) · Delta Sagittarii · 19 Sgr · HR 6859 · HIP 89931 · 106.6 pc · Alt +2.2° Az 233.4° · Above Horizon · Inside the frame (lined up, approximate)",
         "skyPosition": {
-          "raDeg": 304.51413507773253,
-          "decDeg": -12.544825606572031,
-          "uncertaintyArcsec": 55.0,
-          "altDeg": 33.70683390285424,
-          "azDeg": 226.82934202389484
+          "raDeg": 275.2488445915479,
+          "decDeg": -29.828326482639966,
+          "uncertaintyArcsec": 15.366449679005125,
+          "altDeg": 2.1591155215077436,
+          "azDeg": 233.40096487140144
         },
         "evidence": {
-          "id": "ev-finding-predicted-star-algedi",
+          "id": "ev-finding-predicted-hip-89931",
           "evidenceClass": "predicted",
           "verificationMethod": "Predicted for the given time and place; not measured in the image",
-          "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
+          "sourceAssetSha256": "03dc20b3e95e8b266fbdb7544833c63ad5162ad05fe0e83c1d681d48fb86aa5b",
           "wcsSolutionId": "sol-horizon-beacon",
-          "catalogReferenceId": "star-algedi",
-          "distanceUncertaintyNote": "Distance interval [33.2, 33.6] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
+          "catalogReferenceId": "hip-89931",
+          "distanceUncertaintyNote": "Distance interval [104.6, 108.6] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Predicted from its catalog position, carried to the date, for the given time and place and the horizon pose; not claimed as recovered sensor pixels."
+            "Predicted from its Hipparcos 2007 catalog row (epoch J2016.0), moved by its proper motion to the date, for the recorded capture time and place; not measured in the recording.",
+            "Apparent magnitude is Hipparcos Hp, not Johnson V.",
+            "Placed by ERFA's apparent place for the recorded place at sea level (catalog.py icrs_to_altaz). Its stated uncertainty adds UT1 - UTC (up to 13.5 arcsec), polar motion, its own parallax, which is left out, the stored precision of its motion, and the motion a row without a proper motion or radial velocity may have, up to the fastest star in the tiles; the catalog's own position and motion errors are not in it. Its altitude leaves out refraction, which lifts what is near the horizon.",
+            "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
           ],
           "verifiedByIndependentHoldout": false
         },
         "catalogRef": {
-          "id": "star-algedi",
-          "provider": "Gaia DR3",
-          "releaseVersion": "Gaia DR3",
-          "catalogSourceId": "Gaia DR3 6880093650314169984",
-          "commonName": "Algedi",
-          "bayerDesignation": "Alpha2 Capricorni",
-          "constellation": "Capricornus",
+          "id": "hip-89931",
+          "provider": "Hipparcos",
+          "releaseVersion": "Hipparcos 2007",
+          "catalogSourceId": "HIP 89931",
+          "commonName": "Kaus Media",
+          "bayerDesignation": "Delta Sagittarii",
+          "flamsteedNumber": 19,
+          "constellation": "Sgr",
           "objectType": "star",
           "coordinateEpoch": "J2031.7",
-          "raDeg": 304.51413507773253,
-          "decDeg": -12.544825606572031,
-          "apparentMagnitude": 3.57,
-          "properMotionRaMasYr": 62.61,
-          "properMotionDecMasYr": 2.66,
+          "raDeg": 275.2488445915479,
+          "decDeg": -29.828326482639966,
+          "apparentMagnitude": 2.865,
+          "properMotionRaMasYr": 32.53125,
+          "properMotionDecMasYr": -25.5625,
           "bailerJonesDistancePc": {
-            "lower": 33.15436000153369,
-            "median": 33.364403001543415,
-            "upper": 33.55109000155205,
-            "method": "photogeometric_bailer_jones_edr3"
+            "lower": 104.6357347988272,
+            "median": 106.61050486467796,
+            "upper": 108.6397175054892,
+            "method": "geometric_parallax"
           },
-          "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
-          "colorIndexBpRp": 1.1736479
+          "citation": "Catalog id, Hipparcos Hp magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
         },
         "inferredDistancePc": {
-          "lower": 33.15436000153369,
-          "median": 33.364403001543415,
-          "upper": 33.55109000155205,
-          "method": "photogeometric_bailer_jones_edr3"
+          "lower": 104.6357347988272,
+          "median": 106.61050486467796,
+          "upper": 108.6397175054892,
+          "method": "geometric_parallax"
         },
         "cartesianParsecICRS": [
-          18.45326780879584,
-          -26.835486021957117,
-          -7.246860340285498
+          8.460826221698554,
+          -92.0988898724119,
+          -53.0283759077825
         ]
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is topocentric: seen from this place, with its parallax applied."
+      "Lined up by taking the bright spot at (934, 122) px in the photo to be the Moon and the skyline at row 984 of the upright picture, within 14 px, to be level ground 0 to 3 degrees above the true horizon, with the field of view fitted from them (74 degrees across the diagonal): within about 3 degrees near the bright spot, more toward the edges; not checked against stars.",
+      "The Sun was about 51 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 293.5650925423605,
-      "crvalDecDeg": -43.804579883571,
+      "crvalRaDeg": 294.28362762518265,
+      "crvalDecDeg": -42.48522121170425,
       "crpixX": 672.0,
       "crpixY": 896.0,
-      "scaleDegPerPx": 0.04106247398198054,
-      "rotationDeg": -41.318161565684505,
+      "scaleDegPerPx": 0.03876279646284192,
+      "rotationDeg": -40.85986882960765,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
-      "fovHorizontalDeg": 51.43147636444925,
-      "fovVerticalDeg": 65.41237740460988
+      "fovHorizontalDeg": 48.89630151114354,
+      "fovVerticalDeg": 62.446679550544
+    },
+    "poseEstimate": {
+      "method": "moon_horizon",
+      "beacon": "moon",
+      "centerAltDeg": 4.949546092409201,
+      "centerAzDeg": 213.7299542408137,
+      "rollDeg": 0.0,
+      "fovDiagonalDeg": 74.30409549649134,
+      "fovSource": "Fitted, not assumed: from the angle between the bright spot taken to be the Moon and the skyline taken to be level ground, over the rows between them in the frame, for a rectilinear lens.",
+      "assumptions": [
+        "The bright spot is taken to be the Moon: nothing in one frame proves it, and a lamp or another light of similar size above the skyline, as bright and the only spot there that passes the Moon test, would be taken the same way.",
+        "The skyline at row 984 of the upright frame is taken to be level ground 0 to 3 degrees above the true horizon (hills, buildings and refraction lift it); the sweep takes 0, 1.5 and 3 degrees. A sea horizon seen from a height lies below the true horizon by its dip, which the sweep does not cover.",
+        "The skyline's row is measured to within 14 px, the half width of the rise in brightness there; the sweep takes the row and 14 px either side.",
+        "The skyline is level in the upright frame, so the camera's roll is taken to be 0: a sloping skyline tilts the pose.",
+        "The lens is rectilinear (gnomonic), with no distortion, and centred on the frame; its field of view is fitted from the spot and the skyline, and a fit outside 20 to 130 degrees across the diagonal is refused.",
+        "The spot's light centroid is taken to lie on the Moon's disk, and the Moon where its ephemeris puts it: the beacon term, the Moon's predicted radius of 0.28 degrees plus the ephemeris's stated uncertainty of 44 arcsec plus 24 arcsec for drawing every position through one rotation, is taken to cover overexposure, a partial phase, the ephemeris's own error, and the aberration and light deflection that differ across the frame from the Moon's, which one rotation cannot follow.",
+        "The Moon is placed where it is seen from the place (topocentric): the ephemeris record as it is, its parallax already applied there; refraction is left out for the Moon, the skyline and the stars alike, and near the horizon it lifts what is seen by about half a degree, which is taken to fall inside the skyline's swept altitudes."
+      ],
+      "sweptWcs": [
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 293.2946603870759,
+          "crvalDecDeg": -44.287136135197834,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.04192181880359345,
+          "rotationDeg": -41.49377116533162,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 52.3652857903528,
+          "fovVerticalDeg": 66.49607018660849
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 293.5754461160242,
+          "crvalDecDeg": -43.78963077731829,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.04103508003931012,
+          "rotationDeg": -41.309052944471034,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 51.40158695607001,
+          "fovVerticalDeg": 65.37761288252631
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 293.8396939173092,
+          "crvalDecDeg": -43.31131116552039,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.04019322752235897,
+          "rotationDeg": -41.1385642701743,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 50.47939176590007,
+          "fovVerticalDeg": 64.30264327928766
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 294.030531947168,
+          "crvalDecDeg": -42.95968070291525,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.03958079739552917,
+          "rotationDeg": -41.01754233273124,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 49.80408146930163,
+          "fovVerticalDeg": 63.51256700657013
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 294.28362762518265,
+          "crvalDecDeg": -42.48522121170425,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.03876279646284192,
+          "rotationDeg": -40.85986882960765,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 48.89630151114354,
+          "fovVerticalDeg": 62.446679550544
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 294.52249975344114,
+          "crvalDecDeg": -42.02883849360844,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.03798471511294667,
+          "rotationDeg": -40.71412819696829,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 48.02670994275617,
+          "fovVerticalDeg": 61.42152793322175
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 294.7326540257635,
+          "crvalDecDeg": -41.62035364616333,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.03729531868385862,
+          "rotationDeg": -40.588470684914,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 47.251286122793175,
+          "fovVerticalDeg": 60.50402127285322
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 294.9608991421338,
+          "crvalDecDeg": -41.16924689500418,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.036541435186391406,
+          "rotationDeg": -40.45481239469311,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 46.39804337081748,
+          "fovVerticalDeg": 59.490788559620746
+        },
+        {
+          "projection": "TAN",
+          "crvalRaDeg": 295.17690726128836,
+          "crvalDecDeg": -40.73511912393262,
+          "crpixX": 672.0,
+          "crpixY": 896.0,
+          "scaleDegPerPx": 0.035823058006696905,
+          "rotationDeg": -40.33111546234619,
+          "radialDistortionK1": 0.0,
+          "radialDistortionK2": 0.0,
+          "parity": -1,
+          "fovHorizontalDeg": 45.57988642695647,
+          "fovVerticalDeg": 58.51565268303887
+        }
+      ],
+      "maxCenterOffsetDeg": 1.9399217997636835,
+      "beaconCentroidUncertaintyDeg": 0.29656842050187576
     }
   },
   "horizon_predicted_only": {
@@ -1206,8 +1359,8 @@
     },
     "solver": {
       "name": "AlbedianHorizonMoonPose",
-      "version": "1.0.0",
-      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
+      "version": "2.0.0",
+      "catalogRelease": "The ERFA Moon ephemeris (eraMoon98, Meeus 1998), topocentric, and a skyline taken to be level ground, with the field of view fitted from the two"
     },
     "quality": {
       "detectedCandidateCount": 0,
@@ -1218,29 +1371,29 @@
     },
     "findings": [
       {
-        "id": "finding-predicted-uranus",
+        "id": "finding-predicted-moon",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1° · Above Horizon",
+        "title": "Moon (Predicted Ephemeris)",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon",
         "skyPosition": {
-          "raDeg": 85.99026035591349,
-          "decDeg": 23.512759556336686,
-          "uncertaintyArcsec": 101.90261823616899,
-          "altDeg": 1.1195681246684188,
-          "azDeg": 63.277852733721495
+          "raDeg": 305.20320198123784,
+          "decDeg": -15.105873059765592,
+          "uncertaintyArcsec": 44.06372110817171,
+          "altDeg": 32.16238220027087,
+          "azDeg": 224.26755728596547
         },
         "evidence": {
-          "id": "ev-finding-predicted-uranus",
+          "id": "ev-finding-predicted-moon",
           "evidenceClass": "predicted",
           "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Predicted with Meeus (1998) chapter 47 in full, as ERFA's eraMoon98, for the Moon and ERFA eraEpv00 for the Earth, with light time, for the recorded capture time and place; not measured in the recording.",
             "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
-            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +1.47 degrees, and the real air differs most near the horizon.",
-            "Its uncertainty, 101.9 arcsec, adds the method's documented worst error (87.3 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
             "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
@@ -1266,7 +1419,7 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Predicted with ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time, for the recorded capture time and place; not measured in the recording.",
             "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
             "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +4.45 degrees, and the real air differs most near the horizon.",
             "Its uncertainty, 104.9 arcsec, adds the method's documented worst error (90.4 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
@@ -1276,29 +1429,29 @@
         }
       },
       {
-        "id": "finding-predicted-moon",
+        "id": "finding-predicted-uranus",
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
-        "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon",
+        "title": "Uranus (Predicted Ephemeris)",
+        "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1° · Above Horizon",
         "skyPosition": {
-          "raDeg": 305.20320198123784,
-          "decDeg": -15.105873059765592,
-          "uncertaintyArcsec": 44.06372110817171,
-          "altDeg": 32.16238220027087,
-          "azDeg": 224.26755728596547
+          "raDeg": 85.99026035591349,
+          "decDeg": 23.512759556336686,
+          "uncertaintyArcsec": 101.90261823616899,
+          "altDeg": 1.1195681246684188,
+          "azDeg": 63.277852733721495
         },
         "evidence": {
-          "id": "ev-finding-predicted-moon",
+          "id": "ev-finding-predicted-uranus",
           "evidenceClass": "predicted",
           "verificationMethod": "Predicted for the given time and place; not measured in the image",
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Predicted with ERFA eraPlan94 (Simon et al. 1994) for the planet and eraEpv00 (simplified VSOP2000) for the Earth and the Sun, with light time, for the recorded capture time and place; not measured in the recording.",
             "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
-            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
-            "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +1.47 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 101.9 arcsec, adds the method's documented worst error (87.3 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
             "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
@@ -1306,7 +1459,8 @@
       }
     ],
     "warnings": [
-      "No compact bright source found in the upper sky, so camera pointing is unknown. Showing the sky predicted for the given time and place, not placed in the frame."
+      "The frame's bright spots were not confirmed as the Moon: the brightest spot peaks at 0 of 255, under 200.",
+      "The Sun was about 51 degrees below the horizon: night, by the USNO definitions (more than 18 degrees below), when scattered sunlight is fainter than starlight."
     ]
   },
   "pending_unsolved": {

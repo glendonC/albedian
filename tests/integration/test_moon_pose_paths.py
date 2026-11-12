@@ -137,7 +137,7 @@ def _place(moment: str, place: tuple[str, float, float]) -> tuple[float, float]:
 def _horizon_pose_moon(moment: str, lat: float, lon: float):
     """The Moon record the horizon pose asks for and fits to, caught as it is handed over."""
     caught = []
-    real = horizon_solver.compute_solar_system_ephemerides
+    real = pose_estimate.compute_solar_system_ephemerides
 
     def spy(*args, **kwargs):
         records = real(*args, **kwargs)
@@ -145,14 +145,14 @@ def _horizon_pose_moon(moment: str, lat: float, lon: float):
         return records
 
     frame = np.zeros((120, 160), dtype=np.float64)
-    horizon_solver.compute_solar_system_ephemerides = spy
+    pose_estimate.compute_solar_system_ephemerides = spy
     try:
         horizon_solver.solve_horizon_and_beacon_pose(
             frame, moment, lat, lon, source_asset_id="synthetic-moon-pose-path",
             source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
         )
     finally:
-        horizon_solver.compute_solar_system_ephemerides = real
+        pose_estimate.compute_solar_system_ephemerides = real
     (moon,) = caught
     return moon
 
@@ -211,7 +211,7 @@ def test_the_horizon_pose_puts_erfas_moon_on_its_bright_spot_within_its_fit_resi
     height, width = 1792, 1344
     frame = np.zeros((height, width), dtype=np.float64)
     frame[int(height * 0.55) :, :] = 40.0
-    frame[118:126, 930:938] = 240.0
+    frame[115:129, 927:941] = 240.0
     solution = horizon_solver.solve_horizon_and_beacon_pose(
         frame, FIXTURE_MOMENT, FIXTURE_LAT, FIXTURE_LON, source_asset_id="synthetic-night",
         source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
@@ -221,7 +221,7 @@ def test_the_horizon_pose_puts_erfas_moon_on_its_bright_spot_within_its_fit_resi
     truth = erfa_topocentric_moon(FIXTURE_MOMENT, FIXTURE_LAT, FIXTURE_LON)["icrs"]
     ra, dec = (math.degrees(v) for v in erfa.c2s(truth))
     x, y = solution.wcs.world_to_pixel(ra % 360.0, dec)
-    (moon,) = horizon_solver.compute_solar_system_ephemerides(FIXTURE_MOMENT, FIXTURE_LAT, FIXTURE_LON, bodies=("Moon",))
+    (moon,) = pose_estimate.compute_solar_system_ephemerides(FIXTURE_MOMENT, FIXTURE_LAT, FIXTURE_LON, bodies=("Moon",))
     allowed = horizon_solver.MAX_POSE_FIT_RESIDUAL_PX + moon.uncertainty_arcsec / 3600.0 / solution.wcs.scale_deg_per_px
     assert math.hypot(x - spot.x_px, y - spot.y_px) <= allowed, (x, y, spot.x_px, spot.y_px, allowed)
     # The check can tell: the same Moon lowered once more by its parallax shift lands outside that allowance

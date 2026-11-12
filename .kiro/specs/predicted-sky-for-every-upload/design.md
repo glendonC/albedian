@@ -88,12 +88,12 @@ Each refusal is a `Refusal(kind, reason, blob, frame_time_sec)`; nothing stands 
   maximum [proposed: wide enough for overexposure bloom, narrow enough to refuse a lit cloud or twilight band].
 - Scale from a diagonal field of view for the rectilinear (TAN) model: `scale_rad_per_px = 2 tan(fov / 2) / d`
   with `d` the frame diagonal in pixels.
-- The topocentric Moon (`topocentric_moon`): the ephemeris record's altitude lowered by
-  `moon_parallax_shift_arcsec` (first order: the parallax times the cosine of the altitude), turned back with
-  `altaz_to_icrs`; its distance from the place by the cosine rule, with the Earth's equatorial radius toward the
-  zenith; its uncertainty the record's own `uncertainty_arcsec`. Refraction is left out for the Moon and the stars
-  alike [inference: it cancels to first order near the Moon]. These lines change once the ephemeris record is
-  topocentric (`tasks.md` task 5).
+- The topocentric Moon (`topocentric_moon`): the ephemeris record as it is, topocentric at its source and never
+  lowered again; its uncertainty the record's own `uncertainty_arcsec`. The closed form takes its apparent altitude and
+  azimuth; the WCS draws ICRS through one rotation, `pose_frame` (the rigid frame rotation anchored on the Moon, so the
+  Moon lands exactly where it is seen), through which the level line, the fit's start and its check run; the Moon plus
+  horizon pose of component 5 does the same since sky-4 ([SKY_TRANSFORMS.md](../../../docs/science/SKY_TRANSFORMS.md)).
+  Refraction is left out for the Moon and the stars alike [inference: it cancels to first order near the Moon].
 - The level poses in closed form (`level_centres`): the spot's upright offset from the frame centre (display turns
   applied), the roll undone, times the scale in radians, gives its tangent offsets X (right) and Y (up) in a level
   camera. A level camera pitched to a0 sees the Moon, at altitude h, there when
@@ -120,7 +120,8 @@ Each refusal is a `Refusal(kind, reason, blob, frame_time_sec)`; nothing stands 
   any refused fit refuses the pose. Nominal is the middle field of view with roll 0. `maxCenterOffsetDeg` is the
   largest angle between the nominal and any swept frame centre; `beaconCentroidUncertaintyDeg` is the Moon's
   predicted radius (an overexposed spot's centroid sits somewhere on the disk, and a partial phase moves it toward
-  the lit limb) plus the record's stated uncertainty. The seven assumption sentences: the field of view range and
+  the lit limb) plus the record's stated uncertainty plus the frame term (what the one rotation leaves out across the
+  sweep's frames, `frame_term_arcsec`). The seven assumption sentences: the field of view range and
   its swept values; no zoom (the owner's clip's spot measures about 3 times the Moon's predicted size, from bloom,
   motion blur or a zoom the file does not record [open]); a level head, and that a second level pose or none at a
   swept roll refuses; a rectilinear lens with no distortion; the spot taken to be the Moon, which a lamp or another

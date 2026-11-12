@@ -100,10 +100,12 @@ describe('skyLayerSentence: one plain line for each layer (REQ-SKY-6.1)', () => 
   });
 
   it('says a pointing without a pose estimate is rough and is not drawn over the photo', () => {
-    expect(skyLayerSentence(sample('horizon_approximate'), photo(), SEARCHED)).toBe(
+    // The horizon sample carries a pose estimate since sky-4 (REQ-SKY-4.4); without one, an approximate result is rough
+    const rough: ObservationSolution = { ...sample('horizon_approximate'), poseEstimate: undefined };
+    expect(skyLayerSentence(rough, photo(), SEARCHED)).toBe(
       'Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your photo.'
     );
-    expect(skyLayerSentence(sample('horizon_approximate'), photo({ mediaKind: 'video' }), NOT_SEARCHED)).toBe(
+    expect(skyLayerSentence(rough, photo({ mediaKind: 'video' }), NOT_SEARCHED)).toBe(
       'Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your clip.'
     );
   });

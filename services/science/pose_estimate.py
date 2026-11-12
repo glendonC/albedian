@@ -190,7 +190,8 @@ class MoonBlob:
 @dataclass(frozen=True)
 class Refusal:
     """Why no pose was found: `kind` is one of no_profile, mirrored, no_frames, moon_not_up, daytime, not_moon,
-    two_poses, ranges or fit, and `reason` says it in plain words, with no capture time, place or file name."""
+    two_poses, ranges or fit, or for the Moon plus horizon pose no_skyline, fov or size, and `reason` says it in plain
+    words, with no capture time, place or file name."""
 
     kind: str
     reason: str
@@ -216,7 +217,8 @@ class TopocentricMoon:
 @dataclass(frozen=True)
 class PoseResult:
     """A pose lined up from one frame's bright spot taken to be the Moon: the nominal WCS, the pose estimate with its
-    sweep, the spot, the Moon it was lined up to, the frame's time and moment, and the camera profile it assumed."""
+    sweep, the spot (in stored pixels), the Moon it was lined up to, the frame's time and moment, and either the
+    camera profile it assumed (head-worn) or the skyline it was lined up to (Moon plus horizon)."""
 
     wcs: WCSModel
     pose_estimate: PoseEstimate
@@ -224,15 +226,29 @@ class PoseResult:
     moon: TopocentricMoon
     frame_time_sec: float
     moment: str
-    profile: CameraProfile
+    profile: CameraProfile | None
+    skyline: Skyline | None = None
+
+
+@dataclass(frozen=True)
+class Skyline:
+    """The skyline the Moon plus horizon pose lines up to, in the upright frame: the row where the frame turns
+    brighter below, the half width of that rise (its measured uncertainty, in rows), and the rise in noise units."""
+
+    row: float
+    half_width_px: float
+    step_snr: float
 
 
 def _not_confirmed(detail: str) -> Refusal:
     return Refusal("not_moon", f"The frame's bright spots were not confirmed as the Moon: {detail}.")
 
 
-def find_moon_blob(luma: np.ndarray, *, min_diameter_px: float, max_diameter_px: float) -> MoonBlob | Refusal:
-    """The Moon test on one gray frame (0 to 255), by the contour at half a spot's peak height above the sky.
+def find_moon_blob(
+    luma: np.ndarray, *, min_diameter_px: float, max_diameter_px: float, bottom: str = "the edge of the frame"
+) -> MoonBlob | Refusal:
+    """The Moon test on one gray frame (0 to 255), by the contour at half a spot's peak height above the sky; when
+    the frame is the sky above a skyline, `bottom` names what its lower edge is ("the skyline").
 
     A spot is judged at a point: its peak is that pixel's own code, which must be at least MIN_PEAK_LUMA and at least
     MIN_PEAK_SNR times the noise above the sky (the frame's median, and 1.4826 times its median absolute deviation
@@ -281,10 +297,11 @@ def find_moon_blob(luma: np.ndarray, *, min_diameter_px: float, max_diameter_px:
             if (
                 rows.start <= BLOOM_DILATION_PX
                 or cols.start <= BLOOM_DILATION_PX
-                or rows.stop >= height_px - BLOOM_DILATION_PX
                 or cols.stop >= width_px - BLOOM_DILATION_PX
             ):
                 return "the brightest spot is cut by the edge of the frame"
+            if rows.stop >= height_px - BLOOM_DILATION_PX:
+                return f"the brightest spot is cut by {bottom}"
         if not diameter >= min_diameter_px:
             return (
                 f"the brightest spot is {diameter:.1f} px across at half its peak, under the {min_diameter_px:.1f} px "
@@ -764,3 +781,411 @@ def pose_from_frames(
     else:
         where = "in the frame searched" if searched == 1 else f"in the {searched} frames searched"
     return Refusal("not_moon", not_confirmed_reason(where))
+
+
+# --- The Moon plus horizon pose (spec REQ-SKY-4.1, 4.2, 4.4; design component 5) ---------------------------------
+# For an upload or a laptop clip whose camera has no head-worn profile, or whose head-worn pose found none: the frame's
+# bright spot above a skyline taken to be the Moon, the skyline taken to be level ground, the field of view fitted
+# from the two. The Moon test is sky-3's, on the sky above the skyline; the algebra takes the Moon's apparent altitude
+# and azimuth and runs through the same one frame rotation as the head-worn pose (`pose_frame`), and the beacon term is
+# built the same way, its frame term over the sweep's own frames.
+
+HORIZON_POSE_METHOD = "moon_horizon"
+# The skyline's true altitude, swept: level ground from the true horizon to 3 degrees above it [proposed in the
+# spec, REQ-SKY-4.2], the nominal at the middle
+SKYLINE_ALTS_DEG = (0.0, 1.5, 3.0)
+# Where the skyline is looked for, and how: each row's 85th percentile smoothed by a Gaussian of 12 rows, its
+# steepest rise between 0.38 and 0.72 of the upright frame's height (the horizon solver's own finder, kept)
+# [proposed: a skyline in the middle of the picture, the sky darker than the ground; sky-6 takes either sign]
+SKYLINE_BAND = (0.38, 0.72)
+SKYLINE_ROW_PERCENTILE = 85.0
+SKYLINE_SMOOTHING_ROWS = 12.0
+# The rise measured from two smoothing widths above the row to two below, against the sky's noise above it
+# [proposed: the Moon test's own 10 noise units, so a sky's own noise is never a skyline]
+SKYLINE_STEP_REACH = 2.0
+SKYLINE_MIN_STEP_SNR = 10.0
+# The sky's noise is taken as at least one code: a dark 8-bit sky can hold most of its pixels on one code, so its
+# median absolute deviation reads 0, and a rise of a fraction of a code would pass [proposed: a code is the finest step
+# an 8-bit frame records]
+SKYLINE_NOISE_FLOOR = 1.0
+# The field of view a spot and a skyline may fit to, across the diagonal [proposed: wider than every camera the phone
+# benchmark lists, 82 to 123 degrees (research/benchmarks/phone_photos/cameras.py), and down to about four times the
+# main camera's zoom; a fit outside it is taken as a wrong spot or a wrong skyline]
+HORIZON_FOV_DIAGONAL_RANGE_DEG = (20.0, 130.0)
+# The sky above the skyline is searched down to the skyline's row less its half width, so a spot touching that
+# edge is cut by the skyline; a band thinner than this many rows is no sky to search
+MIN_SKY_ROWS = 16
+
+NO_SKYLINE = (
+    _NOT_LINED_UP + f"no skyline was found (no row between {SKYLINE_BAND[0] * 100:.0f} and "
+    f"{SKYLINE_BAND[1] * 100:.0f} percent of the way down the picture below which it turns brighter by at least "
+    f"{SKYLINE_MIN_STEP_SNR:g} times the sky's noise), so the Moon cannot be lined up with a horizon."
+)
+HORIZON_REFUSALS = ("fit", "fov", "size")
+
+
+def horizon_fit_reason(x_px: float, y_px: float, where: str, row: float) -> str:
+    return (
+        _NOT_LINED_UP + f"the fit found no camera that puts the Moon on the bright spot at {_spot(x_px, y_px, where)} "
+        f"with the skyline at row {row:.0f} level within {MAX_FIT_RESIDUAL_PX:g} px."
+    )
+
+
+def horizon_start_reason(x_px: float, y_px: float, where: str, row: float) -> str:
+    return (
+        _NOT_LINED_UP + f"the bright spot at {_spot(x_px, y_px, where)} is not above the skyline at row {row:.0f}, or "
+        "the Moon is not above the skyline's altitude, so no fit could start."
+    )
+
+
+def horizon_upside_down_reason(x_px: float, y_px: float, where: str, row: float) -> str:
+    return (
+        _NOT_LINED_UP + f"the only camera the fit found for the bright spot at {_spot(x_px, y_px, where)} and the "
+        f"skyline at row {row:.0f} shows the sky upside down."
+    )
+
+
+def horizon_fov_reason(x_px: float, y_px: float, where: str, row: float, fov_deg: float) -> str:
+    low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
+    return (
+        _NOT_LINED_UP + f"with the bright spot at {_spot(x_px, y_px, where)} taken to be the Moon and the skyline at "
+        f"row {row:.0f} taken to be level ground, the field of view they give, {fov_deg:.0f} degrees across the "
+        f"diagonal, is outside the {low:g} to {high:g} degrees a camera is taken to have."
+    )
+
+
+def horizon_size_reason(x_px: float, y_px: float, where: str, diameter_px: float, ratio: float) -> str:
+    return (
+        _NOT_LINED_UP + f"the bright spot at {_spot(x_px, y_px, where)} measures {diameter_px:.1f} px across at half its "
+        f"peak, {ratio:.1f} times the Moon's predicted diameter at the field of view the skyline gives, outside "
+        f"{MIN_DIAMETER_FACTOR:g} to {MAX_DIAMETER_FACTOR:g} times."
+    )
+
+
+def not_confirmed_above_skyline_reason(where: str) -> str:
+    low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
+    return (
+        _NOT_LINED_UP + f"what was seen above the skyline {where} was not confirmed as the Moon (that needs a spot "
+        f"there whose peak is at {MIN_PEAK_LUMA:g} of 255 or more and at least {MIN_PEAK_SNR:g} times the noise above "
+        f"the sky, is whole inside the frame and clear of the skyline, measures at half its peak between "
+        f"{MIN_DIAMETER_FACTOR:g} times the Moon's predicted diameter at {high:g} degrees across the diagonal and "
+        f"{MAX_DIAMETER_FACTOR:g} times it at {low:g}, and is the only spot above the skyline that passes this test)."
+    )
+
+
+def to_upright(x: float, y: float, turns: int, width: int, height: int) -> tuple[float, float]:
+    """A stored pixel position (index coordinates) in the upright frame `np.rot90(stored, -turns)`: one clockwise
+    quarter turn takes (x, y) of a frame `height` rows high to ((height - 1) - y, x)."""
+    for _ in range(turns % 4):
+        x, y, width, height = (height - 1) - y, x, height, width
+    return x, y
+
+
+def to_stored(u: float, v: float, turns: int, up_width: int, up_height: int) -> tuple[float, float]:
+    """The inverse of `to_upright`, from the upright frame's own size."""
+    for _ in range(turns % 4):
+        u, v, up_width, up_height = v, (up_width - 1) - u, up_height, up_width
+    return u, v
+
+
+def fov_diagonal_deg(scale_deg_per_px_value: float, width: int, height: int) -> float:
+    """The diagonal field of view of a rectilinear frame at this scale: the inverse of `scale_deg_per_px`."""
+    return math.degrees(2.0 * math.atan(math.radians(scale_deg_per_px_value) * math.hypot(width, height) / 2.0))
+
+
+def find_skyline(upright: np.ndarray) -> Skyline | None:
+    """The skyline of an upright gray frame: the row between SKYLINE_BAND's fractions of its height where each row's
+    SKYLINE_ROW_PERCENTILE, smoothed by a Gaussian of SKYLINE_SMOOTHING_ROWS, rises most, placed to a fraction of a
+    row by a parabola through the rise at it and its two neighbours; its half width the rows about it where the rise
+    is at least half its peak, halved. None when no row in the band rises, or when the smoothed profile's rise from
+    SKYLINE_STEP_REACH smoothing widths above the row to as far below is under SKYLINE_MIN_STEP_SNR times the noise of
+    the sky above (1.4826 times its median absolute deviation about its median, as the Moon test measures it, but at
+    least SKYLINE_NOISE_FLOOR codes)."""
+    upright = np.asarray(upright, dtype=np.float64)
+    height = upright.shape[0]
+    lo, hi = int(height * SKYLINE_BAND[0]), int(height * SKYLINE_BAND[1])
+    if hi <= lo:
+        return None
+    profile = np.percentile(upright, SKYLINE_ROW_PERCENTILE, axis=1)
+    smooth = ndimage.gaussian_filter1d(profile, SKYLINE_SMOOTHING_ROWS)
+    rise = np.gradient(smooth)
+    row = lo + int(np.argmax(rise[lo:hi]))
+    peak = float(rise[row])
+    if not peak > 0.0:
+        return None
+    reach = int(round(SKYLINE_STEP_REACH * SKYLINE_SMOOTHING_ROWS))
+    above, below = max(0, row - reach), min(height - 1, row + reach)
+    sky = upright[: max(above, 1)]
+    background = float(np.median(sky))
+    noise = max(1.4826 * float(np.median(np.abs(sky - background))), SKYLINE_NOISE_FLOOR)
+    step_snr = float(smooth[below] - smooth[above]) / noise
+    if not step_snr >= SKYLINE_MIN_STEP_SNR:
+        return None
+    first, last = row, row
+    while first > 0 and rise[first - 1] >= peak / 2.0:
+        first -= 1
+    while last < height - 1 and rise[last + 1] >= peak / 2.0:
+        last += 1
+    offset = 0.0
+    if 0 < row < height - 1:
+        curve = float(rise[row - 1] - 2.0 * rise[row] + rise[row + 1])
+        if curve < 0.0:
+            offset = 0.5 * float(rise[row - 1] - rise[row + 1]) / curve
+    return Skyline(row=float(row) + offset, half_width_px=(last - first + 1) / 2.0, step_snr=step_snr)
+
+
+def fit_horizon_pose(
+    moon: TopocentricMoon,
+    blob: MoonBlob,
+    *,
+    width: int,
+    height: int,
+    skyline_alt_deg: float,
+    skyline_row: float,
+    turns: int,
+    moment: str,
+    lat: float,
+    lon: float,
+    where: str = "in the frame",
+) -> WCSModel | Refusal:
+    """The TAN WCS (parity -1, k1 = k2 = 0, crpix at the frame centre) that puts the topocentric Moon on the spot
+    (`blob`, stored pixels) and the skyline, taken at `skyline_alt_deg`, level on `skyline_row` of the upright frame.
+
+    Unknowns: crval's RA and Dec, the scale and the rotation. Residuals: the Moon's projection minus the spot (two),
+    and the upright rows of two points at the skyline's altitude, LEVEL_AZ_OFFSET_DEG either side of the centre's
+    azimuth, minus the skyline's row (two): four constraints for four unknowns, so a small residual says the fit
+    met them, not that it is right. The skyline's points and the start turn through `pose_frame`, as the head-worn
+    pose's level line does. Started from the scale the Moon's apparent altitude above the skyline gives over the rows
+    between them, polished by Levenberg-Marquardt, `_normalized`. Refused (kind fit) when a residual exceeds
+    MAX_FIT_RESIDUAL_PX or the sky is upside down; (fov) when its field of view lies outside
+    HORIZON_FOV_DIAGONAL_RANGE_DEG; (size) when the spot's diameter at half its peak is not MIN_DIAMETER_FACTOR to
+    MAX_DIAMETER_FACTOR times the Moon's predicted diameter at the fitted scale."""
+    lat, lon = require_place(lat, lon)
+    up_w, up_h = (height, width) if turns % 2 else (width, height)
+    ux, uy = to_upright(blob.x_px, blob.y_px, turns, width, height)
+    refused = Refusal("fit", horizon_fit_reason(blob.x_px, blob.y_px, where, skyline_row))
+    between = skyline_row - uy
+    # The spot is searched for above the skyline and the Moon is more than 5 degrees up, so this guards a caller only
+    if not between > 0.0 or not moon.alt_deg > skyline_alt_deg:
+        return Refusal("fit", horizon_start_reason(blob.x_px, blob.y_px, where, skyline_row))
+    scale0 = (moon.alt_deg - skyline_alt_deg) / between
+    centre_alt0 = skyline_alt_deg + (skyline_row - (up_h - 1) / 2.0) * scale0
+    centre_az0 = moon.az_deg - (ux - (up_w - 1) / 2.0) * scale0 / max(0.25, math.cos(math.radians(moon.alt_deg)))
+    crpix_x, crpix_y = width / 2.0, height / 2.0
+    frame = pose_frame(moon, lat, lon, moment)
+
+    def wcs_for(params: np.ndarray) -> WCSModel:
+        return WCSModel(
+            crval_ra_deg=float(params[0]),
+            crval_dec_deg=float(params[1]),
+            crpix_x=crpix_x,
+            crpix_y=crpix_y,
+            scale_deg_per_px=float(params[2]),
+            rotation_deg=float(params[3]),
+            k1=0.0,
+            k2=0.0,
+            parity=-1,
+            width=width,
+            height=height,
+        )
+
+    def skyline_points(wcs: WCSModel) -> tuple[tuple[float, float], tuple[float, float]]:
+        """The upright positions of the skyline's two points, left then right of the centre's azimuth."""
+        _, az = icrs_to_frame_altaz(frame, wcs.crval_ra_deg, wcs.crval_dec_deg)
+        points = []
+        for side in (-LEVEL_AZ_OFFSET_DEG, LEVEL_AZ_OFFSET_DEG):
+            px, py = wcs.world_to_pixel(*frame_altaz_to_icrs(frame, skyline_alt_deg, az + side))
+            points.append(to_upright(px, py, turns, width, height))
+        return points[0], points[1]
+
+    def residuals_of(wcs: WCSModel) -> np.ndarray:
+        mx, my = wcs.world_to_pixel(moon.ra_deg, moon.dec_deg)
+        (_, left_v), (_, right_v) = skyline_points(wcs)
+        return np.array([mx - blob.x_px, my - blob.y_px, left_v - skyline_row, right_v - skyline_row], dtype=np.float64)
+
+    def residuals(params: np.ndarray) -> np.ndarray:
+        if not np.all(np.isfinite(params)) or not params[2] > 0.0:
+            return np.full(4, 1e4, dtype=np.float64)
+        res = residuals_of(wcs_for(params))
+        return res if np.all(np.isfinite(res)) else np.full(4, 1e4, dtype=np.float64)
+
+    start_ra, start_dec = frame_altaz_to_icrs(frame, centre_alt0, centre_az0)
+    (lu, lv), (ru, rv) = skyline_points(wcs_for(np.array([start_ra, start_dec, scale0, 0.0])))
+    start = np.array([start_ra, start_dec, scale0, math.degrees(math.atan2(rv - lv, ru - lu))])
+    fit = optimize.least_squares(residuals, start, method="lm", xtol=1e-12, ftol=1e-12, gtol=1e-12, max_nfev=400)
+    if not np.all(np.isfinite(fit.x)) or not fit.x[2] > 0.0:
+        return refused
+    wcs = _normalized(wcs_for(fit.x))
+    (lu, _), (ru, _) = skyline_points(wcs)
+    if not _fit_accepted(residuals_of(wcs)):
+        return refused
+    if not ru - lu > 0.0:
+        return Refusal("fit", horizon_upside_down_reason(blob.x_px, blob.y_px, where, skyline_row))
+    fov = fov_diagonal_deg(wcs.scale_deg_per_px, width, height)
+    low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
+    if not low <= fov <= high:
+        return Refusal("fov", horizon_fov_reason(blob.x_px, blob.y_px, where, skyline_row, fov))
+    ratio = blob.equivalent_diameter_px / (2.0 * moon.radius_deg / wcs.scale_deg_per_px)
+    if not MIN_DIAMETER_FACTOR <= ratio <= MAX_DIAMETER_FACTOR:
+        return Refusal("size", horizon_size_reason(blob.x_px, blob.y_px, where, blob.equivalent_diameter_px, ratio))
+    return wcs
+
+
+def _horizon_assumptions(moon: TopocentricMoon, skyline: Skyline, term_arcsec: float) -> tuple[str, ...]:
+    low, high = HORIZON_FOV_DIAGONAL_RANGE_DEG
+    bottom, middle, top = SKYLINE_ALTS_DEG
+    return (
+        "The bright spot is taken to be the Moon: nothing in one frame proves it, and a lamp or another light of "
+        "similar size above the skyline, as bright and the only spot there that passes the Moon test, would be taken "
+        "the same way.",
+        f"The skyline at row {skyline.row:.0f} of the upright frame is taken to be level ground {bottom:g} to {top:g} "
+        f"degrees above the true horizon (hills, buildings and refraction lift it); the sweep takes {bottom:g}, "
+        f"{middle:g} and {top:g} degrees. A sea horizon seen from a height lies below the true horizon by its dip, "
+        "which the sweep does not cover.",
+        f"The skyline's row is measured to within {skyline.half_width_px:.0f} px, the half width of the rise in "
+        f"brightness there; the sweep takes the row and {skyline.half_width_px:.0f} px either side.",
+        "The skyline is level in the upright frame, so the camera's roll is taken to be 0: a sloping skyline tilts "
+        "the pose.",
+        "The lens is rectilinear (gnomonic), with no distortion, and centred on the frame; its field of view is "
+        f"fitted from the spot and the skyline, and a fit outside {low:g} to {high:g} degrees across the diagonal is "
+        "refused.",
+        "The spot's light centroid is taken to lie on the Moon's disk, and the Moon where its ephemeris puts it: the "
+        f"beacon term, the Moon's predicted radius of {moon.radius_deg:.2f} degrees plus the ephemeris's stated "
+        f"uncertainty of {moon.uncertainty_deg * 3600.0:,.0f} arcsec plus {term_arcsec:,.0f} arcsec for drawing every "
+        "position through one rotation, is taken to cover overexposure, a partial phase, the ephemeris's own error, "
+        "and the aberration and light deflection that differ across the frame from the Moon's, which one rotation "
+        "cannot follow.",
+        "The Moon is placed where it is seen from the place (topocentric): the ephemeris record as it is, its parallax "
+        "already applied there; refraction is left out for the Moon, the skyline and the stars alike, and near the "
+        "horizon it lifts what is seen by about half a degree, which is taken to fall inside the skyline's swept "
+        "altitudes.",
+    )
+
+
+def horizon_moon_pose(
+    luma: np.ndarray,
+    *,
+    frame_time_sec: float,
+    moment: str,
+    lat: float,
+    lon: float,
+    orientation: Mapping[str, Any] | None,
+    where: str = "in the frame",
+) -> PoseResult | Refusal:
+    """The Moon plus horizon pose from one stored frame recorded at `moment`: a frame not mirrored, the Moon up and
+    the Sun down at that moment, a skyline in the upright frame (`find_skyline`), sky-3's Moon test on the sky above
+    it (down to its row less its half width, that edge named the skyline), then nine fits (`fit_horizon_pose`): the
+    skyline at each of SKYLINE_ALTS_DEG on its row less, at and plus its half width. Any refused fit refuses the pose.
+    The nominal WCS is the middle altitude on the row found; the pose estimate keeps all nine, the largest angle
+    between the nominal centre and a swept one, and the beacon term of the head-worn pose."""
+    lat, lon = require_place(lat, lon)
+    turns, mirrored = _orientation(orientation)
+    if mirrored:
+        return Refusal("mirrored", MIRRORED)
+    moon = topocentric_moon(moment, lat, lon)
+    if not _up(moon):
+        return Refusal("moon_not_up", MOON_NOT_UP, frame_time_sec=frame_time_sec)
+    if sun_is_up(moment, lat, lon):
+        return Refusal("daytime", DAYTIME, frame_time_sec=frame_time_sec)
+    luma = np.asarray(luma, dtype=np.float64)
+    height, width = luma.shape
+    upright = np.rot90(luma, -turns)
+    up_h, up_w = upright.shape
+    skyline = find_skyline(upright)
+    if skyline is None:
+        return Refusal("no_skyline", NO_SKYLINE, frame_time_sec=frame_time_sec)
+    top = int(math.floor(skyline.row - skyline.half_width_px))
+    if top < MIN_SKY_ROWS:
+        return Refusal("not_moon", not_confirmed_above_skyline_reason(where), frame_time_sec=frame_time_sec)
+    min_d, max_d = moon_diameter_limits_px(moon, HORIZON_FOV_DIAGONAL_RANGE_DEG, up_w, up_h)
+    found = find_moon_blob(upright[:top], min_diameter_px=min_d, max_diameter_px=max_d, bottom="the skyline")
+    if isinstance(found, Refusal):
+        return replace(found, frame_time_sec=frame_time_sec)
+    x_px, y_px = to_stored(found.x_px, found.y_px, turns, up_w, up_h)
+    blob = replace(found, x_px=x_px, y_px=y_px)
+    rows = (skyline.row - skyline.half_width_px, skyline.row, skyline.row + skyline.half_width_px)
+    swept: list[WCSModel] = []
+    nominal: WCSModel | None = None
+    for skyline_alt in SKYLINE_ALTS_DEG:
+        for row in rows:
+            wcs = fit_horizon_pose(
+                moon, blob, width=width, height=height, skyline_alt_deg=skyline_alt, skyline_row=row, turns=turns,
+                moment=moment, lat=lat, lon=lon, where=where,
+            )
+            if isinstance(wcs, Refusal):
+                return replace(wcs, blob=blob, frame_time_sec=frame_time_sec)
+            swept.append(wcs)
+            if skyline_alt == SKYLINE_ALTS_DEG[1] and row == skyline.row:
+                nominal = wcs
+    assert nominal is not None
+    # Where the camera's centre is seen: its pointing in the apparent horizon, which the frame rotation gives for
+    # the nominal crval, as the head-worn pose states it
+    frame = pose_frame(moon, lat, lon, moment)
+    centre_alt, centre_az = icrs_to_frame_altaz(frame, nominal.crval_ra_deg, nominal.crval_dec_deg)
+    term_arcsec = frame_term_arcsec(
+        moon, swept, [fov_diagonal_deg(w.scale_deg_per_px, width, height) for w in swept], lat, lon, moment
+    )
+    estimate = PoseEstimate(
+        method=HORIZON_POSE_METHOD,
+        beacon="moon",
+        center_alt_deg=centre_alt,
+        center_az_deg=centre_az,
+        roll_deg=0.0,
+        fov_diagonal_deg=fov_diagonal_deg(nominal.scale_deg_per_px, width, height),
+        fov_source=(
+            "Fitted, not assumed: from the angle between the bright spot taken to be the Moon and the skyline taken "
+            "to be level ground, over the rows between them in the frame, for a rectilinear lens."
+        ),
+        assumptions=_horizon_assumptions(moon, skyline, term_arcsec),
+        swept_wcs=tuple(swept),
+        max_center_offset_deg=max(
+            angular_separation_deg(nominal.crval_ra_deg, nominal.crval_dec_deg, w.crval_ra_deg, w.crval_dec_deg)
+            for w in swept
+        ),
+        beacon_centroid_uncertainty_deg=moon.radius_deg + moon.uncertainty_deg + term_arcsec / 3600.0,
+    )
+    return PoseResult(nominal, estimate, blob, moon, frame_time_sec, moment, None, skyline)
+
+
+def horizon_pose_from_frames(
+    frames: Sequence[tuple[float, str, np.ndarray]],
+    *,
+    lat: float,
+    lon: float,
+    orientation: Mapping[str, Any] | None,
+    is_clip: bool = True,
+) -> PoseResult | Refusal:
+    """The first frame, in time order, that gives a Moon plus horizon pose; each frame (its time, its moment, its
+    gray pixels) is judged and used alone, never stacked. With none, the refusal that says most: a spot above a
+    skyline that gave no pose (the fit, its field of view or its size refused), else not confirmed as the Moon
+    (counting the frames searched), else no skyline, else the Moon not up in every frame, else by day."""
+    lat, lon = require_place(lat, lon)
+    if is_mirrored(orientation):
+        return Refusal("mirrored", MIRRORED)
+    ordered = sorted(frames, key=lambda frame: frame[0])
+    if not ordered:
+        return Refusal("no_frames", NO_FRAMES)
+    refusals: list[Refusal] = []
+    for frame_time_sec, moment, luma in ordered:
+        result = horizon_moon_pose(
+            luma, frame_time_sec=frame_time_sec, moment=moment, lat=lat, lon=lon, orientation=orientation,
+            where=_where(frame_time_sec, is_clip),
+        )
+        if isinstance(result, PoseResult):
+            return result
+        refusals.append(result)
+    posed = next((r for r in refusals if r.kind in HORIZON_REFUSALS and r.blob is not None), None)
+    if posed is not None:
+        return posed
+    searched = sum(1 for r in refusals if r.kind == "not_moon")
+    if searched:
+        if not is_clip:
+            where = "in the photo"
+        else:
+            where = "in the frame searched" if searched == 1 else f"in the {searched} frames searched"
+        return Refusal("not_moon", not_confirmed_above_skyline_reason(where))
+    if any(r.kind == "no_skyline" for r in refusals):
+        return Refusal("no_skyline", NO_SKYLINE)
+    if all(r.kind == "moon_not_up" for r in refusals):
+        return Refusal("moon_not_up", MOON_NOT_UP)
+    return Refusal("daytime", DAYTIME)

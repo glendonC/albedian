@@ -1,6 +1,6 @@
 # The predicted sky for an upload (layers 1 and 2)
 
-Spec: `.kiro/specs/predicted-sky-for-every-upload/` (REQ-SKY-1, REQ-SKY-2, REQ-SKY-3). Code:
+Spec: `.kiro/specs/predicted-sky-for-every-upload/` (REQ-SKY-1 to REQ-SKY-4). Code:
 `services/science/predicted_sky.py`, `services/science/pose_estimate.py` and `services/science/camera_profiles.py`,
 called by the solve job in `services/ingest/jobs.py`.
 
@@ -15,8 +15,9 @@ It works by day too; then it says the stars were up but outshone by daylight. [t
 
 This is the first of three layers. The second lines the predicted sky up over the picture from the Moon or the Sun
 when the camera's pointing can be worked out; the third is an exact match of the recorded stars (`catalog_matched`)
-when enough stars are recorded and the held-out check passes. Layer 2 exists so far only for head-worn cameras
-(below); without it no predicted object is placed on the picture, since nothing says where the camera pointed.
+when enough stars are recorded and the held-out check passes. Layer 2 has two Moon paths (below): a head-worn camera's
+profile with a level head, and a bright spot above a skyline taken to be level ground (daytime Sun poses are open,
+sky-6); without a pose no predicted object is placed on the picture, since nothing says where the camera pointed.
 [tested]
 
 ## What a solve job does with it
@@ -27,8 +28,8 @@ It adds no progress stage: the stages stay `store`, `decode`, `detect`, `solve` 
 | The solvers' result | What the person gets |
 |---|---|
 | `calibrated` (the stars matched and passed the held-out check) | The same solution, with the predicted objects that were not already matched to a recorded star added |
-| `unresolved` or `ambiguous`, and a head-worn camera with a bright spot taken to be the Moon in one frame (layer 2, below) | `approximate`: the predicted objects lined up over that frame, with the uncertainty of the lining up |
-| `unresolved` or `ambiguous` (too few stars, or no match that passed), with no pose | `predicted_only`: the predicted objects, the points the detector found kept as pixel positions (`observed`, with no sky position), the solvers' counts, warnings and name kept, and one sentence saying why the sky was not lined up |
+| `unresolved` or `ambiguous`, and a bright spot taken to be the Moon in one frame (a head-worn camera, or above a skyline: layer 2, below) | `approximate`: the predicted objects lined up over that frame, with the uncertainty of the lining up |
+| `unresolved` or `ambiguous` (too few stars, or no match that passed), with no pose | `predicted_only`: the predicted objects, the points the detector found kept as pixel positions (`observed`, with no sky position), the solvers' counts, warnings and name kept, and a warning saying why each pose tried did not line the sky up |
 | No recorded time, no recorded place, or a moment outside 1800 to 2050 | The solvers' result unchanged, with one sentence saying which is missing |
 
 If computing this layer fails, the job keeps the solvers' result and adds the warning "The predicted sky could not be
@@ -319,7 +320,7 @@ counts only].
   so one pose at the widest swept field of view means one at every narrower field of view in the range at that roll
   [tested, a property under 20 seeds]. Between the three swept rolls the count did not change in 200,000 random draws
   of the Moon's altitude, the spot's place and the display turn (a lane search on 2026-11-11, at steps of 0.01
-  degree), which is evidence, not a proof [tested, not proven].
+  degree), which is evidence, not a proof; the design derives the one-pose test from the closed form [inference].
 - Each of the nine is then a TAN WCS whose centre and rotation are polished by least squares from the closed form's
   pose, so the Moon lands on the spot and the horizon has that roll. A fit that cannot reproduce these within half a
   pixel, that shows the sky upside down, or whose centre leaves the closed form's pose by more than 0.001 degree
@@ -411,3 +412,79 @@ counts only].
   that passes the Moon test, is taken to be the Moon, and the sentences say so. [open]
 - Lens distortion is not modelled, and head motion between frames is not tracked: the pose holds for its one frame.
   [open]
+
+## Layer 2 from the Moon and a skyline: uploads and laptop clips
+
+Spec REQ-SKY-4.1, 4.2, 4.4; code `services/science/pose_estimate.py` (`horizon_moon_pose`, `find_skyline`),
+`services/science/predicted_sky.py` (`complete_sky`, `horizon_pose_solution`) and
+`services/science/horizon_solver.py`, the entry point that discovery and the science router call.
+
+### When it is tried
+
+- For an upload whose solve is not calibrated, with a recorded time and place in range, after the head-worn pose:
+  when the camera has no head-worn profile, or when the head-worn search read frames and found no pose (not
+  confirmed as the Moon, two level poses, the ranges not all fitted, a fit refused). By day, with the Moon not up or
+  on a mirrored frame neither pose is tried, checked at the solution's moment before any frame is read. Both poses
+  search the same frames, read once: a photo's own frame, or a clip's spread frames at their own times. [tested]
+- For a clip found on the laptop, discovery's one representative frame. It is decoded to [0, 1], so discovery states
+  its white as 1.0 and the frame is read on the 8-bit scale the Moon test counts, never guessed from its values.
+  [tested]
+
+### The skyline
+
+- In the upright frame (the display turns applied): each row's 85th percentile, smoothed by a Gaussian of 12 rows;
+  the skyline is the row between 38 and 72 percent of the way down where that rises most (the old horizon solver's
+  finder, kept), placed to a fraction of a row by a parabola. Its uncertainty is the half width of the rise at half
+  its peak, about 14 rows from the smoothing alone. [tested; the band and the smoothing are proposed]
+- It counts only when the rise from 24 rows above to 24 below is at least 10 times the noise of the sky above it,
+  that noise taken as at least one code, since a dark 8-bit sky can hold most of its pixels on one code and read a
+  median absolute deviation of 0. [tested; the 10 and the one code are proposed]
+- The sky must be darker than the ground: a skyline against a brighter sky is not found (sky-6 takes either sign).
+  [open]
+
+### The Moon test, the fit and the sweep
+
+- sky-3's Moon test, on the sky above the skyline down to its row less its half width: a light on the ground below
+  it is no candidate and no rival, and a spot reaching that edge is refused as cut by the skyline. [tested]
+- Four constraints for four unknowns (the centre's RA and Dec, the scale and the rotation): the topocentric Moon on
+  the spot, and two points at the skyline's altitude 10 degrees either side of the centre's azimuth on the skyline's
+  row, so the skyline is level and the roll 0. The field of view is fitted, not assumed; four constraints met by four
+  unknowns say nothing of accuracy, so no residual is reported. The fit starts from the Moon's apparent altitude and
+  azimuth, and the skyline's points, the start and the WCS run through the head-worn pose's one frame rotation, the
+  rigid frame rotation anchored on the Moon (SKY_TRANSFORMS.md); the centre it states is where the camera's centre is
+  seen. [tested]
+- A fit is refused when a residual exceeds 0.5 px or the sky is upside down; when its field of view lies outside 20
+  to 130 degrees across the diagonal [proposed: wider than every camera the phone benchmark lists, 82 to 123 degrees,
+  and down to about four times the main camera's zoom]; or when the spot at half its peak is not 0.8 to 8 times the
+  Moon's predicted diameter at the fitted scale (the Moon test's own factors). [tested]
+- The sweep: the skyline at 0, 1.5 and 3 degrees above the true horizon [proposed in the spec] on its row less, at
+  and plus its half width, nine fits; any refused fit refuses the pose. The nominal is 1.5 degrees on the row found.
+  The beacon term is built as the head-worn pose's: the Moon's radius, plus the record's stated uncertainty, plus the
+  frame term over the sweep's own frames, at most what the one rotation leaves out across them. [tested]
+
+### What the result holds
+
+As the head-worn pose's, with method `moon_horizon`, roll 0, the fitted field of view, seven assumptions in words
+and nine swept WCS; solver AlbedianHorizonMoonPose 2.0.0; the spot titled "Bright Spot (Taken To Be The Moon)" with no
+sky position; nothing matched or held out. The warning reads "Lined up by taking the bright spot at (x, y) px ... to be
+the Moon and the skyline at row R of the upright picture, within N px, to be level ground 0 to 3 degrees above the
+true horizon, with the field of view fitted from them (F degrees across the diagonal): within about N degrees near
+the bright spot, more toward the edges; not checked against stars." With no pose: predicted_only, the reason, and the
+sentence for where the Sun was. [tested]
+
+### What the bound covers
+
+- Synthetic truths (the Moon about 8 to 60 degrees up from places in both hemispheres, a level camera of 40 to 100
+  degrees across the diagonal, the skyline 0 to 3 degrees above the true horizon at 0.45 to 0.68 of the height, the
+  Moon anywhere above it, any display turn): whenever the answer is approximate, the Moon lands on the spot within
+  0.5 px under every swept WCS, every predicted object truly in the frame lies inside its ring, and the true centre
+  lies within maxCenterOffsetDeg plus the beacon term. [tested, a property under 20 seeds]
+
+### Limits it has
+
+- A skyline that slopes, a ridge more than 3 degrees up, or a sea horizon seen from a height (below the true horizon
+  by its dip) lies outside the sweep, and the rings do not cover it. [open]
+- Lens distortion is not modelled; a wide camera's distortion moves objects off their rings toward the edges. [open]
+- The property's truth is the apparent sky (the camera level in the true horizon, each object at its apparent
+  place), so what the one rotation leaves out is inside what it checks, through the frame term. [tested]
+- The science router's `image_luma` states no scale; the horizon pose reads it as 8-bit codes. [open]
