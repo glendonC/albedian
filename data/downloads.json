@@ -770,6 +770,86 @@
       "licence": "CC BY 2.0",
       "licenceUrl": "https://creativecommons.org/licenses/by/2.0",
       "source": "Photograph by Koshy Koshy from Faridabad, Haryana, India. Wikimedia Commons file page https://commons.wikimedia.org/wiki/File:Flight_Landing_(5650317313).jpg, retrieved 2026-11-11."
+    },
+    {
+      "path": ".cache/unicode/ucd/15.0.0/UnicodeData.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/UnicodeData.txt",
+      "bytes": 1913704,
+      "sha256": "806e9aed65037197f1ec85e12be6e8cd870fc5608b4de0fffd990f689f376a73",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 15.0.0, UnicodeData.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/15.0.0/DerivedCoreProperties.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/15.0.0/ucd/DerivedCoreProperties.txt",
+      "bytes": 1053943,
+      "sha256": "d367290bc0867e6b484c68370530bdd1a08b6b32404601b8c7accaf83e05628d",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 15.0.0, DerivedCoreProperties.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/15.1.0/UnicodeData.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/15.1.0/ucd/UnicodeData.txt",
+      "bytes": 1914200,
+      "sha256": "2fc713e6a31a87c4850a37fe2caffa4218180fadb5de86b43a143ddb4581fb86",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 15.1.0, UnicodeData.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/15.1.0/DerivedCoreProperties.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/15.1.0/ucd/DerivedCoreProperties.txt",
+      "bytes": 1072686,
+      "sha256": "f55d0db69123431a7317868725b1fcbf1eab6b265d756d1bd7f0f6d9f9ee108b",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 15.1.0, DerivedCoreProperties.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/16.0.0/UnicodeData.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/16.0.0/ucd/UnicodeData.txt",
+      "bytes": 2175362,
+      "sha256": "ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 16.0.0, UnicodeData.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/16.0.0/DerivedCoreProperties.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/16.0.0/ucd/DerivedCoreProperties.txt",
+      "bytes": 1115959,
+      "sha256": "39d35161f2954497f69e08bdb9e701493f476a3d30222de20028feda36c1dabd",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 16.0.0, DerivedCoreProperties.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/17.0.0/UnicodeData.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt",
+      "bytes": 2198209,
+      "sha256": "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 17.0.0, UnicodeData.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/unicode/ucd/17.0.0/DerivedCoreProperties.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/DerivedCoreProperties.txt",
+      "bytes": 1134783,
+      "sha256": "24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08",
+      "licence": "LicenseRef-Unicode-3.0",
+      "licenceUrl": "https://www.unicode.org/license.txt",
+      "source": "The Unicode Character Database, version 17.0.0, DerivedCoreProperties.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
     }
   ]
 }

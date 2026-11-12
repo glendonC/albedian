@@ -5,16 +5,18 @@ Covers:
   Default_Ignorable_Code_Point, one code point or a span, is taken out; a comment, a blank line or a third field is
   read as nothing more; the ranges are maximal
 - A file whose SHA-256 is not the pinned one stops the script
-- With the Unicode files at ALBEDIAN_UCD_DIR (<dir>/<version>/UnicodeData.txt and DerivedCoreProperties.txt, from
-  https://www.unicode.org/Public/), the script writes the tracked table, its copy, the notice and the record byte
-  for byte; skipped without them, since the repository holds no Unicode data files
+- data/downloads.json lists each Unicode file the script pins, at .cache/unicode/ucd/<version>/<name>, with the
+  script's own SHA-256, its https://www.unicode.org/Public/ URL and the Unicode License v3
+- With those files in the shared .cache (`uv run python scripts/fetch_download.py <path>`), the script writes the
+  tracked table, its copy, the notice and the record byte for byte; where one is absent the local_dataset marker
+  skips the test with its reason, since the repository holds no Unicode data files
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
-import os
+import json
 from pathlib import Path
 from types import ModuleType
 
@@ -22,7 +24,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "generate_letters_and_digits.py"
-UCD_ENV = "ALBEDIAN_UCD_DIR"
+UCD_CACHE = ".cache/unicode/ucd"
 
 
 def _script() -> ModuleType:
@@ -92,12 +94,27 @@ def test_a_file_that_is_not_the_pinned_one_stops_the_script(tmp_path: Path) -> N
     assert "is not the pinned" in str(stopped.value)
 
 
-@pytest.mark.skipif(not os.environ.get(UCD_ENV), reason=f"{UCD_ENV} names no folder of Unicode data files")
+UCD_FILES = sorted(f"{UCD_CACHE}/{version}/{name}" for version, name in _script().INPUT_SHA256)
+
+
+def test_the_registry_lists_every_unicode_file_the_script_pins() -> None:
+    by_path = {entry["path"]: entry for entry in json.loads((ROOT / "data" / "downloads.json").read_text())["downloads"]}
+    listed = {path for path in by_path if path.startswith(f"{UCD_CACHE}/")}
+    assert listed == set(UCD_FILES)
+    for (version, name), sha256 in _script().INPUT_SHA256.items():
+        entry = by_path[f"{UCD_CACHE}/{version}/{name}"]
+        assert entry["sha256"] == sha256, (version, name)
+        assert entry["url"] == f"https://www.unicode.org/Public/{version}/ucd/{name}", (version, name)
+        assert entry["fetch"] == "scripts/fetch_download.py", (version, name)
+        assert (entry["licence"], entry["licenceUrl"]) == ("LicenseRef-Unicode-3.0", "https://www.unicode.org/license.txt")
+
+
+@pytest.mark.local_dataset(*UCD_FILES)
 def test_the_script_writes_the_tracked_files_byte_for_byte(tmp_path: Path) -> None:
     script = _script()
     script.OUT = tmp_path / "data"
     script.SHIPPED = tmp_path / "shipped"
-    assert script.main([os.environ[UCD_ENV]]) == 0
+    assert script.main([str(ROOT / UCD_CACHE)]) == 0
     tracked = {
         script.OUT / "letters-and-digits.json": ROOT / "packages/contracts/src/data/letters-and-digits.json",
         script.SHIPPED / "letters-and-digits.json": ROOT / "apps/web/public/notices/unicode/letters-and-digits.json",

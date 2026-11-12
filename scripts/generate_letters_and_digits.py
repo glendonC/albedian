@@ -12,7 +12,9 @@ differently, and the tests would see it. The table also lists where 15.0.0, 16.0
 the tests check every such code point on both sides.
 
 Inputs: UnicodeData.txt and DerivedCoreProperties.txt of each version, from https://www.unicode.org/Public/, each
-pinned below by its SHA-256. Run, with the files in <ucd>/<version>/:
+pinned below by its SHA-256. data/downloads.json lists each at .cache/unicode/ucd/<version>/<name> with the same
+SHA-256, so `uv run python scripts/fetch_download.py <path>` fetches it into the shared cache. Run, with the files
+in <ucd>/<version>/ (for example .cache/unicode/ucd):
 
     uv run python scripts/generate_letters_and_digits.py <ucd>
 
