@@ -850,6 +850,26 @@
       "licence": "LicenseRef-Unicode-3.0",
       "licenceUrl": "https://www.unicode.org/license.txt",
       "source": "The Unicode Character Database, version 17.0.0, DerivedCoreProperties.txt (Unicode, Inc.); read by scripts/generate_letters_and_digits.py, which pins the same SHA-256"
+    },
+    {
+      "path": ".cache/star-designations/hygdata_v41.csv",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/astronexus/HYG-Database/c7f7f883fe678cc7680169a50ccd7dcc49b060ce/hyg/CURRENT/hygdata_v41.csv",
+      "bytes": 33932548,
+      "sha256": "d9f69fd86bbf90a4e4d52b4c5c53eacfa6dfc0bfdef85bfd94f095e0bebe4ebd",
+      "licence": "CC-BY-SA-4.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source": "HYG Database v4.1, astronexus (github.com/astronexus/HYG-Database at commit c7f7f883, archived; HYG now lives at codeberg.org/astronexus/hyg), fetched 2026-11-12T14:51:33Z. Its Bayer letters and Flamsteed numbers come primarily from the Yale Bright Star Catalogue, fifth edition, with Flamsteed numbers added from Wagman (1987). Baked by scripts/bake_star_designations.py."
+    },
+    {
+      "path": ".cache/star-designations/Hipparcos2BestNeighbour.csv.gz",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://cdn.gea.esac.esa.int/Gaia/gedr3/cross_match/hipparcos2_best_neighbour/Hipparcos2BestNeighbour.csv.gz",
+      "bytes": 1816420,
+      "sha256": "23a74b073ad78c6294d8248fc04be95be2cf7ac646162493eb7322c698eb3a9c",
+      "licence": "CC-BY-NC-3.0-IGO",
+      "licenceUrl": "https://www.cosmos.esa.int/web/gaia-users/license",
+      "source": "ESA Gaia bulk repository: the Gaia EDR3 to Hipparcos-2 best-neighbour table (Marrese et al.), 99,525 rows, fetched 2026-11-12T14:56:41Z; its MD5 equals the folder's _MD5SUM.txt. ESA's DR3 bulk readme says the EDR3 cross-matches are valid for DR3. Gaia data are distributed under CC BY-NC 3.0 IGO, credit ESA/Gaia/DPAC; commercial use needs ESA's prior authorisation. Baked by scripts/bake_star_designations.py."
     }
   ]
 }

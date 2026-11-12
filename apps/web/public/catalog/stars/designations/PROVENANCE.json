@@ -1,0 +1,38 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "hyg-v41",
+      "title": "HYG Database v4.1 (Hipparcos, Yale Bright Star and Gliese catalogs combined)",
+      "url": "https://raw.githubusercontent.com/astronexus/HYG-Database/c7f7f883fe678cc7680169a50ccd7dcc49b060ce/hyg/CURRENT/hygdata_v41.csv",
+      "version": "v4.1",
+      "retrieved": "2026-11-12",
+      "license": {
+        "spdx": "CC-BY-SA-4.0",
+        "name": "Creative Commons Attribution-ShareAlike 4.0 International",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "conditions": "The repository's LICENSE (read on GitHub and on Codeberg on 2026-11-12) puts HYG v4.0 and later under this licence: credit the work and share an adaptation under the same licence."
+      },
+      "credit": "HYG Database, astronexus",
+      "sha256": "d9f69fd86bbf90a4e4d52b4c5c53eacfa6dfc0bfdef85bfd94f095e0bebe4ebd",
+      "note": "The file hyg/CURRENT/hygdata_v41.csv of github.com/astronexus/HYG-Database at the commit the url names, 33,932,548 bytes, fetched at 2026-11-12T14:51:33Z. That repository is archived; HYG now lives at codeberg.org/astronexus/hyg, whose current version is v4.4. Read: id, hip, hd, hr, mag and the designation fields bayer, flam and con, with bf as a check; the README says they come primarily from the Yale Bright Star Catalogue, fifth edition, with Flamsteed numbers added from Wagman (1987)."
+    }
+  ],
+  "files": [
+    {
+      "path": "designations.json",
+      "sha256": "c96e6ee68518631e5284c18ed130bb3fb8a124099f4be9abda769fd36c3ad13b",
+      "sources": [
+        "hyg-v41"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/bake_star_designations.py",
+        "command": "uv run python scripts/bake_star_designations.py"
+      },
+      "note": "The Bayer letters and Flamsteed numbers of 3,303 HYG v4.1 rows, keyed by HIP number, in HIP order, evidenceKind 'catalog-derived', every value as HYG wrote it (hip, flam, bayer, con, hd, hr, id); nothing else is in this file. Of 3,321 designated HYG rows, set aside: 17 without a HIP number and 1 whose bf disagrees with its own fields. Which tile row each HIP number names is in ../designation-links/links.json, ESA data under its own record. Offered under CC BY-SA 4.0 with HYG's attribution (HYG Database, astronexus, codeberg.org/astronexus/hyg), as it is adapted from HYG."
+    }
+  ],
+  "fileSets": []
+}
