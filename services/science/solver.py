@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import itertools
 import math
+import operator
 import sys
 from typing import Callable, Sequence
 
@@ -44,6 +45,7 @@ from services.science.phone_photo_solver import (
 )
 from services.science.wcs_models import (
     CelestialFindingRecord,
+    ContractRefusal,
     ObservationSolution,
     SolutionQuality,
     SolverIdentity,
@@ -52,6 +54,52 @@ from services.science.wcs_models import (
     WCSModel,
     require_source_sha256,
 )
+
+
+class SolveInputRefusal(ContractRefusal):
+    """A frame size or a detection a solution cannot be built from, refused before any solving: the client's to
+    mend, so a route answers it as the contract's refusal (422). Its sentence names the field and the rule and never
+    the value. Any other `ContractRefusal` raised while solving is a record the solver itself built, its own fault."""
+
+
+# A frame's size is a whole number of pixels no larger than the largest integer every side carries exactly
+_LARGEST_FRAME_PX = 2**53 - 1
+
+
+def require_solvable_detections(detections: Sequence[SourceDetection], width: int, height: int) -> None:
+    """Refuse, with `SolveInputRefusal`, a frame or a detection that no solution can carry, before any solving.
+
+    The detection record already holds each value to the contract (finite; a position and a width not below 0; a
+    flux, an SNR and a centroid uncertainty above 0). Past that, a detection is a measurement in the frame it names:
+    its position lies on the frame, from 0 to its width and height (the record's own 0, and no margin past the far
+    edge: nothing in the solver allows one); its centroid uncertainty and its width are at most the frame's diagonal,
+    as a measurement of a point in it; its peak-to-total ratio, a fraction, lies from 0 to 1. Within those, every
+    value the solver derives from a detection stays finite: a sky position from the verified WCS at a pixel on the
+    frame, and an uncertainty of at most the diagonal times the WCS scale. The detector's own detections always pass.
+    """
+    sizes = []
+    for name, size in (("width", width), ("height", height)):
+        try:
+            whole = operator.index(size) if not isinstance(size, bool) else None
+        except TypeError:
+            whole = None
+        if whole is None or not 1 <= whole <= _LARGEST_FRAME_PX:
+            raise SolveInputRefusal(
+                f"{name} is outside its range: a frame's size is a whole number of pixels from 1 to 2**53 - 1."
+            )
+        sizes.append(whole)
+    diagonal = math.hypot(*sizes)
+    for k, det in enumerate(detections):
+        for field, value, low, high, rule in (
+            ("xPx", det.x_px, 0.0, sizes[0], "a position lies on the frame, from 0 to its width"),
+            ("yPx", det.y_px, 0.0, sizes[1], "a position lies on the frame, from 0 to its height"),
+            ("centroidUncertaintyPx", det.centroid_uncertainty_px, 0.0, diagonal,
+             "a centroid uncertainty is at most the frame's diagonal"),
+            ("fwhmPx", det.fwhm_px, 0.0, diagonal, "a width is at most the frame's diagonal"),
+            ("peakToTotalRatio", det.peak_to_total_ratio, 0.0, 1.0, "a peak-to-total ratio lies from 0 to 1"),
+        ):
+            if not low <= value <= high:
+                raise SolveInputRefusal(f"detections.{k}.{field} is outside its range: {rule}.")
 
 
 def triangle_solver_identity(catalog: Sequence[CatalogStar]) -> SolverIdentity:
@@ -661,8 +709,12 @@ def solve_and_verify_field(
     `source_asset_id` and `source_sha256` name the recording the detections were measured in; there is no
     default, because the solver cannot know them. `obs_utc_iso`, `observer_lat` and `observer_lon` are
     optional: when present, catalog matches also carry topocentric altitude and azimuth.
+
+    A frame or a detection no solution can carry is refused before any solving (`require_solvable_detections`,
+    `SolveInputRefusal`); for every other input the answer is a solution.
     """
     require_source_sha256(source_sha256)
+    require_solvable_detections(detections, width, height)
     if (observer_lat is None) != (observer_lon is None):
         raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
     catalog = list(catalog_stars) if catalog_stars is not None else get_catalog_stars()
@@ -904,12 +956,12 @@ def solve_and_verify_field(
 
 
 __all__ = [
-    "CelestialFindingRecord", "HeldOutVerification", "ObservationSolution", "PhoneCameraWCS",
+    "CelestialFindingRecord", "SolveInputRefusal", "HeldOutVerification", "ObservationSolution", "PhoneCameraWCS",
     "SolutionQuality", "SourceDetection", "VideoStackCalibrationResult", "WCSModel",
     "_build_gaussian_psf_kernel", "_estimate_background_and_noise",
     "_estimate_initial_wcs_from_triplet", "_estimate_subpixel_shift_phase_corr",
     "_extract_registration_signal", "_refine_wcs_least_squares", "_to_luma_2d",
     "detect_point_sources", "evaluate_coincidence_gate", "render_synthetic_starfield",
-    "solve_and_verify_field", "solve_horizon_and_beacon_pose", "solve_phone_photo",
+    "require_solvable_detections", "solve_and_verify_field", "solve_horizon_and_beacon_pose", "solve_phone_photo",
     "stack_video_frames_for_calibration", "verify_held_out",
 ]

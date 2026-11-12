@@ -31,6 +31,7 @@ from services.science.ephemeris import (
 from services.science.stellar_parameters import gaia_stellar_parameters
 from services.science.radiometry import compute_lunar_phase_and_illumination, predict_sky_brightness
 from services.science.solver import (
+    SolveInputRefusal,
     SourceDetection,
     detect_point_sources,
     solve_and_verify_field,
@@ -475,18 +476,22 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
     else:
         raise HTTPException(status_code=422, detail=_NO_INPUT_DETAIL.format(inputs="detections or image_luma"))
 
-    solution = solve_and_verify_field(
-        detections=parsed_dets,
-        width=width,
-        height=height,
-        hint_ra_deg=req.hint_ra_deg,
-        hint_dec_deg=req.hint_dec_deg,
-        obs_utc_iso=req.obs_utc_iso,
-        observer_lat=req.observer_lat,
-        observer_lon=req.observer_lon,
-        source_asset_id=req.source_asset_id,
-        source_sha256=req.source_sha256,
-    )
+    # The solver refuses, before any solving, a frame or a detection no solution can carry: the client's to mend
+    try:
+        solution = solve_and_verify_field(
+            detections=parsed_dets,
+            width=width,
+            height=height,
+            hint_ra_deg=req.hint_ra_deg,
+            hint_dec_deg=req.hint_dec_deg,
+            obs_utc_iso=req.obs_utc_iso,
+            observer_lat=req.observer_lat,
+            observer_lon=req.observer_lon,
+            source_asset_id=req.source_asset_id,
+            source_sha256=req.source_sha256,
+        )
+    except SolveInputRefusal as refusal:
+        raise _refused(refusal) from None
     payload = solution.to_contract_dict()
     payload["held_out_inliers"] = solution.held_out_inliers
     # Residuals the solution did not measure stay out, as in the contract's quality block

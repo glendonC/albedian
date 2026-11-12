@@ -27,12 +27,12 @@ Covers:
 - Every float: the index limit is sqrt(largest float) / 4, the largest magnitude at which no squared distance between
   two points overflows; a KD-tree holds every point within it and overflows past it. A detection at each boundary
   (the limit, the next float past it, subnormals, 1e200, the largest float, both signs, both axes, faintest and
-  brightest) pairs as the one-by-one rule pairs it; one the record takes gives the one-by-one solution, but for
-  1e200 and the largest float, where the solver's verified WCS gives the detection no sky position and the finding
-  record refuses it (held by name: the solver's own to change); stars projected past the limit pair as the loops
-  pair them; positions, ratios, fluxes and snrs drawn from every float give the one-by-one pairs and lookups and,
-  where the record takes them, whole solutions with and without a hint (PBT), and the same answers through POST
-  /api/science/solve (PBT, and huge values as JSON text, a 200-digit integer and numbers).
+  brightest) pairs as the one-by-one rule pairs it; one the record takes gives the one-by-one solution on the frame
+  and, past the 1600 x 1200 frame, the same refusal both ways before any solving (solver-11's check,
+  tests/science/test_solve_request_check.py); stars projected past the limit pair as the loops pair them; positions,
+  ratios, fluxes and snrs drawn from every float give the one-by-one pairs and lookups and, where the record takes
+  them, whole solutions with and without a hint (PBT), and the same answers through POST /api/science/solve (PBT, and
+  huge values as JSON text, a 200-digit integer and numbers).
 - What the search hands the fast pieces is main's: every catalog triangle with its own ratios, the detections
   without hot pixels, the whole catalog with its positions and an 18 px radius (the one-by-one path takes these
   from the same calls, so they are pinned here).
@@ -926,14 +926,6 @@ SUBNORMAL = 5e-324
 BOUNDARY_VALUES = [INDEX_LIMIT, PAST_LIMIT, -INDEX_LIMIT, -PAST_LIMIT, SUBNORMAL, -SUBNORMAL, 1.35e154, 1e200, -1e200,
                    FLOAT_MAX, -FLOAT_MAX]
 ANY_FLOAT = st.floats()  # every float: subnormals, both signs, NaN and both infinities
-# Positions the detection record takes that lie so far off the frame that the solver's verified WCS gives them a sky
-# position that is no number. The finding record refuses that position, inside the solve (services/science/solver.py,
-# the observed finding under a verified WCS), where the search before the records held their values wrote it out.
-# Held here by name as it is today: the solver's own to change, by refusing such a detection before it solves
-BEYOND_THE_VERIFIED_WCS = (1e200, FLOAT_MAX)
-NO_SKY_POSITION_FROM_THE_VERIFIED_WCS = (
-    "raised ContractRefusal: A finding's ra_deg is outside the contract: this number is not finite."
-)
 
 
 def test_the_index_limit_is_derived_from_the_float_format() -> None:
@@ -987,10 +979,12 @@ def test_a_detection_at_any_boundary_float_gives_the_one_by_one_solution(field: 
         return
     fast, slow = _solve_both_ways(detections, 1600, 1200, **ORION_MOMENT, **_sources("boundary-float-position"))
     assert fast == slow
-    if value in BEYOND_THE_VERIFIED_WCS:
-        assert fast[0] == NO_SKY_POSITION_FROM_THE_VERIFIED_WCS
-    else:
+    if value <= (1600.0 if field == "x_px" else 1200.0):
         assert not fast[0].startswith("raised"), fast[0][:200]
+    else:
+        # Past the 1600 x 1200 frame: refused before any solving (solver-11's check), the same both ways
+        wire = {"x_px": "xPx", "y_px": "yPx"}[field]
+        assert fast[0].startswith(f"raised SolveInputRefusal: detections.{len(detections) - 1}.{wire} is outside its range"), fast[0][:200]
 
 
 # Outside the rule, which is written for Python floats: an int float() refuses, None, a string, a float32. The loops
@@ -1310,15 +1304,14 @@ def test_the_search_hands_the_fast_pieces_main_s_detections_catalog_triangles_an
 
 
 # What the route answers each form with. A number written as text is no number to the detection record: 422 and its
-# sentence. The 200-digit integer is a number the record takes, far off the frame: the solver's verified WCS gives it
-# no sky position, the finding record refuses that, and the route answers 500 for a fault inside the solve. That one
-# is held by name as it is today: the solver's own to change, by refusing such a detection before it solves
+# sentence. A number the record takes that lies past the 1600 x 1200 frame (the 200-digit integer, 1.2e154 on both
+# axes) is refused before any solving (solver-11's check): 422 and the check's sentence
 @pytest.mark.parametrize(
-    ("raw", "status"),
-    [("1e200", 422), (" 1e200 ", 422), (10**200, 500), ("Infinity", 422), ("-1.7976931348623157e308", 422), (1.2e154, 200)],
+    "raw",
+    ["1e200", " 1e200 ", 10**200, "Infinity", "-1.7976931348623157e308", 1.2e154],
     ids=["text-1e200", "text-spaced", "200-digit-integer", "text-Infinity", "text-minus-max", "both-axes-1.2e154"],
 )
-def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_any_json_form(raw, status: int) -> None:
+def test_the_solve_endpoint_answers_as_the_one_by_one_rules_for_huge_values_in_any_json_form(raw) -> None:
     from fastapi.testclient import TestClient
 
     from services.api import app
@@ -1338,8 +1331,8 @@ def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_a
         _use_one_by_one_rules(mp)
         slow = client.post("/api/science/solve", json=body)
     assert (fast.status_code, fast.text) == (slow.status_code, slow.text)
-    assert fast.status_code == status
-    if status == 422:
+    assert fast.status_code == 422, fast.text[:300]
+    if isinstance(raw, str):
         assert fast.json() == {"detail": "A source detection's x_px is outside the contract: this value is not a number."}
-    elif status == 200:
-        assert fast.json()["status"] == "calibrated"
+    else:
+        assert fast.json()["detail"].startswith(f"detections.{len(rows) - 1}.xPx is outside its range"), fast.text

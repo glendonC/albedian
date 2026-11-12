@@ -37,8 +37,8 @@ Covers:
   that says what the field must be and holds nothing sent: every field of the request model, each bound at its
   edges, a size no frame has, a source asset id not of the minted form, a value JSON cannot carry back, a body that
   is no JSON object, a frame no solver can read. More than a thousand hostile requests are each answered with a
-  solution the contract takes or refused in a sentence, but for the ten requests the plate solver itself fails on,
-  which are named one by one
+  solution the contract takes or refused in a sentence; the ten requests the plate solver itself once failed on are
+  refused before any solving, each named one by one with the sentence of the field at fault (solver-11)
 - What a solver builds from its own numbers is what the contract takes: a bright spot with no width is no beacon to
   the horizon solver (services/science/horizon_solver.py) nor to the head-worn pose, through `complete_sky` and
   through the upload job, where a spot the Moon test passes always builds its detection (P-CONTRACT-8,
@@ -2442,6 +2442,10 @@ def test_a_bound_of_the_request_is_held_at_its_edges(field: str) -> None:
     client = TestClient(app, raise_server_exceptions=False)
     route = "/api/science/solve"
     body = _solve_bodies()[route]
+    if field in ("width", "height"):
+        # A frame one pixel wide or high carries only detections on it (solver-11 refuses one past the frame before
+        # any solving): the four sit in the frame's first pixel, so every size inside the bound is answered
+        body = {**body, "detections": [{**d, "xPx": 0.25 * k, "yPx": 0.25 * k} for k, d in enumerate(body["detections"])]}
     inside, outside = REQUEST_EDGES[field]
     for value in inside:
         assert _sent(client, route, {**body, field: value}).status_code == 200, (field, value)
@@ -2591,12 +2595,13 @@ ONE_MORE = {"xPx": 480.0, "yPx": 270.0, "flux": 900.0, "snr": 20.0, "fwhmPx": 2.
 
 
 def _the_solvers_ten() -> dict[str, list[dict[str, Any]]]:
-    """The ten requests the plate solver itself fails on, by name: a field that calibrates, with one more detection
+    """The ten requests the plate solver itself once failed on, by name: a field that calibrates, with one more detection
     the record takes that lies 1e200 px or more off the frame, or with every centroid uncertainty near the largest
     number. Under its verified WCS the solver gives such a detection a sky position, or an uncertainty, that is no
     number, and the finding record refuses it (services/science/solver.py, the observed finding under a verified WCS).
-    That is the solver's own fault, so the route answers 500 [the lead's ruling]. The solver lane's unit closes these
-    in the solver and takes each name out of this list."""
+    The route answered 500 for each until the solver lane's solver-11 refused, before any solving, a position past
+    the frame and a centroid uncertainty above its diagonal (services/science/solver.py,
+    `require_solvable_detections`): each is now the client's to mend, a 422 naming the field at fault."""
     field = list(_calibrating_field())
     ten: dict[str, list[dict[str, Any]]] = {}
     for far in (1e200, 1e300, 1.7e308):
@@ -2607,28 +2612,40 @@ def _the_solvers_ten() -> dict[str, list[dict[str, Any]]]:
     return ten
 
 
-THE_SOLVERS_TEN = (
-    "x at 1e+200 px", "y at 1e+200 px", "x and y at 1e+200 px", "x at 1e+300 px", "y at 1e+300 px", "x and y at 1e+300 px",
-    "x at 1.7e+308 px", "y at 1.7e+308 px", "x and y at 1.7e+308 px", "every centroid uncertainty at 1.7e+308 px",
-)
+# What each of the ten is refused for: the last detection's position past the frame, or the first detection's
+# centroid uncertainty above the frame's diagonal
+THE_TENS_FIELD_AT_FAULT = {
+    **{f"{axes} at {far:g} px": field
+       for far in (1e200, 1e300, 1.7e308)
+       for axes, field in (("x", "xPx"), ("y", "yPx"), ("x and y", "xPx"))},
+    "every centroid uncertainty at 1.7e+308 px": "centroidUncertaintyPx",
+}
+# The requests the plate solver itself still fails on, by name: none since solver-11
+THE_SOLVERS_TEN: tuple[str, ...] = ()
 
 
-def test_the_field_behind_the_solvers_ten_calibrates() -> None:
-    """The field itself, and the field with one more detection on the frame, solve: what fails in each of the ten is
+def test_the_field_behind_the_ten_calibrates() -> None:
+    """The field itself, and the field with one more detection on the frame, solve: what each of the ten refuses is
     the one value set far beyond the frame."""
     client = TestClient(app, raise_server_exceptions=False)
-    assert list(_the_solvers_ten()) == list(THE_SOLVERS_TEN)
+    assert list(_the_solvers_ten()) == list(THE_TENS_FIELD_AT_FAULT)
     for detections in (list(_calibrating_field()), [*_calibrating_field(), ONE_MORE]):
         answer = _sent(client, "/api/science/solve", _field_request(detections))
         assert answer.status_code == 200 and answer.json()["status"] == "calibrated" and refusal(answer.json()) is None
 
 
-@pytest.mark.parametrize("name", THE_SOLVERS_TEN)
-def test_a_request_the_plate_solver_itself_fails_on_is_not_answered_as_the_clients_fault(name: str) -> None:
-    """Each of the ten still answers 500 today: the record's refusal of what the solver built is not turned into a
-    refusal of what the client sent."""
+@pytest.mark.parametrize("name", list(THE_TENS_FIELD_AT_FAULT))
+def test_each_of_the_ten_is_refused_before_any_solving_in_the_sentence_of_its_field(name: str) -> None:
+    """Each of the ten is answered 422 with the solver's sentence for the field at fault (a position lies on the
+    frame; a centroid uncertainty is at most the frame's diagonal), naming no value sent."""
     client = TestClient(app, raise_server_exceptions=False)
-    assert _sent(client, "/api/science/solve", _field_request(_the_solvers_ten()[name])).status_code == 500
+    detections = _the_solvers_ten()[name]
+    answer = _sent(client, "/api/science/solve", _field_request(detections))
+    assert answer.status_code == 422, answer.text[:300]
+    field = THE_TENS_FIELD_AT_FAULT[name]
+    index = 0 if field == "centroidUncertaintyPx" else len(detections) - 1
+    assert _sentence(answer).startswith(f"detections.{index}.{field} is outside its range: "), _sentence(answer)
+    assert "e+" not in _sentence(answer) and "1.7" not in _sentence(answer)
 
 
 # Values where a number goes and where text goes, as JSON text: what the auditor of the unit's second version sent,
@@ -2765,7 +2782,8 @@ def hostile_requests() -> list[tuple[str, str, str | bytes, str]]:
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_more_than_a_thousand_hostile_requests_are_answered_or_refused_in_a_sentence() -> None:
     """Every answer is a solution the contract takes, or a 422 of one key whose value is a sentence with nothing in
-    it of the hostile value sent, or one of the ten requests the plate solver itself fails on, by name. No other
+    it of the hostile value sent, or one of the requests the plate solver itself fails on, by name (none since
+    solver-11). No other
     request answers 500, and none is answered with FastAPI's own list."""
     client = TestClient(app, base_url="http://localhost", raise_server_exceptions=False)
     cases = hostile_requests()
@@ -2788,7 +2806,7 @@ def test_more_than_a_thousand_hostile_requests_are_answered_or_refused_in_a_sent
             assert not (token and token[0] not in '"c' and len(token) >= 4 and token in answer.text), name
             kind = "a sentence"
         kinds[kind] = kinds.get(kind, 0) + 1
-    assert kinds["the solver's ten"] == 10 and kinds["a solution"] >= 600 and kinds["a sentence"] >= 800, kinds
+    assert "the solver's ten" not in kinds and kinds["a solution"] >= 600 and kinds["a sentence"] >= 800, kinds
 
 
 # =============================================================================================
