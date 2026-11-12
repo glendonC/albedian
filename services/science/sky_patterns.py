@@ -184,6 +184,17 @@ def pattern_keys(dirs: np.ndarray) -> PatternKeys:
     return PatternKeys(shape=keys[rows, pick], axis_rad=length[rows, pick], order=_PERMUTATIONS[pick])
 
 
+def _admitted(keys: np.ndarray, length: np.ndarray, longest: np.ndarray, tau: float) -> np.ndarray:
+    """Whether each labelling, with key (x'_k, y'_k, x'_l, y'_l) on the last axis of `keys`, axis length `length` and
+    the pattern's longest edge `longest`, passes the three slack rules of `query_keys` at tolerance `tau`, each with
+    its end included."""
+    return (
+        (keys[..., 0] - keys[..., 2] <= _ORDER_SLACK * tau)
+        & (-(keys[..., 0] + keys[..., 2]) <= _ORDER_SLACK * tau)
+        & (longest <= (1.0 + _EDGE_SLACK * tau) * length)
+    )
+
+
 def query_keys(dirs: np.ndarray, tau: float) -> QueryKeys:
     """Every labelling of each pattern that a key error of at most `tau` per coordinate could have made canonical:
     x'_k - x'_l <= 2 tau, -(x'_k + x'_l) <= 2 tau, and no edge longer than (1 + 3 tau) times the axis. The pattern's
@@ -191,12 +202,7 @@ def query_keys(dirs: np.ndarray, tau: float) -> QueryKeys:
     tau = _require_tolerance(tau)
     points = _tangent_points(dirs)
     keys, length, longest = _all_labellings(points)
-    keep = (
-        (keys[..., 0] - keys[..., 2] <= _ORDER_SLACK * tau)
-        & (-(keys[..., 0] + keys[..., 2]) <= _ORDER_SLACK * tau)
-        & (longest[:, None] <= (1.0 + _EDGE_SLACK * tau) * length)
-    )
-    pattern, perm = np.nonzero(keep)
+    pattern, perm = np.nonzero(_admitted(keys, length, longest[:, None], tau))
     return QueryKeys(
         pattern=pattern.astype(np.int64),
         shape=keys[pattern, perm],

@@ -191,6 +191,15 @@ def test_keys_are_computed_for_many_patterns_at_once_as_for_each_alone() -> None
     dirs=_unit(np.array([[0.1, 0.1, 1.0], [-0.1, 0.1, 1.0], [-0.1, -0.1, 1.0], [0.1, -0.1, 1.0]])), tau=0.01
 )
 def test_the_query_labellings_are_exactly_those_the_slack_rules_admit(dirs: np.ndarray, tau: float) -> None:
+    # The module and this reading compute the same numbers in a different order, so a labelling whose rule value lies
+    # within rounding of its bound may fall either way; such a draw says nothing and is set aside (the rules' own ends
+    # are held by the test on numbers equal by construction below)
+    points = _plane(dirs)
+    for o in PERMUTATIONS:
+        key, length, longest = _labelled(points, o)
+        assume(abs((key[0] - key[2]) - 2.0 * tau) > 1e-9)
+        assume(abs(-(key[0] + key[2]) - 2.0 * tau) > 1e-9)
+        assume(abs(longest / length - (1.0 + 3.0 * tau)) > 1e-9)
     got = sp.query_keys(dirs[None], tau)
     assert set(got.pattern.tolist()) == {0}
     orders = {tuple(int(i) for i in o) for o in got.order}
@@ -381,29 +390,64 @@ def test_each_slack_rule_admits_a_labelling_at_its_edge_and_not_one_float_before
         "longest edge": (longest / length - 1.0) / 3.0,
     }[rule]
     assert tau == pytest.approx(expected, rel=1e-9)
-    # At a tolerance where the rule's two sides are equal in floating point, the labelling is admitted: the rule
-    # holds with its ends included. The numbers are the module's own (its key and edges for this labelling).
+
+
+def _floats_away(x: float, k: int) -> float:
+    """The float k steps above x (below for a negative k)."""
+    for _ in range(abs(k)):
+        x = float(np.nextafter(x, np.inf if k > 0 else -np.inf))
+    return x
+
+
+# Each rule's pattern and labelling from the test above, whose module numbers are the base of the next test
+_RULE_CASES = {
+    "order": ([[-0.05, 0.0], [0.05, 0.0], [0.001, 0.02], [0.003, -0.015]], (0, 1, 3, 2)),
+    "half turn": ([[-0.05, 0.0], [0.05, 0.0], [-0.002, 0.02], [0.003, -0.015]], (1, 0, 3, 2)),
+    "longest edge": ([[-0.05, 0.0], [0.05, 0.0], [0.0, 0.02], [0.04, -0.03]], (0, 3, 2, 1)),
+}
+NUDGES = [-3, -1, 0, 1, 3]
+
+
+@pytest.mark.parametrize("nudge_b", NUDGES)
+@pytest.mark.parametrize("nudge_a", NUDGES)
+@pytest.mark.parametrize("rule", list(_RULE_CASES))
+def test_each_slack_rule_holds_where_its_two_sides_are_equal_and_not_one_float_past(rule, nudge_a, nudge_b) -> None:
+    """The rule's own comparison (`sky_patterns._admitted`) on numbers whose two sides are equal by construction: one
+    side is computed from the other and from tau, so they are equal on any machine. The base numbers are the module's
+    own for the rule's pattern, each moved up to three floats either way: library math differs in its last bits
+    between machines, and CI's Linux met a pattern where no tau made the longest-edge rule's sides equal."""
+    points, labelling = _RULE_CASES[rule]
+    dirs = _rule_pattern(points)
     query = sp.query_keys(dirs[None], sp.MAX_KEY_TOLERANCE)
     row = next(i for i, o in enumerate(query.order) if tuple(int(v) for v in o) == labelling)
-    own = query.shape[row]
+    keys = query.shape[row].copy()
+    length = float(query.axis_rad[row])
+    longest = length  # the axis is the longest edge in the order and half-turn cases
     if rule == "order":
-        exact = [float((own[0] - own[2]) / 2.0)]
+        keys[0], keys[2] = _floats_away(float(keys[0]), nudge_a), _floats_away(float(keys[2]), nudge_b)
+        tau = (keys[0] - keys[2]) / 2.0  # 2 tau == x'_k - x'_l exactly: halving a float is exact
+        past = (keys, length, longest, float(np.nextafter(tau, 0.0)))
+        inside = (keys, length, longest, float(np.nextafter(tau, 1.0)))
     elif rule == "half turn":
-        exact = [float(-(own[0] + own[2]) / 2.0)]
+        keys[0], keys[2] = _floats_away(float(keys[0]), nudge_a), _floats_away(float(keys[2]), nudge_b)
+        tau = -(keys[0] + keys[2]) / 2.0
+        past = (keys, length, longest, float(np.nextafter(tau, 0.0)))
+        inside = (keys, length, longest, float(np.nextafter(tau, 1.0)))
     else:
-        length = float(query.axis_rad[row])
-        longest = float(sp.pattern_keys(dirs[None]).axis_rad[0])
-        t = float(np.nextafter(tau, 0.0))
-        for _ in range(4000):
-            t = float(np.nextafter(t, 0.0))
-        exact = []
-        for _ in range(8000):
-            if (1.0 + 3.0 * t) * length == longest:
-                exact.append(t)
-            t = float(np.nextafter(t, 1.0))
-        assert exact, "no tolerance makes the two sides equal; choose another pattern"
-    for t in exact:
-        assert holds(t)
+        length = _floats_away(length, nudge_a)
+        edge_longest = float(sp.pattern_keys(dirs[None]).axis_rad[0])
+        tau = _floats_away((edge_longest / length - 1.0) / 3.0, nudge_b)
+        longest = (1.0 + sp._EDGE_SLACK * tau) * length  # the rule's right side, so the two sides are equal
+        past = (keys, length, float(np.nextafter(longest, np.inf)), tau)
+        inside = (keys, length, float(np.nextafter(longest, 0.0)), tau)
+    assert 1e-4 < tau < sp.MAX_KEY_TOLERANCE
+
+    def admitted(k, axis, edge, t) -> bool:
+        return bool(sp._admitted(np.asarray(k)[None], np.array([axis]), np.array([edge]), t)[0])
+
+    assert admitted(keys, length, longest, tau)
+    assert admitted(*inside)
+    assert not admitted(*past)
 
 
 def test_directions_need_not_be_unit_length() -> None:
@@ -476,6 +520,8 @@ def test_the_catalogue_holds_every_four_of_each_caps_brightest_once_in_canonical
     lattice = sp.sky_lattice(cap)
     expected: set[tuple[int, ...]] = set()
     cos_cap = math.cos(math.radians(cap))
+    # No star lies within rounding of a cap's edge, where a dot product taken two ways could fall either side
+    assert np.abs(stars @ lattice.T - cos_cap).min() > 1e-12
     for centre in lattice:
         members = np.flatnonzero(stars @ centre >= cos_cap)[:6]
         expected.update(tuple(sorted(c)) for c in itertools.combinations(members.tolist(), 4))
@@ -483,6 +529,9 @@ def test_the_catalogue_holds_every_four_of_each_caps_brightest_once_in_canonical
     assert len(got) == len(set(got))
     assert set(got) == expected
     keys = sp.pattern_keys(stars[catalogue.quads])
+    # No pattern lies within rounding of a tie of the canonical rule, so its stored labelling is decided the same way
+    # when its stars come in another order: at a tiny tolerance each pattern admits one labelling only
+    assert len(sp.query_keys(stars[catalogue.quads], 1e-9).pattern) == len(catalogue.quads)
     np.testing.assert_array_equal(keys.order, np.tile(np.arange(4), (len(catalogue.quads), 1)))
     np.testing.assert_allclose(keys.shape, catalogue.shape, rtol=0.0, atol=1e-12)
     np.testing.assert_allclose(keys.axis_rad, catalogue.axis_rad, rtol=1e-12, atol=0.0)
@@ -499,6 +548,7 @@ def test_a_cap_with_fewer_than_four_stars_gives_no_pattern_and_one_with_few_give
 def test_keys_made_in_chunks_are_the_keys_made_at_once(chunk: int) -> None:
     stars = _unit(np.column_stack([np.random.default_rng(23).uniform(-0.3, 0.3, (12, 2)), np.ones(12)]))
     quads = np.array(list(itertools.combinations(range(12), 4)), dtype=np.int64)  # 495 patterns
+    assert len(sp.query_keys(stars[quads], 1e-9).pattern) == len(quads)  # no pattern within rounding of a tie
     at_once = sp.pattern_keys(stars[quads])
     chunked = sp._keys_in_chunks(stars, quads, chunk)
     np.testing.assert_array_equal(chunked.order, at_once.order)
