@@ -30,7 +30,6 @@
 | `experience` | Observational instrument UI shell, design tokens, synchronized A/B wipe player, Web Audio bus, progressive disclosure inspectors, reduced-motion & keyboard accessibility | `packages/design-system/`, `apps/web/src/` | Media-first Reveal/Explore shell, markers by `EvidenceClass`, contextual inspectors |
 | `voice` | Speech transport abstraction, deictic context binding (`that one`, `there`, `back`), revision-checked action validator, interruption & barge-in | `services/voice/` | `ActionContext`, `AlbedianAction` dispatcher, `ActionOutcome` validator |
 | `verification` | Property-based tests (`fast-check` & `hypothesis`), golden fixtures, contract parity, E2E verification, Kiro hooks | `tests/`, `scripts/`, `.kiro/hooks/` | 7 PBT suites, deterministic astronomical & media fixtures, CI verification scripts |
-| `mobile` | Native iOS capture companion: aiming, taking the photo exactly as the camera wrote it, recording the phone's pointing beside it, sending both to the laptop's service over the local network; no solving and no sky claim on the device | `apps/ios/` | Producer of the `PointingRecord` contract, capture session, upload client, a live aim overlay labelled `predicted` |
 
 ---
 
