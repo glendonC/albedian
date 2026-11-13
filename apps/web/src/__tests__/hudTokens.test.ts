@@ -134,9 +134,12 @@ describe('index.html loads Geist and nothing retired', () => {
     for (const value of values) expect([HUD_FONTS.sans, HUD_FONTS.mono]).toContain(value);
   });
 
-  it('carries no em dash, title included', () => {
+  it('carries no em dash', () => {
     expect(indexHtml).not.toContain('\u2014');
-    expect(indexHtml).toMatch(/<title>Albedian: See \(Beyond\) the Night Sky\.<\/title>/);
+  });
+
+  it("is titled with the product's name alone, in one title element", () => {
+    expect([...indexHtml.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title>/gi)].map((m) => m[1])).toEqual(['Albedian']);
   });
 
   it('names no retired family in any stylesheet, font variable or inline font', () => {
