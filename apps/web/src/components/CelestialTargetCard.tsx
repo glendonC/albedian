@@ -98,10 +98,18 @@ const formatTick = (value: number) =>
 
 const percent = (fraction: number) => `${(fraction * 100).toFixed(2)}%`;
 
+/** Each evidence class's glyph class, written whole so the stylesheet guard finds it in a string. */
+const SCAN_GLYPH_CLASS: Readonly<Record<EvidenceClass, string>> = {
+  observed: 'alb-scan-glyph alb-scan-glyph--observed',
+  catalog_matched: 'alb-scan-glyph alb-scan-glyph--catalog_matched',
+  predicted: 'alb-scan-glyph alb-scan-glyph--predicted',
+  simulated: 'alb-scan-glyph alb-scan-glyph--simulated',
+};
+
 /** The evidence class as a shape (the same grammar as the photo markers), coloured by the HUD evidence tokens. */
-const ScanGlyph: React.FC<{ evidenceClass: EvidenceClass; testId?: string }> = ({ evidenceClass, testId }) => (
+export const ScanGlyph: React.FC<{ evidenceClass: EvidenceClass; testId?: string }> = ({ evidenceClass, testId }) => (
   <svg
-    className={`alb-scan-glyph alb-scan-glyph--${evidenceClass}`}
+    className={SCAN_GLYPH_CLASS[evidenceClass]}
     data-testid={testId}
     data-evidence-class={evidenceClass}
     viewBox="0 0 16 16"

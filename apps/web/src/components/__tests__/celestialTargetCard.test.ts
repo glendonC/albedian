@@ -46,7 +46,7 @@ vi.mock('../CoalescingBar.js', () => ({
   CoalescingBar: () => null,
 }));
 
-const { CelestialTargetCard } = await import('../CelestialTargetCard.js');
+const { CelestialTargetCard, ScanGlyph } = await import('../CelestialTargetCard.js');
 const { SpatialObservatoryViewport } = await import(
   '../SpatialObservatoryViewport.js'
 );
@@ -780,5 +780,12 @@ describe('catalog magnitude (integrity-25)', () => {
     };
     expect(catalogLine(m31)).toBe('And');
     expect(catalogLine({ ...m31, catalogRef: { ...m31.catalogRef!, apparentMagnitude: 3.44 } })).toBe('And · Mag 3.44');
+  });
+});
+
+describe('the scan glyph names its class whole (web-guard-1)', () => {
+  it.each(['observed', 'catalog_matched', 'predicted', 'simulated'] as const)('draws the %s glyph with its own class', (evidenceClass) => {
+    act(() => root.render(createElement(ScanGlyph, { evidenceClass, testId: 'glyph' })));
+    expect(q('glyph')!.getAttribute('class')).toBe(`alb-scan-glyph alb-scan-glyph--${evidenceClass}`);
   });
 });
