@@ -6,9 +6,9 @@ Covers:
 - P-SKY-4: the sky phase is a pure function of the Sun's altitude, its band changes exactly at the USNO edges
   (aa.usno.navy.mil/faq/RST_defs: the Sun's centre 50 arcminutes, 6, 12 and 18 degrees below the horizon), and
   only the day sentence says the stars listed were outshone by daylight
-- P-SKY-1: every predicted finding is above the horizon at its moment, and every bright-list star and body above
-  the horizon is there exactly once, carried to the date by its proper motion, with its stated uncertainty and a
-  limitation that names its source and says it was not measured in the recording
+- P-SKY-1: every predicted finding is above the horizon at its moment, and every body above the horizon is there
+  exactly once, with its stated uncertainty and a limitation that names its source and says it was not measured in
+  the recording; the stars, from the catalog tiles, in tests/integration/test_predicted_sky_from_tiles.py
 - P-SKY-2: completing a solver's outcome never changes an observed finding, never gives one a sky position, never
   makes a catalog match, never sets passedIndependentVerification; a calibrated outcome keeps its status, WCS,
   quality and every finding byte for byte and gains only the predicted objects it did not match; an unresolved or
@@ -30,7 +30,7 @@ from typing import Any
 from hypothesis import example, given, settings, strategies as st
 import pytest
 
-from services.science.catalog import get_all_sky_catalog_stars, icrs_to_altaz, propagate_star_epoch, _iso_to_julian_date
+from services.science.catalog import icrs_to_altaz
 from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.predicted_sky import (
     NO_PLACE,
@@ -38,7 +38,7 @@ from services.science.predicted_sky import (
     NO_TIME_OR_PLACE,
     OUT_OF_RANGE,
     PREDICTED_BODIES,
-    PREDICTED_STAR_UNCERTAINTY_ARCSEC,
+    STAR_POSITION_LIMITATION,
     complete_sky,
     frame_moment,
     predicted_sky_findings,
@@ -71,7 +71,7 @@ lon_st = st.floats(min_value=-180.0, max_value=180.0, allow_nan=False)
 
 
 def _iso(when: datetime) -> str:
-    return when.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return when.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
 
 
 def _asset(moment: str | None, lat: float | None, lon: float | None) -> dict:
@@ -184,10 +184,6 @@ def test_the_sky_phase_refuses_an_altitude_that_is_not_one(bad: float) -> None:
 # --- P-SKY-1: the predicted objects -------------------------------------------------------------------------------
 
 
-def _year(moment: str) -> float:
-    return 2000.0 + (_iso_to_julian_date(moment) - 2451545.0) / 365.25
-
-
 @settings(max_examples=60, deadline=None)
 @given(when=in_range, lat=lat_st, lon=lon_st)
 @example(when=datetime(2030, 1, 1, 2, 0, tzinfo=timezone.utc), lat=30.0, lon=-40.0)
@@ -207,18 +203,12 @@ def test_pbt_every_predicted_object_is_up_and_every_one_up_is_there_once(when: d
         assert finding.alt_deg == pytest.approx(alt, abs=1e-9) and finding.az_deg == pytest.approx(az, abs=1e-9)
         assert finding.verified_by_holdout is False
         assert any("not measured in the recording" in text for text in finding.limitations)
-    year = _year(moment)
-    for star in get_all_sky_catalog_stars():
-        moved = propagate_star_epoch(star, year)
-        alt, _ = icrs_to_altaz(moved.ra_deg, moved.dec_deg, lat, lon, moment)
-        present = [f for f in findings if f.id == f"finding-predicted-{star.id}"]
-        assert len(present) == (1 if alt > 0.0 else 0), star.common_name
-        if present:
-            (finding,) = present
-            assert (finding.ra_deg, finding.dec_deg) == pytest.approx((moved.ra_deg, moved.dec_deg), abs=1e-12)
-            assert finding.uncertainty_arcsec == PREDICTED_STAR_UNCERTAINTY_ARCSEC == 55.0
-            assert finding.catalog_star is not None and finding.catalog_star.id == star.id
-            assert any(star.release_version in text for text in finding.limitations)
+    # Which tile stars are up, and where: tests/integration/test_predicted_sky_from_tiles.py
+    stars = [f for f in findings if f.catalog_star is not None]
+    for finding in stars:
+        assert finding.id == f"finding-predicted-{finding.catalog_star.id}"
+        assert finding.limitations[-1] == STAR_POSITION_LIMITATION
+        assert any(finding.catalog_star.release_version in text for text in finding.limitations)
     bodies = compute_solar_system_ephemerides(moment, lat, lon, bodies=PREDICTED_BODIES)
     assert {b.name for b in bodies} == {"Sun", "Moon", "Venus", "Mars", "Jupiter", "Saturn", "Uranus"}
     for body in bodies:
@@ -228,15 +218,7 @@ def test_pbt_every_predicted_object_is_up_and_every_one_up_is_there_once(when: d
             (finding,) = present
             assert finding.uncertainty_arcsec == body.uncertainty_arcsec
             assert any(body.method in text for text in finding.limitations)
-    assert len(findings) == sum(
-        1 for star in get_all_sky_catalog_stars()
-        if icrs_to_altaz(*_moved(star, year), lat, lon, moment)[0] > 0.0
-    ) + sum(1 for b in bodies if b.alt_deg > 0.0)
-
-
-def _moved(star, year: float) -> tuple[float, float]:
-    moved = propagate_star_epoch(star, year)
-    return moved.ra_deg, moved.dec_deg
+    assert len(findings) == len(stars) + sum(1 for b in bodies if b.alt_deg > 0.0)
 
 
 def test_the_stars_named_are_left_out() -> None:
@@ -437,9 +419,9 @@ def test_only_a_plate_solvers_outcome_is_completed(status: str) -> None:
 # --- P-SKY-3: no time, no place, or out of range ------------------------------------------------------------------
 
 out_of_range = st.one_of(
-    st.integers(min_value=1000, max_value=1799).map(lambda y: f"{y:04d}-06-15T12:00:00Z"),
-    st.integers(min_value=2051, max_value=2999).map(lambda y: f"{y:04d}-06-15T12:00:00Z"),
-    st.sampled_from(["1799-12-31T23:59:59Z", "2051-01-01T00:00:00Z"]),
+    st.integers(min_value=1, max_value=1799).map(lambda y: f"{y:04d}-06-15T12:00:00Z"),
+    st.integers(min_value=2051, max_value=9999).map(lambda y: f"{y:04d}-06-15T12:00:00Z"),
+    st.sampled_from(["1799-12-31T23:59:59Z", "2051-01-01T00:00:00Z", "0001-01-01T00:00:00Z", "9999-12-31T23:59:59Z"]),
 )
 
 

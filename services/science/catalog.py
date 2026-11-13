@@ -458,6 +458,20 @@ def icrs_to_altaz(
     return (alt_deg + refraction_deg(alt_deg), az_deg) if refracted else (alt_deg, az_deg)
 
 
+def icrs_to_altaz_batch(
+    ra_deg: np.ndarray, dec_deg: np.ndarray, lat_deg: float, lon_deg: float, obs_utc_iso: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """`icrs_to_altaz` for many ICRS (astrometric) directions at one moment and place, in one pass: the same ERFA
+    steps (eraAtciq, eraAtioq) on the same `observer_astrom`, element by element, with the airless altitude. Equal
+    to the single transform for every direction [tested: tests/integration/test_predicted_sky_from_tiles.py], with
+    its conditions and omissions."""
+    astrom = observer_astrom(obs_utc_iso, float(lat_deg), float(lon_deg))
+    ri, di = erfa.atciq(np.radians(np.asarray(ra_deg, dtype=np.float64)),
+                        np.radians(np.asarray(dec_deg, dtype=np.float64)), 0.0, 0.0, 0.0, 0.0, astrom)
+    azimuth, zenith_distance, _, _, _ = erfa.atioq(ri, di, astrom)
+    return 90.0 - np.degrees(zenith_distance), np.degrees(azimuth) % 360.0
+
+
 def altaz_to_icrs(
     alt_deg: float,
     az_deg: float,
@@ -686,6 +700,8 @@ def catalog_cartesian_pc(star: CatalogStar) -> tuple[float, float, float]:
     That distance is 1000/parallax for a Hipparcos 2007 row and the Bailer-Jones et al. (2021) photogeometric
     estimate for a Gaia DR3 row; `star.distance_source` names which.
     """
+    if not star.has_distance:
+        raise ValueError(f"{star.catalog_source_id} has no distance in its catalog row, so no position in parsecs")
     if not (0.0 < star.lower_pc <= star.median_pc <= star.upper_pc):
         raise ValueError(
             f"Invalid distance bounds for {star.common_name} ({star.distance_source}): "
@@ -755,6 +771,54 @@ def propagate_star_epoch(star: CatalogStar, target_year_ce: float) -> CatalogSta
         median_pc=star.median_pc * scale,
         upper_pc=star.upper_pc * scale,
         epoch_year=float(target_year_ce),
+    )
+
+
+KM_S_TO_PC_YR = 1.022712165045695e-6
+
+
+def propagate_directions_batch(
+    ra_deg: np.ndarray,
+    dec_deg: np.ndarray,
+    pm_ra_mas_yr: np.ndarray,
+    pm_dec_mas_yr: np.ndarray,
+    rv_km_s: np.ndarray,
+    distance_pc: np.ndarray,
+    years: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The directions of many stars moved by `years` along their linear space motion: `propagate_star_epoch`'s
+    steps for arrays (`pm_ra_mas_yr` includes cos dec). A value a row lacks is NaN and is never filled in: a row
+    without a proper motion keeps its direction (its radial motion alone does not turn it), and a row without a
+    radial velocity or a distance moves along the sky only, as `propagate_star_epoch` does without a radial
+    velocity. Each caller states what that leaves out. Equal to `propagate_star_epoch` for every row that has all
+    three [tested: tests/integration/test_predicted_sky_from_tiles.py]."""
+    ra = np.radians(np.asarray(ra_deg, dtype=np.float64))
+    dec = np.radians(np.asarray(dec_deg, dtype=np.float64))
+    pm_ra = np.asarray(pm_ra_mas_yr, dtype=np.float64)
+    pm_dec = np.asarray(pm_dec_mas_yr, dtype=np.float64)
+    rv = np.asarray(rv_km_s, dtype=np.float64)
+    d0 = np.asarray(distance_pc, dtype=np.float64)
+    moves = np.isfinite(pm_ra) & np.isfinite(pm_dec)
+    radial = moves & np.isfinite(rv) & np.isfinite(d0)
+    # A star with no distance is moved on a unit sphere: the direction does not depend on the scale
+    d = np.where(radial, d0, 1.0)
+    r_hat = np.stack([np.cos(dec) * np.cos(ra), np.cos(dec) * np.sin(ra), np.sin(dec)], axis=-1)
+    e_ra = np.stack([-np.sin(ra), np.cos(ra), np.zeros_like(ra)], axis=-1)
+    e_dec = np.stack([-np.sin(dec) * np.cos(ra), -np.sin(dec) * np.sin(ra), np.cos(dec)], axis=-1)
+    mas_to_rad = math.pi / (180.0 * 3600.0 * 1000.0)
+    mu_ra = np.where(moves, pm_ra, 0.0) * mas_to_rad
+    mu_dec = np.where(moves, pm_dec, 0.0) * mas_to_rad
+    velocity = (
+        (d * mu_ra)[:, None] * e_ra
+        + (d * mu_dec)[:, None] * e_dec
+        + (np.where(radial, rv, 0.0) * KM_S_TO_PC_YR)[:, None] * r_hat
+    )
+    moved = r_hat * d[:, None] + velocity * float(years)
+    moved /= np.linalg.norm(moved, axis=-1, keepdims=True)
+    out_ra = np.degrees(np.arctan2(moved[:, 1], moved[:, 0])) % 360.0
+    out_dec = np.degrees(np.arcsin(np.clip(moved[:, 2], -1.0, 1.0)))
+    return np.where(moves, out_ra, np.asarray(ra_deg, dtype=np.float64) % 360.0), np.where(
+        moves, out_dec, np.asarray(dec_deg, dtype=np.float64)
     )
 
 

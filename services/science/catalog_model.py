@@ -31,15 +31,20 @@ BAILER_JONES_PHOTOGEOMETRIC = "photogeometric_bailer_jones_edr3"
 BAILER_JONES_GEOMETRIC = "geometric_bailer_jones_edr3"
 
 
-def hipparcos_2007_tile_citation(*, magnitude_band: str) -> str:
-    """The citation for a Hipparcos 2007 tile row: the tiles carry its distance, not its parallax."""
-    return f"Catalog id, {magnitude_band} magnitude and distance: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
+def hipparcos_2007_tile_citation(*, magnitude_band: str, distance: bool = True) -> str:
+    """The citation for a Hipparcos 2007 tile row: the tiles carry its distance, not its parallax, and a row without
+    a distance is not cited for one."""
+    named = (
+        f"Catalog id, {magnitude_band} magnitude and distance" if distance else f"Catalog id and {magnitude_band} magnitude"
+    )
+    return f"{named}: Hipparcos 2007, van Leeuwen (2007) A&A 474, 653."
 
 
 def gaia_dr3_citation(
-    *, color: bool, radial_velocity: bool, distance_method: str, magnitude_band: str | None = None
+    *, color: bool, radial_velocity: bool, distance_method: str | None, magnitude_band: str | None = None
 ) -> str:
-    """The citation for a Gaia DR3 star, naming only the values its row carries."""
+    """The citation for a Gaia DR3 star, naming only the values its row carries; `distance_method` None for a row
+    without a distance."""
     values = ["Catalog id"]
     if magnitude_band is not None:
         values.append(f"{magnitude_band} magnitude")
@@ -48,6 +53,8 @@ def gaia_dr3_citation(
     if radial_velocity:
         values.append("radial velocity")
     named = values[0] if len(values) == 1 else ", ".join(values[:-1]) + " and " + values[-1]
+    if distance_method is None:
+        return f"{named}: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1."
     kind = {BAILER_JONES_PHOTOGEOMETRIC: "photogeometric", BAILER_JONES_GEOMETRIC: "geometric"}[distance_method]
     return (
         f"{named}: Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, "
@@ -72,7 +79,8 @@ class CatalogStar:
     `pm_ra_mas_yr` and `pm_dec_mas_yr` are None where the row has no proper motion, and `bayer_designation`
     is None for a star with no designation beyond its catalog id. A value the row lacks is never filled in.
     `magnitude_band` names the band of `mag` when a tile row gives it (Hipparcos Hp or Gaia G); None for a
-    pinned record, whose magnitudes were typed by hand.
+    pinned record, whose magnitudes were typed by hand. A tile row without a distance has `lower_pc`, `median_pc`,
+    `upper_pc` and `distance_method` all None (`has_distance` False), and no distance is given for it anywhere.
     """
 
     id: str
@@ -92,17 +100,29 @@ class CatalogStar:
     rv_km_s: float | None
     parallax_mas: float | None
     parallax_error_mas: float | None
-    lower_pc: float
-    median_pc: float
-    upper_pc: float
-    distance_method: str
+    lower_pc: float | None
+    median_pc: float | None
+    upper_pc: float | None
+    distance_method: str | None
     citation: str
     epoch_year: float = 2000.0
     magnitude_band: str | None = None
 
+    def __post_init__(self) -> None:
+        distance = (self.lower_pc, self.median_pc, self.upper_pc, self.distance_method)
+        if any(value is None for value in distance) and any(value is not None for value in distance):
+            raise ValueError(f"{self.catalog_source_id}: a distance comes with its bounds and method, or not at all")
+
     @property
-    def distance_source(self) -> str:
-        """Where the distance and its interval come from, in words."""
+    def has_distance(self) -> bool:
+        """Whether the star's catalog row gives a distance."""
+        return self.median_pc is not None
+
+    @property
+    def distance_source(self) -> str | None:
+        """Where the distance and its interval come from, in words; None for a star without a distance."""
+        if not self.has_distance:
+            return None
         if self.distance_method == INVERSE_PARALLAX:
             return "1000/parallax from Hipparcos 2007, with the interval from the parallax error"
         if self.distance_method == BAILER_JONES_PHOTOGEOMETRIC:
@@ -135,8 +155,9 @@ class CatalogStar:
                     "upper": float(self.upper_pc),
                     "method": self.distance_method,
                 }
-                # A method the contract cannot name (a Bailer-Jones geometric distance) is left out, not relabelled
-                if self.distance_method in CATALOG_DISTANCE_METHODS
+                # A method the contract cannot name (a Bailer-Jones geometric distance) is left out, not relabelled,
+                # and a row without a distance has none
+                if self.has_distance and self.distance_method in CATALOG_DISTANCE_METHODS
                 else None
             ),
             "citation": self.citation,

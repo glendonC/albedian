@@ -7,7 +7,8 @@ called by the solve job in `services/ingest/jobs.py`.
 ## What it is
 
 When a photo or clip carries the time it was recorded and the place it was recorded, Albedian works out what was
-above the horizon there at that moment: the bright stars of its pinned list, the Sun, the Moon, and the planets
+above the horizon there at that moment: the stars of its catalog tiles to about magnitude 4.5 and every star with
+an IAU name, the Sun, the Moon, and the planets
 Venus, Mars, Jupiter, Saturn and Uranus. It uses fixed astronomical formulas and catalogs, not the picture. Every
 object in this layer is labelled `predicted`: computed for the time and place, never measured in the recording.
 It works by day too; then it says the stars were up but outshone by daylight. [tested]
@@ -118,15 +119,31 @@ each twilight band holds its darker edge (exactly -6 is civil twilight, exactly 
 
 ## The star list and its limits
 
-- The 71 pinned bright stars (`services/science/catalog.py` `get_all_sky_catalog_stars`): 59 Hipparcos 2007 rows
-  and 12 Gaia DR3 rows, magnitudes -1.46 to 3.77. Each is carried from its catalog epoch to the date by its proper
-  motion, and its limitation names its catalog release. [tested]
-- Each star's position is given within 55 arcseconds. The horizon transform is ERFA's apparent chain (light
-  deflection, aberration, precession, nutation and the Earth's rotation, `tests/integration/test_sky_transforms.py`)
-  and leaves out UT1 - UTC (up to 13.5 arcseconds), polar motion and the star's own parallax (each under 1), and the
-  pinned positions sit within 3 arcseconds of their catalog rows, about 19 arcseconds in all. [tested] The 55 was set
-  when the transform also left out nutation and annual aberration, and is kept until it is tightened. [proposed]
-- Only these 71 stars: the fainter stars of the G 12 tiles are not in this layer. [tested]
+- The stars come from the catalog tiles' brightest layers (Gaia DR3 and Hipparcos 2007 to G 8,
+  `apps/web/public/catalog/stars/gaia-dr3`): every star to an approximate V of 4.5, and every star the shipped IAU
+  name file (`names.json`, the IAU Catalog of Star Names of 2022) names, whatever its brightness, so a star a person
+  names is found whenever it is up. That is 1,012 stars over the whole sky, of which 462 to 549 were up at five
+  made-up places from latitude 60 to -60 on two nights, about 1.3 to 1.5 MB of findings. [tested] The 4.5 is a choice
+  for lists, cards and voice; the sky view draws the tiles to G 12 itself. [proposed]
+- Every value of a star comes from its catalog row, and a value the row lacks is left out: a star whose row has no
+  distance is shown with none. Its magnitude keeps its band (Gaia G or Hipparcos Hp), and its limitation names its
+  catalog release and epoch (J2016.0). A star the IAU file names is called by that name, with the file's constellation;
+  any other star is called by its catalog id, with the IAU constellation whose boundary holds it. The file's
+  designation is mostly a Bright Star Catalogue number ("HR 2326" for Canopus), not a Bayer designation, so it is
+  shown in the subtitle's text only and the star carries no Bayer designation. [tested]
+  A star the plate solver matched in the recording is not listed again. [tested]
+- Each star is carried from J2016.0 to the date by its proper motion (with its radial velocity, where its row gives
+  one) and placed by ERFA's apparent place (light deflection, aberration, precession, nutation and the Earth's
+  rotation, `tests/integration/test_sky_transforms.py`), all stars at once. Its stated uncertainty adds what that
+  leaves out: UT1 - UTC (up to 13.5 arcseconds), polar motion (1), the star's own parallax (under 0.824, the nearest
+  star's), the half float the tiles store its proper motion in, and, for a row without a proper motion or a radial
+  velocity, the most the fastest star in the tiles could have moved. The parts that move with the star grow with the
+  years from J2016.0: a star with a proper motion stays near 15.4 arcseconds from 1960 to 2050 (about 1.9 before
+  1960, when the moment is taken as UT1 itself), while one whose row has no proper motion is bounded by about 19 in
+  2016, 90 in 2026, 126 in 2031, 262 in 2050, 415 in 1960, 850 in 1900 and 1,640 in 1800 (at mid-year). Each
+  position lies within it of ERFA's eraAtco13 and of a second
+  route through other ERFA functions, with the truth drawn anywhere inside each part. [tested] The catalog's own
+  position and motion errors are not in the tiles and not in the sum. [open]
 - Above the horizon means a height above 0 degrees without refraction. Refraction lifts what is near the horizon by
   about 34 arcminutes (USNO, above), so an object listed just above the horizon may be hidden and one just below may
   show. Hills, buildings, clouds, haze, light pollution and the brightness of the sky are not taken into account:

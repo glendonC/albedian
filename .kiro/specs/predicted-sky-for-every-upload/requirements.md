@@ -54,9 +54,9 @@ that moment even when my camera recorded no stars.
 - **Acceptance Criteria:**
   1. WHEN an upload's solve job finishes and the `SourceAsset` has a recorded `capturedAtUTC` and an
      `observerLocation`, and the moment lies inside the ephemeris range (1800-01-01 to 2050-12-31 UTC), THE solution
-     SHALL carry `predicted` findings for: every star of the pinned all-sky bright list
-     (`services/science/catalog.py` `get_all_sky_catalog_stars`) above the horizon, carried to the date by its
-     proper motion; and the Sun, the Moon, Venus, Mars, Jupiter, Saturn and Uranus when above the horizon.
+     SHALL carry `predicted` findings for: every star of the catalog tiles' L0 and L1 rows to an approximate V of 4.5,
+     and every star the shipped IAU name file names (`services/science/predicted_sky.py` `PREDICTED_STAR_DEPTH_V`),
+     above the horizon, carried to the date by its proper motion; and the Sun, the Moon, Venus, Mars, Jupiter, Saturn and Uranus when above the horizon.
   2. WHEN that solution is not `calibrated` and no pose estimate is found (REQ-SKY-3, REQ-SKY-4), THE status SHALL
      be `predicted_only`; the observed detections SHALL stay as pixel-only `observed` findings; the solver's
      `quality`, its warnings and its `solver` identity SHALL be kept.
@@ -343,7 +343,7 @@ rare required cases seeded by `@example` or `examples`.
 
 - **P-SKY-1** (REQ-SKY-1.1, 1.4): for any moment in range and any place, every predicted finding is above the
   horizon at the solution's `observedAtUTC` (recomputing its altitude from its RA and Dec gives at least 0), and
-  every star of the bright list that is above the horizon is present exactly once.
+  every tile star to the depth or named that is above the horizon is present exactly once.
 - **P-SKY-2** (REQ-SKY-1.2, 1.3, 3.7, 5.2): for any solver outcome, adding the predicted sky or a pose never changes
   an `observed` finding's pixels, never adds a sky position to an `observed` finding, never creates a
   `catalog_matched` finding, never sets `passedIndependentVerification`, and a `calibrated` input keeps its status,

@@ -569,7 +569,7 @@ class CelestialFindingRecord:
             "distanceUncertaintyNote": (
                 f"Distance interval [{self.catalog_star.lower_pc:.1f}, {self.catalog_star.upper_pc:.1f}] pc: "
                 f"{self.catalog_star.distance_source}"
-                if self.catalog_star
+                if self.catalog_star and self.catalog_star.has_distance
                 else None
             ),
             "limitations": list(self.limitations),
@@ -581,6 +581,8 @@ class CelestialFindingRecord:
             payload["sourceDetection"] = self.source_detection.to_contract_dict(asset_id=source_asset_id)
         if self.catalog_star is not None:
             payload["catalogRef"] = self.catalog_star.to_catalog_reference_dict()
+        # A star whose catalog row gives no distance has none here either: no interval and no position in parsecs
+        if self.catalog_star is not None and self.catalog_star.has_distance:
             payload["inferredDistancePc"] = {
                 "lower": float(self.catalog_star.lower_pc),
                 "median": float(self.catalog_star.median_pc),

@@ -136,8 +136,8 @@ def _finite(value: float) -> float | None:
 
 def _expected(row: Row, name: dict[str, Any] | None, epoch: float, pinned: Any = None) -> dict[str, Any]:
     """What the row itself gives for each field; None means the field must be absent. A pinned star's record gives
-    only its names."""
-    method = METHOD_BY_KIND[row.dist_kind]
+    only its names. A row without a distance gives none."""
+    method = METHOD_BY_KIND[row.dist_kind] if row.has_distance else None
     if pinned is not None:
         common, designation = pinned.common_name, pinned.bayer_designation
     else:
@@ -196,12 +196,16 @@ def _assert_row_values(
     citation = ref["citation"]
     assert ("Hipparcos Hp magnitude" if row.mag_hp else "Gaia G magnitude") in citation, (source, citation)
     assert "parallax" not in citation.lower(), (source, citation)
+    assert ("distance" in citation.lower()) == row.has_distance, (source, citation)
     # The citation names only what the row carries, and the distance as the row's own kind
     if not row.is_hip:
         citation = ref["citation"]
         assert ("color index (BP-RP)" in citation) == ("colorIndexBpRp" in ref), source
         assert ("radial velocity" in citation) == ("radialVelocityKmS" in ref), source
-        assert citation.endswith("photogeometric." if row.dist_kind == ct.DIST_KIND_BJ_PHOTOGEO else " geometric."), source
+        if row.has_distance:
+            assert citation.endswith(
+                "photogeometric." if row.dist_kind == ct.DIST_KIND_BJ_PHOTOGEO else " geometric."
+            ), source
     assert "None" not in json.dumps(ref), source
     CatalogReference.model_validate(ref)
 

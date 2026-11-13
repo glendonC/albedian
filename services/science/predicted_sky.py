@@ -1,6 +1,6 @@
 """The sky predicted for a recording's own capture time and place (layer 1 of spec predicted-sky-for-every-upload).
 
-Every finding made here is `predicted`: catalog stars carried to the date by their proper motion, and the Sun, the
+Every finding made here is `predicted`: catalog tile stars carried to the date by their proper motion, and the Sun, the
 Moon and five planets from the ephemeris on ERFA (`services/science/ephemeris.py`), seen from the recorded place
 (topocentric), each placed for the recorded time and place by deterministic math and never measured in the
 recording. They carry no detection and no pixel position. A plate solver's outcome is completed with them after the
@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 import math
 from typing import Any
 
@@ -24,17 +25,30 @@ import numpy as np
 
 from services.science.camera_profiles import head_worn_profile
 from services.science.catalog import (
+    KM_S_TO_PC_YR,
     _iso_to_julian_date,
-    get_all_sky_catalog_stars,
-    icrs_to_altaz,
-    propagate_star_epoch,
+    icrs_to_altaz_batch,
+    propagate_directions_batch,
     require_place,
+    time_scales,
+)
+from services.science.catalog_model import (
+    GAIA_DR3_RELEASE,
+    GAIA_G,
+    HIPPARCOS_2007_RELEASE,
+    HIPPARCOS_HP,
+    CatalogStar,
+    gaia_dr3_citation,
+    hipparcos_2007_tile_citation,
 )
 from services.science.ephemeris import (
+    EARTH_ROTATION_ARCSEC_PER_S,
+    POLAR_MOTION_BOUND_ARCSEC,
     EphemerisOutOfRange,
     compute_solar_system_ephemerides,
     require_ephemeris_range,
 )
+from services.science.phone_photo_solver import _get_tile_index, _TileStarIndex, iau_constellation_codes
 from services.science.pose_estimate import (
     DAYTIME,
     MIRRORED,
@@ -57,13 +71,43 @@ from services.science.wcs_models import (
     SourceDetection,
 )
 
-# A predicted star, carried to the date by its proper motion: the horizon transform is ERFA's apparent chain (catalog.py
-# `icrs_to_altaz`, tests/integration/test_sky_transforms.py) and leaves out UT1 - UTC (within 0.9 s, up to 13.5 arcsec
-# of rotation), polar motion and the star's own parallax (each under 1 arcsec), and the pinned positions sit within
-# 3 arcsec of their catalog rows (test_pinned_catalog_matches_tiles.py): about 19 arcsec in all. The 55 set when the
-# transform also left out nutation and annual aberration (up to 37 arcsec) is kept, wider than that [proposed: for the
-# sky lane or the lead to tighten]
+# The bound the horizon solver (services/science/horizon_solver.py) still states for its own pinned stars, set when the
+# transform left out nutation and annual aberration; the predicted sky below no longer uses it [open: the horizon lane]
 PREDICTED_STAR_UNCERTAINTY_ARCSEC = 55.0
+# The predicted stars come from the catalog tiles' L0 and L1 rows (Gaia DR3 and Hipparcos 2007, to G 8,
+# apps/web/public/catalog/stars/gaia-dr3): every row to an approximate V of 4.5 that is above the horizon, about 400 to
+# 500 at a time [proposed: lists, cards and voice, where a few hundred is the most a person reads; the browser draws the
+# tiles to G 12 itself], and every row the shipped IAU name file (names.json) names, whatever its magnitude, so a star a
+# person names is found whenever it is up. The approximate V is the solver's ranking value (Gaia G to V by Riello et al.
+# 2021, Hipparcos Hp as it is), used for the cut and the order only; each finding shows its row's own magnitude and
+# band.
+PREDICTED_STAR_DEPTH_V = 4.5
+# A predicted star's stated uncertainty adds these parts, each a worst case, for its moment:
+# - the Earth's rotation over UT1 - UTC, up to `time_scales`' bound (0.9 s from 1960, from the IERS), at eraEra00's rate
+#   (EARTH_ROTATION_ARCSEC_PER_S): 13.5 arcsec
+# - polar motion, left out (POLAR_MOTION_BOUND_ARCSEC, services/science/ephemeris.py): 1 arcsec
+# - the star's own parallax, left out: at most the parallax of the nearest star, 1 au over the 1.2148 pc lower distance
+#   of the nearest row in the tiles (Toliman, HIP 71681) [tested: tests/integration/test_predicted_sky_from_tiles.py],
+#   held as 0.824 arcsec, which covers Proxima Centauri's 768 mas too [inference]
+STAR_PARALLAX_BOUND_ARCSEC = 0.824
+# - the transform itself: ERFA's chain as catalog.py runs it, measured at most 2.1e-10 arcsec from eraAtco13 with the
+#   same inputs over 24,400 directions from 1960 to 2050 [tested], held as 0.001 arcsec [proposed]
+STAR_TRANSFORM_ARCSEC = 0.001
+# - the proper motion as the tiles store it: a half float (services/science/catalog_tiles.py), off by at most 2^-11 of
+#   its value, over the years since the catalog epoch
+HALF_FLOAT_RELATIVE_ERROR = 2.0**-11
+# - a row with no proper motion is not moved: it may have moved up to the fastest proper motion in the L0 and L1 rows,
+#   7,059.9 mas/yr (Gaia DR3 4034171629042489088), held as 7,060, over the years since [proposed: a row without a
+#   value moves no faster than the fastest row with one]
+FASTEST_PROPER_MOTION_MAS_YR = 7060.0
+# - the radial motion's turn of the direction (perspective): the row's own radial velocity, or for a row without one the
+#   fastest in the L0 and L1 rows, 387.5 km/s (Gaia DR3 4321939179572488960), held as 388 [proposed, as above], at
+#   the nearest a star can be (1 au over the parallax bound), times the proper motion's path
+FASTEST_RADIAL_VELOCITY_KM_S = 388.0
+# - the light time across that radial motion, which ERFA's space motion (eraStarpm, eraPmsafe) counts and the linear
+#   motion here does not: the proper motion's path times the radial speed over the speed of light (ERFA_CMPS)
+SPEED_OF_LIGHT_KM_S = 299792.458
+# The catalog's own position and proper motion errors are not in the tiles and are not in the sum [open]
 PREDICTED_BODIES = ("Sun", "Moon", "Venus", "Mars", "Jupiter", "Saturn", "Uranus")
 
 # The Sun's centre altitude at the edges of day and twilight, from USNO's "Rise, Set, and Twilight Definitions"
@@ -120,8 +164,11 @@ def time_zone_from_gps(uncertainty_sec: float) -> str:
 
 
 STAR_POSITION_LIMITATION = (
-    "Its position leaves out UT1 - UTC (up to 13.5 arcsec), polar motion and the star's own parallax, which its "
-    "55 arcsec uncertainty covers, and its altitude leaves out refraction, which lifts what is near the horizon."
+    "Placed by ERFA's apparent place for the recorded place at sea level (catalog.py icrs_to_altaz). Its stated "
+    "uncertainty adds UT1 - UTC (up to 13.5 arcsec), polar motion, its own parallax, which is left out, the stored "
+    "precision of its motion, and the motion a row without a proper motion or radial velocity may have, up to the "
+    "fastest star in the tiles; the catalog's own position and motion errors are not in it. Its altitude leaves out "
+    "refraction, which lifts what is near the horizon."
 )
 
 
@@ -137,10 +184,11 @@ def frame_moment(captured_at_utc: str, frame_time_sec: float) -> str:
         start = datetime.fromisoformat(captured_at_utc[:-1] + "+00:00")
     except ValueError:
         raise ValueError("The capture time is not an ISO 8601 instant.") from None
-    moment = start.astimezone(timezone.utc) + timedelta(seconds=float(frame_time_sec))
+    moment = (start.astimezone(timezone.utc) + timedelta(seconds=float(frame_time_sec))).replace(tzinfo=None)
+    # isoformat writes four-digit years on every platform; strftime's %Y leaves a year below 1000 to the platform
     if moment.microsecond == 0:
-        return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
-    return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        return moment.isoformat(timespec="seconds") + "Z"
+    return moment.isoformat(timespec="milliseconds") + "Z"
 
 
 @dataclass(frozen=True)
@@ -203,6 +251,156 @@ def _julian_year(moment: str) -> float:
     return 2000.0 + (_iso_to_julian_date(moment) - 2451545.0) / 365.25
 
 
+def _star_without_distance(index: _TileStarIndex, row: int) -> CatalogStar:
+    """The star of a tile row that gives no distance (`to_catalog_star` refuses one), holding only what the row gives:
+    no distance, interval or method, and no citation for one."""
+    is_hip = bool(index.data["hip"][row])
+    sid = int(index.data["sid"][row])
+    source = f"HIP {sid}" if is_hip else f"Gaia DR3 {sid}"
+    if source in index._pinned_by_source:
+        raise ValueError(f"{source}: a pinned star's row gives a distance")
+    bp_rp = None if bool(index.data["color_bv"][row]) else index._row_value("color", row)
+    rv = index._row_value("rv", row)
+    band = HIPPARCOS_HP if bool(index.data["mag_hp"][row]) else GAIA_G
+    ra0, dec0 = float(index.data["ra0"][row]), float(index.data["dec0"][row])
+    return CatalogStar(
+        id=f"hip-{sid}" if is_hip else f"gaia-dr3-{sid}",
+        common_name=source,
+        bayer_designation=None,
+        constellation=iau_constellation_codes(np.array([ra0]), np.array([dec0]))[0],
+        provider="Hipparcos" if is_hip else "Gaia DR3",
+        release_version=HIPPARCOS_2007_RELEASE if is_hip else GAIA_DR3_RELEASE,
+        catalog_source_id=source,
+        ra_deg=ra0 % 360.0,
+        dec_deg=dec0,
+        mag=float(index.data["mag"][row]),
+        bp_rp=bp_rp,
+        spectral_type=None,
+        pm_ra_mas_yr=index._row_value("pm_ra", row),
+        pm_dec_mas_yr=index._row_value("pm_dec", row),
+        rv_km_s=rv,
+        parallax_mas=None,
+        parallax_error_mas=None,
+        lower_pc=None,
+        median_pc=None,
+        upper_pc=None,
+        distance_method=None,
+        citation=(
+            hipparcos_2007_tile_citation(magnitude_band=band, distance=False)
+            if is_hip
+            else gaia_dr3_citation(
+                color=bp_rp is not None, radial_velocity=rv is not None, distance_method=None, magnitude_band=band
+            )
+        ),
+        epoch_year=index.epoch_jyear,
+        magnitude_band=band,
+    )
+
+
+@dataclass(frozen=True)
+class _SkyRows:
+    """The tile rows the predicted sky draws from, brightest first, each as its star at the catalog epoch, with the
+    names file's designation for it (None without one)."""
+
+    rows: np.ndarray
+    stars: tuple[CatalogStar, ...]
+    designations: tuple[str | None, ...]
+
+
+@lru_cache(maxsize=1)
+def _sky_rows() -> _SkyRows:
+    """Every L0 and L1 row to PREDICTED_STAR_DEPTH_V or named in names.json, ordered by approximate V then id.
+
+    Every catalog value comes from the row (`to_catalog_star`, or `_star_without_distance` for a row with no
+    distance). The names are the shipped IAU name file's alone, for a pinned star too: the IAU name as the star's
+    name and its constellation, else the IAU boundary that holds the star; a star the file does not name is called by
+    its catalog id. The file's designation is mostly an HR number ("HR 2326"), not a Bayer designation, so it is kept
+    apart for the subtitle's text and the star's Bayer designation stays None: the contract has no field for an HR
+    number, and the file gives the Bayer letter only abbreviated. A pinned star keeps its pinned id, the id a plate
+    solver's match of it carries."""
+    index = _get_tile_index()
+    data = index.data
+    named = np.array(
+        [(bool(h), int(i)) in index._names_by_source for h, i in zip(data["hip"], data["sid"], strict=True)]
+    )
+    chosen = np.flatnonzero((data["v_mag"] <= PREDICTED_STAR_DEPTH_V) | named)
+    stars, designations = [], []
+    for row in chosen.tolist():
+        ra0, dec0 = float(data["ra0"][row]), float(data["dec0"][row])
+        star = (
+            index.to_catalog_star(row, ra0, dec0, index.epoch_jyear)
+            if index.has_distance(row)
+            else _star_without_distance(index, row)
+        )
+        entry = index._names_by_source.get((bool(data["hip"][row]), int(data["sid"][row])))
+        if entry is None:
+            name, designation = star.catalog_source_id, None
+            constellation = iau_constellation_codes(np.array([ra0]), np.array([dec0]))[0]
+        else:
+            name, designation = entry["name"], entry.get("designation") or None
+            constellation = entry.get("constellation") or iau_constellation_codes(np.array([ra0]), np.array([dec0]))[0]
+        stars.append(replace(star, common_name=name, bayer_designation=None, constellation=constellation))
+        designations.append(designation)
+    order = sorted(range(len(stars)), key=lambda k: (float(data["v_mag"][chosen[k]]), stars[k].id))
+    return _SkyRows(
+        rows=chosen[order], stars=tuple(stars[k] for k in order), designations=tuple(designations[k] for k in order)
+    )
+
+
+def predicted_star_uncertainty_arcsec(
+    pm_ra_mas_yr: np.ndarray, pm_dec_mas_yr: np.ndarray, rv_km_s: np.ndarray, years: float, ut1_bound_s: float
+) -> np.ndarray:
+    """The stated uncertainty of each predicted star `years` from its catalog epoch, in arcsec: the parts listed with
+    the constants above, added. NaN marks a value the row lacks."""
+    years = abs(float(years))
+    pm = np.hypot(np.asarray(pm_ra_mas_yr, dtype=np.float64), np.asarray(pm_dec_mas_yr, dtype=np.float64))
+    moves = np.isfinite(pm)
+    stored = np.where(moves, pm * HALF_FLOAT_RELATIVE_ERROR * years / 1000.0, 0.0)
+    unmoved = np.where(moves, 0.0, FASTEST_PROPER_MOTION_MAS_YR * years / 1000.0)
+    rv = np.asarray(rv_km_s, dtype=np.float64)
+    speed = np.where(np.isfinite(rv), np.abs(rv), FASTEST_RADIAL_VELOCITY_KM_S)
+    nearest_pc = 1.0 / STAR_PARALLAX_BOUND_ARCSEC
+    turn = speed * KM_S_TO_PC_YR * years / nearest_pc
+    path = np.where(moves, pm, FASTEST_PROPER_MOTION_MAS_YR) * years / 1000.0
+    perspective = path * turn / np.maximum(1.0 - turn, 1e-9)
+    light_time = path * speed / SPEED_OF_LIGHT_KM_S
+    return (
+        ut1_bound_s * EARTH_ROTATION_ARCSEC_PER_S
+        + POLAR_MOTION_BOUND_ARCSEC
+        + STAR_PARALLAX_BOUND_ARCSEC
+        + STAR_TRANSFORM_ARCSEC
+        + stored
+        + unmoved
+        + perspective
+        + light_time
+    )
+
+
+def _star_subtitle(star: CatalogStar, designation: str | None, alt: float, az: float) -> str:
+    """Constellation, the name file's designation, the row's distance where it gives one, and where the star is."""
+    parts = [f"Predicted Star ({star.constellation})"]
+    if designation is not None and designation != star.common_name:
+        parts.append(designation)
+    if star.has_distance:
+        parts.append(f"{star.median_pc:.1f} pc")
+    parts += [f"Alt {alt:+.1f}° Az {az:.1f}°", "Above Horizon"]
+    return " · ".join(parts)
+
+
+def _star_limitations(
+    star: CatalogStar, catalog_epoch: float, time_said: str
+) -> tuple[str, ...]:
+    moved = star.pm_ra_mas_yr is not None and star.pm_dec_mas_yr is not None
+    return (
+        f"Predicted from its {star.release_version} catalog row (epoch J{catalog_epoch:.1f}), "
+        + ("moved by its proper motion to the date" if moved else "not moved, since the row has no proper motion")
+        + f", for {time_said} and place; not measured in the recording.",
+        f"Apparent magnitude is {star.magnitude_band}, not Johnson V.",
+        *(() if star.has_distance else ("Its catalog row gives no distance, so none is shown.",)),
+        STAR_POSITION_LIMITATION,
+    )
+
+
 def predicted_sky_findings(
     moment: str,
     lat_deg: float,
@@ -213,9 +411,10 @@ def predicted_sky_findings(
     exclude_ids: frozenset[str] = frozenset(),
     time_uncertainty_sec: float | None = None,
 ) -> list[CelestialFindingRecord]:
-    """The Sun, the Moon, the five planets and the pinned all-sky bright stars (stars carried to the date by their
-    proper motion) above the horizon at `moment` from (`lat_deg`, `lon_deg`), as predicted findings of the solution
-    `solution_id`: bodies first in `PREDICTED_BODIES` order, then stars brightest first.
+    """The Sun, the Moon, the five planets and the catalog tile stars to PREDICTED_STAR_DEPTH_V or named (stars
+    carried to the date by their proper motion) above the horizon at `moment` from (`lat_deg`, `lon_deg`), as
+    predicted findings of the solution `solution_id`: bodies first in `PREDICTED_BODIES` order, then stars brightest
+    first. The stars are placed in one pass (`propagate_directions_batch`, `icrs_to_altaz_batch`).
 
     Above the horizon means a geometric (airless) altitude above 0. `exclude_ids` names catalog stars to leave
     out, by catalog id. `time_uncertainty_sec`, for a capture time whose time zone was worked out from the GPS position
@@ -256,40 +455,38 @@ def predicted_sky_findings(
             )
         )
     year = _julian_year(moment)
-    for catalog_star in sorted(get_all_sky_catalog_stars(), key=lambda s: (s.mag, s.id)):
-        if catalog_star.id in exclude_ids:
+    index = _get_tile_index()
+    sky = _sky_rows()
+    data, rows = index.data, sky.rows
+    years = year - index.epoch_jyear
+    distance = np.where(data["valid_dist"][rows], data["med_pc"][rows], np.nan)
+    ra, dec = propagate_directions_batch(
+        data["ra0"][rows], data["dec0"][rows], data["pm_ra"][rows], data["pm_dec"][rows], data["rv"][rows], distance,
+        years,
+    )
+    alt, az = icrs_to_altaz_batch(ra, dec, lat_deg, lon_deg, moment)
+    uncertainty = predicted_star_uncertainty_arcsec(
+        data["pm_ra"][rows], data["pm_dec"][rows], data["rv"][rows], years, time_scales(moment).ut1_bound_s
+    )
+    for k in np.flatnonzero(alt > 0.0).tolist():
+        if sky.stars[k].id in exclude_ids:
             continue
-        star = propagate_star_epoch(catalog_star, year)
-        alt, az = icrs_to_altaz(star.ra_deg, star.dec_deg, lat_deg, lon_deg, moment)
-        if alt <= 0.0:
-            continue
+        star = replace(sky.stars[k], ra_deg=float(ra[k]), dec_deg=float(dec[k]), epoch_year=year)
         findings.append(
             CelestialFindingRecord(
                 id=f"finding-predicted-{star.id}",
                 observation_solution_id=solution_id,
                 evidence_class="predicted",
-                # A star with no IAU name shows its Bayer designation as its name: not twice
-                title=(
-                    star.common_name
-                    if star.bayer_designation == star.common_name
-                    else f"{star.common_name} ({star.bayer_designation})"
-                ),
-                subtitle=(
-                    f"Predicted Star ({star.constellation}) · {star.median_pc:.1f} pc · "
-                    f"Alt {alt:+.1f}° Az {az:.1f}° · Above Horizon"
-                ),
+                title=star.common_name,
+                subtitle=_star_subtitle(star, sky.designations[k], float(alt[k]), float(az[k])),
                 ra_deg=star.ra_deg,
                 dec_deg=star.dec_deg,
-                alt_deg=alt,
-                az_deg=az,
-                uncertainty_arcsec=PREDICTED_STAR_UNCERTAINTY_ARCSEC + time_arcsec,
+                alt_deg=float(alt[k]),
+                az_deg=float(az[k]),
+                uncertainty_arcsec=float(uncertainty[k]) + time_arcsec,
                 catalog_star=star,
                 verified_by_holdout=False,
-                limitations=(
-                    f"Predicted from its {star.release_version} catalog position, carried to the date by its proper "
-                    f"motion, for {time_said} and place; not measured in the recording.",
-                    STAR_POSITION_LIMITATION,
-                ),
+                limitations=_star_limitations(star, index.epoch_jyear, time_said),
                 source_sha256=source_sha256,
             )
         )
