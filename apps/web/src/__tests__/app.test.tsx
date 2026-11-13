@@ -208,9 +208,10 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       'utf8'
     );
     expect(viewportSrc).toContain('LANDING_SHOWCASE_SCENES');
-    expect(viewportSrc).toContain('Discover the universe behind');
-    expect(viewportSrc).toContain('the buried night sky.');
-    expect(viewportSrc).toContain('Launch Albedian');
+    // The home replaced the landing footer (arrive-home): its tagline and Launch are gone, the showcase code stays
+    expect(viewportSrc).toContain('<HomeScreen');
+    expect(viewportSrc).not.toContain('Discover the universe behind');
+    expect(viewportSrc).not.toContain('Launch Albedian');
     expect(viewportSrc).toContain('if (entryStageActive) return;');
 
     const rendererSrc = fs.readFileSync(

@@ -50,6 +50,7 @@ vi.mock('../../components/CoalescingBar.js', () => ({
 
 import { EpochAndDisclosureHud } from '../EpochAndDisclosureHud.js';
 import { SpatialObservatoryViewport } from '../../components/SpatialObservatoryViewport.js';
+import { choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 
 describe('EpochAndDisclosureHud (moment 05/06: alternative 3D viewpoint, marker filters, & epoch honesty HUD)', () => {
   let container: HTMLDivElement;
@@ -303,12 +304,7 @@ describe('EpochAndDisclosureHud (moment 05/06: alternative 3D viewpoint, marker 
       container.querySelector('[data-testid="epoch-and-disclosure-hud"]')
     ).toBeNull();
 
-    const launchBtn = container.querySelector<HTMLButtonElement>(
-      '[data-testid="enter-observatory-btn"]'
-    )!;
-    await act(async () => {
-      launchBtn.click();
-    });
+    choosePhotoOnHome(container);
 
     expect(
       container.querySelector('[data-testid="epoch-and-disclosure-hud"]')

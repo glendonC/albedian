@@ -275,7 +275,16 @@ describe('Logo: the name always as the logo', () => {
 
 describe('LookIcon: only the Phosphor icons the approved screens use', () => {
   it('draws each as one path in the Phosphor 256 box, hidden from screen readers', () => {
-    expect([...LOOK_ICON_NAMES].sort()).toEqual(['arrow-right', 'microphone', 'speaker-high', 'upload-simple', 'x']);
+    expect([...LOOK_ICON_NAMES].sort()).toEqual([
+      'arrow-left',
+      'arrow-right',
+      'arrow-square-out',
+      'microphone',
+      'speaker-high',
+      'upload-simple',
+      'warning-circle',
+      'x',
+    ]);
     for (const name of LOOK_ICON_NAMES) {
       render(createElement(LookIcon, { name }));
       const svg = container.querySelector('svg.look-i')!;

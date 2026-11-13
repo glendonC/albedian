@@ -33,17 +33,20 @@ import {
   startSpeechCapture,
   type SpeechRecognitionLike,
 } from './voice/speechInput.js';
+import type { HomeRefusal } from './components/homeRefusal.js';
 import './styles/albedian.css';
 
 /**
  * Upload a chosen file and solve it. Nothing about the file is known until the server's receipt
  * arrives, so until then the session stays empty and says it is uploading; a refused upload says
- * why and that nothing was stored.
+ * why and that nothing was stored, and `onRefused` hears the server's own words (or null) for the home.
+ * A 5xx answer or no answer proves no refusal, so it is not one.
  */
 export async function ingestAndSolveUploadedFile(
   file: File,
   localObjectUrl: string,
-  onSessionUpdate: (session: ObservationSession) => void
+  onSessionUpdate: (session: ObservationSession) => void,
+  onRefused?: (detail: string | null) => void
 ): Promise<ObservationSession> {
   onSessionUpdate({
     ...createEmptyObservationSession(),
@@ -68,6 +71,7 @@ export async function ingestAndSolveUploadedFile(
           : `The upload of "${file.name}" did not finish: ${failureReason(err)}.`,
     };
     onSessionUpdate(notStored);
+    if (err instanceof UploadRefusedError && err.status < 500) onRefused?.(err.detail);
     return notStored;
   }
 }
@@ -89,9 +93,11 @@ export const App: React.FC = () => {
   const [recentPointer, setRecentPointer] = useState<ActionContext['recentPointer']>(undefined);
   const [isMuted] = useState(false);
   const [uploadedMediaUrl, setUploadedMediaUrl] = useState<string | null>(null);
+  const [uploadRefusal, setUploadRefusal] = useState<HomeRefusal | null>(null);
+  // The file chosen last: an older upload's refusal arriving after another choice is not shown
+  const latestChoiceRef = useRef<File | null>(null);
 
   const audioBusRef = useRef<AlbedianWebAudioBus | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   // The session and pointer as they stand now, for spoken words or a backend reply that arrive after later changes
   const sessionRef = useRef(session);
   useEffect(() => {
@@ -243,24 +249,22 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // A photo or clip chosen on the home starts its upload and solve, and clears the last refusal; a refusal brings
+  // the home back with the file's name and the server's reason
+  const handleFileChosen = (file: File) => {
     const url = URL.createObjectURL(file);
+    latestChoiceRef.current = file;
+    setUploadRefusal(null);
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
-    void ingestAndSolveUploadedFile(file, url, setSession);
+    void ingestAndSolveUploadedFile(file, url, setSession, (detail) => {
+      if (latestChoiceRef.current !== file) return;
+      setUploadRefusal({ fileName: file.name, detail });
+    });
   };
 
   return (
     <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="video/*,image/*"
-        style={{ display: 'none' }}
-        onChange={handleFileUpload}
-      />
       <SpatialObservatoryViewport
         session={session}
         setSession={setSession}
@@ -276,7 +280,8 @@ export const App: React.FC = () => {
         onRunUtterance={(utt, mod) => runUtterance(utt, mod)}
         onSelectFinding={(id, coords) => handleSelectFinding(id, coords)}
         onPushToTalk={handlePushToTalk}
-        onTriggerUpload={() => fileInputRef.current?.click()}
+        onFileChosen={handleFileChosen}
+        uploadRefusal={uploadRefusal}
       />
     </>
   );

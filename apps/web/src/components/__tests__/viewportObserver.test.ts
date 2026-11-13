@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
 import { webglRenderLayersFor } from '../../spatial/webglRenderLayers.js';
+import { HOME_SCREEN, choosePhotoOnHome } from './homeEntry.js';
 
 /**
  * The observatory viewport hands the renderer the recording's place and capture time for the sky
@@ -78,8 +79,10 @@ const noop = () => {};
 let container: HTMLDivElement;
 let root: Root;
 
-function renderViewport(sourceAsset: Record<string, unknown>, uploadedMediaUrl: string | null = null): void {
-  const session = { sourceAsset } as unknown as ObservationSession;
+let lastSourceAsset: Record<string, unknown> = {};
+function renderViewport(sourceAsset: Record<string, unknown>, uploadedMediaUrl: string | null = null, mode?: string): void {
+  lastSourceAsset = sourceAsset;
+  const session = { sourceAsset, ...(mode ? { spatialView: { mode } } : {}) } as unknown as ObservationSession;
   act(() => {
     root.render(
       createElement(SpatialObservatoryViewport, {
@@ -104,7 +107,17 @@ function renderViewport(sourceAsset: Record<string, unknown>, uploadedMediaUrl: 
 }
 
 /** Opens the layer disclosure and returns its horizon row, if it has one. */
+/**
+ * The layer panel is past the home and off the photo: a person chooses a photo, then turns to the sky. The panel's
+ * tests take the same way when the home or the photo is showing.
+ */
+function toThePanel(): void {
+  if (container.querySelector(HOME_SCREEN)) choosePhotoOnHome(container);
+  if (!container.querySelector('.alb-layer-disclosure-toggle')) renderViewport(lastSourceAsset, null, 'registered_sky');
+}
+
 function horizonRow(): Element | undefined {
+  toThePanel();
   const toggle = container.querySelector<HTMLButtonElement>('.alb-layer-disclosure-toggle');
   expect(toggle).not.toBeNull();
   if (toggle!.getAttribute('aria-expanded') !== 'true') act(() => toggle!.click());
@@ -120,7 +133,10 @@ function horizonDisclosure(): string {
   return row!.querySelector('.alb-layer-disclosure-text')!.textContent ?? '';
 }
 
-const panelSummary = () => container.querySelector('.alb-layer-disclosure-toggle')?.textContent ?? '';
+const panelSummary = () => {
+  toThePanel();
+  return container.querySelector('.alb-layer-disclosure-toggle')?.textContent ?? '';
+};
 
 /** Every text node and attribute value the viewport renders. */
 function everythingShown(): string {
@@ -201,7 +217,8 @@ describe('the landing promises only what the app does', () => {
   it('does not promise a flight through the 3D universe before the stars move with the camera', () => {
     renderViewport({ observerLocation: null });
     expect(container.textContent).not.toMatch(/fly through the 3D universe/i);
-    expect(container.textContent).toMatch(/how far/i);
+    // The home makes no promise at all: its only words are its controls' (the landing paragraph was a tagline)
+    expect(container.querySelector(HOME_SCREEN)!.textContent).toBe('CreditsalbedianUpload');
   });
 });
 
@@ -209,9 +226,8 @@ describe('the viewport returns the canvas to the sky view when the landing ends'
   it('shows the sky view on Launch, not the last landing scene', () => {
     renderViewport({ observerLocation: null });
     expect(stub.skyViews).toBe(0);
-    const launch = container.querySelector<HTMLButtonElement>('[data-testid="enter-observatory-btn"]');
-    expect(launch).not.toBeNull();
-    act(() => launch!.click());
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
+    choosePhotoOnHome(container);
     expect(stub.skyViews).toBeGreaterThanOrEqual(1);
   });
 

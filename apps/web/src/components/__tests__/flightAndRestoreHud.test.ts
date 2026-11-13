@@ -54,6 +54,7 @@ vi.mock('../CoalescingBar.js', () => ({
 
 import { FlightAndRestoreHud } from '../FlightAndRestoreHud.js';
 import { SpatialObservatoryViewport } from '../SpatialObservatoryViewport.js';
+import { choosePhotoOnHome } from './homeEntry.js';
 
 describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to Moment)', () => {
   let container: HTMLDivElement;
@@ -626,13 +627,8 @@ describe('FlightAndRestoreHud (moments 06 & 08: smooth flight readout & Back to 
       container.querySelector('[data-testid="flight-and-restore-hud"]')
     ).toBeNull();
 
-    // Launch Albedian
-    const launchBtn = container.querySelector<HTMLButtonElement>(
-      '[data-testid="enter-observatory-btn"]'
-    )!;
-    await act(async () => {
-      launchBtn.click();
-    });
+    // Choose a photo on the home, which leaves it
+    choosePhotoOnHome(container);
 
     expect(
       container.querySelector('[data-testid="flight-and-restore-hud"]')

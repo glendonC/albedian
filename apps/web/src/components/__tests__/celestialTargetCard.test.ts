@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CelestialFindingSchema, EXIF_ORIENTATIONS, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
+import { choosePhotoOnHome } from './homeEntry.js';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -553,7 +554,7 @@ describe('SpatialObservatoryViewport wiring (hud-5)', () => {
       );
     });
     // An uploaded photo leaves the landing overlay on its own (SpatialObservatoryViewport), so the card shows at once
-    expect(q('enter-observatory-btn')).toBeNull();
+    expect(q('home-screen')).toBeNull();
     expect(q('target-card-title')?.textContent).toBe('Betelgeuse');
     expect(q('target-card-pixel-crop')?.querySelector('img')?.getAttribute('src')).toBe('blob:photo');
     act(() => q<HTMLButtonElement>('target-card-go-there')!.click());
@@ -586,7 +587,7 @@ describe('session selection (hud-5 fix)', () => {
         })
       );
     });
-    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    choosePhotoOnHome(container);
     expect(q('celestial-target-card')).toBeNull();
   });
 });
@@ -619,7 +620,7 @@ describe('closing from the viewport (hud-5b)', () => {
         })
       );
     });
-    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    choosePhotoOnHome(container);
     setSession.mockClear();
     act(() => q<HTMLButtonElement>('target-card-close')!.click());
     expect(setSession).toHaveBeenCalledTimes(1);
@@ -654,7 +655,7 @@ describe('landing overlay (hud-5)', () => {
       );
     });
     expect(q('celestial-target-card')).toBeNull();
-    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    choosePhotoOnHome(container);
     expect(q('target-card-title')?.textContent).toBe('Betelgeuse');
     expect(q('target-card-pixel-crop')).toBeNull();
   });

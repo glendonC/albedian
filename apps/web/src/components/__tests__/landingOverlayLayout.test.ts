@@ -3,9 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+// The home replaced the landing footer (arrive-home); its layout rules live in home.css
 const cssPath = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../styles/albedian.css'
+  '../../styles/home.css'
 );
 
 /**
@@ -44,73 +45,68 @@ export function declarationsFor(fragment: string, selector: string): Record<stri
   return out;
 }
 
-describe('landing overlay narrow-width and landscape layout rules', () => {
+describe('home narrow-width and landscape layout rules', () => {
   const css = fs.readFileSync(cssPath, 'utf8');
 
-  it('allows the landing action buttons to wrap and keeps the secondary button label on one line', () => {
-    const actions = declarationsFor(css, '.alb-nazyurtal-actions');
-    expect(actions['flex-wrap']).toBe('wrap');
+  it('keeps the top controls on one line and Upload as wide as its word, placed as the mockup at 1440', () => {
+    const top = declarationsFor(css, '.home-top');
+    expect(top['flex-wrap']).toBe('nowrap');
+    expect(top['gap']).toBe('8px');
+    expect(top['right']).toBe('32px');
+    expect(top['top']).toBe('26px');
 
-    const secondary = declarationsFor(css, '.alb-nazyurtal-btn-secondary');
-    expect(secondary['white-space']).toBe('nowrap');
+    const hero = declarationsFor(css, '.home-hero');
+    expect(hero['justify-items']).toBe('start');
+    expect(hero['left']).toBe('48px');
+    expect(hero['bottom']).toBe('56px');
+    expect(hero['gap']).toBe('36px');
+
+    const logo = declarationsFor(css, '.home-hero .look-logo');
+    expect(logo['margin-left']).toBe('-6px');
   });
 
-  it('collapses the two-column footer split to one column below 900px and clears the right column bounds', () => {
+  it('scales the logo with the window below 900px wide, from 132px down to no less than 56px', () => {
     const media900 = extractBlock(css, '@media (max-width: 900px)');
     expect(media900).not.toBeNull();
 
-    const split = declarationsFor(media900!, '.alb-nazyurtal-split');
-    expect(split['grid-template-columns']).toBe('1fr');
-    expect(split['gap']).toBe('16px');
-
-    const right = declarationsFor(media900!, '.alb-nazyurtal-right');
-    expect(right['max-width']).toBe('none');
-    expect(right['min-height']).toBe('0');
+    const logo = declarationsFor(media900!, '.home-hero .look-logo');
+    expect(logo['--look-logo-fs']).toBe('clamp(56px, 14.6vw, 132px) !important');
   });
 
-  it('uses a 16px horizontal gutter, a 24px bottom inset, a scaled headline and flexible buttons below 720px', () => {
+  it('uses a 16px gutter, a 24px bottom inset and a 24px gap below 720px, the top controls 16px in', () => {
     const media720 = extractBlock(css, '@media (max-width: 720px)');
     expect(media720).not.toBeNull();
 
-    const header = declarationsFor(media720!, '.alb-lusion-header');
-    expect(header['padding']).toBe('20px 16px');
+    const top = declarationsFor(media720!, '.home-top');
+    expect(top['right']).toBe('16px');
+    expect(top['top']).toBe('16px');
 
-    const footer = declarationsFor(media720!, '.alb-nazyurtal-footer');
-    expect(footer['left']).toBe('16px');
-    expect(footer['right']).toBe('16px');
-    expect(footer['bottom']).toBe('24px');
-
-    const headline = declarationsFor(media720!, '.alb-nazyurtal-headline');
-    expect(headline['font-size']).toBe('clamp(32px, 9vw, 46px)');
-
-    const buttons = declarationsFor(
-      media720!,
-      '.alb-nazyurtal-btn-primary,\n  .alb-nazyurtal-btn-secondary'
-    );
-    expect(buttons['flex']).toBe('1 1 auto');
+    const hero = declarationsFor(media720!, '.home-hero');
+    expect(hero['left']).toBe('16px');
+    expect(hero['bottom']).toBe('24px');
+    expect(hero['gap']).toBe('24px');
   });
 
-  it('compacts the landing footer and headline on short landscape viewports below 480px tall', () => {
+  it('compacts the home on short landscape windows below 480px tall', () => {
     const media480h = extractBlock(css, '@media (max-height: 480px)');
     expect(media480h).not.toBeNull();
 
-    const footer = declarationsFor(media480h!, '.alb-nazyurtal-footer');
-    expect(footer['bottom']).toBe('16px');
+    const hero = declarationsFor(media480h!, '.home-hero');
+    expect(hero['bottom']).toBe('20px');
+    expect(hero['gap']).toBe('20px');
 
-    const split = declarationsFor(media480h!, '.alb-nazyurtal-split');
-    expect(split['grid-template-columns']).toBe('1fr 1fr');
-    expect(split['gap']).toBe('24px');
-
-    const headline = declarationsFor(media480h!, '.alb-nazyurtal-headline');
-    expect(headline['font-size']).toBe('clamp(24px, 6vh, 32px)');
+    const logo = declarationsFor(media480h!, '.home-hero .look-logo');
+    expect(logo['--look-logo-fs']).toBe('clamp(40px, 16vh, 132px) !important');
   });
 
-  it('places the landing responsive rules immediately after the secondary button hover block, before the next section', () => {
-    const afterHover = css.indexOf('.alb-nazyurtal-btn-secondary:hover');
+  it('places the responsive rules after the base hero rule, widest first, the short-window rule last', () => {
+    const heroIdx = css.indexOf('.home-hero {');
     const media900Idx = css.indexOf('@media (max-width: 900px)');
-    const nextSectionIdx = css.indexOf('/* ====', afterHover);
-    expect(afterHover).toBeGreaterThan(0);
-    expect(media900Idx).toBeGreaterThan(afterHover);
-    expect(media900Idx).toBeLessThan(nextSectionIdx);
+    const media720Idx = css.indexOf('@media (max-width: 720px)');
+    const media480hIdx = css.indexOf('@media (max-height: 480px)');
+    expect(heroIdx).toBeGreaterThan(0);
+    expect(media900Idx).toBeGreaterThan(heroIdx);
+    expect(media720Idx).toBeGreaterThan(media900Idx);
+    expect(media480hIdx).toBeGreaterThan(media720Idx);
   });
 });

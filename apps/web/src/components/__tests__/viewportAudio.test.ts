@@ -20,6 +20,7 @@ import { appMusicSetting } from '../../audio/music/musicSetting.js';
 import { appSoundtrackMoment } from '../../audio/music/soundtrackMoment.js';
 import type { CameraSkyPose } from '../../spatial/cosmosRenderer.js';
 import { webglRenderLayersFor } from '../../spatial/webglRenderLayers.js';
+import { HOME_SCREEN, choosePhotoOnHome } from './homeEntry.js';
 
 /**
  * The observatory viewport's audio wiring (render-6g's viewport half), on the real component: the
@@ -117,7 +118,7 @@ const CISLUNAR_LAYERS = webglRenderLayersFor({ regime: 'cislunar', blackHole: fa
 let container: HTMLDivElement;
 let root: Root;
 
-function renderViewport(selectedFinding: CelestialFinding | null = null): void {
+function renderViewport(selectedFinding: CelestialFinding | null = null, { atHome = false } = {}): void {
   act(() => {
     root.render(
       createElement(SpatialObservatoryViewport, {
@@ -139,6 +140,8 @@ function renderViewport(selectedFinding: CelestialFinding | null = null): void {
       })
     );
   });
+  // The Audio control is in the app's header, past the home: a test starts there unless it asks for the home
+  if (!atHome && container.querySelector(HOME_SCREEN)) choosePhotoOnHome(container);
 }
 
 function audioButton(): HTMLButtonElement {
@@ -256,11 +259,10 @@ describe('the music beside the Audio control', () => {
 
   it("gives the soundtrack the moment, which the app's engine follows: arriving on the landing page, then looking around after Launch", () => {
     act(() => appSoundtrackMoment.set('travel'));
-    renderViewport();
+    renderViewport(null, { atHome: true });
     expect(appSoundtrackMoment.get()).toBe('arrive');
-    const launch = container.querySelector<HTMLButtonElement>('[data-testid="enter-observatory-btn"]');
-    expect(launch).not.toBeNull();
-    act(() => launch!.click());
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
+    choosePhotoOnHome(container);
     expect(appSoundtrackMoment.get()).toBe('look_around');
   });
 

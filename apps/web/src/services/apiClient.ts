@@ -13,6 +13,7 @@ import {
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
 import { raDecToUnitVector } from '@albedian/camera-rig';
+import { graphemes } from '../text/graphemes.js';
 import { skyLayerSentence, solveStoppedSentence, type SkyAssetFacts, type StarSearchFacts } from './skyLayerWords.js';
 
 export interface MediaAssetUrls {
@@ -403,30 +404,64 @@ export function buildSessionFromIngestReceipt(
 
 /**
  * The server answered the upload with an error status. `POST /api/ingest` leaves nothing behind when it
- * refuses (services/ingest/router.py), so the file was not stored; `reason` is the server's own words.
+ * refuses (services/ingest/router.py), so the file was not stored. `detail` is the server's own words, or null
+ * when its answer held none; `reason` is the detail, else the HTTP status in words, for a status line only.
  */
 export class UploadRefusedError extends Error {
   readonly status: number;
+  readonly detail: string | null;
   readonly reason: string;
 
-  constructor(status: number, reason: string) {
+  constructor(status: number, detail: string | null) {
+    const reason = detail ?? statusInWords(status);
     super(`Not stored: ${reason}`);
     this.name = 'UploadRefusedError';
     this.status = status;
+    this.detail = detail;
     this.reason = reason;
   }
 }
 
-/** The server's reason for an error answer: its `{"detail": "..."}` text, else the HTTP status. */
-async function serverReason(res: Response): Promise<string> {
+function statusInWords(status: number): string {
+  return `the server answered HTTP ${status}`;
+}
+
+/**
+ * The most of an answer's `detail` the client takes. Where the platform has a cluster splitter they are characters as
+ * a person sees them (graphemes), so a cut never splits one; where it has none, the cut falls between code points
+ * (text/graphemes.ts says what that can split). The store's own reasons are under 100.
+ */
+export const UPLOAD_DETAIL_MAX_CHARS = 240;
+
+/**
+ * A detail within the bound, or null when it holds no words: past the bound it is cut at the last space before it (at
+ * the bound itself when it has no space) and ends with an ellipsis, so a person sees where it was cut.
+ */
+export function boundedDetail(detail: string): string | null {
+  const text = detail.trim();
+  if (text === '') return null;
+  const chars = graphemes(text);
+  if (chars.length <= UPLOAD_DETAIL_MAX_CHARS) return text;
+  const head = chars.slice(0, UPLOAD_DETAIL_MAX_CHARS).join('');
+  const space = head.lastIndexOf(' ');
+  return `${space > 0 ? head.slice(0, space) : head}\u2026`;
+}
+
+/** The server's own words for an error answer: its `{"detail": "..."}` text within the bound, or null when it gave none. */
+async function serverDetail(res: Response): Promise<string | null> {
   try {
     const body: unknown = await res.json();
     const detail = body && typeof body === 'object' ? (body as { detail?: unknown }).detail : undefined;
-    if (typeof detail === 'string' && detail.trim() !== '') return detail.trim();
+    if (typeof detail === 'string') return boundedDetail(detail);
   } catch {
-    // Not JSON, so the status is all there is
+    // Not JSON, so the server gave no words of its own
   }
-  return `the server answered HTTP ${res.status}`;
+  return null;
+}
+
+/** The server's reason for an error answer: its own words, else the HTTP status. */
+async function serverReason(res: Response): Promise<string> {
+  return (await serverDetail(res)) ?? statusInWords(res.status);
 }
 
 /** A failure in words a person can read; an answer that fails the contract is named, not dumped. */
@@ -471,7 +506,7 @@ export async function uploadAndSolveMedia(
     body: bytes,
   });
   if (!ingestRes.ok) {
-    throw new UploadRefusedError(ingestRes.status, await serverReason(ingestRes));
+    throw new UploadRefusedError(ingestRes.status, await serverDetail(ingestRes));
   }
   const receipt = IngestReceiptSchema.parse(await ingestRes.json().catch(() => undefined));
   const ingestedSession = buildSessionFromIngestReceipt(receipt, {

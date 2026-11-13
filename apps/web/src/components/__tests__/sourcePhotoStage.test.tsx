@@ -8,6 +8,7 @@ import fc from 'fast-check';
 import { EXIF_ORIENTATIONS, invertDisplayOrientation } from '@albedian/contracts';
 import type { ObservationSession, RenderLayerSet } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
+import { HOME_SCREEN } from './homeEntry.js';
 
 const MODELED_LAYERS: RenderLayerSet = [
   {
@@ -341,11 +342,11 @@ describe('SpatialObservatoryViewport upload path (experience-9a)', () => {
   it('leaves the landing and shows the photo when a file is uploaded, and hides the modeled-scene credits behind it', () => {
     const session = uploadedPhotoSession();
     act(() => renderViewport(session, null));
-    expect(container.querySelector('[data-testid="enter-observatory-btn"]')).not.toBeNull();
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
     expect(container.querySelector('[data-testid="source-photo-stage"]')).toBeNull();
 
     act(() => renderViewport(session, 'blob:http://localhost:5189/uploaded-photo'));
-    expect(container.querySelector('[data-testid="enter-observatory-btn"]')).toBeNull();
+    expect(container.querySelector(HOME_SCREEN)).toBeNull();
     expect(container.querySelector('[data-testid="source-photo-stage"]')).not.toBeNull();
     // The canvas is covered by the photo, so the modeled-scene disclosure would describe nothing on screen
     expect(container.querySelector('.alb-layer-disclosure-toggle')).toBeNull();
@@ -361,8 +362,19 @@ describe('SpatialObservatoryViewport upload path (experience-9a)', () => {
 
   it('stays on the landing when nothing was uploaded', () => {
     act(() => renderViewport(uploadedPhotoSession(), null));
-    expect(container.querySelector('[data-testid="enter-observatory-btn"]')).not.toBeNull();
-    expect(container.querySelector('.alb-layer-disclosure-toggle')).not.toBeNull();
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
+    // The home covers the 3D canvas as a photo does, so the modeled-scene credits would describe nothing on screen
+    expect(container.querySelector('.alb-layer-disclosure-toggle')).toBeNull();
+  });
+});
+
+describe('the home and the modeled scene (arrive-home)', () => {
+  it('keeps the modeled-scene credits off the home when the session would show the 3D sky, not a photo', () => {
+    const base = uploadedPhotoSession();
+    const session = { ...base, spatialView: { ...base.spatialView, mode: 'catalog_3d' } } as ObservationSession;
+    act(() => renderViewport(session, null));
+    expect(container.querySelector(HOME_SCREEN)).not.toBeNull();
+    expect(container.querySelector('.alb-layer-disclosure-toggle')).toBeNull();
   });
 });
 

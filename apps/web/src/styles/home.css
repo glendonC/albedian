@@ -1,0 +1,278 @@
+/* The approved home (arrive, 2026-11-12) and its Credits page (laid out as the Credits page approved for the
+   iPhone the same day). The controls are the approved parts in look.css; these rules only place them. The values at
+   1440 by 900 are the mockup's; the rules for narrower and shorter windows are [proposed], since the mockup is drawn
+   at 1440 by 900 only. Nothing here moves: no animation and no transition. */
+
+.home-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  background: var(--look-field);
+  color: var(--look-ink);
+  font-family: var(--look-font-sans);
+}
+
+/* The crop of the panorama keeps its 1.6 shape and covers the window, as the mockup's background does */
+.home-sky {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, calc(100vh * 1.6));
+  height: max(100vh, calc(100vw / 1.6));
+  transform: translate(-50%, -50%);
+  background-repeat: no-repeat;
+}
+
+/* Darker toward the bottom, where the logo and Upload sit: the gradient comes from HOME_SHADE (homeBackdrop.ts) */
+.home-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.home-top {
+  position: absolute;
+  right: 32px;
+  top: 26px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+/* The sound circle's speaker is drawn at 16 px in the mockup */
+.home-top .look-icon .look-i {
+  width: 16px;
+  height: 16px;
+}
+
+.home-hero {
+  position: absolute;
+  left: 48px;
+  bottom: 56px;
+  z-index: 2;
+  display: grid;
+  gap: 36px;
+  justify-items: start;
+}
+
+/* The logo's word starts with a round letter, so the mockup sets it 6 px left to line up with Upload */
+.home-hero .look-logo {
+  margin-left: -6px;
+}
+
+/* Upload, and after a refusal the file and the server's reason beside it (approved 2026-11-12): 22 px from the circle
+   and centred on it. Upload alone makes the row; the message hangs beside it out of its flow, so nothing the message
+   holds can move Upload. The message's box ends 16 px inside the window (its max-width) and clips what would cross
+   its side, so nothing it holds is drawn past it whatever the characters' widths; each part gives way first. The
+   message's bounds (two lines for the file, two for the reason) and how a part gives way are [proposed]. */
+.home-row {
+  position: relative;
+  display: inline-flex;
+}
+
+.home-refusal {
+  --look-ic: 18px;
+  position: absolute;
+  left: calc(100% + 22px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 100% - 22px - 48px - 32px));
+  overflow-x: clip;
+}
+
+.home-refusal__file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--look-ink);
+}
+
+/* The name's head gives way with an ellipsis first; its tail, the file's ending, keeps its width until it alone is
+   wider than the name's line, then gives way too. The words before it may take a line of their own, so the file takes
+   two lines at most, and give way with an ellipsis in a box narrower than themselves */
+.home-refusal__words {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.25em;
+  min-width: 0;
+}
+
+.home-refusal__open {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-refusal__name {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.home-refusal__head {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-refusal__tail {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The reason starts under the words, past the 18 px icon and its 8 px gap */
+.home-refusal__reason {
+  margin: 0;
+  padding-left: 26px;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  color: var(--look-ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.home-file-input {
+  display: none;
+}
+
+/* Credits, as the approved iPhone page (credit-approved-2026-11-12): the back button, the title, then rows divided by
+   hairlines, each a small grey label over its lines as one block, the small open-link icon at the right edge of a
+   credit whose source has a page. [proposed]: the laptop's 720 px column 32 px from the top, more than one credit on
+   a row (each its own block, 6 px apart), and the licence names drawn as links. */
+.credits-page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  padding: 32px max(24px, calc((100vw - 720px) / 2)) 96px;
+  background: var(--look-field);
+  color: var(--look-ink);
+  font-family: var(--look-font-sans);
+  outline: none;
+}
+
+.credits-title {
+  margin: 36px 0 32px;
+  font: 300 40px / 1.05 var(--look-font-sans);
+  letter-spacing: -0.045em;
+}
+
+.credits-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.credits-row {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 16px 36px 16px 0;
+  border-top: 1px solid var(--look-hair);
+}
+
+.credits-row:last-child {
+  border-bottom: 1px solid var(--look-hair);
+}
+
+.credits-label {
+  font-size: 13px;
+  color: var(--look-ink-3);
+  letter-spacing: -0.005em;
+}
+
+.credits-block {
+  position: relative;
+}
+
+.credits-lines {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.credits-licence {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--look-ink-3);
+  text-underline-offset: 3px;
+}
+
+.credits-link {
+  --look-ic: 16px;
+  position: absolute;
+  right: -36px;
+  top: 50%;
+  margin-top: -8px;
+  color: var(--look-ink-2);
+}
+
+.credits-link:hover,
+.credits-licence:hover {
+  color: var(--look-ink);
+}
+
+.credits-link:focus-visible,
+.credits-licence:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.credits-failed {
+  font-size: 16px;
+  color: var(--look-ink-2);
+}
+
+@media (max-width: 900px) {
+  .home-hero .look-logo {
+    --look-logo-fs: clamp(56px, 14.6vw, 132px) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-top {
+    right: 16px;
+    top: 16px;
+  }
+
+  .home-hero {
+    left: 16px;
+    bottom: 24px;
+    gap: 24px;
+  }
+
+  .home-refusal {
+    max-width: calc(100vw - 100% - 22px - 32px);
+  }
+}
+
+@media (max-height: 480px) {
+  .home-hero {
+    bottom: 20px;
+    gap: 20px;
+  }
+
+  .home-hero .look-logo {
+    --look-logo-fs: clamp(40px, 16vh, 132px) !important;
+  }
+}

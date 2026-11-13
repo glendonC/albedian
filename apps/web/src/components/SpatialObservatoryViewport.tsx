@@ -36,6 +36,8 @@ import { EpochAndDisclosureHud } from '../spatial/EpochAndDisclosureHud.js';
 import { ObservationSolveAndCompareHud } from '../spatial/ObservationSolveAndCompareHud.js';
 import { VoiceCommandHud } from './VoiceCommandHud.js';
 import { SourcePhotoStage } from './SourcePhotoStage.js';
+import { HomeScreen } from './HomeScreen.js';
+import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown } from './sourcePhotoRect.js';
 import '../styles/albedian.css';
 
@@ -60,7 +62,12 @@ export interface SpatialObservatoryViewportProps {
     pointerCoords?: { xPx: number; yPx: number }
   ) => void;
   onPushToTalk: () => void;
-  onTriggerUpload: () => void;
+  /** A photo or clip chosen on the home; choosing one leaves the home at once. */
+  onFileChosen?: (file: File) => void;
+  /** Told when the home's Upload is pressed, as its picker opens. */
+  onTriggerUpload?: () => void;
+  /** The upload the server last refused; a new one brings the home back to show it beside Upload. */
+  uploadRefusal?: HomeRefusal | null;
 }
 
 const LANDING_SHOWCASE_SCENES = [
@@ -129,7 +136,9 @@ export const SpatialObservatoryViewport: React.FC<
   onRunUtterance,
   onSelectFinding,
   onPushToTalk,
+  onFileChosen,
   onTriggerUpload,
+  uploadRefusal = null,
 }) => {
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<CosmosRenderer | null>(null);
@@ -186,6 +195,11 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     if (uploadedMediaUrl) setEntryStageActive(false);
   }, [uploadedMediaUrl]);
+
+  // A refused upload stored nothing, so the home comes back with the refusal beside Upload
+  useEffect(() => {
+    if (uploadRefusal) setEntryStageActive(true);
+  }, [uploadRefusal]);
 
   // The showcase scene last started on which renderer; null scene after leaving the landing
   const appliedShowcaseRef = useRef<{ renderer: CosmosRenderer | null; sceneKey: string | null }>({
@@ -460,79 +474,25 @@ export const SpatialObservatoryViewport: React.FC<
         data-testid="spark-portal-canvas"
       />
 
-      {/* While the photo covers the canvas, the stage's own label says what is on screen */}
-      {renderLayers && !(!entryStageActive && isSourcePhotoShown(session)) && (
+      {/* While the home or the photo covers the canvas, the modeled scene's layers are not what is on screen */}
+      {renderLayers && !entryStageActive && !isSourcePhotoShown(session) && (
         <RenderLayerDisclosure layers={renderLayers} />
       )}
 
-      {/* =======================================================================
-          SCREEN 1: CLEAN LANDING PAGE
-          ======================================================================= */}
+      {/* The home (arrive, 2026-11-12) shows until a photo is chosen; it covers the canvas, as a photo does */}
       {entryStageActive && (
-        <>
-          <div className="alb-nazyurtal-entry-mask" />
-
-          <footer
-            className="alb-nazyurtal-footer"
-            data-hud-interactive="true"
-            data-testid="nazyurtal-entry-footer"
-          >
-            <div className="alb-nazyurtal-split">
-              <div className="alb-nazyurtal-left">
-                <h1 className="alb-nazyurtal-headline">
-                  Discover the universe behind
-                  <br />
-                  <span className="alb-nazyurtal-headline-muted">
-                    the buried night sky.
-                  </span>
-                </h1>
-              </div>
-              <div className="alb-nazyurtal-right">
-                <p className="alb-nazyurtal-copy">
-                  Light pollution hides the Milky Way from more than a third of
-                  humanity, severing our perspective in the cosmos. Upload a night photo to find
-                  where and when it was taken, see the real sky behind the glow,
-                  and find out how far away each star in your frame is.
-                </p>
-                <div className="alb-nazyurtal-actions">
-                  <button
-                    type="button"
-                    data-testid="enter-observatory-btn"
-                    className="alb-nazyurtal-btn-primary"
-                    onClick={() => {
-                      setEntryStageActive(false);
-                      rendererRef.current?.setShowcaseMode(false);
-                      observatoryAudio.playDetentClick(1020);
-                    }}
-                  >
-                    <span className="alb-btn-primary-label">Launch Albedian</span>
-                    <svg
-                      width="13"
-                      height="12"
-                      viewBox="0 0 13 12"
-                      fill="none"
-                      aria-hidden="true"
-                      className="alb-btn-arrow-svg"
-                    >
-                      <path
-                        d="M11.9893 5.58371L12.2471 5.89914L11.9893 6.21555L8.10059 10.9782L7.3252 10.3454L10.5479 6.39914L1.39941 6.39914L1.39941 5.39914L10.5479 5.39914L7.3252 1.45383L8.10059 0.821014L11.9893 5.58371Z"
-                        fill="currentColor"
-                        fillOpacity="0.85"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="alb-nazyurtal-btn-secondary"
-                    onClick={onTriggerUpload}
-                  >
-                    Upload a photo
-                  </button>
-                </div>
-              </div>
-            </div>
-          </footer>
-        </>
+        <HomeScreen
+          soundOn={soundEnabled}
+          onToggleSound={handleToggleSound}
+          onUploadPressed={() => {
+            onTriggerUpload?.();
+          }}
+          onFileChosen={(file) => {
+            setEntryStageActive(false);
+            onFileChosen?.(file);
+          }}
+          refusal={uploadRefusal}
+        />
       )}
 
       {!entryStageActive && (
@@ -579,94 +539,96 @@ export const SpatialObservatoryViewport: React.FC<
       )}
 
       {/* =======================================================================
-          TOP BAR: Brand Wordmark + 03-B Mark on Left, Audio Control on Right
+          TOP BAR: Brand Wordmark + 03-B Mark on Left, Audio Control on Right (past the home only)
           ======================================================================= */}
-      <header
-        className="alb-lusion-header alb-visor-topright"
-        data-hud-interactive="true"
-      >
-        <div className="alb-lusion-header-left">
-          <button
-            type="button"
-            className="alb-lusion-brand-btn"
-            onClick={() => {
-              setEntryStageActive(true);
-            }}
-          >
-            <span className="alb-brand-wordmark">albedian</span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 32 32"
-              fill="none"
-              aria-hidden="true"
-              className="alb-brand-mark-svg alb-brand-shoulder-mark"
-            >
-              <defs>
-                <mask id="albMoonStarCutoutMask">
-                  <rect width="32" height="32" fill="white" />
-                  <path
-                    d="M18.2 2.2Q18.2 13.8 29.8 13.8Q18.2 13.8 18.2 25.4Q18.2 13.8 6.6 13.8Q18.2 13.8 18.2 2.2Z"
-                    fill="black"
-                  />
-                </mask>
-              </defs>
-              <circle
-                cx="15.2"
-                cy="16.0"
-                r="11.5"
-                fill="#FFFFFF"
-                mask="url(#albMoonStarCutoutMask)"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div className="alb-lusion-header-right">
-          <div
-            className="alb-zzzz-inline-control"
-            data-testid="inline-audio-coalescing"
-          >
+      {!entryStageActive && (
+        <header
+          className="alb-lusion-header alb-visor-topright"
+          data-hud-interactive="true"
+        >
+          <div className="alb-lusion-header-left">
             <button
               type="button"
-              className={`alb-audio-label-btn ${soundEnabled ? 'is-active' : ''}`}
-              data-audio-control="toggle"
-              onClick={handleToggleSound}
-              aria-describedby={soundEnabled ? 'alb-audio-disclosure' : undefined}
-            >
-              Audio
-            </button>
-            <CoalescingBar
-              value={volumeLevel}
-              pattern="slats"
-              width={128}
-              height={14}
-              ariaLabel="Audio volume"
-              onChange={(nextVal) => {
-                setVolumeLevel(nextVal);
-                if (!soundEnabled && nextVal > 0.05) {
-                  handleToggleSound();
-                }
+              className="alb-lusion-brand-btn"
+              onClick={() => {
+                setEntryStageActive(true);
               }}
-            />
-            {soundEnabled && <MusicSettingControl />}
+            >
+              <span className="alb-brand-wordmark">albedian</span>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 32 32"
+                fill="none"
+                aria-hidden="true"
+                className="alb-brand-mark-svg alb-brand-shoulder-mark"
+              >
+                <defs>
+                  <mask id="albMoonStarCutoutMask">
+                    <rect width="32" height="32" fill="white" />
+                    <path
+                      d="M18.2 2.2Q18.2 13.8 29.8 13.8Q18.2 13.8 18.2 25.4Q18.2 13.8 6.6 13.8Q18.2 13.8 18.2 2.2Z"
+                      fill="black"
+                    />
+                  </mask>
+                </defs>
+                <circle
+                  cx="15.2"
+                  cy="16.0"
+                  r="11.5"
+                  fill="#FFFFFF"
+                  mask="url(#albMoonStarCutoutMask)"
+                />
+              </svg>
+            </button>
           </div>
-          {/* What the sound is, and the credits and notices of the works the audio engine ships */}
-          {soundEnabled && (
-            <div className="alb-audio-notes">
-              <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{audioDisclosure}</p>
-              <ul className="alb-audio-credits" aria-label="Audio credits">
-                {audioCreditLines.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              <a className="alb-audio-notices" href={AUDIO_NOTICES_URL} target="_blank" rel="noopener noreferrer">
-                Notices
-              </a>
+
+          <div className="alb-lusion-header-right">
+            <div
+              className="alb-zzzz-inline-control"
+              data-testid="inline-audio-coalescing"
+            >
+              <button
+                type="button"
+                className={`alb-audio-label-btn ${soundEnabled ? 'is-active' : ''}`}
+                data-audio-control="toggle"
+                onClick={handleToggleSound}
+                aria-describedby={soundEnabled ? 'alb-audio-disclosure' : undefined}
+              >
+                Audio
+              </button>
+              <CoalescingBar
+                value={volumeLevel}
+                pattern="slats"
+                width={128}
+                height={14}
+                ariaLabel="Audio volume"
+                onChange={(nextVal) => {
+                  setVolumeLevel(nextVal);
+                  if (!soundEnabled && nextVal > 0.05) {
+                    handleToggleSound();
+                  }
+                }}
+              />
+              {soundEnabled && <MusicSettingControl />}
             </div>
-          )}
-        </div>
-      </header>
+            {/* What the sound is, and the credits and notices of the works the audio engine ships */}
+            {soundEnabled && (
+              <div className="alb-audio-notes">
+                <p id="alb-audio-disclosure" className="alb-audio-disclosure" role="note">{audioDisclosure}</p>
+                <ul className="alb-audio-credits" aria-label="Audio credits">
+                  {audioCreditLines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                <a className="alb-audio-notices" href={AUDIO_NOTICES_URL} target="_blank" rel="noopener noreferrer">
+                  Notices
+                </a>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
     </div>
   );
 };

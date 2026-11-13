@@ -10,6 +10,7 @@ import {
   executeVoiceOrTextCommand,
 } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
+import { choosePhotoOnHome } from './homeEntry.js';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -441,7 +442,7 @@ describe('SpatialObservatoryViewport wiring (hud-4)', () => {
 
     // While the landing overlay is active, the voice HUD stays hidden so it never overlaps the hero footer
     expect(q('voice-command-hud')).toBeNull();
-    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    choosePhotoOnHome(container);
 
     expect(q('voice-command-hud')).not.toBeNull();
     expect(q('voice-ptt-btn')?.getAttribute('aria-pressed')).toBe('true');
@@ -473,7 +474,7 @@ describe('SpatialObservatoryViewport wiring (hud-4)', () => {
     const base = createSyntheticCalibratedSession();
     const fallback = base.observationSolution!.findings[0]!;
     renderViewport({ ...base, selectedFindingId: null }, fallback);
-    act(() => q<HTMLButtonElement>('enter-observatory-btn')!.click());
+    choosePhotoOnHome(container);
     act(() => q<HTMLButtonElement>('voice-type-btn')!.click());
     expect(q('ask-palette')).not.toBeNull();
     expect(q('ask-suggestions')).toBeNull();

@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
+import { choosePhotoOnHome } from './homeEntry.js';
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -370,9 +371,8 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
     // Hidden on landing overlay
     expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
 
-    // Click Launch Albedian
-    const launchBtn = container.querySelector('[data-testid="enter-observatory-btn"]') as HTMLButtonElement;
-    act(() => launchBtn.click());
+    // Choose a photo on the home, which leaves it
+    choosePhotoOnHome(container);
 
     expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
     const markerBtn = container.querySelector('[data-testid="celestial-marker-finding_betelgeuse"]') as HTMLButtonElement;

@@ -52,6 +52,7 @@ vi.mock('../../components/CoalescingBar.js', () => ({
 
 import { ObservationSolveAndCompareHud } from '../ObservationSolveAndCompareHud.js';
 import { SpatialObservatoryViewport } from '../../components/SpatialObservatoryViewport.js';
+import { choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 
 describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wipe HUD)', () => {
   let container: HTMLDivElement;
@@ -352,12 +353,7 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
       container.querySelector('[data-testid="observation-solve-compare-hud"]')
     ).toBeNull();
 
-    const launchBtn = container.querySelector<HTMLButtonElement>(
-      '[data-testid="enter-observatory-btn"]'
-    )!;
-    await act(async () => {
-      launchBtn.click();
-    });
+    choosePhotoOnHome(container);
 
     expect(
       container.querySelector('[data-testid="observation-solve-compare-hud"]')
