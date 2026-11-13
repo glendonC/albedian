@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import traceback
 import types
 from typing import Any
@@ -254,7 +255,9 @@ def assert_the_scripts_own(error: BaseException, entry: Any, given: dict[str, An
     if type(error) is fetch_download.FetchError:
         assert error.args == (str(error),) and set(vars(error)) == {"failure"}, repr(error)
         assert error.failure is None or error.failure in {sentence for _, sentence in fetch_download.FAILURES} | {
-            fetch_download.UNKNOWN_FAILURE} or error.failure.startswith("the server answered HTTP 3"), error.failure  # fmt: skip
+            fetch_download.UNKNOWN_FAILURE, fetch_download.BODY_UNREADABLE, fetch_download.REDIRECT_BODY_UNREADABLE,
+            fetch_download.too_long(),
+        } or error.failure.startswith("the server answered HTTP 3"), error.failure  # fmt: skip
     else:
         assert error.url == error.filename == error.geturl() == entry.url, error.url
         assert type(error.code) is int and error.fp.getvalue() == b""  # urllib gives an HTTPError with no body an empty buffer
@@ -434,6 +437,8 @@ def test_a_response_longer_than_listed_stops_at_the_listed_size(tmp_path: Path, 
                 largest_part[0] = max(largest_part[0], part.stat().st_size)
             reads.append(size)
             return b"x" * size if len(reads) <= 64 else b""
+
+        read1 = read  # the script reads a part as soon as some has come
 
         def __enter__(self) -> LongResponse:
             return self
@@ -1426,21 +1431,17 @@ def test_each_download_in_the_shared_cache_matches_its_entry(entry: dict) -> Non
 # =============================================================================================
 
 # Each framing with what ends the download when it frames the file itself and when it frames a same-origin redirect's
-# body: the table's sentence, or None. As the file, None is a file that is not the one listed (http.client's read of a
-# part gives what came before the close); as a redirect, None is a redirect followed (urllib reads its whole body and
-# drops it), so the file is kept.
-CUT = "the server's body ended early, or its chunks could not be read"
-# urllib reads a followed redirect's body whole; Python 3.12's http.client then reads 40 digits of chunk size as one
-# read too large to make, and 3.13 on as a body cut short (both measured: .lanetools/fetch-1-v6/probe_chunk.py)
-WHOLE_40_DIGITS = "a number in the server's answer is too large for http.client to read" if sys.version_info < (3, 13) else CUT
-# and 15 nines of chunk size as a buffer it cannot be given (.lanetools/fetch-1-v7/probe_classes.py, a real socket)
-WHOLE_15_NINES = "a size in the server's answer is larger than the memory http.client may ask for" if sys.version_info < (3, 13) else CUT
+# body. A body is read in parts, and an error its read raises is said by that phase alone, on every Python: BODY for
+# the file, REDIRECT_BODY for a redirect's. None as the file is a file that is not the one listed (a part's read gives
+# what came before the close); None as a redirect is a redirect followed, so the file is kept.
+CUT = fetch_download.BODY_UNREADABLE
+HOP_CUT = fetch_download.REDIRECT_BODY_UNREADABLE
 FRAMINGS = {
-    "a chunk size of words": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + MARK.encode() + b"\r\n" + MARK.encode() + b"\r\n0\r\n\r\n", CUT, CUT),
-    "a chunk size of 40 digits": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"9" * 40 + b"\r\n" + MARK.encode() + b"\r\n", CUT, WHOLE_40_DIGITS),
-    "a chunk size of 15 nines": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"9" * 15 + b"\r\n" + MARK.encode() + b"\r\n", CUT, WHOLE_15_NINES),
-    "chunks cut short": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"ff\r\n" + MARK.encode(), CUT, CUT),
-    "a length that says more than is sent": (b"Content-Length: 99999\r\nConnection: close\r\n\r\n" + MARK.encode() * 3, None, CUT),
+    "a chunk size of words": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + MARK.encode() + b"\r\n" + MARK.encode() + b"\r\n0\r\n\r\n", CUT, HOP_CUT),
+    "a chunk size of 40 digits": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"9" * 40 + b"\r\n" + MARK.encode() + b"\r\n", CUT, HOP_CUT),
+    "a chunk size of 15 nines": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"9" * 15 + b"\r\n" + MARK.encode() + b"\r\n", CUT, HOP_CUT),
+    "chunks cut short": (b"Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n" + b"ff\r\n" + MARK.encode(), CUT, HOP_CUT),
+    "a length that says more than is sent": (b"Content-Length: 99999\r\nConnection: close\r\n\r\n" + MARK.encode() * 3, None, None),
     "a length that says less than is sent": (b"Content-Length: 3\r\nConnection: close\r\n\r\n" + MARK.encode() * 30, None, None),
     "bytes after the headers with no framing": (b"Connection: close\r\n\r\n" + MARK.encode() * 30, None, None),
 }  # fmt: skip
@@ -1493,7 +1494,7 @@ def test_a_redirect_location_urlparse_refuses_is_refused_with_no_error_of_urllib
     request = urllib.request.Request(f"{server}/answer.bin", headers={"User-Agent": USER_AGENT})
     start = ("http", "127.0.0.1", server_port)
     with pytest.raises(fetch_download.FetchError) as refused:
-        fetch_download._open(request, PATH, start, loopback_for_tests=True)
+        fetch_download._open(request, PATH, start, time.monotonic() + 60, loopback_for_tests=True)
     assert refused.value.__context__ is None and refused.value.__cause__ is None
     assert str(refused.value) == redirect_refusal("a URL that cannot be read", "loopback", server_port)
     # Raised below the boundary, through urllib's own frames, which hold the answer by nature: its text, chain,
@@ -1644,7 +1645,10 @@ def test_the_script_modules_own_state_is_walked(monkeypatch: pytest.MonkeyPatch)
     assert not found(refused.value)
 
 
-@pytest.mark.parametrize("where", ["a dunder attribute of its own", "a partial", "a closure", "a bound method's object", "200 levels down"])
+@pytest.mark.parametrize(
+    "where", ["a dunder attribute of its own", "a partial", "a closure", "a function's defaults", "a function's keyword defaults",
+              "a byte buffer", "a bound method's object", "200 levels down"]
+)  # fmt: skip
 def test_whatever_holds_a_marker_on_the_error_is_walked(where: str) -> None:
     error = fetch_download.FetchError("x")
     holder = type("Holder", (), {"keep": lambda self: None})()
@@ -1656,6 +1660,9 @@ def test_whatever_holds_a_marker_on_the_error_is_walked(where: str) -> None:
         "a dunder attribute of its own": ("__planted__", HOP),
         "a partial": ("later", functools.partial(str, HOP)),
         "a closure": ("hook", (lambda held: lambda: held)(HOP)),
+        "a function's defaults": ("later", lambda held=HOP: held),
+        "a function's keyword defaults": ("later", lambda *, held=HOP: held),
+        "a byte buffer": ("body", io.BytesIO(HOP.encode())),
         "a bound method's object": ("callback", holder.keep),
         "200 levels down": ("deep", deep),
     }
@@ -1672,7 +1679,7 @@ def test_below_the_boundary_the_frames_hold_the_answer_and_fetch_rebuilds_it_bar
     _Handler.routes["/answer.bin"] = f"https://[{MARK}]/x"
     request = urllib.request.Request(f"{server}/answer.bin", headers={"User-Agent": USER_AGENT})
     with pytest.raises(fetch_download.FetchError) as below:
-        fetch_download._open(request, PATH, ("http", "127.0.0.1", server_port), loopback_for_tests=True)
+        fetch_download._open(request, PATH, ("http", "127.0.0.1", server_port), time.monotonic() + 60, loopback_for_tests=True)
     assert found(below.value)  # the rule's own frame keeps the answer's headers
     with pytest.raises(fetch_download.FetchError) as raised:
         fetch_download.fetch(download(f"{server}/answer.bin"), root=tmp_path, loopback_for_tests=True)
@@ -1693,3 +1700,491 @@ def test_the_script_writes_no_module_state_but_its_own_locals() -> None:
                and ast.unparse(target).split(".")[0] in imported]  # fmt: skip
     assert written == []
     assert not [node for node in ast.walk(tree) if isinstance(node, ast.Call) and ast.unparse(node.func) in ("setattr", "delattr")]
+
+
+# =============================================================================================
+# Malformed answers (the CI fix): one sentence per answer on every Python
+# =============================================================================================
+
+PAYLOAD_J = b"made-up payload for audit J"  # a review's own set of malformed answers, kept as tests
+MALFORMED: dict[str, bytes] = {}
+
+
+def _malformed() -> None:
+    ok_head = b"HTTP/1.1 200 OK\r\nConnection: close\r\n"
+    def add(name, raw):
+        MALFORMED[name] = raw
+    add("empty answer", b"")
+    add("no status line, only text", b"hello\r\n\r\n")
+    add("status with no reason", b"HTTP/1.1 200\r\nContent-Length: 27\r\n\r\n" + PAYLOAD_J)
+    add("status code of 4 digits", b"HTTP/1.1 2000 OK\r\n\r\n")
+    add("status code negative", b"HTTP/1.1 -1 OK\r\n\r\n")
+    add("status code words", b"HTTP/1.1 abc OK\r\n\r\n")
+    add("HTTP/9.9", b"HTTP/9.9 200 OK\r\n\r\n")
+    add("FTP status", b"FTP 200 OK\r\n\r\n")
+    add("status line 70000 bytes", b"HTTP/1.1 200 " + b"x" * 70000 + b"\r\n\r\n")
+    add("header line 70000 bytes", ok_head + b"X-A: " + b"x" * 70000 + b"\r\n\r\n")
+    add("200 headers", ok_head + b"".join(b"X-%d: y\r\n" % i for i in range(200)) + b"\r\n")
+    add("header without colon", ok_head + b"NoColonHere\r\n\r\n" + PAYLOAD_J)
+    add("header with NUL", ok_head + b"X-A: a\x00b\r\n\r\n" + PAYLOAD_J)
+    add("header bytes 0xff", ok_head + b"X-A: \xff\xfe\r\n\r\n" + PAYLOAD_J)
+    add("LF only line ends", b"HTTP/1.1 200 OK\nContent-Length: 27\n\n" + PAYLOAD_J)
+    for size in (b"zz", b"-1", b"9" * 15, b"f" * 15, b"4000000000000000", b"1" + b"0" * 40, b"0x10", b"10;" + b"e" * 70000, b" 1b ", b"99999999", b"7fffffffffffffff", b"ffffffffffffffff"):
+        add(f"chunk size {size[:20]!r}", ok_head + b"Transfer-Encoding: chunked\r\n\r\n" + size + b"\r\n" + PAYLOAD_J + b"\r\n0\r\n\r\n")
+    add("chunk longer than its size", ok_head + b"Transfer-Encoding: chunked\r\n\r\n2\r\n" + PAYLOAD_J + b"\r\n0\r\n\r\n")
+    add("chunks with no last chunk", ok_head + b"Transfer-Encoding: chunked\r\n\r\n1b\r\n" + PAYLOAD_J + b"\r\n")
+    add("trailer 70000 bytes", ok_head + b"Transfer-Encoding: chunked\r\n\r\n1b\r\n" + PAYLOAD_J + b"\r\n0\r\nX-T: " + b"t" * 70000 + b"\r\n\r\n")
+    for cl in (b"abc", b"-5", b"9" * 40, b"3, 4", b"1e3", b" 27 "):
+        add(f"Content-Length {cl[:20]!r}", ok_head + b"Content-Length: " + cl + b"\r\n\r\n" + PAYLOAD_J)
+    add("two Content-Lengths", ok_head + b"Content-Length: 27\r\nContent-Length: 5\r\n\r\n" + PAYLOAD_J)
+    add("Content-Length 2^62", ok_head + b"Content-Length: 4611686018427387904\r\n\r\n" + PAYLOAD_J)
+    add("Content-Length 2^63", ok_head + b"Content-Length: 9223372036854775808\r\n\r\n" + PAYLOAD_J)
+    for te in (b"gzip, chunked", b"chunked, gzip", b"identity", b"xchunked"):
+        add(f"Transfer-Encoding {te!r}", ok_head + b"Transfer-Encoding: " + te + b"\r\n\r\n1b\r\n" + PAYLOAD_J + b"\r\n0\r\n\r\n")
+    add("body shorter than its length", ok_head + b"Content-Length: 500\r\n\r\n" + PAYLOAD_J)
+    add("100 Continue then close", b"HTTP/1.1 100 Continue\r\n\r\n")
+    add("103 then 200", b"HTTP/1.1 103 Early Hints\r\nLink: </x>\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 27\r\n\r\n" + PAYLOAD_J)
+    for loc in (b"http://[::1", b"javascript:alert(1)", b"//files.example/x", b"http://files.example:99999/", b"http://user:pass@127.0.0.1/x",
+                b"http://127.0.0.1:1/x", b"\xff\xfe", b"http://127.0.0.1:PORT/" + b"x" * 70000, b""):
+        add(f"302 Location {loc[:24]!r}", b"HTTP/1.1 302 Found\r\nLocation: " + loc + b"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+    add("302 without Location", b"HTTP/1.1 302 Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+    add("500 with chunked words", b"HTTP/1.1 500 Oops\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\nzz\r\n")
+
+
+_malformed()
+# What each answer ends in, as the file ("file") and as a followed redirect's answer ("redirect"): the error's class
+# and its sentence, or "fetched". Measured on Python 3.14.7 and 3.12.9 alike (only the server's port differed),
+# and run on CI's own interpreters by scripts/ci_linux.py; no entry depends on the Python.
+MALFORMED_OUTCOMES: dict[tuple[str, str], tuple[str, str]] = {
+    ('file', 'empty answer'): ('FetchError', 'the server closed the connection without an answer'),
+    ('file', 'no status line, only text'): ('FetchError', "the server's answer does not begin with an HTTP status line"),
+    ('file', 'status with no reason'): ('ok', 'fetched'),
+    ('file', 'status code of 4 digits'): ('FetchError', "the server's answer does not begin with an HTTP status line"),
+    ('file', 'status code negative'): ('FetchError', "the server's answer does not begin with an HTTP status line"),
+    ('file', 'status code words'): ('FetchError', "the server's answer does not begin with an HTTP status line"),
+    ('file', 'HTTP/9.9'): ('FetchError', 'the server answered in a version of HTTP that http.client does not read'),
+    ('file', 'FTP status'): ('FetchError', "the server's answer does not begin with an HTTP status line"),
+    ('file', 'status line 70000 bytes'): ('FetchError', "a line of the server's answer is longer than http.client reads"),
+    ('file', 'header line 70000 bytes'): ('FetchError', "a line of the server's answer is longer than http.client reads"),
+    ('file', '200 headers'): ('FetchError', "the server's answer could not be read as HTTP"),
+    ('file', 'header without colon'): ('ok', 'fetched'),
+    ('file', 'header with NUL'): ('ok', 'fetched'),
+    ('file', 'header bytes 0xff'): ('ok', 'fetched'),
+    ('file', 'LF only line ends'): ('ok', 'fetched'),
+    ('file', "chunk size b'zz'"): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', "chunk size b'-1'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'999999999999999'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'fffffffffffffff'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'4000000000000000'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'10000000000000000000'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'0x10'"): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', "chunk size b'10;eeeeeeeeeeeeeeeee'"): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', "chunk size b' 1b '"): ('ok', 'fetched'),
+    ('file', "chunk size b'99999999'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'7fffffffffffffff'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "chunk size b'ffffffffffffffff'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', 'chunk longer than its size'): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', 'chunks with no last chunk'): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', 'trailer 70000 bytes'): ('FetchError', "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ('file', "Content-Length b'abc'"): ('ok', 'fetched'),
+    ('file', "Content-Length b'-5'"): ('ok', 'fetched'),
+    ('file', "Content-Length b'99999999999999999999'"): ('ok', 'fetched'),
+    ('file', "Content-Length b'3, 4'"): ('ok', 'fetched'),
+    ('file', "Content-Length b'1e3'"): ('ok', 'fetched'),
+    ('file', "Content-Length b' 27 '"): ('ok', 'fetched'),
+    ('file', 'two Content-Lengths'): ('ok', 'fetched'),
+    ('file', 'Content-Length 2^62'): ('ok', 'fetched'),
+    ('file', 'Content-Length 2^63'): ('ok', 'fetched'),
+    ('file', "Transfer-Encoding b'gzip, chunked'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "Transfer-Encoding b'chunked, gzip'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "Transfer-Encoding b'identity'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', "Transfer-Encoding b'xchunked'"): ('FetchError', '.cache/test/payload.bin: more than the 27 bytes the registry lists'),
+    ('file', 'body shorter than its length'): ('ok', 'fetched'),
+    ('file', '100 Continue then close'): ('FetchError', 'the server closed the connection without an answer'),
+    ('file', '103 then 200'): ('AnswerError', 'the server answered HTTP 103'),
+    ('file', "302 Location b'http://[::1'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to a URL that cannot be read, since redirects are followed only to http://127.0.0.1:{port}, with no user or password part, no other port and no fragment'),
+    ('file', "302 Location b'javascript:alert(1)'"): ('FetchError', 'the server answered HTTP 302, a redirect urllib does not follow or one with no Location'),
+    ('file', "302 Location b'//files.example/x'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://files.example, since redirects are followed only to http://127.0.0.1:{port}, with no user or password part, no other port and no fragment'),
+    ('file', "302 Location b'http://files.example:999'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://files.example:99999, since redirects are followed only to http://127.0.0.1:{port}, with no user or password part, no other port and no fragment'),
+    ('file', "302 Location b'http://user:pass@127.0.0'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://127.0.0.1 with a user or password part, since redirects are followed only to http://127.0.0.1:{port}, with no user or password part, no other port and no fragment'),
+    ('file', "302 Location b'http://127.0.0.1:1/x'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://127.0.0.1:1, since redirects are followed only to http://127.0.0.1:{port}, with no user or password part, no other port and no fragment'),
+    ('file', "302 Location b'\\xff\\xfe'"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://127.0.0.1:{port}, since at most 3 redirects are followed'),
+    ('file', "302 Location b'http://127.0.0.1:PORT/xx'"): ('FetchError', "a line of the server's answer is longer than http.client reads"),
+    ('file', "302 Location b''"): ('FetchError', '.cache/test/payload.bin: refused a redirect to http://127.0.0.1:{port}, since at most 3 redirects are followed'),
+    ('file', '302 without Location'): ('FetchError', 'the server answered HTTP 302, a redirect urllib does not follow or one with no Location'),
+    ('file', '500 with chunked words'): ('AnswerError', 'the server answered HTTP 500'),
+    ('redirect', 'header line 70000 bytes'): ('FetchError', "a line of the server's answer is longer than http.client reads"),
+    ('redirect', '200 headers'): ('FetchError', "the server's answer could not be read as HTTP"),
+    ('redirect', 'header without colon'): ('ok', 'fetched'),
+    ('redirect', 'header with NUL'): ('ok', 'fetched'),
+    ('redirect', 'header bytes 0xff'): ('ok', 'fetched'),
+    ('redirect', 'LF only line ends'): ('ok', 'fetched'),
+    ('redirect', "chunk size b'zz'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'-1'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'999999999999999'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'fffffffffffffff'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'4000000000000000'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'10000000000000000000'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'0x10'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'10;eeeeeeeeeeeeeeeee'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b' 1b '"): ('ok', 'fetched'),
+    ('redirect', "chunk size b'99999999'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'7fffffffffffffff'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "chunk size b'ffffffffffffffff'"): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', 'chunk longer than its size'): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', 'chunks with no last chunk'): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', 'trailer 70000 bytes'): ('FetchError', "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or a size in it could not be read"),
+    ('redirect', "Content-Length b'abc'"): ('ok', 'fetched'),
+    ('redirect', "Content-Length b'-5'"): ('ok', 'fetched'),
+    ('redirect', "Content-Length b'99999999999999999999'"): ('ok', 'fetched'),
+    ('redirect', "Content-Length b'3, 4'"): ('ok', 'fetched'),
+    ('redirect', "Content-Length b'1e3'"): ('ok', 'fetched'),
+    ('redirect', "Content-Length b' 27 '"): ('ok', 'fetched'),
+    ('redirect', 'two Content-Lengths'): ('ok', 'fetched'),
+    ('redirect', 'Content-Length 2^62'): ('ok', 'fetched'),
+    ('redirect', 'Content-Length 2^63'): ('ok', 'fetched'),
+    ('redirect', "Transfer-Encoding b'gzip, chunked'"): ('ok', 'fetched'),
+    ('redirect', "Transfer-Encoding b'chunked, gzip'"): ('ok', 'fetched'),
+    ('redirect', "Transfer-Encoding b'identity'"): ('ok', 'fetched'),
+    ('redirect', "Transfer-Encoding b'xchunked'"): ('ok', 'fetched'),
+    ('redirect', 'body shorter than its length'): ('ok', 'fetched'),
+}
+
+
+@pytest.fixture(scope="module")
+def raw_server() -> Iterator[tuple[dict[str, Any], int]]:
+    """A server that writes the answer `state["case"]` as given; in redirect mode it first answers /x with that answer
+    turned into a 302 to /good, which answers the payload. Each connection reads with a 5 s bound."""
+    state: dict[str, Any] = {"case": b"", "mode": "file"}
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    port = listener.getsockname()[1]
+
+    def serve() -> None:
+        while True:
+            try:
+                connection, _ = listener.accept()
+            except OSError:
+                return
+            with connection:
+                connection.settimeout(5)
+                try:
+                    asked = b""
+                    while b"\r\n\r\n" not in asked:
+                        part = connection.recv(65536)
+                        if not part:
+                            break
+                        asked += part
+                    path = asked.split(b" ", 2)[1] if asked.count(b" ") >= 2 else b"/"
+                    own = str(port).encode()
+                    if state["mode"] == "redirect" and path == b"/x":
+                        hop = state["case"].replace(b"HTTP/1.1 200 OK", b"HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:" + own + b"/good", 1)
+                        connection.sendall(hop.replace(b"PORT", own))
+                    elif path == b"/good":
+                        connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 27\r\nConnection: close\r\n\r\n" + PAYLOAD_J)
+                    else:
+                        connection.sendall(state["case"].replace(b"PORT", own))
+                except OSError:
+                    pass
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    try:
+        yield state, port
+    finally:
+        listener.close()
+        thread.join(timeout=5)
+
+
+def test_every_malformed_answer_has_its_outcome_and_runs_on_the_file_and_after_a_redirect() -> None:
+    assert {case for _, case in MALFORMED_OUTCOMES} == set(MALFORMED)
+    redirectable = {case for case, raw in MALFORMED.items() if raw.startswith(b"HTTP/1.1 200 OK")}
+    assert {case for mode, case in MALFORMED_OUTCOMES if mode == "redirect"} == redirectable
+
+
+@pytest.mark.parametrize(("mode", "case"), list(MALFORMED_OUTCOMES), ids=[f"{mode}: {case}" for mode, case in MALFORMED_OUTCOMES])
+def test_a_malformed_answer_ends_in_the_same_words_on_every_python(
+    tmp_path: Path, wire: Wire, raw_server: tuple[dict[str, Any], int], mode: str, case: str
+) -> None:
+    """The same class and sentence on every Python: no outcome here depends on the interpreter (see MALFORMED_OUTCOMES)."""
+    state, port = raw_server
+    wire.server_port = port
+    state.update(case=MALFORMED[case], mode=mode)
+    entry = download(f"http://127.0.0.1:{port}/x", bytes=len(PAYLOAD_J), sha256=hashlib.sha256(PAYLOAD_J).hexdigest())
+    try:
+        fetch_download.fetch(entry, root=tmp_path, loopback_for_tests=True)
+        got = ("ok", "fetched")
+    except (fetch_download.FetchError, fetch_download.AnswerError) as error:
+        said = getattr(error, "failure", None) or str(error)
+        said = said.split(": not fetched: ", 1)[1] if said.startswith(f"{PATH}: not fetched: ") else said
+        got = (type(error).__name__, said.replace(f"127.0.0.1:{port}", "127.0.0.1:{port}"))
+    assert got == MALFORMED_OUTCOMES[(mode, case)]
+
+
+class _FailingBody:
+    """A body whose read raises `error`, as a standard library of another release might for the same bytes."""
+
+    def __init__(self, error: BaseException, wait_s: float = 0.0) -> None:
+        self.error, self.wait_s = error, wait_s
+
+    def read1(self, amount: int = -1) -> bytes:
+        time.sleep(self.wait_s)
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [http.client.IncompleteRead(b"x"), OverflowError(MARK), MemoryError(), ConnectionResetError(MARK), ValueError(MARK),
+     OSError(MARK), http.client.LineTooLong(MARK), ArithmeticError(MARK)],
+    ids=lambda error: type(error).__name__,
+)  # fmt: skip
+@pytest.mark.parametrize("said", ["BODY_UNREADABLE", "REDIRECT_BODY_UNREADABLE"])
+def test_an_error_of_any_class_while_a_body_is_read_is_said_by_that_phase_alone(error: BaseException, said: str) -> None:
+    """Whatever a body's read raises, the script says the phase, the same on every Python: the class the standard
+    library raises for the same bytes differs between releases (3.12.3, 3.12.9 and 3.14 do differ)."""
+    sentence = getattr(fetch_download, said)
+    with pytest.raises(fetch_download.FetchError) as raised:
+        fetch_download._read_part(_FailingBody(error), PATH, sentence, time.monotonic() + 60)
+    assert (raised.value.failure, str(raised.value)) == (sentence, f"{PATH}: not fetched: {sentence}")
+    # below the boundary, which rebuilds it bare: its own frame holds the body object by nature, so frames are left out
+    assert raised.value.__context__ is None and raised.value.__cause__ is None and not found(raised.value, frames=False)
+
+
+@pytest.mark.parametrize("said", ["BODY_UNREADABLE", "REDIRECT_BODY_UNREADABLE"])
+def test_a_body_read_whose_wait_ran_out_is_said_as_the_connection_timing_out(said: str) -> None:
+    """A socket wait that runs out raises TimeoutError (socket.timeout is that class), plain and under TLS; before the
+    deadline it is said as that, in either phase, and past the deadline as too long."""
+    assert socket.timeout is TimeoutError
+    sentence = getattr(fetch_download, said)
+    with pytest.raises(fetch_download.FetchError) as raised:
+        fetch_download._read_part(_FailingBody(TimeoutError(MARK)), PATH, sentence, time.monotonic() + 60)
+    assert (raised.value.failure, str(raised.value)) == (fetch_download.TIMED_OUT, f"{PATH}: not fetched: the connection timed out")
+    assert raised.value.__context__ is None and raised.value.__cause__ is None and not found(raised.value, frames=False)
+    with pytest.raises(fetch_download.FetchError) as raised:  # the deadline passed while the read waited
+        fetch_download._read_part(_FailingBody(TimeoutError(MARK), wait_s=0.2), PATH, sentence, time.monotonic() + 0.05)
+    assert raised.value.failure == fetch_download.too_long()
+
+
+# =============================================================================================
+# A download that cannot be held: a redirect's body has a limit, and every body is read against a deadline
+# =============================================================================================
+
+
+def test_the_two_bounds_and_the_part_are_the_stated_values() -> None:
+    """Written here as decided, so either raised a hundred times passes no test."""
+    assert fetch_download.REDIRECT_BODY_MAX_BYTES == 65536
+    assert fetch_download.DOWNLOAD_DEADLINE_S == 7200
+    assert fetch_download.CHUNK == 1 << 20
+    assert fetch_download.too_long() == "the download took longer than the 7200 s one download may take"
+
+
+class _RecordingBody:
+    def __init__(self) -> None:
+        self.asked: list[int] = []
+
+    def read1(self, amount: int = -1) -> bytes:
+        self.asked.append(amount)
+        return b"" if len(self.asked) > 1 else b"x"
+
+
+def test_a_part_asks_for_chunk_bytes_at_most() -> None:
+    body = _RecordingBody()
+    while fetch_download._read_part(body, PATH, fetch_download.BODY_UNREADABLE, time.monotonic() + 60):
+        pass
+    assert body.asked == [fetch_download.CHUNK, fetch_download.CHUNK]
+
+
+HOSTILE = {
+    # path: what the server does (a review's probe, with its waits made short)
+    "r-control": "302 to the file, a 10 byte body",
+    "r-at-limit": "302 to the file, a body of REDIRECT_BODY_MAX_BYTES",
+    "r-past-limit": "302 to the file, a body one byte longer",
+    "r-endless": "302 to the file, a chunked body that never ends, sent fast",
+    "r-huge-fast": "302 to the file, Content-Length 10^12, zeros sent fast",
+    "r-slow": "302 to the file, Content-Length 1000, one byte every 0.2 s",
+    "r-huge-silent": "302 to the file, Content-Length 10^12, nothing sent",
+    "f-endless": "200 for the file, a chunked body that never ends",
+    "f-slow": "200 for the file, its listed length, one byte every 0.2 s",
+    "r-silent": "302 to the file, Content-Length 1000, ten bytes, then nothing",
+    "f-silent": "200 for the file, its listed length, ten bytes, then nothing",
+    "f-silent-after-0.9": "200 for the file, its listed length, one byte, one more 0.9 s later, then nothing",
+}
+
+
+@pytest.fixture
+def hostile_server() -> Iterator[int]:
+    """Hostile answers, each on its own path; every connection ends when the test ends (a stop flag)."""
+    stop = threading.Event()
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    listener.settimeout(0.2)
+    zeros = b"0" * 65536
+
+    def answer(connection: socket.socket) -> None:
+        with connection:
+            connection.settimeout(5)
+            try:
+                asked = b""
+                while b"\r\n\r\n" not in asked and not stop.is_set():
+                    part = connection.recv(4096)
+                    if not part:
+                        return
+                    asked += part
+                path = asked.split(b" ", 2)[1].decode().lstrip("/")
+                if path == "payload.bin":
+                    connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(PAYLOAD) + PAYLOAD)
+                elif path == "r-control":
+                    connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: 10\r\n\r\n0123456789")
+                elif path in ("r-at-limit", "r-past-limit"):  # the limit's two edges, sent whole
+                    size = fetch_download.REDIRECT_BODY_MAX_BYTES + (path == "r-past-limit")
+                    connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: %d\r\n\r\n" % size + b"0" * size)
+                elif path in ("r-endless", "f-endless"):
+                    status = b"302 Found\r\nLocation: /payload.bin" if path == "r-endless" else b"200 OK"
+                    connection.sendall(b"HTTP/1.1 " + status + b"\r\nTransfer-Encoding: chunked\r\n\r\n")
+                    while not stop.is_set():
+                        connection.sendall(b"10000\r\n" + zeros + b"\r\n")
+                elif path == "r-huge-fast":
+                    connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: 1000000000000\r\n\r\n")
+                    while not stop.is_set():
+                        connection.sendall(zeros)
+                elif path in ("r-slow", "f-slow"):
+                    head = (b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: 1000\r\n\r\n" if path == "r-slow"
+                            else b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(PAYLOAD))  # fmt: skip
+                    connection.sendall(head)
+                    while not stop.wait(0.2):
+                        connection.sendall(b"0")
+                elif path == "r-huge-silent":
+                    connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: 1000000000000\r\n\r\n")
+                    stop.wait(30)
+                elif path in ("r-silent", "f-silent"):
+                    head = (b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nContent-Length: 1000\r\n\r\n" if path == "r-silent"
+                            else b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(PAYLOAD))  # fmt: skip
+                    connection.sendall(head + PAYLOAD[:10])
+                    stop.wait(30)
+                elif path == "f-silent-after-0.9":
+                    connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(PAYLOAD) + PAYLOAD[:1])
+                    if not stop.wait(0.9):
+                        connection.sendall(PAYLOAD[1:2])
+                        stop.wait(30)
+            except OSError:
+                return
+
+    threads: list[threading.Thread] = []
+
+    def serve() -> None:
+        while not stop.is_set():
+            try:
+                connection, _ = listener.accept()
+            except OSError:
+                continue
+            thread = threading.Thread(target=answer, args=(connection,), daemon=True)
+            threads.append(thread)
+            thread.start()
+
+    server_thread = threading.Thread(target=serve, daemon=True)
+    server_thread.start()
+    try:
+        yield listener.getsockname()[1]
+    finally:
+        stop.set()
+        server_thread.join(timeout=5)
+        listener.close()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert not server_thread.is_alive() and not any(thread.is_alive() for thread in threads)
+
+
+def fetch_within(entry: Any, root: Path, bound_s: float) -> tuple[BaseException | None, float]:
+    """fetch in a thread of its own, waited for at most `bound_s`: what it raised (None when it kept the file) and
+    how long it took. A fetch still running at the bound fails the test by an assertion."""
+    outcome: dict[str, Any] = {}
+
+    def run() -> None:
+        started = time.monotonic()
+        try:
+            fetch_download.fetch(entry, root=root, loopback_for_tests=True)
+            outcome["raised"] = None
+        except BaseException as error:  # noqa: BLE001 (the outcome is what is checked)
+            outcome["raised"] = error
+        outcome["took"] = time.monotonic() - started
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(timeout=bound_s)
+    assert not worker.is_alive(), f"fetch still running after {bound_s} s"
+    return outcome["raised"], outcome["took"]
+
+
+DEADLINE_IN_TESTS_S = 1.5
+LIMIT_SENTENCE = fetch_download.REDIRECT_BODY_UNREADABLE
+
+
+@pytest.mark.parametrize(
+    ("path", "ends_in", "within_s"),
+    [
+        ("r-control", "fetched", 1.0),
+        ("r-at-limit", "fetched", 1.0),           # a redirect body of exactly REDIRECT_BODY_MAX_BYTES is read whole
+        ("r-past-limit", LIMIT_SENTENCE, 1.0),    # and one byte more is not
+        ("r-endless", LIMIT_SENTENCE, 1.0),       # the limit, long before the deadline
+        ("r-huge-fast", LIMIT_SENTENCE, 1.0),
+        ("r-slow", "too long", DEADLINE_IN_TESTS_S + 1.0),
+        ("r-huge-silent", "too long", DEADLINE_IN_TESTS_S + 1.0),
+        ("f-slow", "too long", DEADLINE_IN_TESTS_S + 1.0),
+        ("f-endless", "more than the listed bytes", 1.0),
+    ],
+)  # fmt: skip
+def test_a_body_that_never_ends_or_comes_too_slowly_ends_the_download_in_its_sentence(
+    tmp_path: Path, wire: Wire, hostile_server: int, monkeypatch: pytest.MonkeyPatch, path: str, ends_in: str, within_s: float
+) -> None:
+    """Each hostile answer ends the download in its own sentence within a bound this test sets low
+    (the deadline set to 1.5 s, read where it is used), and is waited for at most 10 s by an assertion of its own."""
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", DEADLINE_IN_TESTS_S)
+    wire.server_port = hostile_server
+    raised, took = fetch_within(download(f"http://127.0.0.1:{hostile_server}/{path}"), tmp_path, 10)
+    assert took < within_s, (path, took)
+    if ends_in == "fetched":
+        assert raised is None and (tmp_path / PATH).read_bytes() == PAYLOAD
+    elif ends_in == "too long":
+        assert isinstance(raised, fetch_download.FetchError) and raised.failure == fetch_download.too_long(), repr(raised)
+        assert raised.failure == f"the download took longer than the {DEADLINE_IN_TESTS_S} s one download may take"
+        assert took >= DEADLINE_IN_TESTS_S
+    elif ends_in == "more than the listed bytes":
+        assert str(raised) == f"{PATH}: more than the {len(PAYLOAD)} bytes the registry lists", repr(raised)
+    else:
+        assert isinstance(raised, fetch_download.FetchError) and raised.failure == ends_in, repr(raised)
+
+
+WAIT_IN_TESTS_S = 0.5
+
+
+@pytest.mark.parametrize("path", ["r-silent", "f-silent", "r-huge-silent"])
+def test_a_body_that_goes_silent_before_the_deadline_ends_as_the_connection_timing_out(
+    tmp_path: Path, wire: Wire, hostile_server: int, monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    """A redirect's body and the file's that stop sending end when the socket's wait runs out, said as that wait
+    running out: the socket's wait set short (0.5 s) and the deadline long (60 s), both read where they are used."""
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", WAIT_IN_TESTS_S)
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", 60)
+    wire.server_port = hostile_server
+    raised, took = fetch_within(download(f"http://127.0.0.1:{hostile_server}/{path}"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError), repr(raised)
+    assert (raised.failure, str(raised)) == (fetch_download.TIMED_OUT, f"{PATH}: not fetched: the connection timed out")
+    assert WAIT_IN_TESTS_S <= took < WAIT_IN_TESTS_S + 2.0, took
+    assert not (tmp_path / PATH).exists() and not (tmp_path / f"{PATH}.part").exists()
+
+
+def test_a_body_read_begun_before_the_deadline_ends_at_most_one_wait_after_it(
+    tmp_path: Path, wire: Wire, hostile_server: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The deadline is checked between parts, and one read waits at most the socket's own wait: a body that goes silent
+    0.6 s before the deadline (1.5 s) ends as too long when that read's wait (1 s) runs out, past the deadline and
+    within one wait of it."""
+    wait_s = 1.0
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", wait_s)
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", DEADLINE_IN_TESTS_S)
+    wire.server_port = hostile_server
+    raised, took = fetch_within(download(f"http://127.0.0.1:{hostile_server}/f-silent-after-0.9"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError) and raised.failure == fetch_download.too_long(), repr(raised)
+    assert DEADLINE_IN_TESTS_S + 0.2 < took < DEADLINE_IN_TESTS_S + wait_s + 1.0, took

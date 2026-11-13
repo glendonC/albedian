@@ -26,6 +26,20 @@ written. The sentence names where the redirect led only when its scheme is https
 host name or address (a user or password part is said to be there, never printed); any other target is "a target
 that is not a plain https address", since its words are the server's.
 
+What bounds a download, and what does not. One deadline, DOWNLOAD_DEADLINE_S, is set when the download starts, and
+every body, a redirect's and the file's, is read in parts against it: the deadline is checked before each part, and
+a part is read as soon as some of it has come. A redirect's body is also held to REDIRECT_BODY_MAX_BYTES. Every socket
+of the download, a redirect's too, has one wait, set as the first request is opened: TIMEOUT_S, or the time left
+before the deadline then if that is less. Each connection attempt and each socket read waits at most that long. A
+body read whose wait runs out ends the download as timed out before the deadline and as too long after it, so a body
+read that begins just before the deadline can end that whole wait after it. Between the deadline's checks, what
+http.client reads is held only by that wait per socket read, and nothing adds those reads up: the head of each answer
+(its status line and headers), read before the first part, and in a chunked body a chunk's size line and the trailer
+after the last chunk, read inside a part. A server that sends those a byte at a time can hold a download past the
+deadline. One that sends trailer lines without end holds it for as long as it sends where http.client does not count
+them (3.12.3 and 3.12.9 do not; 3.14.7 stops after 100). The host name's lookup has no wait of the script's. These
+are written limits: one bound over the whole download is not built yet.
+
 What the script says. Every call that can reach a server, from reading the URL to the last read of the body,
 runs inside one boundary in `fetch`. What the boundary catches is read for three things alone: its class, which
 FAILURES (a closed table) turns into one of the script's own sentences; for an HTTP answer, its status number; and a
@@ -52,6 +66,7 @@ import re
 import socket
 import ssl
 import sys
+import time
 from typing import Any
 import urllib.error
 import urllib.request
@@ -60,7 +75,18 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "data" / "downloads.json"
 USER_AGENT = "Albedian/0.1 (research prototype)"
 CHUNK = 1 << 20
+# The wait of each connection attempt and each socket read of a download, set as its first request is opened, or the
+# time left before DOWNLOAD_DEADLINE_S then if that is less. Read where it is used, so a test can set it
 TIMEOUT_S = 60
+# [proposed] The deadline every body of a download is read against, the redirects' and the file's, counted from when
+# the download starts and checked before each part: the registry's largest file (3,252,715,200 bytes) at half a
+# megabyte a second takes under two hours. How far past it a download can run, and what it does not hold, is in the
+# module's text. Read where it is used, so a test can set it
+DOWNLOAD_DEADLINE_S = 7200
+# [proposed] How much of a redirect's own body the script takes, only to drop it: a redirect page is a few hundred
+# bytes, and more than this ends the download in the redirect's sentence (the part that passes it can bring up to
+# CHUNK bytes). Read where it is used
+REDIRECT_BODY_MAX_BYTES = 65536
 # The tests' own server listens here, on a port of its own; asked only when a test passes loopback_for_tests
 LOOPBACK = "127.0.0.1"
 HTTPS_PORT = http.client.HTTPS_PORT
@@ -79,11 +105,14 @@ NAMEABLE_HOST = re.compile(
 )
 NAMEABLE_HOST_MAX = 253 + len(":65535")
 NOT_A_PLAIN_HOST = "a target that is not a plain https address"
-# A Retry-After a caller may read: one to RETRY_AFTER_MAX_DIGITS ASCII digits, a number of seconds (the corpus command
-# stops on one too long to wait for); anything else, the empty value too, is dropped. The largest length is the
-# longest header line http.client reads (http.client._MAXLINE), so a value is dropped for its form, never cut.
+# A Retry-After a caller may read: one to RETRY_AFTER_MAX_DIGITS ASCII digits, which HTTP reads as a number of
+# seconds; anything else, the empty value too, is dropped. The largest length is the longest header line http.client
+# reads (http.client._MAXLINE), so a value is dropped for its form, never cut.
 RETRY_AFTER_MAX_DIGITS = 65536
 RETRY_AFTER_SECONDS = re.compile(rf"[0-9]{{1,{RETRY_AFTER_MAX_DIGITS}}}")
+# What the script says of a socket wait that ran out: while connecting, while reading an answer's head, and while
+# reading a body before the deadline
+TIMED_OUT = "the connection timed out"
 # What the boundary in `fetch` says of an error it caught, by the error's class alone, the first row that fits; an
 # error urllib wraps in a URLError is read by the class of the error inside it
 FAILURES: tuple[tuple[type[BaseException], str], ...] = (
@@ -97,7 +126,7 @@ FAILURES: tuple[tuple[type[BaseException], str], ...] = (
     (UnicodeError, "the request's URL holds a character http.client cannot send"),
     (ConnectionRefusedError, "the connection was refused"),
     (ConnectionResetError, "the connection was reset"),
-    (TimeoutError, "the connection timed out"),
+    (TimeoutError, TIMED_OUT),
     (socket.gaierror, "the host name could not be resolved"),
     (ssl.SSLError, "the TLS connection could not be made or kept"),
     # Python 3.12's http.client reads a whole chunked body by the size line as given: 40 digits overflow the read
@@ -108,6 +137,20 @@ FAILURES: tuple[tuple[type[BaseException], str], ...] = (
     (ValueError, "a value in the exchange could not be read"),
 )
 UNKNOWN_FAILURE = "an error of a kind this script does not know stopped the download"
+# What the script says of an error raised while it reads a body, whatever its class, but a socket wait that ran out
+# (TIMED_OUT) and a read that ended past the deadline (too_long): what the standard library raises for a body a server
+# framed (cut short, a chunk size of words or of forty digits) differs between Python releases, even between 3.12.3
+# and 3.12.9, and the script's words do not follow it. A body is read in parts of at most CHUNK bytes.
+BODY_UNREADABLE = "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"
+REDIRECT_BODY_UNREADABLE = (
+    "a redirect's body could not be read whole within its limit: it ended early, ran past the limit, or its framing or "
+    "a size in it could not be read"
+)
+
+
+def too_long() -> str:
+    """What the script says of a download that ran past DOWNLOAD_DEADLINE_S, the deadline as it is when it is said."""
+    return f"the download took longer than the {DOWNLOAD_DEADLINE_S} s one download may take"
 STARTS_ONLY_AT = (
     "a download starts only at https on a lower-case host name with no user or password part, no port and no "
     "fragment (or, for tests, plain http on 127.0.0.1 with its port)"
@@ -242,8 +285,8 @@ class _RedirectRule(urllib.request.HTTPRedirectHandler):
     """urllib's own redirect handling, which builds the next request, with the rule checked on that request before
     it is opened: the same destination as the first, and at most MAX_REDIRECTS of them."""
 
-    def __init__(self, path: str, start: Target, *, loopback_for_tests: bool = False) -> None:
-        self.path, self.start, self.loopback_for_tests = path, start, loopback_for_tests
+    def __init__(self, path: str, start: Target, ends: float, *, loopback_for_tests: bool = False) -> None:
+        self.path, self.start, self.ends, self.loopback_for_tests = path, start, ends, loopback_for_tests
 
     def http_error_302(self, req, fp, code, msg, headers):  # noqa: ANN001 (urllib's API)
         """urllib's own handling, with a Location it cannot even parse (urlparse raises ValueError on an unclosed
@@ -269,14 +312,44 @@ class _RedirectRule(urllib.request.HTTPRedirectHandler):
             fp.close()
             raise _refusal(self.path, _named(new), self.start)
         new.albedian_redirects = followed + 1
+        # The redirect's own body, read here in parts and dropped until it ends, so urllib's whole read after this finds
+        # it read; more than REDIRECT_BODY_MAX_BYTES of it ends the download
+        drained = 0
+        while block := _read_part(fp, self.path, REDIRECT_BODY_UNREADABLE, self.ends):
+            drained += len(block)
+            if drained > REDIRECT_BODY_MAX_BYTES:
+                fp.close()
+                raise FetchError(f"{self.path}: not fetched: {REDIRECT_BODY_UNREADABLE}", REDIRECT_BODY_UNREADABLE)
         return new
 
 
-def _open(request: urllib.request.Request, path: str, start: Target, *, loopback_for_tests: bool = False):
-    """Open the request under the redirect rule. Called only inside the boundary in `fetch`, which says what any
-    error it raises means."""
-    opener = urllib.request.build_opener(_RedirectRule(path, start, loopback_for_tests=loopback_for_tests))
-    return opener.open(request, timeout=TIMEOUT_S)
+def _read_part(response: Any, path: str, said: str, ends: float) -> bytes:
+    """One part of a body, CHUNK bytes at most, as soon as some has come (read1). The deadline `ends` (a time.monotonic()
+    value) is checked before the part, so a body sent a byte at a time ends at the first part past it; within the part
+    each socket read waits at most the socket's own wait (see `_open`), so a part begun just before the deadline can
+    end that long after it. A read that ends past the deadline ends the download as too long; one whose socket wait ran
+    out (TimeoutError) as TIMED_OUT; any other error the read raises, of any class, in the sentence `said`. Each is
+    raised after the handler: the read's phase, whether its wait ran out and the clock are all that is said."""
+    if time.monotonic() >= ends:
+        raise FetchError(f"{path}: not fetched: {too_long()}", too_long())
+    waited_out = False
+    try:
+        return response.read1(CHUNK)
+    except TimeoutError:
+        waited_out = True
+    except Exception:  # noqa: BLE001, S110 (read for its phase alone)
+        pass
+    sentence = too_long() if time.monotonic() >= ends else TIMED_OUT if waited_out else said
+    raise FetchError(f"{path}: not fetched: {sentence}", sentence)
+
+
+def _open(request: urllib.request.Request, path: str, start: Target, ends: float, *, loopback_for_tests: bool = False):
+    """Open the request under the redirect rule, with one socket wait for every connection attempt and socket read of
+    the download: TIMEOUT_S, or the time left before `ends` now if that is less (1 ms at the least). urllib opens each
+    redirect with the wait of the request it redirects. Called only inside the boundary in `fetch`, which says what
+    any error it raises means."""
+    opener = urllib.request.build_opener(_RedirectRule(path, start, ends, loopback_for_tests=loopback_for_tests))
+    return opener.open(request, timeout=max(min(TIMEOUT_S, ends - time.monotonic()), 0.001))
 
 
 def _start(download: Download, *, loopback_for_tests: bool) -> tuple[urllib.request.Request, Target]:
@@ -301,10 +374,11 @@ def _download(request: urllib.request.Request, download: Download, start: Target
     """Write the answer's bytes to `part`, and move it to `target` once its size and SHA-256 match the entry."""
     digest = hashlib.sha256()
     size = 0
-    with _open(request, download.path, start, loopback_for_tests=loopback_for_tests) as response:
+    ends = time.monotonic() + DOWNLOAD_DEADLINE_S  # checked before each part of every body, the redirects' and the file's
+    with _open(request, download.path, start, ends, loopback_for_tests=loopback_for_tests) as response:
         target.parent.mkdir(parents=True, exist_ok=True)
         with part.open("wb") as out:
-            while block := response.read(CHUNK):
+            while block := _read_part(response, download.path, BODY_UNREADABLE, ends):
                 size += len(block)
                 if size > download.bytes:
                     raise FetchError(f"{download.path}: more than the {download.bytes} bytes the registry lists")
@@ -320,8 +394,8 @@ def _download(request: urllib.request.Request, download: Download, start: Target
 def _own_error(download: Download, error: Exception) -> Exception:
     """The script's own error for what the boundary in `fetch` caught, read from its class alone and, for an HTTP
     answer, from its status number and a Retry-After of plain digits."""
-    if isinstance(error, FetchError):  # a refusal or a mismatch in this script's own words, built again bare
-        return FetchError(str(error))
+    if isinstance(error, FetchError):  # in this script's own words, built again bare, with its sentence if it has one
+        return FetchError(str(error), error.failure)
     if isinstance(error, urllib.error.HTTPError) and type(error.code) is int:
         if 300 <= error.code < 400:
             said = f"the server answered HTTP {error.code}, a redirect urllib does not follow or one with no Location"
