@@ -40,6 +40,9 @@
       "unchecked",
       "no_usable_time_stamp"
     ],
+    "offsetNotAppliedCauses": [
+      "instant_outside_the_calendar"
+    ],
     "jobStages": [
       "store",
       "decode",
@@ -1694,6 +1697,86 @@
             "gpsTimeStamp": "no_usable_time_stamp"
           }
         }
+      },
+      {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      {
+        "localDateTime": "0001-01-01T02:59:59",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      {
+        "localDateTime": "0001-01-01T13:59:59.999",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      {
+        "localDateTime": "9999-12-31T10:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": 180,
+        "utc": "9999-12-31T18:00:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        }
+      },
+      {
+        "localDateTime": "0001-01-01T02:59:59",
+        "utcOffsetMinutes": -180,
+        "utc": "0001-01-01T05:59:59Z",
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        }
       }
     ],
     "OrientationHint": [
@@ -1812,6 +1895,59 @@
               "uncertaintySec": 13
             }
           }
+        },
+        "location": {
+          "latDeg": 46.5197,
+          "lonDeg": 7.9861,
+          "altitudeM": 3466,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "GPSLatitude",
+              "GPSLatitudeRef",
+              "GPSLongitude",
+              "GPSLongitudeRef"
+            ]
+          }
+        },
+        "camera": {
+          "make": "Synthetic",
+          "model": "Test Phone",
+          "lensModel": "Main 24 mm",
+          "focalLengthMm": 6.9,
+          "focalLength35mmMm": 24,
+          "exposureTimeSec": 10,
+          "fNumber": 1.78,
+          "iso": 1600,
+          "source": {
+            "container": "exif",
+            "tags": [
+              "Make",
+              "Model",
+              "LensModel",
+              "FocalLength",
+              "FocalLengthIn35mmFilm",
+              "FNumber",
+              "ExposureTime",
+              "ISO"
+            ]
+          }
+        }
+      },
+      {
+        "captureTime": {
+          "localDateTime": "9999-12-31T21:00:00",
+          "utcOffsetMinutes": null,
+          "utc": null,
+          "marks": "recorded",
+          "source": {
+            "container": "exif",
+            "tags": [
+              "DateTimeOriginal",
+              "OffsetTimeOriginal"
+            ]
+          },
+          "offsetNotApplied": "instant_outside_the_calendar"
         },
         "location": {
           "latDeg": 46.5197,
@@ -6619,6 +6755,311 @@
         }
       },
       "reason": "the GPS time stamp is not checked against a place that offers more than one offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "0001-01-01T14:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "no offset carries this local time before year 1"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T09:59:59.999",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "no offset carries this local time past year 9999"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_past_the_calendar"
+      },
+      "reason": "a cause not in the closed list"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": null
+      },
+      "reason": "null where the cause may only be absent"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offset_not_applied": "instant_outside_the_calendar"
+      },
+      "reason": "a Python field name on the wire"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetnotapplied": "instant_outside_the_calendar"
+      },
+      "reason": "an unknown key"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": -180,
+        "utc": "9999-12-31T23:59:59Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a cause with an offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": 180,
+        "utc": "9999-12-31T18:00:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a cause beside an applied offset, past the end"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "0001-01-01T02:59:59",
+        "utcOffsetMinutes": -180,
+        "utc": "0001-01-01T05:59:59Z",
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "com.apple.quicktime.creationdate"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a cause beside an applied offset, before the start"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "the offset tag it did not apply is named"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "0001-01-01T02:59:59",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "quicktime",
+          "tags": [
+            "creation_time"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "the creation date it did not apply is named"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "heif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "only an EXIF tag or a clip's creation date states it"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "file_written",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a file's own written time states no offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": null,
+        "utcOffsetMinutes": null,
+        "utc": "9999-12-31T23:59:59Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a cause keeps the local time"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "unchecked",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        },
+        "offsetNotApplied": "instant_outside_the_calendar"
+      },
+      "reason": "a cause leaves nothing for the GPS sources to check"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "9999-12-31T21:00:00",
+        "utcOffsetMinutes": -180,
+        "utc": "9999-12-31T23:00:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        }
+      },
+      "reason": "utc must be the local time minus the offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "0001-01-01T01:00:00",
+        "utcOffsetMinutes": 180,
+        "utc": "0001-01-01T00:00:00Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ]
+        }
+      },
+      "reason": "utc must be the local time minus the offset, before year 1"
     },
     {
       "schema": "IngestReceipt",

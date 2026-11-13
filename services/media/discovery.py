@@ -13,11 +13,14 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import signal
 import subprocess
 from typing import Any
 
 import numpy as np
 
+from services.contracts.ingest import format_utc
+from services.media import guarded_call
 from services.media.models import compute_file_sha256
 from services.science.coherent_stack import integrate_wcs_coherent_star_trajectories
 from services.science.ephemeris import compute_solar_system_ephemerides, require_ephemeris_range
@@ -38,6 +41,70 @@ SHOWINFO_SIZE = re.compile(r"\bs:(\d+)x(\d+)\b")
 FFMPEG_ERROR_TAG = re.compile(r"\[(?:error|fatal|panic)\] ")
 
 _DISCOVERY_CACHE: dict[str, dict[str, Any]] = {}
+# How long discovery waits on one ffprobe or ffmpeg call before it ends the call: on three of the owner's clips the
+# probe took at most 0.08 s and both decodes together at most 1.17 s (load 38); the bound is far above that and far
+# below CI's 20 minute job limit [proposed]
+CHILD_TIME_LIMIT_SEC = 120.0
+class ToolNotStarted(RuntimeError):
+    """ffprobe or ffmpeg could not be started: not on the path, or not runnable. The message is the reason a person
+    reads [proposed: its wording is for the UIUX work]. Never kept in the cache: the next discovery tries again."""
+
+
+class ToolDidNotFinish(RuntimeError):
+    """The call gave no answer of its tool's: the tool was ended by a signal, the call was ended before the tool
+    finished (a caller gave up on it, or its guard was ended from outside), or the guard could not run. The message
+    names which. Never kept in the cache: the next discovery tries again."""
+
+
+# The calls discovery has running, by their guard's id, so that a caller that gives up can stop them all
+_CALLS = guarded_call.RunningCalls()
+_RUNNING = _CALLS.calls
+_RUNNING_LOCK = _CALLS.lock
+
+
+def abandon_running_children() -> int:
+    """Stop every call discovery has running (guarded_call.GuardedCall.stop: its guard ends its group, no id is
+    signalled); each such call then raises ToolDidNotFinish. For a caller that gives up on discovery, as the tests'
+    helper does. Returns how many calls were running."""
+    return _CALLS.stop_all()
+
+
+def _signal_name(number: int) -> str:
+    try:
+        return signal.Signals(number).name
+    except ValueError:
+        return f"signal {number}"
+
+
+def _run_child(command: list[str], *, timeout: float) -> subprocess.CompletedProcess:
+    """Run one ffprobe or ffmpeg call to its end under its guard (services/media/guarded_call.py, which says how and
+    what it does not cover), waiting on it at most `timeout` seconds (each call site passes CHILD_TIME_LIMIT_SEC; there
+    is no default); its input is the null device. Only the tool's own exit comes back, as a CompletedProcess with its
+    status. Every other end raises, and its message names it [proposed: the wording is for the UIUX work]:
+    subprocess.TimeoutExpired when the time limit passed; ToolNotStarted when the tool is not on the path or cannot be
+    started; ToolDidNotFinish when the tool was ended by a signal, the call was cut short, or the guard could not run
+    (an internal error, which names no tool's fault)."""
+    name = Path(command[0]).name
+    done = guarded_call.run(command, bound_sec=timeout, running=_CALLS)
+    end = done.end
+    if isinstance(end, guarded_call.Exited):
+        return subprocess.CompletedProcess(command, end.status, done.stdout, done.stderr)
+    if isinstance(end, guarded_call.BoundPassed):
+        raise subprocess.TimeoutExpired(command, timeout, done.stdout, done.stderr)
+    if isinstance(end, guarded_call.NotStarted):
+        if end.cause is guarded_call.NotStartedCause.NOT_FOUND:
+            raise ToolNotStarted(f"{name} was not found on this machine")
+        raise ToolNotStarted(f"{name} could not be started")
+    if isinstance(end, guarded_call.Signalled):
+        raise ToolDidNotFinish(f"{name} was ended by {_signal_name(end.signal_number)} before it answered")
+    if isinstance(end, guarded_call.GuardNotStarted):
+        raise ToolDidNotFinish(f"an internal error stopped the {name} call before it ran")
+    assert isinstance(end, guarded_call.Cut)
+    raise ToolDidNotFinish(f"{name} did not finish: the call was ended before it did")
+
+
+class ProbeTimedOut(RuntimeError):
+    """ffprobe did not finish reading the file within CHILD_TIME_LIMIT_SEC; its guard ended its group."""
 
 
 @dataclass(frozen=True)
@@ -152,16 +219,20 @@ def parse_iso6709_location(
 
 
 def normalize_creation_utc(raw_date: str | None) -> str | None:
-    """Normalize QuickTime creation date into an ISO-8601 UTC timestamp (`...Z`), or None when absent or unparseable."""
+    """Normalize QuickTime creation date into an ISO-8601 UTC timestamp (`...Z`), or None when absent, unparseable, or
+    when its instant lies outside the years 1 to 9999 a UTC instant is written in (its offset carries it past an end)."""
     if not raw_date:
         return None
     try:
         cleaned = raw_date.strip().replace("Z", "+00:00")
         dt = datetime.fromisoformat(cleaned)
         dt_utc = dt.astimezone(timezone.utc)
-        return dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-    except ValueError:
+    except (ValueError, OverflowError):
         return None
+    # The contract's instant, as ingest's reader of the same tag writes it: four digits for the year, and a fraction of
+    # a second kept to the millisecond, the most the instant holds, cut below it (ingest keeps the fraction's first
+    # three digits)
+    return format_utc(dt_utc)
 
 
 def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
@@ -176,12 +247,11 @@ def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
         "json",
         str(file_path),
     ]
-    proc = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        proc = _run_child(cmd, timeout=CHILD_TIME_LIMIT_SEC)
+    except subprocess.TimeoutExpired:
+        # The call's guard has ended its group, and discovery has waited for the guard
+        raise ProbeTimedOut(file_path.name) from None
     if proc.returncode != 0:
         return {}
     try:
@@ -192,6 +262,30 @@ def _probe_media_metadata(file_path: Path) -> dict[str, Any]:
 
 class FrameDecodeError(RuntimeError):
     """ffmpeg could not decode a frame of the file; the message is ffmpeg's own."""
+
+
+class FrameDecodeNotFinal(FrameDecodeError):
+    """A decode that gave no answer of ffmpeg's for the file, one a second try may change: out of time, ffmpeg not
+    started, ffmpeg ended by a signal, the call cut short, or the guard unable to run. Not kept in the cache, so the
+    next discovery tries again. Every other FrameDecodeError is ffmpeg's own answer for these bytes, given by its own
+    exit (no frame, no time for a frame, a size not the probed one, a native frame that disagrees), and is kept, as the
+    item is, by the file's hash and time."""
+
+
+class FrameDecodeTimedOut(FrameDecodeNotFinal):
+    """ffmpeg did not decode a frame within CHILD_TIME_LIMIT_SEC; its guard ended its group."""
+
+
+def _decode(command: list[str]) -> subprocess.CompletedProcess:
+    """Run one ffmpeg decode within CHILD_TIME_LIMIT_SEC (_run_child), raising FrameDecodeTimedOut when it ran out of
+    time and FrameDecodeNotFinal for every other end that is not ffmpeg's own exit (not started, ended by a signal,
+    cut short, the guard unable to run), each with the reason _run_child gives, which names that end."""
+    try:
+        return _run_child(command, timeout=CHILD_TIME_LIMIT_SEC)
+    except subprocess.TimeoutExpired:
+        raise FrameDecodeTimedOut(f"ffmpeg did not decode a frame within {CHILD_TIME_LIMIT_SEC:g} s") from None
+    except (ToolNotStarted, ToolDidNotFinish) as missing:
+        raise FrameDecodeNotFinal(str(missing)) from None
 
 
 def _require_probed_size(log: list[str], width: int, height: int) -> None:
@@ -249,12 +343,7 @@ def _extract_representative_luma(
         "gray",
         "pipe:1",
     ]
-    proc = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    proc = _decode(cmd)
     frame_bytes = scale_w * scale_h
     log = proc.stderr.decode("utf-8", errors="replace").splitlines()
     if proc.returncode == 0 and len(proc.stdout) >= frame_bytes:
@@ -277,7 +366,7 @@ def _extract_representative_luma(
         )
         picked_time = frame_times[best_idx]
         native_vf = (f"fps=1,select=eq(n\\,{best_idx})" if is_vid else f"select=eq(n\\,{best_idx})") + ",showinfo"
-        native_proc = subprocess.run(
+        native_proc = _decode(
             [
                 "ffmpeg",
                 "-hide_banner",
@@ -295,10 +384,7 @@ def _extract_representative_luma(
                 "-pix_fmt",
                 "gray16le",
                 "pipe:1",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
+            ]
         )
         native_bytes = width * height * 2
         native_log = native_proc.stderr.decode("utf-8", errors="replace").splitlines()
@@ -456,7 +542,15 @@ def discover_uploaded_media_report(
             discovered_items.append(_DISCOVERY_CACHE[cache_key]["item"])
             continue
 
-        probe = _probe_media_metadata(primary)
+        try:
+            probe = _probe_media_metadata(primary)
+        except ProbeTimedOut:
+            skipped.append({"filename": primary.name,
+                            "reason": f"ffprobe did not finish reading the file within {CHILD_TIME_LIMIT_SEC:g} s"})
+            continue
+        except (ToolNotStarted, ToolDidNotFinish) as missing:
+            skipped.append({"filename": primary.name, "reason": str(missing)})
+            continue
         if not probe:
             skipped.append({"filename": primary.name, "reason": "ffprobe could not read the file"})
             continue
@@ -522,6 +616,7 @@ def discover_uploaded_media_report(
 
         # The representative frame comes from the original file only: a rendered variant never stands in for it
         decode_error: str | None = None
+        decode_not_final = False
         luma: np.ndarray | None
         frame_time_sec: float | None = None
         try:
@@ -529,11 +624,20 @@ def discover_uploaded_media_report(
         except FrameDecodeError as exc:
             # No frame: no pose, trajectory or coherent audit; the predictions for the moment need no pixels
             luma, pose_trajectory, decode_error = None, [], str(exc)
+            decode_not_final = isinstance(exc, FrameDecodeNotFinal)
         # Every prediction is for the moment of the frame decoded: the recorded start of the clip plus the frame's
         # time in it [inference: QuickTime's creationdate marks the start of recording]. Without a frame, the start.
+        # A moment outside the ephemeris' 1800 to 2050 gets no predictions and no pose (which rests on the Moon). The
+        # start is checked before the frame's time is added: near the calendar's ends the sum would leave it
+        ephemeris_error: str | None = None
+        if captured_at_utc is not None:
+            try:
+                require_ephemeris_range(captured_at_utc)
+            except ValueError as exc:
+                ephemeris_error = str(exc)
         frame_moment = (
             _moment_plus(captured_at_utc, frame_time_sec)
-            if captured_at_utc is not None and frame_time_sec is not None
+            if captured_at_utc is not None and frame_time_sec is not None and ephemeris_error is None
             else captured_at_utc
         )
         # The sky solution, ephemerides and sky brightness all need the real capture time and place;
@@ -542,9 +646,7 @@ def discover_uploaded_media_report(
         ephemerides: list[dict[str, Any]] = []
         sky_brightness: dict[str, Any] = {}
         coherent_audit: list[dict[str, Any]] = []
-        # A moment outside the ephemeris' 1800 to 2050 gets no predictions and no pose (which rests on the Moon)
-        ephemeris_error: str | None = None
-        if frame_moment is not None:
+        if frame_moment is not None and ephemeris_error is None:
             try:
                 require_ephemeris_range(frame_moment)
             except ValueError as exc:
@@ -623,7 +725,8 @@ def discover_uploaded_media_report(
             decode_error=decode_error,
             ephemeris_error=ephemeris_error,
         )
-        _DISCOVERY_CACHE[cache_key] = {"item": item}
+        if not decode_not_final:
+            _DISCOVERY_CACHE[cache_key] = {"item": item}
         discovered_items.append(item)
 
     discovered_items.sort(key=lambda item: (item.captured_at_utc or "", item.filename))

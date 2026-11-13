@@ -40,11 +40,14 @@ import tzfpy
 from services.contracts.ingest import (
     EXIF_ORIENTATIONS,
     GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC,
+    OFFSET_NOT_APPLIED_CAUSES,
     TIME_STAMP_RESOLUTION_SEC,
     UTC_OFFSET_LIMIT_MINUTES,
     compose_display_orientations,
     format_utc,
 )
+
+(OUTSIDE_THE_CALENDAR,) = OFFSET_NOT_APPLIED_CAUSES
 
 # ---------------------------------------------------------------------------------------------
 # HEIF (ISO base media) reader
@@ -407,17 +410,28 @@ def _format_local(moment: datetime) -> str:
     return moment.replace(microsecond=0).isoformat() + (f".{millis:03d}" if millis else "")
 
 
+def _instant(local: datetime, offset_minutes: int) -> Optional[datetime]:
+    """The UTC instant of a local time at an offset; None where it lies outside the years 1 to 9999 a datetime holds."""
+    try:
+        return (local - timedelta(minutes=offset_minutes)).replace(tzinfo=timezone.utc)
+    except OverflowError:
+        return None
+
+
 def _capture_time(local: datetime, offset_minutes: Optional[int], marks: str, source: dict) -> dict:
-    utc = None
-    if offset_minutes is not None:
-        utc = format_utc((local - timedelta(minutes=offset_minutes)).replace(tzinfo=timezone.utc))
-    return {
+    """The hint for a local time and the file's offset. An offset whose instant lies outside the calendar is not
+    applied: the time stays local, and `offsetNotApplied` says why."""
+    instant = None if offset_minutes is None else _instant(local, offset_minutes)
+    hint = {
         "localDateTime": _format_local(local),
-        "utcOffsetMinutes": offset_minutes,
-        "utc": utc,
+        "utcOffsetMinutes": None if instant is None else offset_minutes,
+        "utc": None if instant is None else format_utc(instant),
         "marks": marks,
         "source": source,
     }
+    if offset_minutes is not None and instant is None:
+        hint["offsetNotApplied"] = OUTSIDE_THE_CALENDAR
+    return hint
 
 
 def _exif_time(exif_ifd: Any, gps: Any) -> Optional[dict]:
@@ -441,6 +455,10 @@ def _exif_time(exif_ifd: Any, gps: Any) -> Optional[dict]:
         if int(minutes) < 60 and abs(value) <= UTC_OFFSET_LIMIT_MINUTES:
             offset = value
             tags.append("OffsetTimeOriginal")
+    if offset is not None and _instant(local, offset) is None:
+        # The file's own offset gives an instant the calendar cannot hold: it is not applied, and since the file says
+        # which zone its clock kept, no other offset is worked out from the GPS sources in its place
+        return _capture_time(local, offset, "recorded", {"container": "exif", "tags": tags})
     source: dict[str, Any] = {"container": "exif", "tags": tags}
     fix = _gps_instant(gps)
     location = _exif_location(gps)

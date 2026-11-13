@@ -42,7 +42,7 @@ was lined up from. [tested]
 
 - A recorded capture time: EXIF `DateTimeOriginal` with its UTC offset, or QuickTime
   `com.apple.quicktime.creationdate`. A file's own written time (QuickTime `creation_time`) and an EXIF time without
-  its offset are not capture times, and no other time (the upload time, the computer's clock) stands in. [tested]
+  its offset are not capture times, and no other time (the upload time, the computer's clock) stands in. An offset whose instant lies outside the years 1 to 9999 is not applied: the time stays local, its record says `offsetNotApplied: instant_outside_the_calendar`, and it is no capture time (unit capture-time-2). [tested]
 - An EXIF time without an offset tag whose zone two independent sources agree on (unit capture-time-1,
   `services/ingest/metadata.py`): the time zone at the photo's own GPS position (tzfpy's boundary data,
   docs/architecture/THIRD_PARTY.md, with the zone's offset at the local time from `zoneinfo`), which must offer

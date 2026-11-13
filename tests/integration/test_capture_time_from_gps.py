@@ -286,23 +286,26 @@ def test_the_uncertainty_counts_a_gps_time_stamps_fraction_of_a_second() -> None
     assert exif_hints(exif)["captureTime"]["source"]["basis"]["uncertaintySec"] == 15
 
 
-# Leftovers in tenths of a millisecond, each a whole second's neighbours on either side (audit K's case: 12.0004 s
-# states 14 s; rounding it to the millisecond first would state 13). Each, in ten-thousandths of a second, and what
-# is stated: a second plus the leftover rounded up
-SUBMILLI_EDGES = [(0, 1), (4, 2), (119996, 13), (120000, 13), (120004, 14), (120010, 14), (100004, 12), (-120004, 14)]
+# Leftovers down to the microsecond a timedelta holds, each a whole second's neighbours on either side (audit K's
+# case: 12.0004 s states 14 s, and rounding to the millisecond first would state 13; audit F's: 12.000001 s states
+# 14 s, and rounding to a tenth of a millisecond first would state 13). Each, in microseconds, and what is stated: a
+# second plus the leftover rounded up
+SUBMILLI_EDGES = [(0, 1), (1, 2), (400, 2), (11_999_600, 13), (11_999_999, 13), (12_000_000, 13), (12_000_001, 14),
+                  (12_000_002, 14), (12_000_400, 14), (12_001_000, 14), (10_000_400, 12), (-12_000_400, 14), (-12_000_001, 14)]
 
 
 @pytest.mark.parametrize(("leftover", "stated"), SUBMILLI_EDGES)
-def test_the_leftover_is_rounded_up_from_its_tenth_of_a_millisecond(leftover: int, stated: int) -> None:
-    # The local time is LOCAL at sea in UTC-03:00, so the fix is 07:37:52 UTC less the leftover
-    minutes, rest = divmod((7 * 3600 + 37 * 60 + 52) * 10000 - leftover, 60 * 10000)
+def test_the_leftover_is_rounded_up_to_the_microsecond(leftover: int, stated: int) -> None:
+    # The local time is LOCAL at sea in UTC-03:00, so the fix is 07:37:52 UTC less the leftover; the stamp's seconds are
+    # a rational in microseconds, which the reader turns into the same whole microseconds
+    minutes, rest = divmod((7 * 3600 + 37 * 60 + 52) * 1_000_000 - leftover, 60 * 1_000_000)
     exif = Image.Exif()
     exif.get_ifd(ExifTags.IFD.Exif)[ExifTags.Base.DateTimeOriginal] = local_tag(LOCAL)
     gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
     for name, value in position(OCEAN).items():
         gps[getattr(ExifTags.GPS, name)] = value
     gps[ExifTags.GPS.GPSDateStamp] = "2031:07:01"
-    gps[ExifTags.GPS.GPSTimeStamp] = (Rat(minutes // 60, 1), Rat(minutes % 60, 1), Rat(rest, 10000))
+    gps[ExifTags.GPS.GPSTimeStamp] = (Rat(minutes // 60, 1), Rat(minutes % 60, 1), Rat(rest, 1_000_000))
     basis = exif_hints(exif)["captureTime"]["source"]["basis"]
     assert (basis["offsetSource"], basis["uncertaintySec"]) == (ZONED, stated)
 

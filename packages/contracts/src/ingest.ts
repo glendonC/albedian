@@ -59,6 +59,21 @@ export const CAPTURE_TIME_MARKS = ['recorded', 'file_written'] as const;
 export const GPS_STAMP_TAGS = ['GPSDateStamp', 'GPSTimeStamp'] as const;
 
 /**
+ * Why a file's own offset was not applied (unit capture-time-2). `instant_outside_the_calendar`: the local time minus
+ * the offset lies outside the years 1 to 9999 a UTC instant is written in, so the time stays local and the offset is
+ * not given. An offset of at most UTC_OFFSET_LIMIT_MINUTES carries a local time past an end only from within that many
+ * minutes of it: a local time before OFFSET_NOT_APPLIED_BEFORE or from OFFSET_NOT_APPLIED_FROM on. The tag that
+ * stated the offset, per container, is named among the source's tags. Mirrors services/contracts/ingest.py.
+ */
+export const OFFSET_NOT_APPLIED_CAUSES = ['instant_outside_the_calendar'] as const;
+const OFFSET_LIMIT_MS = UTC_OFFSET_LIMIT_MINUTES * 60_000;
+export const OFFSET_NOT_APPLIED_BEFORE = new Date(Date.parse('0001-01-01T00:00:00Z') + OFFSET_LIMIT_MS).toISOString().slice(0, 19);
+export const OFFSET_NOT_APPLIED_FROM = new Date(Date.parse('9999-12-31T00:00:00Z') + 86_400_000 - OFFSET_LIMIT_MS)
+  .toISOString()
+  .slice(0, 19);
+export const OFFSET_TAGS: Partial<Record<string, string>> = { exif: 'OffsetTimeOriginal', quicktime: 'com.apple.quicktime.creationdate' };
+
+/**
  * A capture time as the file writes it: a local time, a UTC instant, or both. The offset is known
  * exactly when both are (then UTC is the local time minus the offset); a local time alone has no zone,
  * and a UTC instant alone has no local time.
@@ -70,6 +85,7 @@ export const CaptureTimeHintSchema = z
     utc: utcInstant().nullable(),
     marks: z.enum(CAPTURE_TIME_MARKS),
     source: MetadataSourceSchema,
+    offsetNotApplied: z.enum(OFFSET_NOT_APPLIED_CAUSES).optional(),
   })
   .strict()
   .superRefine((hint, ctx) => {
@@ -85,6 +101,18 @@ export const CaptureTimeHintSchema = z
       const expected = Date.parse(`${hint.localDateTime}Z`) - hint.utcOffsetMinutes * 60_000;
       if (Date.parse(hint.utc) !== expected) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utc'], message: 'utc must be the local time minus the offset' });
+      }
+    }
+    if (hint.offsetNotApplied !== undefined) {
+      const cause = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offsetNotApplied'], message });
+      if (hint.marks !== 'recorded' || hint.localDateTime === null || hint.utcOffsetMinutes !== null) {
+        cause('an offset not applied leaves a recorded local time with no offset');
+      } else if (!hint.source.tags.includes(OFFSET_TAGS[hint.source.container] ?? '')) {
+        cause('an offset not applied names the tag that stated it');
+      } else if (hint.source.basis !== undefined) {
+        cause('an offset not applied leaves nothing for the GPS sources to check');
+      } else if (OFFSET_NOT_APPLIED_BEFORE <= hint.localDateTime && hint.localDateTime < OFFSET_NOT_APPLIED_FROM) {
+        cause('no offset carries this local time past an end of the calendar');
       }
     }
     const basis = hint.source.basis;

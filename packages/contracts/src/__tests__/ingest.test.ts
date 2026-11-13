@@ -15,6 +15,7 @@ import {
   INGEST_PATTERNS,
   IngestReceiptSchema,
   MetadataHintsSchema,
+  OFFSET_NOT_APPLIED_CAUSES,
   invertDisplayOrientation,
   JOB_STAGES,
   JOB_STATES,
@@ -79,6 +80,7 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
       captureOffsetSources: [...CAPTURE_OFFSET_SOURCES],
       placeTimeZoneChecks: [...PLACE_TIME_ZONE_CHECKS],
       gpsTimeStampChecks: [...GPS_TIME_STAMP_CHECKS],
+      offsetNotAppliedCauses: [...OFFSET_NOT_APPLIED_CAUSES],
       jobStages: [...JOB_STAGES],
       progressUnits: [...PROGRESS_UNITS],
       jobStates: [...JOB_STATES],
@@ -285,6 +287,61 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
       const hint = structuredClone(zoned);
       hint.source.basis!.uncertaintySec = value;
       expect(CaptureTimeHintSchema.safeParse(hint).success, String(value)).toBe(ok);
+    }
+  });
+
+  it("names why a file's offset was not applied, by the wire rules (capture-time-2)", () => {
+    const notApplied = {
+      localDateTime: '9999-12-31T21:00:00',
+      utcOffsetMinutes: null,
+      utc: null,
+      marks: 'recorded',
+      source: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] },
+      offsetNotApplied: 'instant_outside_the_calendar',
+    };
+    const clip = { ...notApplied, localDateTime: '0001-01-01T02:59:59', source: { container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] } };
+    const { offsetNotApplied: _cause, ...withoutCause } = notApplied;
+    const cases: [unknown, boolean, string][] = [
+      [notApplied, true, 'an EXIF time whose offset tag gives an instant past the end'],
+      [clip, true, "a clip's creation date before the start"],
+      [{ ...notApplied, localDateTime: '0001-01-01T13:59:59.999' }, true, 'the last local time an offset carries before year 1'],
+      [{ ...notApplied, localDateTime: '0001-01-01T14:00:00' }, false, 'no offset carries it before year 1'],
+      [{ ...notApplied, localDateTime: '9999-12-31T10:00:00' }, true, 'the first local time an offset carries past year 9999'],
+      [{ ...notApplied, localDateTime: '9999-12-31T09:59:59.999' }, false, 'no offset carries it past year 9999'],
+      [{ ...notApplied, offsetNotApplied: 'instant_past_the_calendar' }, false, 'a cause not in the closed list'],
+      [{ ...notApplied, offsetNotApplied: null }, false, 'null'],
+      [{ ...withoutCause, offset_not_applied: 'instant_outside_the_calendar' }, false, 'a Python field name'],
+      [{ ...withoutCause, offsetnotapplied: 'instant_outside_the_calendar' }, false, 'an unknown key'],
+      [{ ...notApplied, utcOffsetMinutes: -180, utc: '9999-12-31T23:59:59Z' }, false, 'a cause with an offset'],
+      // Decided by the "no offset" rule alone (audit J), and the neighbours without the offset or without the cause
+      [{ ...notApplied, utcOffsetMinutes: 180, utc: '9999-12-31T18:00:00Z' }, false, 'a cause beside an applied offset, past the end'],
+      [{ ...clip, utcOffsetMinutes: -180, utc: '0001-01-01T05:59:59Z' }, false, 'a cause beside an applied offset, before the start'],
+      [{ ...withoutCause, utcOffsetMinutes: 180, utc: '9999-12-31T18:00:00Z' }, true, 'the applied offset with no cause'],
+      [
+        { ...withoutCause, localDateTime: '0001-01-01T02:59:59', source: clip.source, utcOffsetMinutes: -180, utc: '0001-01-01T05:59:59Z' },
+        true,
+        'the applied offset with no cause, before the start',
+      ],
+      [{ ...notApplied, source: { container: 'exif', tags: ['DateTimeOriginal'] } }, false, 'the offset tag is named'],
+      [{ ...clip, source: { container: 'quicktime', tags: ['creation_time'] } }, false, 'the creation date is named'],
+      [{ ...notApplied, source: { container: 'heif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] } }, false, 'heif'],
+      [{ ...notApplied, marks: 'file_written' }, false, 'a written time'],
+      [{ ...notApplied, localDateTime: null, utc: '9999-12-31T23:59:59Z' }, false, 'no local time'],
+      [
+        { ...notApplied, source: { ...notApplied.source, basis: { placeTimeZone: 'unchecked', gpsTimeStamp: 'no_usable_time_stamp' } } },
+        false,
+        'a basis',
+      ],
+      [{ ...withoutCause, utcOffsetMinutes: -180, utc: '9999-12-31T23:00:00Z' }, false, 'utc not the local time minus the offset'],
+      [
+        { ...withoutCause, localDateTime: '0001-01-01T01:00:00', utcOffsetMinutes: 180, utc: '0001-01-01T00:00:00Z' },
+        false,
+        'utc not the local time minus the offset, before year 1',
+      ],
+    ];
+    expect(OFFSET_NOT_APPLIED_CAUSES).toEqual(['instant_outside_the_calendar']);
+    for (const [record, ok, reason] of cases) {
+      expect(CaptureTimeHintSchema.safeParse(record).success, reason).toBe(ok);
     }
   });
 

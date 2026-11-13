@@ -224,7 +224,7 @@ def test_a_frame_moment_keeps_a_fraction_of_a_second() -> None:
 def test_frames_ffmpeg_gives_no_time_for_are_not_used(tmp_path: Path, monkeypatch) -> None:
     clip = tmp_path / "beacon-in-its-fourth-second.mp4"
     _clip_with_a_beacon_in_its_fourth_second(clip)
-    real_run = subprocess.run
+    real_run = discovery._run_child
 
     def run_without_frame_times(cmd, *args, **kwargs):
         done = real_run(cmd, *args, **kwargs)
@@ -233,7 +233,7 @@ def test_frames_ffmpeg_gives_no_time_for_are_not_used(tmp_path: Path, monkeypatc
         kept = b"\n".join(line for line in done.stderr.splitlines() if b"pts_time" not in line)
         return subprocess.CompletedProcess(done.args, done.returncode, done.stdout, kept)
 
-    monkeypatch.setattr(discovery.subprocess, "run", run_without_frame_times)
+    monkeypatch.setattr(discovery, "_run_child", run_without_frame_times)
     with pytest.raises(discovery.FrameDecodeError, match="no time"):
         discovery._extract_representative_luma(clip, width=320, height=180)
 
@@ -341,7 +341,7 @@ def test_discovery_solves_on_a_native_decode_of_the_picked_frame(tmp_path: Path,
 def test_a_native_decode_whose_time_or_bytes_disagree_is_not_used(tmp_path: Path, monkeypatch) -> None:
     clip = tmp_path / "beacon-in-its-fourth-second.mp4"
     _clip_with_a_beacon_in_its_fourth_second(clip)
-    real_run = subprocess.run
+    real_run = discovery._run_child
 
     def run_with_wrong_native_time(cmd, *args, **kwargs):
         done = real_run(cmd, *args, **kwargs)
@@ -350,7 +350,7 @@ def test_a_native_decode_whose_time_or_bytes_disagree_is_not_used(tmp_path: Path
             return subprocess.CompletedProcess(done.args, done.returncode, done.stdout, wrong)
         return done
 
-    monkeypatch.setattr(discovery.subprocess, "run", run_with_wrong_native_time)
+    monkeypatch.setattr(discovery, "_run_child", run_with_wrong_native_time)
     with pytest.raises(discovery.FrameDecodeError, match="time"):
         discovery._extract_representative_luma(clip, width=320, height=180)
 
@@ -360,7 +360,7 @@ def test_a_native_decode_whose_time_or_bytes_disagree_is_not_used(tmp_path: Path
             return subprocess.CompletedProcess(done.args, done.returncode, done.stdout[:-2], done.stderr)
         return done
 
-    monkeypatch.setattr(discovery.subprocess, "run", run_with_truncated_native_bytes)
+    monkeypatch.setattr(discovery, "_run_child", run_with_truncated_native_bytes)
     with pytest.raises(discovery.FrameDecodeError, match="gray16le"):
         discovery._extract_representative_luma(clip, width=320, height=180)
 
@@ -370,7 +370,7 @@ def test_a_native_decode_whose_time_or_bytes_disagree_is_not_used(tmp_path: Path
             return subprocess.CompletedProcess(done.args, 1, b"", b"[error] native decode failed\n")
         return done
 
-    monkeypatch.setattr(discovery.subprocess, "run", run_with_native_error)
+    monkeypatch.setattr(discovery, "_run_child", run_with_native_error)
     with pytest.raises(discovery.FrameDecodeError, match=r"^native decode failed$"):
         discovery._extract_representative_luma(clip, width=320, height=180)
 
@@ -434,8 +434,8 @@ def test_a_frame_whose_size_is_not_the_probed_size_is_refused(tmp_path: Path, mo
     clip = tmp_path / "beacon.mp4"
     _clip_with_a_beacon_in_its_fourth_second(clip)
     decodes: list[list[str]] = []
-    real_run = subprocess.run
-    monkeypatch.setattr(discovery.subprocess, "run", lambda cmd, *a, **k: decodes.append(cmd) or real_run(cmd, *a, **k))
+    real_run = discovery._run_child
+    monkeypatch.setattr(discovery, "_run_child", lambda cmd, *a, **k: decodes.append(cmd) or real_run(cmd, *a, **k))
     # 180 x 320 holds as many pixels as 320 x 180, so only the size itself can tell the two apart
     with pytest.raises(discovery.FrameDecodeError, match=r"320 x 180 frame, not the probed 180 x 320"):
         discovery._extract_representative_luma(clip, width=180, height=320)

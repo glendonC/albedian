@@ -148,6 +148,16 @@ CAPTURE_TIME_BASIS_PAIRS: dict[Optional[str], frozenset[tuple[str, str]]] = {
     }),
 }
 GPS_STAMP_TAGS = ("GPSDateStamp", "GPSTimeStamp")
+# Why a file's own offset was not applied (unit capture-time-2). instant_outside_the_calendar: the local time minus
+# the offset lies outside the years 1 to 9999 a UTC instant is written in, so the time stays local and the file's
+# offset is not given. An offset of at most UTC_OFFSET_LIMIT_MINUTES carries a local time past an end only from within
+# that many minutes of it: a local time before OFFSET_NOT_APPLIED_BEFORE or from OFFSET_NOT_APPLIED_FROM on. The tag
+# that stated the offset, per container, is named among the source's tags.
+OFFSET_NOT_APPLIED_CAUSES = ("instant_outside_the_calendar",)
+_OFFSET_LIMIT = timedelta(minutes=UTC_OFFSET_LIMIT_MINUTES)
+OFFSET_NOT_APPLIED_BEFORE = (datetime(1, 1, 1) + _OFFSET_LIMIT).isoformat()
+OFFSET_NOT_APPLIED_FROM = (datetime(9999, 12, 31) + (timedelta(days=1) - _OFFSET_LIMIT)).isoformat()
+OFFSET_TAGS = {"exif": "OffsetTimeOriginal", "quicktime": "com.apple.quicktime.creationdate"}
 CAMERA_HINT_FIELDS = (
     "make",
     "model",
@@ -335,7 +345,8 @@ class SourceAsset(_Loose):
 
 
 class CaptureTimeHint(_Model):
-    """A local time, a UTC instant, or both; the offset is known exactly when both are."""
+    """A local time, a UTC instant, or both; the offset is known exactly when both are. `offsetNotApplied` names why
+    the file's own offset is not given (OFFSET_NOT_APPLIED_CAUSES)."""
 
     nullable: ClassVar[frozenset[str]] = frozenset(
         {"localDateTime", "local_date_time", "utcOffsetMinutes", "utc_offset_minutes", "utc"}
@@ -345,6 +356,15 @@ class CaptureTimeHint(_Model):
     utc: Optional[UtcInstant]
     marks: Literal["recorded", "file_written"]
     source: MetadataSource
+    offset_not_applied: Optional[Literal[*OFFSET_NOT_APPLIED_CAUSES]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _cause_by_its_wire_name(cls, data: Any) -> Any:
+        # The base config takes Python field names; this new key follows the wire rules, as Zod does
+        if isinstance(data, dict) and "offset_not_applied" in data:
+            raise ValueError("offset_not_applied is a Python name; the wire name is offsetNotApplied")
+        return data
 
     @model_validator(mode="after")
     def _times_agree(self) -> "CaptureTimeHint":
@@ -362,6 +382,15 @@ class CaptureTimeHint(_Model):
                 raise ValueError("utc must be the local time minus the offset") from None
             if _parse_utc(self.utc) != expected:
                 raise ValueError("utc must be the local time minus the offset")
+        if self.offset_not_applied is not None:
+            if self.marks != "recorded" or self.local_date_time is None or self.utc_offset_minutes is not None:
+                raise ValueError("an offset not applied leaves a recorded local time with no offset")
+            if OFFSET_TAGS.get(self.source.container) not in self.source.tags:
+                raise ValueError("an offset not applied names the tag that stated it")
+            if self.source.basis is not None:
+                raise ValueError("an offset not applied leaves nothing for the GPS sources to check")
+            if OFFSET_NOT_APPLIED_BEFORE <= self.local_date_time < OFFSET_NOT_APPLIED_FROM:
+                raise ValueError("no offset carries this local time past an end of the calendar")
         basis = self.source.basis
         if basis is not None:
             if self.marks != "recorded" or self.source.container != "exif" or self.local_date_time is None:
@@ -827,6 +856,48 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
                                                    "basis": {"placeTimeZone": "more_than_one_offset", "gpsTimeStamp": "disagrees"}}},
         "the GPS time stamp is not checked against a place that offers more than one offset")
+    # A file's own offset not applied, from one table: the EXIF and the clip form, the local time window's inside
+    # ends and a millisecond out, and each rule the cause must keep (unit capture-time-2)
+    not_applied = {"localDateTime": "9999-12-31T21:00:00", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",
+                   "source": {"container": "exif", "tags": tag_only}, "offsetNotApplied": OFFSET_NOT_APPLIED_CAUSES[0]}
+    clip_not_applied = {**not_applied, "localDateTime": "0001-01-01T02:59:59",
+                        "source": {"container": "quicktime", "tags": ["com.apple.quicktime.creationdate"]}}
+    no_cause = {key: value for key, value in not_applied.items() if key != "offsetNotApplied"}
+    for sample, refused in [
+        (not_applied, None),
+        (clip_not_applied, None),
+        ({**not_applied, "localDateTime": "0001-01-01T13:59:59.999"}, None),
+        ({**not_applied, "localDateTime": OFFSET_NOT_APPLIED_FROM}, None),
+        ({**not_applied, "localDateTime": OFFSET_NOT_APPLIED_BEFORE}, "no offset carries this local time before year 1"),
+        ({**not_applied, "localDateTime": "9999-12-31T09:59:59.999"}, "no offset carries this local time past year 9999"),
+        ({**not_applied, "offsetNotApplied": "instant_past_the_calendar"}, "a cause not in the closed list"),
+        ({**not_applied, "offsetNotApplied": None}, "null where the cause may only be absent"),
+        ({**no_cause, "offset_not_applied": OFFSET_NOT_APPLIED_CAUSES[0]}, "a Python field name on the wire"),
+        ({**no_cause, "offsetnotapplied": OFFSET_NOT_APPLIED_CAUSES[0]}, "an unknown key"),
+        ({**not_applied, "utcOffsetMinutes": -180, "utc": "9999-12-31T23:59:59Z"}, "a cause with an offset"),
+        # Decided by the "no offset" rule alone: the offset applied with its true UTC and the cause beside it; the
+        # neighbours without the cause are taken
+        ({**not_applied, "utcOffsetMinutes": 180, "utc": "9999-12-31T18:00:00Z"}, "a cause beside an applied offset, past the end"),
+        ({**clip_not_applied, "utcOffsetMinutes": -180, "utc": "0001-01-01T05:59:59Z"}, "a cause beside an applied offset, before the start"),
+        ({**no_cause, "utcOffsetMinutes": 180, "utc": "9999-12-31T18:00:00Z"}, None),
+        ({key: value for key, value in clip_not_applied.items() if key != "offsetNotApplied"}
+         | {"utcOffsetMinutes": -180, "utc": "0001-01-01T05:59:59Z"}, None),
+        ({**not_applied, "source": {"container": "exif", "tags": ["DateTimeOriginal"]}}, "the offset tag it did not apply is named"),
+        ({**clip_not_applied, "source": {"container": "quicktime", "tags": ["creation_time"]}}, "the creation date it did not apply is named"),
+        ({**not_applied, "source": {"container": "heif", "tags": tag_only}}, "only an EXIF tag or a clip's creation date states it"),
+        ({**not_applied, "marks": "file_written"}, "a file's own written time states no offset"),
+        ({**not_applied, "localDateTime": None, "utc": "9999-12-31T23:59:59Z"}, "a cause keeps the local time"),
+        ({**not_applied, "source": {"container": "exif", "tags": tag_only,
+                                    "basis": {"placeTimeZone": "unchecked", "gpsTimeStamp": "no_usable_time_stamp"}}},
+         "a cause leaves nothing for the GPS sources to check"),
+        ({**no_cause, "utcOffsetMinutes": -180, "utc": "9999-12-31T23:00:00Z"}, "utc must be the local time minus the offset"),
+        ({**no_cause, "localDateTime": "0001-01-01T01:00:00", "utcOffsetMinutes": 180, "utc": "0001-01-01T00:00:00Z"},
+         "utc must be the local time minus the offset, before year 1"),
+    ]:
+        if refused is None:
+            capture_times.append(sample)
+        else:
+            bad("CaptureTimeHint", sample, refused)
     bad("IngestReceipt", with_(receipts[6], ["sourceAsset", "metadataSources", "capturedAtUTC", "basis"], _DROP),
         "the asset keeps its hint's basis")
     bad("IngestReceipt", with_(receipts[6], ["hints", "location", "source", "basis"], zoned_basis), "a basis on a place hint's source")
@@ -857,6 +928,7 @@ def build_ingest_samples() -> dict[str, Any]:
             "captureOffsetSources": list(CAPTURE_OFFSET_SOURCES),
             "placeTimeZoneChecks": list(PLACE_TIME_ZONE_CHECKS),
             "gpsTimeStampChecks": list(GPS_TIME_STAMP_CHECKS),
+            "offsetNotAppliedCauses": list(OFFSET_NOT_APPLIED_CAUSES),
             "jobStages": list(JOB_STAGES),
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
@@ -864,7 +936,8 @@ def build_ingest_samples() -> dict[str, Any]:
         "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated, zoned_photo],
                   "IngestReceipt": receipts,
                   "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints,
-                  "MetadataHints": [hints_full, {**hints_full, "captureTime": zoned_capture}], "SolveJob": jobs},
+                  "MetadataHints": [hints_full, {**hints_full, "captureTime": zoned_capture}, {**hints_full, "captureTime": not_applied}],
+                  "SolveJob": jobs},
         "orientations": {"exif": {str(value): form for value, form in EXIF_ORIENTATIONS.items()}},
         "invalid": invalid,
     }
