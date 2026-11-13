@@ -640,6 +640,9 @@ class PoseEstimate:
     assumptions: tuple[str, ...]
     swept_wcs: tuple[WCSModel, ...]
     max_center_offset_deg: float
+    # The beacon term, one number: the beacon centroid's own uncertainty (for the head-worn Moon pose, the Moon's
+    # predicted radius plus its ephemeris's stated uncertainty) plus the frame term, at most what drawing every
+    # position through the pose's one rotation leaves out
     beacon_centroid_uncertainty_deg: float
 
     def __post_init__(self) -> None:

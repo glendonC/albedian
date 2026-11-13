@@ -12,7 +12,7 @@ Moon: a lamp or another light of similar size would be taken the same way. One f
    `MIN_DIAMETER_FACTOR` times the Moon's predicted diameter at the profile's widest field of view and
    `MAX_DIAMETER_FACTOR` times it at the narrowest, and whole inside the frame; and no other spot in the frame that
    passes the same test on its own. Anything else is "not confirmed as the Moon".
-3. The Moon as seen from the place (topocentric): its ephemeris position lowered by its parallax shift.
+3. The Moon as seen from the place (topocentric): the ephemeris record as it is, its parallax already applied there.
 4. The level-head poses that see the Moon at the spot's centroid, in closed form (the verdict's finding 1), at each
    swept field of view (the profile's limits and middle) and roll (`SWEPT_ROLLS_DEG`): a level camera pitched to a0
    sees the Moon at tangent offsets (X right, Y up) when sin(a0) + Y cos(a0) = sin(Moon) sqrt(1 + X^2 + Y^2), so
@@ -25,8 +25,17 @@ Moon: a lamp or another light of similar size would be taken the same way. One f
    `MAX_FIT_RESIDUAL_PX`, that shows the sky upside down, or that leaves the closed form's pose refuses the pose.
 6. The nominal WCS is the middle field of view at roll 0. The pose estimate keeps all nine, the largest angle between
    the nominal frame centre and a swept one, and the beacon term: the Moon's predicted radius (where the spot's light
-   sits on the disk) plus the ephemeris record's own stated uncertainty of the Moon's position, read at run time.
+   sits on the disk) plus the ephemeris record's own stated uncertainty of the Moon's position, read at run time,
+   plus the frame term: what the one rotation the WCS draws catalog positions with leaves out across the frame.
 Refraction is left out for the Moon and the stars alike (the ephemeris and the catalog transform are airless).
+The two frames (docs/science/SKY_TRANSFORMS.md): the camera is level in the true horizon and sees each direction at
+its apparent place, so the closed form takes the Moon's apparent altitude and azimuth (the record's, as they are) and
+gives the camera's pointing in the apparent horizon exactly; that pointing is the centre the pose states. The one
+approximation is the WCS: a single rotation for every catalog position, catalog.py `anchored_horizon_rotation` (the
+rigid frame rotation turned so the Moon lands exactly where it is seen), through which the level line, the fit's start
+and its check run. A drawn position then misses where it is seen by aberration and deflection that differ from the
+Moon's, at most catalog.py `anchored_rotation_omission_arcsec` of the frame's farthest angle from the Moon (from the
+field of view and where the Moon sits), and the beacon term carries it into every ring.
 docs/science/PREDICTED_SKY.md describes the layer in plain words.
 """
 
@@ -41,14 +50,16 @@ import numpy as np
 from scipy import ndimage, optimize
 
 from services.science.camera_profiles import CameraProfile
-from services.science.catalog import altaz_to_icrs, angular_separation_deg, icrs_to_altaz
-from services.science.detector import _effective_sigma
-from services.science.ephemeris import (
-    AU_KM,
-    EARTH_EQUATORIAL_RADIUS_KM,
-    compute_solar_system_ephemerides,
-    moon_parallax_shift_arcsec,
+from services.science.catalog import (
+    anchored_horizon_rotation,
+    anchored_rotation_omission_arcsec,
+    angular_separation_deg,
+    frame_altaz_to_icrs,
+    icrs_to_frame_altaz,
+    require_place,
 )
+from services.science.detector import _effective_sigma
+from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides
 from services.science.wcs_models import PoseEstimate, WCSModel
 
 POSE_METHOD = "moon_camera_profile_level_head"
@@ -189,16 +200,14 @@ class Refusal:
 
 @dataclass(frozen=True)
 class TopocentricMoon:
-    """The Moon as seen from the place at the moment: the ephemeris (geocentric) position lowered by its parallax
-    shift, with the ephemeris altitude it was lowered from, the shift, the predicted angular radius, and the
-    ephemeris record's own stated uncertainty of the Moon's position."""
+    """The Moon as seen from the place at the moment: the ephemeris record's topocentric position, apparent altitude
+    and azimuth, and distance as it states them, the predicted angular radius, and the record's own stated uncertainty
+    of the Moon's position."""
 
     ra_deg: float
     dec_deg: float
     alt_deg: float
     az_deg: float
-    predicted_alt_deg: float
-    shift_arcsec: float
     distance_km: float
     radius_deg: float
     uncertainty_deg: float
@@ -353,29 +362,20 @@ def scale_deg_per_px(fov_diagonal_deg: float, width: int, height: int) -> float:
 
 
 def topocentric_moon(moment: str, lat: float, lon: float) -> TopocentricMoon:
-    """The Moon seen from (`lat`, `lon`) at `moment`: the ephemeris position turned to altitude and azimuth, lowered
-    by `moon_parallax_shift_arcsec`, turned back to ICRS. Its radius is asin(MOON_RADIUS_KM / distance) at the
-    distance from the place (the Earth's equatorial radius toward the zenith); its uncertainty is the one the
-    ephemeris record states for it at the moment."""
-    (moon,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Moon",))
-    shift = moon_parallax_shift_arcsec(moon.distance_au, moon.alt_deg)[1]
-    alt = moon.alt_deg - shift / 3600.0
-    ra, dec = altaz_to_icrs(alt, moon.az_deg, lat, lon, moment)
-    geocentric_km = moon.distance_au * AU_KM
-    topocentric_km = math.sqrt(
-        geocentric_km**2
-        + EARTH_EQUATORIAL_RADIUS_KM**2
-        - 2.0 * geocentric_km * EARTH_EQUATORIAL_RADIUS_KM * math.sin(math.radians(moon.alt_deg))
-    )
+    """The Moon seen from (`lat`, `lon`) at `moment`: the ephemeris record as it is, asked for topocentric, so its
+    position, altitude, azimuth and distance are already from the place (its parallax applied by ERFA's chain) and
+    nothing is shifted here. Its radius is asin(MOON_RADIUS_KM / distance) at the record's distance from the place;
+    its uncertainty is the one the record states for it at the moment."""
+    lat, lon = require_place(lat, lon)
+    (moon,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Moon",), topocentric=True)
+    distance_km = moon.distance_au * AU_KM
     return TopocentricMoon(
-        ra_deg=ra,
-        dec_deg=dec,
-        alt_deg=alt,
+        ra_deg=moon.ra_deg,
+        dec_deg=moon.dec_deg,
+        alt_deg=moon.alt_deg,
         az_deg=moon.az_deg,
-        predicted_alt_deg=moon.alt_deg,
-        shift_arcsec=shift,
-        distance_km=topocentric_km,
-        radius_deg=math.degrees(math.asin(MOON_RADIUS_KM / topocentric_km)),
+        distance_km=distance_km,
+        radius_deg=math.degrees(math.asin(MOON_RADIUS_KM / distance_km)),
         uncertainty_deg=moon.uncertainty_arcsec / 3600.0,
     )
 
@@ -410,17 +410,19 @@ def is_mirrored(orientation: Mapping[str, Any] | None) -> bool:
 
 
 def _up(moon: TopocentricMoon) -> bool:
-    return moon.predicted_alt_deg > MIN_MOON_ALT_DEG
+    return moon.alt_deg > MIN_MOON_ALT_DEG
 
 
 def moon_is_up(moment: str, lat: float, lon: float) -> bool:
     """Whether the predicted Moon (the ephemeris altitude, as its predicted finding carries it) is more than
     MIN_MOON_ALT_DEG above the horizon at `moment`."""
+    lat, lon = require_place(lat, lon)
     return _up(topocentric_moon(moment, lat, lon))
 
 
 def sun_is_up(moment: str, lat: float, lon: float) -> bool:
     """Whether the Sun's centre is above SUNRISE_SUNSET_ALT_DEG at `moment` from the place: day, by USNO's limit."""
+    lat, lon = require_place(lat, lon)
     (sun,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Sun",))
     return sun.alt_deg > SUNRISE_SUNSET_ALT_DEG
 
@@ -510,13 +512,17 @@ def fit_level_pose(
     """The TAN WCS at this diagonal field of view (fixed scale, parity -1, k1 = k2 = 0, crpix at the frame centre)
     that puts the topocentric Moon on (`x_px`, `y_px`) and gives the horizon `roll_deg` in the upright frame.
 
-    The pointing is the one level pose `level_centres` finds; two or none refuse (kinds two_poses and ranges).
-    Unknowns: crval's RA and Dec and the rotation, started at that pose. Residuals: the Moon's projection minus the
-    pixel (two), and the level constraint (one): two points at the frame centre's altitude, `LEVEL_AZ_OFFSET_DEG`
-    either side in azimuth, mapped to the upright frame, have a row difference (right minus left) equal to tan(roll)
-    times their column difference, so a positive roll puts the horizon's right side lower. Levenberg-Marquardt
-    polishes the start; the WCS returned is refused when its largest residual exceeds MAX_FIT_RESIDUAL_PX, its
-    upright frame shows the sky upside down, or its centre left the pose by more than SAME_POSE_DEG."""
+    The pointing is the one level pose `level_centres` finds for the Moon's apparent altitude and azimuth, in the
+    apparent horizon; two or none refuse (kinds two_poses and ranges). Unknowns: crval's RA and Dec and the rotation,
+    started at that pose. Residuals: the Moon's projection minus the pixel (two), and the level constraint (one): two
+    points at the frame centre's altitude, `LEVEL_AZ_OFFSET_DEG` either side in azimuth, mapped to the upright frame,
+    have a row difference (right minus left) equal to tan(roll) times their column difference, so a positive roll puts
+    the horizon's right side lower. The level line, the start and the check turn ICRS through `pose_frame` (the rigid
+    frame rotation anchored on the Moon), which takes the Moon's ICRS direction to its apparent one, so the WCS is the
+    camera seen through that one rotation. Levenberg-Marquardt polishes the start; the WCS returned is refused when its
+    largest residual exceeds MAX_FIT_RESIDUAL_PX, its upright frame shows the sky upside down, or its centre left the
+    pose by more than SAME_POSE_DEG."""
+    lat, lon = require_place(lat, lon)
     turns, mirrored = _orientation(orientation)
     if mirrored:
         return Refusal("mirrored", MIRRORED)
@@ -533,6 +539,7 @@ def fit_level_pose(
             f"{roll_deg:g} degrees sees the Moon at the bright spot at {_spot(x_px, y_px, 'in the frame')}.",
         )
     ((centre_alt, centre_az),) = centres
+    frame = pose_frame(moon, lat, lon, moment)
     scale = scale_deg_per_px(fov_diagonal_deg, width, height)
     crpix_x, crpix_y = width / 2.0, height / 2.0
     tan_roll = math.tan(math.radians(roll_deg))
@@ -554,9 +561,9 @@ def fit_level_pose(
 
     def level_line(wcs: WCSModel) -> tuple[float, float]:
         """The upright-frame vector from the left level point to the right one."""
-        alt, az = icrs_to_altaz(wcs.crval_ra_deg, wcs.crval_dec_deg, lat, lon, moment)
-        lx, ly = wcs.world_to_pixel(*altaz_to_icrs(alt, az - LEVEL_AZ_OFFSET_DEG, lat, lon, moment))
-        rx, ry = wcs.world_to_pixel(*altaz_to_icrs(alt, az + LEVEL_AZ_OFFSET_DEG, lat, lon, moment))
+        alt, az = icrs_to_frame_altaz(frame, wcs.crval_ra_deg, wcs.crval_dec_deg)
+        lx, ly = wcs.world_to_pixel(*frame_altaz_to_icrs(frame, alt, az - LEVEL_AZ_OFFSET_DEG))
+        rx, ry = wcs.world_to_pixel(*frame_altaz_to_icrs(frame, alt, az + LEVEL_AZ_OFFSET_DEG))
         return upright_vector(rx - lx, ry - ly, turns)
 
     def residuals_of(wcs: WCSModel) -> np.ndarray:
@@ -569,12 +576,12 @@ def fit_level_pose(
         return res if np.all(np.isfinite(res)) else np.full(3, 1e4, dtype=np.float64)
 
     # The closed form's centre, with the rotation that gives the horizon the roll there
-    start_ra, start_dec = altaz_to_icrs(centre_alt, centre_az, lat, lon, moment)
+    start_ra, start_dec = frame_altaz_to_icrs(frame, centre_alt, centre_az)
     dx0, dy0 = level_line(wcs_for(np.array([start_ra, start_dec, 0.0])))
     start = np.array([start_ra, start_dec, math.degrees(math.atan2(dy0, dx0)) - roll_deg])
     fit = optimize.least_squares(residuals, start, method="lm", xtol=1e-12, ftol=1e-12, gtol=1e-12, max_nfev=400)
     wcs = _normalized(wcs_for(fit.x))
-    fitted_alt, fitted_az = icrs_to_altaz(wcs.crval_ra_deg, wcs.crval_dec_deg, lat, lon, moment)
+    fitted_alt, fitted_az = icrs_to_frame_altaz(frame, wcs.crval_ra_deg, wcs.crval_dec_deg)
     # Measured on the WCS that is returned: its constraints met, the sky the right way up, and still the closed form's
     # pose
     if (
@@ -586,7 +593,25 @@ def fit_level_pose(
     return Refusal("fit", fit_reason(x_px, y_px, "in the frame"))
 
 
-def _assumptions(profile: CameraProfile, moon: TopocentricMoon) -> tuple[str, ...]:
+def pose_frame(moon: TopocentricMoon, lat: float, lon: float, moment: str) -> np.ndarray:
+    """The one rotation the pose's WCS draws ICRS with: the rigid frame rotation anchored on the Moon (catalog.py
+    `anchored_horizon_rotation`), which takes the Moon's ICRS direction to where it is seen."""
+    lat, lon = require_place(lat, lon)
+    return anchored_horizon_rotation(moon.ra_deg, moon.dec_deg, lat, lon, moment)
+
+
+def frame_term_arcsec(
+    moon: TopocentricMoon, swept: Sequence[WCSModel], fovs_deg: Sequence[float], lat: float, lon: float, moment: str
+) -> float:
+    """The frame term: at most how far the WCS's one rotation puts a direction in the frame from where it is seen,
+    catalog.py `anchored_rotation_omission_arcsec` over the frames of the sweep, each its crval and half its
+    diagonal field of view (the farthest a frame point lies from the centre)."""
+    lat, lon = require_place(lat, lon)
+    fields = [(w.crval_ra_deg, w.crval_dec_deg, fov / 2.0) for w, fov in zip(swept, fovs_deg, strict=True)]
+    return anchored_rotation_omission_arcsec(moon.ra_deg, moon.dec_deg, fields, lat, lon, moment)
+
+
+def _assumptions(profile: CameraProfile, moon: TopocentricMoon, term_arcsec: float) -> tuple[str, ...]:
     low, high = profile.fov_diagonal_deg_range
     return (
         f"The camera's diagonal field of view is {low:g} to {high:g} degrees, from its camera profile "
@@ -601,11 +626,13 @@ def _assumptions(profile: CameraProfile, moon: TopocentricMoon) -> tuple[str, ..
         "similar size, as bright and the only spot that passes the Moon test, would be taken the same way.",
         "The spot's light centroid is taken to lie on the Moon's disk, and the Moon where its ephemeris puts it: the "
         f"beacon term, the Moon's predicted radius of {moon.radius_deg:.2f} degrees plus the ephemeris's stated "
-        f"uncertainty of {moon.uncertainty_deg:.2f} degrees, is taken to cover overexposure, which spreads the light, "
-        "a partial phase, which moves it toward the lit edge, and the ephemeris's own error.",
-        "The Moon is placed where it is seen from the place (topocentric): its ephemeris position lowered by its "
-        f"parallax, {moon.shift_arcsec:,.0f} arcsec; refraction is left out for the Moon and the stars alike, which is "
-        "taken to cancel to first order near the Moon.",
+        f"uncertainty of {moon.uncertainty_deg * 3600.0:,.0f} arcsec plus {term_arcsec:,.0f} arcsec for drawing every "
+        "position through one rotation, is taken to cover overexposure, which spreads the light, a partial phase, "
+        "which moves it toward the lit edge, the ephemeris's own error, and the aberration and light deflection that "
+        "differ across the frame from the Moon's, which one rotation cannot follow.",
+        "The Moon is placed where it is seen from the place (topocentric): the ephemeris record as it is, its parallax "
+        "already applied there; refraction is left out for the Moon and the stars alike, which is taken to cancel to "
+        "first order near the Moon.",
     )
 
 
@@ -622,6 +649,7 @@ def head_worn_moon_pose(
     """The pose from one frame recorded at `moment`, `frame_time_sec` into the recording: the Moon up and the Sun
     down at that moment, the Moon test on this frame alone, exactly one level pose at each of the nine swept values,
     then the nine fits; any refused fit refuses the pose, since its uncertainty could not be bounded."""
+    lat, lon = require_place(lat, lon)
     if is_mirrored(orientation):
         return Refusal("mirrored", MIRRORED)
     moon = topocentric_moon(moment, lat, lon)
@@ -660,7 +688,11 @@ def head_worn_moon_pose(
         if fov == middle and roll == 0.0:
             nominal = wcs
     assert nominal is not None
-    centre_alt, centre_az = icrs_to_altaz(nominal.crval_ra_deg, nominal.crval_dec_deg, lat, lon, moment)
+    # Where the camera's centre is seen: its pointing in the apparent horizon, which the frame rotation gives for
+    # the nominal crval (the closed form's centre, within SAME_POSE_DEG)
+    frame = pose_frame(moon, lat, lon, moment)
+    centre_alt, centre_az = icrs_to_frame_altaz(frame, nominal.crval_ra_deg, nominal.crval_dec_deg)
+    term_arcsec = frame_term_arcsec(moon, swept, [fov for fov, _ in values], lat, lon, moment)
     estimate = PoseEstimate(
         method=POSE_METHOD,
         beacon="moon",
@@ -669,13 +701,13 @@ def head_worn_moon_pose(
         roll_deg=0.0,
         fov_diagonal_deg=middle,
         fov_source=f"The camera profile for {profile.model}, {profile.fov_label}: {profile.fov_source}",
-        assumptions=_assumptions(profile, moon),
+        assumptions=_assumptions(profile, moon, term_arcsec),
         swept_wcs=tuple(swept),
         max_center_offset_deg=max(
             angular_separation_deg(nominal.crval_ra_deg, nominal.crval_dec_deg, w.crval_ra_deg, w.crval_dec_deg)
             for w in swept
         ),
-        beacon_centroid_uncertainty_deg=moon.radius_deg + moon.uncertainty_deg,
+        beacon_centroid_uncertainty_deg=moon.radius_deg + moon.uncertainty_deg + term_arcsec / 3600.0,
     )
     return PoseResult(nominal, estimate, blob, moon, frame_time_sec, moment, profile)
 
@@ -698,6 +730,7 @@ def pose_from_frames(
     refusal that says most: a spot that passed the Moon test but gave no pose (two level poses, the ranges not all
     fitted, the fit refused), else not confirmed as the Moon (counting the frames searched), else the Moon not up in
     every frame, else by day."""
+    lat, lon = require_place(lat, lon)
     if is_mirrored(orientation):
         return Refusal("mirrored", MIRRORED)
     ordered = sorted(frames, key=lambda frame: frame[0])

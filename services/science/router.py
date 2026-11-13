@@ -24,6 +24,7 @@ from services.science.catalog import (
     icrs_to_altaz,
 )
 from services.science.ephemeris import (
+    DEFAULT_BODIES,
     EphemerisOutOfRange,
     compute_solar_system_ephemerides,
     require_ephemeris_range,
@@ -267,11 +268,9 @@ class EphemerisRequest(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     obs_utc_iso: MomentFromClient = Field(alias="observedAtUTC")
-    lat_deg: float = Field(alias="latDeg")
-    lon_deg: float = Field(alias="lonDeg")
-    bodies: list[str] = Field(
-        default_factory=lambda: ["Jupiter", "Uranus", "Saturn", "Mars", "Venus", "Moon"]
-    )
+    lat_deg: LatitudeFromClient = Field(alias="latDeg")
+    lon_deg: LongitudeFromClient = Field(alias="lonDeg")
+    bodies: list[str] = Field(default_factory=lambda: list(DEFAULT_BODIES))
 
 
 class SkyContextRequest(BaseModel):
@@ -365,7 +364,7 @@ def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
         obs_utc_iso=obs_utc_iso,
         lat_deg=lat_deg,
         lon_deg=lon_deg,
-        bodies=("Moon", "Saturn", "Uranus", "Jupiter", "Mars", "Venus"),
+        bodies=DEFAULT_BODIES,
     )
     ephem_out: list[dict[str, Any]] = []
     for item in ephem_items:

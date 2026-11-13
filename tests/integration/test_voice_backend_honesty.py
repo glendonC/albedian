@@ -19,7 +19,7 @@ Covers:
 - PBT: no reply completes, cancels or bumps a state version, for any client action, revision or sky
 - Each catalog star is described with its own distance method and catalog id, as catalog values not
   measured from this recording
-- A predicted body is described by the model that computed it, never as topocentric or JPL Horizons, at the
+- A predicted body is described by the model that computed it and as topocentric (never as JPL Horizons), at the
   recording's capture time (never the simulation epoch), and the text never writes that time
 - PBT: space.enter needs a calibrated sky and a catalog star, as the reducer does
 - PBT: "N years ago" counts back from the clock year across 1 BCE to 1 CE, and "a thousand years ago" and
@@ -343,9 +343,9 @@ def test_a_predicted_body_is_described_by_the_model_that_computed_it(body: str, 
     text = _reply(f"where is the {body}?", {**BARE, **MOMENT}, describe)["scientificExplanation"]
     assert method in text
     assert "predicted" in text
-    for false_label in ("JPL Analytical", "topocentric", "Topocentric", "Horizons", "DE440"):
+    for false_label in ("JPL Analytical", "Horizons", "DE440"):
         assert false_label not in text
-    assert ("Geocentric" in text) == (body == "moon")
+    assert "(topocentric)" in text and "Geocentric" not in text
     # Said to be at the recording's capture time, which the text never writes: the moment stays in its field
     assert "at the recording's capture time" in text
     for part_of_the_moment in (

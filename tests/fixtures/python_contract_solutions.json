@@ -265,8 +265,8 @@
           "raDeg": 78.634467,
           "decDeg": -8.201638,
           "uncertaintyArcsec": 13.050233353953237,
-          "altDeg": 50.187050622512594,
-          "azDeg": 198.39552420678905
+          "altDeg": 50.18778706912651,
+          "azDeg": 198.38741087613562
         },
         "evidence": {
           "id": "ev-finding-star-rigel",
@@ -340,8 +340,8 @@
           "raDeg": 88.792939,
           "decDeg": 7.407064,
           "uncertaintyArcsec": 29.15969756247523,
-          "altDeg": 67.36166165396949,
-          "azDeg": 184.0598941154039
+          "altDeg": 67.36139235228273,
+          "azDeg": 184.04422995883968
         },
         "evidence": {
           "id": "ev-finding-star-betelgeuse",
@@ -415,8 +415,8 @@
           "raDeg": 68.980163,
           "decDeg": 16.509302,
           "uncertaintyArcsec": 5.4693991636297925,
-          "altDeg": 66.2934467955525,
-          "azDeg": 240.27495488457862
+          "altDeg": 66.29830612813342,
+          "azDeg": 240.26777615689815
         },
         "evidence": {
           "id": "ev-finding-star-aldebaran",
@@ -841,7 +841,7 @@
     "solver": {
       "name": "AlbedianHorizonMoonPose",
       "version": "1.0.0",
-      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
+      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
     },
     "quality": {
       "detectedCandidateCount": 1,
@@ -863,8 +863,8 @@
           "verificationMethod": "Measured in the image's pixels",
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
-          "angularResidualArcsec": 1.735325950849539e-11,
-          "pixelResidualPx": 1.1368683772161603e-13,
+          "angularResidualArcsec": 7.515758155316005e-11,
+          "pixelResidualPx": 5.084229945850415e-13,
           "limitations": [
             "Single celestial beacon (Moon) + horizon lock; no stars were held out for verification.",
             "Without a verified WCS the detection has no sky position; the predicted Moon carries the ephemeris position.",
@@ -888,13 +888,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Inside Camera FOV",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Inside Camera FOV",
         "skyPosition": {
-          "raDeg": 305.7567576461063,
-          "decDeg": -14.425614262700643,
-          "uncertaintyArcsec": 1300.0,
-          "altDeg": 33.022292605726314,
-          "azDeg": 224.28062158311732
+          "raDeg": 305.20320198123784,
+          "decDeg": -15.105873059765592,
+          "uncertaintyArcsec": 44.06372110817171,
+          "altDeg": 32.16238220027087,
+          "azDeg": 224.26755728596547
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -903,8 +903,11 @@
           "sourceAssetSha256": "d46cb7a0ae8355de0bfbfad699b50ad4f780eb0338b4b06e009d123976a05eff",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Geocentric: from this place the Moon appears about 3,045 arcsec lower than this position (its horizontal parallax, 3,632 arcsec, times the cosine of its altitude)."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -919,8 +922,8 @@
           "raDeg": 305.2532618485171,
           "decDeg": -14.781356703490856,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 32.43955343374613,
-          "azDeg": 224.46615838405938
+          "altDeg": 32.44521008746673,
+          "azDeg": 224.4643615314681
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -982,8 +985,8 @@
           "raDeg": 304.51413507773253,
           "decDeg": -12.544825606572031,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 33.70109446660578,
-          "azDeg": 226.83086893115396
+          "altDeg": 33.70683390285424,
+          "azDeg": 226.82934202389484
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -1036,21 +1039,21 @@
       }
     ],
     "warnings": [
-      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is geocentric: from this place it appears about 3,045 arcsec lower, and the pose carries that offset."
+      "Pose from the Moon at (933.5, 121.5) px and the horizon at row 984, for the given time and place. Four constraints fit four pose parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification. The Moon's predicted position is topocentric: seen from this place, with its parallax applied."
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 294.05831380202756,
-      "crvalDecDeg": -43.954671181318346,
+      "crvalRaDeg": 293.5650925423605,
+      "crvalDecDeg": -43.804579883571,
       "crpixX": 672.0,
       "crpixY": 896.0,
-      "scaleDegPerPx": 0.04240024579867803,
-      "rotationDeg": -40.95208797272454,
+      "scaleDegPerPx": 0.04106247398198054,
+      "rotationDeg": -41.318161565684505,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
-      "fovHorizontalDeg": 52.881955023298765,
-      "fovVerticalDeg": 67.09364432826361
+      "fovHorizontalDeg": 51.43147636444925,
+      "fovVerticalDeg": 65.41237740460988
     }
   },
   "horizon_predicted_only": {
@@ -1068,7 +1071,7 @@
     "solver": {
       "name": "AlbedianHorizonMoonPose",
       "version": "1.0.0",
-      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
+      "catalogRelease": "71 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows) and the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
     },
     "quality": {
       "detectedCandidateCount": 0,
@@ -1083,13 +1086,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 19.433 AU · Alt +1.1° · Above Horizon",
+        "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1° · Above Horizon",
         "skyPosition": {
-          "raDeg": 86.00440911463527,
-          "decDeg": 23.513199276284404,
-          "uncertaintyArcsec": 127.2067576350946,
-          "altDeg": 1.108589635189006,
-          "azDeg": 63.268699429061044
+          "raDeg": 85.99026035591349,
+          "decDeg": 23.512759556336686,
+          "uncertaintyArcsec": 101.90261823616899,
+          "altDeg": 1.1195681246684188,
+          "azDeg": 63.277852733721495
         },
         "evidence": {
           "id": "ev-finding-predicted-uranus",
@@ -1098,8 +1101,11 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +1.47 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 101.9 arcsec, adds the method's documented worst error (87.3 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1109,13 +1115,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Saturn (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 9.259 AU · Alt +4.3° · Above Horizon",
+        "subtitle": "Predicted Planet · 9.249 AU · Alt +4.3° · Above Horizon",
         "skyPosition": {
-          "raDeg": 80.79273929121504,
-          "decDeg": 21.65962949794677,
-          "uncertaintyArcsec": 821.9488399938678,
-          "altDeg": 4.253397556070398,
-          "azDeg": 67.35967902514284
+          "raDeg": 80.76819616869248,
+          "decDeg": 21.654728330937925,
+          "uncertaintyArcsec": 104.94548685508778,
+          "altDeg": 4.270629026289029,
+          "azDeg": 67.37688863374822
         },
         "evidence": {
           "id": "ev-finding-predicted-saturn",
@@ -1124,8 +1130,11 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +4.45 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 104.9 arcsec, adds the method's documented worst error (90.4 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1135,13 +1144,13 @@
         "observationSolutionId": "sol-horizon-beacon",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0° · Above Horizon",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2° · Above Horizon",
         "skyPosition": {
-          "raDeg": 305.7567576461063,
-          "decDeg": -14.425614262700643,
-          "uncertaintyArcsec": 1300.0,
-          "altDeg": 33.022292605726314,
-          "azDeg": 224.28062158311732
+          "raDeg": 305.20320198123784,
+          "decDeg": -15.105873059765592,
+          "uncertaintyArcsec": 44.06372110817171,
+          "altDeg": 32.16238220027087,
+          "azDeg": 224.26755728596547
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -1150,8 +1159,11 @@
           "sourceAssetSha256": "3fe2c526c11d3d3a2ecfccf0676cc330b48fab0685a33a026969c1433180876f",
           "wcsSolutionId": "sol-horizon-beacon",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Geocentric: from this place the Moon appears about 3,045 arcsec lower than this position (its horizontal parallax, 3,632 arcsec, times the cosine of its altitude)."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1186,7 +1198,7 @@
     "solver": {
       "name": "hand-built contract sample",
       "version": "0",
-      "catalogRelease": "71 pinned bright stars and the low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
+      "catalogRelease": "71 pinned bright stars and the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
     },
     "quality": {
       "detectedCandidateCount": 1,
@@ -1230,13 +1242,13 @@
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
         "title": "Moon (Predicted Ephemeris)",
-        "subtitle": "Predicted Moon · 0.002 AU · Alt +33.0°",
+        "subtitle": "Predicted Moon · 0.002 AU · Alt +32.2°",
         "skyPosition": {
-          "raDeg": 305.7567576461063,
-          "decDeg": -14.425614262700643,
-          "uncertaintyArcsec": 1300.0,
-          "altDeg": 33.022292605726314,
-          "azDeg": 224.28062158311732
+          "raDeg": 305.20320198123784,
+          "decDeg": -15.105873059765592,
+          "uncertaintyArcsec": 44.06372110817171,
+          "altDeg": 32.16238220027087,
+          "azDeg": 224.26755728596547
         },
         "evidence": {
           "id": "ev-finding-predicted-moon",
@@ -1245,8 +1257,11 @@
           "sourceAssetSha256": "825dd3fc1750cd2567cad6f2b39fe7f1f52d1d89cebf5b16fcf53fda882f2c1b",
           "wcsSolutionId": "sol-pose-moon-level-head",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Geocentric: from this place the Moon appears about 3,045 arcsec lower than this position (its horizontal parallax, 3,632 arcsec, times the cosine of its altitude)."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +32.19 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 44.1 arcsec, adds the method's documented worst error (18.5 arcsec here), 0.00 for light deflection applied as for a star, 13.8 for UT1 - UTC taken as 0 (within 0.9 s), 5.2 for a place up to 9 km above sea level, 1 for polar motion, and 5.6 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1261,8 +1276,8 @@
           "raDeg": 344.4160208686232,
           "decDeg": -29.623685115931334,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 30.529524217599924,
-          "azDeg": 178.50357425608058
+          "altDeg": 30.53357251738145,
+          "azDeg": 178.49790815446082
         },
         "evidence": {
           "id": "ev-finding-predicted-star-fomalhaut",
@@ -1315,69 +1330,6 @@
         ]
       },
       {
-        "id": "finding-predicted-star-deneb-algedi",
-        "observationSolutionId": "sol-pose-moon-level-head",
-        "evidenceClass": "predicted",
-        "title": "Deneb Algedi (Delta Capricorni)",
-        "subtitle": "Predicted Star (Capricornus) · 11.9 pc · Alt +41.4° Az 200.9° · Inside Camera FOV",
-        "skyPosition": {
-          "raDeg": 326.7625798714962,
-          "decDeg": -16.12989807969437,
-          "uncertaintyArcsec": 55.0,
-          "altDeg": 41.44790868649783,
-          "azDeg": 200.92946692401293
-        },
-        "evidence": {
-          "id": "ev-finding-predicted-star-deneb-algedi",
-          "evidenceClass": "predicted",
-          "verificationMethod": "Predicted for the given time and place; not measured in the image",
-          "sourceAssetSha256": "825dd3fc1750cd2567cad6f2b39fe7f1f52d1d89cebf5b16fcf53fda882f2c1b",
-          "wcsSolutionId": "sol-pose-moon-level-head",
-          "catalogReferenceId": "star-deneb-algedi",
-          "distanceUncertaintyNote": "Distance interval [11.8, 11.9] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
-          "limitations": [
-            "Predicted from its catalog position, carried to the date, for this synthetic fixture's time, place and lined-up pose; not measured in any pixel."
-          ],
-          "verifiedByIndependentHoldout": false
-        },
-        "catalogRef": {
-          "id": "star-deneb-algedi",
-          "provider": "Hipparcos",
-          "releaseVersion": "Hipparcos 2007",
-          "catalogSourceId": "HIP 107556",
-          "commonName": "Deneb Algedi",
-          "bayerDesignation": "Delta Capricorni",
-          "constellation": "Capricornus",
-          "objectType": "star",
-          "coordinateEpoch": "J2031.7",
-          "raDeg": 326.7625798714962,
-          "decDeg": -16.12989807969437,
-          "apparentMagnitude": 2.85,
-          "properMotionRaMasYr": 261.71,
-          "properMotionDecMasYr": -296.68,
-          "bailerJonesDistancePc": {
-            "lower": 11.83992424631335,
-            "median": 11.866619222067468,
-            "upper": 11.893434845904205,
-            "method": "geometric_parallax"
-          },
-          "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
-          "parallaxMas": 84.27,
-          "parallaxErrorMas": 0.19
-        },
-        "inferredDistancePc": {
-          "lower": 11.83992424631335,
-          "median": 11.866619222067468,
-          "upper": 11.893434845904205,
-          "method": "geometric_parallax"
-        },
-        "cartesianParsecICRS": [
-          9.534600747649392,
-          -6.248165328804036,
-          -3.296736320726295
-        ]
-      },
-      {
         "id": "finding-predicted-star-dabih",
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
@@ -1387,8 +1339,8 @@
           "raDeg": 305.2532618485171,
           "decDeg": -14.781356703490856,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 32.43955343374613,
-          "azDeg": 224.46615838405938
+          "altDeg": 32.44521008746673,
+          "azDeg": 224.4643615314681
         },
         "evidence": {
           "id": "ev-finding-predicted-star-dabih",
@@ -1450,8 +1402,8 @@
           "raDeg": 304.51413507773253,
           "decDeg": -12.544825606572031,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 33.70109446660578,
-          "azDeg": 226.83086893115396
+          "altDeg": 33.70683390285424,
+          "azDeg": 226.82934202389484
         },
         "evidence": {
           "id": "ev-finding-predicted-star-algedi",
@@ -1512,8 +1464,8 @@
           "raDeg": 325.0244233256784,
           "decDeg": -16.6625550178301,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 40.3837890205357,
-          "azDeg": 202.76885958031653
+          "altDeg": 40.389228431282845,
+          "azDeg": 202.76429628478252
         },
         "evidence": {
           "id": "ev-finding-predicted-star-nashira",
@@ -1574,8 +1526,8 @@
           "raDeg": 311.9192553491378,
           "decDeg": -9.496091167626703,
           "uncertaintyArcsec": 55.0,
-          "altDeg": 40.59985575927698,
-          "azDeg": 222.04216161975285
+          "altDeg": 40.60587663370097,
+          "azDeg": 222.03991244899322
         },
         "evidence": {
           "id": "ev-finding-predicted-star-albali",
@@ -1632,13 +1584,13 @@
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
         "title": "Uranus (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 19.433 AU · Alt +1.1°",
+        "subtitle": "Predicted Planet · 19.431 AU · Alt +1.1°",
         "skyPosition": {
-          "raDeg": 86.00440911463527,
-          "decDeg": 23.513199276284404,
-          "uncertaintyArcsec": 127.2067576350946,
-          "altDeg": 1.108589635189006,
-          "azDeg": 63.268699429061044
+          "raDeg": 85.99026035591349,
+          "decDeg": 23.512759556336686,
+          "uncertaintyArcsec": 101.90261823616899,
+          "altDeg": 1.1195681246684188,
+          "azDeg": 63.277852733721495
         },
         "evidence": {
           "id": "ev-finding-predicted-uranus",
@@ -1647,8 +1599,11 @@
           "sourceAssetSha256": "825dd3fc1750cd2567cad6f2b39fe7f1f52d1d89cebf5b16fcf53fda882f2c1b",
           "wcsSolutionId": "sol-pose-moon-level-head",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +1.47 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 101.9 arcsec, adds the method's documented worst error (87.3 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1658,13 +1613,13 @@
         "observationSolutionId": "sol-pose-moon-level-head",
         "evidenceClass": "predicted",
         "title": "Saturn (Predicted Ephemeris)",
-        "subtitle": "Predicted Planet · 9.259 AU · Alt +4.3°",
+        "subtitle": "Predicted Planet · 9.249 AU · Alt +4.3°",
         "skyPosition": {
-          "raDeg": 80.79273929121504,
-          "decDeg": 21.65962949794677,
-          "uncertaintyArcsec": 821.9488399938678,
-          "altDeg": 4.253397556070398,
-          "azDeg": 67.35967902514284
+          "raDeg": 80.76819616869248,
+          "decDeg": 21.654728330937925,
+          "uncertaintyArcsec": 104.94548685508778,
+          "altDeg": 4.270629026289029,
+          "azDeg": 67.37688863374822
         },
         "evidence": {
           "id": "ev-finding-predicted-saturn",
@@ -1673,8 +1628,11 @@
           "sourceAssetSha256": "825dd3fc1750cd2567cad6f2b39fe7f1f52d1d89cebf5b16fcf53fda882f2c1b",
           "wcsSolutionId": "sol-pose-moon-level-head",
           "limitations": [
-            "Predicted from the given time and place with a low-precision model; not measured in any image.",
-            "Seen from the Earth-Moon barycentre without diurnal parallax: the uncertainty bound includes up to 5,000 km for the barycentre-to-geocentre offset and 6,378.137 km for the observer's offset from the geocentre."
+            "Predicted from the given time and place with ERFA's analytic theories; not measured in any image.",
+            "Seen from the given place at sea level (topocentric): its parallax is applied, and its right ascension and declination are astrometric (light time only).",
+            "Its altitude and azimuth are apparent and airless: refraction at 1010 hPa and 10 degrees C (Saemundsson 1986) would lift it to +4.45 degrees, and the real air differs most near the horizon.",
+            "Its uncertainty, 104.9 arcsec, adds the method's documented worst error (90.4 arcsec here), 0.01 for light deflection applied as for a star, 13.5 for UT1 - UTC taken as 0 (within 0.9 s), 0.0 for a place up to 9 km above sea level, 1 for polar motion, and 0.0 for the time scale.",
+            "The moment is UTC, later than the leap seconds announced so far (to mid 2027), so TT may be off by up to 9 s of leap seconds not yet known (ERFA calls the year dubious); UT1 is taken as UTC, within 0.9 s, if the IERS keeps it so."
           ],
           "verifiedByIndependentHoldout": false
         }
@@ -1685,12 +1643,12 @@
     ],
     "wcs": {
       "projection": "TAN",
-      "crvalRaDeg": 316.69729855632147,
-      "crvalDecDeg": -28.52290008172328,
+      "crvalRaDeg": 316.0865003606171,
+      "crvalDecDeg": -29.278088819932737,
       "crpixX": 480.0,
       "crpixY": 270.0,
       "scaleDegPerPx": 0.07284725796441598,
-      "rotationDeg": -25.423394516000233,
+      "rotationDeg": -25.793143297422652,
       "radialDistortionK1": 0.0,
       "radialDistortionK2": 0.0,
       "parity": -1,
@@ -1700,25 +1658,25 @@
     "poseEstimate": {
       "method": "moon_camera_profile_level_head",
       "beacon": "moon",
-      "centerAltDeg": 26.47468242755022,
-      "centerAzDeg": 205.7145603155898,
+      "centerAltDeg": 25.567580700038125,
+      "centerAzDeg": 205.88437141781068,
       "rollDeg": 0.0,
       "fovDiagonalDeg": 70.0,
       "fovSource": "A synthetic camera profile for this contract sample; it describes no real camera.",
       "assumptions": [
         "The camera profile's diagonal field of view, swept from 63.0 to 77.0 deg.",
         "A level head, its roll swept 3 deg either way.",
-        "The Moon's light centroid is at its predicted position, which is geocentric: from this place the Moon appears about 3,045 arcsec lower, and this sample does not apply that offset."
+        "The Moon's light centroid is at its predicted position, which is topocentric: seen from this place, with its parallax applied."
       ],
       "sweptWcs": [
         {
           "projection": "TAN",
-          "crvalRaDeg": 314.21430014701644,
-          "crvalDecDeg": -27.55366673676732,
+          "crvalRaDeg": 313.60659544466296,
+          "crvalDecDeg": -28.286763609399415,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.06375375107866556,
-          "rotationDeg": -30.779977586551606,
+          "rotationDeg": -31.12671017126313,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1727,12 +1685,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 315.0290665263469,
-          "crvalDecDeg": -27.057084019440353,
+          "crvalRaDeg": 314.42805248740314,
+          "crvalDecDeg": -27.79585341838246,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.06375375107866556,
-          "rotationDeg": -27.19804349070167,
+          "rotationDeg": -27.5408837941244,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1741,12 +1699,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 315.8002910741935,
-          "crvalDecDeg": -26.519053914203106,
+          "crvalRaDeg": 315.2061236150831,
+          "crvalDecDeg": -27.263216322795024,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.06375375107866556,
-          "rotationDeg": -23.65750484993573,
+          "rotationDeg": -23.996017867488384,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1755,12 +1713,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 315.7660980041415,
-          "crvalDecDeg": -29.119394854050345,
+          "crvalRaDeg": 315.14688984384276,
+          "crvalDecDeg": -29.86746616387533,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.07284725796441598,
-          "rotationDeg": -29.104528696941177,
+          "rotationDeg": -29.479220853962694,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1769,12 +1727,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 316.69729855632147,
-          "crvalDecDeg": -28.52290008172328,
+          "crvalRaDeg": 316.0865003606171,
+          "crvalDecDeg": -29.278088819932737,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.07284725796441598,
-          "rotationDeg": -25.423394516000233,
+          "rotationDeg": -25.793143297422652,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1783,12 +1741,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 317.57370308696125,
-          "crvalDecDeg": -27.87875402666524,
+          "crvalRaDeg": 316.9714762370808,
+          "crvalDecDeg": -28.640683507154865,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.07284725796441598,
-          "rotationDeg": -21.79277952568485,
+          "rotationDeg": -22.15714699978737,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1797,12 +1755,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 317.53164572721624,
-          "crvalDecDeg": -30.72222110732143,
+          "crvalRaDeg": 316.8996846343261,
+          "crvalDecDeg": -31.48889717978697,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.08275450099240231,
-          "rotationDeg": -27.251822346003976,
+          "rotationDeg": -27.656018352387743,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1811,12 +1769,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 318.5871706729564,
-          "crvalDecDeg": -30.008645784782914,
+          "crvalRaDeg": 317.9657610693938,
+          "crvalDecDeg": -30.784188981132136,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.08275450099240231,
-          "rotationDeg": -23.46098021268095,
+          "rotationDeg": -23.858915215399726,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1825,12 +1783,12 @@
         },
         {
           "projection": "TAN",
-          "crvalRaDeg": 319.5739249978678,
-          "crvalDecDeg": -29.240649092325807,
+          "crvalRaDeg": 318.9632108203278,
+          "crvalDecDeg": -30.02455618822813,
           "crpixX": 480.0,
           "crpixY": 270.0,
           "scaleDegPerPx": 0.08275450099240231,
-          "rotationDeg": -19.73184599002306,
+          "rotationDeg": -20.12311541497459,
           "radialDistortionK1": 0.0,
           "radialDistortionK2": 0.0,
           "parity": -1,
@@ -1838,7 +1796,7 @@
           "fovVerticalDeg": 42.608722416597566
         }
       ],
-      "maxCenterOffsetDeg": 2.619003799283999,
+      "maxCenterOffsetDeg": 2.6089796074027025,
       "beaconCentroidUncertaintyDeg": 0.007284725796441598
     }
   }

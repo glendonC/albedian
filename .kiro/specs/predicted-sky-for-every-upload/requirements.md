@@ -24,7 +24,8 @@ Facts this spec rests on [verified by reading the code at `main` `db972af7`]:
 - `services/science/horizon_solver.py` fits a pose from the Moon and a horizon line, but only clips found on the
   laptop by `services/media/discovery.py` reach it; uploads never do. It has no Sun path, and its `approximate`
   pose carries no uncertainty.
-- The ephemeris (`services/science/ephemeris.py`) has the Moon and five planets but no Sun.
+- The ephemeris (`services/science/ephemeris.py`) has the Moon and five planets but no Sun (when this spec was
+  written; it now computes the Sun, the Moon and Mercury to Neptune on ERFA, `docs/science/SKY_TRANSFORMS.md`).
 - The web draws nothing predicted over the photo: in `source_2d` it places only findings with a
   `sourceDetection` (`apps/web/src/components/CelestialMarkerOverlay.tsx` `projectFindingToViewport`).
 - The first real case, the owner's newest head-worn clip (Meta Ray-Ban Display glasses, 15 s, 1344 x 1792, the

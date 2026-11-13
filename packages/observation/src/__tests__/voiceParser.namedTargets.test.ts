@@ -126,7 +126,8 @@ const SHARED_JSON = String.raw`
     ["horizon_predicted_only", "finding-predicted-moon", "take me to Uranus", {"target": "finding-predicted-uranus"}],
     ["horizon_predicted_only", "finding-predicted-saturn", "select the Moon", {"target": "finding-predicted-moon"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "where is Dabih?", {"target": "finding-predicted-star-dabih"}],
-    ["pose_moon_level_head", "finding-predicted-saturn", "how far is Deneb Algedi?", {"target": "finding-predicted-star-deneb-algedi"}],
+    ["pose_moon_level_head", "finding-predicted-saturn", "how far is Algedi?", {"target": "finding-predicted-star-algedi"}],
+    ["pose_moon_level_head", "finding-predicted-star-algedi", "Deneb Algedi, take me there", {"refused": true}, {"target": "finding-predicted-star-deneb-algedi"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "tell me about Fomalhaut", {"target": "finding-predicted-star-fomalhaut"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "select Nashira", {"target": "finding-predicted-star-nashira"}],
     ["pose_moon_level_head", "finding-predicted-saturn", "what is Albali?", {"target": "finding-predicted-star-albali"}],
@@ -897,8 +898,10 @@ describe('@albedian/observation voice parser: properties over sessions and names
           // The two sentences the lane was opened for, on a solution that holds the body, with a star selected
           [{ v: { sample: 'pose_moon_level_head', selected: 'finding-predicted-star-fomalhaut', focused: null, pointed: null }, id: 'finding-predicted-moon', name: 'the Moon' }, 'how far is {n}', { before: '', after: '?' }],
           [{ v: { sample: 'pose_moon_level_head', selected: 'finding-predicted-star-fomalhaut', focused: null, pointed: null }, id: 'finding-predicted-saturn', name: 'Saturn' }, 'take me to {n}', { before: '', after: '' }],
-          // A two-word name whose words are names too, and the measured Moon in view while the Moon is named
-          [{ v: { sample: 'pose_moon_level_head', selected: 'finding-predicted-star-algedi', focused: null, pointed: null }, id: 'finding-predicted-star-deneb-algedi', name: 'Deneb Algedi' }, '{n}, take me there', { before: '', after: '' }],
+          // A star beside the Moon named while its neighbour is selected (the two-word name Deneb Algedi, whose words
+          // are names too, is a shared row: the pose sample no longer holds it, so it is refused there, never read
+          // as the selected Algedi), and the measured Moon in view while the Moon is named
+          [{ v: { sample: 'pose_moon_level_head', selected: 'finding-predicted-star-algedi', focused: null, pointed: null }, id: 'finding-predicted-star-dabih', name: 'Dabih' }, '{n}, take me there', { before: '', after: '' }],
           [{ v: { sample: 'horizon_approximate', selected: 'finding-observed-moon', focused: 'finding-observed-moon', pointed: 'finding-observed-moon' }, id: 'finding-predicted-moon', name: 'moon' }, 'what is that {n}', { before: '', after: '?' }],
         ],
       }

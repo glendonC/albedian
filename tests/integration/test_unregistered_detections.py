@@ -620,9 +620,8 @@ def _pose_moon_level_head_sample() -> ObservationSolution:
         assumptions=(
             f"The camera profile's diagonal field of view, swept from {min(fovs):.1f} to {max(fovs):.1f} deg.",
             f"A level head, its roll swept {max(POSE_SAMPLE_ROLLS_DEG):.0f} deg either way.",
-            "The Moon's light centroid is at its predicted position, which is geocentric: from this place the Moon "
-            f"appears about {moon_parallax_shift_arcsec(moon.distance_au, moon.alt_deg)[1]:,.0f} arcsec lower, and "
-            "this sample does not apply that offset.",
+            f"The Moon's light centroid is at its predicted position, which is {moon.frame}: seen from this place, "
+            "with its parallax applied.",
         ),
         swept_wcs=swept,
         max_center_offset_deg=max(angular_separation_deg(*centre, *w.pixel_to_world(crpix_x, crpix_y)) for w in swept),
@@ -703,8 +702,8 @@ def _pose_moon_level_head_sample() -> ObservationSolution:
         solver=SolverIdentity(
             name="hand-built contract sample", version="0",
             catalog_release=(
-                f"{len(get_all_sky_catalog_stars())} pinned bright stars and the low-precision ephemeris "
-                "(Standish and Williams 1992; Meeus 1998 chapter 47)"
+                f"{len(get_all_sky_catalog_stars())} pinned bright stars and "
+                "the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
             ),
         ),
         findings=[observed_moon, *predicted],

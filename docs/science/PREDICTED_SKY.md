@@ -121,9 +121,11 @@ each twilight band holds its darker edge (exactly -6 is civil twilight, exactly 
 - The 71 pinned bright stars (`services/science/catalog.py` `get_all_sky_catalog_stars`): 59 Hipparcos 2007 rows
   and 12 Gaia DR3 rows, magnitudes -1.46 to 3.77. Each is carried from its catalog epoch to the date by its proper
   motion, and its limitation names its catalog release. [tested]
-- Each star's position is given within 55 arcseconds: the horizon transform leaves out nutation and annual
-  aberration (at most 37 arcseconds, `tests/integration/test_sky_transforms.py`) and UT1 - UTC (at most 14), and the
-  pinned positions sit within 3 arcseconds of their catalog rows. [tested]
+- Each star's position is given within 55 arcseconds. The horizon transform is ERFA's apparent chain (light
+  deflection, aberration, precession, nutation and the Earth's rotation, `tests/integration/test_sky_transforms.py`)
+  and leaves out UT1 - UTC (up to 13.5 arcseconds), polar motion and the star's own parallax (each under 1), and the
+  pinned positions sit within 3 arcseconds of their catalog rows, about 19 arcseconds in all. [tested] The 55 was set
+  when the transform also left out nutation and annual aberration, and is kept until it is tightened. [proposed]
 - Only these 71 stars: the fainter stars of the G 12 tiles are not in this layer. [tested]
 - Above the horizon means a height above 0 degrees without refraction. Refraction lifts what is near the horizon by
   about 34 arcminutes (USNO, above), so an object listed just above the horizon may be hidden and one just below may
@@ -135,19 +137,19 @@ each twilight band holds its darker edge (exactly -6 is civil twilight, exactly 
 `services/science/ephemeris.py`, valid only from 1800-01-01 to 2050-12-31 UTC; outside it the layer is left out
 with a sentence saying so. [tested]
 
-- The Sun and the planets come from the approximate Keplerian elements of Standish and Williams (1992), as JPL's
-  Solar System Dynamics group publishes them for 1800 to 2050, seen from the Earth-Moon barycentre. The Sun is the
-  barycentre's own position reversed, so it adds no model. Its stated uncertainty, about 45 arcseconds, holds the
-  barycentre's published error, the barycentre's offset from the Earth's centre (up to 5,000 km) and the observer's
-  offset from it (6,378 km). At the moments of USNO's "Earth's Seasons" table for 2030 and 1850
-  (https://aa.usno.navy.mil/data/Earth_Seasons), the Sun's declination of date is 0 at the equinoxes and the
-  obliquity at the solstices within that uncertainty; the largest difference over the seven moments was
-  9 arcseconds. [tested]
-- Each planet's uncertainty is computed for the moment from the published errors. At three moments (1850, 2030 and
-  2050) it ran from 70 arcseconds (Venus) to 901 arcseconds, a quarter of a degree (Saturn). [tested]
-- The Moon comes from Meeus (1998) chapter 47, cut to its largest terms, within 1,300 arcseconds. It is geocentric:
-  from a place on the Earth it appears up to about a degree lower, its horizontal parallax of 54 to 61 arcminutes
-  (USNO, above), and its limitation states the shift for the moment. [tested]
+- Every body comes from the IAU's ERFA routines (pyerfa, `docs/architecture/THIRD_PARTY.md`): the Moon from
+  eraMoon98 (Meeus 1998, chapter 47 in full), the planets from eraPlan94 (Simon et al. 1994), the Earth and the Sun
+  from eraEpv00, with light time. Each is seen from the recorded place at sea level (topocentric: its parallax
+  applied, up to about a degree for the Moon), and its record says so in its `frame` field. [tested]
+- Each body's stated uncertainty is computed for the moment from its method's documented accuracy, plus the Earth's
+  rotation (UT1 taken as UTC, within 0.9 s), the place's height (up to 9 km), polar motion and the time scale; it holds
+  at every instant stored from JPL Horizons (`tests/integration/test_ephemeris_horizons.py`). At the moments of
+  USNO's "Earth's Seasons" table for 2030 and 1850 (https://aa.usno.navy.mil/data/Earth_Seasons), the Sun's
+  declination of date is 0 at the equinoxes and the obliquity at the solstices within the Sun's stated uncertainty,
+  which is under 60 arcseconds. [tested]
+- The Moon's stated uncertainty is about 44 arcseconds at the fixtures' synthetic moment and place, eraMoon98's
+  documented 18.3 arcseconds among its parts. Nothing lowers it again: a caller that took the topocentric record and
+  shifted it once more would put it up to about a degree too low. [tested]
 - No brightness is computed for any body. [tested]
 
 ## What this layer never does
@@ -256,9 +258,20 @@ counts only].
 
 ### The level poses, the fit and the sweep
 
-- The Moon is placed where it is seen from the place: its ephemeris position lowered by its parallax shift (up to
-  about a degree). Refraction is left out for the Moon and the stars alike, which is taken to cancel to first order
-  near the Moon; no test measures it. [inference]
+- The Moon is placed where it is seen from the place: the ephemeris record as it is, topocentric, its parallax
+  applied once at its source and never again here. At every moment and place tried, the Moon near the horizon among
+  them, it lies within the record's stated uncertainty of ERFA's own chain (eraAtco13, given the Moon with its
+  parallax), and so does the Moon the horizon pose uses (`tests/integration/test_moon_pose_paths.py`, a property
+  under 20 seeds). [tested] Refraction is left out for the Moon and the stars alike, which is taken to cancel to
+  first order near the Moon; no test measures it. [inference]
+- The camera is level in the true horizon and sees every direction at its apparent place, so the closed form takes
+  the Moon's apparent altitude and azimuth and gives the camera's pointing there exactly; that is the centre the pose
+  states. The one approximation is the WCS: one rotation for every catalog position, the rigid frame rotation turned
+  so the Moon lands exactly where it is seen ([SKY_TRANSFORMS.md](SKY_TRANSFORMS.md)). A drawn position then misses
+  where it is seen by the aberration and deflection that differ from the Moon's, at most the frame term, from the
+  field of view and where the Moon sits (up to 33.2 arcseconds over 192 poses at the sweep's corners, measured
+  2026-11-11). Whether the Moon is up is read from the
+  record's own apparent altitude. [tested: the tests' truth is the apparent sky]
 - The camera is a rectilinear (gnomonic) lens with no distortion, centred on the frame, its scale fixed by the
   diagonal field of view: 2 tan(field / 2) over the frame's diagonal in pixels. [proposed]
 - A level head: the frame as displayed (after its display orientation) has its top toward the zenith, turned by a
@@ -290,11 +303,15 @@ counts only].
   all nine, the largest angle between the nominal frame centre and a swept one (`maxCenterOffsetDeg`), and the beacon
   term (`beaconCentroidUncertaintyDeg`): the Moon's predicted radius, since an overexposed Moon's light sits somewhere
   on its disk and a partly lit one's toward its lit edge, plus the Moon's own position uncertainty as the ephemeris
-  record states it at run time (1,300 arcsec today). [tested]
+  record states it at run time (about 44 arcsec at the fixtures' synthetic moment and place), plus the frame term
+  (24.6 arcsec there), which every corner of every swept frame is tested against. [tested] The one field holds both
+  the centroid's own uncertainty and the frame term, as its doc line says in both languages; giving each part a field
+  of its own is a later change to the contract [proposed].
 - What the bound covers (P-SKY-5, under 20 seeds): synthetic truths over the whole stated range, the Moon 5 to 90
   degrees up anywhere in the frame (its corners included), the camera pointing anywhere a level head allows (either
   pose when there are two), a true field of view anywhere in 80 to 110 degrees, a true roll anywhere within 10
-  degrees, any display turn, both hemispheres and azimuths near 0 and 360. Whenever the answer is `approximate`, the
+  degrees, any display turn, both hemispheres and azimuths near 0 and 360, every truth at a real place (a draw that
+  asks for a point past a pole is refused, never drawn there). Whenever the answer is `approximate`, the
   Moon lands within half a pixel of the spot under every swept WCS, every predicted object truly in the frame lies
   within its ring (its largest distance to its nine swept positions plus the beacon term), and the true frame centre
   lies within `maxCenterOffsetDeg` of the nominal one (plus only what the centroid's own measured miss moves the pose
@@ -313,7 +330,9 @@ counts only].
   | 80 to 90 degrees | 187 | 9 | 188 | 3 |
 
   No truth with two level poses was answered `approximate`, and every `approximate` answer held its bound. A high
-  Moon is seldom lined up: near the zenith most places of the spot in the frame fit two directions of view.
+  Moon is seldom lined up: near the zenith most places of the spot in the frame fit two directions of view. These
+  counts were made while the Moon record was geocentric and the pose lowered it itself; they have not been counted
+  again since the record became topocentric at its source. [open]
 
 ### What the result holds
 
@@ -337,10 +356,9 @@ counts only].
 
 ### Limits it has
 
-- The predicted Moon finding carries the ephemeris's geocentric position, while the pose lines up the topocentric
-  Moon (lowered by its parallax). So on the nominal WCS the predicted Moon's marker sits up to about a degree from the
-  spot, toward the zenith, and its ring need not hold the spot; its limitation states the shift for the moment.
-  Another lane is making the predicted Moon topocentric at its source. [open]
+- The predicted Moon finding and the Moon the pose lines up are one topocentric record, so on the nominal WCS the
+  predicted Moon's marker sits on the spot, within the fit's half pixel. [inference: the same record; P-SKY-5 tests
+  the pose's Moon]
 - A clip's detector points come from the frames stacked at its start (time 0.0). They are left out on the spot only
   when the pose's frame is the clip's first; from any other frame they are kept as measured, and one may lie on the
   spot. The spot's finding says that points of other frames are kept. [open]

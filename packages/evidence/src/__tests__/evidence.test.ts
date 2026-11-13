@@ -710,7 +710,7 @@ describe('@albedian/evidence: licence and source strings', () => {
 
   it('names the models behind a prediction that has no catalog record', () => {
     expect(lastRecord(predicted())?.license).toBe(
-      'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request'
+      "Computed in Albedian with the IAU's ERFA routines (eraMoon98, eraPlan94, eraEpv00), with no JPL Horizons request"
     );
   });
 

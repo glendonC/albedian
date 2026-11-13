@@ -15,7 +15,8 @@ up), at the stored size of the glasses' clips (1344 x 1792):
   by the frame's edge, a spot cut by the frame's edge and a peak under 200 are refused, each for its own reason; a
   Moon's own halo on a bright sky is no rival
 - By day (the Sun above the USNO sunrise and sunset altitude at the frame's moment) no Moon pose is tried
-- The topocentric Moon: the ephemeris position lowered by its parallax shift (moon_parallax_shift_arcsec)
+- The topocentric Moon: the ephemeris record as it is (topocentric, its parallax applied once at its source), never
+  lowered again; from the Earth's centre it stands one parallax higher
 - The level-head poses in closed form: none, one or two for one Moon pixel, field of view and roll, the same as an
   independent search finds; a count that is not one at a narrower field of view is not one at any wider one (so one
   pose at the widest swept field of view means one at every narrower field of view at that roll)
@@ -24,7 +25,9 @@ up), at the stored size of the glasses' clips (1344 x 1792):
   centre past a pole is brought back inside the contract's range
 - The sweep: nine WCS at the profile's two limits and middle and at rolls -10, 0 and +10 degrees, the nominal one at
   the middle field of view and roll 0, the largest centre offset across them, and the beacon term: the Moon's
-  predicted radius plus the ephemeris record's stated uncertainty, read at run time; a second level pose, or none,
+  predicted radius plus the ephemeris record's stated uncertainty, read at run time, plus the frame term (what the
+  WCS's one rotation leaves out across the frame, from the field of view and where the Moon sits); the stated centre
+  is where the camera's centre is seen, the closed form's pointing; a second level pose, or none,
   at any swept value refuses the pose with a true sentence, decided by the closed form before any fit (two poses
   first); a fit that leaves the closed form's pose, or shows the sky upside down, is refused
 - P-SKY-5, over the whole stated range (the Moon 5 to 90 degrees up, anywhere in the frame, corners included, the
@@ -48,6 +51,7 @@ never written: P-SKY-5 needs the Moon at every altitude from 5 to 90 degrees, in
 from __future__ import annotations
 
 import copy
+import functools
 from dataclasses import dataclass, replace
 import hashlib
 import math
@@ -60,7 +64,8 @@ from scipy import ndimage, optimize
 
 from services.science import ephemeris
 from services.science.camera_profiles import META_RAY_BAN_DISPLAY_MODEL, camera_profile
-from services.science.catalog import altaz_to_icrs, angular_separation_deg, get_catalog_stars, icrs_to_altaz
+from services.science import catalog
+from services.science.catalog import angular_separation_deg, get_catalog_stars
 from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
 from services.science import pose_estimate as pe
 from services.science.pose_estimate import (
@@ -78,11 +83,29 @@ from services.science.predicted_sky import complete_sky, frame_moment, predicted
 from services.science.solver import _build_unresolved_solution, triangle_solver_identity
 from services.science.wcs_models import CelestialFindingRecord, ObservationSolution, SourceDetection, WCSModel
 
+
+# The test's world is the apparent sky (the lead's ruling of 2026-11-11, for every pose property): each direction is
+# seen at its apparent place (catalog.py `icrs_to_altaz`), and the truth camera is level in the true horizon. The
+# estimator may assume what it likes; the truth may not
+icrs_to_altaz = catalog.icrs_to_altaz
+altaz_to_icrs = catalog.altaz_to_icrs
+
+
 WIDTH, HEIGHT = 1344, 1792
 # The synthetic Moon moment and open-ocean place of the fixtures (tests/integration/test_unregistered_detections.py):
 # the Moon 33 degrees up. The second moment has the Moon below the horizon. They point at nobody
 MOON_MOMENT, LAT, LON = "2031-08-30T03:01:00Z", 30.0, -40.0
 MOON_DOWN_MOMENT = "2030-01-01T02:00:00Z"
+# The Moon's position uncertainty the ephemeris record states at the fixtures' moment and place, in arcsec, and the
+# frame term of the pose of the spot near (500, 700) px there (catalog.py `anchored_rotation_omission_arcsec`: the
+# observer's aberration over its chord to the frame's farthest point from the Moon, plus twice the deflection)
+MOON_STATED_ARCSEC = 44.06372110817171
+# A 5 x 5 grid of the stored frame's pixels, its corners included
+FRAME_GRID = tuple((x, y) for x in (0.0, WIDTH / 4, WIDTH / 2, 3 * WIDTH / 4, WIDTH)
+                   for y in (0.0, HEIGHT / 4, HEIGHT / 2, 3 * HEIGHT / 4, HEIGHT))
+FRAME_TERM_ARCSEC = 24.56402658720924
+# The same for the soft-peaked Moon at (500.3, 700.6) px
+SOFT_FRAME_TERM_ARCSEC = 24.552454352076293
 PROFILE = camera_profile(META_RAY_BAN_DISPLAY_MODEL)
 ASSET_ID = "src_synthetic_head_worn"
 SHA = hashlib.sha256(b"synthetic head-worn Moon pose").hexdigest()
@@ -156,14 +179,34 @@ def _scale(fov_deg: float) -> float:
     return math.degrees(2.0 * math.tan(math.radians(fov_deg) / 2.0) / math.hypot(WIDTH, HEIGHT))
 
 
+def _camera_coords(alt_deg: float, az_deg: float, lat: float, lon: float, moment: str) -> tuple[float, float]:
+    """A direction of the true horizon in the truth camera's own coordinates: the horizon frame turned by one fixed
+    rotation (catalog.py `rigid_altaz_to_icrs`), so a TAN WCS over them is a gnomonic camera in the horizon."""
+    return catalog.rigid_altaz_to_icrs(alt_deg, az_deg, lat, lon, moment)
+
+
+def _seen(ra: float, dec: float, lat: float, lon: float, moment: str) -> tuple[float, float]:
+    """Where the camera sees an ICRS direction, in the truth camera's coordinates: at its apparent place."""
+    return _camera_coords(*icrs_to_altaz(ra, dec, lat, lon, moment), lat, lon, moment)
+
+
+def truth_pixel(wcs: WCSModel, ra: float, dec: float, lat: float = LAT, lon: float = LON,
+                moment: str = MOON_MOMENT) -> tuple[float, float]:
+    """The pixel at which the truth camera `wcs` sees the ICRS direction (ra, dec)."""
+    return wcs.world_to_pixel(*_seen(ra, dec, lat, lon, moment))
+
+
 def _truth_wcs(centre_alt: float, centre_az: float, fov_deg: float, roll_deg: float, turns: int, moment: str,
-               lat: float = LAT, lon: float = LON) -> WCSModel:
-    """The frame centre at this altitude and azimuth, straight up in the upright frame pointing to the zenith, then
-    the picture turned clockwise by the roll (the horizon's right side lower for a positive roll)."""
-    ra, dec = altaz_to_icrs(centre_alt, centre_az, lat, lon, moment)
+               lat: float = LAT, lon: float = LON, coords: Any = None) -> WCSModel:
+    """The truth camera: its centre at this altitude and azimuth of the true horizon, straight up in the upright
+    frame pointing to the zenith, then the picture turned clockwise by the roll (the horizon's right side lower for a
+    positive roll), over `_camera_coords`. With `coords` (a horizontal direction to sky coordinates) the same camera
+    over those instead: `_drawn_wcs` gives it the pose's own frame rotation."""
+    to_sky = coords or (lambda alt, az: _camera_coords(alt, az, lat, lon, moment))
+    ra, dec = to_sky(centre_alt, centre_az)
     unrotated = WCSModel(crval_ra_deg=ra, crval_dec_deg=dec, crpix_x=WIDTH / 2.0, crpix_y=HEIGHT / 2.0,
                          scale_deg_per_px=_scale(fov_deg), width=WIDTH, height=HEIGHT)
-    up_ra, up_dec = altaz_to_icrs(centre_alt + min(0.5, (90.0 - centre_alt) / 2.0), centre_az, lat, lon, moment)
+    up_ra, up_dec = to_sky(centre_alt + min(0.5, (90.0 - centre_alt) / 2.0), centre_az)
     zx, zy = unrotated.world_to_pixel(up_ra, up_dec)
     tx, ty = _stored(0.0, -1.0, turns)
     level = math.degrees(math.atan2(zy - HEIGHT / 2.0, zx - WIDTH / 2.0) - math.atan2(ty, tx))
@@ -171,22 +214,34 @@ def _truth_wcs(centre_alt: float, centre_az: float, fov_deg: float, roll_deg: fl
 
 
 def _topocentric(moment: str, lat: float = LAT, lon: float = LON) -> tuple[float, float, float]:
-    """The Moon as seen from the place: its geocentric altitude lowered by its parallax shift; (ra, dec, radius)."""
+    """The Moon as seen from the place: the ephemeris record as it is (topocentric, its parallax already applied);
+    (ra, dec, radius)."""
     (moon,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Moon",))
-    shift = moon_parallax_shift_arcsec(moon.distance_au, moon.alt_deg)[1]
-    ra, dec = altaz_to_icrs(moon.alt_deg - shift / 3600.0, moon.az_deg, lat, lon, moment)
-    distance_km = moon.distance_au * 149597870.7
-    alt_rad = math.radians(moon.alt_deg)
-    topo_km = math.sqrt(distance_km**2 + 6378.137**2 - 2.0 * distance_km * 6378.137 * math.sin(alt_rad))
-    return ra, dec, math.degrees(math.asin(1737.4 / topo_km))
+    assert moon.frame == "topocentric"
+    return moon.ra_deg, moon.dec_deg, math.degrees(math.asin(1737.4 / (moon.distance_au * 149597870.7)))
 
 
-def _roll_of(wcs: WCSModel, turns: int, moment: str, lat: float = LAT, lon: float = LON) -> float:
+def _drawn_wcs(centre_alt: float, centre_az: float, fov_deg: float, roll_deg: float, turns: int, moment: str,
+               lat: float = LAT, lon: float = LON) -> WCSModel:
+    """The camera the pose should draw for this pointing: the truth camera seen through the pose's one frame
+    rotation (`pe.pose_frame`, the rigid frame rotation anchored on the Moon), as ICRS."""
+    frame = pe.pose_frame(topocentric_moon(moment, lat, lon), lat, lon, moment)
+    return _truth_wcs(centre_alt, centre_az, fov_deg, roll_deg, turns, moment, lat, lon,
+                      coords=lambda alt, az: catalog.frame_altaz_to_icrs(frame, alt, az))
+
+
+def _roll_of(wcs: WCSModel, turns: int, moment: str, lat: float = LAT, lon: float = LON, *, truth: bool = False) -> float:
     """The horizon's tilt in the upright frame: two points at the centre's altitude, 10 degrees either side in
-    azimuth; positive when the right one is lower."""
-    alt, az = icrs_to_altaz(wcs.crval_ra_deg, wcs.crval_dec_deg, lat, lon, moment)
-    lx, ly = wcs.world_to_pixel(*altaz_to_icrs(alt, az - 10.0, lat, lon, moment))
-    rx, ry = wcs.world_to_pixel(*altaz_to_icrs(alt, az + 10.0, lat, lon, moment))
+    azimuth; positive when the right one is lower. For a WCS the pose drew (ICRS), the horizon as seen: the points
+    at their apparent places. For a truth camera (`truth`), in its own coordinates."""
+    if truth:
+        alt, az = catalog.icrs_to_rigid_altaz(wcs.crval_ra_deg, wcs.crval_dec_deg, lat, lon, moment)
+        lx, ly = wcs.world_to_pixel(*_camera_coords(alt, az - 10.0, lat, lon, moment))
+        rx, ry = wcs.world_to_pixel(*_camera_coords(alt, az + 10.0, lat, lon, moment))
+    else:
+        alt, az = icrs_to_altaz(wcs.crval_ra_deg, wcs.crval_dec_deg, lat, lon, moment)
+        lx, ly = wcs.world_to_pixel(*altaz_to_icrs(alt, az - 10.0, lat, lon, moment))
+        rx, ry = wcs.world_to_pixel(*altaz_to_icrs(alt, az + 10.0, lat, lon, moment))
     dx, dy = _upright(rx - lx, ry - ly, turns)
     assert dx > 0.0
     return math.degrees(math.atan2(dy, dx))
@@ -207,16 +262,81 @@ def _destination(lat: float, lon: float, bearing_deg: float, distance_deg: float
     return math.degrees(p2), (math.degrees(l2) + 180.0) % 360.0 - 180.0
 
 
+def _initial_bearing(lat: float, lon: float, to_lat: float, to_lon: float) -> float:
+    """The great circle's bearing from (lat, lon) toward (to_lat, to_lon), east of north."""
+    p1, p2, dl = math.radians(lat), math.radians(to_lat), math.radians(to_lon - lon)
+    y = math.sin(dl) * math.cos(p2)
+    return math.degrees(math.atan2(y, math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl))) % 360.0
+
+
+def _horizontal(alt_deg: float, az_deg: float) -> np.ndarray:
+    a, z = math.radians(alt_deg), math.radians(az_deg)
+    return np.array([math.cos(a) * math.sin(z), math.cos(a) * math.cos(z)])
+
+
+class NoRealPlace(AssertionError):
+    """No real place has the Moon at the asked altitude and bearing (the point asked for lies past a pole): such a
+    draw is refused, never answered with a place that is not one."""
+
+
+def _fold(lat: float, lon: float) -> tuple[float, float]:
+    """The real place a (latitude, longitude) pair names: a latitude past a pole is the point on the far meridian
+    (latitude reflected at the pole, longitude turned half way round), and a longitude past +-180 the same meridian
+    wrapped into range. A pair already in range is returned as it is."""
+    if not -90.0 <= lat <= 90.0:
+        # Through the unit vector, so any value folds, however far a step went
+        a, o = math.radians(lat), math.radians(lon)
+        z = max(-1.0, min(1.0, math.sin(a)))
+        lat, lon = math.degrees(math.asin(z)), math.degrees(math.atan2(math.cos(a) * math.sin(o), math.cos(a) * math.cos(o)))
+    if not -180.0 <= lon <= 180.0:
+        lon = (lon + 180.0) % 360.0 - 180.0
+    return lat, lon
+
+
+@functools.lru_cache(maxsize=None)
 def _place_with_moon(alt_deg: float, bearing_deg: float, moment: str = MOON_MOMENT) -> tuple[float, float]:
-    """A synthetic place from which the predicted (geocentric) Moon stands `alt_deg` up at `moment` (by default the
-    fixtures'): the point its zenith distance from the sub-lunar point along `bearing_deg`. The sub-lunar point is the
-    fixtures' place moved along the Moon's azimuth by its zenith distance (the sky transform takes the Earth as a
-    sphere, so the Moon stands at the zenith there, tested below). A bearing of 0 puts the place north of the
-    sub-lunar point, so the Moon stands due south of it; 180 puts it south, so the Moon stands due north (azimuth near
-    0 and 360)."""
-    (moon,) = compute_solar_system_ephemerides(moment, LAT, LON, bodies=("Moon",))
-    sub_lunar = _destination(LAT, LON, moon.az_deg, 90.0 - moon.alt_deg)
-    return _destination(*sub_lunar, bearing_deg, 90.0 - alt_deg)
+    """A synthetic place from which the predicted Moon (the record, topocentric) stands `alt_deg` up at `moment` (by
+    default the fixtures'), in the direction of the sub-lunar point: first the point its zenith distance from the
+    sub-lunar point along `bearing_deg` on a sphere, the sub-lunar point being the fixtures' place moved along the
+    geocentric Moon's azimuth by its zenith distance; then moved by Newton's method until the record's altitude is
+    `alt_deg` and its azimuth the great circle's bearing from that first point toward the sub-lunar point (both
+    within 1e-9 degree), since the record is seen from the place on the WGS84 ellipsoid with aberration, not from a
+    sphere's centre. The two horizontal components of the Moon's direction are solved, so a Moon at the zenith
+    converges too. A low Moon near the east or west point leaves the search ill conditioned (a step east turns the
+    meridian, so the azimuth moves with the altitude), so a step that does not shrink the miss is halved until it does;
+    the place may then lie well away from the first point, with the Moon where it was asked. Every place it evaluates
+    and returns is a real one (`_fold`): a step past a pole lands on the far meridian, which the ephemeris now
+    requires (it refuses a latitude past a pole). A bearing of 0 puts the place north of the sub-lunar point, so
+    the Moon stands due south of it; 180 puts it south, so the Moon stands due north (azimuth near 0 and 360)."""
+    (geo,) = compute_solar_system_ephemerides(moment, LAT, LON, bodies=("Moon",), topocentric=False)
+    sub_lunar = _destination(LAT, LON, geo.az_deg, 90.0 - geo.alt_deg)
+    lat, lon = _destination(*sub_lunar, bearing_deg, 90.0 - alt_deg)
+    target = _horizontal(alt_deg, _initial_bearing(lat, lon, *sub_lunar))
+
+    def seen(p: np.ndarray) -> np.ndarray:
+        (moon,) = compute_solar_system_ephemerides(moment, *_fold(float(p[0]), float(p[1])), bodies=("Moon",))
+        return _horizontal(moon.alt_deg, moon.az_deg)
+
+    place = np.array([lat, lon])
+    here = seen(place)
+    for _ in range(30):
+        miss = here - target
+        if float(np.max(np.abs(miss))) < 1e-12:
+            break
+        step = 1e-5
+        jacobian = np.column_stack([(seen(place + step * np.eye(2)[i]) - here) / step for i in range(2)])
+        move, scale = np.linalg.solve(jacobian, miss), 1.0
+        while True:
+            trial = place - scale * move
+            there = seen(trial)
+            if float(np.max(np.abs(there - target))) < float(np.max(np.abs(miss))) or scale < 1e-6:
+                break
+            scale /= 2.0
+        place, here = trial, there
+    else:
+        raise NoRealPlace(("no synthetic place found", alt_deg, bearing_deg))
+    lat, lon = _fold(float(place[0]), float(place[1]))
+    return lat, (lon + 180.0) % 360.0 - 180.0
 
 
 # --- Every level-head pose for one Moon pixel, by a search independent of the code's closed form ---------------------
@@ -655,16 +775,22 @@ def test_the_size_limits_are_the_moons_predicted_diameter_at_the_profiles_two_li
 
 
 def test_the_moon_is_lined_up_where_it_is_seen_from_the_place_not_from_the_earths_centre() -> None:
-    (geo,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",))
+    """The pose takes the ephemeris record as it is: topocentric, its parallax applied once by ERFA's chain, and
+    nothing lowers it again (tests/integration/test_moon_pose_paths.py checks it against ERFA's eraAtco13)."""
+    (topo,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",))
+    (geo,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",), topocentric=False)
     moon = topocentric_moon(MOON_MOMENT, LAT, LON)
     shift = moon_parallax_shift_arcsec(geo.distance_au, geo.alt_deg)[1]
-    assert shift > 2000.0
+    assert topo.frame == "topocentric" and shift > 2000.0
     ra, dec, radius = _topocentric(MOON_MOMENT)
     assert angular_separation_deg(moon.ra_deg, moon.dec_deg, ra, dec) < 1e-9
-    assert moon.alt_deg == pytest.approx(geo.alt_deg - shift / 3600.0, abs=1e-9)
-    assert moon.az_deg == pytest.approx(geo.az_deg, abs=1e-9)
+    assert moon.alt_deg == pytest.approx(topo.alt_deg, abs=1e-9)
+    assert moon.az_deg == pytest.approx(topo.az_deg, abs=1e-9)
     assert moon.radius_deg == pytest.approx(radius, rel=1e-9)
-    assert angular_separation_deg(moon.ra_deg, moon.dec_deg, geo.ra_deg, geo.dec_deg) == pytest.approx(shift / 3600.0, rel=1e-3)
+    # From the Earth's centre it stands higher by the angle between ERFA's geocentric and topocentric Moon here,
+    # 3,071.5 arcsec; the first-order shift `moon_parallax_shift_arcsec` gives, 3,049.0, is 22.5 short of it
+    assert angular_separation_deg(moon.ra_deg, moon.dec_deg, geo.ra_deg, geo.dec_deg) == pytest.approx(3071.4815 / 3600.0, rel=1e-3)
+    assert (geo.alt_deg - moon.alt_deg) * 3600.0 == pytest.approx(3071.6375, rel=1e-3)
 
 
 # --- One fit and the sweep --------------------------------------------------------------------------------------------
@@ -674,8 +800,9 @@ def test_the_moon_is_lined_up_where_it_is_seen_from_the_place_not_from_the_earth
 def test_one_fit_is_the_pointing_that_roll_and_field_of_view_give(fov: float, roll: float, turns: int) -> None:
     ra, dec, _ = _topocentric(MOON_MOMENT)
     moon = topocentric_moon(MOON_MOMENT, LAT, LON)
-    truth = _truth_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, fov, roll, turns, MOON_MOMENT)
-    mx, my = truth.world_to_pixel(ra, dec)
+    centre_alt, centre_az = moon.alt_deg + 12.0, moon.az_deg - 9.0
+    truth = _truth_wcs(centre_alt, centre_az, fov, roll, turns, MOON_MOMENT)
+    mx, my = truth_pixel(truth, ra, dec)
     fitted = fit_level_pose(moon, mx, my, width=WIDTH, height=HEIGHT, fov_diagonal_deg=fov, roll_deg=roll,
                             orientation={"quarterTurnsClockwise": turns, "mirrored": False},
                             moment=MOON_MOMENT, lat=LAT, lon=LON)
@@ -686,22 +813,101 @@ def test_one_fit_is_the_pointing_that_roll_and_field_of_view_give(fov: float, ro
     fx, fy = fitted.world_to_pixel(ra, dec)
     assert math.hypot(fx - mx, fy - my) <= 0.5
     assert _roll_of(fitted, turns, MOON_MOMENT) == pytest.approx(roll, abs=0.05)
-    # Every bright star in the frame lands where the independently built truth puts it
+    # The pose's pointing is the truth's, exactly: its crval turned by the pose's frame rotation is where the truth
+    # camera's centre is seen
+    frame = pe.pose_frame(moon, LAT, LON, MOON_MOMENT)
+    fitted_alt, fitted_az = catalog.icrs_to_frame_altaz(frame, fitted.crval_ra_deg, fitted.crval_dec_deg)
+    assert angular_separation_deg(fitted_az, fitted_alt, centre_az, centre_alt) < 1e-6
+    drawn = _drawn_wcs(centre_alt, centre_az, fov, roll, turns, MOON_MOMENT)
+    # Every bright star in the frame lands where the independently built truth sees it, within half a pixel, and
+    # exactly where the truth camera seen through the pose's one frame rotation draws it
     for star in get_catalog_stars()[:200]:
-        tx, ty = truth.world_to_pixel(star.ra_deg, star.dec_deg)
+        tx, ty = truth_pixel(truth, star.ra_deg, star.dec_deg)
         if not (0.0 <= tx < WIDTH and 0.0 <= ty < HEIGHT):
             continue
         sx, sy = fitted.world_to_pixel(star.ra_deg, star.dec_deg)
         assert math.hypot(sx - tx, sy - ty) < 0.5, star.id
+        dx, dy = drawn.world_to_pixel(star.ra_deg, star.dec_deg)
+        assert math.hypot(sx - dx, sy - dy) < 1e-6, star.id
+    # The pinned bright stars may all lie outside this frame: the same over a 5 x 5 grid of the frame's own directions,
+    # its corners included
+    for gx, gy in FRAME_GRID:
+        ra_g, dec_g = fitted.pixel_to_world(gx, gy)
+        tx, ty = truth_pixel(truth, ra_g, dec_g)
+        assert math.hypot(gx - tx, gy - ty) < 0.5, (gx, gy)
+        dx, dy = drawn.world_to_pixel(ra_g, dec_g)
+        assert math.hypot(gx - dx, gy - dy) < 1e-6, (gx, gy)
+
+
+def test_every_closed_form_takes_the_moons_apparent_place(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The camera is level in the true horizon, so every closed form the pose runs (the nine counts that decide two
+    poses or none, and the nine fits) takes the Moon where it is seen: the record's apparent altitude and azimuth."""
+    seen: list[tuple[float, float]] = []
+    real = pe.level_centres
+
+    def spy(moon_alt: float, moon_az: float, *args: Any, **kwargs: Any) -> tuple[tuple[float, float], ...]:
+        seen.append((moon_alt, moon_az))
+        return real(moon_alt, moon_az, *args, **kwargs)
+
+    monkeypatch.setattr(pe, "level_centres", spy)
+    assert isinstance(_pose(_soft_moon(500.3, 700.6)), PoseResult)
+    (record,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",))
+    assert len(seen) == 18 and set(seen) == {(record.alt_deg, record.az_deg)}, seen
+
+
+def test_the_frame_term_needs_a_field_of_view_for_every_frame() -> None:
+    """Each swept frame's field is its crval and half its own field of view: a list of fields of view one short is
+    refused, never paired up quietly."""
+    pose = _pose(_soft_moon(500.3, 700.6))
+    assert isinstance(pose, PoseResult)
+    swept = pose.pose_estimate.swept_wcs
+    fovs = [_fov_of(w) for w in swept]
+    assert pe.frame_term_arcsec(pose.moon, swept, fovs, LAT, LON, pose.moment) == pytest.approx(SOFT_FRAME_TERM_ARCSEC,
+                                                                                                rel=1e-9)
+    with pytest.raises(ValueError):
+        pe.frame_term_arcsec(pose.moon, swept, fovs[:-1], LAT, LON, pose.moment)
+
+
+@pytest.mark.parametrize(("fov", "roll", "turns"), [(95.0, 0.0, 0), (80.0, 10.0, 1), (110.0, -10.0, 3)])
+def test_the_closed_forms_start_is_already_the_pose(monkeypatch: pytest.MonkeyPatch, fov: float, roll: float,
+                                                    turns: int) -> None:
+    """The fit's start, the closed form's pointing turned to ICRS through the pose's frame rotation with the rotation
+    the level line gives there, is already the camera seen through that rotation: with the polish left out it draws
+    every star as the polished fit does, within 1e-6 px, so the start is in the pose's own frame."""
+    ra, dec, _ = _topocentric(MOON_MOMENT)
+    moon = topocentric_moon(MOON_MOMENT, LAT, LON)
+    mx, my = truth_pixel(_truth_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, fov, roll, turns, MOON_MOMENT), ra, dec)
+    kwargs = dict(width=WIDTH, height=HEIGHT, fov_diagonal_deg=fov, roll_deg=roll,
+                  orientation={"quarterTurnsClockwise": turns, "mirrored": False}, moment=MOON_MOMENT, lat=LAT, lon=LON)
+    polished = fit_level_pose(moon, mx, my, **kwargs)
+    assert isinstance(polished, WCSModel)
+
+    class Unpolished:
+        def __init__(self, start: np.ndarray) -> None:
+            self.x = np.asarray(start, dtype=np.float64)
+
+    monkeypatch.setattr(pe.optimize, "least_squares", lambda fun, start, **kw: Unpolished(start))
+    started = fit_level_pose(moon, mx, my, **kwargs)
+    assert isinstance(started, WCSModel)
+    for star in get_catalog_stars()[:200]:
+        px, py = polished.world_to_pixel(star.ra_deg, star.dec_deg)
+        if not (0.0 <= px < WIDTH and 0.0 <= py < HEIGHT):
+            continue
+        sx, sy = started.world_to_pixel(star.ra_deg, star.dec_deg)
+        assert math.hypot(sx - px, sy - py) < 1e-6, star.id
+    for gx, gy in FRAME_GRID:
+        sx, sy = started.world_to_pixel(*polished.pixel_to_world(gx, gy))
+        assert math.hypot(sx - gx, sy - gy) < 1e-6, (gx, gy)
 
 
 def test_a_fit_that_shows_the_sky_upside_down_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     """The level constraint holds for a frame turned by half a turn too; the fit must refuse that one. Built by hand:
     the upright truth turned by 180 degrees puts the Moon at the pixel mirrored through the frame centre, so the fit
-    is handed that pixel and that WCS, which meets all three residuals."""
+    is handed that pixel and that WCS (the truth as the pose draws it, through its own frame rotation), which meets
+    all three residuals."""
     ra, dec, _ = _topocentric(MOON_MOMENT)
     moon = topocentric_moon(MOON_MOMENT, LAT, LON)
-    truth = _truth_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, 95.0, 0.0, 0, MOON_MOMENT)
+    truth = _drawn_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, 95.0, 0.0, 0, MOON_MOMENT)
     mx, my = truth.world_to_pixel(ra, dec)
 
     class Fit:
@@ -719,7 +925,7 @@ def test_a_fit_that_shows_the_sky_upside_down_is_refused(monkeypatch: pytest.Mon
     # closed form's centre, so only its upside-down sky refuses it
     monkeypatch.undo()
     centred = _truth_wcs(moon.alt_deg, moon.az_deg, 95.0, 0.0, 0, MOON_MOMENT)
-    cx, cy = centred.world_to_pixel(ra, dec)
+    cx, cy = truth_pixel(centred, ra, dec)
     upright = fit_level_pose(moon, cx, cy, **kwargs)
     assert isinstance(upright, WCSModel)
     Fit.x = np.array([upright.crval_ra_deg, upright.crval_dec_deg, upright.rotation_deg + 180.0])
@@ -756,20 +962,33 @@ def test_the_sweep_takes_the_profiles_limits_and_middle_and_rolls_of_ten_degrees
     assert pose.wcs in swept
     assert round(_fov_of(pose.wcs), 6) == 95.0 and abs(_roll_of(pose.wcs, 0, MOON_MOMENT)) < 0.05
     assert (estimate.fov_diagonal_deg, estimate.roll_deg) == (95.0, 0.0)
-    centre_alt, centre_az = icrs_to_altaz(pose.wcs.crval_ra_deg, pose.wcs.crval_dec_deg, LAT, LON, MOON_MOMENT)
+    # The stated centre is where the camera's centre is seen: the crval turned by the pose's frame rotation, which is
+    # the closed form's pointing in the apparent horizon for the Moon's apparent place; the crval's own apparent place
+    # (the direction drawn at the centre) lies within the frame term of it, and not on it
+    frame = pe.pose_frame(pose.moon, LAT, LON, MOON_MOMENT)
+    centre_alt, centre_az = catalog.icrs_to_frame_altaz(frame, pose.wcs.crval_ra_deg, pose.wcs.crval_dec_deg)
     assert estimate.center_alt_deg == pytest.approx(centre_alt, abs=1e-9)
     assert estimate.center_az_deg == pytest.approx(centre_az, abs=1e-9)
+    ((pointing_alt, pointing_az),) = pe.level_centres(
+        pose.moon.alt_deg, pose.moon.az_deg, pose.blob.x_px, pose.blob.y_px, width=WIDTH, height=HEIGHT,
+        fov_diagonal_deg=95.0, roll_deg=0.0, turns=0,
+    )
+    assert angular_separation_deg(estimate.center_az_deg, estimate.center_alt_deg, pointing_az, pointing_alt) < 1e-6
+    seen_alt, seen_az = icrs_to_altaz(pose.wcs.crval_ra_deg, pose.wcs.crval_dec_deg, LAT, LON, MOON_MOMENT)
+    drawn_miss = angular_separation_deg(estimate.center_az_deg, estimate.center_alt_deg, seen_az, seen_alt) * 3600.0
+    assert 1.0 < drawn_miss <= FRAME_TERM_ARCSEC, drawn_miss
     offsets = [angular_separation_deg(pose.wcs.crval_ra_deg, pose.wcs.crval_dec_deg, w.crval_ra_deg, w.crval_dec_deg) for w in swept]
     assert estimate.max_center_offset_deg == pytest.approx(max(offsets), abs=1e-9) and max(offsets) > 1.0
     _, _, radius = _topocentric(MOON_MOMENT)
-    # The beacon term: the Moon's predicted radius and the ephemeris record's own stated uncertainty, 1,300 arcsec
-    assert estimate.beacon_centroid_uncertainty_deg == pytest.approx(radius + 1300.0 / 3600.0, rel=1e-9)
+    # The beacon term: the Moon's radius, the record's stated uncertainty (44.06 arcsec) and the frame term
+    assert estimate.beacon_centroid_uncertainty_deg == pytest.approx(radius + (MOON_STATED_ARCSEC + FRAME_TERM_ARCSEC) / 3600.0, rel=1e-9)
     assert (estimate.method, estimate.beacon) == ("moon_camera_profile_level_head", "moon")
     assert META_RAY_BAN_DISPLAY_MODEL in estimate.fov_source and "[open]" in estimate.fov_source
     words = " ".join(estimate.assumptions)
     for needed in ("80 to 110 degrees", "10 degrees either way", "rectilinear", "topocentric", "refraction", "radius",
                    "The bright spot is taken to be the Moon", "a lamp or another light of similar size",
-                   "stated uncertainty of 0.36 degrees"):
+                   f"stated uncertainty of 44 arcsec plus {FRAME_TERM_ARCSEC:,.0f} arcsec for drawing every position "
+                   "through one rotation"):
         assert needed in words, needed
     assert "The spot is the Moon" not in words
     # The profile's range is for the camera with no zoom, and nothing in the file is read to show a zoom was not used
@@ -814,20 +1033,27 @@ def test_the_beacon_term_is_the_moons_radius_plus_its_stated_uncertainty_read_at
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The beacon term covers where the spot's light sits on the Moon's disk (its predicted radius) and where the
-    Moon itself is (the ephemeris record's own stated uncertainty, 1,300 arcsec today), and the warning's bound
-    counts it. Read from the record at run time: a record stating 10 degrees more widens both by 10 degrees."""
+    Moon itself is (the ephemeris record's own stated uncertainty, 44.06 arcsec here) plus the frame term (what the
+    WCS's one rotation leaves out across the frame), and the warning's bound counts it. Read from the record at run
+    time: a record stating 10 degrees more widens both by 10 degrees."""
     luma = _soft_moon(500.3, 700.6)
     _, _, radius = _topocentric(MOON_MOMENT)
     (moon,) = compute_solar_system_ephemerides(MOON_MOMENT, LAT, LON, bodies=("Moon",))
-    assert moon.uncertainty_arcsec == 1300.0
+    assert moon.uncertainty_arcsec == pytest.approx(MOON_STATED_ARCSEC, rel=1e-9)
     pose = _pose(luma).pose_estimate
-    assert pose.beacon_centroid_uncertainty_deg == pytest.approx(radius + 1300.0 / 3600.0, rel=1e-9)
+    assert pose.beacon_centroid_uncertainty_deg == pytest.approx(radius + (MOON_STATED_ARCSEC + SOFT_FRAME_TERM_ARCSEC) / 3600.0, rel=1e-9)
     out = complete_sky(_solver_solution(), _asset(), frames=lambda: [(0.0, luma)])
-    within = math.ceil(out.pose_estimate.max_center_offset_deg + radius + 1300.0 / 3600.0)
+    within = math.ceil(out.pose_estimate.max_center_offset_deg + radius + (MOON_STATED_ARCSEC + SOFT_FRAME_TERM_ARCSEC) / 3600.0)
     assert f"within about {within} degrees near the bright spot" in out.warnings[-2]
-    monkeypatch.setattr(ephemeris, "MOON_UNCERTAINTY_ARCSEC", 1300.0 + 36000.0)
+    real = pe.compute_solar_system_ephemerides
+
+    def stating_ten_degrees_more(*args: Any, **kwargs: Any) -> list[Any]:
+        return [replace(r, uncertainty_arcsec=r.uncertainty_arcsec + 36000.0) if r.name == "Moon" else r
+                for r in real(*args, **kwargs)]
+
+    monkeypatch.setattr(pe, "compute_solar_system_ephemerides", stating_ten_degrees_more)
     wide = complete_sky(_solver_solution(), _asset(), frames=lambda: [(0.0, luma)])
-    assert wide.pose_estimate.beacon_centroid_uncertainty_deg == pytest.approx(radius + 1300.0 / 3600.0 + 10.0, rel=1e-9)
+    assert wide.pose_estimate.beacon_centroid_uncertainty_deg == pytest.approx(radius + (MOON_STATED_ARCSEC + SOFT_FRAME_TERM_ARCSEC) / 3600.0 + 10.0, rel=1e-9)
     assert f"within about {within + 10} degrees near the bright spot" in wide.warnings[-2]
     assert "radius" in " ".join(wide.pose_estimate.assumptions)
 
@@ -906,7 +1132,7 @@ def _two_pose_scene() -> tuple[float, float, np.ndarray, list[tuple[float, float
     ra, dec, radius = _topocentric(MOON_MOMENT, lat, lon)
     alt, az = icrs_to_altaz(ra, dec, lat, lon, MOON_MOMENT)
     truth = _truth_wcs(85.0, (az + 180.0) % 360.0, 95.0, 0.0, 0, MOON_MOMENT, lat, lon)
-    mx, my = truth.world_to_pixel(ra, dec)
+    mx, my = truth_pixel(truth, ra, dec, lat, lon, MOON_MOMENT)
     return lat, lon, _soft_moon(mx, my, radius / _scale(95.0)), _level_poses_by_search(alt, az, mx, my, 95.0, 0.0, 0)
 
 
@@ -990,7 +1216,7 @@ def test_a_fit_that_leaves_the_closed_forms_pose_is_refused(monkeypatch: pytest.
     ra, dec, _ = _topocentric(MOON_MOMENT)
     moon = topocentric_moon(MOON_MOMENT, LAT, LON)
     truth = _truth_wcs(moon.alt_deg + 12.0, moon.az_deg - 9.0, 95.0, 0.0, 0, MOON_MOMENT)
-    mx, my = truth.world_to_pixel(ra, dec)
+    mx, my = truth_pixel(truth, ra, dec)
     kwargs = dict(width=WIDTH, height=HEIGHT, fov_diagonal_deg=95.0, roll_deg=0.0, orientation=None,
                   moment=MOON_MOMENT, lat=LAT, lon=LON)
     assert isinstance(fit_level_pose(moon, mx, my, **kwargs), WCSModel)
@@ -1126,11 +1352,23 @@ def _pose_at(luma: np.ndarray, lat: float, lon: float) -> PoseResult | Refusal:
 
 def test_the_synthetic_places_put_the_moon_where_they_say() -> None:
     """The helper the properties use: the Moon at the asked altitude, due south of a place north of the sub-lunar
-    point and due north of one south of it, in both hemispheres."""
-    for alt, bearing in ((5.0, 30.0), (33.0, 200.0), (60.0, 0.0), (89.5, 90.0), (40.0, 180.0)):
+    point and due north of one south of it, in both hemispheres. A low Moon near the east point (11.125 up, bearing
+    219.375, which a random seed drew on 2026-11-12) leaves the search ill conditioned, and it still lands."""
+    # The last: one the sixth version's helper moved 39.9 degrees from the fifth's, past the south pole (its audit)
+    for alt, bearing in ((5.0, 30.0), (33.0, 200.0), (60.0, 0.0), (89.5, 90.0), (40.0, 180.0), (11.125, 219.375),
+                         (13.674, 161.216)):
         lat, lon = _place_with_moon(alt, bearing)
+        assert -90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0, (alt, bearing)
         (moon,) = compute_solar_system_ephemerides(MOON_MOMENT, lat, lon, bodies=("Moon",))
         assert moon.alt_deg == pytest.approx(alt, abs=1e-6)
+    # Where both earlier helpers gave latitude -98.839 (its audit): refused (as on this Mac) or a real place, never one
+    # past the pole
+    try:
+        lat, lon = _place_with_moon(14.033, 188.051)
+    except NoRealPlace:
+        pass
+    else:
+        assert -90.0 <= lat <= 90.0
     north, south = _place_with_moon(40.0, 0.0), _place_with_moon(40.0, 180.0)
     assert north[0] > 0.0 > south[0]
     assert compute_solar_system_ephemerides(MOON_MOMENT, *north, bodies=("Moon",))[0].az_deg == pytest.approx(180.0, abs=1e-6)
@@ -1138,6 +1376,34 @@ def test_the_synthetic_places_put_the_moon_where_they_say() -> None:
         az = compute_solar_system_ephemerides(MOON_MOMENT, *_place_with_moon(35.0, bearing), bodies=("Moon",))[0].az_deg
         assert (az > 359.9) if side == "below 360" else (az < 0.1), (bearing, az)
 
+
+
+def test_every_synthetic_place_is_a_real_place_over_the_region_where_it_once_was_not() -> None:
+    """A grid over the Moon 6 to 20 degrees up at bearings 150 to 210 (where the sixth version's helper made 9 of 315
+    places past the south pole): every place found lies in range with the Moon at the asked altitude, and the draws no
+    real place satisfies are refused."""
+    refused = []
+    for alt in range(6, 21, 2):
+        for bearing in range(150, 211, 5):
+            try:
+                lat, lon = _place_with_moon(float(alt), float(bearing))
+            except NoRealPlace:
+                refused.append((alt, bearing))
+                continue
+            assert -90.0 <= lat <= 90.0 and -180.0 <= lon < 180.0, (alt, bearing, lat)
+            (moon,) = compute_solar_system_ephemerides(MOON_MOMENT, lat, lon, bodies=("Moon",))
+            assert moon.alt_deg == pytest.approx(alt, abs=1e-6), (alt, bearing)
+    # Refusals stay rare, so the property still covers its range (measured on this Mac: 5 of 104, the Moon 14 degrees up
+    # at bearings 170 to 190; which draws converge near a pole can differ in the last bits on another machine)
+    assert len(refused) <= 10, refused
+
+
+def test_fold_brings_a_place_past_a_pole_or_the_date_line_into_range_and_leaves_one_in_range_alone() -> None:
+    assert _fold(-98.839, 10.0) == pytest.approx((-81.161, -170.0))
+    assert _fold(95.0, -170.0) == pytest.approx((85.0, 10.0))
+    assert _fold(10.0, 200.0) == pytest.approx((10.0, -160.0))
+    for place in ((-90.0, -180.0), (90.0, 180.0), (12.345678901234, -40.98765432109)):
+        assert _fold(*place) == place
 
 # --- Through the job's frames: the soft-peaked Moon ------------------------------------------------------------------
 
@@ -1217,11 +1483,15 @@ class _Truth:
 
 def _draw_truth(moon_alt: float, bearing: float, u: float, v: float, fov: float, roll: float, turns: int, pick: int,
                 bloom: float, blur: float, frame_time: float) -> _Truth:
-    """The Moon `moon_alt` up (geocentric) from the place along `bearing` from the sub-lunar point, at the stored pixel
-    a fraction (u, v) across the frame inside a margin that keeps the drawn Moon whole and off the frame's edge, and
-    the truth the level pose number `pick` of those that see it there, so the camera points anywhere a level head
-    allows."""
-    lat, lon = _place_with_moon(moon_alt, bearing)
+    """The Moon `moon_alt` up (the topocentric record) from the place along `bearing` from the sub-lunar point, at the
+    stored pixel a fraction (u, v) across the frame inside a margin that keeps the drawn Moon whole and off the
+    frame's edge, and the truth the level pose number `pick` of those that see it there in the true horizon (the
+    Moon at its apparent place), so the camera points anywhere a level head allows."""
+    try:
+        lat, lon = _place_with_moon(moon_alt, bearing)
+    except NoRealPlace:
+        # The draw asks for a point past a pole: no real place, so no case
+        assume(False)
     moment = frame_moment(MOON_MOMENT, frame_time)
     ra, dec, radius = _topocentric(moment, lat, lon)
     alt, az = icrs_to_altaz(ra, dec, lat, lon, moment)
@@ -1234,9 +1504,9 @@ def _draw_truth(moon_alt: float, bearing: float, u: float, v: float, fov: float,
     if centre is not None and abs(centre[0]) < 89.9:
         wcs = _truth_wcs(*centre, fov, roll, turns, moment, lat, lon)
         # The search and the truth's own model agree: the truth sees the Moon at the drawn pixel, with the roll
-        mx, my = wcs.world_to_pixel(ra, dec)
+        mx, my = truth_pixel(wcs, ra, dec, lat, lon, moment)
         assert math.hypot(mx - x, my - y) < 1e-6, (mx, my, x, y)
-        assert _roll_of(wcs, turns, moment, lat, lon) == pytest.approx(roll, abs=1e-6)
+        assert _roll_of(wcs, turns, moment, lat, lon, truth=True) == pytest.approx(roll, abs=1e-6)
     return _Truth(lat, lon, moment, ra, dec, alt, az, x, y, fov, roll, turns, disk, poses, centre, wcs)
 
 
@@ -1278,7 +1548,7 @@ def _assert_inside_the_bound(solution: ObservationSolution, truth: _Truth, frame
     for finding in solution.findings:
         if finding.evidence_class != "predicted":
             continue
-        tx, ty = truth.wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
+        tx, ty = truth_pixel(truth.wcs, finding.ra_deg, finding.dec_deg, truth.lat, truth.lon, truth.moment)
         if not (0.0 <= tx < WIDTH and 0.0 <= ty < HEIGHT):
             continue
         nx, ny = solution.wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
@@ -1286,9 +1556,23 @@ def _assert_inside_the_bound(solution: ObservationSolution, truth: _Truth, frame
         assert all(math.isfinite(value) for value in (nx, ny, *(c for p in swept for c in p))), finding.id
         ring = max(math.hypot(x - nx, y - ny) for x, y in swept)
         assert math.hypot(tx - nx, ty - ny) <= ring + term_px, finding.id
-    offset = angular_separation_deg(
-        solution.wcs.crval_ra_deg, solution.wcs.crval_dec_deg, truth.wcs.crval_ra_deg, truth.wcs.crval_dec_deg
-    )
+    # The frame term holds where it is largest, at every corner of every swept frame: the direction a corner draws is
+    # seen within the term of where the pose's one frame rotation puts it
+    moon = topocentric_moon(truth.moment, truth.lat, truth.lon)
+    frame = pe.pose_frame(moon, truth.lat, truth.lon, truth.moment)
+    term = pe.frame_term_arcsec(moon, pose.swept_wcs, [_fov_of(w) for w in pose.swept_wcs], truth.lat, truth.lon,
+                                truth.moment)
+    assert pose.beacon_centroid_uncertainty_deg == pytest.approx(moon.radius_deg + moon.uncertainty_deg + term / 3600.0,
+                                                                 rel=1e-12)
+    for wcs in pose.swept_wcs:
+        for corner in ((0.0, 0.0), (WIDTH, 0.0), (0.0, HEIGHT), (WIDTH, HEIGHT)):
+            ra, dec = wcs.pixel_to_world(*corner)
+            drawn_alt, drawn_az = catalog.icrs_to_frame_altaz(frame, ra, dec)
+            seen_alt, seen_az = icrs_to_altaz(ra, dec, truth.lat, truth.lon, truth.moment)
+            assert angular_separation_deg(drawn_az, drawn_alt, seen_az, seen_alt) * 3600.0 <= term, (corner, term)
+    # The true centre is where the truth camera's centre is seen, in the true horizon, and the pose states where its
+    # own centre is seen there
+    offset = angular_separation_deg(pose.center_az_deg, pose.center_alt_deg, truth.centre[1], truth.centre[0])
     moved = _level_poses_by_search(truth.moon_alt, truth.moon_az, cx, cy, truth.fov, truth.roll, truth.turns)
     slack = min(angular_separation_deg(truth.centre[1], truth.centre[0], az, alt) for alt, az in moved)
     assert offset <= pose.max_center_offset_deg + slack + 1e-9, (offset, pose.max_center_offset_deg, slack)
@@ -1301,8 +1585,10 @@ P_SKY_5_DRAWS = dict(
     bearing=st.floats(0.0, 360.0, exclude_max=True),
     u=st.floats(0.0, 1.0),
     v=st.floats(0.0, 1.0),
-    fov=st.floats(80.0, 110.0),
-    roll=st.floats(-10.0, 10.0),
+    # The sweep's corners as often as anywhere between: there the truth's centre is a swept centre and the frame term
+    # is largest (the third audit drew its failures there)
+    fov=st.one_of(st.sampled_from([80.0, 95.0, 110.0]), st.floats(80.0, 110.0)),
+    roll=st.one_of(st.sampled_from([-10.0, 0.0, 10.0]), st.floats(-10.0, 10.0)),
     turns=st.sampled_from([0, 1, 2, 3]),
     pick=st.sampled_from([0, 1]),
     bloom=st.floats(1.0, 3.0),
@@ -1335,6 +1621,8 @@ P_SKY_5_DRAWS = dict(
 # The auditor's case (verdict finding 1): the truth the second of two level poses, the camera 85 degrees up with its
 # back to a Moon about 60 degrees up; an answer that lines the sky up here cannot hold its bound
 @example(moon_alt=60.0, bearing=0.0, u=0.5, v=0.083, fov=95.0, roll=0.0, turns=0, pick=1, bloom=1.0, blur=2.0, peak=244, frame_time=0.0)
+# A low Moon near the east point, where the synthetic place's search is ill conditioned (a random seed, 2026-11-12)
+@example(moon_alt=11.125, bearing=219.375, u=0.0, v=0.0, fov=80.0, roll=-10.0, turns=0, pick=0, bloom=1.0, blur=1.0, peak=200, frame_time=0.0)
 def test_pbt_p_sky_5_whenever_the_answer_is_approximate_the_truth_lies_inside_its_bound(
     moon_alt: float, bearing: float, u: float, v: float, fov: float, roll: float, turns: int, pick: int,
     bloom: float, blur: float, peak: int, frame_time: float,

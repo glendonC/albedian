@@ -680,9 +680,9 @@ export function buildFindingEvidenceRecords(
       kind: deriveEvidenceKind(finding, solution.status),
       title: `Topocentric Ephemeris / Sky Model (${finding.title})`,
       sourceIdentifier: `${solution.solver?.catalogRelease ?? solution.id}:${finding.id}`,
-      // Every prediction without a catalog record comes from services/science/ephemeris.py's two models
+      // Every prediction without a catalog record comes from services/science/ephemeris.py, on ERFA's theories
       license:
-        'Computed in Albedian from the Standish and Williams (1992) elements (JPL Solar System Dynamics) and Meeus (1998), with no JPL Horizons request',
+        "Computed in Albedian with the IAU's ERFA routines (eraMoon98, eraPlan94, eraEpv00), with no JPL Horizons request",
       observationTimeUtc: solution.observedAtUTC,
       modelEpochUtc: solution.observedAtUTC,
       coordinateFrame: 'Topocentric / ICRS J2000',

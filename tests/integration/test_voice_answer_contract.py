@@ -162,9 +162,17 @@ def test_the_tables_come_from_the_code_they_name() -> None:
             assert any(_keys_at(solution, path) for solution in solutions.values()), path
     assert voice.CATALOG_PROVIDERS == catalog_reference.CATALOG_PROVIDERS
     assert voice.OBJECT_TYPES == catalog_reference.CATALOG_OBJECT_TYPES
-    planets = [name for name in ephemeris.PLANET_ELEMENTS if name != "Earth"]
+    # The ephemeris's own body table (services/science/ephemeris.py BODIES), in its order: the contract names every
+    # body it computes and the planet method every planet, so a body added on one side only fails here; the TypeScript
+    # lists are held to these through the fixture (voice-answer.test.ts)
+    planets = [body.name for body in ephemeris.BODIES if body.object_type == "planet"]
     assert voice.EPHEMERIS_METHODS["planet"]["bodies"] == planets
-    assert set(voice.EPHEMERIS_BODIES) == {*planets, "Moon", "Sun"}
+    assert list(voice.EPHEMERIS_BODIES) == [body.name for body in ephemeris.BODIES]
+    assert voice.EPHEMERIS_METHODS["moon"]["bodies"] == ["Moon"] and voice.EPHEMERIS_METHODS["sun"]["bodies"] == ["Sun"]
+    # The refusal sample for a body the ephemeris does not compute names one it truly does not compute
+    absent = [entry["sample"]["subject"]["body"] for entry in voice.build_answer_samples()["invalid"]
+              if entry["reason"] == "source a body the ephemeris does not compute"]
+    assert len(absent) == 1 and absent[0] not in {body.name for body in ephemeris.BODIES}, absent
     assert ephemeris.PLANET_METHOD and ephemeris.MOON_METHOD and ephemeris.SUN_METHOD
     # The eight phase names radiometry gives over 40 days of a made-up year
     names = {radiometry.compute_lunar_phase_and_illumination(f"2000-01-{day:02d}T00:00:00Z")["phaseName"]

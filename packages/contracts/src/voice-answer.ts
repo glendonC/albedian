@@ -233,7 +233,7 @@ export const CATALOG_SOURCE_QUANTITIES = [
 /** The bodies the ephemeris computes (services/science/ephemeris.py), and its methods: the module's PLANET_METHOD,
  * MOON_METHOD and SUN_METHOD, and radiometry.py's compute_lunar_phase_and_illumination. Each names the bodies it
  * computes and the quantities it gives, in the unit it gives them. */
-export const EPHEMERIS_BODIES = ['Sun', 'Moon', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus'] as const;
+export const EPHEMERIS_BODIES = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'] as const;
 const POSITION_ROWS = [
   { quantity: 'altitude', unit: 'deg', rule: 'ephemeris' },
   { quantity: 'azimuth', unit: 'deg', rule: 'ephemeris' },
@@ -242,7 +242,7 @@ const POSITION_ROWS = [
   { quantity: 'distance', unit: 'au', rule: 'ephemeris' },
 ] as const satisfies readonly SourceRow[];
 export const EPHEMERIS_METHODS = {
-  planet: { bodies: ['Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus'], rows: POSITION_ROWS },
+  planet: { bodies: ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'], rows: POSITION_ROWS },
   moon: { bodies: ['Moon'], rows: POSITION_ROWS },
   sun: { bodies: ['Sun'], rows: POSITION_ROWS },
   lunar_phase: {

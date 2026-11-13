@@ -27,15 +27,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from services.science.catalog import _iso_to_julian_date  # noqa: E402
-from services.science.ephemeris import (  # noqa: E402
-    PLANET_ELEMENTS,
-    _compute_moon_geocentric_icrs,
-    _ecliptic_to_equatorial_icrs,
-    _heliocentric_ecliptic_xyz_au,
-)
+from services.science.ephemeris import AU_KM, compute_solar_system_ephemerides  # noqa: E402
 
 EARTH_RADIUS_KM = 6371.0
-AU_KM = 149_597_870.7
 SOURCES = REPO_ROOT / "data" / "lookdev" / "sources"
 BLACK_MARBLE = SOURCES / "earth_blackmarble_2016_3km.jpg"
 BLUE_MARBLE = SOURCES / "earth_bluemarble_2004-11_21600.jpg"
@@ -46,7 +40,8 @@ NIGHT_SUN_DOT = -math.sin(math.radians(6.0))
 
 
 def gmst_deg(jd: float) -> float:
-    """Greenwich mean sidereal time, the same expression `services/science/catalog.py` uses."""
+    """Greenwich mean sidereal time, the IAU 1982 expression `services/science/catalog.py` used before it moved to
+    ERFA's Earth rotation angle; this scene's framing needs no better."""
     t = (jd - 2451545.0) / 36525.0
     return (
         280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * t * t - t**3 / 38710000.0
@@ -67,6 +62,16 @@ def geographic_to_icrs(lat_deg: np.ndarray, lon_deg: np.ndarray, gmst: float) ->
 def radec_to_unit(ra_deg: float, dec_deg: float) -> np.ndarray:
     ra, dec = math.radians(ra_deg), math.radians(dec_deg)
     return np.array([math.cos(dec) * math.cos(ra), math.cos(dec) * math.sin(ra), math.sin(dec)])
+
+
+def sun_and_moon(utc: str) -> tuple[np.ndarray, np.ndarray, float]:
+    """The Sun's unit direction, the Moon's position in Earth radii (EARTH_RADIUS_KM) and the Moon's distance in km,
+    seen from the Earth's centre in ICRS axes: the ephemeris' geocentric records as they are (no place: the scene is
+    framed from space)."""
+    sun, moon = compute_solar_system_ephemerides(utc, 0.0, 0.0, bodies=("Sun", "Moon"), topocentric=False)
+    moon_km = moon.distance_au * AU_KM
+    moon_pos = radec_to_unit(moon.ra_deg, moon.dec_deg) * (moon_km / EARTH_RADIUS_KM)
+    return radec_to_unit(sun.ra_deg, sun.dec_deg), moon_pos, moon_km
 
 
 def city_light_map(width: int = 720) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -118,13 +123,9 @@ def main() -> None:
     prepare_textures()
 
     jd = _iso_to_julian_date(args.utc)
-    t = (jd - 2451545.0) / 36525.0
     gmst = gmst_deg(jd)
 
-    earth_helio = np.array(_heliocentric_ecliptic_xyz_au(PLANET_ELEMENTS["Earth"], t))
-    sun_dir = unit(np.array(_ecliptic_to_equatorial_icrs(*(-earth_helio))))
-    moon_ra, moon_dec, moon_au = _compute_moon_geocentric_icrs(t)
-    moon_pos = radec_to_unit(moon_ra, moon_dec) * (moon_au * AU_KM / EARTH_RADIUS_KM)
+    sun_dir, moon_pos, moon_km = sun_and_moon(args.utc)
     moon_phase_angle = math.degrees(math.acos(float(np.clip(unit(-moon_pos) @ unit(sun_dir * 1e6 - moon_pos), -1, 1))))
 
     lights_lat, lights_lon, _ = choose_nadir(sun_dir, gmst, args.cap_deg)
@@ -151,7 +152,7 @@ def main() -> None:
         "units": "ICRS axes (+X toward RA 0h, +Z toward the north celestial pole); 1 unit = 6371 km",
         "sunDirection": sun_dir.tolist(),
         "moonPosition": moon_pos.tolist(),
-        "moonDistanceKm": moon_au * AU_KM,
+        "moonDistanceKm": moon_km,
         "moonPhaseAngleDeg": moon_phase_angle,
         "cameraNadir": {"latDeg": nadir_lat, "lonDeg": nadir_lon},
         "brightestNightLights": {"latDeg": lights_lat, "lonDeg": lights_lon},
@@ -160,7 +161,7 @@ def main() -> None:
         "cameraAltitudeKm": args.altitude_km,
         "assumptions": [
             "Earth's spin axis is ICRS +Z; precession and nutation (under half a degree) are ignored.",
-            "Sun and Moon come from the app's analytical ephemeris (Meeus low-precision Moon).",
+            "Sun and Moon come from the app's ephemeris (ERFA eraEpv00 and eraMoon98), seen from the Earth's centre.",
             "Camera height and the night-side framing rule are creative choices; the lighting is not.",
         ],
         "sources": {
@@ -176,7 +177,7 @@ def main() -> None:
     out.write_text(json.dumps(plan, indent=2))
     print(f"Wrote {out}")
     print(f"GMST {gmst:.2f} deg; camera over {nadir_lat:+.1f} lat, {nadir_lon:+.1f} lon at {args.altitude_km:.0f} km")
-    print(f"Moon at {moon_au * AU_KM:,.0f} km, phase angle {moon_phase_angle:.0f} deg")
+    print(f"Moon at {moon_km:,.0f} km, phase angle {moon_phase_angle:.0f} deg")
 
 
 if __name__ == "__main__":

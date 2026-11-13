@@ -1,9 +1,10 @@
 """The sky predicted for a recording's own capture time and place (layer 1 of spec predicted-sky-for-every-upload).
 
 Every finding made here is `predicted`: catalog stars carried to the date by their proper motion, and the Sun, the
-Moon and five planets from the low-precision ephemeris (`services/science/ephemeris.py`), each placed for the
-recorded time and place by deterministic math and never measured in the recording. They carry no detection and no
-pixel position. A plate solver's outcome is completed with them after the solve, and nothing it measured changes.
+Moon and five planets from the ephemeris on ERFA (`services/science/ephemeris.py`), seen from the recorded place
+(topocentric), each placed for the recorded time and place by deterministic math and never measured in the
+recording. They carry no detection and no pixel position. A plate solver's outcome is completed with them after the
+solve, and nothing it measured changes.
 When the solve is not calibrated and the camera has a head-worn profile, layer 2 lines them up over one frame by
 taking its bright spot to be the Moon, with the profile's field of view and a level head
 (`services/science/pose_estimate.py`): an `approximate` solution with its swept uncertainty, never checked against
@@ -27,6 +28,7 @@ from services.science.catalog import (
     get_all_sky_catalog_stars,
     icrs_to_altaz,
     propagate_star_epoch,
+    require_place,
 )
 from services.science.ephemeris import (
     EphemerisOutOfRange,
@@ -55,9 +57,12 @@ from services.science.wcs_models import (
     SourceDetection,
 )
 
-# A predicted star, carried to the date by its proper motion: the horizon transform leaves out nutation and annual
-# aberration (at most 37 arcsec, tests/integration/test_sky_transforms.py) and UT1 - UTC (at most 14 arcsec), and
-# the pinned positions sit within 3 arcsec of their catalog rows (test_pinned_catalog_matches_tiles.py)
+# A predicted star, carried to the date by its proper motion: the horizon transform is ERFA's apparent chain (catalog.py
+# `icrs_to_altaz`, tests/integration/test_sky_transforms.py) and leaves out UT1 - UTC (within 0.9 s, up to 13.5 arcsec
+# of rotation), polar motion and the star's own parallax (each under 1 arcsec), and the pinned positions sit within
+# 3 arcsec of their catalog rows (test_pinned_catalog_matches_tiles.py): about 19 arcsec in all. The 55 set when the
+# transform also left out nutation and annual aberration (up to 37 arcsec) is kept, wider than that [proposed: for the
+# sky lane or the lead to tighten]
 PREDICTED_STAR_UNCERTAINTY_ARCSEC = 55.0
 PREDICTED_BODIES = ("Sun", "Moon", "Venus", "Mars", "Jupiter", "Saturn", "Uranus")
 
@@ -115,8 +120,8 @@ def time_zone_from_gps(uncertainty_sec: float) -> str:
 
 
 STAR_POSITION_LIMITATION = (
-    "Its position leaves out nutation, annual aberration and UT1 - UTC, which its 55 arcsec uncertainty covers, and "
-    "its altitude leaves out refraction, which lifts what is near the horizon."
+    "Its position leaves out UT1 - UTC (up to 13.5 arcsec), polar motion and the star's own parallax, which its "
+    "55 arcsec uncertainty covers, and its altitude leaves out refraction, which lifts what is near the horizon."
 )
 
 
@@ -216,6 +221,7 @@ def predicted_sky_findings(
     out, by catalog id. `time_uncertainty_sec`, for a capture time whose time zone was worked out from the GPS position
     and time stamp, is added to each uncertainty as the sky's turn in that time and named in each limitation. Raises
     EphemerisOutOfRange outside 1800 to 2050."""
+    lat_deg, lon_deg = require_place(lat_deg, lon_deg)
     require_ephemeris_range(moment)
     findings: list[CelestialFindingRecord] = []
     time_arcsec = 0.0 if time_uncertainty_sec is None else SKY_TURN_ARCSEC_PER_SEC * time_uncertainty_sec
@@ -305,8 +311,8 @@ POSE_SOLVER = SolverIdentity(
     name="AlbedianHeadWornMoonPose",
     version="1.0.0",
     catalog_release=(
-        "A camera profile's field of view (services/science/camera_profiles.py) and the low-precision Moon "
-        "ephemeris (Meeus 1998 chapter 47), lowered by its parallax"
+        "A camera profile's field of view (services/science/camera_profiles.py) and the ERFA Moon ephemeris "
+        "(eraMoon98, Meeus 1998), topocentric"
     ),
 )
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"

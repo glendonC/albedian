@@ -61,7 +61,7 @@ const markerIds = (evidenceClass: string) =>
     (el as HTMLElement).dataset.testid!.replace('celestial-marker-', '')
   );
 const rings = () => [...container.querySelectorAll('[data-testid^="celestial-marker-ring-"]')] as HTMLElement[];
-const IN_FRAME = 7; // the six stars and the Moon the fixture places inside its frame
+const IN_FRAME = 6; // the five stars and the Moon the fixture places inside its frame
 
 /** The stage and the markers over it, as the source view draws them together. */
 function renderScene(session: ObservationSession) {

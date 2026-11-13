@@ -1408,8 +1408,8 @@
       "raDeg": 78.634467,
       "decDeg": -8.201638,
       "uncertaintyArcsec": 13.050233353953237,
-      "altDeg": 50.187050622512594,
-      "azDeg": 198.39552420678905
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
      },
      "evidence": {
       "id": "ev-finding-star-rigel",
@@ -1483,8 +1483,8 @@
       "raDeg": 88.792939,
       "decDeg": 7.407064,
       "uncertaintyArcsec": 29.15969756247523,
-      "altDeg": 67.36166165396949,
-      "azDeg": 184.0598941154039
+      "altDeg": 67.36139235228273,
+      "azDeg": 184.04422995883968
      },
      "evidence": {
       "id": "ev-finding-star-betelgeuse",
@@ -1558,8 +1558,8 @@
       "raDeg": 68.980163,
       "decDeg": 16.509302,
       "uncertaintyArcsec": 5.4693991636297925,
-      "altDeg": 66.2934467955525,
-      "azDeg": 240.27495488457862
+      "altDeg": 66.29830612813342,
+      "azDeg": 240.26777615689815
      },
      "evidence": {
       "id": "ev-finding-star-aldebaran",
@@ -1980,8 +1980,8 @@
       "raDeg": 78.634467,
       "decDeg": -8.201638,
       "uncertaintyArcsec": 13.050233353953237,
-      "altDeg": 50.187050622512594,
-      "azDeg": 198.39552420678905
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
      },
      "inferredDistancePc": {
       "lower": 242.71844660194174,
@@ -3344,8 +3344,8 @@
         "raDeg": 78.634467,
         "decDeg": -8.201638,
         "uncertaintyArcsec": 13.050233353953237,
-        "altDeg": 50.187050622512594,
-        "azDeg": 198.39552420678905
+        "altDeg": 50.18778706912651,
+        "azDeg": 198.38741087613562
        },
        "inferredDistancePc": {
         "lower": 242.71844660194174,
@@ -3593,8 +3593,8 @@
        "raDeg": 78.634467,
        "decDeg": -8.201638,
        "uncertaintyArcsec": 13.050233353953237,
-       "altDeg": 50.187050622512594,
-       "azDeg": 198.39552420678905
+       "altDeg": 50.18778706912651,
+       "azDeg": 198.38741087613562
       },
       "evidence": {
        "id": "ev-finding-star-rigel",
@@ -3688,8 +3688,8 @@
        "raDeg": 78.634467,
        "decDeg": -8.201638,
        "uncertaintyArcsec": 13.050233353953237,
-       "altDeg": 50.187050622512594,
-       "azDeg": 198.39552420678905
+       "altDeg": 50.18778706912651,
+       "azDeg": 198.38741087613562
       },
       "evidence": {
        "id": "ev-finding-star-rigel",
@@ -4895,8 +4895,8 @@
      "raDeg": 78.634467,
      "decDeg": -8.201638,
      "uncertaintyArcsec": 13.050233353953237,
-     "altDeg": 50.187050622512594,
-     "azDeg": 198.39552420678905
+     "altDeg": 50.18778706912651,
+     "azDeg": 198.38741087613562
     },
     "inferredDistancePc": {
      "lower": 242.71844660194174,
@@ -4977,8 +4977,8 @@
      "raDeg": 78.634467,
      "decDeg": -8.201638,
      "uncertaintyArcsec": 13.050233353953237,
-     "altDeg": 50.187050622512594,
-     "azDeg": 198.39552420678905
+     "altDeg": 50.18778706912651,
+     "azDeg": 198.38741087613562
     },
     "evidence": {
      "id": "ev-finding-star-rigel",

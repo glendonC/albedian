@@ -71,17 +71,19 @@ describe('projectThroughPose on the synthetic pose sample (P-SKY-8, REQ-SKY-6.2)
     expect(lined.yPx).toBeCloseTo(observed.yPx, 0);
   });
 
-  it('places the six predicted stars inside the frame, each ring the largest swept distance plus the centroid term', () => {
+  it('places the five predicted stars inside the frame, each ring the largest swept distance plus the centroid term', () => {
     const centroidDeg = POSE.poseEstimate!.beaconCentroidUncertaintyDeg;
     const placed = stars(POSE).map((f) => [f, projectThroughPose(f, POSE, FRAME)] as const).filter(([, p]) => p !== null);
-    expect(placed.length).toBe(6);
+    expect(placed.length).toBe(5);
     for (const [finding, lined] of placed) {
       const nominal = worldToPixelWCS(finding.skyPosition!.raDeg, finding.skyPosition!.decDeg, POSE.wcs!);
       expect(lined!.xPx).toBeCloseTo(nominal.uPx, 9);
       expect(lined!.yPx).toBeCloseTo(nominal.vPx, 9);
       const swept = largestSweptDistancePx(finding, POSE);
-      // The sweep moves every star away from the Moon by a nonzero amount
-      expect(swept).toBeGreaterThan(1);
+      // The sweep moves every star away from the Moon, which stays on its pixel under every WCS, by at least what the
+      // field of view's 10 percent alone moves it: 1 - 1 / 1.1 of the star's distance from the Moon
+      const moonPx = POSE.findings.find((f) => f.id === 'finding-observed-moon')!.sourceDetection!;
+      expect(swept).toBeGreaterThan((1 - 1 / 1.1) * Math.hypot(nominal.uPx - moonPx.xPx, nominal.vPx - moonPx.yPx));
       // The centroid term measured at the star's own place, in 360 bearings
       const centroid = centroidAtPlacePx(finding, POSE.wcs!, centroidDeg);
       expect(lined!.ringPx).toBeGreaterThanOrEqual(swept + centroid - 1e-9);

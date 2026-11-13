@@ -434,6 +434,9 @@ export const PoseEstimateSchema = z
     assumptions: z.array(z.string().min(1)).min(1),
     sweptWcs: z.array(WCSCalibrationModelSchema).min(2).max(27),
     maxCenterOffsetDeg: z.number().nonnegative().finite(),
+    // The beacon term, one number: the beacon centroid's own uncertainty (for the head-worn Moon pose, the Moon's
+    // predicted radius plus its ephemeris's stated uncertainty) plus the frame term, at most what drawing every
+    // position through the pose's one rotation leaves out
     beaconCentroidUncertaintyDeg: z.number().nonnegative().finite(),
   })
   .superRefine((pose, ctx) => {

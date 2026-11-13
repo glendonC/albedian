@@ -594,7 +594,7 @@ CATALOG_SOURCE_QUANTITIES: list[dict[str, Any]] = [
 ]
 # The bodies the ephemeris computes (services/science/ephemeris.py), and its methods: the module's PLANET_METHOD,
 # MOON_METHOD and SUN_METHOD, and radiometry.py's compute_lunar_phase_and_illumination
-EPHEMERIS_BODIES = ("Sun", "Moon", "Venus", "Mars", "Jupiter", "Saturn", "Uranus")
+EPHEMERIS_BODIES = ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune")
 _POSITION_ROWS = [
     _row(None, "altitude", "deg", "ephemeris"),
     _row(None, "azimuth", "deg", "ephemeris"),
@@ -603,7 +603,7 @@ _POSITION_ROWS = [
     _row(None, "distance", "au", "ephemeris"),
 ]
 EPHEMERIS_METHODS: dict[str, dict[str, Any]] = {
-    "planet": {"bodies": ["Venus", "Mars", "Jupiter", "Saturn", "Uranus"], "rows": _POSITION_ROWS},
+    "planet": {"bodies": ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"], "rows": _POSITION_ROWS},
     "moon": {"bodies": ["Moon"], "rows": _POSITION_ROWS},
     "sun": {"bodies": ["Sun"], "rows": _POSITION_ROWS},
     "lunar_phase": {
@@ -1611,7 +1611,7 @@ def build_answer_samples() -> dict[str, Any]:
         ("the moon method does not compute Saturn", below_distance, ["source", "method"], "moon"),
         ("the planet method does not compute the Sun", sun_distance, ["source", "method"], "planet"),
         ("the lunar phase is the Moon's", new_moon, ["subject", "body"], "Mars"),
-        ("a body the ephemeris does not compute", below_distance, ["subject", "body"], "Neptune"),
+        ("a body the ephemeris does not compute", below_distance, ["subject", "body"], "Pluto"),
         ("an ephemeris method from no list", body_distance, ["source", "method"], "sample method"),
         ("a catalog from no list", magnitude, ["source", "catalog"], "Sample Catalog"),
         ("a finding title as a name", drawn, ["source", "path"], ["findings", 3, "title"]),

@@ -83,11 +83,13 @@
     "ephemerisBodies": [
       "Sun",
       "Moon",
+      "Mercury",
       "Venus",
       "Mars",
       "Jupiter",
       "Saturn",
-      "Uranus"
+      "Uranus",
+      "Neptune"
     ],
     "uncertaintyMeanings": [
       "percentile_16_84",
@@ -665,11 +667,13 @@
     "ephemerisMethods": {
       "planet": {
         "bodies": [
+          "Mercury",
           "Venus",
           "Mars",
           "Jupiter",
           "Saturn",
-          "Uranus"
+          "Uranus",
+          "Neptune"
         ],
         "rows": [
           {
@@ -3961,7 +3965,7 @@
       {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "altitude",
         "value": {
@@ -4050,7 +4054,7 @@
       {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "azimuth",
         "value": {
@@ -4139,7 +4143,7 @@
       {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "right_ascension",
         "value": {
@@ -4228,7 +4232,7 @@
       {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "declination",
         "value": {
@@ -4317,7 +4321,7 @@
       {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "distance",
         "value": {
@@ -28263,7 +28267,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "altitude",
         "value": {
@@ -28284,7 +28288,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "altitude",
         "value": {
@@ -28305,7 +28309,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "altitude",
         "value": {
@@ -28670,7 +28674,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "azimuth",
         "value": {
@@ -28691,7 +28695,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "azimuth",
         "value": {
@@ -28712,7 +28716,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "azimuth",
         "value": {
@@ -29077,7 +29081,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "right_ascension",
         "value": {
@@ -29098,7 +29102,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "right_ascension",
         "value": {
@@ -29119,7 +29123,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "right_ascension",
         "value": {
@@ -29484,7 +29488,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "declination",
         "value": {
@@ -29505,7 +29509,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "declination",
         "value": {
@@ -29526,7 +29530,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "declination",
         "value": {
@@ -29891,7 +29895,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "distance",
         "value": {
@@ -29912,7 +29916,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "distance",
         "value": {
@@ -29933,7 +29937,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Venus"
+          "body": "Mercury"
         },
         "quantity": "distance",
         "value": {
@@ -40203,7 +40207,7 @@
       "sample": {
         "subject": {
           "kind": "ephemeris_body",
-          "body": "Neptune"
+          "body": "Pluto"
         },
         "quantity": "distance",
         "value": {

@@ -13,6 +13,7 @@ from services.science.catalog import (
     get_all_sky_catalog_stars,
     icrs_to_altaz,
     propagate_star_epoch,
+    require_place,
 )
 from services.science.detector import _to_luma_2d
 from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
@@ -53,6 +54,7 @@ def solve_horizon_and_beacon_pose(
 
     `source_asset_id` and `source_sha256` name the recording `image` comes from; there is no default.
     """
+    observer_lat, observer_lon = require_place(observer_lat, observer_lon)
     require_source_sha256(source_sha256)
     luma = _to_luma_2d(image)
     h, w = luma.shape
@@ -333,9 +335,13 @@ def solve_horizon_and_beacon_pose(
             f"horizon at row {horizon_y:.0f}, for the given time and place. Four constraints fit four pose "
             "parameters, so near-zero residuals do not measure accuracy, and no stars were held out for verification."
             + (
-                f" The Moon's predicted position is geocentric: from this place it appears about "
-                f"{moon_parallax_shift_arcsec(moon_eph.distance_au, moon_eph.alt_deg)[1]:,.0f} arcsec lower, "
-                "and the pose carries that offset."
+                (
+                    " The Moon's predicted position is topocentric: seen from this place, with its parallax applied."
+                    if moon_eph.frame == "topocentric"
+                    else f" The Moon's predicted position is geocentric: from this place it appears about "
+                    f"{moon_parallax_shift_arcsec(moon_eph.distance_au, moon_eph.alt_deg)[1]:,.0f} arcsec lower, "
+                    "and the pose carries that offset."
+                )
                 if moon_eph is not None
                 else ""
             )
@@ -380,8 +386,8 @@ def solve_horizon_and_beacon_pose(
             version="1.0.0",
             catalog_release=(
                 f"{len(sky_stars)} pinned bright stars "
-                f"({' and '.join(sorted({star.release_version for star in sky_stars}))} rows) and the "
-                "low-precision ephemeris (Standish and Williams 1992; Meeus 1998 chapter 47)"
+                f"({' and '.join(sorted({star.release_version for star in sky_stars}))} rows) and "
+                "the ERFA ephemeris (eraMoon98, Meeus 1998; eraPlan94, Simon et al. 1994; eraEpv00)"
             ),
         ),
         findings=findings,

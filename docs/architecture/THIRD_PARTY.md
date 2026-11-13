@@ -21,9 +21,12 @@ aberration, Earth rotation and refraction, and three analytic ephemerides: the M
 planets (`eraPlan94`, Simon et al. 1994) and the Earth (`eraEpv00`, a simplified VSOP2000) [verified: the licence
 texts and the function notes as `pyerfa` 2.0.1.5 ships them].
 
-What Albedian uses it for: the predicted positions of the Sun, the Moon and the planets and the sky transforms in
-`services/science/` (unit ephemeris-2). At this commit only `tests/integration/test_erfa_dependency.py` imports
-it: it checks the installed library against values from ERFA's own test file, `src/t_erfa_c.c` [tested].
+What Albedian uses it for: the predicted positions of the Sun, the Moon and the planets in
+`services/science/ephemeris.py`, and the time scales, the sky transforms between ICRS and the horizon, and their
+inverse in `services/science/catalog.py`; refraction there is Saemundsson's formula, not ERFA's.
+`tests/integration/test_erfa_dependency.py` checks the installed library against values from ERFA's own test file,
+`src/t_erfa_c.c`, and `tests/integration/test_ephemeris_horizons.py` checks the positions against JPL Horizons
+[tested].
 
 What the licences ask [verified: both licence texts]:
 - Keep the copyright notices, the conditions and the disclaimer with any copy of the source.
@@ -73,3 +76,24 @@ legal advice]:
   owner's machine today, so none needs it yet].
 - ODbL section 4.4 (share alike) binds a Derivative Database that is Publicly Used. Albedian changes no boundary and
   builds no database from them [inference], so it has none.
+
+## The stored JPL Horizons values
+
+`tests/fixtures/horizons_ephemeris.json.gz` holds 54 JPL Horizons observer tables (DE441): the Sun, the Moon and the
+planets at synthetic instants from 1800 to 2050, seen from four open-ocean places at sea level and from the Earth's
+centre. Each answer is kept exactly as received, with its request URL, the time it was retrieved (all on 2026-11-11,
+UTC) and its SHA-256. `scripts/fetch_horizons_ephemeris_checks.py` fetched them once, one request at a time;
+`tests/integration/test_ephemeris_horizons.py` checks the ephemeris against them. No place or time from anyone's
+recording is in them.
+
+JPL states no licence for Horizons output. The Horizons pages link Caltech/JPL's notice, whose Copyright Status
+says: "All documents available from this server may be protected under the U.S. and Foreign Copyright Laws.
+Permission to reproduce may be required." The owner agreed on 2026-11-12 to store these values in the repository with
+JPL's citation. In the form the Horizons manual gives under Acknowledgements (read 2026-11-12):
+
+> Giorgini, JD and JPL Solar System Dynamics Group, NASA/JPL Horizons On-Line Ephemeris System,
+> < https://ssd.jpl.nasa.gov/horizons/ >, data retrieved 2026-Nov-11.
+
+And in the form the Solar System Dynamics "about" page asks for data downloaded from its website:
+
+> NASA/JPL Solar System Dynamics. Data retrieved on 2026 November 11. (Horizons System). https://ssd.jpl.nasa.gov
