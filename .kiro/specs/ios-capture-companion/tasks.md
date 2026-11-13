@@ -54,7 +54,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     `showsDeviceMovementDisplay`; Core Location heading (its `headingOrientation` from the interface orientation)
     and place (when in use, `accuracyAuthorization`, `sourceInformation`); a ring buffer of samples for the window;
     all mapped onto the core's `SensorCapture`, behind protocols so the mapping is tested on the Mac with recorded
-    synthetic readings. A check screen in system default style. Usage descriptions for motion and location.
+    synthetic readings (`SensorRecorder`, `MotionRing`, `SensorMapping`; the app's `CoreMotionSource` and
+    `CoreLocationSource`). The check screen and the usage descriptions come with mobile-2 (the lead's split of
+    2026-11-12), so the device checks below are run once mobile-2 is on the phone.
   - Needs first: mobile-0.
   - Only on an iPhone (with the owner): the back camera along minus Z; the quaternion's direction (flat, screen up,
     top to true north, then tilted up); Core Location's true heading against the attitude's azimuth of the
@@ -68,7 +70,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     the session's `synchronizationClock` to the host clock; the field of view (with distortion correction, and the
     iOS 26 per-aspect-ratio call for dynamic formats), zoom, lens and photo size read at the shutter; content-aware
     distortion correction left off; the record built at the shutter; photo and record kept in the app's own storage
-    until sent (REQ-IOS-4.3). P3 on the phone: the stored bytes and SHA-256 equal the bytes the camera wrote.
+    until sent (REQ-IOS-4.3). P3 on the phone: the stored bytes and SHA-256 equal the bytes the camera wrote. A
+    check screen in system default style (the sensors' readings, then the camera's), and the usage descriptions
+    for the camera, motion and location.
   - Needs first: mobile-1; the owner's yes on the capture screen's look (reference board) before it is styled.
   - Only on an iPhone: the simulator has no camera. Checks: the host clock and `CMLogItem.timestamp` count the same
     seconds; whether `AVCapturePhoto.metadata` holds an EXIF time and its offset; which axis "horizontal" field of

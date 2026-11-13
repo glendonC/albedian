@@ -4,8 +4,10 @@ The part of Albedian that happens outside: aim, take the photo exactly as the ca
 pointed beside it, and send both to the laptop's service over the local network. The phone solves nothing and claims
 nothing about the sky. Spec: `.kiro/specs/ios-capture-companion/` (requirements, design, tasks).
 
-Unit mobile-0 holds the project, the tested core and one plain screen. No sensor or camera is read yet (mobile-1 and
-mobile-2), and nothing is styled: the look waits for the reference board and the owner's yes.
+Unit mobile-0 holds the project, the tested core and one plain screen. Unit mobile-1 adds the sensors: Core Motion
+and Core Location read into the core, tested on the Mac with stand-in sources; no screen shows them yet. The
+camera, a check screen and the permission texts come with mobile-2. Nothing is styled: the look waits for the
+reference board and the owner's yes.
 
 ## Layout
 
@@ -21,7 +23,14 @@ mobile-2), and nothing is styled: the look waits for the reference board and the
     request itself on a connection of its own to the paired address (`LaptopConnection.swift`); its states come from
     what that connection reports; it takes only a local network address.
   - `SampleCapture` holds synthetic readings (open ocean, the fixtures' synthetic moment) for tests and the screen.
-- `AlbedianCapture/`: the app, one screen in the system's default style, to run the pipeline by hand.
+  - `SensorRecorder` starts the two sensor sources, keeps their reports (device motion in a `MotionRing`, the
+    newest headings and fixes) and at a photo hands the builder a `SensorCapture`: the window's samples, and the
+    newest heading and fix not after the photo. `SensorMapping` carries each report onto the core's types as the
+    device gave it. The sources are protocols (`SensorReadings.swift`), so the tests feed synthetic reports.
+- `AlbedianCapture/`: the app, one screen in the system's default style, to run the pipeline by hand, and
+  `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device has it) and
+  `CoreLocationSource` (`CLLocationManager`, when in use only, best accuracy). Both run only on an iPhone: the
+  simulator has no motion sensors.
 - `AlbedianCapture.xcodeproj`: the iPhone app target, using the package.
 
 ## Run the tests

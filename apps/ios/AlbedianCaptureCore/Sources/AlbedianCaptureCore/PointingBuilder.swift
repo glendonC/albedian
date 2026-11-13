@@ -127,9 +127,15 @@ public struct MotionReading: Equatable, Sendable {
 
 /// One `CLHeading`.
 public struct HeadingReading: Equatable, Sendable {
-    /// `trueHeading`, degrees from true north; negative when it could not be determined.
+    /// `trueHeading`, degrees from true north; "A negative value indicates that the heading could not be determined"
+    /// (Apple's trueHeading page, developer.apple.com/documentation/corelocation/clheading/trueheading [verified];
+    /// CLHeading.h gives only the range 0.0 to 359.9). Valid only while location updates run.
     public var trueHeadingDeg: Double
-    /// `headingAccuracy`, degrees; negative means invalid.
+    /// `headingAccuracy`, degrees: Apple states it for the magnetic heading, "the maximum deviation ... between the
+    /// reported heading and the true geomagnetic heading", a positive value being the potential error of
+    /// `magneticHeading`; "A negative value means that the reported heading is invalid" (Apple's headingAccuracy page,
+    /// developer.apple.com/documentation/corelocation/clheading/headingaccuracy [verified]; CLHeading.h says the same).
+    /// Apple states no accuracy for the true heading itself.
     public var headingAccuracyDeg: Double
     /// The axis `CLLocationManager.headingOrientation` named while it was measured.
     public var orientation: HeadingOrientation
