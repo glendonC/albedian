@@ -2078,3 +2078,160 @@ def build_answer_samples() -> dict[str, Any]:
         "valid": {"AnswerStatement": statements, "VoiceAnswer": answers},
         "invalid": invalid,
     }
+
+
+# The answer route's request and reply: POST /api/voice/answer/{sha256}, the upload named in the path as
+# /api/ingest/{sha256}/solution names it (the mirror of VoiceQuestionRequestSchema and VoiceQuestionReplySchema in
+# packages/contracts/src/voice-answer.ts). The words are the person's own, as heard: text within its bounds, which
+# the contract never reads or changes (no trim, case or normalisation). The reply carries those words and one
+# VoiceAnswer, nothing else. An answer is about the distinct findings its statements name as subjects, which may be
+# none, one or several, each at the place it first comes; a refusal names none (answer_findings).
+QUESTION_HEARD_MAX_UTF16 = QUESTION_MAX_UTF16
+
+
+class VoiceQuestionRequest(_Strict):
+    question: Annotated[str, _wire_text(QUESTION_HEARD_MAX_UTF16)]
+    selected_finding_id: Optional[Annotated[str, _wire_text(ANSWER_TEXT_MAX_UTF16, FINDING_ID_PATTERN)]] = None
+
+
+class VoiceQuestionReply(_Strict):
+    heard: Annotated[str, _wire_text(QUESTION_HEARD_MAX_UTF16)]
+    answer: VoiceAnswer
+
+
+VOICE_QUESTION_REQUEST: TypeAdapter[Any] = TypeAdapter(VoiceQuestionRequest)
+VOICE_QUESTION_REPLY: TypeAdapter[Any] = TypeAdapter(VoiceQuestionReply)
+# How many valid samples of each record get an unknown key and a Python name at every level in the fixture
+QUESTION_KEY_SAMPLES = 4
+
+
+def answer_findings(answer: dict[str, Any]) -> list[str]:
+    """The distinct finding ids an answer's statements name as subjects, each at the place it first comes: none, one
+    or several. A refusal names none. The mirror of answerFindings in voice-answer.ts."""
+    if answer.get("status") != "answered":
+        return []
+    found: list[str] = []
+    for statement in answer["statements"]:
+        subject = statement["subject"]
+        if subject["kind"] == "finding" and subject["findingId"] not in found:
+            found.append(subject["findingId"])
+    return found
+
+
+# The words as heard that a contract would change if it trimmed, cased or normalised them: each is held as given
+WORDS_AS_HEARD = (
+    ("spaces at both ends", "  how far is that star?  "),
+    ("capitals", "How Far Is VEGA"),
+    ("a base letter and a combining mark", "where is Ve\u0301ga"),
+    ("the same letter precomposed", "where is V\u00e9ga"),
+    ("two spaces inside", "how  far is it"),
+    ("a script with no case", "\u5317\u6975\u661f\u306f\u3069\u3053"),
+)
+
+
+def python_name(key: str) -> str:
+    """A camelCase wire name as Python would write it (selectedFindingId -> selected_finding_id)."""
+    return "".join("_" + chr(ord(char) + 0x20) if "A" <= char <= "Z" else char for char in key)
+
+
+def build_question_samples() -> dict[str, Any]:
+    """Valid and invalid requests and replies of the answer route, for the fixture both sides parse. Made up."""
+    answer_samples = build_answer_samples()
+    answers = answer_samples["valid"]["VoiceAnswer"]
+    answered = [a for a in answers if a["status"] == "answered"]
+    refused = [a for a in answers if a["status"] == "unanswerable"]
+    words = "how far is that star?"
+    requests = [
+        {"question": words},
+        {"question": "what is that one", "selectedFindingId": "finding-star-vega"},
+        {"question": "is Saturn up?", "selectedFindingId": "finding-predicted-saturn"},
+        {"question": "сириус?"},
+    ]
+    replies = [{"heard": words, "answer": a} for a in [answered[0], refused[0], *answered[1:], *refused[1:]]]
+    requests += [{"question": heard} for _kind, heard in WORDS_AS_HEARD]
+    replies += [{"heard": heard, "answer": answered[0]} for _kind, heard in WORDS_AS_HEARD]
+    # One answer of each count of findings it is about, and a refusal
+    about = []
+    for count in (0, 1, 2):
+        answer = next(a for a in answered if len(answer_findings(a)) == count)
+        about.append({"what": f"an answer about {count} findings", "answer": answer, "findings": answer_findings(answer)})
+    about.append({"what": "a refusal", "answer": refused[0], "findings": []})
+    # A finding named again after another keeps the place it first comes
+    two = next(a for a in answered if len(answer_findings(a)) == 2)
+    first_a, first_b = answer_findings(two)
+    by_finding = {sid: next(st for st in two["statements"] if st["subject"].get("findingId") == sid) for sid in (first_a, first_b)}
+    pool = {"A": by_finding[first_a], "B": by_finding[first_b],
+            "C": {**by_finding[first_a], "subject": {**by_finding[first_a]["subject"], "findingId": "finding-sample-c"}}}
+    others = [st for st in two["statements"] if st["subject"]["kind"] != "finding"]
+    for order in ("ABA", "ABBA", "ABCB"):
+        answer = {**two, "statements": [pool[letter] for letter in order] + others}
+        VOICE_ANSWER.validate_python(answer)
+        about.append({"what": f"named again: {', '.join(order)}", "answer": answer, "findings": answer_findings(answer)})
+    finding_room = ANSWER_TEXT_MAX_UTF16 - len("finding-")
+    edges = [
+        {"schema": "VoiceQuestionRequest", "base": {}, "field": "question",
+         "inside": ["x", "x" * QUESTION_HEARD_MAX_UTF16, "\U0001d400" * (QUESTION_HEARD_MAX_UTF16 // 2)],
+         "outside": ["", "x" * (QUESTION_HEARD_MAX_UTF16 + 1), "\U0001d400" * (QUESTION_HEARD_MAX_UTF16 // 2) + "x",
+                     "a\nb", "a\ud800b", 7]},
+        {"schema": "VoiceQuestionReply", "base": {"answer": answered[0]}, "field": "heard",
+         "inside": ["x", "x" * QUESTION_HEARD_MAX_UTF16],
+         "outside": ["", "x" * (QUESTION_HEARD_MAX_UTF16 + 1), "a\x85b", None]},
+        {"schema": "VoiceQuestionRequest", "base": {"question": words}, "field": "selectedFindingId",
+         "inside": ["finding-x", "finding-" + "a" * finding_room, "finding-a_b-c9"],
+         "outside": ["finding-", "finding-" + "a" * (finding_room + 1), "finding-x-", "Finding-x", "finding--x",
+                     "finding-x y", "finding-é", None]},
+    ]
+    invalid: list[dict[str, Any]] = []
+
+    def bad(schema: str, sample: Any, reason: str) -> None:
+        invalid.append({"schema": schema, "sample": sample, "reason": reason})
+
+    for edge in edges:
+        for outside in edge["outside"]:
+            bad(edge["schema"], {**edge["base"], edge["field"]: outside}, f"edge {edge['field']} {outside!r}"[:200])
+    bad("VoiceQuestionRequest", {}, "no words")
+    bad("VoiceQuestionRequest", [words], "a list, not a record")
+    bad("VoiceQuestionReply", {"heard": words}, "no answer")
+    bad("VoiceQuestionReply", {"answer": answered[0]}, "no words heard")
+    bad("VoiceQuestionReply", {"heard": words, "answer": None}, "a null answer")
+    bad("VoiceQuestionReply", {"heard": words, "answer": answer_samples["invalid"][0]["sample"]},
+        "an answer the answer contract refuses")
+    bad("VoiceQuestionReply", {"heard": words, "answer": answered[0], "question": words}, "the request's words beside the reply's")
+
+    def nodes(node: Any, at: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
+        if isinstance(node, dict):
+            return [at] + [path for key, value in node.items() for path in nodes(value, (*at, key))]
+        if isinstance(node, list):
+            return [path for index, value in enumerate(node) for path in nodes(value, (*at, index))]
+        return []
+
+    def changed(sample: Any, path: tuple[Any, ...], change: Any) -> Any:
+        copied = json.loads(json.dumps(sample))
+        node = copied
+        for step in path:
+            node = node[step]
+        change(node)
+        return copied
+
+    for name, valid in (("VoiceQuestionRequest", requests), ("VoiceQuestionReply", replies)):
+        for index, sample in enumerate(valid[:QUESTION_KEY_SAMPLES]):
+            for path in nodes(sample):
+                bad(name, changed(sample, path, lambda node: node.__setitem__("unknownKey", 1)),
+                    f"{name}[{index}] unknown key at {list(path)}")
+                node = sample
+                for step in path:
+                    node = node[step]
+                for key in list(node):
+                    snake = python_name(key)
+                    if snake != key:
+                        bad(name, changed(sample, path, lambda n, k=key, s=snake: n.__setitem__(s, n.pop(k))),
+                            f"{name}[{index}] Python name {snake} at {list(path)}")
+    return {
+        "limits": {"heardMaxUtf16": QUESTION_HEARD_MAX_UTF16, "findingIdMaxUtf16": ANSWER_TEXT_MAX_UTF16,
+                   "findingIdPattern": FINDING_ID_PATTERN},
+        "edges": edges,
+        "wordsAsHeard": [{"kind": kind, "words": heard} for kind, heard in WORDS_AS_HEARD],
+        "about": about,
+        "valid": {"VoiceQuestionRequest": requests, "VoiceQuestionReply": replies},
+        "invalid": invalid,
+    }

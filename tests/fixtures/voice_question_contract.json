@@ -1,0 +1,5410 @@
+{
+ "limits": {
+  "heardMaxUtf16": 500,
+  "findingIdMaxUtf16": 128,
+  "findingIdPattern": "^finding-[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$"
+ },
+ "edges": [
+  {
+   "schema": "VoiceQuestionRequest",
+   "base": {},
+   "field": "question",
+   "inside": [
+    "x",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+   ],
+   "outside": [
+    "",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00x",
+    "a\nb",
+    "a\ud800b",
+    7
+   ]
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "base": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "field": "heard",
+   "inside": [
+    "x",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   "outside": [
+    "",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "a\u0085b",
+    null
+   ]
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "base": {
+    "question": "how far is that star?"
+   },
+   "field": "selectedFindingId",
+   "inside": [
+    "finding-x",
+    "finding-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "finding-a_b-c9"
+   ],
+   "outside": [
+    "finding-",
+    "finding-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "finding-x-",
+    "Finding-x",
+    "finding--x",
+    "finding-x y",
+    "finding-\u00e9",
+    null
+   ]
+  }
+ ],
+ "wordsAsHeard": [
+  {
+   "kind": "spaces at both ends",
+   "words": "  how far is that star?  "
+  },
+  {
+   "kind": "capitals",
+   "words": "How Far Is VEGA"
+  },
+  {
+   "kind": "a base letter and a combining mark",
+   "words": "where is Ve\u0301ga"
+  },
+  {
+   "kind": "the same letter precomposed",
+   "words": "where is V\u00e9ga"
+  },
+  {
+   "kind": "two spaces inside",
+   "words": "how  far is it"
+  },
+  {
+   "kind": "a script with no case",
+   "words": "\u5317\u6975\u661f\u306f\u3069\u3053"
+  }
+ ],
+ "about": [
+  {
+   "what": "an answer about 0 findings",
+   "answer": {
+    "status": "answered",
+    "question": "distance",
+    "observationSolutionId": "sol-sample",
+    "sentence": "Below your horizon at the time; predicted 9.5 AU away.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "ephemeris_body",
+       "body": "Saturn"
+      },
+      "quantity": "distance",
+      "value": {
+       "kind": "number",
+       "amount": 9.5,
+       "unit": "au"
+      },
+      "evidenceClass": "predicted",
+      "source": {
+       "kind": "ephemeris",
+       "method": "planet"
+      }
+     }
+    ]
+   },
+   "findings": []
+  },
+  {
+   "what": "an answer about 1 findings",
+   "answer": {
+    "status": "answered",
+    "question": "identity",
+    "observationSolutionId": "sol-sample",
+    "sentence": "That is Sample Star, a star in a made-up catalog.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "name",
+      "value": {
+       "kind": "text",
+       "text": "Sample Star"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        0,
+        "catalogRef",
+        "commonName"
+       ]
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "object_type",
+      "value": {
+       "kind": "text",
+       "text": "star"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     }
+    ]
+   },
+   "findings": [
+    "finding-star-sample"
+   ]
+  },
+  {
+   "what": "an answer about 2 findings",
+   "answer": {
+    "status": "answered",
+    "question": "brightness",
+    "observationSolutionId": "sol-sample",
+    "sentence": "Magnitude -0.5 in the catalog; clearly above the noise here.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     }
+    ]
+   },
+   "findings": [
+    "finding-star-sample",
+    "finding-obs-1"
+   ]
+  },
+  {
+   "what": "a refusal",
+   "answer": {
+    "status": "unanswerable",
+    "question": "unanswerable",
+    "reason": "outside_the_data",
+    "sentence": "Nothing in this photo's data answers that."
+   },
+   "findings": []
+  },
+  {
+   "what": "named again: A, B, A",
+   "answer": {
+    "status": "answered",
+    "question": "brightness",
+    "observationSolutionId": "sol-sample",
+    "sentence": "Magnitude -0.5 in the catalog; clearly above the noise here.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     }
+    ]
+   },
+   "findings": [
+    "finding-star-sample",
+    "finding-obs-1"
+   ]
+  },
+  {
+   "what": "named again: A, B, B, A",
+   "answer": {
+    "status": "answered",
+    "question": "brightness",
+    "observationSolutionId": "sol-sample",
+    "sentence": "Magnitude -0.5 in the catalog; clearly above the noise here.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     }
+    ]
+   },
+   "findings": [
+    "finding-star-sample",
+    "finding-obs-1"
+   ]
+  },
+  {
+   "what": "named again: A, B, C, B",
+   "answer": {
+    "status": "answered",
+    "question": "brightness",
+    "observationSolutionId": "sol-sample",
+    "sentence": "Magnitude -0.5 in the catalog; clearly above the noise here.",
+    "statements": [
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-star-sample",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-sample-c",
+       "evidenceClass": "catalog_matched"
+      },
+      "quantity": "apparent_magnitude",
+      "value": {
+       "kind": "number",
+       "amount": -0.5,
+       "unit": "mag"
+      },
+      "evidenceClass": "catalog_matched",
+      "source": {
+       "kind": "catalog",
+       "catalog": "Gaia DR3",
+       "release": "sample-release-1",
+       "rowId": "sample-row-1"
+      }
+     },
+     {
+      "subject": {
+       "kind": "finding",
+       "findingId": "finding-obs-1",
+       "evidenceClass": "observed"
+      },
+      "quantity": "detection_snr",
+      "value": {
+       "kind": "number",
+       "amount": 42.5,
+       "unit": "ratio"
+      },
+      "evidenceClass": "observed",
+      "source": {
+       "kind": "solution_field",
+       "path": [
+        "findings",
+        1,
+        "sourceDetection",
+        "snr"
+       ]
+      }
+     }
+    ]
+   },
+   "findings": [
+    "finding-star-sample",
+    "finding-obs-1",
+    "finding-sample-c"
+   ]
+  }
+ ],
+ "valid": {
+  "VoiceQuestionRequest": [
+   {
+    "question": "how far is that star?"
+   },
+   {
+    "question": "what is that one",
+    "selectedFindingId": "finding-star-vega"
+   },
+   {
+    "question": "is Saturn up?",
+    "selectedFindingId": "finding-predicted-saturn"
+   },
+   {
+    "question": "\u0441\u0438\u0440\u0438\u0443\u0441?"
+   },
+   {
+    "question": "  how far is that star?  "
+   },
+   {
+    "question": "How Far Is VEGA"
+   },
+   {
+    "question": "where is Ve\u0301ga"
+   },
+   {
+    "question": "where is V\u00e9ga"
+   },
+   {
+    "question": "how  far is it"
+   },
+   {
+    "question": "\u5317\u6975\u661f\u306f\u3069\u3053"
+   }
+  ],
+  "VoiceQuestionReply": [
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "Nothing in this photo's data answers that."
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Below your horizon at the time; predicted 9.5 AU away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "ephemeris_body",
+        "body": "Saturn"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 9.5,
+        "unit": "au"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "planet"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "brightness",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Magnitude -0.5 in the catalog; clearly above the noise here.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "apparent_magnitude",
+       "value": {
+        "kind": "number",
+        "amount": -0.5,
+        "unit": "mag"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-obs-1",
+        "evidenceClass": "observed"
+       },
+       "quantity": "detection_snr",
+       "value": {
+        "kind": "number",
+        "amount": 42.5,
+        "unit": "ratio"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         1,
+         "sourceDetection",
+         "snr"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "brightness",
+     "observationSolutionId": "sol-sample",
+     "sentence": "a\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2d\ud83d\udd2da",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "detection_snr",
+       "value": {
+        "kind": "number",
+        "amount": 80.25,
+        "unit": "ratio"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "sourceDetection",
+         "snr"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "colour_temperature",
+     "observationSolutionId": "sol-sample",
+     "sentence": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "colour_index_bp_rp",
+       "value": {
+        "kind": "number",
+        "amount": -0.25,
+        "unit": "mag"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "effective_temperature",
+       "value": {
+        "kind": "number",
+        "amount": 8000,
+        "unit": "K",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7900,
+         "upper": 8100,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "spectral_type",
+       "value": {
+        "kind": "text",
+        "text": "A0V"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "constellation",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted to lie in Sample.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "constellation",
+       "value": {
+        "kind": "text",
+        "text": "Sample"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         2,
+         "catalogRef",
+         "constellation"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "sky_position",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted below your horizon.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "altitude",
+       "value": {
+        "kind": "number",
+        "amount": -12.5,
+        "unit": "deg"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "position_uncertainty",
+       "value": {
+        "kind": "number",
+        "amount": 3.5,
+        "unit": "arcsec"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         2,
+         "skyPosition",
+         "uncertaintyArcsec"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "sky_position",
+     "observationSolutionId": "sol-sample",
+     "sentence": "7",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "right_ascension",
+       "value": {
+        "kind": "number",
+        "amount": 279.25,
+        "unit": "deg"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "skyPosition",
+         "raDeg"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "right_ascension",
+       "value": {
+        "kind": "number",
+        "amount": 279.25,
+        "unit": "deg"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "sky_position",
+     "observationSolutionId": "sol-sample",
+     "sentence": "\u0663",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-obs-1",
+        "evidenceClass": "observed"
+       },
+       "quantity": "declination",
+       "value": {
+        "kind": "number",
+        "amount": 38.75,
+        "unit": "deg"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         1,
+         "skyPosition",
+         "decDeg"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-obs-1",
+        "evidenceClass": "observed"
+       },
+       "quantity": "altitude",
+       "value": {
+        "kind": "number",
+        "amount": 30.5,
+        "unit": "deg"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "moon_phase",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 75 percent lit.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "illuminated_fraction",
+       "value": {
+        "kind": "number",
+        "amount": 0.75,
+        "unit": "fraction"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "lunar_phase"
+       }
+      },
+      {
+       "subject": {
+        "kind": "ephemeris_body",
+        "body": "Moon"
+       },
+       "quantity": "phase_angle",
+       "value": {
+        "kind": "number",
+        "amount": 60.5,
+        "unit": "deg"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "lunar_phase"
+       }
+      },
+      {
+       "subject": {
+        "kind": "ephemeris_body",
+        "body": "Moon"
+       },
+       "quantity": "moon_phase_name",
+       "value": {
+        "kind": "text",
+        "text": "Waxing Gibbous"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "lunar_phase"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "moon_phase",
+     "observationSolutionId": "sol-sample",
+     "sentence": "New.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "ephemeris_body",
+        "body": "Moon"
+       },
+       "quantity": "illuminated_fraction",
+       "value": {
+        "kind": "number",
+        "amount": 0,
+        "unit": "fraction"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "lunar_phase"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "photo_contents",
+     "observationSolutionId": "sol-sample",
+     "sentence": "120 points of light, 12 of them matched to stars.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "detected_source_count",
+       "value": {
+        "kind": "number",
+        "amount": 120,
+        "unit": "count"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "quality",
+         "detectedCandidateCount"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "matched_star_count",
+       "value": {
+        "kind": "number",
+        "amount": 12.0,
+        "unit": "count"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "quality",
+         "matchedInlierCount"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-scene-sample",
+        "evidenceClass": "simulated"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Scene Body"
+       },
+       "evidenceClass": "simulated",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         3,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "confidence",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Calibrated on 12 stars; held-out residual under a pixel.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "solution_status",
+       "value": {
+        "kind": "text",
+        "text": "calibrated"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "status"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "matched_star_count",
+       "value": {
+        "kind": "number",
+        "amount": 12.0,
+        "unit": "count"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "quality",
+         "matchedInlierCount"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "held_out_pair_count",
+       "value": {
+        "kind": "number",
+        "amount": 0,
+        "unit": "count"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "quality",
+         "heldOutPairCount"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "held_out_median_residual",
+       "value": {
+        "kind": "number",
+        "amount": 0.75,
+        "unit": "px"
+       },
+       "evidenceClass": "observed",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "quality",
+         "medianResidualPx"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "confidence",
+     "observationSolutionId": "sol-sample",
+     "sentence": "An estimate from the Moon, good to about 2.5 degrees.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "solution"
+       },
+       "quantity": "pose_max_offset",
+       "value": {
+        "kind": "number",
+        "amount": 2.5,
+        "unit": "deg"
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "poseEstimate",
+         "maxCenterOffsetDeg"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol_a",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-a-b",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "a",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "distance",
+     "reason": "not_found_in_this_sky",
+     "sentence": "I could not find that in this photo's sky.",
+     "observationSolutionId": "sol-sample"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "identity",
+     "reason": "photo_not_solved",
+     "sentence": "This photo's sky is not solved, so nothing is named."
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "moon_phase",
+     "reason": "no_time_or_place",
+     "sentence": "The Moon's phase needs your photo's time and place.",
+     "observationSolutionId": "sol_0123456789abcdef"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "distance",
+     "reason": "not_in_the_data",
+     "sentence": "This star has no distance in its catalog.",
+     "observationSolutionId": "sol-sample"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "a"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "\u00e9"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "\u216b"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "\u4e2d"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "a\u200db"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "a\u2028b"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": " \u3164a\u3164 "
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "\u200bz"
+    }
+   },
+   {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "a\u00adb"
+    }
+   },
+   {
+    "heard": "  how far is that star?  ",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "How Far Is VEGA",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "where is Ve\u0301ga",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "where is V\u00e9ga",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "how  far is it",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   {
+    "heard": "\u5317\u6975\u661f\u306f\u3069\u3053",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "invalid": [
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": ""
+   },
+   "reason": "edge question ''"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "reason": "edge question 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00x"
+   },
+   "reason": "edge question '\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "a\nb"
+   },
+   "reason": "edge question 'a\\nb'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "a\ud800b"
+   },
+   "reason": "edge question 'a\\ud800b'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": 7
+   },
+   "reason": "edge question 7"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "heard": ""
+   },
+   "reason": "edge heard ''"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "heard": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "reason": "edge heard 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "heard": "a\u0085b"
+   },
+   "reason": "edge heard 'a\\x85b'"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "heard": null
+   },
+   "reason": "edge heard None"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding-"
+   },
+   "reason": "edge selectedFindingId 'finding-'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   "reason": "edge selectedFindingId 'finding-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding-x-"
+   },
+   "reason": "edge selectedFindingId 'finding-x-'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "Finding-x"
+   },
+   "reason": "edge selectedFindingId 'Finding-x'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding--x"
+   },
+   "reason": "edge selectedFindingId 'finding--x'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding-x y"
+   },
+   "reason": "edge selectedFindingId 'finding-x y'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": "finding-\u00e9"
+   },
+   "reason": "edge selectedFindingId 'finding-\u00e9'"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "selectedFindingId": null
+   },
+   "reason": "edge selectedFindingId None"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {},
+   "reason": "no words"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": [
+    "how far is that star?"
+   ],
+   "reason": "a list, not a record"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?"
+   },
+   "reason": "no answer"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "no words heard"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": null
+   },
+   "reason": "a null answer"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "subject": {
+      "kind": "finding",
+      "findingId": "finding-star-sample",
+      "evidenceClass": "catalog_matched"
+     },
+     "quantity": "name",
+     "value": {
+      "kind": "text",
+      "text": "Sample Star"
+     },
+     "evidenceClass": "catalog_matched"
+    }
+   },
+   "reason": "an answer the answer contract refuses"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "question": "how far is that star?"
+   },
+   "reason": "the request's words beside the reply's"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "how far is that star?",
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionRequest[0] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "what is that one",
+    "selectedFindingId": "finding-star-vega",
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionRequest[1] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "what is that one",
+    "selected_finding_id": "finding-star-vega"
+   },
+   "reason": "VoiceQuestionRequest[1] Python name selected_finding_id at []"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "is Saturn up?",
+    "selectedFindingId": "finding-predicted-saturn",
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionRequest[2] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "is Saturn up?",
+    "selected_finding_id": "finding-predicted-saturn"
+   },
+   "reason": "VoiceQuestionRequest[2] Python name selected_finding_id at []"
+  },
+  {
+   "schema": "VoiceQuestionRequest",
+   "sample": {
+    "question": "\u0441\u0438\u0440\u0438\u0443\u0441?",
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionRequest[3] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    },
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ],
+     "unknownKey": 1
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ],
+     "observation_solution_id": "sol-sample"
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name observation_solution_id at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       },
+       "unknownKey": 1
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       },
+       "evidence_class": "catalog_matched"
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name evidence_class at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched",
+        "unknownKey": 1
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "evidenceClass": "catalog_matched",
+        "finding_id": "finding-star-sample"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name finding_id at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidence_class": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name evidence_class at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star",
+        "unknownKey": 1
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 0, 'value']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ],
+        "unknownKey": 1
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 0, 'source']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       },
+       "unknownKey": 1
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 1]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       },
+       "evidence_class": "catalog_matched"
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name evidence_class at ['answer', 'statements', 1]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched",
+        "unknownKey": 1
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 1, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "evidenceClass": "catalog_matched",
+        "finding_id": "finding-star-sample"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name finding_id at ['answer', 'statements', 1, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidence_class": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name evidence_class at ['answer', 'statements', 1, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star",
+        "unknownKey": 1
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 1, 'value']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "rowId": "sample-row-1",
+        "unknownKey": 1
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] unknown key at ['answer', 'statements', 1, 'source']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "identity",
+     "observationSolutionId": "sol-sample",
+     "sentence": "That is Sample Star, a star in a made-up catalog.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "name",
+       "value": {
+        "kind": "text",
+        "text": "Sample Star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "catalogRef",
+         "commonName"
+        ]
+       }
+      },
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "object_type",
+       "value": {
+        "kind": "text",
+        "text": "star"
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "catalog",
+        "catalog": "Gaia DR3",
+        "release": "sample-release-1",
+        "row_id": "sample-row-1"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[0] Python name row_id at ['answer', 'statements', 1, 'source']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "Nothing in this photo's data answers that."
+    },
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionReply[1] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "unanswerable",
+     "question": "unanswerable",
+     "reason": "outside_the_data",
+     "sentence": "Nothing in this photo's data answers that.",
+     "unknownKey": 1
+    }
+   },
+   "reason": "VoiceQuestionReply[1] unknown key at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    },
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ],
+     "unknownKey": 1
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ],
+     "observation_solution_id": "sol-sample"
+    }
+   },
+   "reason": "VoiceQuestionReply[2] Python name observation_solution_id at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       },
+       "unknownKey": 1
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       },
+       "evidence_class": "catalog_matched"
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] Python name evidence_class at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched",
+        "unknownKey": 1
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "evidenceClass": "catalog_matched",
+        "finding_id": "finding-star-sample"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] Python name finding_id at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidence_class": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] Python name evidence_class at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        },
+        "unknownKey": 1
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer', 'statements', 0, 'value']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84",
+         "unknownKey": 1
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ]
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer', 'statements', 0, 'value', 'uncertainty']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Sample Star is about 25 light years away.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-star-sample",
+        "evidenceClass": "catalog_matched"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 7.75,
+        "unit": "pc",
+        "uncertainty": {
+         "kind": "interval",
+         "lower": 7.5,
+         "upper": 8.25,
+         "meaning": "percentile_16_84"
+        }
+       },
+       "evidenceClass": "catalog_matched",
+       "source": {
+        "kind": "solution_field",
+        "path": [
+         "findings",
+         0,
+         "inferredDistancePc",
+         "median"
+        ],
+        "unknownKey": 1
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[2] unknown key at ['answer', 'statements', 0, 'source']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    },
+    "unknownKey": 1
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at []"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ],
+     "unknownKey": 1
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ],
+     "observation_solution_id": "sol-sample"
+    }
+   },
+   "reason": "VoiceQuestionReply[3] Python name observation_solution_id at ['answer']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       },
+       "unknownKey": 1
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       },
+       "evidence_class": "predicted"
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] Python name evidence_class at ['answer', 'statements', 0]"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted",
+        "unknownKey": 1
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "evidenceClass": "predicted",
+        "finding_id": "finding-predicted-moon"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] Python name finding_id at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidence_class": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] Python name evidence_class at ['answer', 'statements', 0, 'subject']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        },
+        "unknownKey": 1
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer', 'statements', 0, 'value']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound",
+         "unknownKey": 1
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer', 'statements', 0, 'value', 'uncertainty']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "meaning": "error_bound",
+         "half_width": 1e-05
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon"
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] Python name half_width at ['answer', 'statements', 0, 'value', 'uncertainty']"
+  },
+  {
+   "schema": "VoiceQuestionReply",
+   "sample": {
+    "heard": "how far is that star?",
+    "answer": {
+     "status": "answered",
+     "question": "distance",
+     "observationSolutionId": "sol-sample",
+     "sentence": "Predicted for your photo's time and place: 385,000 km.",
+     "statements": [
+      {
+       "subject": {
+        "kind": "finding",
+        "findingId": "finding-predicted-moon",
+        "evidenceClass": "predicted"
+       },
+       "quantity": "distance",
+       "value": {
+        "kind": "number",
+        "amount": 0.00257,
+        "unit": "au",
+        "uncertainty": {
+         "kind": "plus_minus",
+         "halfWidth": 1e-05,
+         "meaning": "error_bound"
+        }
+       },
+       "evidenceClass": "predicted",
+       "source": {
+        "kind": "ephemeris",
+        "method": "moon",
+        "unknownKey": 1
+       }
+      }
+     ]
+    }
+   },
+   "reason": "VoiceQuestionReply[3] unknown key at ['answer', 'statements', 0, 'source']"
+  }
+ ]
+}

@@ -521,3 +521,48 @@ export const VoiceAnswerSchema = z
     });
   });
 export type VoiceAnswer = z.infer<typeof VoiceAnswerSchema>;
+
+/** The most UTF-16 units of the words a person said, as the voice command's question holds them. */
+export const QUESTION_HEARD_MAX_UTF16 = 500;
+const heardText = boundedText(QUESTION_HEARD_MAX_UTF16);
+
+/**
+ * What the answer route receives (POST /api/voice/answer/{sha256}, the upload named in the path as
+ * /api/ingest/{sha256}/solution names it; Python mirror: services/contracts/voice.py): the words a person said, as
+ * heard, which the contract never reads beyond their bounds nor changes (no trim, case or normalisation), and the
+ * finding in view if there is one.
+ */
+export const VoiceQuestionRequestSchema = z
+  .object({
+    question: heardText,
+    selectedFindingId: boundedText(ANSWER_TEXT_MAX_UTF16, FINDING_ID_PATTERN, 'A finding id has the form the backend mints.').optional(),
+  })
+  .strict();
+export type VoiceQuestionRequest = z.infer<typeof VoiceQuestionRequestSchema>;
+
+/**
+ * What the answer route replies: the words as heard, unchanged, and one answer, nothing else. Which findings the
+ * answer is about is `answerFindings(reply.answer)`: none, one or several.
+ */
+export const VoiceQuestionReplySchema = z
+  .object({
+    heard: heardText,
+    answer: VoiceAnswerSchema,
+  })
+  .strict();
+export type VoiceQuestionReply = z.infer<typeof VoiceQuestionReplySchema>;
+
+/**
+ * The distinct finding ids an answer's statements name as subjects, each at the place it first comes: none (a question about
+ * the photo as a whole, or a body with no finding), one, or several (a distance between two stars). A refusal names
+ * none. The one place a screen learns which findings to light up; services/contracts/voice.py answer_findings is its
+ * twin.
+ */
+export function answerFindings(answer: VoiceAnswer): string[] {
+  if (answer.status !== 'answered') return [];
+  const found: string[] = [];
+  for (const statement of answer.statements) {
+    if (statement.subject.kind === 'finding' && !found.includes(statement.subject.findingId)) found.push(statement.subject.findingId);
+  }
+  return found;
+}
