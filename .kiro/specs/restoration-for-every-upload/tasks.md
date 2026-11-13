@@ -191,6 +191,12 @@ pictures under `.cache/restore-review/<unit>/`.
     none.
   - _Requirements: REQ-RST-11.1 to 11.3_
 
+## Open, not scheduled
+
+- `levels` of the spatial step measured per frame, from the noise's own correlation length in sky regions, judged
+  from pictures by the owner [open; decided 2026-11-12: listed here, not built now]. Until then it is a default
+  whose reason P-RST-2 gives.
+
 ## Order and what can run in parallel
 
 - restore-1 first, alone: everything else builds on its shapes.

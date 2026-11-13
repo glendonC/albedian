@@ -409,9 +409,33 @@ arrays are compared within a stated tolerance, integers and hashes of files exac
 - **P-RST-1** (REQ-RST-1.2, 1.3): for any stored original and any request, after the job the original's bytes
   hash to the same SHA-256, its mode is unchanged, and nothing under the upload's folder changed outside
   `variants/`, `attempts/` and `jobs/`.
-- **P-RST-2** (REQ-RST-1.5, 4.7): every parameter of every step of a generated graph has an origin and a basis that
-  is not empty; a parameter marked `measured` changes when the frame's noise is doubled, and none marked `default`
-  does.
+- **P-RST-2** (REQ-RST-1.5, 4.7) [decided 2026-11-11]: every parameter of every step of a generated graph has an
+  origin and a basis that is not empty. A parameter marked `measured` changes when what its basis names changes,
+  does not change when something its basis does not name changes, and takes more than one value over the five real
+  photos. A parameter marked `default` does not change when the frame's noise is doubled, and each is listed below
+  with why it is not measured on the file.
+  - `gainAtBlack` (`lift`): its origin and basis name what decided it, by one table (`GAIN_RECORDS` in
+    `services/media/tone.py`): `requested`, basis `exposureEv`, where a request decides; `default`, the design's
+    basis, where the maximum decides; `measured`, solved for this file from its median and its measured bounds, where
+    the target, a measured bound or no lift decides. Where measured, it moves with the median where the target
+    decides and with the noise left after noise reduction where the noise bound decides; it does not move when the
+    same samples are turned or shuffled.
+  - Defaults of `find_stars`: `tilePx` and `overlapPx` (the search's geometry, set so the detector's background
+    window and peak spacing sit inside a tile; not a property of the file); `confirmThresholdSnr` (the detector's
+    own floor, a property of the detector); `matchRadiusPx` and `mergeRadiusPx` (the detector's own search distance
+    and peak spacing); `footprintMaxPx` (an upper limit; each star's radius is measured on its own profile);
+    `clippedGrowPx` (how far a clipped sample's bloom is taken to reach; nothing measures it yet); `statistic`
+    (which statistic, a choice restore-4 makes by measurement).
+  - Defaults of `measure_noise`: `bins` and `blockPx` (the table's resolution; the table itself is measured).
+  - Defaults of `spatial_denoise`: `levels` (a fourth level reaches 30 px, the scale where clouds and sky gradients
+    live, and a per-frame noise measure cannot tell those from noise; the number is tied to the frame's own pixel
+    grid, since the noise is the sensor's, and was looked at on 768 px crops of the five photos, design section 5,
+    and on built frames of 160 and 320 px, where three levels change a structure wider than their reach by at most
+    2 percent of its amplitude and five levels by more [tested: `tests/media/test_spatial.py`]; measuring it per
+    frame is an open unit, `tasks.md`); `sigmaScale` (the edge-stopping width in units of the guide's own noise,
+    which is measured at each level).
+  - Defaults of `lift`: `targetMedianCode` and `quantisationBoundSteps` (choices a person makes from before and after
+    pictures, ruling 10); `maximumGain` (the stated maximum of REQ-RST-4.4).
 - **P-RST-3** (REQ-RST-1.6): the graph id is a function of the source hash, the request and the pipeline version
   only, and changes when any one of them changes.
 - **P-RST-4** (REQ-RST-2.1, 2.2): for any generated 8 or 16 bit RGB image stored as PNG or TIFF, the display copy
