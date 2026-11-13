@@ -138,6 +138,14 @@ describe('the stylesheet side: postcss and postcss-selector-parser', () => {
     ['L: a rule inside @font-face (not used)', '@font-face { .a { } }', 'refused'],
     ['L: a keyframe stop not at its start', '@keyframes k { foo from { } }', []],
     ['a line end escaped with a backslash inside a string, read as CSS reads it', '.a { content: "x\\\ny"; } .b { }', ['a', 'b']],
+    // Every line end CSS knows, escaped: CR LF is one line end, so a backslash before it escapes both
+    ['a CR LF escaped with a backslash inside a string', '.a { content: "x\\\r\ny"; } .b { }', ['a', 'b']],
+    ['a CR escaped with a backslash inside a string', '.a { content: "x\\\ry"; } .b { }', ['a', 'b']],
+    ['a form feed escaped with a backslash inside a string', '.a { content: "x\\\fy"; } .b { }', ['a', 'b']],
+    // Every escape in a string is read, not only its first
+    ['two line ends escaped in one string', '.a { content: "x\\\ny\\\nz"; } .b { }', ['a', 'b']],
+    ['two CR LF escaped in one string', '.a { content: "x\\\r\ny\\\r\nz"; } .b { }', ['a', 'b']],
+    ['an escaped backslash, then a CR LF escaped, in one string', '.a { content: "x\\\\\\\r\ny"; } .b { }', ['a', 'b']],
   ];
   it.each(ROWS)('%s', (_label, css, classes) => {
     expect(classesOf(css)).toEqual(classes);
@@ -222,6 +230,12 @@ describe('a form the guard does not read is refused by one sentence, never passe
     ['a string across a line end in a custom property', ':root { --x: "a\n}\n.dead { color: red }\n:root { --y: " }', LINE_END('"a…')],
     ['a string across a line end in a selector', '[data-x="a\nb"] .a { }', LINE_END('"a…')],
     ['a string across a carriage return', '.a { content: "x\r" }', LINE_END('"x…')],
+    ['a string across a CR LF', '.a { content: "x\r\ny" }', LINE_END('"x…')],
+    ['a string across a form feed', '.a { content: "x\fy" }', LINE_END('"x…')],
+    // A backslash escapes one line end: an LF escaped and then a raw CR, or a CR LF escaped and then a raw LF, is still
+    // a raw line end (its sentence quotes the string up to its first line end, the escaped one here)
+    ['a string across a CR after an escaped LF', '.a { content: "x\\\n\ry" }', LINE_END('"x\\…')],
+    ['a string across an LF after an escaped CR LF', '.a { content: "x\\\r\n\ny" }', LINE_END('"x\\…')],
     // A selector function in any prelude, in any case (the reader's two forms)
     ['@import with supports(selector())', "@import url('x.css') supports(selector(.p));", SELECTOR_FN("@import url('x.css') supports(selector(.p))")],
     ['@import with SELECTOR() in capitals', "@import './hud-tokens.css' supports(SELECTOR(.p));", SELECTOR_FN("@import './hud-tokens.css' supports(SELECTOR(.p))")],
@@ -308,6 +322,7 @@ describe('index.html: its inline style elements, read as the files are', () => {
       ['<html><body><iframe src="  DATA:text/html;base64,AA"></iframe></body></html>', 'iframe'],
       ['<html><body><object data="data:text/html,<style>.x{}</style>"></object></body></html>', 'object'],
       ['<html><body><embed src="data:text/html,x"></body></html>', 'embed'],
+      ['<html><frameset><frame src="data:text/html,<style>.x{}</style>"></frameset></html>', 'frame'],
     ];
     for (const [html, element] of ROWS) {
       expect(() => htmlStyles(html), html).toThrow(

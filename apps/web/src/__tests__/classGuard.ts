@@ -153,13 +153,13 @@ export function stylesheetClasses(css: string, file = 'a stylesheet'): Set<strin
 
 /**
  * The first string, by postcss's own tokens, that holds a raw line end, or null. A line end escaped with a backslash
- * is CSS's line continuation and is not one.
+ * is CSS's line continuation and is not one; CR LF is one line end, as CSS reads it, so a backslash escapes both.
  */
 function lineEndString(css: string): string | null {
   const tokens = tokenizer(new postcss.Input(css));
   while (!tokens.endOfFile()) {
     const token = tokens.nextToken();
-    if (token?.[0] === 'string' && /[\n\r\f]/.test(token[1].replace(/\\[\s\S]/g, ''))) return token[1];
+    if (token?.[0] === 'string' && /[\n\r\f]/.test(token[1].replace(/\\(?:\r\n|[\s\S])/g, ''))) return token[1];
   }
   return null;
 }
