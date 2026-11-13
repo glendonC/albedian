@@ -208,16 +208,26 @@ def _solve(moment: str) -> dict:
 @pytest.mark.parametrize("moment", ["1790-01-01T02:00:00Z", "1500-06-01T02:00:00Z", "0001-01-01T00:00:00Z",
                                     "9999-12-31T23:59:59Z"])
 def test_a_plate_solve_answers_before_1800_and_at_the_ends_of_the_calendar(moment: str) -> None:
+    from services.science.phone_photo_solver import NAMING_REFUSALS
+
     def matched(solution: dict) -> list[tuple[str, float]]:
         return sorted(
             (f["id"], f["skyPosition"]["altDeg"]) for f in solution["findings"] if f["evidenceClass"] == "catalog_matched"
         )
 
-    reference = matched(_solve("2030-01-01T02:00:00Z"))
+    def clear_refused(solution: dict) -> list[str]:
+        return sorted(
+            f["id"] for f in solution["findings"]
+            if f["evidenceClass"] == "observed" and f["evidence"]["limitations"] == [NAMING_REFUSALS["clear"]]
+        )
+
+    ref_sol = _solve("2030-01-01T02:00:00Z")
+    reference = matched(ref_sol)
     solution = _solve(moment)
     assert solution["status"] == "calibrated"
     stars = matched(solution)
-    assert [star for star, _ in stars] == [star for star, _ in reference] and len(stars) >= 10
+    assert [star for star, _ in stars] == [star for star, _ in reference] and len(stars) == 9
+    assert clear_refused(solution) == clear_refused(ref_sol) and len(clear_refused(ref_sol)) == 2
     assert all(math.isfinite(alt) for _, alt in stars)
 
 

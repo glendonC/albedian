@@ -965,11 +965,18 @@ def test_the_solve_endpoint_answers_the_one_by_one_solution_for_a_non_finite_det
             slow = client.post("/api/science/solve", content=text, headers={"content-type": "application/json"})
         assert fast.status_code == slow.status_code == 422, fast.text[:200]
         assert fast.json() == slow.json() == {"detail": said}
-    # Without it, the 17 pinned detections solve
+    # Without it, the 17 pinned detections solve. A name stands only where the named star gives the detection's
+    # light (solver-12a): two pinned stars have a tile star giving a tenth or more of their light within twice the
+    # gate, and stay observed with the limitation that says so
     body["detections"].pop()
     solved = client.post("/api/science/solve", json=body)
     assert solved.status_code == 200 and solved.json()["status"] == "calibrated"
-    assert sum(1 for f in solved.json()["findings"] if f["evidenceClass"] == "catalog_matched") == 17
+    findings = solved.json()["findings"]
+    assert sum(1 for f in findings if f["evidenceClass"] == "catalog_matched") == 15
+    from services.science.phone_photo_solver import NAMING_REFUSALS
+
+    refusals = sorted(" ".join(f["evidence"]["limitations"]) for f in findings if f["evidenceClass"] == "observed")
+    assert refusals == [NAMING_REFUSALS["clear"]] * 2
 
 
 @settings(max_examples=20, deadline=None)

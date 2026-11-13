@@ -116,7 +116,11 @@ def test_the_same_fit_calibrates_when_its_misses_stay_within_bounds() -> None:
     assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (14, 8)
     assert sol.status == "calibrated"
     matched = {f.common_name for f in sol.findings if f.evidence_class == "catalog_matched"}
-    assert len(matched) == 12 and matched.isdisjoint(misses)
+    # A name stands only where the named star gives the detection's light (solver-12a): the twelve pinned stars the
+    # fit matches are each named or kept observed with the rule's limitation; none of the six misses is either
+    refused = [f for f in sol.findings if f.evidence_class == "observed" and f.limitations and f.limitations[0].startswith("Not named:")]
+    assert len(matched) + len(refused) == 12 and matched.isdisjoint(misses)
+    assert {id(f.source_detection) for f in refused}.isdisjoint(id(detections[NAMES.index(m)]) for m in misses)
 
 
 def test_calibrated_solve_names_each_unmatched_detections_own_reason() -> None:
@@ -133,7 +137,9 @@ def test_calibrated_solve_names_each_unmatched_detections_own_reason() -> None:
     sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
     assert sol.status == "calibrated"
 
-    unmatched = [f for f in sol.findings if f.evidence_class == "observed"]
+    # The rule's own refusals (solver-12a) carry their own reason too; the three detections below carry theirs
+    refused = [f for f in sol.findings if f.evidence_class == "observed" and f.limitations and f.limitations[0].startswith("Not named:")]
+    unmatched = [f for f in sol.findings if f.evidence_class == "observed" and f not in refused]
     assert len(unmatched) == 3
     by_det = {id(f.source_detection): f.limitations[0] for f in unmatched}
 
@@ -147,7 +153,12 @@ def test_calibrated_solve_names_each_unmatched_detections_own_reason() -> None:
 
     assert len(sol.warnings) == 1
     warning = sol.warnings[0]
-    assert warning.startswith("3 unmatched sensor detection(s): ")
+    assert warning.startswith(f"{3 + len(refused)} unmatched sensor detection(s): ")
+    if refused:
+        from services.science.phone_photo_solver import naming_refusal_counts
+
+        counts = naming_refusal_counts([f.limitations[0] for f in refused])
+        assert f"{len(refused)} inside the inlier gate but not named ({counts})" in warning
     assert "1 skipped as hot-pixel impulse(s)" in warning
     assert "1 paired within 8 px but outside the " in warning
     assert "1 with no star of the 18-star catalog within 8 px" in warning

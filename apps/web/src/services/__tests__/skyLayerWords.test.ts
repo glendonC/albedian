@@ -56,8 +56,8 @@ const outsideTakenToBe = (sentence: string): string =>
 describe('skyLayerSentence: one plain line for each layer (REQ-SKY-6.1)', () => {
   it('says how many stars a calibrated photo or clip was matched to', () => {
     const calibrated = sample('plate_calibrated');
-    expect(skyLayerSentence(calibrated, photo(), SEARCHED)).toBe('Matched to 11 stars in your photo.');
-    expect(skyLayerSentence(calibrated, photo({ mediaKind: 'video' }), SEARCHED)).toBe('Matched to 11 stars in your clip.');
+    expect(skyLayerSentence(calibrated, photo(), SEARCHED)).toBe('Matched to 9 stars in your photo.');
+    expect(skyLayerSentence(calibrated, photo({ mediaKind: 'video' }), SEARCHED)).toBe('Matched to 9 stars in your clip.');
     const one = { ...calibrated, quality: { ...calibrated.quality!, matchedInlierCount: 1 } };
     expect(skyLayerSentence(one, photo(), SEARCHED)).toBe('Matched to 1 star in your photo.');
   });

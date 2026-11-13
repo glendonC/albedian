@@ -880,19 +880,24 @@ def test_fixture_text_matches_word_for_word_and_its_printed_decimals_within_one_
 
 
 def test_the_calibrated_samples_hold_the_planted_light_as_their_one_unmatched_point() -> None:
-    # The stored fixture's calibrated samples: the planted light is an observed point measured where it was planted, at
-    # about its stated SNR (the frame's own noise at the peak moves it by about one), placed on the sky by the verified
-    # WCS as every observed point is, and the one point of light no catalog star was matched to
+    from services.science.phone_photo_solver import NAMING_REFUSALS
+
+    # The stored fixture's calibrated samples: two inlier detections are refused by the clearance clause ("clear") and
+    # kept observed, and the planted light is the one observed point no catalog star was matched to, measured where it
+    # was planted at about its stated SNR and placed on the sky by the verified WCS
     stored = json.loads(CONTRACT_FIXTURE.read_text(encoding="utf-8"))
     for name in ("plate_calibrated", "plate_calibrated_timeless"):
         observed = [f for f in stored[name]["findings"] if f["evidenceClass"] == "observed"]
-        assert len(observed) == 1, name
-        det = observed[0]["sourceDetection"]
+        clear_refused = [f for f in observed if f["evidence"]["limitations"] == [NAMING_REFUSALS["clear"]]]
+        unmatched = [f for f in observed if f["evidence"]["limitations"] != [NAMING_REFUSALS["clear"]]]
+        assert len(clear_refused) == 2 and len(unmatched) == 1, name
+        det = unmatched[0]["sourceDetection"]
         assert math.hypot(det["xPx"] - PLANTED_LIGHT_XY[0], det["yPx"] - PLANTED_LIGHT_XY[1]) < 0.5, name
         assert PLANTED_LIGHT_SNR - 3.0 <= det["snr"] <= PLANTED_LIGHT_SNR + 3.0, (name, det["snr"])
-        assert observed[0].get("catalogRef") is None, name
+        assert unmatched[0].get("catalogRef") is None, name
         assert stored[name]["warnings"] == [
-            "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+            "3 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it), "
+            "1 with no star of the 18-star catalog within 8 px."
         ], name
 
 

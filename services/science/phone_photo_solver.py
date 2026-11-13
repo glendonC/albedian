@@ -633,8 +633,18 @@ def _v_from_gaia_mag(g_mag: np.ndarray, bp_rp: np.ndarray) -> np.ndarray:
     photo benchmark cites it (research/benchmarks/phone_photos/stars.py). A row without BP-RP is ranked with
     TYPICAL_BP_RP_FOR_RANKING inside this sum alone: the star's catalog reference then carries no colour.
     """
-    c = np.clip(np.where(np.isfinite(bp_rp), bp_rp, TYPICAL_BP_RP_FOR_RANKING), -0.5, 2.75)
-    return g_mag - (-0.02704 + 0.01424 * c - 0.2156 * c * c + 0.01426 * c**3)
+    c = np.clip(np.where(np.isfinite(bp_rp), bp_rp, TYPICAL_BP_RP_FOR_RANKING), _COLOUR_CLIP_LOW, _COLOUR_CLIP_HIGH)
+    return g_mag - _g_minus_v(c)
+
+
+# The colours the G - V polynomial is applied over; a colour outside is taken at the nearer end
+_COLOUR_CLIP_LOW, _COLOUR_CLIP_HIGH = -0.5, 2.75
+
+
+def _g_minus_v(bp_rp):
+    """G - V in BP-RP: the polynomial of Riello et al. (2021, A&A 649, A3, table C2) that `_v_from_gaia_mag` uses."""
+    c = bp_rp
+    return -0.02704 + 0.01424 * c - 0.2156 * c * c + 0.01426 * c**3
 
 
 def _propagate_pm(
@@ -944,6 +954,317 @@ def catalog_matched_subtitle(star: CatalogStar) -> str:
 @lru_cache(maxsize=2)
 def _get_tile_index(release_dir: Path = DEFAULT_TILE_RELEASE_DIR) -> _TileStarIndex:
     return _TileStarIndex(release_dir)
+
+
+# =============================================================================================
+# Naming refusals on both solve paths: clearance, zero-point brightness limit and checked hull (solver-12a)
+# =============================================================================================
+
+# The catalog a name is checked against: every tile star to G 9.5, the L0 to L2 layers [proposed, solver-12-prep
+# section 2.4, accepted by the lead: the independent check found the product's one real claim naming a wrong star and
+# a star that is not there, run realsky2-main]
+NAMING_LAYERS = (0, 1, 2)
+# Another star counts against a name within this many inlier gates of the detection [measured, solver-12a's threats
+# table: within one gate, four wide-profile pairs 1.5 to 2 gates apart kept a wrong name; within two, none]
+NAMING_CLEARANCE_GATES = 2.0
+# Another star counts unless it gives under a tenth of the named star's light: at least 2.5 magnitudes fainter [the
+# lead's ruling on solver-12a, point 1: fixed by what it means, not chosen by the names it keeps]
+NAMING_LIGHT_SHARE_MAG = 2.5
+# Both sides of that comparison are the solver's own V estimate (`_v_from_gaia_mag` for a Gaia row, a Hipparcos row's
+# Hp as it is); the comparison leans to refusal by what each star's estimate can be wrong by (`naming_margin`), added
+# to the 2.5 magnitudes:
+# a Gaia row with BP-RP inside the polynomial's colours [proposed: 0.1 mag; the scatter of Riello et al. 2021's G - V
+# polynomial about its fit is open, as the paper was not read here]
+NAMING_MARGIN_COLOUR_MAG = 0.1
+# a Gaia row without BP-RP: the largest change of that polynomial between the colour the solver assumes for it and
+# either end of the colours it clips to [computed: 1.169 mag]
+NAMING_MARGIN_NO_COLOUR_MAG = max(
+    abs(_g_minus_v(c) - _g_minus_v(TYPICAL_BP_RP_FOR_RANKING)) for c in (_COLOUR_CLIP_LOW, _COLOUR_CLIP_HIGH)
+)
+# a Hipparcos row, whose Hp is read as V [proposed: Hp - V over the colours of naked-eye stars; open]
+NAMING_MARGIN_HP_MAG = 0.5
+
+
+def _colour_trend_mag(bp_rp) -> np.ndarray:
+    """V by the polynomial's own trend at each row's colour minus the solver's V estimate, which takes a colour past
+    the polynomial's range at the nearer end (`_v_from_gaia_mag`): 0 inside the range and for a row without a finite
+    colour. G - V peaks near BP-RP 0.03 and falls on both sides of it, so past either end the estimate is too bright
+    and this is positive [computed from the polynomial; past the range it extrapolates the cubic, so its size is
+    proposed]."""
+    c = np.asarray(bp_rp, dtype=np.float64)
+    finite = np.isfinite(c)
+    safe = np.where(finite, c, 0.0)
+    return np.where(finite, _g_minus_v(np.clip(safe, _COLOUR_CLIP_LOW, _COLOUR_CLIP_HIGH)) - _g_minus_v(safe), 0.0)
+
+
+def naming_margin(is_hipparcos, bp_rp, *, as_named: bool) -> np.ndarray:
+    """What each row's V estimate can be wrong by on the side that refuses a name, in one role. Four cases:
+    - a Hipparcos row, whose Hp is read as V: `NAMING_MARGIN_HP_MAG`;
+    - a Gaia row without a finite BP-RP: `NAMING_MARGIN_NO_COLOUR_MAG`;
+    - a Gaia row with a colour inside the polynomial's range: `NAMING_MARGIN_COLOUR_MAG`;
+    - a Gaia row with a colour past either end: that margin plus the polynomial's change from the end to the row's
+      colour by its own trend (`_colour_trend_mag`), on the side it errs: as the named star an estimate too bright
+      hides how much light a neighbour gives against it; as another star an estimate too faint hides its own light.
+      By the trend both ends err too bright, so the change is added as the named star [proposed: it extrapolates]."""
+    hip = np.asarray(is_hipparcos, dtype=bool)
+    c = np.asarray(bp_rp, dtype=np.float64)
+    trend = _colour_trend_mag(c)
+    beyond = np.maximum(trend if as_named else -trend, 0.0)
+    return np.where(hip, NAMING_MARGIN_HP_MAG,
+                    np.where(np.isfinite(c), NAMING_MARGIN_COLOUR_MAG + beyond, NAMING_MARGIN_NO_COLOUR_MAG))
+# What a named fit star says: its agreement with the solution is by construction, and what its name rests on [the
+# lead's ruling of 06:46 on solver-12a, point 1]
+NAMING_FIT_STAR_NOTE = (
+    "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its "
+    "name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light "
+    "lying near it, and on its catalog brightness giving the light measured."
+)
+# What a named held-out star says when the reported solution was refined on it after the check (the phone solver's
+# final polish on the fit stars and up to 18 held-out inliers)
+NAMING_REFINE_STAR_NOTE = (
+    "Its position was used to refine this solution after the held-out check, so the reported solution agrees with it "
+    "partly by construction; the check itself stands, as it measured this star before the refinement against a fit "
+    "it had no part in."
+)
+# The plate solver's warning counts the names it refused by clause, in this order
+NAMING_REFUSAL_COUNTS = (
+    ("found", "whose named star is not among the catalog's stars near it"),
+    ("clear", "as another catalog star could be it"),
+    ("bright", "as the detection is brighter than the named star can make it"),
+    ("brightest", "as the brightest match, with too few other matches to measure the frame's zero point"),
+    ("checked", "outside the region of the stars the solution was fitted on and checked against"),
+)
+
+
+def naming_refusal_counts(refusals: Sequence[str]) -> str:
+    """How many of these refusal limitations fail each clause, in `NAMING_REFUSAL_COUNTS`' order, the clauses with
+    none left out: one refusal can fail more than one clause."""
+    parts = []
+    for key, words in NAMING_REFUSAL_COUNTS:
+        n = sum(NAMING_REFUSALS[key] in refusal for refusal in refusals)
+        if n:
+            parts.append(f"{n} {words}")
+    return "; ".join(parts)
+NAMING_REFUSALS = {
+    "found": "Not named: the named star is not among the catalog's stars (to G 9.5) near the detection under this solution's WCS.",
+    "clear": "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told.",
+    "checked": "Not named: the detection lies outside the region of the stars this solution was fitted on and checked against.",
+    "bright": "Not named: the detection is brighter than the named star's catalog brightness can make it, by the frame's own zero point from its other matched stars, so its light is not that star's; it may be a planet or another source in no catalog.",
+    "brightest": "Not named: too few other matched stars measure the frame's zero point, and the detection is the brightest matched one, so it cannot be shown that the named star gives its light; it may be a planet or another source in no catalog.",
+}
+# A name is refused when its detection is brighter than the named star can make it by more than the larger of
+# `NAMING_BRIGHTNESS_SCATTERS` scatters about the frame's zero point [proposed: three standard deviations, about
+# 1 in 740 one-sided for a normal scatter] and `NAMING_BRIGHTNESS_FLOOR_MAG` [by meaning: 2.5 log10 2 magnitudes,
+# where the named star gives half the detection's light]. At real frame scatters (0.32 to 0.96 mag on the CI and
+# corpus frames) this limit reaches 2.88 mag, so a planet or uncatalogued source brighter than the named star by at
+# most the frame's zero-point limit still keeps the star's name until an ephemeris planet and Moon check is added
+# [open].
+NAMING_BRIGHTNESS_SCATTERS = 3.0
+NAMING_BRIGHTNESS_FLOOR_MAG = 2.5 * math.log10(2.0)
+# The fewest other matched stars that measure a zero point and its scatter [proposed: a median and a median absolute
+# deviation of four or fewer values are too easily set by one of them]; with fewer, only the brightest matched
+# detection is refused, as the one a bright planet would be
+NAMING_ZERO_POINT_MIN_STARS = 5
+
+
+class _DeepStarIndex:
+    """Every tile star of `NAMING_LAYERS`: its direction and proper motion at the tiles' epoch, its catalog source id
+    (`HIP n` or `Gaia DR3 n`, as `CatalogStar.catalog_source_id`), its V estimate, that estimate's margin as another
+    star (`margin_mag`) and as the named star (`margin_named_mag`, `margin_mag` when not given), and its colour trend
+    (`_colour_trend_mag`, 0 when not given), in a KD-tree on directions."""
+
+    def __init__(self, ra0_deg: np.ndarray, dec0_deg: np.ndarray, pm_ra: np.ndarray, pm_dec: np.ndarray,
+                 source_ids: Sequence[str], epoch_jyear: float, v_mag: np.ndarray, margin_mag: np.ndarray,
+                 margin_named_mag: np.ndarray | None = None, trend_mag: np.ndarray | None = None) -> None:
+        from scipy.spatial import cKDTree
+
+        self.ra0 = np.asarray(ra0_deg, dtype=np.float64)
+        self.dec0 = np.asarray(dec0_deg, dtype=np.float64)
+        self.pm_ra = np.asarray(pm_ra, dtype=np.float64)
+        self.pm_dec = np.asarray(pm_dec, dtype=np.float64)
+        self.source_ids = np.asarray(source_ids, dtype=object)
+        self.epoch_jyear = float(epoch_jyear)
+        self.v_mag = np.asarray(v_mag, dtype=np.float64)
+        self.margin_mag = np.asarray(margin_mag, dtype=np.float64)
+        self.margin_named_mag = (self.margin_mag.copy() if margin_named_mag is None
+                                 else np.asarray(margin_named_mag, dtype=np.float64))
+        self.trend_mag = np.zeros_like(self.v_mag) if trend_mag is None else np.asarray(trend_mag, dtype=np.float64)
+        self.tree = cKDTree(_radec_to_vec_batch(self.ra0, self.dec0)) if self.ra0.size else None
+
+    @classmethod
+    def from_tiles(cls, release_dir: Path = DEFAULT_TILE_RELEASE_DIR) -> "_DeepStarIndex":
+        manifest = json.loads((Path(release_dir) / "manifest.json").read_text(encoding="utf-8"))
+        ra, dec, pm_ra, pm_dec, ids, v_mag, margin, margin_named, trend = [], [], [], [], [], [], [], [], []
+        for layer in NAMING_LAYERS:
+            for core_path in sorted((Path(release_dir) / f"L{layer}").glob("*.core.bin")):
+                pix = int(core_path.name.split(".")[0])
+                header, cols = ct.decode_core_tile(core_path.read_bytes())
+                _, detail = ct.decode_detail_tile((core_path.parent / f"{pix}.detail.bin").read_bytes())
+                r, d = _vec_to_radec_batch(ct.decode_core_directions(header, cols))
+                flags = cols["flags"].astype(np.int64)
+                hip = (flags & ct.FLAG_CATALOG_HIPPARCOS) != 0
+                bp_rp = np.where((flags & ct.FLAG_COLOR_B_V) != 0, np.nan, ct.decode_color(cols["color"]))
+                mag = ct.decode_mag(cols["mag"])
+                sid = (detail["idHi"].astype(np.int64) << 32) | detail["idLo"].astype(np.int64)
+                ra.append(r)
+                dec.append(d)
+                # A proper motion the row lacks moves nothing
+                pm_ra.append(np.nan_to_num(ct.decode_f16(detail["pmRa"]), nan=0.0))
+                pm_dec.append(np.nan_to_num(ct.decode_f16(detail["pmDec"]), nan=0.0))
+                ids.extend(f"HIP {s}" if h else f"Gaia DR3 {s}" for s, h in zip(sid.tolist(), hip.tolist()))
+                v_mag.append(np.where(hip, mag, _v_from_gaia_mag(mag, bp_rp)))
+                margin.append(naming_margin(hip, bp_rp, as_named=False))
+                margin_named.append(naming_margin(hip, bp_rp, as_named=True))
+                trend.append(np.where(hip, 0.0, _colour_trend_mag(bp_rp)))
+        return cls(np.concatenate(ra), np.concatenate(dec), np.concatenate(pm_ra), np.concatenate(pm_dec), ids,
+                   float(manifest["epochJulianYear"]), np.concatenate(v_mag), np.concatenate(margin),
+                   np.concatenate(margin_named), np.concatenate(trend))
+
+    def near(self, ra_deg: float, dec_deg: float, radius_deg: float, epoch_jyear: float) -> np.ndarray:
+        """The rows of every star within `radius_deg` of the direction at the tiles' epoch, widened by the largest
+        proper motion over the interval so no star moved in is missed."""
+        if self.tree is None:
+            return np.zeros(0, dtype=np.int64)
+        years = abs(float(epoch_jyear) - self.epoch_jyear)
+        drift_deg = years * float(np.hypot(self.pm_ra, self.pm_dec).max(initial=0.0)) / 3.6e6
+        chord = 2.0 * math.sin(math.radians(min(180.0, radius_deg + drift_deg)) / 2.0)
+        centre = _radec_to_vec_batch(np.array([ra_deg]), np.array([dec_deg]))[0]
+        return np.asarray(sorted(self.tree.query_ball_point(centre, chord)), dtype=np.int64)
+
+    def places(self, rows: np.ndarray, epoch_jyear: float) -> tuple[np.ndarray, np.ndarray]:
+        """RA and Dec of the rows, moved by their proper motion to `epoch_jyear`."""
+        return _propagate_pm(self.ra0[rows], self.dec0[rows], self.pm_ra[rows], self.pm_dec[rows],
+                             float(epoch_jyear) - self.epoch_jyear)
+
+
+@lru_cache(maxsize=4)
+def _get_deep_star_index(release_dir: Path = DEFAULT_TILE_RELEASE_DIR) -> _DeepStarIndex:
+    return _DeepStarIndex.from_tiles(release_dir)
+
+
+def _counts_against(v_named: float, margin_named: float, v_others: np.ndarray, margins_others: np.ndarray) -> np.ndarray:
+    """Whether each other star counts against a name: it does unless it is fainter than the named star by at least
+    `NAMING_LIGHT_SHARE_MAG` plus both stars' band margins (a tenth of the light, leaning to refusal)."""
+    fainter_by = np.asarray(v_others, dtype=np.float64) - v_named
+    return ~(fainter_by >= NAMING_LIGHT_SHARE_MAG + margin_named + np.asarray(margins_others, dtype=np.float64))
+
+
+def _clearance_refusals(named_found: bool, others_px: Sequence[float], others_count: Sequence[bool], gate_px: float) -> list[str]:
+    """Which of the first two naming conditions fail: "found" when the named star is not among the deep stars near
+    the detection; "clear" when another star that counts lies within (at or inside) `NAMING_CLEARANCE_GATES` times
+    the inlier gate of the detection."""
+    failed = [] if named_found else ["found"]
+    d = np.asarray(others_px, dtype=np.float64)
+    live = np.asarray(others_count, dtype=bool)
+    if d.size and bool(np.any(live & (d <= NAMING_CLEARANCE_GATES * gate_px))):
+        failed.append("clear")
+    return failed
+
+
+def _inside_checked_region(x_px: float, y_px: float, checked_xy: np.ndarray) -> bool:
+    """Whether the point lies in the convex hull of the detections of every star the solution was fitted on or
+    checked against, its edge included. Fewer than three, or all on one line, make no region."""
+    from scipy.spatial import Delaunay, QhullError
+
+    points = np.asarray(checked_xy, dtype=np.float64).reshape(-1, 2)
+    if points.shape[0] < 3:
+        return False
+    try:
+        hull = Delaunay(points)
+    except QhullError:
+        return False
+    return bool(hull.find_simplex(np.array([[x_px, y_px]], dtype=np.float64))[0] >= 0)
+
+
+def _brightness_refusals(inst_mag: np.ndarray, v_mag: np.ndarray) -> list[str | None]:
+    """For each matched detection with an instrumental magnitude `inst_mag` (-2.5 log10 flux) and its named star's V
+    leaning to refusal `v_mag` (NaN where the star was not found): "bright", "brightest" or None. The zero point and
+    its scatter (1.4826 times the median absolute deviation) come from the frame's other matched stars with a V. A
+    detection brighter than its star by more than `max(NAMING_BRIGHTNESS_SCATTERS * scatter, NAMING_BRIGHTNESS_FLOOR_MAG)`
+    is "bright"; a planet or uncatalogued source within that limit keeps the name (ephemeris planet exclusion is open).
+    One-sided: a star whose light falls short (it saturates) keeps its name. With fewer than
+    `NAMING_ZERO_POINT_MIN_STARS` other stars, the brightest matched detection (ties included) is "brightest" and the
+    rest stand."""
+    inst = np.asarray(inst_mag, dtype=np.float64)
+    v = np.asarray(v_mag, dtype=np.float64)
+    usable = np.isfinite(inst) & np.isfinite(v)
+    out: list[str | None] = []
+    for i in range(inst.size):
+        if not usable[i]:
+            out.append(None)
+            continue
+        others = usable.copy()
+        others[i] = False
+        if int(others.sum()) < NAMING_ZERO_POINT_MIN_STARS:
+            out.append("brightest" if inst[i] <= float(np.min(inst[np.isfinite(inst)])) else None)
+            continue
+        offsets = v[others] - inst[others]
+        zero_point = float(np.median(offsets))
+        scatter = 1.4826 * float(np.median(np.abs(offsets - zero_point)))
+        brighter_by = v[i] - (inst[i] + zero_point)
+        limit = max(NAMING_BRIGHTNESS_SCATTERS * scatter, NAMING_BRIGHTNESS_FLOOR_MAG)
+        out.append("bright" if brighter_by > limit else None)
+    return out
+
+
+def naming_refusals(
+    wcs: WCSModel,
+    named: Sequence[tuple[SourceDetection, CatalogStar]],
+    gate_px: float,
+    checked_xy: Sequence[tuple[float, float]],
+    epoch_jyear: float,
+    deep: _DeepStarIndex | None = None,
+) -> list[str | None]:
+    """For each (detection, catalog star) a verified solution would name, every verified match of the frame: None
+    where the name stands, else the limitation naming the conditions that failed. A name stands only when (a) the
+    named star is among the deep stars (every tile star to G 9.5) near the detection, (b) no other deep star giving a
+    tenth or more of its light (`_counts_against`) lies within twice the inlier gate of the detection under `wcs`,
+    (c) the detection is not brighter than the named star's catalog brightness by more than the frame's zero-point
+    limit from the other matches (`_brightness_refusals`), and (d) the detection lies inside the convex hull of
+    `checked_xy`, the detections of every star the solution was fitted on or checked against: beyond the outermost of
+    them nothing is named. Distances are pixels through `wcs`, with the deep stars moved by proper motion to
+    `epoch_jyear`."""
+    deep = deep if deep is not None else _get_deep_star_index()
+    held = np.asarray(list(checked_xy), dtype=np.float64).reshape(-1, 2)
+    reach_px = NAMING_CLEARANCE_GATES * gate_px + 2.0
+    failed_by: list[list[str]] = []
+    # The named star's V leaning to refusal (its estimate plus its colour trend: too bright an estimate would hide
+    # light the star cannot give), NaN where it is not found
+    v_named = np.full(len(named), np.nan)
+    for i, (det, star) in enumerate(named):
+        ra_det, dec_det = wcs.pixel_to_world(det.x_px, det.y_px)
+        failed: list[str] = []
+        if math.isfinite(ra_det) and math.isfinite(dec_det):
+            # A generous angle first (twice the reach at the centre's scale), then each star's own pixel distance
+            rows = deep.near(ra_det, dec_det, 2.0 * reach_px * wcs.scale_deg_per_px, epoch_jyear)
+            ra, dec = deep.places(rows, epoch_jyear)
+            dist = np.array([math.hypot(*(np.subtract(wcs.world_to_pixel(float(r), float(d)), (det.x_px, det.y_px))))
+                             for r, d in zip(ra, dec)], dtype=np.float64)
+            dist = np.where(np.isfinite(dist), dist, np.inf)
+            mine = deep.source_ids[rows] == star.catalog_source_id
+            if mine.any():
+                k = rows[mine][int(np.argmin(dist[mine]))]
+                others = rows[~mine]
+                live = _counts_against(float(deep.v_mag[k]), float(deep.margin_named_mag[k]), deep.v_mag[others],
+                                       deep.margin_mag[others])
+                failed += _clearance_refusals(True, dist[~mine], live, gate_px)
+                v_named[i] = float(deep.v_mag[k]) + max(float(deep.trend_mag[k]), 0.0)
+            else:
+                failed.append("found")
+        else:
+            failed.append("found")
+        failed_by.append(failed)
+    # a detection's flux is finite and above zero by its contract (`SourceDetection`)
+    inst = np.array([-2.5 * math.log10(det.flux) for det, _ in named], dtype=np.float64)
+    for failed, bright in zip(failed_by, _brightness_refusals(inst, v_named)):
+        if bright is not None:
+            failed.append(bright)
+    out: list[str | None] = []
+    for (det, _), failed in zip(named, failed_by):
+        if not _inside_checked_region(det.x_px, det.y_px, held):
+            failed.append("checked")
+        out.append(" ".join(NAMING_REFUSALS[k] for k in failed) if failed else None)
+    return out
 
 
 # =============================================================================================
@@ -1843,6 +2164,8 @@ def solve_phone_photo(
 
     # Dual-path consistency check: refit attitude+scale on held-out inliers alone and compare grid projection
     dual_disagreement_px = 0.0
+    # The held-out inliers the reported solution is refined on after the check, when it is
+    refined_on_ids: set[int] = set()
     if len(held_out_tuples) >= 6:
         held_wcs = _refine_phone_camera_wcs(refined_wcs, held_out_tuples[:12], fit_distortion=len(held_out_tuples) >= 8)
         gx, gy = np.meshgrid(
@@ -1857,6 +2180,7 @@ def solve_phone_photo(
         # Final joint polish on all inliers (train + held-out) fitting lens distortion while keeping held-out metrics strictly from pre-polish split
         if dual_disagreement_px <= MAX_DUAL_PATH_DISAGREEMENT_PX:
             combined_inliers = [*train_tuples, *held_out_tuples[:18]]
+            refined_on_ids = {id(det) for det, _, _ in held_out_tuples[:18]}
             refined_wcs = _refine_phone_camera_wcs(
                 refined_wcs, combined_inliers, fit_distortion=len(combined_inliers) >= 9
             )
@@ -1883,6 +2207,23 @@ def solve_phone_photo(
                     star = verify_stars[c_i]
                 if star is not None:
                     verified_by_det_id[id(det)] = (star, res_px, id(det) in train_det_ids)
+
+    # A name stands only where the four naming clauses let it stand (solver-12a); a refused one stays an
+    # observed finding with the limitation that says why, and is not counted as a match
+    unnamed: dict[int, str] = {}
+    if verified_by_det_id:
+        dets_named = [det for det in eval_pool if id(det) in verified_by_det_id]
+        refusals = naming_refusals(
+            refined_wcs,
+            [(det, verified_by_det_id[id(det)][0]) for det in dets_named],
+            gate_px,
+            [(det.x_px, det.y_px) for det, _, _ in [*train_tuples, *held_out_tuples]],
+            epoch_jyear,
+        )
+        for det, refusal in zip(dets_named, refusals):
+            if refusal is not None:
+                unnamed[id(det)] = refusal
+                del verified_by_det_id[id(det)]
 
     # The record of the held-out check, built once from the residuals the gate judged: its counts and its median
     # are the gate's own numbers, and what follows reads them from it
@@ -1934,6 +2275,8 @@ def solve_phone_photo(
                             else ()
                         ),
                         *epoch_limitations,
+                        *((NAMING_FIT_STAR_NOTE,) if is_train else ()),
+                        *((NAMING_REFINE_STAR_NOTE,) if not is_train and id(det) in refined_on_ids else ()),
                     ),
                     source_sha256=source_sha256,
                 )
@@ -1954,7 +2297,7 @@ def solve_phone_photo(
                     source_detection=det,
                     catalog_star=None,
                     verified_by_holdout=False,
-                    limitations=("Unmatched sensor detection outside verified catalog inlier gate.",),
+                    limitations=(unnamed.get(id(det), "Unmatched sensor detection outside verified catalog inlier gate."),),
                     source_sha256=source_sha256,
                 )
             )

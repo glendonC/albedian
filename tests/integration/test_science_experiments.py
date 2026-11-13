@@ -48,6 +48,7 @@ from services.science.catalog import (
 )
 from services.science.detector import matched_filter_noise
 from services.science.ephemeris import compute_solar_system_ephemerides
+from services.science.phone_photo_solver import NAMING_REFUSALS
 from services.science.solver import (
     MIN_HELD_OUT_INLIERS,
     WCSModel,
@@ -217,7 +218,15 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     ) < 0.25
 
     matched_findings = [f for f in solution.findings if f.evidence_class == "catalog_matched"]
-    assert len(matched_findings) >= 10
+    # Nine stars stand as named, including all six Orion stars pinned on main, and two are refused by the clearance
+    # clause ("clear") and kept observed (solver-12a)
+    refused = [
+        f
+        for f in solution.findings
+        if f.evidence_class == "observed" and f.limitations == (NAMING_REFUSALS["clear"],)
+    ]
+    assert len(matched_findings) == 9
+    assert len(refused) == 2
     matched_names = {f.common_name for f in matched_findings}
     assert {"Betelgeuse", "Rigel", "Bellatrix", "Alnilam", "Alnitak", "Mintaka"}.issubset(
         matched_names
@@ -429,7 +438,8 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
 
     # Verify that zero injected hot pixels received `catalog_matched`
     catalog_matched = [f for f in solution.findings if f.evidence_class == "catalog_matched"]
-    assert len(catalog_matched) >= 10
+    # Named, or kept observed with the naming rule's limitation (solver-12a): at least ten of the field's stars
+    assert len(catalog_matched) + len([f for f in solution.findings if f.evidence_class == "observed" and f.limitations and f.limitations[0].startswith("Not named:")]) >= 10
     for finding in catalog_matched:
         assert finding.source_detection is not None
         fx = finding.source_detection.x_px

@@ -39,8 +39,15 @@ from services.science.detector import (
 )
 from services.science.horizon_solver import solve_horizon_and_beacon_pose
 from services.science.phone_photo_solver import (
+    DAYS_PER_JYEAR,
+    JD_J2000,
+    NAMING_FIT_STAR_NOTE,
     PhoneCameraWCS,
+    _get_deep_star_index,
+    _parse_iso_to_jd_utc,
     evaluate_coincidence_gate,
+    naming_refusal_counts,
+    naming_refusals,
     solve_phone_photo,
 )
 from services.science.wcs_models import (
@@ -827,6 +834,24 @@ def solve_and_verify_field(
 
     verification = verify_held_out(refined_wcs, detections, catalog, [d for d, _ in train_subset])
     verified_matches = verification.inliers
+    # A name stands only where the four naming clauses let it stand (solver-12a): a refused one is not counted
+    # as a match and stays an observed finding with the limitation that says why
+    unnamed: dict[int, str] = {}
+    if verification.passed and verified_matches:
+        dets_named = [det for det in detections if id(det) in verified_matches]
+        # Every star the solution was fitted on (the training stars) or checked against (the held-out inliers)
+        held_xy = [(det.x_px, det.y_px) for det, _ in train_subset] + [
+            (det.x_px, det.y_px) for det, _, res_px, is_train in verification.associations
+            if not is_train and res_px <= verification.inlier_gate_px]
+        epoch = 2000.0 + (_parse_iso_to_jd_utc(obs_utc_iso) - JD_J2000) / DAYS_PER_JYEAR if obs_utc_iso else None
+        refusals = naming_refusals(
+            refined_wcs, [(det, verified_matches[id(det)][0]) for det in dets_named], verification.inlier_gate_px,
+            held_xy, epoch if epoch is not None else _get_deep_star_index().epoch_jyear,
+        )
+        for det, refusal in zip(dets_named, refusals):
+            if refusal is not None:
+                unnamed[id(det)] = refusal
+        verified_matches = {k: v for k, v in verified_matches.items() if k not in unnamed}
     held_out_inliers = verification.held_out_inliers
     # None when no held-out star paired with a catalog star: there is no residual to report
     median_residual_px = verification.median_residual_px
@@ -841,6 +866,7 @@ def solve_and_verify_field(
     warnings: list[str] = []
     paired_by_id = {id(det): (st, res_px) for det, st, res_px, _ in verification.associations}
     impulse_count = 0
+    unnamed_count = 0
     outside_gate_count = 0
     no_catalog_star_count = 0
 
@@ -869,7 +895,8 @@ def solve_and_verify_field(
                     source_detection=det, catalog_star=st,
                     pixel_residual_px=res_px, angular_residual_arcsec=ang_res_arcsec,
                     verified_by_holdout=not is_train,
-                    limitations=(f"Distance is {st.distance_source}, not measured from this image.",),
+                    limitations=(f"Distance is {st.distance_source}, not measured from this image.",
+                                 *((NAMING_FIT_STAR_NOTE,) if is_train else ())),
                     source_sha256=source_sha256,
                 )
             )
@@ -880,6 +907,9 @@ def solve_and_verify_field(
                     f"Skipped by catalog matching as a hot-pixel impulse "
                     f"(FWHM {det.fwhm_px:.2f} px, peak-to-total flux ratio {det.peak_to_total_ratio:.2f})."
                 )
+            elif id(det) in unnamed:
+                unnamed_count += 1
+                unmatched_reason = unnamed[id(det)]
             elif id(det) in paired_by_id:
                 outside_gate_count += 1
                 paired_star, res_px = paired_by_id[id(det)]
@@ -917,11 +947,15 @@ def solve_and_verify_field(
                 )
             )
 
-    unmatched_total = impulse_count + outside_gate_count + no_catalog_star_count
+    unmatched_total = impulse_count + unnamed_count + outside_gate_count + no_catalog_star_count
     if unmatched_total > 0 and passed_verification:
         unmatched_parts: list[str] = []
         if impulse_count > 0:
             unmatched_parts.append(f"{impulse_count} skipped as hot-pixel impulse(s)")
+        if unnamed_count > 0:
+            unmatched_parts.append(
+                f"{unnamed_count} inside the inlier gate but not named ({naming_refusal_counts(list(unnamed.values()))})"
+            )
         if outside_gate_count > 0:
             unmatched_parts.append(
                 f"{outside_gate_count} paired within {ASSOCIATION_RADIUS_PX:g} px "

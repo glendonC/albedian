@@ -1257,6 +1257,7 @@ def test_a_valid_sample_parses_and_comes_back_unchanged(name: str) -> None:
     sample = read_fixture()["valid"][name]
     parsed = contract.parse_observation_solution(sample)
     assert parsed.to_contract_dict() == sample
+    assert json.loads(json.dumps(parsed.to_contract_dict(), allow_nan=False)) == sample
 
 
 def test_counts_and_revisions_are_held_to_safe_integers_so_json_never_splits_the_two_sides() -> None:
@@ -1371,7 +1372,6 @@ def test_a_catalog_refusal_inside_a_solution_or_finding_names_each_field_and_hid
                 assert "input_value" not in text and '"input"' not in text, text
                 for secret in secrets:
                     assert secret not in text, (secret, text)
-    assert json.loads(json.dumps(parsed.to_contract_dict(), allow_nan=False)) == sample
 
 
 def test_every_solution_the_python_solvers_wrote_parses_and_comes_back_unchanged() -> None:

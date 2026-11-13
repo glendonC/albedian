@@ -28151,7 +28151,7 @@
      },
      "quality": {
       "detectedCandidateCount": 11,
-      "matchedInlierCount": 11,
+      "matchedInlierCount": 9,
       "heldOutPairCount": 7,
       "heldOutInliers": 7,
       "passedIndependentVerification": true,
@@ -28182,7 +28182,8 @@
         "pixelResidualPx": 0.057321461731327246,
         "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -28328,7 +28329,8 @@
         "pixelResidualPx": 0.02553904353978176,
         "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -28672,28 +28674,24 @@
        ]
       },
       {
-       "id": "finding-star-hatysa",
+       "id": "finding-obs-8",
        "observationSolutionId": "sol_<sha16 sent>",
-       "evidenceClass": "catalog_matched",
-       "title": "Hatysa",
-       "subtitle": "Iota Orionis · 714.3 pc [617.3 to 847.5 pc]",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #8",
+       "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
        "skyPosition": {
-        "raDeg": 83.858258,
-        "decDeg": -5.9099,
-        "uncertaintyArcsec": 15.070579646869646
+        "raDeg": 83.85415193792196,
+        "decDeg": -5.910328410184034,
+        "uncertaintyArcsec": 26.608117886035675
        },
        "evidence": {
-        "id": "ev-finding-star-hatysa",
-        "evidenceClass": "catalog_matched",
-        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+        "id": "ev-finding-obs-8",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
         "sourceAssetSha256": "<sha256 sent>",
         "wcsSolutionId": "sol_<sha16 sent>",
-        "catalogReferenceId": "star-hatysa",
-        "angularResidualArcsec": 15.070579646869646,
-        "pixelResidualPx": 0.067615353193465,
-        "distanceUncertaintyNote": "Distance interval [617.3, 847.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -28706,43 +28704,7 @@
         "snr": 84.66957057960754,
         "fwhmPx": 2.3844372476817184,
         "centroidUncertaintyPx": 0.03
-       },
-       "catalogRef": {
-        "id": "star-hatysa",
-        "provider": "Hipparcos",
-        "releaseVersion": "Hipparcos 2007",
-        "catalogSourceId": "HIP 26241",
-        "commonName": "Hatysa",
-        "bayerDesignation": "Iota Orionis",
-        "constellation": "Orion",
-        "objectType": "star",
-        "coordinateEpoch": "J2000.0",
-        "raDeg": 83.858258,
-        "decDeg": -5.9099,
-        "apparentMagnitude": 2.77,
-        "properMotionRaMasYr": 1.45,
-        "properMotionDecMasYr": -0.6,
-        "bailerJonesDistancePc": {
-         "lower": 617.283950617284,
-         "median": 714.2857142857143,
-         "upper": 847.4576271186442,
-         "method": "geometric_parallax"
-        },
-        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
-        "parallaxMas": 1.4,
-        "parallaxErrorMas": 0.22
-       },
-       "inferredDistancePc": {
-        "lower": 617.283950617284,
-        "median": 714.2857142857143,
-        "upper": 847.4576271186442,
-        "method": "geometric_parallax"
-       },
-       "cartesianParsecICRS": [
-        76.01415296869222,
-        706.4112932780512,
-        -73.54600540027101
-       ]
+       }
       },
       {
        "id": "finding-star-tianguan",
@@ -28766,7 +28728,8 @@
         "pixelResidualPx": 0.03232519451610443,
         "distanceUncertaintyNote": "Distance interval [122.7, 153.6] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -28890,30 +28853,26 @@
        ]
       },
       {
-       "id": "finding-star-meissa",
+       "id": "finding-obs-11",
        "observationSolutionId": "sol_<sha16 sent>",
-       "evidenceClass": "catalog_matched",
-       "title": "Meissa",
-       "subtitle": "Lambda Orionis · 386.4 pc [337.6 to 464.2 pc]",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #11",
+       "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
        "skyPosition": {
-        "raDeg": 83.784492,
-        "decDeg": 9.934156,
-        "uncertaintyArcsec": 14.13343480131643
+        "raDeg": 83.78808629120735,
+        "decDeg": 9.932481289231465,
+        "uncertaintyArcsec": 26.916276192898955
        },
        "evidence": {
-        "id": "ev-finding-star-meissa",
-        "evidenceClass": "catalog_matched",
-        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+        "id": "ev-finding-obs-11",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
         "sourceAssetSha256": "<sha256 sent>",
         "wcsSolutionId": "sol_<sha16 sent>",
-        "catalogReferenceId": "star-meissa",
-        "angularResidualArcsec": 14.13343480131643,
-        "pixelResidualPx": 0.0634107783721722,
-        "distanceUncertaintyNote": "Distance interval [337.6, 464.2] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
         "limitations": [
-         "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image."
+         "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
         ],
-        "verifiedByIndependentHoldout": true
+        "verifiedByIndependentHoldout": false
        },
        "sourceDetection": {
         "assetId": "src_<sha16 sent>",
@@ -28924,45 +28883,11 @@
         "snr": 66.55141162684954,
         "fwhmPx": 2.3359583189894364,
         "centroidUncertaintyPx": 0.0351000566612627
-       },
-       "catalogRef": {
-        "id": "star-meissa",
-        "provider": "Gaia DR3",
-        "releaseVersion": "Gaia DR3",
-        "catalogSourceId": "Gaia DR3 3337991583943473280",
-        "commonName": "Meissa",
-        "bayerDesignation": "Lambda Orionis",
-        "constellation": "Orion",
-        "objectType": "star",
-        "coordinateEpoch": "J2000.0",
-        "raDeg": 83.784492,
-        "decDeg": 9.934156,
-        "apparentMagnitude": 3.39,
-        "properMotionRaMasYr": -0.45,
-        "properMotionDecMasYr": -2.62,
-        "bailerJonesDistancePc": {
-         "lower": 337.5872,
-         "median": 386.42804,
-         "upper": 464.1803,
-         "method": "photogeometric_bailer_jones_edr3"
-        },
-        "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
-        "colorIndexBpRp": -0.14241743
-       },
-       "inferredDistancePc": {
-        "lower": 337.5872,
-        "median": 386.42804,
-        "upper": 464.1803,
-        "method": "photogeometric_bailer_jones_edr3"
-       },
-       "cartesianParsecICRS": [
-        41.21066803404118,
-        378.396708767848,
-        66.66514630667315
-       ]
+       }
       }
      ],
      "warnings": [
+      "2 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it).",
       "The file has no recorded capture time and no recorded place, so no sky can be predicted for it."
      ],
      "wcs": {
@@ -29287,7 +29212,7 @@
      },
      "quality": {
       "detectedCandidateCount": 11,
-      "matchedInlierCount": 11,
+      "matchedInlierCount": 9,
       "heldOutPairCount": 7,
       "heldOutInliers": 7,
       "passedIndependentVerification": true,
@@ -29318,7 +29243,8 @@
         "pixelResidualPx": 0.057321461731327246,
         "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -29464,7 +29390,8 @@
         "pixelResidualPx": 0.02553904353978176,
         "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -29808,28 +29735,24 @@
        ]
       },
       {
-       "id": "finding-star-hatysa",
+       "id": "finding-obs-8",
        "observationSolutionId": "sol_<sha16 sent>",
-       "evidenceClass": "catalog_matched",
-       "title": "Hatysa",
-       "subtitle": "Iota Orionis · 714.3 pc [617.3 to 847.5 pc]",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #8",
+       "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
        "skyPosition": {
-        "raDeg": 83.858258,
-        "decDeg": -5.9099,
-        "uncertaintyArcsec": 15.070579646869646
+        "raDeg": 83.85415193792196,
+        "decDeg": -5.910328410184034,
+        "uncertaintyArcsec": 26.608117886035675
        },
        "evidence": {
-        "id": "ev-finding-star-hatysa",
-        "evidenceClass": "catalog_matched",
-        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+        "id": "ev-finding-obs-8",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
         "sourceAssetSha256": "<sha256 sent>",
         "wcsSolutionId": "sol_<sha16 sent>",
-        "catalogReferenceId": "star-hatysa",
-        "angularResidualArcsec": 15.070579646869646,
-        "pixelResidualPx": 0.067615353193465,
-        "distanceUncertaintyNote": "Distance interval [617.3, 847.5] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -29842,43 +29765,7 @@
         "snr": 84.66957057960754,
         "fwhmPx": 2.3844372476817184,
         "centroidUncertaintyPx": 0.03
-       },
-       "catalogRef": {
-        "id": "star-hatysa",
-        "provider": "Hipparcos",
-        "releaseVersion": "Hipparcos 2007",
-        "catalogSourceId": "HIP 26241",
-        "commonName": "Hatysa",
-        "bayerDesignation": "Iota Orionis",
-        "constellation": "Orion",
-        "objectType": "star",
-        "coordinateEpoch": "J2000.0",
-        "raDeg": 83.858258,
-        "decDeg": -5.9099,
-        "apparentMagnitude": 2.77,
-        "properMotionRaMasYr": 1.45,
-        "properMotionDecMasYr": -0.6,
-        "bailerJonesDistancePc": {
-         "lower": 617.283950617284,
-         "median": 714.2857142857143,
-         "upper": 847.4576271186442,
-         "method": "geometric_parallax"
-        },
-        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
-        "parallaxMas": 1.4,
-        "parallaxErrorMas": 0.22
-       },
-       "inferredDistancePc": {
-        "lower": 617.283950617284,
-        "median": 714.2857142857143,
-        "upper": 847.4576271186442,
-        "method": "geometric_parallax"
-       },
-       "cartesianParsecICRS": [
-        76.01415296869222,
-        706.4112932780512,
-        -73.54600540027101
-       ]
+       }
       },
       {
        "id": "finding-star-tianguan",
@@ -29902,7 +29789,8 @@
         "pixelResidualPx": 0.03232519451610443,
         "distanceUncertaintyNote": "Distance interval [122.7, 153.6] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
         "limitations": [
-         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+         "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
         ],
         "verifiedByIndependentHoldout": false
        },
@@ -30026,30 +29914,26 @@
        ]
       },
       {
-       "id": "finding-star-meissa",
+       "id": "finding-obs-11",
        "observationSolutionId": "sol_<sha16 sent>",
-       "evidenceClass": "catalog_matched",
-       "title": "Meissa",
-       "subtitle": "Lambda Orionis · 386.4 pc [337.6 to 464.2 pc]",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #11",
+       "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
        "skyPosition": {
-        "raDeg": 83.784492,
-        "decDeg": 9.934156,
-        "uncertaintyArcsec": 14.13343480131643
+        "raDeg": 83.78808629120735,
+        "decDeg": 9.932481289231465,
+        "uncertaintyArcsec": 26.916276192898955
        },
        "evidence": {
-        "id": "ev-finding-star-meissa",
-        "evidenceClass": "catalog_matched",
-        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+        "id": "ev-finding-obs-11",
+        "evidenceClass": "observed",
+        "verificationMethod": "Measured in the image's pixels",
         "sourceAssetSha256": "<sha256 sent>",
         "wcsSolutionId": "sol_<sha16 sent>",
-        "catalogReferenceId": "star-meissa",
-        "angularResidualArcsec": 14.13343480131643,
-        "pixelResidualPx": 0.0634107783721722,
-        "distanceUncertaintyNote": "Distance interval [337.6, 464.2] pc: the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles",
         "limitations": [
-         "Distance is the Bailer-Jones et al. (2021) photogeometric estimate from Gaia DR3, with its 16th to 84th percentiles, not measured from this image."
+         "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
         ],
-        "verifiedByIndependentHoldout": true
+        "verifiedByIndependentHoldout": false
        },
        "sourceDetection": {
         "assetId": "src_<sha16 sent>",
@@ -30060,45 +29944,11 @@
         "snr": 66.55141162684954,
         "fwhmPx": 2.3359583189894364,
         "centroidUncertaintyPx": 0.0351000566612627
-       },
-       "catalogRef": {
-        "id": "star-meissa",
-        "provider": "Gaia DR3",
-        "releaseVersion": "Gaia DR3",
-        "catalogSourceId": "Gaia DR3 3337991583943473280",
-        "commonName": "Meissa",
-        "bayerDesignation": "Lambda Orionis",
-        "constellation": "Orion",
-        "objectType": "star",
-        "coordinateEpoch": "J2000.0",
-        "raDeg": 83.784492,
-        "decDeg": 9.934156,
-        "apparentMagnitude": 3.39,
-        "properMotionRaMasYr": -0.45,
-        "properMotionDecMasYr": -2.62,
-        "bailerJonesDistancePc": {
-         "lower": 337.5872,
-         "median": 386.42804,
-         "upper": 464.1803,
-         "method": "photogeometric_bailer_jones_edr3"
-        },
-        "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
-        "colorIndexBpRp": -0.14241743
-       },
-       "inferredDistancePc": {
-        "lower": 337.5872,
-        "median": 386.42804,
-        "upper": 464.1803,
-        "method": "photogeometric_bailer_jones_edr3"
-       },
-       "cartesianParsecICRS": [
-        41.21066803404118,
-        378.396708767848,
-        66.66514630667315
-       ]
+       }
       }
      ],
      "warnings": [
+      "2 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it).",
       "The file has no recorded capture time and no recorded place, so no sky can be predicted for it."
      ],
      "wcs": {

@@ -246,7 +246,7 @@
     },
     "quality": {
       "detectedCandidateCount": 12,
-      "matchedInlierCount": 11,
+      "matchedInlierCount": 9,
       "heldOutPairCount": 7,
       "heldOutInliers": 7,
       "passedIndependentVerification": true,
@@ -354,7 +354,8 @@
           "pixelResidualPx": 0.05855188659926055,
           "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+            "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -429,7 +430,8 @@
           "pixelResidualPx": 0.02453935169293505,
           "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+            "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -481,6 +483,72 @@
         ]
       },
       {
+        "id": "finding-obs-8",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #8",
+        "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
+        "skyPosition": {
+          "raDeg": 83.85414725345824,
+          "decDeg": -5.910429004647611,
+          "uncertaintyArcsec": 26.678314648168506
+        },
+        "evidence": {
+          "id": "ev-finding-obs-8",
+          "evidenceClass": "observed",
+          "verificationMethod": "Measured in the image's pixels",
+          "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-60ec5ffa64ba",
+          "frameTimeSec": 0.0,
+          "xPx": 497.65634411617623,
+          "yPx": 463.8668606715595,
+          "flux": 649.8377236167338,
+          "snr": 85.4022440942146,
+          "fwhmPx": 2.3931928443755788,
+          "centroidUncertaintyPx": 0.03
+        }
+      },
+      {
+        "id": "finding-obs-11",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #11",
+        "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
+        "skyPosition": {
+          "raDeg": 83.78750632356328,
+          "decDeg": 9.932269384172518,
+          "uncertaintyArcsec": 27.027731245141556
+        },
+        "evidence": {
+          "id": "ev-finding-obs-11",
+          "evidenceClass": "observed",
+          "verificationMethod": "Measured in the image's pixels",
+          "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-60ec5ffa64ba",
+          "frameTimeSec": 0.0,
+          "xPx": 478.4002357941819,
+          "yPx": 206.34021600060177,
+          "flux": 512.1986658907551,
+          "snr": 65.00331422290844,
+          "fwhmPx": 2.323596404474822,
+          "centroidUncertaintyPx": 0.035745814382737134
+        }
+      },
+      {
         "id": "finding-obs-12",
         "observationSolutionId": "sol-primary",
         "evidenceClass": "observed",
@@ -515,7 +583,7 @@
       }
     ],
     "warnings": [
-      "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+      "3 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it), 1 with no star of the 18-star catalog within 8 px."
     ],
     "wcs": {
       "projection": "TAN",
@@ -546,7 +614,7 @@
     },
     "quality": {
       "detectedCandidateCount": 12,
-      "matchedInlierCount": 11,
+      "matchedInlierCount": 9,
       "heldOutPairCount": 7,
       "heldOutInliers": 7,
       "passedIndependentVerification": true,
@@ -650,7 +718,8 @@
           "pixelResidualPx": 0.05855188659926055,
           "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+            "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -723,7 +792,8 @@
           "pixelResidualPx": 0.02453935169293505,
           "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
           "limitations": [
-            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image.",
+            "Its position was one of those this solution was fitted on, so it agrees with the solution by construction; its name rests on the held-out check of the whole solution, on no other catalog star giving a tenth of its light lying near it, and on its catalog brightness giving the light measured."
           ],
           "verifiedByIndependentHoldout": false
         },
@@ -775,6 +845,72 @@
         ]
       },
       {
+        "id": "finding-obs-8",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #8",
+        "subtitle": "Unmatched sensor detection at (497.7, 463.9) px",
+        "skyPosition": {
+          "raDeg": 83.85414725345824,
+          "decDeg": -5.910429004647611,
+          "uncertaintyArcsec": 26.678314648168506
+        },
+        "evidence": {
+          "id": "ev-finding-obs-8",
+          "evidenceClass": "observed",
+          "verificationMethod": "Measured in the image's pixels",
+          "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-60ec5ffa64ba",
+          "frameTimeSec": 0.0,
+          "xPx": 497.65634411617623,
+          "yPx": 463.8668606715595,
+          "flux": 649.8377236167338,
+          "snr": 85.4022440942146,
+          "fwhmPx": 2.3931928443755788,
+          "centroidUncertaintyPx": 0.03
+        }
+      },
+      {
+        "id": "finding-obs-11",
+        "observationSolutionId": "sol-primary",
+        "evidenceClass": "observed",
+        "title": "Observed Point Source #11",
+        "subtitle": "Unmatched sensor detection at (478.4, 206.3) px",
+        "skyPosition": {
+          "raDeg": 83.78750632356328,
+          "decDeg": 9.932269384172518,
+          "uncertaintyArcsec": 27.027731245141556
+        },
+        "evidence": {
+          "id": "ev-finding-obs-11",
+          "evidenceClass": "observed",
+          "verificationMethod": "Measured in the image's pixels",
+          "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+          "wcsSolutionId": "sol-primary",
+          "limitations": [
+            "Not named: another catalog star giving a tenth or more of the named star's light lies within twice the inlier gate of the detection, so which star it is cannot be told."
+          ],
+          "verifiedByIndependentHoldout": false
+        },
+        "sourceDetection": {
+          "assetId": "synthetic-60ec5ffa64ba",
+          "frameTimeSec": 0.0,
+          "xPx": 478.4002357941819,
+          "yPx": 206.34021600060177,
+          "flux": 512.1986658907551,
+          "snr": 65.00331422290844,
+          "fwhmPx": 2.323596404474822,
+          "centroidUncertaintyPx": 0.035745814382737134
+        }
+      },
+      {
         "id": "finding-obs-12",
         "observationSolutionId": "sol-primary",
         "evidenceClass": "observed",
@@ -809,7 +945,7 @@
       }
     ],
     "warnings": [
-      "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+      "3 unmatched sensor detection(s): 2 inside the inlier gate but not named (2 as another catalog star could be it), 1 with no star of the 18-star catalog within 8 px."
     ],
     "wcs": {
       "projection": "TAN",
