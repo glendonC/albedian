@@ -78,6 +78,9 @@ importers:
       jsdom:
         specifier: ^26.0.0
         version: 26.1.0
+      postcss:
+        specifier: ^8.5.32
+        version: 8.5.32
       typescript:
         specifier: ^5.8.2
         version: 5.9.3

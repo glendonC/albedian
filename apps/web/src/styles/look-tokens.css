@@ -1,0 +1,71 @@
+/* The approved controls' tokens (2026-11-12). The values come from @albedian/design-system (look.ts);
+   apps/web/src/__tests__/lookTokens.test.ts keeps this file identical to that map. */
+:root {
+  --look-field: #000000;
+  --look-ink: #f4f3ef;
+  --look-night: #0b0b0b;
+  --look-ink-2: rgba(244, 243, 239, 0.66);
+  --look-ink-3: rgba(244, 243, 239, 0.44);
+  --look-hair: rgba(244, 243, 239, 0.14);
+  --look-line: rgba(244, 243, 239, 0.88);
+  --look-wash: rgba(244, 243, 239, 0.1);
+
+  /* One colour and one tint per evidence class; the glyph and the word carry the class as well. */
+  --look-ev-observed: #f4f3ef;
+  --look-ev-catalog: #c9daff;
+  --look-ev-predicted: #f5b83d;
+  --look-ev-simulated: #a78bfa;
+  --look-ev-observed-tint: rgba(244, 243, 239, 0.1);
+  --look-ev-catalog-tint: rgba(201, 218, 255, 0.14);
+  --look-ev-predicted-tint: rgba(245, 184, 61, 0.14);
+  --look-ev-simulated-tint: rgba(167, 139, 250, 0.15);
+
+  --look-font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --look-tracking: -0.01em;
+
+  --look-h-compact: 36px;
+  --look-fs-compact: 15px;
+  --look-ic-compact: 14px;
+  --look-h-home: 48px;
+  --look-fs-home: 17px;
+  --look-ic-home: 17px;
+  --look-h-phone: 44px;
+  --look-fs-phone: 16px;
+  --look-ic-phone: 17px;
+  --look-inner-inset: 8px;
+
+  --look-tag-h: 28px;
+  --look-tag-fs: 13px;
+  --look-tag-pad-start: 9px;
+  --look-tag-pad-end: 12px;
+  --look-tag-gap: 7px;
+  --look-tag-glyph: 14px;
+  --look-tag-tracking: -0.005em;
+
+  --look-logo-ink: #ffffff;
+  --look-logo-weight: 600;
+  --look-logo-tracking: -0.048em;
+  --look-logo-mark-scale: 0.857;
+  --look-logo-mark-left: -0.048;
+  --look-logo-mark-up: -0.238;
+  --look-logo-fs: 21px;
+
+  --look-focus-width: 2px;
+  --look-focus-offset: 2px;
+
+  --look-ease-spring: cubic-bezier(0.175, 1.4, 0.32, 1);
+  --look-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --look-arrow-start: -45deg;
+  --look-dur-spring: 1200ms;
+  --look-dur-colour: 200ms;
+  --look-dur-press: 150ms;
+  --look-press-scale: 0.97;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --look-dur-spring: 0ms;
+    --look-dur-colour: 0ms;
+    --look-dur-press: 0ms;
+  }
+}

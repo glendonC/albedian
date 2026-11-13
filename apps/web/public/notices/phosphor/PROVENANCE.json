@@ -1,0 +1,89 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "phosphor-icons-core-2.1.1",
+      "title": "Phosphor Icons, @phosphor-icons/core 2.1.1 (regular weight)",
+      "url": "https://www.npmjs.com/package/@phosphor-icons/core/v/2.1.1",
+      "version": "2.1.1",
+      "license": {
+        "spdx": "MIT",
+        "name": "MIT License",
+        "url": "https://opensource.org/license/mit",
+        "conditions": "The copyright and permission notice travels with every copy: it is LICENSE beside this record, served with the app at /notices/phosphor/LICENSE."
+      },
+      "credit": "Phosphor Icons",
+      "note": "Five icons are drawn inline from their single path in apps/web/src/look/Icon.tsx. Each icon's file is kept here, byte for byte from the package's assets/regular folder and listed below with its sha256; a test ties every inline path to its file, character for character."
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "ddbe6082ec3cf979db47e5af549d2849c5d6182b3e005ef91ce1dbb9eb122f11",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's own LICENSE file, byte for byte."
+    },
+    {
+      "path": "arrow-right.svg",
+      "sha256": "e45bc4a12592b8723110db42c6deffdf177e4fe7704cf50324963fa0a59b2d74",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/arrow-right.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    },
+    {
+      "path": "microphone.svg",
+      "sha256": "b49dabfaf603e82594cef0c5e5784c747f4c098b7723d2973c92965745ca93a9",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/microphone.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    },
+    {
+      "path": "speaker-high.svg",
+      "sha256": "caca5fc1ee8489ac19232301d2c96f6d4048802491d75d761bbb89d5c98e459d",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/speaker-high.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    },
+    {
+      "path": "upload-simple.svg",
+      "sha256": "d2b22b75affd718a4a24d71ee71586b277cf48ddb7d52b7d7d0a85b47f8b12d1",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/upload-simple.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    },
+    {
+      "path": "x.svg",
+      "sha256": "7397b15e1fa66eaf6ff9b59fe91d483cb5c3bcf75b2fe052097ab6f0593b513a",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/x.svg, byte for byte; apps/web/src/look/Icon.tsx draws its one path inline."
+    }
+  ],
+  "fileSets": []
+}

@@ -7,6 +7,7 @@ import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
 import { HUD_FONTS } from './hudGlass.js';
 
 export * from './hudGlass.js';
+export * from './look.js';
 
 /**
  * ============================================================================

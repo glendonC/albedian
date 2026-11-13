@@ -1,0 +1,304 @@
+/* The controls the owner approved on 2026-11-12, after boltz.com's live code with the colours turned for the
+   night. Every value is a token from look-tokens.css (@albedian/design-system look.ts). The parts that draw these
+   classes are in apps/web/src/look/. Disabled controls fade to the quiet ink level [proposed: the approved
+   stylesheet shows no disabled state]. */
+
+.look-size-compact {
+  --look-h: var(--look-h-compact);
+  --look-fs: var(--look-fs-compact);
+  --look-ic: var(--look-ic-compact);
+}
+
+.look-size-home {
+  --look-h: var(--look-h-home);
+  --look-fs: var(--look-fs-home);
+  --look-ic: var(--look-ic-home);
+}
+
+/* The iPhone's web view: 44 px, as wide as the word (the approved correction) */
+.look-size-phone {
+  --look-h: var(--look-h-phone);
+  --look-fs: var(--look-fs-phone);
+  --look-ic: var(--look-ic-phone);
+}
+
+.look-main,
+.look-small-main,
+.look-second,
+.look-icon,
+.look-views__item {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: var(--look-h);
+  border-radius: 9999px;
+  font: 400 var(--look-fs) / 1.3 var(--look-font-sans);
+  letter-spacing: var(--look-tracking);
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--look-dur-press) var(--look-ease-standard),
+    background-color var(--look-dur-colour) var(--look-ease-standard),
+    color var(--look-dur-colour) var(--look-ease-standard),
+    border-color var(--look-dur-colour) var(--look-ease-standard);
+}
+
+.look-main:active:not(:disabled),
+.look-small-main:active:not(:disabled),
+.look-second:active:not(:disabled),
+.look-icon:active:not(:disabled),
+.look-views__item:active:not(:disabled) {
+  transform: scale(var(--look-press-scale));
+}
+
+.look-main:focus-visible,
+.look-small-main:focus-visible,
+.look-second:focus-visible,
+.look-icon:focus-visible,
+.look-views__item:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.look-main:disabled,
+.look-small-main:disabled,
+.look-second:disabled,
+.look-icon:disabled,
+.look-views__item:disabled {
+  cursor: default;
+  opacity: 0.44;
+}
+
+.look-i {
+  display: block;
+  flex: none;
+  width: var(--look-ic);
+  height: var(--look-ic);
+}
+
+.look-turn {
+  transform: rotate(var(--look-arrow-start));
+  transition: transform var(--look-dur-spring) var(--look-ease-spring);
+}
+
+/* 1. The screen's one main action: a filled pill and a circle apart that springs into it */
+.look-main__label {
+  box-sizing: border-box;
+  height: var(--look-h);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 1px solid var(--look-ink);
+  background: var(--look-ink);
+  color: var(--look-night);
+  transition: padding var(--look-dur-spring) var(--look-ease-spring);
+}
+
+.look-main__circle {
+  box-sizing: border-box;
+  width: var(--look-h);
+  height: var(--look-h);
+  flex: none;
+  display: grid;
+  place-items: center;
+  margin-left: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 1px solid var(--look-line);
+  background: transparent;
+  color: var(--look-ink);
+  transition:
+    margin var(--look-dur-spring) var(--look-ease-spring),
+    background-color var(--look-dur-spring) var(--look-ease-spring),
+    border-color var(--look-dur-spring) var(--look-ease-spring),
+    color var(--look-dur-spring) var(--look-ease-spring);
+}
+
+.look-main:hover:not(:disabled) .look-main__label,
+.look-main.is-on .look-main__label {
+  padding-right: calc(var(--look-h) + 16px);
+}
+
+.look-main:hover:not(:disabled) .look-main__circle,
+.look-main.is-on .look-main__circle {
+  margin-left: calc(var(--look-h) * -1);
+  background: var(--look-ink);
+  border-color: var(--look-ink);
+  color: var(--look-night);
+}
+
+.look-main:hover:not(:disabled) .look-turn,
+.look-main.is-on .look-turn,
+.look-small-main:hover:not(:disabled) .look-turn,
+.look-small-main.is-on .look-turn {
+  transform: rotate(0deg);
+}
+
+/* 2. Small main action: a filled pill with the dark circle inside */
+.look-small-main {
+  gap: 10px;
+  padding: 0 4px 0 20px;
+  background: var(--look-ink);
+  color: var(--look-night);
+}
+
+.look-small-main__circle {
+  width: calc(var(--look-h) - var(--look-inner-inset));
+  height: calc(var(--look-h) - var(--look-inner-inset));
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--look-night);
+  color: var(--look-ink);
+}
+
+/* 3. Second action: an outlined pill, with a filled circle when it carries an icon */
+.look-second {
+  padding: 0 20px;
+  border: 1px solid var(--look-line);
+  background: transparent;
+  color: var(--look-ink);
+}
+
+.look-second:hover:not(:disabled),
+.look-second.is-on {
+  background: var(--look-wash);
+}
+
+.look-second--with-circle {
+  gap: 12px;
+  padding: 0 4px 0 20px;
+}
+
+.look-second__circle {
+  width: calc(var(--look-h) - var(--look-inner-inset));
+  height: calc(var(--look-h) - var(--look-inner-inset));
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--look-ink);
+  color: var(--look-night);
+}
+
+/* 4. Views: outlined pills joined edge to edge, the current one filled */
+.look-views {
+  display: inline-flex;
+}
+
+.look-views__item {
+  padding: 0 20px;
+  border: 1px solid var(--look-line);
+  background: transparent;
+  color: var(--look-ink);
+}
+
+.look-views__item + .look-views__item {
+  margin-left: -1px;
+}
+
+.look-views__item:hover:not(:disabled) {
+  background: var(--look-wash);
+}
+
+.look-views__item.is-current {
+  position: relative;
+  z-index: 1;
+  border-color: var(--look-ink);
+  background: var(--look-ink);
+  color: var(--look-night);
+}
+
+/* 5. Icon only: an outlined circle the height of the controls */
+.look-icon {
+  width: var(--look-h);
+  justify-content: center;
+  border: 1px solid var(--look-line);
+  background: transparent;
+  color: var(--look-ink);
+}
+
+.look-icon:hover:not(:disabled),
+.look-icon.is-on {
+  border-color: var(--look-ink);
+  background: var(--look-ink);
+  color: var(--look-night);
+}
+
+/* Evidence class: not a button; a soft tinted tag with the glyph and the word */
+.look-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--look-tag-gap);
+  height: var(--look-tag-h);
+  padding: 0 var(--look-tag-pad-end) 0 var(--look-tag-pad-start);
+  border-radius: 9999px;
+  font: 400 var(--look-tag-fs) / 1 var(--look-font-sans);
+  letter-spacing: var(--look-tag-tracking);
+  white-space: nowrap;
+}
+
+.look-tag--observed {
+  background: var(--look-ev-observed-tint);
+  color: var(--look-ev-observed);
+}
+
+.look-tag--catalog {
+  background: var(--look-ev-catalog-tint);
+  color: var(--look-ev-catalog);
+}
+
+.look-tag--predicted {
+  background: var(--look-ev-predicted-tint);
+  color: var(--look-ev-predicted);
+}
+
+.look-tag--simulated {
+  background: var(--look-ev-simulated-tint);
+  color: var(--look-ev-simulated);
+}
+
+.look-glyph {
+  display: block;
+  flex: none;
+  width: var(--look-tag-glyph);
+  height: var(--look-tag-glyph);
+}
+
+/* The name, always as the logo: the word in Geist 600 and the moon with its star cut out at the shoulder */
+.look-logo {
+  display: inline-flex;
+  align-items: flex-start;
+  color: var(--look-logo-ink);
+}
+
+.look-logo__word {
+  font: var(--look-logo-weight) var(--look-logo-fs) / 1 var(--look-font-sans);
+  letter-spacing: var(--look-logo-tracking);
+}
+
+.look-logo__mark {
+  display: block;
+  flex: none;
+  width: calc(var(--look-logo-fs) * var(--look-logo-mark-scale));
+  height: calc(var(--look-logo-fs) * var(--look-logo-mark-scale));
+  margin-left: calc(var(--look-logo-fs) * var(--look-logo-mark-left));
+  margin-top: calc(var(--look-logo-fs) * var(--look-logo-mark-up));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .look-main,
+  .look-main *,
+  .look-small-main,
+  .look-small-main *,
+  .look-second,
+  .look-second *,
+  .look-icon,
+  .look-views__item,
+  .look-turn {
+    transition: none !important;
+  }
+}
