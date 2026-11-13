@@ -189,7 +189,11 @@ def times_on(line: str) -> list[datetime]:
             offset = (1 if zone[0] == "+" else -1) * timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
         local = _utc(int(year), int(month), int(day), int(hour), int(minute), int(second or 0))
         if local is not None:
-            found.append(local - offset)
+            try:
+                found.append(local - offset)
+            except OverflowError:
+                # Its offset carries it past year 9999 or before year 1: no instant, as a day that does not exist
+                pass
     found += [datetime.fromtimestamp(int(m.group(1)), tz=timezone.utc) for m in EPOCH.finditer(line)]
     found += [J2000 + timedelta(days=float(m.group(1)) - J2000_JULIAN_DATE) for m in JULIAN_DATE.finditer(line)]
     for m in PY_DATETIME.finditer(line):
@@ -573,6 +577,21 @@ def test_a_time_with_no_year_is_compared_in_every_year_and_across_new_year() -> 
     assert [kind for _, kind in kinds('"-01-01T10:00:00Z"', late)] == ["time"]
     # A full ISO date-time is read once, as a time, not again as a time with no year
     assert len(scan_text(SYNTHETIC[0].time.strftime("%Y-%m-%dT%H:%M:%SZ"), SYNTHETIC)) == 1
+
+
+def test_a_date_time_whose_offset_carries_it_past_the_calendar_is_no_instant_and_no_crash() -> None:
+    """A UTC instant is written from year 1 to year 9999. An ISO date-time whose offset carries it past either end is
+    no instant: the scanner reads it as none, as it reads a day that does not exist, where it raised OverflowError and
+    stopped the whole guard (unit capture-time-3). Each is a second outside its end; the neighbours a second inside
+    are read, and a capture beside an end is still found."""
+    past = ["9999-12-31T21:00:00-03:00", "0001-01-01T02:59:59+03:00", "9999-12-31T10:00:00-14:00", "0001-01-01T13:59:59+1400"]
+    for text in past:
+        assert times_on(f'"{text}"') == [], text
+        assert kinds(f'"{text}"') == [], text
+    assert times_on('"9999-12-31T20:59:59-03:00" "0001-01-01T03:00:00+03:00"') == [
+        datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc), datetime(1, 1, 1, tzinfo=timezone.utc)]
+    late = [Capture(place=None, time=datetime(9999, 12, 31, 22, 0, tzinfo=timezone.utc))]
+    assert [kind for _, kind in kinds('"9999-12-31T20:59:59-03:00" "9999-12-31T21:00:00-03:00"', late)] == ["time"]
 
 
 def test_month_and_year_alone_and_lockfiles_are_not_reported() -> None:

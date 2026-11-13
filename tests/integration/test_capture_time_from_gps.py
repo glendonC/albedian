@@ -432,14 +432,8 @@ def test_a_capture_time_below_year_1000_is_written_with_four_digits() -> None:
     assert gps_stamps(datetime(1, 1, 2, tzinfo=timezone.utc))["GPSDateStamp"] == "0001:01:02"
 
 
-def test_no_capture_time_formatter_leaves_its_year_to_the_platform() -> None:
-    # The macOS strftime pads every year, so the test above passes here either way; this one fails on any machine
-    import inspect
-
-    from services.contracts.ingest import format_utc
-
-    for formatter in (format_utc, metadata._format_local):
-        assert "%Y" not in inspect.getsource(formatter), formatter.__name__
+# The guard that no formatter leaves its year to the platform's strftime reads whole modules:
+# tests/integration/test_capture_years_written_by_python.py (unit capture-time-3)
 
 
 def test_a_fix_the_receiver_marked_void_gives_neither_source() -> None:
