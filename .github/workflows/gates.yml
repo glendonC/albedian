@@ -46,7 +46,10 @@ jobs:
   python:
     name: Python ${{ matrix.python }}, ${{ matrix.ffmpeg }} ffmpeg (pytest)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # [proposed] 30 minutes: of main's last twenty runs the slowest that finished took 920 of 1200 s, and one was
+    # cancelled at the limit by a hang. A slow run that passes is no longer cancelled; the price is that a hung test
+    # costs thirty minutes of a cancelled job in place of twenty, until a time bound on every test lands
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
