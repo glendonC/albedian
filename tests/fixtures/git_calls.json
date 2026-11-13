@@ -591,6 +591,24 @@
       "call": "it",
       "text": null,
       "why": "words for a person: the check's messages as its test expects them, word for word, or a test's title; nothing runs them"
+    },
+    {
+      "file": "scripts/ci_linux.py",
+      "call": "Refused",
+      "text": null,
+      "why": "the script's refusal messages when a git call fails or cat-file cannot read a blob; nothing runs them"
+    },
+    {
+      "file": "tests/integration/test_ci_linux.py",
+      "call": null,
+      "text": "\ngit add --force --all\n",
+      "why": "an expected line of scripts/ci_linux/job.bash read as text"
+    },
+    {
+      "file": "tests/integration/test_ci_linux.py",
+      "call": null,
+      "text": "git",
+      "why": "an expected apt package name read from scripts/ci_linux/Dockerfile"
     }
   ]
 }
