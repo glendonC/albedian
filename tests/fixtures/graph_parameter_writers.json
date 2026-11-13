@@ -1,0 +1,270 @@
+{
+ "rows": [
+  {
+   "name": "bitDepth 8.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"bitDepth\",\"value\":8.0,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}",
+   "taken": true,
+   "python": "{\"name\":\"bitDepth\",\"value\":8,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}"
+  },
+  {
+   "name": "bitDepth 16.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"bitDepth\",\"value\":16.0,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}",
+   "taken": true,
+   "python": "{\"name\":\"bitDepth\",\"value\":16,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}"
+  },
+  {
+   "name": "bitDepth 7.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"bitDepth\",\"value\":7.0,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "bitDepth 17.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"bitDepth\",\"value\":17.0,\"origin\":\"default\",\"basis\":\"Decided by the lead in design section 8.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "maxPasses 0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"maxPasses\",\"value\":0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}"
+  },
+  {
+   "name": "maxPasses 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"maxPasses\",\"value\":3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}"
+  },
+  {
+   "name": "maxPasses -0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":-0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"maxPasses\",\"value\":0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}"
+  },
+  {
+   "name": "maxPasses 4.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":4.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "tilePx 16.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"tilePx\",\"value\":16.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"tilePx\",\"value\":16,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}"
+  },
+  {
+   "name": "tilePx 4096.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"tilePx\",\"value\":4096.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"tilePx\",\"value\":4096,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}"
+  },
+  {
+   "name": "tilePx 1e3",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"tilePx\",\"value\":1e3,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}",
+   "taken": true,
+   "python": "{\"name\":\"tilePx\",\"value\":1000,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}"
+  },
+  {
+   "name": "tilePx 4097.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"tilePx\",\"value\":4097.0,\"origin\":\"default\",\"basis\":\"Proposed in design section 3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "maxPasses 2.5",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":2.5,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "exposureEv 1.5",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1.5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":1.5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 2.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":2.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":2.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "confirmThresholdSnr 4.75",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":4.75,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":4.75,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "transfer \"hlg\"",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"transfer\",\"value\":\"hlg\",\"origin\":\"default\",\"basis\":\"Verified at its source in design section 1.\"}",
+   "taken": true,
+   "python": "{\"name\":\"transfer\",\"value\":\"hlg\",\"origin\":\"default\",\"basis\":\"Verified at its source in design section 1.\"}"
+  },
+  {
+   "name": "a name of [\"maxPasses\"] beside 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[\"maxPasses\"],\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of [\"maxPasses\"] beside 1e3",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[\"maxPasses\"],\"value\":1e3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of [\"maxPasses\"] beside -0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[\"maxPasses\"],\"value\":-0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of {\"row\":\"maxPasses\"} beside 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of {\"row\":\"maxPasses\"} beside 1e3",
+   "schema": "GraphParameter",
+   "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":1e3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of {\"row\":\"maxPasses\"} beside -0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":-0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of [] beside 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[],\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of [] beside 1e3",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[],\"value\":1e3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of [] beside -0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[],\"value\":-0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of \"notARow\" beside 3.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"notARow\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of \"maxPasses\" alone",
+   "schema": "GraphParameter",
+   "text": "\"maxPasses\"",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of 3 alone",
+   "schema": "GraphParameter",
+   "text": "3",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of [\"maxPasses\",3.0] alone",
+   "schema": "GraphParameter",
+   "text": "[\"maxPasses\",3.0]",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of null alone",
+   "schema": "GraphParameter",
+   "text": "null",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of true alone",
+   "schema": "GraphParameter",
+   "text": "true",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of \"maxPasses\" as a step's parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[\"maxPasses\"]}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of 3 as a step's parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[3]}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of [\"maxPasses\",3.0] as a step's parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[[\"maxPasses\",3.0]]}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of null as a step's parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[null]}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a record of true as a step's parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[true]}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a step with its own parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"maxPasses\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}]}",
+   "taken": true,
+   "python": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"maxPasses\",\"value\":3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}]}"
+  }
+ ]
+}

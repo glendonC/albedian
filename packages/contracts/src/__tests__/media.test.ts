@@ -925,3 +925,41 @@ describe("GraphParameter's value keeps its type (an order-dependent union on the
     expect(read.success && JSON.stringify(read.data.value)).toBe(String(whole));
   });
 });
+
+describe("an integer row's whole float is that integer on both sides, and the two writers' bytes", () => {
+  interface Row {
+    name: string;
+    schema: 'GraphParameter' | 'GraphStep';
+    text: string;
+    taken: boolean;
+    python: string | null;
+  }
+  const writers = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/graph_parameter_writers.json'), 'utf8'),
+  ) as { rows: Row[] };
+  const schemas = { GraphParameter: GraphParameterSchema, GraphStep: GraphStepSchema };
+  const written = (row: Row): string | null => {
+    const read = schemas[row.schema].safeParse(JSON.parse(row.text));
+    return read.success ? JSON.stringify(read.data) : null;
+  };
+
+  it('reads every row by a schema it names', () => {
+    expect(writers.rows.filter((row) => !(row.schema in schemas))).toEqual([]);
+  });
+
+  it.each(writers.rows.map((row) => [row.name, row] as const))(
+    'judges %s as the Python side does',
+    (_, row) => {
+      expect(written(row) !== null).toBe(row.taken);
+      expect(row.python !== null).toBe(row.taken);
+    },
+  );
+
+  it('writes every taken record byte for byte as the Python side does, but a number row whole float', () => {
+    // A number row's whole float: Python writes 2.0 and JSON.stringify 2, the same number. No record's bytes are
+    // compared across the two languages today (the report says where that was looked for).
+    const differing = writers.rows.filter((row) => row.taken && written(row) !== row.python);
+    expect(differing.map((row) => row.text.match(/"name":"([^"]+)","value":([^,]+),/)?.slice(1).join(' '))).toEqual(['exposureEv 2.0']);
+    for (const row of differing) expect(written(row)).toBe((row.python as string).replace(/"value":(-?\d+)\.0,/, '"value":$1,'));
+  });
+});

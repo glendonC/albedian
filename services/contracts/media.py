@@ -529,6 +529,19 @@ class GraphParameter(_Record):
     # What on this file it was measured from, the request field, or the default's source
     basis: StrictStr
 
+    @model_validator(mode="before")
+    @classmethod
+    def _a_whole_float_on_an_integer_row_is_that_integer(cls, data: Any) -> Any:
+        """Wire rule 2: on an integer row a whole number written as a float (3.0, 1e3) is that integer, read and written,
+        as JSON.parse gives it to the Zod side."""
+        name = data.get("name") if isinstance(data, dict) else None
+        # Only a name that is text names a row; anything else falls through to the contract's own refusal
+        if isinstance(name, str) and isinstance(data.get("value"), float) and data["value"].is_integer():
+            row = _PARAMETER_BY_NAME.get(name)
+            if row is not None and row["type"] == "integer":
+                return {**data, "value": int(data["value"])}
+        return data
+
     @model_validator(mode="after")
     def _fits_its_row_and_origin(self) -> "GraphParameter":
         failures = []

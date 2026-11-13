@@ -876,3 +876,111 @@ def test_a_whole_number_parameter_is_written_back_whole_at_its_rows_edges(name: 
     record = media.GraphParameter.model_validate({**sample, "value": value})
     dumped = record.model_dump(by_alias=True)["value"]
     assert type(dumped) is int and dumped == value
+
+
+# An integer row given a whole number written as a float (maxPasses as 3.0) holds that integer on both sides (wire
+# rule 2), read and written; and what each side writes for the same JSON text, compared byte for byte through
+# tests/fixtures/graph_parameter_writers.json, which this file writes and media.test.ts reads.
+WRITERS_FIXTURE = ROOT / "tests" / "fixtures" / "graph_parameter_writers.json"
+WRITERS_UPDATE_ENV = "ALBEDIAN_UPDATE_GRAPH_PARAMETER_WRITERS"
+# (row name, the value's JSON text, taken): the integer rows at both inside edges and one step outside, as whole
+# floats; a number row's and a text row's own values beside them
+INTEGER_ROW_EDGES = [
+    ("bitDepth", "8.0", True), ("bitDepth", "16.0", True), ("bitDepth", "7.0", False), ("bitDepth", "17.0", False),
+    ("maxPasses", "0.0", True), ("maxPasses", "3.0", True), ("maxPasses", "-0.0", True), ("maxPasses", "4.0", False),
+    ("tilePx", "16.0", True), ("tilePx", "4096.0", True), ("tilePx", "1e3", True), ("tilePx", "4097.0", False),
+    ("maxPasses", "2.5", False),
+]  # fmt: skip
+OTHER_ROWS = [("exposureEv", "1.5"), ("exposureEv", "2.0"), ("confirmThresholdSnr", "4.75"), ("transfer", '"hlg"')]
+# A name that is no name (a list or an object, which no row is named by) beside a whole float: refused on both sides,
+# never raised (a review's nine cases)
+NOT_A_NAME = ['["maxPasses"]', '{"row":"maxPasses"}', "[]"]
+WHOLE_FLOATS = ["3.0", "1e3", "-0.0"]
+# A record that is not an object (text, a number, a list, nothing, true), alone and as a step's parameter: refused on
+# both sides, never raised (a review's case: a bare string escaped as an AttributeError with the guard taken away)
+NOT_AN_OBJECT = ['"maxPasses"', "3", '["maxPasses",3.0]', "null", "true"]
+# A name that is text but names no row, beside a whole float
+NOT_A_ROW = '"notARow"'
+
+
+def _not_a_name_text(name_text: str, value_text: str) -> str:
+    return _parameter_text("maxPasses", value_text).replace('"name":"maxPasses"', f'"name":{name_text}', 1)
+
+
+def _parameter_text(name: str, value_text: str) -> str:
+    sample = next(p for p in VALID["GraphParameter"] if p["name"] == name)
+    return json.dumps({**sample, "value": "@@value@@"}, separators=(",", ":")).replace('"@@value@@"', value_text)
+
+
+def _as_a_steps_parameter(record_text: str) -> str:
+    """The record as the one parameter of a step of the kind maxPasses belongs to."""
+    step = {"kind": "dissolve_unconfirmed", "version": "1.0.0", "parameters": ["@@record@@"]}
+    return json.dumps(step, separators=(",", ":")).replace('"@@record@@"', record_text)
+
+
+def _python_writes(text: str, schema: str = "GraphParameter") -> str | None:
+    """The bytes the Python side writes for a record of `schema` read from `text`, compact as JSON.stringify writes;
+    None when it is refused."""
+    try:
+        read = getattr(media, schema).model_validate(json.loads(text))
+    except ValidationError:
+        return None
+    return json.dumps(read.model_dump(by_alias=True, mode="json"), separators=(",", ":"), ensure_ascii=False)
+
+
+def _judged(row: dict[str, Any]) -> str:
+    """What the Python side does with a row: taken, refused by the contract (its ValidationError), or anything it
+    raises instead, named by its class."""
+    try:
+        getattr(media, row["schema"]).model_validate(json.loads(row["text"]))
+    except ValidationError:
+        return "refused"
+    except Exception as error:  # noqa: BLE001 (an escape of any class is what this names)
+        return f"escaped as {type(error).__name__}"
+    return "taken"
+
+
+def writers_rows() -> list[dict[str, Any]]:
+    """The rows without what the Python side writes for them, so collecting a test over them reads no record."""
+    p = "GraphParameter"
+    rows = [{"name": f"{name} {value}", "schema": p, "text": _parameter_text(name, value), "taken": taken} for name, value, taken in INTEGER_ROW_EDGES]
+    rows += [{"name": f"{name} {value}", "schema": p, "text": _parameter_text(name, value), "taken": True} for name, value in OTHER_ROWS]
+    rows += [{"name": f"a name of {name} beside {value}", "schema": p, "text": _not_a_name_text(name, value), "taken": False} for name in NOT_A_NAME for value in WHOLE_FLOATS]
+    rows += [{"name": f"a name of {NOT_A_ROW} beside 3.0", "schema": p, "text": _not_a_name_text(NOT_A_ROW, "3.0"), "taken": False}]
+    rows += [{"name": f"a record of {record} alone", "schema": p, "text": record, "taken": False} for record in NOT_AN_OBJECT]
+    rows += [{"name": f"a record of {record} as a step's parameter", "schema": "GraphStep", "text": _as_a_steps_parameter(record), "taken": False} for record in NOT_AN_OBJECT]
+    rows += [{"name": "a step with its own parameter", "schema": "GraphStep", "text": _as_a_steps_parameter(_parameter_text("maxPasses", "3.0")), "taken": True}]
+    return rows
+
+
+def writers_cases() -> dict[str, Any]:
+    return {"rows": [{**row, "python": _python_writes(row["text"], row["schema"])} for row in writers_rows()]}
+
+
+def test_the_writers_fixture_is_current() -> None:
+    text = json.dumps(writers_cases(), indent=1, ensure_ascii=True) + "\n"
+    if os.environ.get(WRITERS_UPDATE_ENV) == "1":
+        WRITERS_FIXTURE.write_text(text, encoding="utf-8")
+    assert WRITERS_FIXTURE.read_text(encoding="utf-8") == text, f"regenerate with {WRITERS_UPDATE_ENV}=1"
+
+
+@pytest.mark.parametrize(("name", "value", "taken"), INTEGER_ROW_EDGES, ids=[f"{n} {v}" for n, v, _ in INTEGER_ROW_EDGES])
+def test_a_whole_float_on_an_integer_row_is_that_integer_read_and_written(name: str, value: str, taken: bool) -> None:
+    written = _python_writes(_parameter_text(name, value))
+    assert (written is not None) == taken
+    if taken:
+        read = json.loads(written)["value"]
+        assert type(read) is int and read == int(float(value)) and f'"value":{int(float(value))},' in written
+
+
+@pytest.mark.parametrize("row", writers_rows(), ids=lambda row: row["name"])
+def test_every_row_is_taken_or_refused_by_the_contract_and_never_raised(row: dict[str, Any]) -> None:
+    """Whatever the parser raises is caught and named, so a guard taken away fails here by this assertion, with the
+    row's name, and not by the error escaping."""
+    assert _judged(row) == ("taken" if row["taken"] else "refused"), row["name"]
+
+
+def test_a_number_row_keeps_its_float_and_a_text_row_its_text() -> None:
+    assert json.loads(_python_writes(_parameter_text("exposureEv", "1.5")))["value"] == 1.5
+    assert type(json.loads(_python_writes(_parameter_text("exposureEv", "2.0")))["value"]) is float
+    assert json.loads(_python_writes(_parameter_text("transfer", '"hlg"')))["value"] == "hlg"
