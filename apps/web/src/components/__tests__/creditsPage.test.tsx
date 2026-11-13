@@ -7,8 +7,17 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssetProvenanceRecordSchema } from '@albedian/contracts';
 import { AUDIO_CREDITS, AUDIO_NOTICES_URL } from '../../audio/audioCredits.js';
-import { CHANGES, CREDIT_ROWS, PROVENANCE_RECORD_URLS, SOURCE_ROW, creditRows, type CreditRow, type LoadedRecord } from '../creditRows.js';
-import { homeBackdropChanges } from '../homeBackdrop.js';
+import {
+  CHANGES,
+  CREDIT_ROWS,
+  PROVENANCE_RECORD_URLS,
+  SOURCE_ROW,
+  creditRows,
+  namesServedPath,
+  servedNotices,
+  type CreditRow,
+  type LoadedRecord,
+} from '../creditRows.js';
 import { CREDITS_WAIT_MS, CreditsPage } from '../CreditsPage.js';
 
 // The Credits page as the owner approved it (credit-approved-2026-11-12): rows by what a person sees, the approved four
@@ -81,12 +90,26 @@ describe('creditRows: rows by what a person sees, every source credited from the
     }
   });
 
-  it("links the licence page of every source on that source's row, under the licence's own name", () => {
+  it("links every licence a credit's sources name, under the licence's own name, once per name", () => {
     for (const source of sources) {
-      const row = rowNamed(SOURCE_ROW[source.id]!);
-      const licences = row?.blocks.flatMap((b) => b.licences) ?? [];
-      expect(licences.some((l) => l.href === source.license.url && l.name === source.license.name), source.id).toBe(true);
+      const block = rowNamed(SOURCE_ROW[source.id]!)?.blocks.find((b) => b.credits[0] === source.credit);
+      const licence = block?.licences.find((l) => l.name === source.license.name);
+      expect(licence, source.id).toBeDefined();
+      // The page linked is one this licence's sources give
+      expect(sources.some((s) => s.credit === source.credit && s.license.name === licence?.name && s.license.url === licence?.href), source.id).toBe(true);
     }
+  });
+
+  it('shows no line twice in a credit: a licence once by name, an acknowledgement that is its credit not again', () => {
+    for (const block of rows.flatMap((r) => r.blocks)) {
+      const lines = [...block.credits, ...block.licences.map((l) => l.name), ...block.acknowledgements, ...block.citations, ...block.changes];
+      expect(lines.length, block.key).toBe(new Set(lines).size);
+    }
+    // The eclipses' two sources share a credit, a licence by name and an acknowledgement that is the credit itself
+    const eclipses = rowNamed('Eclipses')?.blocks;
+    expect(eclipses?.map((b) => [b.credits, b.licences.map((l) => l.name), b.acknowledgements])).toEqual([
+      [["Eclipse Predictions by Fred Espenak and Jean Meeus (NASA's GSFC)"], ['NASA Eclipse Web Site Reproduction Permission'], []],
+    ]);
   });
 
   it('lists each licence once in a credit, however many of its sources share it', () => {
@@ -102,7 +125,8 @@ describe('creditRows: rows by what a person sees, every source credited from the
     expect(owed.length).toBeGreaterThan(0);
     for (const source of owed) {
       const row = rowNamed(SOURCE_ROW[source.id]!);
-      expect(row?.blocks.some((b) => b.acknowledgements.includes(source.acknowledgement!)), source.id).toBe(true);
+      // Shown as its own line, or as the credit line it equals word for word
+      expect(row?.blocks.some((b) => b.acknowledgements.includes(source.acknowledgement!) || b.credits.includes(source.acknowledgement!)), source.id).toBe(true);
     }
   });
 
@@ -119,18 +143,25 @@ describe('creditRows: rows by what a person sees, every source credited from the
   });
 
   it("states a change wherever a record's licence asks for one, worded from what the app does", () => {
-    expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
+    expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'eso1804a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
     for (const id of Object.keys(CHANGES)) {
       const source = sources.find((s) => s.id === id)!;
       expect(source.license.conditions ?? '', id).toMatch(ASKS_FOR_CHANGES);
       const row = rowNamed(SOURCE_ROW[id]!);
-      expect(row?.blocks.some((b) => b.changes.includes(CHANGES[id]!())), id).toBe(true);
+      const block = row?.blocks.find((b) => b.credits[0] === source.credit);
+      // Every line of the source's changes, in order, once
+      expect(block?.changes, id).toEqual(CHANGES[id]!());
     }
-    expect(CHANGES.eso0932a!()).toBe(homeBackdropChanges());
-    expect(CHANGES['openngc-v20260501-ngc']!()).toBe('The data were changed.');
-    // The one other record whose terms ask for it ships its file byte for byte (its note says so); it is put to the lead
+    // The panorama's three and Lupus 3's one are held to the code by creditChanges.test.ts
+    expect(CHANGES.eso0932a!()).toHaveLength(3);
+    expect(CHANGES.eso1804a!()).toHaveLength(2);
+    expect(CHANGES['openngc-v20260501-ngc']!()).toEqual(['The data were changed.']);
+    expect(CHANGES['openngc-v20260501-addendum']!()).toEqual(['The data were changed.']);
+    // Every source whose terms ask for it has its changes stated
     const asked = new Set(sources.filter((s) => ASKS_FOR_CHANGES.test(s.license.conditions ?? '')).map((s) => s.id));
-    expect([...asked].filter((id) => !(id in CHANGES))).toEqual(['eso1804a']);
+    expect([...asked].filter((id) => !(id in CHANGES))).toEqual([]);
+    // Two OpenNGC sources on one credit say it once
+    expect(rowNamed('Deep-sky objects')?.blocks.flatMap((b) => b.changes)).toEqual(['The data were changed.']);
   });
 
   it("links each source's own page, never a query of a thousand characters", () => {
@@ -145,6 +176,75 @@ describe('creditRows: rows by what a person sees, every source credited from the
 
   it('orders Star catalogs as the approved page does: ESA Hipparcos, then ESA/Gaia/DPAC', () => {
     expect(rowNamed('Star catalogs')?.blocks.slice(0, 2).map((b) => b.credits[0])).toEqual(['ESA Hipparcos', 'ESA/Gaia/DPAC']);
+  });
+
+  it('links each notice a record serves beside its files from that source\'s row, and only those', () => {
+    const linked = rows.flatMap((r) => r.blocks.flatMap((b) => b.notices.map((n) => [r.name, n.name, n.href])));
+    expect(linked).toEqual([
+      ['Icons', 'Notice', '/notices/phosphor/LICENSE'],
+      ['Constellations', 'Notice', '/catalog/constellations/LICENSE'],
+      ['Unicode character data', 'Notice', '/notices/unicode/UNICODE-LICENSE.txt'],
+    ]);
+    // Each is a file the app serves, listed in its record for the source whose terms name it
+    for (const [, , href] of linked) {
+      expect(fs.existsSync(path.join(publicRoot, href!)), href).toBe(true);
+      const record = loaded.find((r) => href!.startsWith(r.url.replace(/PROVENANCE\.json$/, '')))!;
+      const file = record.record.files.find((f) => f.path === href!.slice(record.url.length - 'PROVENANCE.json'.length));
+      expect(file?.sources.length, href).toBeGreaterThan(0);
+    }
+    // Every file the app serves that is named as a licence or a notice is linked
+    const walk = (dir: string): string[] =>
+      fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+    const named = walk(publicRoot)
+      .filter((file) => /licen[cs]e|notice/i.test(path.basename(file)))
+      .map((file) => `/${path.relative(publicRoot, file).split(path.sep).join('/')}`);
+    expect(named.sort()).toEqual(linked.map(([, , href]) => href).sort());
+    // The constellation notice serves both d3-celestial sources
+    expect(servedNotices(loaded).get('d3-celestial-constellation-lines')).toEqual(['/catalog/constellations/LICENSE']);
+    expect(servedNotices(loaded).get('d3-celestial-constellation-bounds')).toEqual(['/catalog/constellations/LICENSE']);
+  });
+
+  it('takes a file as a notice only where its own record lists it for a source whose terms name where it is served', () => {
+    const at = 'served with the app at ';
+    const rowsOfNaming: Array<[conditions: string, served: string, named: boolean]> = [
+      [`${at}/a/LICENSE.`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE (docs/x.md carries it too): text`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE, and with every copy`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE; then`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE: keep it`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE\twith a tab`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE.\nNext line`, '/a/LICENSE', true],
+      [`${at}/a/LICENSE.txt.`, '/a/LICENSE', false],
+      [`${at}/a/LICENSES.`, '/a/LICENSE', false],
+      [`${at}/a/LICENSE/b.`, '/a/LICENSE', false],
+      [`${at}/a/LICENSE-2.`, '/a/LICENSE', false],
+      [`${at}/b/LICENSE.`, '/a/LICENSE', false],
+      [`${at}/x/a/LICENSE.`, '/a/LICENSE', false],
+      ['it is /a/LICENSE beside this record.', '/a/LICENSE', false],
+      [`${at}/a/UNICODE-LICENSExtxt.`, '/a/UNICODE-LICENSE.txt', false],
+      [`${at}/a/UNICODE-LICENSE.txt.`, '/a/UNICODE-LICENSE.txt', true],
+      ['', '/a/LICENSE', false],
+    ];
+    for (const [conditions, served, named] of rowsOfNaming) expect(namesServedPath(conditions, served), conditions).toBe(named);
+
+    const phosphor = loaded.find((r) => r.url === '/notices/phosphor/PROVENANCE.json')!;
+    const id = phosphor.record.sources[0]!.id;
+    const altered = (change: (record: LoadedRecord['record']) => LoadedRecord['record']) => [
+      { url: phosphor.url, record: change(structuredClone(phosphor.record)) },
+    ];
+    expect(servedNotices([phosphor]).get(id)).toEqual(['/notices/phosphor/LICENSE']);
+    // Its terms no longer name where the notice is served
+    const unnamed = altered((r) => ({ ...r, sources: r.sources.map((s) => ({ ...s, license: { ...s.license, conditions: 'Keep the notice.' } })) }));
+    expect(servedNotices(unnamed).get(id)).toBeUndefined();
+    // The file is listed for no source
+    const unlisted = altered((r) => ({ ...r, files: r.files.map((f) => (f.path === 'LICENSE' ? { ...f, sources: [] } : f)) }));
+    expect(servedNotices(unlisted).get(id)).toBeUndefined();
+    // The record lists no such file
+    const missing = altered((r) => ({ ...r, files: r.files.filter((f) => f.path !== 'LICENSE') }));
+    expect(servedNotices(missing).get(id)).toBeUndefined();
+    // The same terms read from a record served elsewhere name a different path, so nothing there is a notice
+    expect(servedNotices([{ ...phosphor, url: '/elsewhere/PROVENANCE.json' }]).get(id)).toBeUndefined();
   });
 
   it("credits the audio engine's works under Sound, in their own lines, linking their notices", () => {
@@ -218,7 +318,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     expect(lines?.innerHTML.split('<br>').map((l) => l.replace(/<[^>]+>/g, ''))).toEqual([
       'ESO/S. Brunier',
       'Creative Commons Attribution 4.0 International',
-      homeBackdropChanges(),
+      ...CHANGES.eso0932a!(),
     ]);
     const licence = first.querySelector('a.credits-licence');
     expect(licence?.getAttribute('href')).toBe('https://creativecommons.org/licenses/by/4.0/');
@@ -237,6 +337,17 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
     const exoplanetSource = sources.find((s) => s.id === 'nasa-exoplanet-archive-pscomppars')!;
     expect(exoplanets?.textContent).toContain(exoplanetSource.acknowledgement!);
     expect(exoplanets?.textContent).toContain(exoplanetSource.citation!);
+    // A notice is drawn as a link line after the licence, opening apart from the app
+    const constellations = shown.find((r) => r.querySelector('.credits-label')?.textContent === 'Constellations');
+    const notice = constellations?.querySelector('a.credits-licence[href="/catalog/constellations/LICENSE"]');
+    expect(notice?.textContent).toBe('Notice');
+    expect(notice?.getAttribute('target')).toBe('_blank');
+    expect(notice?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(constellations?.querySelector('.credits-lines')?.innerHTML.split('<br>').map((l) => l.replace(/<[^>]+>/g, ''))).toEqual([
+      'd3-celestial, Olaf Frohn (github.com/ofrohn/d3-celestial)',
+      'BSD 3-Clause License',
+      'Notice',
+    ]);
   });
 
   it('shows no count, spinner or row before the records arrive', async () => {

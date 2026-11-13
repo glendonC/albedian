@@ -14,7 +14,8 @@ Outputs in `apps/web/public/catalog/constellations/`, validated by `services/con
 `services/contracts/provenance.py`:
 - `lines.json`: `ConstellationLines` (`evidenceKind: "catalog-derived"`), all 89 figures;
 - `bounds.json`: `ConstellationBoundaries`, all 89 boundary rings;
-- `PROVENANCE.json`: `AssetProvenanceRecord` pinning both outputs and both inputs, with the BSD-3-Clause notice.
+- `LICENSE`: the BSD-3-Clause notice, which must travel with the data, served beside it;
+- `PROVENANCE.json`: `AssetProvenanceRecord` pinning the three files and both inputs, with the BSD-3-Clause notice.
 
 Changed from the source, and nothing else: right ascension, which d3-celestial writes as a longitude from -180 to
 180 degrees, is wrapped into 0 to 360 (a negative value gains 360 and is rounded back to the source's 4 decimals);
@@ -90,6 +91,9 @@ BSD_NOTICE = (
     "OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH "
     "DAMAGE."
 )
+# The notice as a file beside the data, served with the app at /catalog/constellations/LICENSE
+NOTICE_NAME = "LICENSE"
+NOTICE_TEXT = BSD_NOTICE + "\n"
 
 
 @dataclass(frozen=True)
@@ -208,7 +212,8 @@ LICENSE = {
     "name": "BSD 3-Clause License",
     "url": f"{REPO}/blob/{COMMIT}/LICENSE",
     "conditions": (
-        "Keep this notice with the data and in the documentation (docs/science/CONSTELLATIONS.md carries it too): "
+        "Keep this notice with the data and in the documentation: it is LICENSE beside this record, served with the "
+        "app at /catalog/constellations/LICENSE (docs/science/CONSTELLATIONS.md carries it too): "
         + BSD_NOTICE
     ),
 }
@@ -279,6 +284,21 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                 f"densify edges along B1875 right ascension or declination, never draw them straight. {changes}"
             ),
         },
+        {
+            "path": NOTICE_NAME,
+            "sha256": hashlib.sha256((out_dir / NOTICE_NAME).read_bytes()).hexdigest(),
+            "sources": [item.source_id for item in INPUTS],
+            "producedBy": {
+                "method": "script",
+                "script": "scripts/bake_constellations_d3celestial.py",
+                "command": "uv run python scripts/bake_constellations_d3celestial.py",
+            },
+            "note": (
+                "d3-celestial's LICENSE at the pinned commit, word for word: the script writes it from its own copy "
+                "of the text, read through the GitHub contents API. The notice must travel with lines.json and "
+                "bounds.json."
+            ),
+        },
     ]
     return AssetProvenanceRecord.model_validate(
         {"format": "albedian.asset-provenance", "formatVersion": 1, "sources": sources, "files": files, "fileSets": []}
@@ -302,6 +322,14 @@ def built_texts(cache: Path) -> dict[str, str]:
     return {LINES.out_name: dumps_document(build_lines(cache)), BOUNDS.out_name: dumps_document(build_bounds(cache))}
 
 
+def check_notice(out_dir: Path) -> list[str]:
+    """The served notice against the bake's own text, byte for byte; needs no cache."""
+    target = out_dir / NOTICE_NAME
+    if not target.is_file() or target.read_bytes() != NOTICE_TEXT.encode("utf-8"):
+        return [f"{target} differs from a fresh bake"]
+    return []
+
+
 def verify_outputs(cache: Path, out_dir: Path) -> list[str]:
     check_inputs(cache)
     errors = []
@@ -309,6 +337,7 @@ def verify_outputs(cache: Path, out_dir: Path) -> list[str]:
         target = out_dir / name
         if not target.is_file() or target.read_text(encoding="utf-8") != text:
             errors.append(f"{target} differs from a fresh bake")
+    errors += check_notice(out_dir)
     if not errors:
         record_path = out_dir / "PROVENANCE.json"
         if not record_path.is_file() or record_path.read_text(encoding="utf-8") != dumps_record(build_provenance_record(out_dir)):
@@ -327,14 +356,15 @@ def main(argv: list[str] | None = None) -> int:
         for err in errors:
             print(f"[constellations] {err}", file=sys.stderr)
         if not errors:
-            print("[constellations] lines.json, bounds.json and PROVENANCE.json match a fresh bake")
+            print("[constellations] lines.json, bounds.json, LICENSE and PROVENANCE.json match a fresh bake")
         return 1 if errors else 0
     check_inputs(args.cache)
     args.out.mkdir(parents=True, exist_ok=True)
     for name, text in built_texts(args.cache).items():
         (args.out / name).write_text(text, encoding="utf-8")
+    (args.out / NOTICE_NAME).write_bytes(NOTICE_TEXT.encode("utf-8"))
     (args.out / "PROVENANCE.json").write_text(dumps_record(build_provenance_record(args.out)), encoding="utf-8")
-    for name in (LINES.out_name, BOUNDS.out_name, "PROVENANCE.json"):
+    for name in (LINES.out_name, BOUNDS.out_name, NOTICE_NAME, "PROVENANCE.json"):
         print(f"[constellations] {name}: {(args.out / name).stat().st_size:,} bytes")
     return 0
 

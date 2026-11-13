@@ -27,6 +27,7 @@ import {
   vec3,
   vec4,
 } from 'three/tsl';
+import { PANORAMA_GRADE } from '../../sky/panoramaGrade.js';
 import { sceneToPanoramaRows, type PanoramaRegistration } from '../../sky/skyRegistration.js';
 
 /** Plate carree coordinates of a unit vector: longitude 0 at u = 0.5, increasing to the left; north at v = 1. */
@@ -91,10 +92,10 @@ export function createSkyBackgroundNode(
     const [mwGradX, mwGradY] = seamlessGrad(frameUv);
 
     const mwCol = milkyWayNode.sample(mwUv).grad(mwGradX, mwGradY).rgb;
-    const cleanMw = max(vec3(0.0), mwCol.sub(0.042)).toVar('skyCleanMw');
+    const cleanMw = max(vec3(0.0), mwCol.sub(PANORAMA_GRADE.blackLevel)).toVar('skyCleanMw');
 
-    const galacticBulge = pow(cleanMw, vec3(1.52)).mul(vec3(1.22, 1.04, 0.9)).mul(1.32);
-    const deepSpaceBase = vec3(0.002, 0.003, 0.008);
+    const galacticBulge = pow(cleanMw, vec3(PANORAMA_GRADE.power)).mul(vec3(...PANORAMA_GRADE.tint)).mul(PANORAMA_GRADE.gain);
+    const deepSpaceBase = vec3(...PANORAMA_GRADE.base);
     const sky = deepSpaceBase.add(galacticBulge).mul(gain);
     return vec4(sky, 1.0);
   })() as unknown as Node<'vec4'>;

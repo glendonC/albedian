@@ -231,10 +231,14 @@ describe('the home backdrop: the panorama the app ships, framed as the mockup fr
   });
 
   it("words the panorama's change from the numbers that crop and shade it", () => {
-    expect(homeBackdropChanges()).toBe('Shown cropped to 64 percent of its width, and darkened toward the bottom, up to 82 percent black.');
-    expect(homeBackdropChanges({ ...HOME_BACKDROP, widthFraction: 0.5 }, [[0.6, 0], [0, 50]])).toBe(
-      'Shown cropped to 50 percent of its width, and darkened toward the bottom, up to 60 percent black.'
+    expect(homeBackdropChanges()).toBe(
+      'On the home a part of it is shown, at most 64 percent of its width and 80 percent of its height (a window of another shape than 1.6 shows less of one of them), darkened toward the bottom, up to 82 percent black.'
     );
+    expect(homeBackdropChanges({ ...HOME_BACKDROP, widthFraction: 0.5 }, [[0.6, 0], [0, 50]])).toBe(
+      'On the home a part of it is shown, at most 50 percent of its width and 63 percent of its height (a window of another shape than 1.6 shows less of one of them), darkened toward the bottom, up to 60 percent black.'
+    );
+    // The frame's own shape is in the words, and the height follows from the width, the shape and the panorama's 2 to 1
+    expect(homeBackdropChanges({ ...HOME_BACKDROP, aspect: 2 })).toContain('64 percent of its width and 64 percent of its height (a window of another shape than 2 shows');
     // The darkest stop is named, wherever it sits
     expect(homeBackdropChanges(HOME_BACKDROP, [[0.3, 0], [0.7, 20], [0, 60]])).toContain('up to 70 percent black');
   });

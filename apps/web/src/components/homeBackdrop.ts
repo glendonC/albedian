@@ -51,8 +51,15 @@ export function homeBackdropChanges(
   shade: ReadonlyArray<readonly [number, number]> = HOME_SHADE
 ): string {
   const width = Math.round(backdrop.widthFraction * 100);
+  // The frame keeps its shape and covers the window, so its height follows from its width, its shape and the
+  // panorama's own 2 to 1; a window of another shape than the frame's shows less of the width or of the height
+  const height = Math.round(((backdrop.widthFraction * PANORAMA_ASPECT) / backdrop.aspect) * 100);
   const darkest = Math.round(Math.max(...shade.map(([dark]) => dark)) * 100);
-  return `Shown cropped to ${width} percent of its width, and darkened toward the bottom, up to ${darkest} percent black.`;
+  return (
+    `On the home a part of it is shown, at most ${width} percent of its width and ${height} percent of its height ` +
+    `(a window of another shape than ${backdrop.aspect} shows less of one of them), darkened toward the bottom, up to ` +
+    `${darkest} percent black.`
+  );
 }
 
 /** The panorama's own width over its height (plate carree, 360 by 180 degrees). */

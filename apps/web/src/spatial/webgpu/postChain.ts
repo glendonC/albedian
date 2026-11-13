@@ -7,35 +7,10 @@ import { cinemaOptics, type CinemaOpticsUniforms } from './cinemaOptics.js';
 
 type Vec4Node = Node<'vec4'>;
 
-export type CosmosAaMode = 'none' | 'fxaa' | 'smaa';
+import type { CosmosPostOptions } from './postOptions.js';
 
-export interface CosmosPostOptions {
-  aa: CosmosAaMode;
-  bloom: boolean;
-  bloomStrength: number;
-  bloomRadius: number;
-  /** Linear HDR luminance above which pixels feed the bloom. */
-  bloomThreshold: number;
-  cinemaOptics: boolean;
-}
-
-/**
- * Bloom uses the spike's settings (apps/webgpu-spike/src/render/post.ts), not the WebGL
- * composer's `UnrealBloomPass` (strength 0.64, radius 0.72, threshold 0.6). The catalog stars now
- * carry their own Airy, halo and spike terms with linear flux: a star's core peaks near
- * 318 x 10^(-0.4 m), so a 0.6 threshold put a second glare halo on every star brighter than
- * magnitude 6.8, nearly all of them. At 2.0 only stars brighter than about 5.5 and the brightest
- * surfaces bloom, and more weakly. `BloomNode` is a TSL port of `UnrealBloomPass`, so only the
- * settings and the tone mapping after it (ACES to AgX) differ.
- */
-export const DEFAULT_COSMOS_POST: CosmosPostOptions = {
-  aa: 'fxaa',
-  bloom: true,
-  bloomStrength: 0.35,
-  bloomRadius: 0.5,
-  bloomThreshold: 2.0,
-  cinemaOptics: true,
-};
+// The options are in postOptions.ts, without three.js, so the Credits page can word them
+export { DEFAULT_COSMOS_POST, type CosmosAaMode, type CosmosPostOptions } from './postOptions.js';
 
 export interface CosmosPostChain {
   pipeline: RenderPipeline;

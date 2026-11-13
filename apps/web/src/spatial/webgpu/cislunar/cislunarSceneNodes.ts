@@ -14,6 +14,7 @@ import {
   type TextureLoader,
 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
+import { LANDING_SKY_GAIN } from '../../sky/panoramaGrade.js';
 import { loadPanoramaRegistration } from '../../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL, createBrunetonLut } from '../brunetonAtmosphere.js';
 import { createAtmosphereShellMaterial, createEarthMaterial, createMoonMaterial } from './bodyMaterials.js';
@@ -32,12 +33,12 @@ export const LANDING_FOV_DEG = 26;
 /** The narrowest wheel zoom, wide enough to keep the Moon's relief at the map's resolution. */
 export const MIN_FOV_DEG = 6;
 /**
- * Exposure of the landing and the display gain of the sky panorama. With the Moon at its true
- * albedo, the camera exposes for the sunlit bodies; the Milky Way is then shown far brighter than
- * one exposure could record it, and dimmed from its usual grade so the bodies stay brightest.
+ * Exposure of the landing. With the Moon at its true albedo, the camera exposes for the sunlit bodies; the Milky
+ * Way is then shown far brighter than one exposure could record it, and dimmed from its usual grade by
+ * LANDING_SKY_GAIN (sky/panoramaGrade.ts, beside the grade the Credits page words) so the bodies stay brightest.
  */
 export const LANDING_EXPOSURE = 3.0;
-export const LANDING_SKY_GAIN = 0.3;
+export { LANDING_SKY_GAIN };
 /**
  * The catalog's magnitude limit on the landing: every star in the release (Gaia DR3 to G 12,
  * Hipparcos 2007 at the bright end) is drawn as a sprite over the star-removed Milky Way map.

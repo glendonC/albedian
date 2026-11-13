@@ -128,6 +128,11 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                           {licence.name}
                         </a>
                       )),
+                      ...block.notices.map((notice) => (
+                        <a key={`n:${notice.href}`} className="credits-licence" href={notice.href} target="_blank" rel="noopener noreferrer">
+                          {notice.name}
+                        </a>
+                      )),
                       ...block.acknowledgements.map((line) => <React.Fragment key={`a:${line}`}>{line}</React.Fragment>),
                       ...block.citations.map((line) => <React.Fragment key={`t:${line}`}>{line}</React.Fragment>),
                       ...block.changes.map((line) => <React.Fragment key={`m:${line}`}>{line}</React.Fragment>),

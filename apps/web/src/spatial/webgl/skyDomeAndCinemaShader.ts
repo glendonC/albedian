@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { PANORAMA_GRADE } from '../sky/panoramaGrade.js';
 import { loadPanoramaRegistration, sceneToPanoramaRows } from '../sky/skyRegistration.js';
 import { BRUNETON_ATMO_LUT_URL } from '../volumetricSplatsAndLut.js';
 import type { EarthUniforms, MoonUniforms } from './cislunarRegime.js';
 import type { NebulaUniforms } from './deepSkyRegime.js';
 import type { PlanetarySkyUniforms } from './planetarySurfaceRegime.js';
+import { glslFloat } from './lupus3Grade.js';
 
 export interface SkyDomeUniforms {
   [uniform: string]: THREE.IUniform<unknown>;
@@ -102,6 +104,14 @@ export function createCinemaOpticsPass(uniforms: CinemaOpticsUniforms): ShaderPa
 export function createGlobalPhotorealisticSkyDomeMesh(
   uniforms: SkyDomeUniforms
 ): THREE.Mesh {
+  // The panorama's grade, from the one list both renderers and the Credits page read (sky/panoramaGrade.ts)
+  const grade = {
+    blackLevel: glslFloat(PANORAMA_GRADE.blackLevel),
+    power: glslFloat(PANORAMA_GRADE.power),
+    tint: PANORAMA_GRADE.tint.map(glslFloat).join(', '),
+    gain: glslFloat(PANORAMA_GRADE.gain),
+    base: PANORAMA_GRADE.base.map(glslFloat).join(', '),
+  };
   const skyGeo = new THREE.SphereGeometry(900, 96, 64);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -155,11 +165,11 @@ export function createGlobalPhotorealisticSkyDomeMesh(
         seamlessGrad(frameUv, mwGradX, mwGradY);
 
         vec3 mwCol = textureGrad(uMilkyWayTex, mwUv, mwGradX, mwGradY).rgb;
-        vec3 cleanMw = max(vec3(0.0), mwCol - vec3(0.042));
+        vec3 cleanMw = max(vec3(0.0), mwCol - vec3(${grade.blackLevel}));
 
         // Deep velvet-obsidian cosmos + smooth Galactic Core dust-lane warmth (zero grainy JPEG noise)
-        vec3 galacticBulge = pow(cleanMw, vec3(1.52)) * vec3(1.22, 1.04, 0.90) * 1.32;
-        vec3 deepSpaceBase = vec3(0.002, 0.003, 0.008);
+        vec3 galacticBulge = pow(cleanMw, vec3(${grade.power})) * vec3(${grade.tint}) * ${grade.gain};
+        vec3 deepSpaceBase = vec3(${grade.base});
         vec3 opticalSky = deepSpaceBase + galacticBulge;
 
         vec3 rawSensorVeil = vec3(0.010, 0.015, 0.030);

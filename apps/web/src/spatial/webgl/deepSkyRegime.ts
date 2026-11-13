@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LUPUS3_GRADE, LUPUS3_VIEW, glslFloat } from './lupus3Grade.js';
 
 export interface NebulaUniforms {
   [uniform: string]: THREE.IUniform<unknown>;
@@ -25,6 +26,13 @@ export function buildDeepSkyRegimeGroup(
   group: THREE.Group,
   nebulaUniforms: NebulaUniforms
 ): { blackHoleMeshes: THREE.Object3D[] } {
+  // The Lupus 3 photograph's grade, from the one place the Credits page words it
+  const lupus3 = {
+    blackLevel: glslFloat(LUPUS3_GRADE.blackLevel),
+    power: glslFloat(LUPUS3_GRADE.power),
+    gain: glslFloat(LUPUS3_GRADE.gain),
+    ringBoost: glslFloat(LUPUS3_GRADE.ringBoost),
+  };
   const volGeo = new THREE.PlaneGeometry(31, 19.5);
   const volMat = new THREE.ShaderMaterial({
     transparent: true,
@@ -84,7 +92,7 @@ export function buildDeepSkyRegimeGroup(
           vec3 rd = normalize(vec3(p * 0.62, -1.0));
 
           // Tilt accretion disk by 9.5 deg so we see the upper & lower gravitationally lensed halos
-          float tilt = 0.165;
+          float tilt = ${glslFloat(LUPUS3_VIEW.tiltRad)};
           float ct = cos(tilt), st = sin(tilt);
           mat3 diskRot = mat3(
             1.0, 0.0, 0.0,
@@ -92,7 +100,7 @@ export function buildDeepSkyRegimeGroup(
             0.0, st, ct
           );
           // Slight 6-deg roll for cinema framing
-          float cr = cos(-0.10), sr = sin(-0.10);
+          float cr = cos(-${glslFloat(LUPUS3_VIEW.rollRad)}), sr = sin(-${glslFloat(LUPUS3_VIEW.rollRad)});
           mat3 rollRot = mat3(
             cr, -sr, 0.0,
             sr, cr, 0.0,
@@ -183,8 +191,8 @@ export function buildDeepSkyRegimeGroup(
             vec2 lensedUv = vec2(atan(vel.z, vel.x) / 6.28318 + 0.5, asin(clamp(vel.y, -1.0, 1.0)) / 3.14159 + 0.5);
             vec3 bgNeb = texture2D(uLupus3Tex, lensedUv).rgb;
             // Hand-set brightening near the photon sphere, not a magnification from the geodesics
-            float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
-            accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;
+            float ringBoost = 1.0 + ${lupus3.ringBoost} * exp(-max(0.0, minR - 1.5 * rs) * 1.4);
+            accumDisk += trans * pow(max(vec3(0.0), bgNeb - ${lupus3.blackLevel}), vec3(${lupus3.power})) * ${lupus3.gain} * ringBoost;
           }
 
           // Anamorphic horizontal cinema flare across the bright approaching wing

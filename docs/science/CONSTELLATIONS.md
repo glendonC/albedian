@@ -33,8 +33,9 @@ an `observed` or `catalog_matched` finding.
   checksums above].
 - Licence: BSD-3-Clause [verified: the repository's LICENSE at the commit, read through the GitHub contents API].
   The licence asks that a redistribution keep the copyright notice, the conditions and the disclaimer, in the
-  documentation or other materials. They are kept in `apps/web/public/catalog/constellations/PROVENANCE.json` and
-  here, word for word:
+  documentation or other materials. They are kept in `apps/web/public/catalog/constellations/LICENSE` (served with
+  the app beside the data, at `/catalog/constellations/LICENSE`, and linked from the Credits page's Constellations
+  row), in the `PROVENANCE.json` beside it, and here, word for word:
 
 ```text
 Copyright (c) 2015, Olaf Frohn
@@ -96,7 +97,9 @@ run clockwise and 31 counterclockwise [tested], so a point-in-ring test must not
   IAU-named stars of `names.json` in exactly the constellation the IAU lists for each; all 14,026 positioned
   OpenNGC objects of `openngc.json` in exactly the constellation OpenNGC gives each; only Octans and Ursa Minor ring a
   pole;
-- the record keeps the BSD notice and says the lines are not an IAU product; the registry agrees with the pins;
+- the record keeps the BSD notice and says the lines are not an IAU product; the served `LICENSE` is the notice
+  byte for byte, listed in the record for both sources (checked without the cache); the registry agrees with the
+  pins;
 - where the files are cached, the rebake is byte-identical (`uv run python scripts/bake_constellations_d3celestial.py
   --verify`).
 

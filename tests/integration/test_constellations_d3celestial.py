@@ -318,8 +318,8 @@ def test_every_positioned_openngc_object_falls_in_exactly_its_constellation(boun
 
 def test_provenance_record_keeps_the_bsd_notice_and_says_what_the_lines_are() -> None:
     record = AssetProvenanceRecord.model_validate_json((OUT_DIR / "PROVENANCE.json").read_text(encoding="utf-8"))
-    assert [f.path for f in record.files] == ["lines.json", "bounds.json"]
-    for entry, item in zip(record.files, bake.INPUTS, strict=True):
+    assert [f.path for f in record.files] == ["lines.json", "bounds.json", "LICENSE"]
+    for entry, item in zip(record.files[:2], bake.INPUTS, strict=True):
         assert entry.sha256 == hashlib.sha256((OUT_DIR / entry.path).read_bytes()).hexdigest()
         assert entry.sources == (item.source_id,)
         assert entry.produced_by.script == "scripts/bake_constellations_d3celestial.py"
@@ -333,6 +333,36 @@ def test_provenance_record_keeps_the_bsd_notice_and_says_what_the_lines_are() ->
         assert "Olaf Frohn" in src.credit
         assert str(src.url) == f"https://raw.githubusercontent.com/ofrohn/d3-celestial/{bake.COMMIT}/data/{item.filename}"
     assert "Davenhall" in (record.sources[1].citation or "")
+
+
+def test_the_notice_is_served_beside_the_data_and_listed_in_the_record() -> None:
+    """The BSD-3-Clause terms ask that the notice go with every copy: it is LICENSE beside lines.json and bounds.json,
+    the notice word for word with a final newline, listed in the record for both sources, and the licence's conditions
+    name where the app serves it."""
+    assert bake.NOTICE_NAME == "LICENSE"
+    assert bake.NOTICE_TEXT == bake.BSD_NOTICE + "\n"
+    assert (OUT_DIR / "LICENSE").read_bytes() == bake.NOTICE_TEXT.encode("utf-8")
+    record = AssetProvenanceRecord.model_validate_json((OUT_DIR / "PROVENANCE.json").read_text(encoding="utf-8"))
+    notice = record.files[2]
+    assert notice.path == "LICENSE"
+    assert notice.sha256 == hashlib.sha256((OUT_DIR / "LICENSE").read_bytes()).hexdigest()
+    assert notice.sources == tuple(item.source_id for item in bake.INPUTS)
+    assert notice.produced_by.script == "scripts/bake_constellations_d3celestial.py"
+    assert "must travel with lines.json and bounds.json" in notice.note
+    for src in record.sources:
+        assert "it is LICENSE beside this record, served with the app at /catalog/constellations/LICENSE" in (src.license.conditions or "")
+
+
+def test_check_notice_refuses_a_missing_or_altered_notice(tmp_path: Path) -> None:
+    """Without the cache: the notice is checked from the bake's own text, so CI holds it too."""
+    assert bake.check_notice(OUT_DIR) == []
+    assert bake.check_notice(tmp_path) == [f"{tmp_path / 'LICENSE'} differs from a fresh bake"]
+    (tmp_path / "LICENSE").write_text(bake.BSD_NOTICE, encoding="utf-8")  # no final newline
+    assert bake.check_notice(tmp_path) == [f"{tmp_path / 'LICENSE'} differs from a fresh bake"]
+    (tmp_path / "LICENSE").write_text(bake.NOTICE_TEXT.replace("Olaf", "Olav"), encoding="utf-8")
+    assert bake.check_notice(tmp_path) == [f"{tmp_path / 'LICENSE'} differs from a fresh bake"]
+    (tmp_path / "LICENSE").write_text(bake.NOTICE_TEXT, encoding="utf-8")
+    assert bake.check_notice(tmp_path) == []
 
 
 def test_record_rebuilds_without_the_cache() -> None:
@@ -376,3 +406,21 @@ def test_cached_files_match_pins_and_rebake_is_byte_identical() -> None:
     for name, text in bake.built_texts(cache).items():
         assert text == (OUT_DIR / name).read_text(encoding="utf-8")
     assert bake.verify_outputs(cache, OUT_DIR) == []
+
+
+@pytest.mark.local_dataset(LINES_REL, BOUNDS_REL)
+def test_verify_refuses_an_altered_notice(tmp_path: Path) -> None:
+    cache = ROOT / ".cache" / "d3celestial"
+    for name in ("lines.json", "bounds.json", "LICENSE", "PROVENANCE.json"):
+        (tmp_path / name).write_bytes((OUT_DIR / name).read_bytes())
+    assert bake.verify_outputs(cache, tmp_path) == []
+    (tmp_path / "LICENSE").write_text(bake.NOTICE_TEXT.replace("1. ", "1 "), encoding="utf-8")
+    assert bake.verify_outputs(cache, tmp_path) == [f"{tmp_path / 'LICENSE'} differs from a fresh bake"]
+
+
+@pytest.mark.local_dataset(LINES_REL, BOUNDS_REL)
+def test_a_bake_writes_the_four_committed_files_byte_for_byte(tmp_path: Path) -> None:
+    assert bake.main(["--out", str(tmp_path)]) == 0
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["LICENSE", "PROVENANCE.json", "bounds.json", "lines.json"]
+    for name in ("lines.json", "bounds.json", "LICENSE", "PROVENANCE.json"):
+        assert (tmp_path / name).read_bytes() == (OUT_DIR / name).read_bytes(), name

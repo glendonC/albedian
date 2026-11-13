@@ -1,5 +1,7 @@
 import type { AssetProvenanceRecord } from '@albedian/contracts';
 import { AUDIO_CREDITS, AUDIO_NOTICES_URL, type AudioCredit } from '../audio/audioCredits.js';
+import { milkyWay3dChanges, milkyWayCopyDrawn } from '../spatial/sky/panoramaGrade.js';
+import { lupus3Changes, lupus3SceneWords } from '../spatial/webgl/lupus3Grade.js';
 import { homeBackdropChanges } from './homeBackdrop.js';
 
 /**
@@ -89,14 +91,71 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
 };
 
 /**
- * What the app changed, for each source whose record's terms ask that changes be indicated. The panorama's words come
- * from the numbers that crop and shade it on the home; OpenNGC's terms ask to say that the data were changed.
+ * What the app changed, line by line, for each source whose record's terms ask that changes be indicated; the lines
+ * are [proposed]. The panorama: on the home, worded from the numbers that frame and shade it; in the 3D view, every
+ * step of the one grade list both renderers read (sky/panoramaGrade.ts), with the placement and the whole frame's
+ * finishing from its lists (spatial/frameFinishing.ts); the copy the WebGPU renderer draws, by the app's own steps,
+ * how it differs being its record's (recordChangeLines). Lupus 3: worded from the black-hole
+ * scene's grade, then the light the scene adds and where it places it. OpenNGC's terms ask to say that the data were
+ * changed.
  */
-export const CHANGES: Readonly<Record<string, () => string>> = {
-  eso0932a: () => homeBackdropChanges(),
-  'openngc-v20260501-ngc': () => 'The data were changed.',
-  'openngc-v20260501-addendum': () => 'The data were changed.',
+export const CHANGES: Readonly<Record<string, () => readonly string[]>> = {
+  eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn()],
+  eso1804a: () => [lupus3Changes(), lupus3SceneWords()],
+  'openngc-v20260501-ngc': () => ['The data were changed.'],
+  'openngc-v20260501-addendum': () => ['The data were changed.'],
 };
+
+/**
+ * For a source whose terms ask that changes be indicated (a key of CHANGES), each file a script made from it: the
+ * record's own sentence on how the file differs from its sources, character for character, from the script
+ * producer's `changes` field (the CATALOG lane's provenance-changes-1 adds it), and no words of the app's own. A
+ * record without the field gives no line; the day the field lands the sentence shows, with no change here.
+ */
+export function recordChangeLines(loaded: readonly LoadedRecord[], sourceId: string): string[] {
+  if (!(sourceId in CHANGES)) return [];
+  return loaded.flatMap(({ record }) =>
+    record.files.flatMap((file) => {
+      if (!file.sources.includes(sourceId) || file.producedBy.method !== 'script') return [];
+      const changes = (file.producedBy as { changes?: unknown }).changes;
+      return typeof changes === 'string' && changes.length > 0 ? [changes] : [];
+    })
+  );
+}
+
+/** The words a record's licence conditions use to say where the app serves a notice beside its files. */
+const SERVED_AT = 'served with the app at ';
+
+/**
+ * Whether a licence's conditions name this served path as where the app serves a notice: the words "served with the
+ * app at", the path, then the end, white space, or punctuation that ends the path (a full stop only before white space
+ * or the end, so /a/LICENSE.txt does not name /a/LICENSE).
+ */
+export function namesServedPath(conditions: string, served: string): boolean {
+  const escaped = `${SERVED_AT}${served}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`${escaped}(?=$|[\\s,;:)]|\\.(?:$|\\s))`).test(conditions);
+}
+
+/**
+ * The notices the records serve, by source: a file of a record is a source's notice when the record lists it for that
+ * source and the source's licence conditions name the path the app serves it at (the record's folder and the file's
+ * path).
+ */
+export function servedNotices(loaded: readonly LoadedRecord[]): Map<string, string[]> {
+  const notices = new Map<string, string[]>();
+  for (const { url, record } of loaded) {
+    const folder = url.slice(0, url.lastIndexOf('/') + 1);
+    for (const file of record.files) {
+      const served = `${folder}${file.path}`;
+      for (const id of file.sources) {
+        const source = record.sources.find((s) => s.id === id);
+        if (!source || !namesServedPath(source.license.conditions ?? '', served)) continue;
+        notices.set(id, [...(notices.get(id) ?? []), served]);
+      }
+    }
+  }
+  return notices;
+}
 
 /** The approved page's order inside a row, by credit: Hipparcos, then Gaia. */
 const FIRST_CREDITS: Partial<Record<CreditRowName, readonly string[]>> = {
@@ -115,6 +174,8 @@ export interface CreditBlock {
   key: string;
   credits: string[];
   licences: CreditLicence[];
+  /** The notices the app serves beside the source's files, each linked as "Notice" [proposed]. */
+  notices: CreditLicence[];
   acknowledgements: string[];
   citations: string[];
   changes: string[];
@@ -149,6 +210,7 @@ function soundBlock(audio: readonly AudioCredit[]): CreditBlock {
     key: 'audio',
     credits: audio.map((credit) => credit.line),
     licences: [{ name: 'Notices', href: AUDIO_NOTICES_URL }],
+    notices: [],
     acknowledgements: [],
     citations: [],
     changes: [],
@@ -158,13 +220,13 @@ function soundBlock(audio: readonly AudioCredit[]): CreditBlock {
 
 /**
  * The Credits page's rows, read from the records: on each row, one block per credit, with the licence of each of its
- * sources linked, each acknowledgement word for word, each citation its terms ask for, each owed change, and the
- * source's own page. A source named by
- * several records is credited once.
+ * sources linked, each notice the app serves beside its files, each acknowledgement word for word, each citation its
+ * terms ask for, each owed change, and the source's own page. A source named by several records is credited once.
  */
 export function creditRows(loaded: readonly LoadedRecord[], audio: readonly AudioCredit[] = AUDIO_CREDITS): CreditRow[] {
   const blocksByRow = new Map<CreditRowName, CreditBlock[]>();
   const seen = new Set<string>();
+  const notices = servedNotices(loaded);
   for (const source of loaded.flatMap((r) => r.record.sources)) {
     if (seen.has(source.id)) continue;
     seen.add(source.id);
@@ -174,14 +236,26 @@ export function creditRows(loaded: readonly LoadedRecord[], audio: readonly Audi
     blocksByRow.set(rowName, blocks);
     let block = blocks.find((b) => b.credits[0] === source.credit);
     if (!block) {
-      block = { key: `credit:${source.credit}`, credits: [source.credit], licences: [], acknowledgements: [], citations: [], changes: [], href: null };
+      block = {
+        key: `credit:${source.credit}`,
+        credits: [source.credit],
+        licences: [],
+        notices: [],
+        acknowledgements: [],
+        citations: [],
+        changes: [],
+        href: null,
+      };
       blocks.push(block);
     }
-    pushOnce(block.licences, { name: source.license.name, href: source.license.url }, (a, b) => a.href === b.href);
-    if (source.acknowledgement) pushOnce(block.acknowledgements, source.acknowledgement);
+    // A licence once by its name: sources that share it may each link its own page; the first is shown
+    pushOnce(block.licences, { name: source.license.name, href: source.license.url }, (a, b) => a.name === b.name);
+    for (const href of notices.get(source.id) ?? []) pushOnce(block.notices, { name: 'Notice', href }, (a, b) => a.href === b.href);
+    // An acknowledgement that is the credit word for word is already shown as the credit's line
+    if (source.acknowledgement && !block.credits.includes(source.acknowledgement)) pushOnce(block.acknowledgements, source.acknowledgement);
     if (source.citation && ASKS_TO_CITE.test(source.license.conditions ?? '')) pushOnce(block.citations, source.citation);
-    const change = CHANGES[source.id];
-    if (change) pushOnce(block.changes, change());
+    for (const line of CHANGES[source.id]?.() ?? []) pushOnce(block.changes, line);
+    for (const line of recordChangeLines(loaded, source.id)) pushOnce(block.changes, line);
     block.href ??= pageOf(source.url);
   }
   if (audio.length > 0) blocksByRow.set('Sound', [soundBlock(audio)]);
