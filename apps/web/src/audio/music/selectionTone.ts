@@ -2,8 +2,9 @@
  * The note a selected finding plays inside the soundtrack (AUDIO_ENGINE.md 13.7): music first, so it
  * sits in the playing piece's key, on its beat grid, quietly under its data part.
  *
- * - When: the next beat of the pass's grid at least the scheduling lead ahead; after the pass's last
- *   bar (a silence between pieces) at once, still in that pass's key.
+ * - When: on the pass's grid exactly, the first beat no earlier than now plus the scheduling lead (a beat
+ *   at most BEAT_SNAP_SEC before that counts), the beat that ends the last bar included; once that beat
+ *   is past (a silence between pieces) at once, still in that pass's key.
  * - Pitch: a tone of that bar's pitch set in the data part's register. With a catalog temperature on a
  *   catalog-matched finding, the tone the star-note mapping gives that temperature, as the stars' own
  *   notes do; otherwise the set's root.
@@ -38,6 +39,12 @@ export interface SelectionNote {
   readonly brightnessHz: number | null;
 }
 
+/**
+ * A beat at most this many seconds before the earliest time still counts as late enough: it takes in the
+ * rounding of the clock's sums, and a note a billionth of a second early is still a lead ahead of now.
+ * The one margin on the note's time and on the bar it reads as.
+ */
+export const BEAT_SNAP_SEC = 1e-9;
 /** How far under the pass's loudest data note the selection plays ([proposed], a listening choice). */
 export const SELECTION_UNDER_DATA_DB = 6;
 /** The level when the pass has no data note to sit under (no star on screen) ([proposed], a listening choice). */
@@ -58,12 +65,15 @@ export function coloured(selection: MusicSelection): selection is MusicSelection
 export function selectionNote(selection: MusicSelection, pass: { readonly arrangement: Arrangement; readonly t0: number }, nowSec: number, leadSec: number): SelectionNote | null {
   const { arrangement, t0 } = pass;
   const beatSec = 60 / arrangement.bpm;
-  const barsEnd = t0 + arrangement.bars * arrangement.beatsPerBar * beatSec;
   const earliest = nowSec + leadSec;
-  const beat = t0 + Math.max(0, Math.ceil((earliest - t0) / beatSec - 1e-9)) * beatSec;
-  const timeSec = beat < barsEnd ? beat : earliest;
-  const offset = Math.min(timeSec, barsEnd - 1e-6) - t0;
-  const bar = [...arrangement.chords].reverse().find((chord) => chord.startSec <= offset + 1e-9) ?? arrangement.chords[0];
+  // Counted in whole beats, so the beat that ends the last bar is met exactly
+  const beat = Math.max(0, Math.ceil((earliest - BEAT_SNAP_SEC - t0) / beatSec));
+  const timeSec = beat <= arrangement.bars * arrangement.beatsPerBar ? t0 + beat * beatSec : earliest;
+  // The bar it sounds in. A downbeat's offset can round a few units of the last place below its bar's start, so the
+  // same margin takes it as that bar. The chords stop at the last bar, so the beat that ends it and a note after it
+  // read as the last bar with no bound of their own.
+  const offset = timeSec - t0;
+  const bar = [...arrangement.chords].reverse().find((chord) => chord.startSec <= offset + BEAT_SNAP_SEC) ?? arrangement.chords[0];
   if (!bar) return null;
   const set = barPitchSet(bar.chord);
   const mapping = arrangement.dataMapping;
