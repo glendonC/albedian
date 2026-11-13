@@ -312,6 +312,17 @@ def dumps(solution: dict) -> str:
     return json.dumps(solution, indent=2, ensure_ascii=False) + "\n"
 
 
+# How the file differs from its sources: its record's entry is kept by hand and holds this sentence as
+# producedBy.changes, and tests/integration/test_provenance_changes.py checks the two are the same
+CHANGES = (
+    "Worked out from the panorama and the catalogue stars, with the photograph itself left untouched: its "
+    "star images are found, and the direction its axes really point is fitted to them, with a vertical "
+    "shift and a smooth correction for the stitching between frames, checked on stars held back from the "
+    "fit; and a list of bright named stars, copied from the catalogue, is added with where the fit puts "
+    "each and where it was found."
+)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=OUT_PATH)

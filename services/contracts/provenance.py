@@ -170,7 +170,9 @@ class DownloadedAsIs(BaseModel):
 
 
 class MadeByScript(BaseModel):
-    """The asset was made by a script in this repository."""
+    """The asset was made by a script in this repository, so it is a changed copy of its sources: `changes` says how,
+    in plain words, from what the script does to the sources' bytes (a subset, a reformatting, a join, a computation).
+    The script holds the sentence as a constant and writes it here; a test compares the two."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -178,6 +180,8 @@ class MadeByScript(BaseModel):
     # Repository-relative path of the script
     script: RelativePath
     command: ShortText | None = None
+    # How the file differs from its sources; every file a script made has one
+    changes: Text
 
     @model_validator(mode="before")
     @classmethod
@@ -282,6 +286,26 @@ class AssetProvenanceRecord(BaseModel):
     def to_contract_dict(self) -> dict[str, Any]:
         """The record as `AssetProvenanceRecordSchema` expects it: camelCase keys, unknown optional fields left out."""
         return self.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
+# Which licences ask that changes be indicated, each read on its own page (packages/contracts/src/data/
+# license-change-terms.json, read by both contracts). A licence the table does not know is treated as asking.
+LICENSE_CHANGE_TERMS_PATH = (
+    Path(__file__).resolve().parents[2] / "packages" / "contracts" / "src" / "data" / "license-change-terms.json"
+)
+LICENSE_CHANGE_TERMS: dict[str, Any] = json.loads(LICENSE_CHANGE_TERMS_PATH.read_text(encoding="utf-8"))
+_ASKS = {row["license"]: row for row in LICENSE_CHANGE_TERMS["asks"]}
+_DOES_NOT_ASK = {row["license"]: row for row in LICENSE_CHANGE_TERMS["doesNotAsk"]}
+
+
+def license_asks_changes_indicated(spdx: str) -> bool:
+    """Whether a licence's terms ask that changes be indicated: as the table read them, and yes for one it lacks."""
+    return spdx in _ASKS or spdx not in _DOES_NOT_ASK
+
+
+def license_change_clause(spdx: str) -> dict[str, Any] | None:
+    """The table's row for a licence that asks (its page, section and clause), or None where the table has none."""
+    return _ASKS.get(spdx)
 
 
 def dumps_record(record: AssetProvenanceRecord) -> str:

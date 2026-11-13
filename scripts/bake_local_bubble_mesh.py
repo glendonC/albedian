@@ -569,6 +569,14 @@ def dumps_glb(positions: np.ndarray, normals: np.ndarray, triangles: np.ndarray)
 # ---------------------------------------------------------------------------
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Worked out from the dust shell table, not copied: the directions with no distance are left out, the shell's "
+    "distance in the others is averaged over coarser sky cells, one point for each, and the points are joined into "
+    "a closed surface with smooth shading, in units of 100 parsecs."
+)
+
+
 def build_provenance_record(
     glb_sha256: str,
     existing_record: AssetProvenanceRecord | None = None,
@@ -605,6 +613,7 @@ def build_provenance_record(
             method="script",
             script=PRODUCING_SCRIPT,
             command=PRODUCING_COMMAND,
+            changes=CHANGES,
         ),
     )
 

@@ -72,7 +72,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/generate_letters_and_digits.py",
-        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>"
+        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+        "changes": "Worked out from the Unicode Character Database, not copied: the letters and digits of Unicode 15.1, less the characters that never show, as ranges, with the places where three other versions differ."
       },
       "note": "A byte-identical copy of packages/contracts/src/data/letters-and-digits.json, which both answer contracts read and the web bundle carries. The ranges are Unicode 15.1.0's; differsFrom lists where 15.0.0, 16.0.0 and 17.0.0 differ from them."
     },
@@ -85,7 +86,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/generate_letters_and_digits.py",
-        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>"
+        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+        "changes": "None: the notice is the Unicode licence's own text, written unchanged."
       },
       "note": "The script writes the notice from its own copy of the text, which is byte-equal to https://www.unicode.org/license.txt as fetched on 2026-11-11. It must travel with the data."
     }

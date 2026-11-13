@@ -321,6 +321,24 @@ def dumps_catalog(catalog: SolarEclipseCatalog | LunarEclipseCatalog) -> str:
     return json.dumps(catalog.to_contract_dict(), ensure_ascii=True, allow_nan=False, separators=(",", ":")) + "\n"
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+SOLAR_CHANGES = (
+    "Every eclipse in the catalogue kept, read from its text table into the app's format: month names "
+    "become numbers, times and durations become seconds, latitudes and longitudes become signed degrees, "
+    "each eclipse type is split into its letter and its qualifier, values the table leaves out become "
+    "empty, and each date is marked as Julian or Gregorian."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+LUNAR_CHANGES = (
+    "Every eclipse in the catalogue kept, read from its text table into the app's format: month names "
+    "become numbers, the time of greatest eclipse becomes seconds, zenith latitudes and longitudes become "
+    "signed whole degrees, each eclipse type is split into its letter and its qualifier, durations the "
+    "table leaves out become empty, and each date is marked as Julian or Gregorian."
+)
+
+
 def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
     solar_sha = hashlib.sha256((out_dir / SOLAR_OUT_NAME).read_bytes()).hexdigest()
     lunar_sha = hashlib.sha256((out_dir / LUNAR_OUT_NAME).read_bytes()).hexdigest()
@@ -409,6 +427,7 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                         "method": "script",
                         "script": "scripts/bake_eclipses.py",
                         "command": "uv run python scripts/bake_eclipses.py",
+                        "changes": SOLAR_CHANGES,
                     },
                     "note": (
                         "All 11,898 solar eclipses from -1999 to +3000 across all 21 columns of 5MKSEcatalog.txt, "
@@ -424,6 +443,7 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                         "method": "script",
                         "script": "scripts/bake_eclipses.py",
                         "command": "uv run python scripts/bake_eclipses.py",
+                        "changes": LUNAR_CHANGES,
                     },
                     "note": (
                         "All 12,064 lunar eclipses from -1999 to +3000 across all 20 columns of 5MKLEcatalog.txt, "

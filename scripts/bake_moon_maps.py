@@ -215,13 +215,26 @@ def record_sources() -> list[dict]:
     ]
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+COLOUR_CHANGES = (
+    "Reduced from 16 to 8 bits a colour and saved as JPEG."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+NORMAL_CHANGES = (
+    "Worked out from the laser altimeter heights, not copied: the tilt of the surface at each sample, "
+    "from the heights around it, at its true slope, stored as colours in a lossless image."
+)
+
+
 def record_files(outputs: dict[str, bytes]) -> list[dict]:
     produced_by = {"method": "script", "script": "scripts/bake_moon_maps.py", "command": "uv run python scripts/bake_moon_maps.py"}
     return [
         {"path": COLOUR_OUTPUT, "sha256": hashlib.sha256(outputs[COLOUR_OUTPUT]).hexdigest(),
-         "sources": ["nasa-svs-4720-lroc-color-8k"], "producedBy": produced_by},
+         "sources": ["nasa-svs-4720-lroc-color-8k"], "producedBy": {**produced_by, "changes": COLOUR_CHANGES}},
         {"path": NORMAL_OUTPUT, "sha256": hashlib.sha256(outputs[NORMAL_OUTPUT]).hexdigest(),
-         "sources": ["nasa-svs-4720-ldem-16"], "producedBy": produced_by},
+         "sources": ["nasa-svs-4720-ldem-16"], "producedBy": {**produced_by, "changes": NORMAL_CHANGES}},
     ]
 
 

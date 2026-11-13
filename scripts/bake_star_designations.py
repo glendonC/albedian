@@ -408,6 +408,24 @@ _PRODUCED_BY = {
 }
 
 
+# How each file differs from its sources, written into its record as producedBy.changes
+_CHANGES = {
+    "links.json": (
+        "A cross-reference built here, holding no star data of its own: for each star of the designations file (a "
+        "HYG row with a Bayer or Flamsteed designation and a Hipparcos number), the place in the app's star tiles "
+        "of its own Hipparcos entry, or else of the Gaia star that the Gaia team's early third release pairs with "
+        "it, kept only when that Gaia star holds at least half the star's light; the stars that find no place are "
+        "listed apart, each with its reason. The HYG rows the designations file sets aside are in neither list."
+    ),
+    "designations.json": (
+        "The rows of the HYG catalogue that carry a Bayer or Flamsteed designation, each with eight of "
+        "its columns as HYG gives them; the rows with no Hipparcos number, and one whose combined "
+        "designation disagrees with its own parts, are listed apart with their reason; and the other "
+        "columns are left out."
+    ),
+}
+
+
 def _record(sources: list[dict[str, Any]], path: str, out_bytes: bytes, note: str) -> AssetProvenanceRecord:
     return AssetProvenanceRecord.model_validate(
         {
@@ -419,7 +437,7 @@ def _record(sources: list[dict[str, Any]], path: str, out_bytes: bytes, note: st
                     "path": path,
                     "sha256": hashlib.sha256(out_bytes).hexdigest(),
                     "sources": [source["id"] for source in sources],
-                    "producedBy": _PRODUCED_BY,
+                    "producedBy": {**_PRODUCED_BY, "changes": _CHANGES[path]},
                     "note": note,
                 }
             ],

@@ -10,7 +10,10 @@ import {
   ASSET_PROVENANCE_PATTERNS,
   ASSET_PROVENANCE_RECORD_FILENAME,
   AssetProvenanceRecordSchema,
+  LICENSE_CHANGE_TERMS_TABLE,
   SPDX_LICENSE_IDS,
+  licenseAsksChangesIndicated,
+  licenseChangeClause,
 } from '../index.js';
 
 // Written by tests/integration/test_provenance_contract.py from the Pydantic model
@@ -73,8 +76,8 @@ describe('@albedian/contracts: asset provenance records', () => {
       .map((spdx) => ({ spdx, name: 'Some licence', url: 'https://example.org/terms' }));
     const producer = fc.constantFrom<Json>(
       { method: 'downloaded-as-is' },
-      { method: 'script', script: 'scripts/bake_catalog_star_tiles.py' },
-      { method: 'script', script: 'scripts/x.py', command: 'uv run python scripts/x.py' }
+      { method: 'script', script: 'scripts/bake_catalog_star_tiles.py', changes: 'A subset of the source.' },
+      { method: 'script', script: 'scripts/x.py', command: 'uv run python scripts/x.py', changes: 'Reformatted.' }
     );
     const source = (id: string) =>
       fc
@@ -158,6 +161,7 @@ describe('@albedian/contracts: asset provenance records', () => {
       'bad checksum': (r) => void (firstEntry(r).sha256 = '0'.repeat(63)),
       'no references': (r) => void (firstEntry(r).sources = []),
       'unknown method': (r) => void (firstEntry(r).producedBy = { method: 'copied' }),
+      'script that does not say how its file differs': (r) => void (firstEntry(r).producedBy = { method: 'script', script: 'scripts/x.py' }),
     };
     const caseArb = fc
       .tuple(record, fc.option(fc.constantFrom(...Object.keys(faults)), { nil: undefined, freq: 2 }))
@@ -190,5 +194,28 @@ describe('@albedian/contracts: asset provenance records', () => {
     // Both outcomes must actually be exercised for the property to mean anything
     expect(accepted).toBeGreaterThan(30);
     expect(rejected).toBeGreaterThan(30);
+  });
+});
+
+describe('which licences ask that changes be indicated', () => {
+  it('reads the table both contracts read, and treats a licence it does not know as asking', () => {
+    expect(licenseAsksChangesIndicated('CC-BY-4.0')).toBe(true);
+    expect(licenseAsksChangesIndicated('CC-BY-NC-3.0-IGO')).toBe(true);
+    expect(licenseAsksChangesIndicated('MIT')).toBe(false);
+    expect(licenseAsksChangesIndicated('LicenseRef-Natural-Earth-Public-Domain')).toBe(false);
+    expect(licenseAsksChangesIndicated('LicenseRef-Not-In-The-Table')).toBe(true);
+    expect(licenseChangeClause('CC-BY-SA-4.0')?.section).toBe('3(a)(1)(B)');
+    expect(licenseChangeClause('MIT')).toBeUndefined();
+  });
+
+  it('names each licence once, by an id a record may carry, with its page', () => {
+    const rows = [...LICENSE_CHANGE_TERMS_TABLE.asks, ...LICENSE_CHANGE_TERMS_TABLE.doesNotAsk];
+    const ids = rows.map((row) => row.license);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const row of rows) {
+      expect((SPDX_LICENSE_IDS as readonly string[]).includes(row.license) || /^LicenseRef-[A-Za-z0-9.-]+$/.test(row.license)).toBe(true);
+      expect(row.url).toMatch(/^https:\/\//);
+    }
+    for (const row of LICENSE_CHANGE_TERMS_TABLE.asks) expect(row.clause.length).toBeGreaterThan(0);
   });
 });

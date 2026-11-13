@@ -40,6 +40,7 @@ UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"
 CATALOG_RELEASE = ROOT / "apps" / "web" / "public" / "catalog" / "stars" / "gaia-dr3"
 
 SAMPLE_NOTE = "Contract test sample; not a record of a real file."
+SAMPLE_CHANGES = "Contract test sample: how a script's file differs from its sources."
 # An astral character: one code point in Python, two UTF-16 code units in JavaScript
 ASTRAL = "\U0001F30C"
 
@@ -166,6 +167,7 @@ def build_provenance_samples() -> dict[str, Any]:
                         "method": "script",
                         "script": "scripts/bake_catalog_star_tiles.py",
                         "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3",
+                        "changes": SAMPLE_CHANGES,
                     },
                     "note": SAMPLE_NOTE,
                 }
@@ -179,20 +181,22 @@ def build_provenance_samples() -> dict[str, Any]:
                     "path": "maps/sample_night_8k.jpg",
                     "sha256": _digest("maps/sample_night_8k.jpg"),
                     "sources": ["nasa-sample", "sample-software"],
-                    "producedBy": {"method": "script", "script": "scripts/lookdev/bake_earth_textures.py"},
+                    "producedBy": {"method": "script", "script": "scripts/lookdev/bake_earth_textures.py", "changes": SAMPLE_CHANGES},
                     "note": SAMPLE_NOTE,
                 },
                 {
                     "path": "sample_lut.png",
                     "sha256": _digest("sample_lut.png"),
                     "sources": ["sample-software"],
-                    "producedBy": {"method": "script", "script": "scripts/bake_bruneton_lut_and_splats.py"},
+                    "producedBy": {"method": "script", "script": "scripts/bake_bruneton_lut_and_splats.py", "changes": SAMPLE_CHANGES},
                 },
             ],
         ),
         # A credit at the limit counted in code points: the astral character counts once on both
         # sides (UTF-16 would count it twice); interior spaces are fine
         _with_source(credit=ASTRAL + "c" * (pv.CREDIT_MAX_LENGTH - 3) + " " + ASTRAL),
+        # How a script's file differs, at the long text limit counted in code points
+        _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": ASTRAL + "c" * (pv.TEXT_MAX_LENGTH - 2) + ASTRAL}),
     ]
     valid = [AssetProvenanceRecord.model_validate(r).to_contract_dict() for r in valid_inputs]
     two_sources = _record(sources=[copy.deepcopy(ESO_SOURCE), copy.deepcopy(SOFTWARE_SOURCE)])
@@ -269,9 +273,17 @@ def build_provenance_samples() -> dict[str, Any]:
         {"rule": "file checksum too short", "record": _with_file(sha256=_digest("x")[:63])},
         {"rule": "unknown production method", "record": _with_file(producedBy={"method": "generated"})},
         {"rule": "script method without a script", "record": _with_file(producedBy={"method": "script"})},
-        {"rule": "script path outside the path pattern", "record": _with_file(producedBy={"method": "script", "script": "../bake.py"})},
+        {"rule": "script path outside the path pattern", "record": _with_file(producedBy={"method": "script", "script": "../bake.py", "changes": SAMPLE_CHANGES})},
+        {"rule": "script method that does not say how its file differs", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py"})},
+        {"rule": "null changes", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": None})},
+        {"rule": "blank changes", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": " "})},
+        {"rule": "changes that start with a blank", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": " " + SAMPLE_CHANGES})},
+        {"rule": "changes over the long text limit", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": "c" * (pv.TEXT_MAX_LENGTH + 1)})},
+        {"rule": "downloaded as is with changes", "record": _with_file(producedBy={"method": "downloaded-as-is", "changes": SAMPLE_CHANGES})},
+        {"rule": "a lone surrogate in changes", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "changes": "a\ud800b"})},
+        {"rule": "a lone surrogate in a credit", "record": _with_source(credit="ESO \udc00")},
         {"rule": "downloaded as is with a script", "record": _with_file(producedBy={"method": "downloaded-as-is", "script": "scripts/x.py"})},
-        {"rule": "null script command", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "command": None})},
+        {"rule": "null script command", "record": _with_file(producedBy={"method": "script", "script": "scripts/x.py", "command": None, "changes": SAMPLE_CHANGES})},
         {"rule": "null file note", "record": _with_file(note=None)},
         {"rule": "null file set note", "record": _record(files=[], fileSets=[{**set_entry, "note": None}])},
     ]
@@ -407,8 +419,8 @@ def valid_source(draw: st.DrawFn, source_id: str) -> dict[str, Any]:
 PRODUCERS = st.sampled_from(
     [
         {"method": "downloaded-as-is"},
-        {"method": "script", "script": "scripts/bake_catalog_star_tiles.py"},
-        {"method": "script", "script": "scripts/x.py", "command": "uv run python scripts/x.py"},
+        {"method": "script", "script": "scripts/bake_catalog_star_tiles.py", "changes": SAMPLE_CHANGES},
+        {"method": "script", "script": "scripts/x.py", "command": "uv run python scripts/x.py", "changes": SAMPLE_CHANGES},
     ]
 )
 

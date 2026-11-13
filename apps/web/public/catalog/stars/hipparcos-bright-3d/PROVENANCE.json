@@ -80,7 +80,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_bright_stars_3d.py",
-        "command": "uv run python scripts/bake_bright_stars_3d.py"
+        "command": "uv run python scripts/bake_bright_stars_3d.py",
+        "changes": "The bright stars the star tiles take from Hipparcos: their positions, parallaxes and motions with their errors, their Hipparcos magnitude and B-V colour, and their solution type and number of components, as the 2007 reduction gives them, with the V magnitude of the 1997 catalogue where it gives one; the positions are left at the catalogue's epoch and no distance is worked out. Each star carries the reason the tiles use Hipparcos for it and its place in the tiles, and its Gaia counterpart and its name only where it has one; three columns the archive gives (the error of B-V, a multiplicity flag and a CCDM number) are left out."
       },
       "note": "All 226 stars the gaia-dr3 G 12 tiles take from Hipparcos (bright-star-merge.json, action use_hipparcos), in HIP order, evidenceKind 'catalog-derived': Hipparcos 2007 astrometry with its errors, Hp, B-V, solution type and components; V from Hipparcos 1997; the Gaia DR3 best neighbour and the merge's reason; the IAU name; and each star's row in the tiles' core blocks, found by HIP number in the detail tiles. ICRS at J1991.25, not moved. No distance is written: the contract's parallax rule gives 1000 / p only where p > 0 and e / p is at most 0.1 (197 stars); 26 have e / p above 0.1 and 3 a parallax at or below zero (HIP 26220, HIP 26224, HIP 71502). Toliman (HIP 71681) and Rigil Kentaurus (HIP 71683) are one binary, yet their 2007 parallaxes differ by 42.11 mas, so placing each by its own puts them about 14,400 au apart along the line of sight; Kervella et al. 2016 give the pair one parallax, 747.17 ± 0.61 mas. Offered under CC BY-NC 3.0 IGO with credit ESA, as its sources are."
     }

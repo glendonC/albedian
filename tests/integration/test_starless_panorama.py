@@ -152,7 +152,7 @@ def test_the_record_says_the_stars_were_removed(bake):
     assert entry["producedBy"]["method"] == "script"
     assert entry["producedBy"]["script"] == "scripts/bake_starless_panorama.py"
     assert set(entry["sources"]) == {"eso0932a", "gaia-dr3", "hipparcos-2007"}
-    assert "modified: stars removed" in entry["note"]
+    assert "stars removed" in entry["producedBy"]["changes"].lower()
     # The photograph itself is unchanged and keeps its own entry
     photo = next(f for f in record["files"] if f["path"] == "eso_milkyway_panorama.jpg")
     assert photo["sha256"] == hashlib.sha256((TEXTURES / "eso_milkyway_panorama.jpg").read_bytes()).hexdigest()

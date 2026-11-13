@@ -210,6 +210,17 @@ SPLATS_NOTE = (
 )
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Worked out from the dust shell table and the shell mesh, not copied: the table's rows with no values are left "
+    "out, and for each cell of the mesh the rows in that cell are averaged into one splat, placed at the mesh point"
+    " and turned to face along the shell. Its size through the shell is the shell's mean thickness along its "
+    "normal, and its size across is the side of the cell, each given as the spread of an even slab (the length "
+    "divided by the square root of 12), so most splats are longer through the shell than across; its opacity comes "
+    "from how much light the dust absorbs, and its grey colour is the app's choice."
+)
+
+
 def build_record(existing: AssetProvenanceRecord, splats_sha256: str) -> AssetProvenanceRecord:
     """The models folder record with the splat entry added or replaced; every other entry kept as it is."""
     if mesh.SOURCE_ID not in {s.id for s in existing.sources}:
@@ -223,6 +234,7 @@ def build_record(existing: AssetProvenanceRecord, splats_sha256: str) -> AssetPr
             "method": "script",
             "script": "scripts/bake_local_bubble_splats.py",
             "command": "uv run python scripts/bake_local_bubble_splats.py",
+            "changes": CHANGES,
         },
         "note": SPLATS_NOTE,
     }

@@ -146,7 +146,7 @@ def test_the_textures_record_pins_both_maps_and_the_svs_inputs_they_come_from():
     ):
         entry = files[output]
         assert entry["sources"] == [source_id]
-        assert entry["producedBy"] == {"method": "script", "script": "scripts/bake_moon_maps.py", "command": "uv run python scripts/bake_moon_maps.py"}
+        assert entry["producedBy"] == {"method": "script", "script": "scripts/bake_moon_maps.py", "command": "uv run python scripts/bake_moon_maps.py", "changes": {bake.COLOUR_OUTPUT: bake.COLOUR_CHANGES, bake.NORMAL_OUTPUT: bake.NORMAL_CHANGES}[output]}
         assert entry["sha256"] == bake.sha256_file(TEXTURES / output)
         assert sources[source_id]["sha256"] == sha256
         assert sources[source_id]["url"].endswith(name)

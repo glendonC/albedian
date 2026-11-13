@@ -14,6 +14,7 @@ import {
   SOURCE_ROW,
   creditRows,
   namesServedPath,
+  recordChangeLines,
   servedNotices,
   type CreditRow,
   type LoadedRecord,
@@ -141,26 +142,33 @@ describe('creditRows: rows by what a person sees, every source credited from the
     expect(rows.flatMap((r) => r.blocks.flatMap((b) => b.citations))).toHaveLength(2);
   });
 
-  it("states a change wherever a record's licence asks for one, worded from what the app does", () => {
+  it("states a change wherever a record's licence asks for one, worded from what the app does and from the records", () => {
     expect(Object.keys(CHANGES).sort()).toEqual(['eso0932a', 'eso1804a', 'openngc-v20260501-addendum', 'openngc-v20260501-ngc']);
     for (const id of Object.keys(CHANGES)) {
       const source = sources.find((s) => s.id === id)!;
       expect(source.license.conditions ?? '', id).toMatch(ASKS_FOR_CHANGES);
       const row = rowNamed(SOURCE_ROW[id]!);
       const block = row?.blocks.find((b) => b.credits[0] === source.credit);
-      // Every line of the source's changes, in order, once
-      expect(block?.changes, id).toEqual(CHANGES[id]!());
+      const blockSources = sources.filter((s) => SOURCE_ROW[s.id] === SOURCE_ROW[id] && s.credit === source.credit);
+      const combined = [...new Set(blockSources.flatMap((s) => [...(CHANGES[s.id]?.() ?? []), ...recordChangeLines(loaded, s.id)]))];
+      // Every line of the block's shader/backdrop and record changes, in order, once
+      expect(block?.changes, id).toEqual(combined);
     }
-    // The panorama's three and Lupus 3's one are held to the code by creditChanges.test.ts
+    // The panorama's three and Lupus 3's two are held to the code by creditChanges.test.ts; OpenNGC comes from its record
     expect(CHANGES.eso0932a!()).toHaveLength(3);
+    expect(recordChangeLines(loaded, 'eso0932a')).toHaveLength(2);
     expect(CHANGES.eso1804a!()).toHaveLength(2);
-    expect(CHANGES['openngc-v20260501-ngc']!()).toEqual(['The data were changed.']);
-    expect(CHANGES['openngc-v20260501-addendum']!()).toEqual(['The data were changed.']);
+    expect(recordChangeLines(loaded, 'eso1804a')).toEqual([]);
+    expect(CHANGES['openngc-v20260501-ngc']!()).toEqual([]);
+    expect(CHANGES['openngc-v20260501-addendum']!()).toEqual([]);
+    const deepskyChanges = recordChangeLines(loaded, 'openngc-v20260501-ngc');
+    expect(deepskyChanges).toHaveLength(1);
+    expect(deepskyChanges[0]).toContain("Both of the catalogue's tables kept row for row");
     // Every source whose terms ask for it has its changes stated
     const asked = new Set(sources.filter((s) => ASKS_FOR_CHANGES.test(s.license.conditions ?? '')).map((s) => s.id));
     expect([...asked].filter((id) => !(id in CHANGES))).toEqual([]);
-    // Two OpenNGC sources on one credit say it once
-    expect(rowNamed('Deep-sky objects')?.blocks.flatMap((b) => b.changes)).toEqual(['The data were changed.']);
+    // Two OpenNGC sources on one credit say openngc.json's sentence once
+    expect(rowNamed('Deep-sky objects')?.blocks.flatMap((b) => b.changes)).toEqual(deepskyChanges);
   });
 
   it("links each source's own page, never a query of a thousand characters", () => {
@@ -319,6 +327,7 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       'ESO/S. Brunier',
       'Creative Commons Attribution 4.0 International',
       ...CHANGES.eso0932a!(),
+      ...recordChangeLines(loaded, 'eso0932a'),
     ]);
     const licence = first.querySelector('a.credits-licence');
     expect(licence?.getAttribute('href')).toBe('https://creativecommons.org/licenses/by/4.0/');

@@ -228,6 +228,17 @@ LICENSE = {
 }
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Both of the catalogue's tables kept row for row and rewritten in the app's format: right ascension is "
+    "converted from hours, minutes and seconds and declination from degrees, minutes and seconds, both to degrees "
+    "rounded to six decimals; Messier numbers and measurements are read as numbers and empty cells are left empty; "
+    "lists of other names are split at their commas, each name trimmed and empty ones dropped; the columns the app "
+    "does not use (near-infrared magnitudes, parallax, proper motion, radial velocity, redshift, Hubble type, "
+    "central stars, notes and sources) are left out; and the object types are named."
+)
+
+
 def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
     out_sha = hashlib.sha256((out_dir / OUT_NAME).read_bytes()).hexdigest()
     sources = [
@@ -265,11 +276,11 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                         "method": "script",
                         "script": "scripts/bake_deepsky_openngc.py",
                         "command": "uv run python scripts/bake_deepsky_openngc.py",
+                        "changes": CHANGES,
                     },
                     "note": (
                         "All 14,033 rows of OpenNGC v20260501 (13,969 NGC and IC, 64 addendum) in 16 columns, "
-                        "evidenceKind 'catalog-derived'. Changed from the source: positions converted from "
-                        "sexagesimal to degrees, list cells split at commas, and the columns not listed left out. "
+                        "evidenceKind 'catalog-derived'. "
                         "Offered under CC-BY-SA-4.0, as OpenNGC is."
                     ),
                 }

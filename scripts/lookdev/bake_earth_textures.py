@@ -35,6 +35,15 @@ def smoothstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
     return t * t * (3.0 - 2.0 * t)
 
 
+# How the file differs from its sources: its record's entry is kept by hand and holds this sentence as
+# producedBy.changes, and tests/integration/test_provenance_changes.py checks the two are the same
+NIGHT_CHANGES = (
+    "Resized, then dimmed by each pixel's stored brightness so that NASA's faint base layer turns black, "
+    "the brightest city lights stay as they are, and the lights in between are dimmed; then saved as "
+    "JPEG."
+)
+
+
 def main() -> None:
     Image.MAX_IMAGE_PIXELS = None
     night_src = SOURCES / "earth_blackmarble_2016_3km.jpg"

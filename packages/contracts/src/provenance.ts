@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import LICENSE_CHANGE_TERMS from './data/license-change-terms.json';
 
 /**
  * Asset provenance records: where every file the web app serves from `apps/web/public/` came
@@ -76,12 +77,14 @@ export const ASSET_PROVENANCE_LIMITS = {
 const pattern = (name: keyof typeof ASSET_PROVENANCE_PATTERNS) => new RegExp(ASSET_PROVENANCE_PATTERNS[name]);
 const LIMITS = ASSET_PROVENANCE_LIMITS;
 
-/** A string matching `name`'s pattern with at most `max` Unicode code points (an astral character counts once). */
+/** A string matching `name`'s pattern with at most `max` Unicode code points (an astral character counts once), and
+ * no lone surrogate: Pydantic refuses one, and a record must be judged alike on both sides. */
 const bounded = (name: keyof typeof ASSET_PROVENANCE_PATTERNS, max: number) =>
   z
     .string()
     .regex(pattern(name))
-    .refine((value) => [...value].length <= max, { message: `At most ${max} characters.` });
+    .refine((value) => [...value].length <= max, { message: `At most ${max} characters.` })
+    .refine((value) => !/[\uD800-\uDFFF]/u.test(value), { message: 'A lone surrogate is not text.' });
 
 /** A YYYY-MM-DD string that names a day on the calendar (no February 30). */
 function isCalendarDate(value: string): boolean {
@@ -145,8 +148,9 @@ export type ProvenanceSource = z.infer<typeof ProvenanceSourceSchema>;
 export const ProvenanceProducerSchema = z.discriminatedUnion('method', [
   // The provider's file, byte for byte
   z.object({ method: z.literal('downloaded-as-is') }).strict(),
-  // Made by a script in this repository (repository-relative path)
-  z.object({ method: z.literal('script'), script: relativePath, command: shortText.optional() }).strict(),
+  // Made by a script in this repository (repository-relative path), so a changed copy of its sources: `changes`
+  // says how, in plain words, from what the script does to their bytes; the script holds the sentence as a constant
+  z.object({ method: z.literal('script'), script: relativePath, command: shortText.optional(), changes: longText }).strict(),
 ]);
 export type ProvenanceProducer = z.infer<typeof ProvenanceProducerSchema>;
 
@@ -208,3 +212,22 @@ export const AssetProvenanceRecordSchema = z
     }
   });
 export type AssetProvenanceRecord = z.infer<typeof AssetProvenanceRecordSchema>;
+
+/**
+ * Which licences ask that changes be indicated, each read on its own page (data/license-change-terms.json, which the
+ * Python contract reads too). A licence the table does not know is treated as asking, so a record under a new licence
+ * errs on the side of saying how its file changed.
+ */
+export const LICENSE_CHANGE_TERMS_TABLE = LICENSE_CHANGE_TERMS;
+
+export function licenseAsksChangesIndicated(spdx: string): boolean {
+  return (
+    LICENSE_CHANGE_TERMS.asks.some((row) => row.license === spdx) ||
+    !LICENSE_CHANGE_TERMS.doesNotAsk.some((row) => row.license === spdx)
+  );
+}
+
+/** The table's row for a licence that asks (its page, section and clause), or undefined where the table has none. */
+export function licenseChangeClause(spdx: string): (typeof LICENSE_CHANGE_TERMS.asks)[number] | undefined {
+  return LICENSE_CHANGE_TERMS.asks.find((row) => row.license === spdx);
+}

@@ -45,7 +45,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_local_bubble_splats.py",
-        "command": "uv run python scripts/bake_local_bubble_splats.py"
+        "command": "uv run python scripts/bake_local_bubble_splats.py",
+        "changes": "Worked out from the dust shell table and the shell mesh, not copied: the table's rows with no values are left out, and for each cell of the mesh the rows in that cell are averaged into one splat, placed at the mesh point and turned to face along the shell. Its size through the shell is the shell's mean thickness along its normal, and its size across is the side of the cell, each given as the spread of an even slab (the length divided by the square root of 12), so most splats are longer through the shell than across; its opacity comes from how much light the dust absorbs, and its grey colour is the app's choice."
       },
       "note": "One Gaussian splat per vertex of local_bubble_oneill2024.glb (27,648; rows [x, y, z, r, g, b, sx, sy, sz, qx, qy, qz, qw, opacity], 1 unit = 100 pc), from the same O'Neill et al. (2024) shell table, averaged per HEALPix nside 48 cell over 19 to 36 rows. Measured: the centre (the mesh vertex, at the peak distance d, where the slab is centred), the orientation (the table's shell normal, turned outward), the thickness along the normal (the table's line-of-sight thickness times |n . r|, drawn as a uniform slab's sigma, width / sqrt(12)). Grid geometry, a presentation value: the footprint across the normal (the cell's side as a slab sigma). Presentation mapping of a measured quantity: opacity = 1 - 10^(-0.4 A_G), the fraction of G-band light the shell absorbs along the line of sight from the Sun. Simulated: the colour, one neutral grey for every splat; dust extinction is not emission, so no colour stands for an emission line."
     },
@@ -58,7 +59,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_local_bubble_mesh.py",
-        "command": "uv run python scripts/bake_local_bubble_mesh.py"
+        "command": "uv run python scripts/bake_local_bubble_mesh.py",
+        "changes": "Worked out from the dust shell table, not copied: the directions with no distance are left out, the shell's distance in the others is averaged over coarser sky cells, one point for each, and the points are joined into a closed surface with smooth shading, in units of 100 parsecs."
       }
     },
     {
@@ -70,7 +72,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_moon_mesh.py",
-        "command": "uv run python scripts/bake_moon_mesh.py"
+        "command": "uv run python scripts/bake_moon_mesh.py",
+        "changes": "Worked out from the laser altimeter heights, not copied: a sphere with a point at every degree of latitude and longitude, each raised to the average height of the measurements around it, at the Moon's true scale, with texture coordinates and smooth shading."
       },
       "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for use in 3D rendering software\". Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
     }

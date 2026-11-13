@@ -137,7 +137,7 @@ def test_a_record_the_contract_rejects_fails(repo: Repo):
 
 def test_a_producing_script_must_exist(repo: Repo):
     sha = repo.write(f"{PUBLIC}/textures/lut.png", b"lut")
-    produced = {"method": "script", "script": "scripts/bake_missing.py"}
+    produced = {"method": "script", "script": "scripts/bake_missing.py", "changes": "A stand-in."}
     repo.record(f"{PUBLIC}/textures", files=[_file("lut.png", sha, producedBy=produced)])
     assert _errors_matching(repo.check(), "scripts/bake_missing.py, which does not exist")
 
@@ -147,7 +147,7 @@ def test_file_sets_cover_every_listed_file_and_pin_the_list(repo: Repo):
     a = repo.write(f"{folder}/L0/0.core.bin", b"core")
     b = repo.write(f"{folder}/manifest.json", b"{}")
     sums = repo.write(f"{folder}/SHA256SUMS", f"{a}  L0/0.core.bin\n{b}  manifest.json\n".encode())
-    file_set = {"checksums": "SHA256SUMS", "sha256": sums, "sources": ["eso-sample"], "producedBy": {"method": "script", "script": "scripts/bake_sample.py"}}
+    file_set = {"checksums": "SHA256SUMS", "sha256": sums, "sources": ["eso-sample"], "producedBy": {"method": "script", "script": "scripts/bake_sample.py", "changes": "A stand-in."}}
     repo.record(folder, file_sets=[file_set])
     result = repo.check()
     assert result.errors == []

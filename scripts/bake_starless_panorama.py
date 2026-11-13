@@ -346,6 +346,16 @@ def planet_windows(photo_linear: np.ndarray, solution, table, geom) -> list[tupl
     return windows
 
 
+def put_back_planets(out8: np.ndarray, photo8: np.ndarray, windows: list[tuple[str, float, float, int]]) -> None:
+    """Copy the photograph's own pixels into out8 inside each planet's window, wrapping in longitude, so the planets
+    stay as photographed."""
+    height, width = out8.shape[:2]
+    yy, xx = np.mgrid[0:height, 0:width]
+    for _, cx, cy, r in windows:
+        inside = np.hypot(wrap_dx(xx - cx, width), yy - cy) <= r
+        out8[inside] = photo8[inside]
+
+
 def _check_inputs() -> None:
     for path, expected in ((PHOTO_PATH, PHOTO_SHA256), (REGISTRATION_PATH, REGISTRATION_SHA256)):
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -383,10 +393,7 @@ def bake() -> tuple[bytes, dict]:
     out8 = np.round(linear_to_srgb(out) * 255.0).astype(np.uint8)
 
     windows = planet_windows(photo, solution, table, geom)
-    yy, xx = np.mgrid[0 : geom.height, 0 : geom.width]
-    for _, cx, cy, r in windows:
-        inside = np.hypot(wrap_dx(xx - cx, geom.width), yy - cy) <= r
-        out8[inside] = photo8[inside]
+    put_back_planets(out8, photo8, windows)
 
     buffer = io.BytesIO()
     Image.fromarray(out8, "RGB").save(buffer, "WEBP", lossless=True, quality=100, method=6)
@@ -399,6 +406,18 @@ def bake() -> tuple[bytes, dict]:
     return buffer.getvalue(), measured
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Stars removed: the photograph is converted to linear light; every catalogue star down to magnitude 7 "
+    "is masked as a disc where the panorama's registration places it, sized from the photograph's own "
+    "stars; every pixel is smoothed by a median and a slight blur; the discs are filled in from their "
+    "surroundings; the whole image is blurred slightly once more; its brightness is rescaled so that each "
+    "region about a degree across keeps the photograph's own; it is turned back into ordinary colour "
+    "values; Venus and Jupiter are put back as photographed; and it is saved as a lossless image of the "
+    "same size."
+)
+
+
 def record_file(data: bytes, measured: dict) -> dict:
     radii = ", ".join(f"{b} {v['radiusPx']}" for b, v in sorted(measured["profiles"].items()))
     return {
@@ -409,14 +428,17 @@ def record_file(data: bytes, measured: dict) -> dict:
             "method": "script",
             "script": "scripts/bake_starless_panorama.py",
             "command": "uv run python scripts/bake_starless_panorama.py",
+            "changes": CHANGES,
         },
         "note": (
-            "ESO/S. Brunier, eso0932a, modified: stars removed. The landing draws its point stars from the catalog "
+            "The landing draws its point stars from the catalog "
             f"tiles, so the photograph's {measured['maskedStars']:,} catalog stars to magnitude {MASK_MAG:g} are masked "
-            "where its registration (eso0932a_registration.json) puts them, with radii measured from the photograph's "
+            "where the panorama's registration puts them, with radii measured from the photograph's "
             f"own star profiles by magnitude (bin and pixels: {radii}) plus {MASK_MARGIN_PX} for the registration's "
-            "error, and filled from their surroundings; a 5x5 median and a 1 px Gaussian, wrapping in longitude, "
-            "take the fainter stellar grain. What remains is the photograph's diffuse light: unresolved stars, dust "
+            "error. Every pixel is then smoothed by a 5x5 median and a 1 px Gaussian, the masks are filled from their "
+            "surroundings, a second 1 px Gaussian goes over the whole image, and two passes rescale each 1 degree region "
+            "to the photograph's median luminance, every filter wrapping in longitude. What remains is the "
+            "photograph's diffuse light: unresolved stars, dust "
             "lanes and nebulae. Venus and Jupiter are put back exactly as photographed. Same projection and size as "
             "the photograph, so its registration applies unchanged."
         ),

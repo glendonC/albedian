@@ -262,6 +262,17 @@ def _summary(rows: list[list[Any]]) -> dict[str, Any]:
     }
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "The bright stars the star tiles take from Hipparcos: their positions, parallaxes and motions with their "
+    "errors, their Hipparcos magnitude and B-V colour, and their solution type and number of components, as the "
+    "2007 reduction gives them, with the V magnitude of the 1997 catalogue where it gives one; the positions are "
+    "left at the catalogue's epoch and no distance is worked out. Each star carries the reason the tiles use "
+    "Hipparcos for it and its place in the tiles, and its Gaia counterpart and its name only where it has one; "
+    "three columns the archive gives (the error of B-V, a multiplicity flag and a CCDM number) are left out."
+)
+
+
 def build_provenance_record(out_dir: Path, tiles: Path = DEFAULT_TILES) -> AssetProvenanceRecord:
     out_bytes = (out_dir / OUT_NAME).read_bytes()
     rows = json.loads(out_bytes)["rows"]
@@ -342,6 +353,7 @@ def build_provenance_record(out_dir: Path, tiles: Path = DEFAULT_TILES) -> Asset
                         "method": "script",
                         "script": "scripts/bake_bright_stars_3d.py",
                         "command": "uv run python scripts/bake_bright_stars_3d.py",
+                        "changes": CHANGES,
                     },
                     "note": note,
                 }

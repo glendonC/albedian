@@ -39,13 +39,27 @@ subfolder. The format is a contract: `AssetProvenanceRecordSchema` in
   `retrieved` date (at least one), its licence, the credit line to show, and optionally a
   citation, DOI, acknowledgement, the input's SHA-256 and a note.
 - **files**: one entry per file, pinned by SHA-256, naming its sources and how it was made:
-  `{"method": "downloaded-as-is"}` or `{"method": "script", "script": "<repo path>", "command": "..."}`.
+  `{"method": "downloaded-as-is"}` or `{"method": "script", "script": "<repo path>", "command": "...",
+  "changes": "..."}`.
 - **fileSets**: a `SHA256SUMS` list beside the record (one `<sha256>  <relative path>` line per
   file) pinned by its own SHA-256. A bake that writes thousands of files, such as the catalog
   star tiles, records them through one list instead of one entry each.
 
 Assets made in this repository cite their producing script by its repository-relative path in
 `producedBy.script`, never the repository's URL.
+
+**Changes.** A file a script made is a changed copy of its sources, so `producedBy.changes` says
+how, in plain words, from what the script does to the sources' bytes: a subset, a reformatting,
+a join, a computation. It is required on the script producer and absent on a downloaded file.
+The script holds the sentence as a named constant and writes it into its record (or, for a
+record kept by hand, the constant states it); `tests/integration/test_provenance_changes.py`
+checks that every entry's sentence is a constant of the script that made it.
+
+**Licences that ask for it.** `packages/contracts/src/data/license-change-terms.json`, read by
+both contracts (`license_asks_changes_indicated` and `licenseAsksChangesIndicated`), lists the
+licences whose terms ask that changes be indicated, each with its clause quoted from its own
+page and that page's address, and those read and found not to ask. A licence it does not know
+is treated as asking, so the web's Credits rows can show the changes line where a licence asks.
 
 **Licences.** `spdx` is an identifier from the pinned SPDX License List subset
 (`SPDX_LICENSE_IDS`: CC-BY-4.0, CC-BY-SA-4.0, CC-BY-NC-4.0, CC-BY-NC-3.0-IGO, CC0-1.0,
@@ -101,6 +115,8 @@ committed. It fails when:
 - a file has neither a record nor an allowlist entry;
 - a record does not follow the contract, names a file that is not there, or names a producing
   script that does not exist;
+- a file a script made does not say how it differs from its sources; the refusal names the
+  licences among its sources whose terms ask that changes be indicated, from the table;
 - a file's bytes, or a SHA256SUMS list's, differ from what its record pins;
 - a file is covered twice.
 

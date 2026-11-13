@@ -365,6 +365,26 @@ def record_sources(cache: Path) -> list[dict]:
     ]
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+WATER_CHANGES = (
+    "Worked out from Natural Earth's ocean and lake outlines, not copied: each pixel holds how much of it "
+    "lies in the ocean or in a lake, whichever is more, as a shade from 0 for land to 255 for water."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+HEIGHT_CHANGES = (
+    "Worked out from the ETOPO 2022 heights, not copied: each pixel holds the average height of the "
+    "source cells it covers, to the nearest metre, stored exactly across two colour channels."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+DAY_CHANGES = (
+    "Resized and saved as JPEG."
+)
+
+
 def record_files() -> list[dict]:
     return [
         {
@@ -375,6 +395,7 @@ def record_files() -> list[dict]:
                 "method": "script",
                 "script": "scripts/bake_earth_maps.py",
                 "command": "uv run python scripts/bake_earth_maps.py",
+                "changes": WATER_CHANGES,
             },
             "note": (
                 "Water cover, 4096x2048, equirectangular from longitude -180 and latitude 90: 255 is water "
@@ -397,6 +418,7 @@ def record_files() -> list[dict]:
                 "method": "script",
                 "script": "scripts/bake_earth_maps.py",
                 "command": "uv run python scripts/bake_earth_maps.py",
+                "changes": HEIGHT_CHANGES,
             },
             "note": (
                 "Heights, 4096x2048, equirectangular from longitude -180 and latitude 90: the mean over each "
@@ -414,6 +436,7 @@ def record_files() -> list[dict]:
                 "method": "script",
                 "script": "scripts/bake_earth_maps.py",
                 "command": "uv run python scripts/bake_earth_maps.py",
+                "changes": DAY_CHANGES,
             },
             "note": (
                 "A Lanczos resample of the base map to 8192x4096, JPEG quality 90. It has no relief shading of its "

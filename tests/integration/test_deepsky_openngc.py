@@ -239,8 +239,12 @@ def test_provenance_record_states_sources_licence_and_changes() -> None:
     assert entry.sha256 == hashlib.sha256((OUT_DIR / bake.OUT_NAME).read_bytes()).hexdigest()
     assert entry.sources == tuple(item.source_id for item in bake.INPUTS)
     assert entry.produced_by.script == "scripts/bake_deepsky_openngc.py"
-    for required in ("catalog-derived", "CC-BY-SA-4.0", "sexagesimal"):
-        assert required in entry.note
+    for required in (
+        "catalog-derived",
+        "CC-BY-SA-4.0",
+        "from hours, minutes and seconds and declination from degrees, minutes and seconds",
+    ):
+        assert required in f"{entry.note} {entry.produced_by.changes}"
     assert [s.id for s in record.sources] == [item.source_id for item in bake.INPUTS]
     for src, item in zip(record.sources, bake.INPUTS, strict=True):
         assert src.sha256 == item.sha256

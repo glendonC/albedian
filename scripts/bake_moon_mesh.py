@@ -221,6 +221,14 @@ def file_note(glb_bytes: int) -> str:
     )
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Worked out from the laser altimeter heights, not copied: a sphere with a point at every degree of "
+    "latitude and longitude, each raised to the average height of the measurements around it, at the "
+    "Moon's true scale, with texture coordinates and smooth shading."
+)
+
+
 def build_record(existing: AssetProvenanceRecord, glb: bytes) -> AssetProvenanceRecord:
     """The models folder record with the LOLA source (first, so the other bakes keep their order) and the mesh."""
     data = existing.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -230,7 +238,7 @@ def build_record(existing: AssetProvenanceRecord, glb: bytes) -> AssetProvenance
         "path": OUT_NAME,
         "sha256": hashlib.sha256(glb).hexdigest(),
         "sources": [SOURCE_ID],
-        "producedBy": {"method": "script", "script": "scripts/bake_moon_mesh.py", "command": "uv run python scripts/bake_moon_mesh.py"},
+        "producedBy": {"method": "script", "script": "scripts/bake_moon_mesh.py", "command": "uv run python scripts/bake_moon_mesh.py", "changes": CHANGES},
         "note": file_note(len(glb)),
     }
     data["files"] = sorted([*(f for f in data["files"] if f["path"] != OUT_NAME), entry], key=lambda f: f["path"])

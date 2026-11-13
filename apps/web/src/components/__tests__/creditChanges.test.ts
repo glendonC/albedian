@@ -311,21 +311,47 @@ describe("the whole finished frame's finishing is a list too, and the row words 
 
 describe("a file a script made shows its record's own sentence on how it differs, whole, and nothing of the app's own", () => {
   const today = (): LoadedRecord[] => [{ url: '/textures/PROVENANCE.json', record: textures }];
-  const withField = (file: string, sentence: unknown): LoadedRecord[] => [
+  const withoutChanges = (): LoadedRecord[] => [
     {
       url: '/textures/PROVENANCE.json',
       record: {
         ...textures,
-        files: textures.files.map((f) => (f.path === file ? { ...f, producedBy: { ...f.producedBy, changes: sentence } } : f)),
-      } as typeof textures,
+        files: textures.files.map((f) => {
+          if (f.producedBy.method !== 'script') return f;
+          const { changes: _omitted, ...rest } = f.producedBy;
+          return { ...f, producedBy: rest };
+        }),
+      } as unknown as typeof textures,
     },
   ];
+  const withField = (file: string, sentence: unknown): LoadedRecord[] => {
+    const base = withoutChanges()[0]!.record;
+    return [
+      {
+        url: '/textures/PROVENANCE.json',
+        record: {
+          ...base,
+          files: base.files.map((f) => (f.path === file ? { ...f, producedBy: { ...f.producedBy, changes: sentence } } : f)),
+        } as unknown as typeof textures,
+      },
+    ];
+  };
   const milkyWay = (loaded: LoadedRecord[]) => creditRows(loaded, []).find((row) => row.name === 'Milky Way photograph')!.blocks;
 
-  it('shows no further line while the record holds no such field, as today', () => {
+  it('shows no further line when a record holds no such field, and shows the two eso0932a script sentences from disk today', () => {
     expect(fileOf('eso_milkyway_diffuse_6k.webp')?.producedBy.method).toBe('script');
-    expect(recordChangeLines(today(), 'eso0932a')).toEqual([]);
-    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY]]);
+    expect(recordChangeLines(withoutChanges(), 'eso0932a')).toEqual([]);
+    expect(milkyWay(withoutChanges()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY]]);
+    const registration = fileOf('eso0932a_registration.json')!.producedBy;
+    const starless = fileOf('eso_milkyway_diffuse_6k.webp')!.producedBy;
+    expect(registration.method === 'script' && registration.changes).toBeTruthy();
+    expect(starless.method === 'script' && starless.changes).toBeTruthy();
+    const diskSentences = [
+      registration.method === 'script' ? registration.changes : '',
+      starless.method === 'script' ? starless.changes : '',
+    ];
+    expect(recordChangeLines(today(), 'eso0932a')).toEqual(diskSentences);
+    expect(milkyWay(today()).map((block) => block.changes)).toEqual([[HOME, SKY, COPY, ...diskSentences]]);
   });
 
   it("shows the field's sentence character for character once the record holds it, after the app's own lines", () => {

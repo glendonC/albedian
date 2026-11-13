@@ -135,6 +135,19 @@ def ranges(points: set[int]) -> list[list[int]]:
     return out
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+TABLE_CHANGES = (
+    "Worked out from the Unicode Character Database, not copied: the letters and digits of Unicode 15.1, "
+    "less the characters that never show, as ranges, with the places where three other versions differ."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+LICENSE_CHANGES = (
+    "None: the notice is the Unicode licence's own text, written unchanged."
+)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("ucd", type=Path, help="folder holding <version>/UnicodeData.txt and DerivedCoreProperties.txt")
@@ -190,6 +203,7 @@ def main(argv: list[str] | None = None) -> int:
                     "method": "script",
                     "script": "scripts/generate_letters_and_digits.py",
                     "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+                    "changes": TABLE_CHANGES,
                 },
                 "note": f"A byte-identical copy of packages/contracts/src/data/letters-and-digits.json, which both "
                 "answer contracts read and the web bundle carries. The ranges are Unicode "
@@ -203,6 +217,7 @@ def main(argv: list[str] | None = None) -> int:
                     "method": "script",
                     "script": "scripts/generate_letters_and_digits.py",
                     "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+                    "changes": LICENSE_CHANGES,
                 },
                 "note": "The script writes the notice from its own copy of the text, which is byte-equal to "
                 "https://www.unicode.org/license.txt as fetched on 2026-11-11. It must travel with the data.",

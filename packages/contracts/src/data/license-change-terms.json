@@ -1,0 +1,79 @@
+{
+  "format": "albedian.license-change-terms",
+  "formatVersion": 1,
+  "read": "2026-11-13",
+  "asks": [
+    {
+      "license": "CC-BY-4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/legalcode.en",
+      "section": "3(a)(1)(B)",
+      "clause": "indicate if You modified the Licensed Material and retain an indication of any previous modifications"
+    },
+    {
+      "license": "CC-BY-SA-4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.en",
+      "section": "3(a)(1)(B)",
+      "clause": "indicate if You modified the Licensed Material and retain an indication of any previous modifications"
+    },
+    {
+      "license": "CC-BY-NC-3.0-IGO",
+      "url": "https://creativecommons.org/licenses/by-nc/3.0/igo/legalcode",
+      "section": "3(b)",
+      "clause": "provided that You clearly label, demarcate or otherwise identify that changes were made to the original Work"
+    },
+    {
+      "license": "LicenseRef-IAU-Creative-Commons-Attribution",
+      "url": "https://www.pas.rochester.edu/~emamajek/WGSN/IAU-CSN.txt",
+      "section": "the file's header",
+      "clause": "All IAU-produced products (Images, Videos, Texts) are released under Creative Commons Attribution",
+      "reading": "No version is named, and the 4.0 Attribution licence asks that changes be indicated, so this is read as asking, as a licence this table does not know is."
+    }
+  ],
+  "doesNotAsk": [
+    {
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/ofrohn/d3-celestial/blob/d2e20e104b86429d90ac8227a5b021262b45d75a/LICENSE",
+      "reading": "Use \"with or without modification\" is permitted under its three conditions (the notice, the disclaimer, no endorsement); none asks that changes be indicated."
+    },
+    {
+      "license": "MIT",
+      "url": "https://opensource.org/license/mit",
+      "reading": "The notice must be included in all copies; nothing asks that changes be indicated."
+    },
+    {
+      "license": "OFL-1.1",
+      "url": "https://openfontlicense.org",
+      "reading": "Original or Modified Versions may be bundled, redistributed and sold with any software under its five conditions (no sale by itself, copyright notice and licence included, no Reserved Font Name on a Modified Version without permission, no endorsement, distributed under this licence); none asks that changes be indicated."
+    },
+    {
+      "license": "CC0-1.0",
+      "url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode.en",
+      "reading": "A waiver of the rights, with no condition on a copy."
+    },
+    {
+      "license": "LicenseRef-Unicode-3.0",
+      "url": "https://www.unicode.org/license.txt",
+      "reading": "The notice must appear with all copies or in their documentation; nothing asks that changes be indicated."
+    },
+    {
+      "license": "LicenseRef-NASA-Media-Guidelines",
+      "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "reading": "NASA content is generally not under copyright in the United States; the guidelines ask that NASA be acknowledged as the source and that no use imply its endorsement, not that changes be indicated."
+    },
+    {
+      "license": "LicenseRef-Natural-Earth-Public-Domain",
+      "url": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "reading": "The maps may be used in any manner, modifying them included."
+    },
+    {
+      "license": "LicenseRef-NASA-Eclipse-Permission",
+      "url": "https://eclipse.gsfc.nasa.gov/SEcat5/SEcatkey.html",
+      "reading": "Reproduction is permitted with the stated acknowledgment; nothing asks that changes be indicated (the lunar catalogue's key page says the same)."
+    },
+    {
+      "license": "LicenseRef-NASA-Exoplanet-Archive-Acknowledgement",
+      "url": "https://exoplanetarchive.ipac.caltech.edu/docs/acknowledge.html",
+      "reading": "The policy asks that the archive and each literature reference used be acknowledged, not that changes be indicated."
+    }
+  ]
+}

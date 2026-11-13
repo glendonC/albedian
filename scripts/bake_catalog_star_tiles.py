@@ -1006,6 +1006,18 @@ RECORD_TERMS = {
 }
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "A selection of the Gaia and Hipparcos catalogues, joined and packed into tiles: every Gaia star brighter than "
+    "magnitude 12, with its distance estimate (the photogeometric one where there is one, else the geometric one) "
+    "and its temperature, luminosity, dust and quality figures; the brightest stars, which Gaia measures poorly, "
+    "taken from Hipparcos instead, their positions moved to Gaia's epoch and their distances worked out from their "
+    "parallaxes where the parallax is above zero, and the Gaia entries they replace dropped; star names added; and "
+    "each star placed in a sky tile by brightness, its values stored in compact numeric codes. A value a source "
+    "lacks stays missing."
+)
+
+
 def provenance_record(cfg: ReleaseConfig, checksums_sha256: str, *, names_updated: str) -> AssetProvenanceRecord:
     """The release folder's record: SHA256SUMS pinned by its SHA-256, and every manifest source."""
     sources = []
@@ -1052,6 +1064,7 @@ def provenance_record(cfg: ReleaseConfig, checksums_sha256: str, *, names_update
                         "method": "script",
                         "script": "scripts/bake_catalog_star_tiles.py",
                         "command": f"uv run python scripts/bake_catalog_star_tiles.py --release {cfg.release_id}",
+                        "changes": CHANGES,
                     },
                     "note": (
                         "Every file of the release except this record. The values are catalog values "

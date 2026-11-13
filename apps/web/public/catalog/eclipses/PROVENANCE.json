@@ -49,7 +49,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_eclipses.py",
-        "command": "uv run python scripts/bake_eclipses.py"
+        "command": "uv run python scripts/bake_eclipses.py",
+        "changes": "Every eclipse in the catalogue kept, read from its text table into the app's format: month names become numbers, times and durations become seconds, latitudes and longitudes become signed degrees, each eclipse type is split into its letter and its qualifier, values the table leaves out become empty, and each date is marked as Julian or Gregorian."
       },
       "note": "All 11,898 solar eclipses from -1999 to +3000 across all 21 columns of 5MKSEcatalog.txt, with evidenceClass 'predicted'. Dates use the Julian calendar through 1582 October 4 and the Gregorian calendar from 1582 October 15, with astronomical year numbering (year 0 = 1 BCE)."
     },
@@ -62,7 +63,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_eclipses.py",
-        "command": "uv run python scripts/bake_eclipses.py"
+        "command": "uv run python scripts/bake_eclipses.py",
+        "changes": "Every eclipse in the catalogue kept, read from its text table into the app's format: month names become numbers, the time of greatest eclipse becomes seconds, zenith latitudes and longitudes become signed whole degrees, each eclipse type is split into its letter and its qualifier, durations the table leaves out become empty, and each date is marked as Julian or Gregorian."
       },
       "note": "All 12,064 lunar eclipses from -1999 to +3000 across all 20 columns of 5MKLEcatalog.txt, with evidenceClass 'predicted'. Dates use the Julian calendar through 1582 October 4 and the Gregorian calendar from 1582 October 15, with astronomical year numbering (year 0 = 1 BCE)."
     }

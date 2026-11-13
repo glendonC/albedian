@@ -290,6 +290,18 @@ def dumps_table(table: ExoplanetTable) -> str:
     return json.dumps(table.to_contract_dict(), ensure_ascii=True, allow_nan=False, separators=(",", ":")) + "\n"
 
 
+# How the file differs from its sources, written into its record as producedBy.changes
+CHANGES = (
+    "Every planet kept, in 21 columns: eight about the planet, its star and its system (their names, how many stars"
+    " and planets the system has, how, when and where the planet was found, and where its mass comes from), and "
+    "thirteen values, each with the uncertainties the archive gives, its limit flag where the archive gives one, "
+    "and its reference; a value the archive leaves blank is left empty, with nothing beside it; each reference's "
+    "web link is turned into a title and a secure address and listed once; each value is marked as measured, "
+    "calculated or modelled from its reference; a note on the equilibrium temperature is added; and the other "
+    "columns are left out."
+)
+
+
 def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
     out_sha = hashlib.sha256((out_dir / OUT_NAME).read_bytes()).hexdigest()
     return AssetProvenanceRecord.model_validate(
@@ -359,6 +371,7 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                         "method": "script",
                         "script": "scripts/bake_exoplanets.py",
                         "command": "uv run python scripts/bake_exoplanets.py",
+                        "changes": CHANGES,
                     },
                     "note": (
                         "All 6,451 rows and 21 columns (8 identity columns and 13 value columns) of the "

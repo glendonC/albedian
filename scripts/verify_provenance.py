@@ -8,7 +8,9 @@ left out: git never publishes them.
 Each `PROVENANCE.json` must follow the contract (`services/contracts/provenance.py`, mirrored by
 `AssetProvenanceRecordSchema` in `@albedian/contracts`), every file it names must be there with
 the SHA-256 it gives, every file a SHA256SUMS list names likewise, and every producing script
-must exist. No file may be covered twice.
+must exist. No file may be covered twice. Every file a script made must say how it differs from
+its sources (producedBy.changes); the refusal names the licences among its sources whose terms
+ask that changes be indicated (packages/contracts/src/data/license-change-terms.json).
 
 Files with no record yet are listed in `scripts/provenance_gaps.json`, each with its reason. That
 list may only shrink: every entry must be one of `BASELINE_GAPS` below, the assets that had no
@@ -36,6 +38,8 @@ if str(ROOT_DIR) not in sys.path:
 from services.contracts.provenance import (  # noqa: E402
     ASSET_PROVENANCE_RECORD_FILENAME,
     AssetProvenanceRecord,
+    license_asks_changes_indicated,
+    license_change_clause,
     parse_sha256sums,
     sha256_file,
 )
@@ -96,6 +100,40 @@ def ignored_files(root: Path, public_rel: str = PUBLIC_REL) -> list[str]:
     return _git_files(root, public_rel, "--others", "--ignored", "--exclude-standard")
 
 
+def _unsaid_changes(record_path: str, raw: object) -> list[str]:
+    """One line per script-made entry that does not say how its file differs from its sources (producedBy.changes),
+    naming the licences among its sources whose terms ask that changes be indicated, from the licence table."""
+    if not isinstance(raw, dict):
+        return []
+    sources = {s.get("id"): s for s in raw.get("sources", []) if isinstance(s, dict)}
+    lines = []
+    for entry in [*raw.get("files", []), *raw.get("fileSets", [])]:
+        producer = entry.get("producedBy") if isinstance(entry, dict) else None
+        if not isinstance(producer, dict) or producer.get("method") != "script" or "changes" in producer:
+            continue
+        named = entry.get("path") or entry.get("checksums")
+        licences = sorted(
+            {
+                sources[ref]["license"]["spdx"]
+                for ref in entry.get("sources", [])
+                if isinstance(sources.get(ref, {}).get("license"), dict) and "spdx" in sources[ref]["license"]
+            }
+        )
+        asking = [spdx for spdx in licences if license_asks_changes_indicated(spdx)]
+        why = ""
+        if asking:
+            clauses = []
+            for spdx in asking:
+                row = license_change_clause(spdx)
+                clauses.append(f'{spdx} ({row["section"]}: "{row["clause"]}")' if row else f"{spdx} (not in the licence table, so read as asking)")
+            why = f"; its sources' terms ask that changes be indicated: {'; '.join(clauses)}"
+        lines.append(
+            f"{record_path}: {named} is made by {producer.get('script')} but does not say how it differs from its "
+            f"sources (producedBy.changes){why}"
+        )
+    return lines
+
+
 def check(
     root: Path,
     *,
@@ -134,7 +172,12 @@ def check(
     for record_path in records:
         folder = PurePosixPath(record_path).parent
         try:
-            record = AssetProvenanceRecord.model_validate(json.loads((root / record_path).read_text(encoding="utf-8")))
+            raw = json.loads((root / record_path).read_text(encoding="utf-8"))
+            unsaid = _unsaid_changes(record_path, raw)
+            if unsaid:
+                result.errors.extend(unsaid)
+                continue
+            record = AssetProvenanceRecord.model_validate(raw)
         except (ValueError, ValidationError) as exc:
             first = str(exc).splitlines()
             result.errors.append(f"{record_path}: is not a valid provenance record: {' '.join(first[:3])}")

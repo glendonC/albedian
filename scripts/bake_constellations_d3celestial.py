@@ -250,10 +250,20 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
     sources[1]["citation"] = (
         "Davenhall, A. C. and Leggett, S. K. (1989), Catalogue of Constellation Boundary Data, VizieR catalogue VI/49."
     )
-    changes = (
-        "Changed from the source: right ascension wrapped from -180..180 into 0..360 at 4 decimals, rank as an "
-        "integer, the two Serpens features named Se1 (Caput) and Se2 (Cauda) by right ascension; nothing else."
+    lines_changes = (
+        "Rewritten from the source's map format into the app's own, every figure and point kept in order: "
+        "longitudes from -180 to 180 degrees become right ascensions from 0 to 360, rounded back to the "
+        "source's four decimals; each figure's rank becomes a number; the two halves of Serpens get codes of "
+        "their own, split at a right ascension of 250 degrees; and the release and the equinox are stated."
     )
+    bounds_changes = (
+        "Rewritten from the source's map format into the app's own, every boundary and corner kept in order: "
+        "longitudes from -180 to 180 degrees become right ascensions from 0 to 360, rounded back to the "
+        "source's four decimals; each boundary's rank becomes a number; the two halves of Serpens get codes "
+        "of their own, split at a right ascension of 250 degrees; and the release and the equinoxes of the "
+        "corners and of the edges are stated."
+    )
+    notice_changes = "None: the notice is d3-celestial's licence text at the pinned commit, written unchanged."
     files = [
         {
             "path": LINES.out_name,
@@ -263,10 +273,11 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                 "method": "script",
                 "script": "scripts/bake_constellations_d3celestial.py",
                 "command": "uv run python scripts/bake_constellations_d3celestial.py",
+                "changes": lines_changes,
             },
             "note": (
                 "All 89 constellation figures, evidenceKind 'catalog-derived': the IAU figures as edited by the "
-                f"d3-celestial author, not an IAU product. {changes}"
+                "d3-celestial author, not an IAU product."
             ),
         },
         {
@@ -277,11 +288,12 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                 "method": "script",
                 "script": "scripts/bake_constellations_d3celestial.py",
                 "command": "uv run python scripts/bake_constellations_d3celestial.py",
+                "changes": bounds_changes,
             },
             "note": (
                 "All 89 IAU constellation boundaries, evidenceKind 'catalog-derived'. Vertices are J2000 positions of "
                 "B1875 corners; each edge follows a constant B1875 right ascension or declination, so a layer must "
-                f"densify edges along B1875 right ascension or declination, never draw them straight. {changes}"
+                "densify edges along B1875 right ascension or declination, never draw them straight."
             ),
         },
         {
@@ -292,6 +304,7 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
                 "method": "script",
                 "script": "scripts/bake_constellations_d3celestial.py",
                 "command": "uv run python scripts/bake_constellations_d3celestial.py",
+                "changes": notice_changes,
             },
             "note": (
                 "d3-celestial's LICENSE at the pinned commit, word for word: the script writes it from its own copy "

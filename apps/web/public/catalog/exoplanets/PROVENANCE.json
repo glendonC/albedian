@@ -32,7 +32,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_exoplanets.py",
-        "command": "uv run python scripts/bake_exoplanets.py"
+        "command": "uv run python scripts/bake_exoplanets.py",
+        "changes": "Every planet kept, in 21 columns: eight about the planet, its star and its system (their names, how many stars and planets the system has, how, when and where the planet was found, and where its mass comes from), and thirteen values, each with the uncertainties the archive gives, its limit flag where the archive gives one, and its reference; a value the archive leaves blank is left empty, with nothing beside it; each reference's web link is turned into a title and a secure address and listed once; each value is marked as measured, calculated or modelled from its reference; a note on the equilibrium temperature is added; and the other columns are left out."
       },
       "note": "All 6,451 rows and 21 columns (8 identity columns and 13 value columns) of the 2026-11-05T00:36:15Z PSCompPars snapshot, with 1,838 deduplicated literature and calculation references and `evidenceKind: 'catalog-derived'` (distinguishing this static catalog table from `catalog_matched` observation findings). Each value cell carries `[value, err1, err2, limit, ref, basis]` with `basis` in `{'measured', 'calculated', 'modelled'}`."
     }

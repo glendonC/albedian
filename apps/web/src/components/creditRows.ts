@@ -99,20 +99,19 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
  * finishing from its lists (spatial/frameFinishing.ts); the copy the WebGPU renderer draws, by the app's own steps,
  * how it differs being its record's (recordChangeLines). Lupus 3: worded from the black-hole
  * scene's grade, then the light the scene adds and where it places it. OpenNGC's terms ask to say that the data were
- * changed.
+ * changed: openngc.json's record states how (recordChangeLines), so its own list here is empty.
  */
 export const CHANGES: Readonly<Record<string, () => readonly string[]>> = {
   eso0932a: () => [homeBackdropChanges(), milkyWay3dChanges(), milkyWayCopyDrawn()],
   eso1804a: () => [lupus3Changes(), lupus3SceneWords()],
-  'openngc-v20260501-ngc': () => ['The data were changed.'],
-  'openngc-v20260501-addendum': () => ['The data were changed.'],
+  'openngc-v20260501-ngc': () => [],
+  'openngc-v20260501-addendum': () => [],
 };
 
 /**
  * For a source whose terms ask that changes be indicated (a key of CHANGES), each file a script made from it: the
  * record's own sentence on how the file differs from its sources, character for character, from the script
- * producer's `changes` field (the CATALOG lane's provenance-changes-1 adds it), and no words of the app's own. A
- * record without the field gives no line; the day the field lands the sentence shows, with no change here.
+ * producer's `changes` field, and no words of the app's own. A record without the field gives no line.
  */
 export function recordChangeLines(loaded: readonly LoadedRecord[], sourceId: string): string[] {
   if (!(sourceId in CHANGES)) return [];

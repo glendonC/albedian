@@ -96,7 +96,8 @@
           "producedBy": {
             "method": "script",
             "script": "scripts/bake_catalog_star_tiles.py",
-            "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3"
+            "command": "uv run python scripts/bake_catalog_star_tiles.py --release gaia-dr3",
+            "changes": "Contract test sample: how a script's file differs from its sources."
           },
           "note": "Contract test sample; not a record of a real file."
         }
@@ -142,7 +143,8 @@
           ],
           "producedBy": {
             "method": "script",
-            "script": "scripts/lookdev/bake_earth_textures.py"
+            "script": "scripts/lookdev/bake_earth_textures.py",
+            "changes": "Contract test sample: how a script's file differs from its sources."
           },
           "note": "Contract test sample; not a record of a real file."
         },
@@ -154,7 +156,8 @@
           ],
           "producedBy": {
             "method": "script",
-            "script": "scripts/bake_bruneton_lut_and_splats.py"
+            "script": "scripts/bake_bruneton_lut_and_splats.py",
+            "changes": "Contract test sample: how a script's file differs from its sources."
           }
         }
       ],
@@ -186,6 +189,40 @@
           ],
           "producedBy": {
             "method": "downloaded-as-is"
+          },
+          "note": "Contract test sample; not a record of a real file."
+        }
+      ],
+      "fileSets": []
+    },
+    {
+      "format": "albedian.asset-provenance",
+      "formatVersion": 1,
+      "sources": [
+        {
+          "id": "eso-sample",
+          "title": "ESO sample image",
+          "url": "https://www.eso.org/public/images/",
+          "retrieved": "2026-11-04",
+          "license": {
+            "spdx": "CC-BY-4.0",
+            "name": "Creative Commons Attribution 4.0 International",
+            "url": "https://creativecommons.org/licenses/by/4.0/"
+          },
+          "credit": "ESO"
+        }
+      ],
+      "files": [
+        {
+          "path": "sample_sky.jpg",
+          "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+          "sources": [
+            "eso-sample"
+          ],
+          "producedBy": {
+            "method": "script",
+            "script": "scripts/x.py",
+            "changes": "\ud83c\udf0ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\ud83c\udf0c"
           },
           "note": "Contract test sample; not a record of a real file."
         }
@@ -2072,7 +2109,300 @@
             ],
             "producedBy": {
               "method": "script",
-              "script": "../bake.py"
+              "script": "../bake.py",
+              "changes": "Contract test sample: how a script's file differs from its sources."
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "script method that does not say how its file differs",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "null changes",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "changes": null
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "blank changes",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "changes": " "
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "changes that start with a blank",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "changes": " Contract test sample: how a script's file differs from its sources."
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "changes over the long text limit",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "changes": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "downloaded as is with changes",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is",
+              "changes": "Contract test sample: how a script's file differs from its sources."
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "a lone surrogate in changes",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "script",
+              "script": "scripts/x.py",
+              "changes": "a\ud800b"
+            },
+            "note": "Contract test sample; not a record of a real file."
+          }
+        ],
+        "fileSets": []
+      }
+    },
+    {
+      "rule": "a lone surrogate in a credit",
+      "record": {
+        "format": "albedian.asset-provenance",
+        "formatVersion": 1,
+        "sources": [
+          {
+            "id": "eso-sample",
+            "title": "ESO sample image",
+            "url": "https://www.eso.org/public/images/",
+            "retrieved": "2026-11-04",
+            "license": {
+              "spdx": "CC-BY-4.0",
+              "name": "Creative Commons Attribution 4.0 International",
+              "url": "https://creativecommons.org/licenses/by/4.0/"
+            },
+            "credit": "ESO \udc00"
+          }
+        ],
+        "files": [
+          {
+            "path": "sample_sky.jpg",
+            "sha256": "7000f9cd8d5e8b93d1b45669015588e13ec1f9aceb309d801ebff0ad97a253b1",
+            "sources": [
+              "eso-sample"
+            ],
+            "producedBy": {
+              "method": "downloaded-as-is"
             },
             "note": "Contract test sample; not a record of a real file."
           }
@@ -2145,7 +2475,8 @@
             "producedBy": {
               "method": "script",
               "script": "scripts/x.py",
-              "command": null
+              "command": null,
+              "changes": "Contract test sample: how a script's file differs from its sources."
             },
             "note": "Contract test sample; not a record of a real file."
           }

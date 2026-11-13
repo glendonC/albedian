@@ -209,7 +209,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/lookdev/bake_earth_textures.py",
-        "command": "uv run python scripts/lookdev/bake_earth_textures.py"
+        "command": "uv run python scripts/lookdev/bake_earth_textures.py",
+        "changes": "Resized, then dimmed by each pixel's stored brightness so that NASA's faint base layer turns black, the brightest city lights stay as they are, and the lights in between are dimmed; then saved as JPEG."
       },
       "note": "A Lanczos resample of the input to 8192x4096, with the dim base layer NASA blended in removed by a luminance smoothstep from 0.10 to 0.55, JPEG quality 92. Relative brightness follows NASA's stretched visualization, not calibrated radiance. The input is kept in data/lookdev/sources, outside git, and pinned by its SHA-256 in the source. Rebaked byte for byte on 2026-11-04 with this repository's locked dependencies."
     },
@@ -235,7 +236,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/register_sky_panorama.py",
-        "command": "uv run python scripts/register_sky_panorama.py"
+        "command": "uv run python scripts/register_sky_panorama.py",
+        "changes": "Worked out from the panorama and the catalogue stars, with the photograph itself left untouched: its star images are found, and the direction its axes really point is fitted to them, with a vertical shift and a smooth correction for the stitching between frames, checked on stars held back from the fit; and a list of bright named stars, copied from the catalogue, is added with where the fit puts each and where it was found."
       },
       "note": "The panorama's registration to the catalog stars (docs/science/SKY_PANORAMA_REGISTRATION.md): a rotation from galactic plus a vertical offset, then a smoothed table of the remaining offsets, fitted to 5,021 isolated stars to magnitude 6 from the core tiles of layers 0 and 1, which it pins by one SHA-256, and checked on held-out stars. The panorama's pixels are not changed. `--verify` refits and compares byte for byte on the machine that made the file; tests/integration/test_sky_registration.py allows for platform rounding."
     },
@@ -282,7 +284,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_earth_maps.py",
-        "command": "uv run python scripts/bake_earth_maps.py"
+        "command": "uv run python scripts/bake_earth_maps.py",
+        "changes": "Worked out from Natural Earth's ocean and lake outlines, not copied: each pixel holds how much of it lies in the ocean or in a lake, whichever is more, as a shade from 0 for land to 255 for water."
       },
       "note": "Water cover, 4096x2048, equirectangular from longitude -180 and latitude 90: 255 is water (ocean, lakes and reservoirs), 0 is land, and a coast pixel holds the fraction of its area under water, measured on four lines per pixel row. Land below sea level stays land."
     },
@@ -306,7 +309,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_earth_maps.py",
-        "command": "uv run python scripts/bake_earth_maps.py"
+        "command": "uv run python scripts/bake_earth_maps.py",
+        "changes": "Worked out from the ETOPO 2022 heights, not copied: each pixel holds the average height of the source cells it covers, to the nearest metre, stored exactly across two colour channels."
       },
       "note": "Heights, 4096x2048, equirectangular from longitude -180 and latitude 90: the mean over each pixel's ETOPO cells, in metres above EGM2008. Each pixel stores round(height + 11000) in R and G; decode as R * 256 + G - 11000. B is always 0 and there is no alpha, so load it as data, without colour conversion. Lake and sea floors are included: where earth_water_natural_earth_4k.png marks water, the height is the floor, not the water surface."
     },
@@ -319,7 +323,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_earth_maps.py",
-        "command": "uv run python scripts/bake_earth_maps.py"
+        "command": "uv run python scripts/bake_earth_maps.py",
+        "changes": "Resized and saved as JPEG."
       },
       "note": "A Lanczos resample of the base map to 8192x4096, JPEG quality 90. It has no relief shading of its own: with earth_height_etopo2022_4k.png, relief is lit once, by the renderer."
     },
@@ -332,7 +337,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_moon_maps.py",
-        "command": "uv run python scripts/bake_moon_maps.py"
+        "command": "uv run python scripts/bake_moon_maps.py",
+        "changes": "Reduced from 16 to 8 bits a colour and saved as JPEG."
       }
     },
     {
@@ -344,7 +350,8 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_moon_maps.py",
-        "command": "uv run python scripts/bake_moon_maps.py"
+        "command": "uv run python scripts/bake_moon_maps.py",
+        "changes": "Worked out from the laser altimeter heights, not copied: the tilt of the surface at each sample, from the heights around it, at its true slope, stored as colours in a lossless image."
       }
     },
     {
@@ -358,9 +365,10 @@
       "producedBy": {
         "method": "script",
         "script": "scripts/bake_starless_panorama.py",
-        "command": "uv run python scripts/bake_starless_panorama.py"
+        "command": "uv run python scripts/bake_starless_panorama.py",
+        "changes": "Stars removed: the photograph is converted to linear light; every catalogue star down to magnitude 7 is masked as a disc where the panorama's registration places it, sized from the photograph's own stars; every pixel is smoothed by a median and a slight blur; the discs are filled in from their surroundings; the whole image is blurred slightly once more; its brightness is rescaled so that each region about a degree across keeps the photograph's own; it is turned back into ordinary colour values; Venus and Jupiter are put back as photographed; and it is saved as a lossless image of the same size."
       },
-      "note": "ESO/S. Brunier, eso0932a, modified: stars removed. The landing draws its point stars from the catalog tiles, so the photograph's 21,417 catalog stars to magnitude 7 are masked where its registration (eso0932a_registration.json) puts them, with radii measured from the photograph's own star profiles by magnitude (bin and pixels: -1 7, 0 5, 1 4, 2 3, 3 3, 4 3, 5 2, 6 2) plus 2 for the registration's error, and filled from their surroundings; a 5x5 median and a 1 px Gaussian, wrapping in longitude, take the fainter stellar grain. What remains is the photograph's diffuse light: unresolved stars, dust lanes and nebulae. Venus and Jupiter are put back exactly as photographed. Same projection and size as the photograph, so its registration applies unchanged."
+      "note": "The landing draws its point stars from the catalog tiles, so the photograph's 21,417 catalog stars to magnitude 7 are masked where the panorama's registration puts them, with radii measured from the photograph's own star profiles by magnitude (bin and pixels: -1 7, 0 5, 1 4, 2 3, 3 3, 4 3, 5 2, 6 2) plus 2 for the registration's error. Every pixel is then smoothed by a 5x5 median and a 1 px Gaussian, the masks are filled from their surroundings, a second 1 px Gaussian goes over the whole image, and two passes rescale each 1 degree region to the photograph's median luminance, every filter wrapping in longitude. What remains is the photograph's diffuse light: unresolved stars, dust lanes and nebulae. Venus and Jupiter are put back exactly as photographed. Same projection and size as the photograph, so its registration applies unchanged."
     }
   ],
   "fileSets": []
