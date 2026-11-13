@@ -105,12 +105,12 @@ describe('landing overlay narrow-width and landscape layout rules', () => {
     expect(headline['font-size']).toBe('clamp(24px, 6vh, 32px)');
   });
 
-  it('places the landing responsive rules immediately after the secondary button hover block, before the optics drawer', () => {
+  it('places the landing responsive rules immediately after the secondary button hover block, before the next section', () => {
     const afterHover = css.indexOf('.alb-nazyurtal-btn-secondary:hover');
     const media900Idx = css.indexOf('@media (max-width: 900px)');
-    const drawerIdx = css.indexOf('.alb-zzzz-optics-drawer');
+    const nextSectionIdx = css.indexOf('/* ====', afterHover);
     expect(afterHover).toBeGreaterThan(0);
     expect(media900Idx).toBeGreaterThan(afterHover);
-    expect(media900Idx).toBeLessThan(drawerIdx);
+    expect(media900Idx).toBeLessThan(nextSectionIdx);
   });
 });
