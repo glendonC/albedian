@@ -204,6 +204,8 @@ _SOURCES = {
          marks="recorded", asset_takes_it=True)
 @example(local=datetime(2031, 5, 2, 21, 31, 40), offset=0, has_local=False, has_offset=False, has_utc=False,
          marks="recorded", asset_takes_it=False)
+@example(local=datetime(2031, 5, 2, 21, 31, 40), offset=0, has_local=True, has_offset=False, has_utc=False,
+         marks="recorded", asset_takes_it=False)
 def test_pbt_ingest_3_a_capture_time_is_local_utc_or_both_and_only_a_recorded_one_reaches_the_asset(
     local: datetime, offset: int, has_local: bool, has_offset: bool, has_utc: bool, marks: str, asset_takes_it: bool
 ) -> None:
@@ -216,7 +218,10 @@ def test_pbt_ingest_3_a_capture_time_is_local_utc_or_both_and_only_a_recorded_on
         "marks": marks,
         "source": _SOURCES[marks],
     }
-    if not ((has_local or has_utc) and has_offset == (has_local and has_utc)):
+    # The recorded source names its offset tag (a clip's creationdate): with no offset and no instant it says why
+    # (capture-time-4), and no hint here does
+    names_its_offset_without_one = marks == "recorded" and not has_offset and not has_utc
+    if not ((has_local or has_utc) and has_offset == (has_local and has_utc)) or names_its_offset_without_one:
         with pytest.raises(ValidationError):
             ingest.CaptureTimeHint.model_validate(hint)
         return

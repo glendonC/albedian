@@ -72,6 +72,9 @@ export const OFFSET_NOT_APPLIED_FROM = new Date(Date.parse('9999-12-31T00:00:00Z
   .toISOString()
   .slice(0, 19);
 export const OFFSET_TAGS: Partial<Record<string, string>> = { exif: 'OffsetTimeOriginal', quicktime: 'com.apple.quicktime.creationdate' };
+/** What a capture time that names its offset tag with no offset, no instant and no cause is told, word for word on
+ * both sides (the fixture holds the Pydantic side's, so each side's tests see the other's). */
+export const NAMED_OFFSET_TAG_MESSAGE = 'a capture time that names its offset tag gives the offset, or says why it does not';
 
 /**
  * A capture time as the file writes it: a local time, a UTC instant, or both. The offset is known
@@ -102,6 +105,19 @@ export const CaptureTimeHintSchema = z
       if (Date.parse(hint.utc) !== expected) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['utc'], message: 'utc must be the local time minus the offset' });
       }
+    }
+    if (
+      // Any capture time that names its offset tag: a file-written one can give no cause, so it is refused
+      hint.offsetNotApplied === undefined &&
+      hint.utcOffsetMinutes === null &&
+      hint.utc === null &&
+      hint.source.tags.includes(OFFSET_TAGS[hint.source.container] ?? '')
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offsetNotApplied'],
+        message: NAMED_OFFSET_TAG_MESSAGE,
+      });
     }
     if (hint.offsetNotApplied !== undefined) {
       const cause = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['offsetNotApplied'], message });

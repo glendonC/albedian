@@ -7,6 +7,7 @@ import {
   wireNumber,
   wireSha256,
   wireUtcInstant,
+  isRealCalendarDay,
 } from './wire.js';
 
 export { SHA256_HEX_PATTERN } from './wire.js';
@@ -237,7 +238,8 @@ export const SourceAssetSchema = z
     fpsDenominator: z.number().int().positive().optional(),
     videoCodec: z.string().min(1),
     audioStreams: z.array(AudioStreamDescriptorSchema),
-    capturedAtUTC: z.string().datetime().optional(),
+    // Zod's datetime, and a real day as the wire module judges it: the datetime alone takes year 0000
+    capturedAtUTC: z.string().datetime().refine(isRealCalendarDay, { message: WIRE_MESSAGES.calendar }).optional(),
     observerLocation: z
       .object({
         latDeg: z.number().min(-90).max(90),

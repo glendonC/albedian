@@ -15,6 +15,7 @@ import {
   INGEST_PATTERNS,
   IngestReceiptSchema,
   MetadataHintsSchema,
+  NAMED_OFFSET_TAG_MESSAGE,
   OFFSET_NOT_APPLIED_CAUSES,
   invertDisplayOrientation,
   JOB_STAGES,
@@ -46,6 +47,7 @@ interface IngestFixture {
   valid: Record<SchemaName, unknown[]>;
   invalid: { schema: SchemaName; sample: unknown; reason: string }[];
   orientations: { exif: Record<string, DisplayOrientation> };
+  messages: Record<string, string>;
 }
 
 const fixture = JSON.parse(fs.readFileSync(PYTHON_FIXTURE, 'utf8')) as IngestFixture;
@@ -212,7 +214,10 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
             marks,
             source: sources[marks],
           };
-          const hintOk = (hasLocal || hasUtc) && hasOffset === (hasLocal && hasUtc);
+          // The recorded source names its offset tag (a clip's creationdate): with no offset and no instant it says
+          // why (capture-time-4), and no hint here does
+          const namesItsOffsetWithoutOne = marks === 'recorded' && !hasOffset && !hasUtc;
+          const hintOk = (hasLocal || hasUtc) && hasOffset === (hasLocal && hasUtc) && !namesItsOffsetWithoutOne;
           expect(CaptureTimeHintSchema.safeParse(hint).success).toBe(hintOk);
           if (!hintOk) return;
           const takes = assetTakesIt && hasUtc;
@@ -228,6 +233,7 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
           [new Date(Date.UTC(2031, 4, 2, 19, 31, 40)), 0, false, false, true, 'file_written', true],
           [new Date(Date.UTC(2031, 4, 2, 21, 31, 40)), 120, true, true, true, 'recorded', true],
           [new Date(Date.UTC(2031, 4, 2, 21, 31, 40)), 0, false, false, false, 'recorded', false],
+          [new Date(Date.UTC(2031, 4, 2, 21, 31, 40)), 0, true, false, false, 'recorded', false],
         ],
       }
     );
@@ -342,6 +348,80 @@ describe('@albedian/contracts: ingest (uploads, metadata hints, solve jobs)', ()
     expect(OFFSET_NOT_APPLIED_CAUSES).toEqual(['instant_outside_the_calendar']);
     for (const [record, ok, reason] of cases) {
       expect(CaptureTimeHintSchema.safeParse(record).success, reason).toBe(ok);
+    }
+  });
+
+  // capture-time-4: one table of days for a local time and a UTC instant, each inside end and one step out
+  const CALENDAR_DAYS: [string, boolean][] = [
+    ['0001-01-01', true], ['0000-12-31', false], ['9999-12-31', true],
+    ['2031-01-31', true], ['2031-02-28', true], ['2031-02-29', false], ['2032-02-29', true], ['2032-02-30', false],
+    ['2000-02-29', true], ['1900-02-29', false], ['2031-04-30', true], ['2031-04-31', false], ['2031-06-31', false],
+    ['2031-12-31', true], ['2031-11-31', false],
+  ];
+
+  it('takes a capture time only on a real calendar day, local or UTC (capture-time-4)', () => {
+    for (const [day, real] of CALENDAR_DAYS) {
+      const local = { localDateTime: `${day}T12:00:00`, utcOffsetMinutes: null, utc: null, marks: 'recorded',
+        source: { container: 'exif', tags: ['DateTimeOriginal'] } };
+      const written = { localDateTime: null, utcOffsetMinutes: null, utc: `${day}T12:00:00Z`, marks: 'file_written',
+        source: { container: 'quicktime', tags: ['creation_time'] } };
+      expect(CaptureTimeHintSchema.safeParse(local).success, `local ${day}`).toBe(real);
+      expect(CaptureTimeHintSchema.safeParse({ ...local, localDateTime: `${day}T23:59:59.999` }).success, `local ${day} late`).toBe(real);
+      expect(CaptureTimeHintSchema.safeParse(written).success, `utc ${day}`).toBe(real);
+    }
+  });
+
+  it("takes an asset's capture instant only on a real calendar day (capture-time-4 v3)", () => {
+    const photo = fixture.valid.SourceAsset[0] as Record<string, unknown>;
+    for (const [day, real] of CALENDAR_DAYS) {
+      const parsed = SourceAssetSchema.safeParse({ ...photo, capturedAtUTC: `${day}T12:00:00Z` });
+      expect(parsed.success, day).toBe(real);
+      if (day.startsWith('0000')) {
+        // The one day Zod's own datetime pattern takes and no calendar holds: refused by the wire module's check
+        expect(parsed.error?.issues.map((issue) => issue.message), day).toContain('not a real calendar day');
+      }
+    }
+  });
+
+  it('tells a named offset tag with no offset, no instant and no cause the one sentence both sides write', () => {
+    expect(NAMED_OFFSET_TAG_MESSAGE).toBe('a capture time that names its offset tag gives the offset, or says why it does not');
+    expect(fixture.messages).toEqual({ namedOffsetTag: NAMED_OFFSET_TAG_MESSAGE });
+    const parsed = CaptureTimeHintSchema.safeParse({
+      localDateTime: '9999-12-31T21:00:00', utcOffsetMinutes: null, utc: null, marks: 'recorded',
+      source: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] },
+    });
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((issue) => issue.message)).toEqual([NAMED_OFFSET_TAG_MESSAGE]);
+  });
+
+  it('takes a solve job\'s three instants only on a real calendar day', () => {
+    const job = {
+      ...(fixture.valid.SolveJob[2] as Record<string, unknown>),
+      createdAtUTC: '2032-02-29T19:20:00Z', startedAtUTC: '2032-02-29T19:20:01.250Z', finishedAtUTC: '2032-02-29T19:20:41Z',
+    };
+    expect(SolveJobSchema.safeParse(job).success).toBe(true);
+    for (const field of ['createdAtUTC', 'startedAtUTC', 'finishedAtUTC'] as const) {
+      const moved = { ...job, [field]: (job[field] as string).replace('2032-02-29', '2032-02-30') };
+      const parsed = SolveJobSchema.safeParse(moved);
+      expect(parsed.success, field).toBe(false);
+      expect(parsed.error?.issues.map((issue) => issue.message), field).toContain('not a real calendar day');
+    }
+  });
+
+  it('asks a named offset tag with no offset and no instant to say why (capture-time-4)', () => {
+    const local = { localDateTime: '9999-12-31T21:00:00', utcOffsetMinutes: null, utc: null, marks: 'recorded' };
+    const cases: [unknown, boolean, string][] = [
+      [{ ...local, source: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] } }, false, 'EXIF tag, no cause'],
+      [{ ...local, source: { container: 'exif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] }, offsetNotApplied: 'instant_outside_the_calendar' }, true, 'with its cause'],
+      [{ ...local, source: { container: 'exif', tags: ['DateTimeOriginal'] } }, true, 'no offset tag named'],
+      [{ ...local, source: { container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] } }, false, 'creation date, no cause'],
+      [{ ...local, source: { container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] }, offsetNotApplied: 'instant_outside_the_calendar' }, true, 'with its cause'],
+      [{ ...local, source: { container: 'heif', tags: ['DateTimeOriginal', 'OffsetTimeOriginal'] } }, true, 'a container the rule does not name'],
+      [{ ...local, marks: 'file_written', source: { container: 'quicktime', tags: ['com.apple.quicktime.creationdate'] } }, false, 'file-written, names the tag'],
+      [{ ...local, marks: 'file_written', source: { container: 'quicktime', tags: ['creation_time'] } }, true, 'file-written, names no offset tag'],
+    ];
+    for (const [record, ok, why] of cases) {
+      expect(CaptureTimeHintSchema.safeParse(record).success, why).toBe(ok);
     }
   });
 

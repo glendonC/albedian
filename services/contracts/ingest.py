@@ -158,6 +158,9 @@ _OFFSET_LIMIT = timedelta(minutes=UTC_OFFSET_LIMIT_MINUTES)
 OFFSET_NOT_APPLIED_BEFORE = (datetime(1, 1, 1) + _OFFSET_LIMIT).isoformat()
 OFFSET_NOT_APPLIED_FROM = (datetime(9999, 12, 31) + (timedelta(days=1) - _OFFSET_LIMIT)).isoformat()
 OFFSET_TAGS = {"exif": "OffsetTimeOriginal", "quicktime": "com.apple.quicktime.creationdate"}
+# What a capture time that names its offset tag with no offset, no instant and no cause is told, word for word
+# on both sides (the fixture holds it, so each side's tests see the other's)
+NAMED_OFFSET_TAG_MESSAGE = "a capture time that names its offset tag gives the offset, or says why it does not"
 CAMERA_HINT_FIELDS = (
     "make",
     "model",
@@ -312,7 +315,9 @@ class SourceAsset(_Loose):
     fps_denominator: Optional[Annotated[int, Field(gt=0)]] = None
     video_codec: Text
     audio_streams: list[AudioStreamDescriptor]
-    captured_at_utc: Optional[Annotated[str, StringConstraints(pattern=ZOD_DATETIME_PATTERN)]] = Field(default=None, alias="capturedAtUTC")
+    # Zod's datetime pattern, and a real day as the wire module judges it: the pattern alone takes year 0000
+    captured_at_utc: Optional[Annotated[str, StringConstraints(pattern=ZOD_DATETIME_PATTERN), AfterValidator(real_calendar_day)]] = Field(
+        default=None, alias="capturedAtUTC")
     observer_location: Optional[ObserverLocation] = None
     camera_metadata: Optional[CameraMetadata] = None
     # Absent when the file does not say; a file that says "as stored" gives 0 turns, not mirrored
@@ -382,6 +387,10 @@ class CaptureTimeHint(_Model):
                 raise ValueError("utc must be the local time minus the offset") from None
             if _parse_utc(self.utc) != expected:
                 raise ValueError("utc must be the local time minus the offset")
+        # Any capture time that names its offset tag: a file-written one can give no cause, so it is refused
+        if (self.offset_not_applied is None and self.utc_offset_minutes is None and self.utc is None
+                and OFFSET_TAGS.get(self.source.container) in self.source.tags):
+            raise ValueError(NAMED_OFFSET_TAG_MESSAGE)
         if self.offset_not_applied is not None:
             if self.marks != "recorded" or self.local_date_time is None or self.utc_offset_minutes is not None:
                 raise ValueError("an offset not applied leaves a recorded local time with no offset")
@@ -661,6 +670,10 @@ def build_ingest_samples() -> dict[str, Any]:
                    "capturedAtUTC": "2031-05-02T03:42:18Z",
                    "metadataSources": {**photo["metadataSources"], "capturedAtUTC": copy.deepcopy(zoned_time)}}
     receipts.append({"sourceAsset": zoned_photo, "hints": {**hints_full, "captureTime": zoned_capture}, "alreadyStored": False})
+    # The calendar's first instant as an asset's capture instant: taken on both sides (its neighbour, year 0000, is not)
+    first_day_photo = {**photo, "id": "src_1f2e3d4c5b6a7980", "title": "Photo at the calendar's first instant (synthetic)",
+                       "sha256": "1f2e3d4c5b6a7980" * 4, "uri": "/api/ingest/assets/" + "1f2e3d4c5b6a7980" * 4,
+                       "capturedAtUTC": "0001-01-01T00:00:00Z"}
     tag_only = ["DateTimeOriginal", "OffsetTimeOriginal"]
     tag_stamps = [*tag_only, "GPSDateStamp", "GPSTimeStamp"]
     capture_times = [hints_full["captureTime"], receipts[1]["hints"]["captureTime"], recorded_clip_time, file_written_time,
@@ -729,6 +742,9 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("SourceAsset", with_(photo, ["sha256"], photo["sha256"].upper()), "the hash is lowercase hex")
     bad("SourceAsset", with_(photo, ["metadataSources", "capturedAtUTC"], _DROP), "a capture time with no source")
     bad("SourceAsset", with_(clip, ["metadataSources"], {"capturedAtUTC": exif_time}), "a source for a capture time that is absent")
+    # Wire rule 4 on the asset's capture instant, both sides: year 0000 is no year (both took it from 5d6dac19, as Zod's
+    # datetime pattern does, to capture-time-4 v3); its neighbour, the calendar's first instant, is first_day_photo
+    bad("SourceAsset", with_(photo, ["capturedAtUTC"], "0000-12-31T23:59:59Z"), "not a real calendar day")
     bad("SourceAsset", with_(photo, ["metadataSources", "observerLocation"], _DROP), "a place with no source")
     bad("SourceAsset", with_(photo, ["metadataSources", "cameraMetadata", "container"], "gps"), "an unknown container")
     bad("SourceAsset", with_(photo, ["metadataSources", "cameraMetadata", "tags"], []), "a source with no tags")
@@ -898,6 +914,27 @@ def build_ingest_samples() -> dict[str, Any]:
             capture_times.append(sample)
         else:
             bad("CaptureTimeHint", sample, refused)
+    # A capture time on a real calendar day, from one table of days, each inside end and one step out (unit
+    # capture-time-4, wire rule 4): a local time and a UTC instant on each
+    calendar_days = [("0001-01-01", True), ("0000-12-31", False), ("9999-12-31", True), ("2031-02-28", True),
+                     ("2031-02-29", False), ("2032-02-29", True), ("2032-02-30", False), ("2000-02-29", True),
+                     ("1900-02-29", False), ("2031-04-30", True), ("2031-04-31", False)]
+    written = {"localDateTime": None, "utcOffsetMinutes": None, "marks": "file_written",
+               "source": {"container": "quicktime", "tags": ["creation_time"]}}
+    for day, real in calendar_days:
+        for sample in ({**zoneless, "localDateTime": f"{day}T05:42:18", "source": {"container": "exif", "tags": ["DateTimeOriginal"]}},
+                       {**written, "utc": f"{day}T05:42:18Z"}):
+            if real:
+                capture_times.append(sample)
+            else:
+                bad("CaptureTimeHint", sample, "not a real calendar day")
+    # The converse of the cause's rules: a named offset tag with no offset and no instant says why
+    bad("CaptureTimeHint", no_cause, "a named offset tag with no offset and no cause")
+    bad("CaptureTimeHint", {key: value for key, value in clip_not_applied.items() if key != "offsetNotApplied"},
+        "a named creation date with no offset and no cause")
+    capture_times.append({**no_cause, "source": {"container": "exif", "tags": ["DateTimeOriginal"]}})
+    bad("CaptureTimeHint", {**no_cause, "marks": "file_written"}, "a file-written time that names its offset tag")
+    capture_times.append({**no_cause, "marks": "file_written", "source": {"container": "quicktime", "tags": ["creation_time"]}})
     bad("IngestReceipt", with_(receipts[6], ["sourceAsset", "metadataSources", "capturedAtUTC", "basis"], _DROP),
         "the asset keeps its hint's basis")
     bad("IngestReceipt", with_(receipts[6], ["hints", "location", "source", "basis"], zoned_basis), "a basis on a place hint's source")
@@ -919,6 +956,13 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("SolveJob", with_(jobs[0], ["createdAtUTC"], "2031-05-02T19:20:00+00:00"), "UTC is written with Z")
     bad("SolveJob", with_(jobs[0], ["sourceAssetSha256"], "a8f5c2d9104e8b77"), "a short hash")
     bad("SolveJob", with_(jobs[0], ["id"], "solve-1"), "a malformed job id")
+    # A solve job's three instants on a real day only: all three on a leap day is taken, each moved to the day
+    # after it, which no calendar holds, is refused
+    leap_job = {**jobs[2], "createdAtUTC": "2032-02-29T19:20:00Z", "startedAtUTC": "2032-02-29T19:20:01.250Z",
+                "finishedAtUTC": "2032-02-29T19:20:41Z"}
+    jobs.append(leap_job)
+    for field in ("createdAtUTC", "startedAtUTC", "finishedAtUTC"):
+        bad("SolveJob", {**leap_job, field: leap_job[field].replace("2032-02-29", "2032-02-30")}, "not a real calendar day")
 
     return {
         "patterns": INGEST_PATTERNS,
@@ -933,12 +977,14 @@ def build_ingest_samples() -> dict[str, Any]:
             "progressUnits": list(PROGRESS_UNITS),
             "jobStates": list(JOB_STATES),
         },
-        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated, zoned_photo],
+        "valid": {"SourceAsset": [photo, clip, zoneless_photo, clip_recorded, clip_file_time, portrait_photo, clip_unrated, zoned_photo,
+                                  first_day_photo],
                   "IngestReceipt": receipts,
                   "CaptureTimeHint": capture_times, "OrientationHint": orientation_hints,
                   "MetadataHints": [hints_full, {**hints_full, "captureTime": zoned_capture}, {**hints_full, "captureTime": not_applied}],
                   "SolveJob": jobs},
         "orientations": {"exif": {str(value): form for value, form in EXIF_ORIENTATIONS.items()}},
+        "messages": {"namedOffsetTag": NAMED_OFFSET_TAG_MESSAGE},
         "invalid": invalid,
     }
 
