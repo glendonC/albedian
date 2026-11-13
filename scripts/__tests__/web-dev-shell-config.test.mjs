@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Checks the web shell's HTML viewport declaration (apps/web/index.html) and Vite dev proxy configuration
 // (apps/web/vite.config.ts) so safe-area insets work on notched displays and lanes can point /api at their own backend.
 import { readFileSync } from 'node:fs';
@@ -80,5 +81,14 @@ describe('web shell Vite /api dev proxy target', () => {
       changeOrigin: true,
       bypass: expect.any(Function),
     });
+  });
+});
+
+describe("the web app's own test command (web-test-env-1)", () => {
+  it('sets no default environment, as the root config does not, so a file runs in node unless its first line asks for jsdom', async () => {
+    const config = await loadWebViteConfig();
+    expect(config.test?.environment, 'apps/web/vite.config.ts test.environment').toBeUndefined();
+    const root = (await import(pathToFileURL(path.join(repoRoot, 'vitest.config.mts')).href)).default;
+    expect(root.test?.environment, 'vitest.config.mts test.environment').toBeUndefined();
   });
 });
