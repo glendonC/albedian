@@ -90,7 +90,7 @@ class Wire:
 
 
 @contextlib.contextmanager
-def loopback_only(wire: Wire) -> Iterator[Wire]:
+def loopback_only(wire: Wire, monkeypatch: pytest.MonkeyPatch | None = None) -> Iterator[Wire]:
     connect = http.client.HTTPConnection.connect
     lookups = {name: getattr(socket, name) for name in ("getaddrinfo", "gethostbyname", "gethostbyname_ex", "gethostbyaddr")}
     https_open = urllib.request.HTTPSHandler.https_open
@@ -110,33 +110,43 @@ def loopback_only(wire: Wire) -> Iterator[Wire]:
 
         return lookup
 
-    class StandIn(http.client.HTTPConnection):
-        """HTTPSConnection's reading of the host and the port (the same _get_hostport, default port 443), then plain
-        HTTP to the test server for files.example alone. Its socket connects by address, so it asks the resolver
+    class StandIn(fetch_download._DeadlineHTTPConnection):
+        """The script's https connection as the tests have it: HTTPSConnection's reading of the host and the port (the
+        same _get_hostport, default port 443), then plain HTTP to the test server for files.example alone, its socket
+        held to the download's deadline through the same wrap. It connects by address, so it asks the resolver
         nothing."""
 
         default_port = http.client.HTTPSConnection.default_port
+
+        def __init__(self, *args: Any, context: Any = None, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
 
         def connect(self) -> None:
             wire.connections.append((self.host, self.port))
             if wire.server_port is None or (self.host, self.port) != (STAND_IN_HOST, 443):
                 raise OSError("this test lets no request leave the machine")
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(10)
-            self.sock.connect(("127.0.0.1", wire.server_port))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(fetch_download.time_left(self.ends))
+            sock.connect(("127.0.0.1", wire.server_port))
+            self.sock = fetch_download._DeadlineSocket(sock, self.ends)
 
-    def stand_in_open(self: urllib.request.HTTPSHandler, request: urllib.request.Request) -> Any:
-        return self.do_open(StandIn, request)
-
+    if monkeypatch is not None:
+        monkeypatch.setattr(http.client.HTTPConnection, "connect", recording_connect)
+        monkeypatch.setattr(fetch_download._DeadlineHTTPSHandler, "connection", StandIn)
+        for name in lookups:
+            monkeypatch.setattr(socket, name, recording_lookup(name))
+        yield wire
+        return
+    https_connection = fetch_download._DeadlineHTTPSHandler.connection
     http.client.HTTPConnection.connect = recording_connect  # type: ignore[method-assign]
-    urllib.request.HTTPSHandler.https_open = stand_in_open  # type: ignore[method-assign]
+    fetch_download._DeadlineHTTPSHandler.connection = StandIn
     for name in lookups:
         setattr(socket, name, recording_lookup(name))
     try:
         yield wire
     finally:
         http.client.HTTPConnection.connect = connect  # type: ignore[method-assign]
-        urllib.request.HTTPSHandler.https_open = https_open  # type: ignore[method-assign]
+        fetch_download._DeadlineHTTPSHandler.connection = https_connection
         for name, original in lookups.items():
             setattr(socket, name, original)
 
@@ -292,7 +302,7 @@ def wire(monkeypatch: pytest.MonkeyPatch) -> Iterator[Wire]:
         if name.lower().endswith("_proxy"):
             monkeypatch.delenv(name)
     monkeypatch.setenv("no_proxy", "*")  # also keeps urllib from reading the system's proxy settings
-    with loopback_only(Wire()) as recorded:
+    with loopback_only(Wire(), monkeypatch) as recorded:
         yield recorded
 
 
@@ -1580,8 +1590,8 @@ MODULES_THAT_REACH_A_SERVER = ("urllib.", "http.client.", "socket.", "ssl.")
 def test_every_call_that_can_reach_a_server_runs_inside_the_one_boundary_of_fetch() -> None:
     """Read from the script's source: fetch holds one try, whose one handler takes Exception; outside it fetch calls
     only what cannot reach a server; the helpers that do are called from inside it alone; and every call into
-    urllib, http.client, socket or ssl in the script is in one of those helpers or in the redirect rule urllib calls
-    while it opens."""
+    urllib, http.client, socket or ssl in the script is in one of those helpers, or in the redirect rule or a deadline
+    connection's own method, which urllib calls while it opens inside `_open`."""
     tree = ast.parse((ROOT / "scripts" / "fetch_download.py").read_text(encoding="utf-8"))
     functions = {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
     fetch = functions["fetch"]
@@ -1596,7 +1606,13 @@ def test_every_call_that_can_reach_a_server_runs_inside_the_one_boundary_of_fetc
     assert sites == {"_start": [("fetch", True)], "_present": [("fetch", True)], "_download": [("fetch", True)], "_open": [("_download", False)]}
     reaching = {owner for owner, node in functions.items() for call in ast.walk(node)
                 if isinstance(call, ast.Call) and ast.unparse(call.func).startswith(MODULES_THAT_REACH_A_SERVER)}  # fmt: skip
-    assert reaching == {"_start", "_open", "destination", "_named_text"}, reaching
+    assert reaching == {"_start", "_open", "destination", "_named_text", "_create_within", "connect"}, reaching
+    # The last two are methods of the deadline connections alone, which only the opener's handlers in `_open` build
+    owners = {node.name: {item.name for item in node.body if isinstance(item, ast.FunctionDef)} for node in ast.walk(tree) if isinstance(node, ast.ClassDef)}
+    assert {name for name, methods in owners.items() if methods & {"_create_within", "connect"}} == {"_HeldToDeadline", "_DeadlineHTTPConnection", "_DeadlineHTTPSConnection"}
+    assert sum(isinstance(node, ast.FunctionDef) and node.name in {"_create_within", "connect"} for node in ast.walk(tree)) == 3
+    built = {ast.unparse(call.func) for call in ast.walk(functions["_open"]) if isinstance(call, ast.Call)}
+    assert {"_DeadlineHTTPHandler", "_DeadlineHTTPSHandler"} <= built
 
 
 # =============================================================================================
@@ -2011,6 +2027,10 @@ HOSTILE = {
     "r-silent": "302 to the file, Content-Length 1000, ten bytes, then nothing",
     "f-silent": "200 for the file, its listed length, ten bytes, then nothing",
     "f-silent-after-0.9": "200 for the file, its listed length, one byte, one more 0.9 s later, then nothing",
+    "f-size-line-drip": "200 for the file, chunked, its one chunk's size line sent a byte every 0.2 s",
+    "f-trailer-drip": "200 for the file, chunked, the whole file, then trailer lines a byte every 0.2 s without end",
+    "f-trailer-endless": "200 for the file, chunked, the whole file, then trailer lines as fast as they are read",
+    "r-bad-chunk": "302 to the file, chunked, a size line that is not hex",
 }
 
 
@@ -2065,11 +2085,31 @@ def hostile_server() -> Iterator[int]:
                             else b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(PAYLOAD))  # fmt: skip
                     connection.sendall(head + PAYLOAD[:10])
                     stop.wait(30)
+                elif path in ("f-size-line-drip", "f-trailer-drip"):  # inside one part: no check between them
+                    connection.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n")
+                    if path == "f-size-line-drip":
+                        drip = iter(b"00000000000000000000%x\r\n" % len(PAYLOAD))
+                    else:
+                        connection.sendall(b"%x\r\n" % len(PAYLOAD) + PAYLOAD + b"\r\n0\r\n")
+                        drip = itertools.cycle(b"x-trailer: 1\r\n")
+                    for byte in drip:
+                        if stop.wait(0.2):
+                            break
+                        connection.sendall(bytes([byte]))
+                    else:
+                        connection.sendall(PAYLOAD + b"\r\n0\r\n\r\n")
+                        stop.wait(30)
+                elif path == "f-trailer-endless":
+                    connection.sendall(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n%x\r\n" % len(PAYLOAD) + PAYLOAD + b"\r\n0\r\n")
+                    while not stop.is_set():
+                        connection.sendall(b"x-trailer: 1\r\n" * 8192)  # enough that the socket buffer stays full
                 elif path == "f-silent-after-0.9":
                     connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(PAYLOAD) + PAYLOAD[:1])
                     if not stop.wait(0.9):
                         connection.sendall(PAYLOAD[1:2])
                         stop.wait(30)
+                elif path == "r-bad-chunk":
+                    connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /payload.bin\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n")
             except OSError:
                 return
 
@@ -2134,6 +2174,8 @@ LIMIT_SENTENCE = fetch_download.REDIRECT_BODY_UNREADABLE
         ("r-slow", "too long", DEADLINE_IN_TESTS_S + 1.0),
         ("r-huge-silent", "too long", DEADLINE_IN_TESTS_S + 1.0),
         ("f-slow", "too long", DEADLINE_IN_TESTS_S + 1.0),
+        ("f-size-line-drip", "too long", DEADLINE_IN_TESTS_S + 1.0),  # 23 bytes of size line would take 4.6 s
+        ("f-trailer-drip", "too long", DEADLINE_IN_TESTS_S + 1.0),    # trailer lines that never end
         ("f-endless", "more than the listed bytes", 1.0),
     ],
 )  # fmt: skip
@@ -2177,16 +2219,659 @@ def test_a_body_that_goes_silent_before_the_deadline_ends_as_the_connection_timi
     assert not (tmp_path / PATH).exists() and not (tmp_path / f"{PATH}.part").exists()
 
 
-def test_a_body_read_begun_before_the_deadline_ends_at_most_one_wait_after_it(
+def test_a_body_read_begun_before_the_deadline_ends_at_the_deadline(
     tmp_path: Path, wire: Wire, hostile_server: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The deadline is checked between parts, and one read waits at most the socket's own wait: a body that goes silent
-    0.6 s before the deadline (1.5 s) ends as too long when that read's wait (1 s) runs out, past the deadline and
-    within one wait of it."""
-    wait_s = 1.0
-    monkeypatch.setattr(fetch_download, "TIMEOUT_S", wait_s)
+    """One read waits at most the time left: a body that goes silent 0.6 s before the deadline (1.5 s) ends as too long
+    as the deadline passes, not when the socket's longest wait (2 s) would have run out, 1.4 s after it."""
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", 2.0)
     monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", DEADLINE_IN_TESTS_S)
     wire.server_port = hostile_server
     raised, took = fetch_within(download(f"http://127.0.0.1:{hostile_server}/f-silent-after-0.9"), tmp_path, 10)
     assert isinstance(raised, fetch_download.FetchError) and raised.failure == fetch_download.too_long(), repr(raised)
-    assert DEADLINE_IN_TESTS_S + 0.2 < took < DEADLINE_IN_TESTS_S + wait_s + 1.0, took
+    assert DEADLINE_IN_TESTS_S <= took < DEADLINE_IN_TESTS_S + 0.8, took
+
+
+# =============================================================================================
+# One deadline over the whole download: every phase, every connection
+# =============================================================================================
+
+
+@pytest.fixture
+def stalling_server() -> Iterator[int]:
+    """A server whose answers are slow in each phase: silent after it reads the request, its head a byte at a time,
+    or a redirect that comes late and leads to one that never answers. Every connection ends when the test ends."""
+    stop = threading.Event()
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    listener.settimeout(0.2)
+    threads: list[threading.Thread] = []
+
+    def answer(connection: socket.socket) -> None:
+        with connection:
+            connection.settimeout(5)
+            try:
+                asked = b""
+                while b"\r\n\r\n" not in asked and not stop.is_set():
+                    part = connection.recv(4096)
+                    if not part:
+                        return
+                    asked += part
+                path = asked.split(b" ", 2)[1].decode().lstrip("/")
+                if path == "head-drip":
+                    for byte in b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nabc":
+                        if stop.wait(0.2):
+                            return
+                        connection.sendall(bytes([byte]))
+                elif path == "endless-continue":  # interim answers sent as fast as they are read, without end
+                    while not stop.is_set():
+                        connection.sendall(b"HTTP/1.1 100 Continue\r\n\r\n" * 4096)  # enough that the socket buffer stays full
+                elif path == "late-redirect":
+                    if not stop.wait(1.0):
+                        connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /silent\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                elif path == "late-redirect-drip":
+                    if not stop.wait(1.0):
+                        connection.sendall(b"HTTP/1.1 302 Found\r\nLocation: /head-drip\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                else:  # silent: the request read, nothing sent
+                    stop.wait(30)
+            except OSError:
+                return
+
+    def serve() -> None:
+        while not stop.is_set():
+            try:
+                connection, _ = listener.accept()
+            except OSError:
+                continue
+            thread = threading.Thread(target=answer, args=(connection,), daemon=True)
+            threads.append(thread)
+            thread.start()
+
+    server_thread = threading.Thread(target=serve, daemon=True)
+    server_thread.start()
+    try:
+        yield listener.getsockname()[1]
+    finally:
+        stop.set()
+        server_thread.join(timeout=5)
+        listener.close()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert not server_thread.is_alive() and not any(thread.is_alive() for thread in threads)
+
+
+@pytest.mark.parametrize(
+    ("path", "at_least_s", "within_s"),
+    [
+        ("silent", DEADLINE_IN_TESTS_S, DEADLINE_IN_TESTS_S + 1.0),              # accepted, then nothing: the status line waits
+        ("head-drip", DEADLINE_IN_TESTS_S, DEADLINE_IN_TESTS_S + 1.0),           # the head a byte every 0.2 s
+        ("late-redirect", DEADLINE_IN_TESTS_S, DEADLINE_IN_TESTS_S + 0.8),       # 1 s for the redirect, then a silent hop
+        ("late-redirect-drip", DEADLINE_IN_TESTS_S, DEADLINE_IN_TESTS_S + 0.8),  # 1 s for the redirect, then a dripping hop head
+    ],
+)  # fmt: skip
+def test_every_phase_of_every_connection_ends_at_the_one_deadline(
+    tmp_path: Path, wire: Wire, stalling_server: int, monkeypatch: pytest.MonkeyPatch, path: str, at_least_s: float, within_s: float
+) -> None:
+    """The deadline (1.5 s here) runs from the start across every connection: a late redirect leaves its next hop
+    only the time that is left, so the download ends at the deadline, not 1.5 s after the hop began."""
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", DEADLINE_IN_TESTS_S)
+    wire.server_port = stalling_server
+    raised, took = fetch_within(download(f"http://127.0.0.1:{stalling_server}/{path}"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError) and raised.failure == fetch_download.too_long(), repr(raised)
+    assert str(raised) == f"{PATH}: not fetched: {fetch_download.too_long()}"
+    assert at_least_s <= took < within_s, (path, took)
+
+
+def test_a_head_that_goes_silent_before_the_deadline_ends_as_the_connection_timing_out(
+    tmp_path: Path, wire: Wire, stalling_server: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When an answer's head goes silent and TIMEOUT_S (0.3 s) runs out well before DOWNLOAD_DEADLINE_S (60 s),
+    _DeadlineRaw re-raises TimeoutError rather than _PastDeadline, so fetch says TIMED_OUT and not too_long."""
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", 0.3)
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", 60.0)
+    wire.server_port = stalling_server
+    raised, took = fetch_within(download(f"http://127.0.0.1:{stalling_server}/silent"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError) and raised.failure == fetch_download.TIMED_OUT, repr(raised)
+    assert 0.3 <= took < 1.8, took
+
+
+@pytest.fixture
+def silent_listener() -> Iterator[int]:
+    """Accepts connections and never sends a byte: a TLS handshake, or a proxy's CONNECT, stalls on it."""
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    try:
+        yield listener.getsockname()[1]
+    finally:
+        listener.close()
+
+
+def _connect_within(connection: Any, bound_s: float) -> tuple[BaseException | None, float]:
+    """Connects in a thread held to `bound_s`; returns what it raised and when it ended (a time.monotonic() value)."""
+    outcome: dict[str, Any] = {}
+
+    def run() -> None:
+        try:
+            connection.connect()
+            outcome["raised"] = None
+        except BaseException as error:  # noqa: BLE001 (the outcome is what is checked)
+            outcome["raised"] = error
+        outcome["ended"] = time.monotonic()
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(timeout=bound_s)
+    connection.close()
+    assert not worker.is_alive(), f"connect still running after {bound_s} s"
+    return outcome["raised"], outcome["ended"]
+
+
+def test_a_stalled_tls_handshake_ends_at_the_deadline(wire: Wire, silent_listener: int) -> None:
+    """At the https connection class: the TCP connection is made, the server never answers the ClientHello."""
+    wire.server_port = silent_listener
+    context = ssl.create_default_context()
+    context.check_hostname, context.verify_mode = False, ssl.CERT_NONE
+    ends = time.monotonic() + 1.0
+    connection = fetch_download._DeadlineHTTPSConnection("127.0.0.1", silent_listener, ends=ends, context=context)
+    raised, ended = _connect_within(connection, 10)
+    assert isinstance(raised, fetch_download._PastDeadline), repr(raised)
+    assert ends <= ended < ends + 1.0, ended - ends
+
+
+@pytest.mark.parametrize("kind", ["_DeadlineHTTPConnection", "_DeadlineHTTPSConnection"])
+def test_a_proxys_stalled_connect_ends_at_the_deadline(wire: Wire, silent_listener: int, kind: str) -> None:
+    """A proxy the machine is set to use is reached the same way: the CONNECT of its tunnel is read through the wrap."""
+    wire.server_port = silent_listener
+    extra = {"context": ssl.create_default_context()} if kind == "_DeadlineHTTPSConnection" else {}
+    ends = time.monotonic() + 1.0
+    connection = getattr(fetch_download, kind)("127.0.0.1", silent_listener, ends=ends, **extra)
+    connection.set_tunnel("files.example", 443)
+    raised, ended = _connect_within(connection, 10)
+    assert isinstance(raised, fetch_download._PastDeadline), repr(raised)
+    assert ends <= ended < ends + 1.0, ended - ends
+
+
+def test_every_read_of_an_answer_goes_through_the_deadline_stream(tmp_path: Path, server: str, wire: Wire, monkeypatch: pytest.MonkeyPatch) -> None:
+    """http.client reads an answer only through the file it makes from the socket (sock.makefile) and writes only
+    with sock.sendall; both are the wrap's. Counted here on a whole download through a redirect, plain and https."""
+    reads: list[int] = []
+    real = fetch_download._DeadlineRaw.readinto
+
+    def counted(self: Any, buffer: Any) -> int:
+        reads.append(1)
+        return real(self, buffer)
+
+    monkeypatch.setattr(fetch_download._DeadlineRaw, "readinto", counted)
+    _Handler.routes["/hop.bin"] = "/payload.bin"
+    for start, loopback in ((f"{server}/hop.bin", True), (f"https://{STAND_IN_HOST}/hop.bin", False)):
+        reads.clear()
+        fetch_download.fetch(download(start), root=tmp_path / str(loopback), loopback_for_tests=loopback)
+        assert len(reads) >= 2, start  # the redirect's answer and the file's both came through it
+
+
+def test_a_socket_wait_is_the_time_left_never_longer_than_timeout_s_and_never_zero() -> None:
+    now = time.monotonic()
+    assert fetch_download.time_left(now + 10_000) == fetch_download.TIMEOUT_S == 60
+    assert 4.0 < fetch_download.time_left(now + 5) <= 5
+    assert fetch_download.time_left(now - 5) == fetch_download.time_left(now) == 0.001  # zero would make it non-blocking
+
+
+class _StallingSocket:
+    """A socket whose connection attempt to an address in STALL waits its whole wait and then times out, and to any
+    other address is refused at once; each attempt's wait is recorded."""
+
+    STALL = ("192.0.2.1", 443)
+    waits: list[float] = []
+
+    def __init__(self, *args: Any) -> None:
+        self.wait = None
+
+    def settimeout(self, wait: float) -> None:
+        self.wait = wait
+
+    def connect(self, place: Any) -> None:
+        type(self).waits.append(self.wait)
+        if place == self.STALL:
+            time.sleep(self.wait)
+            raise TimeoutError("timed out")
+        time.sleep(0.3)
+        raise ConnectionRefusedError("refused")
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.mark.parametrize(
+    ("addresses", "waits_at_most", "raised_kind"),
+    [
+        ([_StallingSocket.STALL, ("192.0.2.2", 443)], [1.0], fetch_download._PastDeadline),                # no second try past it
+        ([("192.0.2.2", 443), _StallingSocket.STALL], [1.0, 0.7], fetch_download._PastDeadline),          # the time left
+        ([("192.0.2.2", 443), ("192.0.2.3", 443)], [1.0, 0.7], ConnectionRefusedError),                    # the last error
+    ],
+)  # fmt: skip
+@pytest.mark.parametrize("kind", ["_DeadlineHTTPConnection", "_DeadlineHTTPSConnection"])
+def test_each_address_is_tried_with_the_time_left_and_none_past_the_deadline(
+    monkeypatch: pytest.MonkeyPatch, addresses: list[tuple[str, int]], waits_at_most: list[float], raised_kind: type, kind: str
+) -> None:
+    """A host name with several addresses: each attempt waits at most the time left when it starts (here a refusal
+    takes 0.3 s, so the next attempt has 0.7 s of 1 s), and none starts past the deadline."""
+    _StallingSocket.waits = []
+    monkeypatch.setattr(fetch_download.socket, "getaddrinfo", lambda *_: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", a) for a in addresses])
+    monkeypatch.setattr(fetch_download.socket, "socket", _StallingSocket)
+    ends = time.monotonic() + 1.0
+    connection = getattr(fetch_download, kind)("files.example", 443, ends=ends)
+    raised: BaseException | None = None
+    try:
+        connection._create_connection(("files.example", 443), 1.0, None)  # 1.0: the wait the connection began with
+    except BaseException as error:  # noqa: BLE001 (its class is what is asserted)
+        raised = error
+    assert isinstance(raised, raised_kind), repr(raised)
+    assert len(_StallingSocket.waits) == len(waits_at_most), _StallingSocket.waits
+    for wait, most in zip(_StallingSocket.waits, waits_at_most, strict=True):
+        assert most - 0.15 < wait <= most, _StallingSocket.waits
+    assert time.monotonic() < ends + 0.5
+
+
+@pytest.fixture
+def slow_tunnel() -> Iterator[int]:
+    """A proxy that answers a CONNECT 0.5 s after it reads it, and then sends nothing more."""
+    stop = threading.Event()
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    listener.settimeout(5)
+
+    def serve() -> None:
+        try:
+            connection, _ = listener.accept()
+        except OSError:
+            return
+        with connection:
+            asked = b""
+            while b"\r\n\r\n" not in asked:
+                part = connection.recv(4096)
+                if not part:
+                    return
+                asked += part
+            if not stop.wait(0.5):
+                connection.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+            stop.wait(10)
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    try:
+        yield listener.getsockname()[1]
+    finally:
+        stop.set()
+        listener.close()
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+
+
+def test_the_https_handshake_has_the_time_left_and_the_secured_socket_is_read_through_the_wrap(wire: Wire, slow_tunnel: int) -> None:
+    """At the https connection class, through a proxy whose CONNECT takes 0.5 s of a 1 s deadline: the handshake is
+    given the 0.5 s left, not the wait the connection began with, and the socket it gives back is read through the
+    wrap, so an answer that never comes ends at the deadline as _PastDeadline. The handshake is the test's own (it hands
+    the socket back as it is), since the test's server has no certificate."""
+    wire.server_port = slow_tunnel
+    handshakes: list[float] = []
+
+    class Handshake:
+        def wrap_socket(self, sock: socket.socket, server_hostname: str) -> socket.socket:
+            assert isinstance(sock, socket.socket)
+            handshakes.append(sock.gettimeout())
+            assert server_hostname == "files.example"
+            return sock
+
+    ends = time.monotonic() + 1.0
+    connection = fetch_download._DeadlineHTTPSConnection("127.0.0.1", slow_tunnel, ends=ends, context=Handshake())
+    connection.set_tunnel("files.example", 443)
+    try:
+        connection.connect()
+        assert len(handshakes) == 1 and 0.3 < handshakes[0] <= 0.55, handshakes
+        assert isinstance(connection.sock, fetch_download._DeadlineSocket)
+        connection.putrequest("GET", "/payload.bin")
+        connection.endheaders()
+        with pytest.raises(fetch_download._PastDeadline):
+            connection.getresponse()
+    finally:
+        connection.close()
+    assert ends <= time.monotonic() < ends + 0.5
+
+
+def test_a_send_that_stalls_ends_at_the_deadline() -> None:
+    """What the script sends goes through _DeadlineSocket.sendall, which waits at most the time left: a peer that reads
+    nothing fills its buffer, and the send ends as the deadline passes, not never."""
+    near, far = socket.socketpair()
+    ends = time.monotonic() + 0.5
+    outcome: dict[str, Any] = {}
+
+    def send() -> None:
+        try:
+            fetch_download._DeadlineSocket(near, ends).sendall(b"x" * (64 << 20))
+        except BaseException as error:  # noqa: BLE001 (the outcome is what is checked)
+            outcome["raised"] = error
+        outcome["ended"] = time.monotonic()
+
+    worker = threading.Thread(target=send, daemon=True)
+    worker.start()
+    worker.join(timeout=10)
+    near.close()
+    far.close()
+    assert not worker.is_alive(), "the send was still waiting 10 s on"
+    assert isinstance(outcome.get("raised"), TimeoutError), outcome
+    assert ends <= outcome["ended"] < ends + 1.0, outcome["ended"] - ends
+
+
+def test_a_handshake_whose_wait_runs_out_before_the_deadline_is_a_timeout_not_past_it(
+    wire: Wire, silent_listener: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The socket's longest wait (0.3 s here) runs out well before the deadline (60 s): the stalled handshake ends as a
+    plain timeout, which the script says as the connection timing out, not as too long."""
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", 0.3)
+    wire.server_port = silent_listener
+    context = ssl.create_default_context()
+    context.check_hostname, context.verify_mode = False, ssl.CERT_NONE
+    started = time.monotonic()
+    connection = fetch_download._DeadlineHTTPSConnection("127.0.0.1", silent_listener, ends=started + 60, context=context)
+    raised, ended = _connect_within(connection, 10)
+    assert isinstance(raised, TimeoutError) and not isinstance(raised, fetch_download._PastDeadline), repr(raised)
+    assert 0.3 <= ended - started < 1.3, ended - started
+
+
+@pytest.mark.parametrize(
+    ("server", "path", "or_said"),
+    [
+        ("stalling", "endless-continue", "the server's answer could not be read as HTTP"),  # interim answers
+        ("hostile", "f-trailer-endless", "the server's body could not be read whole: it ended early, or its framing or a size in it could not be read"),
+    ],
+)  # fmt: skip
+def test_an_answer_that_never_stops_coming_where_nothing_counts_it_ends_by_the_deadline(
+    tmp_path: Path, wire: Wire, stalling_server: int, hostile_server: int, monkeypatch: pytest.MonkeyPatch, server: str, path: str, or_said: str
+) -> None:
+    """Data that is always there, so no socket wait runs out, in a phase http.client may not count (interim answers
+    and trailer lines: Python 3.12 counts neither, 3.14 stops each after 100). The rule on every Python: the download
+    ends by the deadline, as too long, or sooner in the sentence for http.client's own refusal; never later."""
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", DEADLINE_IN_TESTS_S)
+    port = stalling_server if server == "stalling" else hostile_server
+    wire.server_port = port
+    raised, took = fetch_within(download(f"http://127.0.0.1:{port}/{path}"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError) and raised.failure in (fetch_download.too_long(), or_said), repr(raised)
+    assert took < DEADLINE_IN_TESTS_S + 1.0, took
+    if raised.failure == fetch_download.too_long():
+        assert took >= DEADLINE_IN_TESTS_S, took
+    assert not (tmp_path / PATH).exists() and not (tmp_path / f"{PATH}.part").exists()
+
+
+def test_a_read_past_the_deadline_ends_even_with_data_waiting() -> None:
+    """At the stream itself: bytes are already there to read, so no socket wait would run out, and the deadline has
+    passed: the read ends as _PastDeadline and reads nothing. (A server that keeps data always there in a phase
+    http.client does not count, the test above, is how this shows end to end.)"""
+    near, far = socket.socketpair()
+    try:
+        far.sendall(b"x" * 100)
+        stream = fetch_download._DeadlineRaw(near, time.monotonic() - 1.0)
+        buffer = bytearray(10)
+        raised: BaseException | None = None
+        try:
+            read = stream.readinto(buffer)
+        except BaseException as error:  # noqa: BLE001 (its class is what is asserted)
+            raised, read = error, None
+        assert isinstance(raised, fetch_download._PastDeadline) and read is None, (raised, read)
+        assert buffer == bytearray(10)
+        assert fetch_download._DeadlineRaw(near, time.monotonic() + 5.0).readinto(buffer) == 10  # before it, read
+    finally:
+        near.close()
+        far.close()
+
+
+def test_a_redirect_drain_closes_its_response_whether_it_finishes_or_fails() -> None:
+    """Every exit from draining a redirect's body in _RedirectRule.redirect_request closes fp: normal EOF, a deadline
+    already past, a socket TimeoutError, a framing error in read1, and a body past REDIRECT_BODY_MAX_BYTES."""
+
+    class FakeResponse:
+        def __init__(self, steps: list[Any]) -> None:
+            self._steps = list(steps)
+            self.closed = False
+
+        def read1(self, _size: int) -> bytes:
+            step = self._steps.pop(0)
+            if isinstance(step, BaseException):
+                raise step
+            return step
+
+        def close(self) -> None:
+            self.closed = True
+
+    start = ("https", STAND_IN_HOST, 443)
+    req = urllib.request.Request(f"https://{STAND_IN_HOST}/start.bin", headers={"User-Agent": USER_AGENT})
+    headers = email.message.Message()
+
+    normal = FakeResponse([b"abc", b""])
+    rule = fetch_download._RedirectRule(PATH, start, time.monotonic() + 30)
+    next_req = rule.redirect_request(req, normal, 302, "Found", headers, f"https://{STAND_IN_HOST}/payload.bin")
+    assert next_req is not None and normal.closed
+
+    for ends_offset, steps, expected in (
+        (-1.0, [b"abc"], fetch_download.too_long()),
+        (30.0, [TimeoutError("timed out")], fetch_download.TIMED_OUT),
+        (30.0, [ValueError("not hex")], fetch_download.REDIRECT_BODY_UNREADABLE),
+        (30.0, [b"0" * (fetch_download.REDIRECT_BODY_MAX_BYTES + 1)], fetch_download.REDIRECT_BODY_UNREADABLE),
+    ):
+        fp = FakeResponse(steps)
+        fresh = urllib.request.Request(f"https://{STAND_IN_HOST}/start.bin", headers={"User-Agent": USER_AGENT})
+        rule = fetch_download._RedirectRule(PATH, start, time.monotonic() + ends_offset)
+        with pytest.raises(fetch_download.FetchError) as caught:
+            rule.redirect_request(fresh, fp, 302, "Found", headers, f"https://{STAND_IN_HOST}/payload.bin")
+        assert caught.value.failure == expected
+        assert fp.closed, expected
+
+
+@pytest.mark.parametrize("path", ["r-slow", "r-silent", "r-past-limit", "r-bad-chunk"])
+def test_a_failed_redirect_body_in_fetch_leaves_no_http_response_open(
+    tmp_path: Path, wire: Wire, hostile_server: int, monkeypatch: pytest.MonkeyPatch, path: str
+) -> None:
+    """End to end through fetch: when draining a 302 response body fails (at the deadline, on a socket timeout, past
+    REDIRECT_BODY_MAX_BYTES, or on malformed chunk framing), the 302 HTTPResponse is closed before fetch returns."""
+    responses: list[http.client.HTTPResponse] = []
+
+    class TrackedResponse(http.client.HTTPResponse):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            responses.append(self)
+
+    monkeypatch.setattr(fetch_download._DeadlineHTTPConnection, "response_class", TrackedResponse)
+    monkeypatch.setattr(fetch_download, "TIMEOUT_S", 0.3)
+    monkeypatch.setattr(fetch_download, "DOWNLOAD_DEADLINE_S", 0.5 if path == "r-slow" else 30.0)
+    wire.server_port = hostile_server
+    raised, _ = fetch_within(download(f"http://127.0.0.1:{hostile_server}/{path}"), tmp_path, 10)
+    assert isinstance(raised, fetch_download.FetchError), repr(raised)
+    assert len(responses) == 1 and all(resp.isclosed() for resp in responses), (path, [resp.isclosed() for resp in responses])
+
+
+def test_fetch_error_and_module_docstrings_state_the_exact_failure_scope() -> None:
+    """FetchError's docstring and the module docstring state every source of FetchError.failure (FAILURES,
+    UNKNOWN_FAILURE, BODY_UNREADABLE, REDIRECT_BODY_UNREADABLE, too_long, and unfollowed 3xx) rather than claiming
+    FAILURES alone covers every non-3xx failure."""
+    err_doc = fetch_download.FetchError.__doc__ or ""
+    mod_doc = fetch_download.__doc__ or ""
+    for token in ("FAILURES", "UNKNOWN_FAILURE", "BODY_UNREADABLE", "REDIRECT_BODY_UNREADABLE", "too_long"):
+        assert re.search(rf"\b{token}\b", err_doc), token
+    assert "failure` is the\n    table's sentence" not in mod_doc and "failure` is the table's sentence" not in mod_doc
+
+
+def test_deadline_socket_and_connection_guards_hold(monkeypatch: pytest.MonkeyPatch, silent_listener: int, wire: Wire) -> None:
+    """_DeadlineSocket.makefile refuses any mode other than 'rb', _DeadlineRaw.close closes its underlying socket file,
+    _DeadlineHTTPSConnection passes self.host when not tunneled, and _create_within binds source_address, closes failed
+    sockets and refuses an empty lookup."""
+    near, far = socket.socketpair()
+    try:
+        wrapped = fetch_download._DeadlineSocket(near, time.monotonic() + 5.0)
+        far.settimeout(0.1)
+        wrapped.sendall(b"ping")
+        try:
+            sent = far.recv(4)
+        except TimeoutError:
+            sent = b""
+        assert sent == b"ping"
+        with pytest.raises(ValueError, match="bytes alone"):
+            wrapped.makefile("wb")
+        with pytest.raises(ValueError, match="bytes alone"):
+            wrapped.makefile("r")
+        reader = wrapped.makefile("rb")
+        assert reader.readable()
+        raw = reader.raw
+        assert isinstance(raw, fetch_download._DeadlineRaw)
+        reader.close()
+        assert raw._file.closed
+    finally:
+        near.close()
+        far.close()
+
+    # Non-tunneled HTTPS passes self.host as server_hostname
+    wire.server_port = silent_listener
+    seen_hosts: list[str] = []
+
+    class DirectHandshake:
+        def wrap_socket(self, sock: socket.socket, server_hostname: str) -> socket.socket:
+            assert isinstance(sock, socket.socket)
+            seen_hosts.append(server_hostname)
+            return sock
+
+    direct = fetch_download._DeadlineHTTPSConnection("127.0.0.1", silent_listener, ends=time.monotonic() + 5.0, context=DirectHandshake())
+    try:
+        direct.connect()
+        assert seen_hosts == ["127.0.0.1"]
+        assert isinstance(direct.sock, fetch_download._DeadlineSocket)
+    finally:
+        direct.close()
+
+    # _create_within: source_address bound, failed sockets closed, and empty lookup refused
+    bound: list[Any] = []
+    closed_count = 0
+
+    class RecordingSocket:
+        def __init__(self, *_args: Any) -> None:
+            self.closed = False
+
+        def settimeout(self, _wait: float) -> None:
+            pass
+
+        def bind(self, addr: Any) -> None:
+            bound.append(addr)
+
+        def connect(self, place: Any) -> None:
+            if place == ("192.0.2.10", 443):
+                raise ConnectionRefusedError("refused")
+
+        def close(self) -> None:
+            nonlocal closed_count
+            self.closed = True
+            closed_count += 1
+
+    monkeypatch.setattr(
+        fetch_download.socket,
+        "getaddrinfo",
+        lambda *_: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.10", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.11", 443)),
+        ],
+    )
+    monkeypatch.setattr(fetch_download.socket, "socket", RecordingSocket)
+    conn = fetch_download._DeadlineHTTPConnection("files.example", 443, ends=time.monotonic() + 5.0)
+    connected = conn._create_within(("files.example", 443), 5.0, ("127.0.0.1", 0))
+    assert isinstance(connected, RecordingSocket)
+    assert bound == [("127.0.0.1", 0), ("127.0.0.1", 0)]
+    assert closed_count == 1
+
+    monkeypatch.setattr(fetch_download.socket, "getaddrinfo", lambda *_: [])
+    with pytest.raises(OSError, match="gave no address"):
+        conn._create_within(("files.example", 443), 5.0, None)
+
+
+def test_open_hands_the_remaining_deadline_to_the_opener(server_port: int, server: str, wire: Wire) -> None:
+    probe_req = urllib.request.Request(f"{server}/payload.bin", headers={"User-Agent": USER_AGENT})
+    with fetch_download._open(probe_req, PATH, ("http", "127.0.0.1", server_port), time.monotonic() + 1.0, loopback_for_tests=True) as resp:
+        assert resp.read() == PAYLOAD
+    assert 0.0 < probe_req.timeout <= 1.0 < fetch_download.TIMEOUT_S
+
+
+def test_exact_deadline_instant_counts_as_past_in_every_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    """At time.monotonic() == ends, every boundary check in _DeadlineRaw, _HeldToDeadline and
+    _DeadlineHTTPSConnection treats the deadline as reached and raises _PastDeadline."""
+    near, far = socket.socketpair()
+    raw = fetch_download._DeadlineRaw(near, 100.0)
+    try:
+        far.sendall(b"abcd")
+        monkeypatch.setattr(fetch_download.time, "monotonic", lambda: 100.0)
+        with pytest.raises(fetch_download._PastDeadline):
+            raw.readinto(bytearray(4))
+
+        ticks = iter([99.5, 99.5, 100.0])
+        monkeypatch.setattr(fetch_download.time, "monotonic", lambda: next(ticks))
+
+        class TimeoutFile:
+            def readinto(self, _buf: Any) -> int:
+                raise TimeoutError("timed out at exact deadline")
+
+        real_file = raw._file
+        raw._file = TimeoutFile()  # type: ignore[assignment]
+        try:
+            with pytest.raises(fetch_download._PastDeadline):
+                raw.readinto(bytearray(4))
+        finally:
+            raw._file = real_file
+    finally:
+        raw.close()
+        near.close()
+        far.close()
+
+    opened: list[int] = []
+
+    class UnexpectedSocket:
+        def __init__(self, *_args: Any) -> None:
+            opened.append(1)
+
+        def settimeout(self, _wait: float) -> None:
+            pass
+
+        def connect(self, _place: Any) -> None:
+            raise ConnectionRefusedError("refused")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(fetch_download.time, "monotonic", lambda: 100.0)
+    monkeypatch.setattr(fetch_download.socket, "socket", UnexpectedSocket)
+    monkeypatch.setattr(
+        fetch_download.socket,
+        "getaddrinfo",
+        lambda *_: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))],
+    )
+    conn = fetch_download._DeadlineHTTPConnection("files.example", 443, ends=100.0)
+    with pytest.raises(fetch_download._PastDeadline):
+        conn._create_within(("files.example", 443), 5.0, None)
+    assert opened == []
+
+    monkeypatch.setattr(fetch_download.socket, "getaddrinfo", lambda *_: [])
+    with pytest.raises(fetch_download._PastDeadline):
+        conn._create_within(("files.example", 443), 5.0, None)
+
+    class DummySock:
+        def settimeout(self, _wait: float) -> None:
+            pass
+
+    class TimeoutContext:
+        def wrap_socket(self, _sock: Any, server_hostname: str) -> Any:
+            assert server_hostname == "files.example"
+            raise TimeoutError("handshake timed out at exact deadline")
+
+    monkeypatch.setattr(http.client.HTTPConnection, "connect", lambda self: setattr(self, "sock", DummySock()))
+    https_conn = fetch_download._DeadlineHTTPSConnection("files.example", 443, ends=100.0, context=TimeoutContext())
+    with pytest.raises(fetch_download._PastDeadline):
+        https_conn.connect()
+
+
+

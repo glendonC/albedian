@@ -26,31 +26,27 @@ written. The sentence names where the redirect led only when its scheme is https
 host name or address (a user or password part is said to be there, never printed); any other target is "a target
 that is not a plain https address", since its words are the server's.
 
-What bounds a download, and what does not. One deadline, DOWNLOAD_DEADLINE_S, is set when the download starts, and
-every body, a redirect's and the file's, is read in parts against it: the deadline is checked before each part, and
-a part is read as soon as some of it has come. A redirect's body is also held to REDIRECT_BODY_MAX_BYTES. Every socket
-of the download, a redirect's too, has one wait, set as the first request is opened: TIMEOUT_S, or the time left
-before the deadline then if that is less. Each connection attempt and each socket read waits at most that long. A
-body read whose wait runs out ends the download as timed out before the deadline and as too long after it, so a body
-read that begins just before the deadline can end that whole wait after it. Between the deadline's checks, what
-http.client reads is held only by that wait per socket read, and nothing adds those reads up: the head of each answer
-(its status line and headers), read before the first part, and in a chunked body a chunk's size line and the trailer
-after the last chunk, read inside a part. A server that sends those a byte at a time can hold a download past the
-deadline. One that sends trailer lines without end holds it for as long as it sends where http.client does not count
-them (3.12.3 and 3.12.9 do not; 3.14.7 stops after 100). The host name's lookup has no wait of the script's. These
-are written limits: one bound over the whole download is not built yet.
+What bounds a download. One deadline, DOWNLOAD_DEADLINE_S, runs from the download's first connection to its last
+byte, across every redirect: the opener's own http and https handlers make connections whose every socket wait (each
+address's connection attempt, the TLS handshake, sending the request, a proxy's CONNECT, the status line, the headers
+and every body) lasts at most the time left before it, and never longer than TIMEOUT_S. Past it the download ends as
+too long. A redirect's body is also held to REDIRECT_BODY_MAX_BYTES. One step has no wait of the script's: the lookup
+of a host name, since socket.getaddrinfo takes none, so a lookup that hangs can hold a download past the deadline. That
+is a written limit.
 
 What the script says. Every call that can reach a server, from reading the URL to the last read of the body,
-runs inside one boundary in `fetch`. What the boundary catches is read for three things alone: its class, which
-FAILURES (a closed table) turns into one of the script's own sentences; for an HTTP answer, its status number; and a
-Retry-After that is one to RETRY_AFTER_MAX_DIGITS ASCII digits. Its text, args, URL, headers and reason are never
-read. The script's own error is built from those and raised once the boundary's handler has ended, so the caught
-error is neither its cause nor its context, and it holds no URL but the one the download started at, from the
-registry. An answer that is not the file is raised as `AnswerError`, urllib's HTTPError with that number and
-Retry-After; a 3xx urllib did not follow is said by its number alone; anything else is a `FetchError` whose
-`failure` is the table's sentence. A refusal names where a redirect led only by the plain host the redirect rule
-read. The command prints a failure by the script's sentence, never an error's text. A proxy the machine is set to
-use still carries the request, as urllib.request does by default.
+runs inside one boundary in `fetch`. A `FetchError` the script's own checks raise (for a refused URL or redirect, a
+body that failed or ran past a limit in `_read_part`, or a size or SHA-256 mismatch) keeps its own sentence. Anything
+else the boundary catches is read for three things alone: its class, which `_PastDeadline` turns into `too_long()` and
+FAILURES (a closed table for errors outside `_read_part`, else UNKNOWN_FAILURE) turns into one of the script's own
+sentences; for an HTTP answer, its status number; and a Retry-After that is one to RETRY_AFTER_MAX_DIGITS ASCII digits.
+Its text, args, URL, headers and reason are never read. The script's own error is built from those and raised once the
+boundary's handler has ended, so the caught error is neither its cause nor its context, and it holds no URL but the one
+the download started at, from the registry. An answer that is not the file is raised as `AnswerError`, urllib's
+HTTPError with that number and Retry-After; a 3xx urllib did not follow is said by its number alone; any other failure
+is a `FetchError` whose `failure` names what stopped the transfer. A refusal names where a redirect led only by the
+plain host the redirect rule read. The command prints a failure by the script's sentence, never an error's text. A
+proxy the machine is set to use still carries the request, as urllib.request does by default.
 """
 
 from __future__ import annotations
@@ -58,8 +54,10 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import email.message
+import functools
 import hashlib
 import http.client
+import io
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -75,13 +73,12 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "data" / "downloads.json"
 USER_AGENT = "Albedian/0.1 (research prototype)"
 CHUNK = 1 << 20
-# The wait of each connection attempt and each socket read of a download, set as its first request is opened, or the
-# time left before DOWNLOAD_DEADLINE_S then if that is less. Read where it is used, so a test can set it
+# The longest one socket wait of a download may last (a connection attempt, the TLS handshake, one send or one read),
+# each also at most the time left before DOWNLOAD_DEADLINE_S. Read where it is used, so a test can set it
 TIMEOUT_S = 60
-# [proposed] The deadline every body of a download is read against, the redirects' and the file's, counted from when
-# the download starts and checked before each part: the registry's largest file (3,252,715,200 bytes) at half a
-# megabyte a second takes under two hours. How far past it a download can run, and what it does not hold, is in the
-# module's text. Read where it is used, so a test can set it
+# [proposed] The longest one download may take, from its first connection to its last byte across every redirect: the
+# registry's largest file (3,252,715,200 bytes) at half a megabyte a second takes under two hours. Every socket wait of
+# the download lasts at most the time left before it. Read where it is used, at each download, so a test can set it
 DOWNLOAD_DEADLINE_S = 7200
 # [proposed] How much of a redirect's own body the script takes, only to drop it: a redirect page is a few hundred
 # bytes, and more than this ends the download in the redirect's sentence (the part that passes it can bring up to
@@ -113,8 +110,10 @@ RETRY_AFTER_SECONDS = re.compile(rf"[0-9]{{1,{RETRY_AFTER_MAX_DIGITS}}}")
 # What the script says of a socket wait that ran out: while connecting, while reading an answer's head, and while
 # reading a body before the deadline
 TIMED_OUT = "the connection timed out"
-# What the boundary in `fetch` says of an error it caught, by the error's class alone, the first row that fits; an
-# error urllib wraps in a URLError is read by the class of the error inside it
+# What the boundary in `fetch` says of a non-HTTP error outside `_read_part` and `_PastDeadline` (connecting, the TLS
+# handshake, sending the request or reading an answer's head; body reads raise FetchError in `_read_part` before
+# reaching this table), by the error's class alone, the first row that fits; an error urllib wraps in a URLError is
+# read by the class of the error inside it
 FAILURES: tuple[tuple[type[BaseException], str], ...] = (
     (http.client.RemoteDisconnected, "the server closed the connection without an answer"),
     (http.client.IncompleteRead, "the server's body ended early, or its chunks could not be read"),
@@ -129,9 +128,7 @@ FAILURES: tuple[tuple[type[BaseException], str], ...] = (
     (TimeoutError, TIMED_OUT),
     (socket.gaierror, "the host name could not be resolved"),
     (ssl.SSLError, "the TLS connection could not be made or kept"),
-    # Python 3.12's http.client reads a whole chunked body by the size line as given: 40 digits overflow the read
     (OverflowError, "a number in the server's answer is too large for http.client to read"),
-    # and 15 or 16 hex digits of chunk size, or a stated length of 2^62, ask it for a buffer of that size
     (MemoryError, "a size in the server's answer is larger than the memory http.client may ask for"),
     (OSError, "a network or file error stopped the download"),
     (ValueError, "a value in the exchange could not be read"),
@@ -162,8 +159,9 @@ Target = tuple[str, str, int]
 
 class FetchError(Exception):
     """A download that was refused, that failed, or whose bytes do not match its registry entry. `failure` is the
-    script's own sentence for what stopped it (a row of FAILURES, or a redirect urllib did not follow), and None for
-    a refusal or a mismatch, which the message says in full."""
+    script's own sentence for a failed transfer (a row of FAILURES, UNKNOWN_FAILURE, BODY_UNREADABLE,
+    REDIRECT_BODY_UNREADABLE, too_long(), or a 3xx urllib did not follow), and None for a refusal or a size or
+    SHA-256 mismatch, which the message says in full."""
 
     def __init__(self, message: str, failure: str | None = None) -> None:
         super().__init__(message)
@@ -313,23 +311,25 @@ class _RedirectRule(urllib.request.HTTPRedirectHandler):
             raise _refusal(self.path, _named(new), self.start)
         new.albedian_redirects = followed + 1
         # The redirect's own body, read here in parts and dropped until it ends, so urllib's whole read after this finds
-        # it read; more than REDIRECT_BODY_MAX_BYTES of it ends the download
+        # it read, and closed whether draining ends or raises; more than REDIRECT_BODY_MAX_BYTES ends the download
         drained = 0
-        while block := _read_part(fp, self.path, REDIRECT_BODY_UNREADABLE, self.ends):
-            drained += len(block)
-            if drained > REDIRECT_BODY_MAX_BYTES:
-                fp.close()
-                raise FetchError(f"{self.path}: not fetched: {REDIRECT_BODY_UNREADABLE}", REDIRECT_BODY_UNREADABLE)
+        try:
+            while block := _read_part(fp, self.path, REDIRECT_BODY_UNREADABLE, self.ends):
+                drained += len(block)
+                if drained > REDIRECT_BODY_MAX_BYTES:
+                    raise FetchError(f"{self.path}: not fetched: {REDIRECT_BODY_UNREADABLE}", REDIRECT_BODY_UNREADABLE)
+        finally:
+            fp.close()
         return new
 
 
 def _read_part(response: Any, path: str, said: str, ends: float) -> bytes:
     """One part of a body, CHUNK bytes at most, as soon as some has come (read1). The deadline `ends` (a time.monotonic()
-    value) is checked before the part, so a body sent a byte at a time ends at the first part past it; within the part
-    each socket read waits at most the socket's own wait (see `_open`), so a part begun just before the deadline can
-    end that long after it. A read that ends past the deadline ends the download as too long; one whose socket wait ran
-    out (TimeoutError) as TIMED_OUT; any other error the read raises, of any class, in the sentence `said`. Each is
-    raised after the handler: the read's phase, whether its wait ran out and the clock are all that is said."""
+    value) is checked before the part, and within the part each socket read waits at most the time left (see
+    `_DeadlineRaw`), so a part ends as the deadline passes if not before. A read that ends past the deadline ends the
+    download as too long; one whose socket wait ran out (TimeoutError) before it as TIMED_OUT; any other error the read
+    raises, of any class, in the sentence `said`. Each is raised after the handler: the read's phase, whether its wait
+    ran out and the clock are all that is said."""
     if time.monotonic() >= ends:
         raise FetchError(f"{path}: not fetched: {too_long()}", too_long())
     waited_out = False
@@ -343,13 +343,173 @@ def _read_part(response: Any, path: str, said: str, ends: float) -> bytes:
     raise FetchError(f"{path}: not fetched: {sentence}", sentence)
 
 
+def time_left(ends: float) -> float:
+    """How long one socket wait may last before `ends` (a time.monotonic() value): never longer than TIMEOUT_S, and
+    never zero, which would make the socket non-blocking."""
+    return max(min(TIMEOUT_S, ends - time.monotonic()), 0.001)
+
+
+class _PastDeadline(TimeoutError):
+    """A socket wait that ended at the download's deadline: said as too long, never by its class."""
+
+
+class _DeadlineRaw(io.RawIOBase):
+    """The stream http.client reads a connection's answer through (its status line, headers and body): every read
+    waits at most the time left before `ends`, so no phase can outlast the one deadline."""
+
+    def __init__(self, sock: socket.socket, ends: float) -> None:
+        # The socket's own unbuffered file, which keeps the socket open until this stream is closed, as the file
+        # http.client would make does: the connection closes its socket while its answer is still being read
+        self._sock, self._file, self._ends = sock, sock.makefile("rb", buffering=0), ends
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        if time.monotonic() >= self._ends:
+            raise _PastDeadline("past the deadline")
+        self._sock.settimeout(time_left(self._ends))
+        try:
+            return self._file.readinto(buffer)
+        except TimeoutError:
+            if time.monotonic() >= self._ends:
+                raise _PastDeadline("past the deadline") from None
+            raise
+
+    def close(self) -> None:
+        self._file.close()
+        super().close()
+
+
+class _DeadlineSocket:
+    """A connected socket (plain, or secured by TLS) as http.client uses it: what it reads comes through _DeadlineRaw,
+    and what it sends waits at most the time left too."""
+
+    def __init__(self, sock: socket.socket, ends: float) -> None:
+        self._sock, self._ends = sock, ends
+
+    def makefile(self, mode: str = "rb", *args: Any, **kwargs: Any) -> io.BufferedReader:
+        if mode != "rb":
+            raise ValueError("a connection's answer is read as bytes alone")
+        return io.BufferedReader(_DeadlineRaw(self._sock, self._ends))
+
+    def sendall(self, data: Any) -> None:
+        self._sock.settimeout(time_left(self._ends))
+        self._sock.sendall(data)
+
+    def __getattr__(self, name: str) -> Any:  # close, setsockopt, fileno and the rest, as the socket has them
+        return getattr(self._sock, name)
+
+
+class _HeldToDeadline:
+    """What the http and the https connection share: the deadline `ends`, each address tried with the time left, and
+    a proxy's CONNECT read and written through _DeadlineSocket."""
+
+    ends: float
+    sock: Any
+
+    def _create_within(self, address: tuple[str, int], timeout: Any = None, source_address: Any = None) -> socket.socket:
+        """socket.create_connection with each address the name's lookup gives tried with the time left when its attempt
+        starts, not the wait the connection began with. Past the deadline it stops as _PastDeadline; otherwise the
+        last error is raised, as create_connection raises it."""
+        host, port = address
+        failed: OSError = OSError(f"the name's lookup gave no address for {host}")
+        for family, kind, protocol, _, place in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+            if time.monotonic() >= self.ends:
+                break
+            sock = socket.socket(family, kind, protocol)
+            try:
+                sock.settimeout(time_left(self.ends))
+                if source_address:
+                    sock.bind(source_address)
+                sock.connect(place)
+            except OSError as error:
+                sock.close()
+                failed = error
+                continue
+            return sock
+        if time.monotonic() >= self.ends:
+            raise _PastDeadline("past the deadline")
+        raise failed
+
+    def _tunnel(self) -> None:  # http.client's own step for a proxy's CONNECT, read through the same wrap
+        raw = self.sock
+        self.sock = _DeadlineSocket(raw, self.ends)
+        try:
+            super()._tunnel()  # type: ignore[misc]
+        finally:
+            self.sock = raw
+
+
+class _DeadlineHTTPConnection(_HeldToDeadline, http.client.HTTPConnection):
+    """An http connection held to the download's one deadline: each address is tried within the time left, and its
+    socket is read and written through _DeadlineSocket, the CONNECT of a proxy tunnel included."""
+
+    def __init__(self, *args: Any, ends: float, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.ends = ends
+        self._create_connection = self._create_within
+
+    def connect(self) -> None:
+        super().connect()
+        self.sock = _DeadlineSocket(self.sock, self.ends)
+
+
+class _DeadlineHTTPSConnection(_HeldToDeadline, http.client.HTTPSConnection):
+    """An https connection held to the same deadline: each address is tried within the time left, the TLS handshake
+    lasts at most the time left when it starts (the ssl module takes a socket's wait as the longest a whole handshake
+    may last), and the secured socket is read and written through _DeadlineSocket."""
+
+    def __init__(self, *args: Any, ends: float, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.ends = ends
+        self._create_connection = self._create_within
+
+    def connect(self) -> None:
+        # HTTPSConnection.connect's own two steps, with the socket's wait set to the time left between them
+        http.client.HTTPConnection.connect(self)
+        try:
+            self.sock.settimeout(time_left(self.ends))
+            self.sock = self._context.wrap_socket(self.sock, server_hostname=self._tunnel_host or self.host)
+        except TimeoutError:
+            if time.monotonic() < self.ends:
+                raise
+            failed: Exception = _PastDeadline("past the deadline")
+        else:
+            self.sock = _DeadlineSocket(self.sock, self.ends)
+            return
+        raise failed
+
+
+class _DeadlineHTTPHandler(urllib.request.HTTPHandler):
+    connection: Any = _DeadlineHTTPConnection
+
+    def __init__(self, ends: float) -> None:
+        super().__init__()
+        self.ends = ends
+
+    def http_open(self, req):  # noqa: ANN001 (urllib's API)
+        return self.do_open(functools.partial(type(self).connection, ends=self.ends), req)
+
+
+class _DeadlineHTTPSHandler(urllib.request.HTTPSHandler):
+    connection: Any = _DeadlineHTTPSConnection
+
+    def __init__(self, ends: float) -> None:
+        super().__init__()
+        self.ends = ends
+
+    def https_open(self, req):  # noqa: ANN001 (urllib's API)
+        return self.do_open(functools.partial(type(self).connection, ends=self.ends), req, context=self._context)
+
+
 def _open(request: urllib.request.Request, path: str, start: Target, ends: float, *, loopback_for_tests: bool = False):
-    """Open the request under the redirect rule, with one socket wait for every connection attempt and socket read of
-    the download: TIMEOUT_S, or the time left before `ends` now if that is less (1 ms at the least). urllib opens each
-    redirect with the wait of the request it redirects. Called only inside the boundary in `fetch`, which says what
-    any error it raises means."""
-    opener = urllib.request.build_opener(_RedirectRule(path, start, ends, loopback_for_tests=loopback_for_tests))
-    return opener.open(request, timeout=max(min(TIMEOUT_S, ends - time.monotonic()), 0.001))
+    """Open the request under the redirect rule, through handlers whose connections are held to the one deadline
+    `ends` in every phase. Called only inside the boundary in `fetch`, which says what any error it raises means."""
+    opener = urllib.request.build_opener(
+        _RedirectRule(path, start, ends, loopback_for_tests=loopback_for_tests), _DeadlineHTTPHandler(ends), _DeadlineHTTPSHandler(ends)
+    )
+    return opener.open(request, timeout=time_left(ends))
 
 
 def _start(download: Download, *, loopback_for_tests: bool) -> tuple[urllib.request.Request, Target]:
@@ -374,7 +534,7 @@ def _download(request: urllib.request.Request, download: Download, start: Target
     """Write the answer's bytes to `part`, and move it to `target` once its size and SHA-256 match the entry."""
     digest = hashlib.sha256()
     size = 0
-    ends = time.monotonic() + DOWNLOAD_DEADLINE_S  # checked before each part of every body, the redirects' and the file's
+    ends = time.monotonic() + DOWNLOAD_DEADLINE_S  # from the first connection, across every redirect, to the last byte
     with _open(request, download.path, start, ends, loopback_for_tests=loopback_for_tests) as response:
         target.parent.mkdir(parents=True, exist_ok=True)
         with part.open("wb") as out:
@@ -404,6 +564,8 @@ def _own_error(download: Download, error: Exception) -> Exception:
         return AnswerError(download.path, download.url, error.code, retry_after)
     if isinstance(error, urllib.error.URLError) and isinstance(error.reason, BaseException):
         error = error.reason  # read for its class alone, like any other
+    if isinstance(error, _PastDeadline):
+        return FetchError(f"{download.path}: not fetched: {too_long()}", too_long())
     said = next((sentence for kind, sentence in FAILURES if isinstance(error, kind)), UNKNOWN_FAILURE)
     return FetchError(f"{download.path}: not fetched: {said}", said)
 
