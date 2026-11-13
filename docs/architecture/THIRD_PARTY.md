@@ -112,3 +112,25 @@ And in the form the Solar System Dynamics "about" page asks for data downloaded 
 > NASA/JPL Solar System Dynamics. Data retrieved on 2026 November 11. (Horizons System). https://ssd.jpl.nasa.gov
 
 > NASA/JPL Solar System Dynamics. Data retrieved on 2026 November 13. (Horizons System). https://ssd.jpl.nasa.gov
+
+## `tzdata` 2026.6, with the IANA time zone database release 2026f inside it
+
+| | `tzdata` (the package: zic-compiled zone files and a few lines of Python) |
+|---|---|
+| Version | 2026.6, carrying IANA release 2026f (`tzdata.IANA_VERSION`) |
+| Licence | Apache-2.0 (the package); the IANA tz database itself is in the public domain [not read here: IANA's own `LICENSE` file says so] |
+| Copyright | 2020 Paul Ganssle (Google), 2026 Stan Ulbrych (the package's `LICENSE`) |
+| Read at | `LICENSE` and `licenses/LICENSE_APACHE` in the installed distribution's `dist-info/licenses`, and its `METADATA`, read 2026-11-13 |
+| Needs | no other package; 2.5 MB installed; no network call [tested] |
+
+What it is: the IANA time zone database as a package, maintained at github.com/python/tzdata. The standard library's
+`zoneinfo` reads the system's zone files first and falls back to this package for a zone the system lacks.
+
+What Albedian uses it for: the offset a photo's place gives at its local time (`services/ingest/metadata.py`,
+`place_offsets`), so a host with no system zone database (a slim container, Windows) still works it out, from a
+release the lock pins, instead of labelling the data unavailable (unit capture-time-5). Where the system has the
+zone, the system's files are read, as before [inference: zoneinfo's documented search order].
+
+What the licence asks [verified: the Apache-2.0 text; the application is inference, not legal advice]: keep the
+licence and the copyright notice with any copy of the package. Albedian ships no binary of the Python services
+[inference], so it copies neither.

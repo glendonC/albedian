@@ -60,6 +60,7 @@ export const PLACE_TIME_ZONE_CHECKS = [
   'disagrees',
   'unchecked',
   'no_usable_position',
+  'place_lookup_unavailable',
   'outside_every_time_zone',
   'time_zone_data_unavailable',
   'no_whole_minute_offset',
@@ -72,7 +73,17 @@ const pairs = (list: [PlaceCheck, GpsCheck][]) => new Set(list.map(([place, gps]
 /** The (placeTimeZone, gpsTimeStamp) pairs each offset source allows; `none`: no offset was found. */
 export const CAPTURE_TIME_BASIS_PAIRS = {
   offset_tag: pairs(
-    (['agrees', 'disagrees', 'no_usable_position', 'outside_every_time_zone', 'time_zone_data_unavailable', 'no_whole_minute_offset'] as const).flatMap((place) =>
+    (
+      [
+        'agrees',
+        'disagrees',
+        'no_usable_position',
+        'place_lookup_unavailable',
+        'outside_every_time_zone',
+        'time_zone_data_unavailable',
+        'no_whole_minute_offset',
+      ] as const
+    ).flatMap((place) =>
       (['agrees', 'disagrees', 'no_usable_time_stamp'] as const)
         .filter((gps) => !(place === 'no_usable_position' && gps === 'no_usable_time_stamp'))
         .map((gps): [PlaceCheck, GpsCheck] => [place, gps])
@@ -85,6 +96,8 @@ export const CAPTURE_TIME_BASIS_PAIRS = {
     ['no_usable_position', 'unchecked'],
     ['outside_every_time_zone', 'unchecked'],
     ['outside_every_time_zone', 'no_usable_time_stamp'],
+    ['place_lookup_unavailable', 'unchecked'],
+    ['place_lookup_unavailable', 'no_usable_time_stamp'],
     ['time_zone_data_unavailable', 'unchecked'],
     ['time_zone_data_unavailable', 'no_usable_time_stamp'],
     ['no_whole_minute_offset', 'unchecked'],

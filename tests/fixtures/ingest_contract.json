@@ -29,6 +29,7 @@
       "disagrees",
       "unchecked",
       "no_usable_position",
+      "place_lookup_unavailable",
       "outside_every_time_zone",
       "time_zone_data_unavailable",
       "no_whole_minute_offset",
@@ -1529,6 +1530,65 @@
           ],
           "basis": {
             "offsetSource": "offset_tag",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
             "placeTimeZone": "time_zone_data_unavailable",
             "gpsTimeStamp": "agrees",
             "uncertaintySec": 1
@@ -1707,6 +1767,40 @@
           ],
           "basis": {
             "placeTimeZone": "outside_every_time_zone",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "place_lookup_unavailable",
             "gpsTimeStamp": "unchecked"
           }
         }
@@ -7091,6 +7185,187 @@
         }
       },
       "reason": "the GPS time stamp is not checked against a place that offers more than one offset"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "place_lookup_unavailable"
+          }
+        }
+      },
+      "reason": "the GPS time stamp says nothing of the place lookup"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "agrees"
+          }
+        }
+      },
+      "reason": "without the place lookup or an offset tag there is nothing for the GPS time stamp to agree with"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": null,
+        "utc": null,
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      "reason": "without the place lookup or an offset tag there is nothing for the GPS time stamp to disagree with"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "OffsetTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "offset_tag",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      "reason": "an offset tag is checked against a usable GPS time stamp even without the place lookup"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "agrees",
+            "uncertaintySec": 1
+          }
+        }
+      },
+      "reason": "a zone worked out needs the place lookup (agrees)"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "disagrees"
+          }
+        }
+      },
+      "reason": "a zone worked out needs the place lookup (disagrees)"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal",
+            "GPSDateStamp",
+            "GPSTimeStamp"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "unchecked"
+          }
+        }
+      },
+      "reason": "a zone worked out needs the place lookup (unchecked)"
+    },
+    {
+      "schema": "CaptureTimeHint",
+      "sample": {
+        "localDateTime": "2031-05-02T05:42:18",
+        "utcOffsetMinutes": 120,
+        "utc": "2031-05-02T03:42:18Z",
+        "marks": "recorded",
+        "source": {
+          "container": "exif",
+          "tags": [
+            "DateTimeOriginal"
+          ],
+          "basis": {
+            "offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+            "placeTimeZone": "place_lookup_unavailable",
+            "gpsTimeStamp": "no_usable_time_stamp"
+          }
+        }
+      },
+      "reason": "a zone worked out needs the place lookup (no_usable_time_stamp)"
     },
     {
       "schema": "CaptureTimeHint",

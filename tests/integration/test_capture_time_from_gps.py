@@ -910,7 +910,9 @@ def test_a_whole_minute_offset_beside_one_that_is_not_derives_nothing(monkeypatc
 
 
 def test_a_point_on_a_shared_border_offers_every_zone_it_lies_in(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(metadata.tzfpy, "get_tzs", lambda lon, lat: ["Europe/London", "Asia/Kolkata"])
+    import tzfpy  # the place lookup imports it when first used, from here on this patched module
+
+    monkeypatch.setattr(tzfpy, "get_tzs", lambda lon, lat: ["Europe/London", "Asia/Kolkata"])
     assert place_time_zones(0.0, 0.0) == ("Asia/Kolkata", "Europe/London")
     assert place_offsets(0.0, 0.0, LOCAL) == (60, 330)
     # Even from a fresh fix: a fix 4 h 30 min old would agree with the other zone
@@ -920,7 +922,9 @@ def test_a_point_on_a_shared_border_offers_every_zone_it_lies_in(monkeypatch: py
 
 def test_two_zones_at_a_border_that_give_the_same_offset_derive_it(monkeypatch: pytest.MonkeyPatch) -> None:
     # Ruling 1 derives nothing unless the offsets are equal: two zones with one offset at the wall time give it
-    monkeypatch.setattr(metadata.tzfpy, "get_tzs", lambda lon, lat: ["Asia/Kolkata", "Asia/Colombo"])
+    import tzfpy
+
+    monkeypatch.setattr(tzfpy, "get_tzs", lambda lon, lat: ["Asia/Kolkata", "Asia/Colombo"])
     assert place_offsets(0.0, 0.0, LOCAL) == (330,)
     hint = capture(LOCAL, OCEAN, utc_of(LOCAL, 330) - timedelta(seconds=4))
     assert hint["utcOffsetMinutes"] == 330
@@ -953,20 +957,29 @@ def test_the_second_versions_label_for_two_offsets_that_both_fit_is_retired() ->
         CaptureTimeHint.model_validate(hint)
 
 
-def test_without_the_systems_zone_database_the_label_says_the_data_is_unavailable(tmp_path: Path) -> None:
-    """zoneinfo reads the system's time zone database (no tzdata package is installed to fall back on). Pointed at an
-    empty folder, as on a machine without it, nothing is derived, a tag still wins, and the label names that cause."""
+def test_without_any_zone_database_the_label_says_the_data_is_unavailable(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """zoneinfo reads the system's time zone database, and where that lacks a zone, the tzdata package the app carries.
+    With the system's pointed at an empty folder and the package hidden (importing it or any part of it fails, even
+    after another test imported its zone folders), as on a machine with neither, nothing is derived, a tag still
+    wins, and the label names that cause."""
+    import sys
     import zoneinfo
 
     original = zoneinfo.TZPATH
     zoneinfo.reset_tzpath(to=[str(tmp_path)])
     zoneinfo.ZoneInfo.clear_cache()
     try:
-        with pytest.raises(zoneinfo.ZoneInfoNotFoundError):
-            zoneinfo.ZoneInfo("Etc/GMT+3")
-        hint = capture(LOCAL, OCEAN, FIX)
-        tagged = capture(LOCAL, OCEAN, FIX, tag="-03:00")
-        place_only = capture(LOCAL, OCEAN, None)
+        with monkeypatch.context() as patch:
+            for name in {"tzdata", *(name for name in sys.modules if name.startswith("tzdata."))}:
+                patch.setitem(sys.modules, name, None)
+            with pytest.raises(zoneinfo.ZoneInfoNotFoundError):
+                zoneinfo.ZoneInfo("Etc/GMT+3")
+            hint = capture(LOCAL, OCEAN, FIX)
+            tagged = capture(LOCAL, OCEAN, FIX, tag="-03:00")
+            place_only = capture(LOCAL, OCEAN, None)
+        zoneinfo.ZoneInfo.clear_cache()
+        restored_from_tzdata = capture(LOCAL, OCEAN, FIX)["utcOffsetMinutes"]
     finally:
         zoneinfo.reset_tzpath(to=original)
         zoneinfo.ZoneInfo.clear_cache()
@@ -975,8 +988,35 @@ def test_without_the_systems_zone_database_the_label_says_the_data_is_unavailabl
     assert place_only["source"]["basis"] == {"placeTimeZone": "time_zone_data_unavailable", "gpsTimeStamp": "no_usable_time_stamp"}
     assert tagged["utcOffsetMinutes"] == -180
     assert tagged["source"]["basis"]["placeTimeZone"] == "time_zone_data_unavailable"
-    # Nothing is left behind for the next test
+    # Nothing is left behind for the next test, even when TZPATH itself holds no zone files
+    assert restored_from_tzdata == -180
     assert zoneinfo.TZPATH == original and capture(LOCAL, OCEAN, FIX)["utcOffsetMinutes"] == -180
+
+
+# The IANA release the tzdata package uv.lock pins carries (docs/architecture/THIRD_PARTY.md records it)
+TZDATA_IANA_VERSION = "2026f"
+
+
+def test_without_the_systems_zone_database_the_tzdata_package_gives_the_zone(tmp_path: Path) -> None:
+    """The app carries the zone database as the tzdata package (unit capture-time-5). With the system's pointed at an
+    empty folder, as on a machine without it, zoneinfo falls back to the package, and the same photo gets its zone's
+    offset from the package's own data."""
+    import zoneinfo
+
+    import tzdata
+
+    original = zoneinfo.TZPATH
+    zoneinfo.reset_tzpath(to=[str(tmp_path)])
+    zoneinfo.ZoneInfo.clear_cache()
+    try:
+        offset = zoneinfo.ZoneInfo("Etc/GMT+3").utcoffset(LOCAL)
+        hint = capture(LOCAL, OCEAN, FIX)
+    finally:
+        zoneinfo.reset_tzpath(to=original)
+        zoneinfo.ZoneInfo.clear_cache()
+    assert offset == timedelta(hours=-3)
+    assert hint["utcOffsetMinutes"] == -180 and hint["source"]["basis"]["placeTimeZone"] == "agrees"
+    assert tzdata.IANA_VERSION == TZDATA_IANA_VERSION
 
 
 def test_a_position_the_file_holds_but_cannot_be_used_is_labelled_as_no_usable_position() -> None:

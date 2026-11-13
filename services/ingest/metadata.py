@@ -35,7 +35,6 @@ from typing import Any, Optional, Sequence
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from PIL import Image
-import tzfpy
 
 from services.contracts.ingest import (
     EXIF_ORIENTATIONS,
@@ -516,7 +515,12 @@ def _exif_time(exif_ifd: Any, gps: Any) -> Optional[dict]:
 def place_time_zones(lat_deg: float, lon_deg: float) -> tuple[str, ...]:
     """The time zones of the boundary data whose area holds the point (tzfpy's polygon-exact `get_tzs`; more than
     one on a shared border), sorted; at sea, the nautical zone (Etc/GMT+N) the data draws there. Empty only where
-    no zone of the data holds the point."""
+    no zone of the data holds the point. tzfpy is imported here, when a place is first looked up, so a host it does
+    not install on still starts: there this raises NoPlaceOffset("place_lookup_unavailable")."""
+    try:
+        import tzfpy
+    except ImportError:
+        raise NoPlaceOffset("place_lookup_unavailable") from None
     return tuple(sorted(tzfpy.get_tzs(lon_deg, lat_deg)))
 
 
@@ -531,9 +535,9 @@ class NoPlaceOffset(Exception):
 def place_offsets(lat_deg: float, lon_deg: float, local: datetime) -> tuple[int, ...]:
     """Every UTC offset, in whole minutes, that the time zones at the point give the local wall time `local` (a naive
     datetime), from `zoneinfo`: both readings of a wall time a clock change repeats or skips, sorted, each once. Raises
-    NoPlaceOffset with its cause: no zone holds the point, a zone it lies in cannot be loaded (the system's zone
-    database is missing or lacks it), or an offset there is no whole number of minutes (none is left out, since the
-    one left would then look like the place's only offset)."""
+    NoPlaceOffset with its cause: the place lookup cannot be imported, no zone holds the point, a zone it lies in
+    cannot be loaded (neither the system's zone database nor the tzdata package holds it), or an offset there is no
+    whole number of minutes (none is left out, since the one left would then look like the place's only offset)."""
     names = place_time_zones(lat_deg, lon_deg)
     if not names:
         raise NoPlaceOffset("outside_every_time_zone")

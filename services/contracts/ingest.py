@@ -105,9 +105,9 @@ UTC_OFFSET_LIMIT_MINUTES = 840
 # says where it came from and what each GPS source said: against the offset tag when there is one, else against each
 # other. Each label names its cause: no_usable_position and no_usable_time_stamp (none in the file, malformed, a
 # position at (0, 0), or a fix dated on the calendar's first or last day; a fix the receiver marked void gives no
-# basis at all); outside_every_time_zone (no zone of the
-# boundary data holds the point); time_zone_data_unavailable (the system's zone database could not load a zone the
-# point lies in); no_whole_minute_offset (an offset at the place then was not a whole number of minutes, as before
+# basis at all); place_lookup_unavailable (the boundary data's package, tzfpy, cannot be imported on this host);
+# outside_every_time_zone (no zone of the boundary data holds the point); time_zone_data_unavailable (neither the
+# system's zone database nor the tzdata package could load a zone the point lies in); no_whole_minute_offset (an offset at the place then was not a whole number of minutes, as before
 # standard time); more_than_one_offset (the place offers more than one offset at the local time: two zones at a
 # border, or a wall time a clock change repeats or skips; a fix as old as their difference would agree with the wrong
 # one, so nothing is derived); unchecked (nothing to check it against). Absent: no usable GPS position and no usable
@@ -120,14 +120,15 @@ GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC = 300
 TIME_STAMP_RESOLUTION_SEC = 1
 CAPTURE_TIME_UNCERTAINTY_LIMIT_SEC = TIME_STAMP_RESOLUTION_SEC + GPS_TIME_STAMP_LEFTOVER_LIMIT_SEC
 CAPTURE_OFFSET_SOURCES = ("offset_tag", "place_time_zone_agrees_with_gps_time_stamp")
-PLACE_TIME_ZONE_CHECKS = ("agrees", "disagrees", "unchecked", "no_usable_position", "outside_every_time_zone",
-                          "time_zone_data_unavailable", "no_whole_minute_offset", "more_than_one_offset")
+PLACE_TIME_ZONE_CHECKS = ("agrees", "disagrees", "unchecked", "no_usable_position", "place_lookup_unavailable",
+                          "outside_every_time_zone", "time_zone_data_unavailable", "no_whole_minute_offset",
+                          "more_than_one_offset")
 GPS_TIME_STAMP_CHECKS = ("agrees", "disagrees", "unchecked", "no_usable_time_stamp")
 # The (placeTimeZone, gpsTimeStamp) pairs each offset source allows; None: no offset was found
 CAPTURE_TIME_BASIS_PAIRS: dict[Optional[str], frozenset[tuple[str, str]]] = {
     "offset_tag": frozenset(
         (place, gps)
-        for place in ("agrees", "disagrees", "no_usable_position", "outside_every_time_zone",
+        for place in ("agrees", "disagrees", "no_usable_position", "place_lookup_unavailable", "outside_every_time_zone",
                       "time_zone_data_unavailable", "no_whole_minute_offset")
         for gps in ("agrees", "disagrees", "no_usable_time_stamp")
         if (place, gps) != ("no_usable_position", "no_usable_time_stamp")
@@ -139,6 +140,8 @@ CAPTURE_TIME_BASIS_PAIRS: dict[Optional[str], frozenset[tuple[str, str]]] = {
         ("no_usable_position", "unchecked"),
         ("outside_every_time_zone", "unchecked"),
         ("outside_every_time_zone", "no_usable_time_stamp"),
+        ("place_lookup_unavailable", "unchecked"),
+        ("place_lookup_unavailable", "no_usable_time_stamp"),
         ("time_zone_data_unavailable", "unchecked"),
         ("time_zone_data_unavailable", "no_usable_time_stamp"),
         ("no_whole_minute_offset", "unchecked"),
@@ -872,6 +875,30 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
                                                    "basis": {"placeTimeZone": "more_than_one_offset", "gpsTimeStamp": "disagrees"}}},
         "the GPS time stamp is not checked against a place that offers more than one offset")
+    # Every disallowed combination for place_lookup_unavailable (unit capture-time-5): neither a GPS time stamp label,
+    # nor paired with agrees/disagrees when no offset tag is present, nor unchecked against an offset tag, nor used to
+    # derive an offset from the place's time zone
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "place_lookup_unavailable", "gpsTimeStamp": "place_lookup_unavailable"}}},
+        "the GPS time stamp says nothing of the place lookup")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "place_lookup_unavailable", "gpsTimeStamp": "agrees"}}},
+        "without the place lookup or an offset tag there is nothing for the GPS time stamp to agree with")
+    bad("CaptureTimeHint", {**zoneless, "source": {"container": "exif", "tags": stamp_tags,
+                                                   "basis": {"placeTimeZone": "place_lookup_unavailable", "gpsTimeStamp": "disagrees"}}},
+        "without the place lookup or an offset tag there is nothing for the GPS time stamp to disagree with")
+    bad("CaptureTimeHint", {**zoned_capture, "source": {"container": "exif", "tags": tag_stamps, "basis": {
+        "offsetSource": "offset_tag", "placeTimeZone": "place_lookup_unavailable", "gpsTimeStamp": "unchecked"}}},
+        "an offset tag is checked against a usable GPS time stamp even without the place lookup")
+    for gps in GPS_TIME_STAMP_CHECKS:
+        derived_basis: dict[str, Any] = {"offsetSource": "place_time_zone_agrees_with_gps_time_stamp",
+                                         "placeTimeZone": "place_lookup_unavailable", "gpsTimeStamp": gps}
+        if gps == "agrees":
+            derived_basis["uncertaintySec"] = TIME_STAMP_RESOLUTION_SEC
+        bad("CaptureTimeHint", {**zoned_capture, "source": {
+            "container": "exif", "tags": ["DateTimeOriginal"] if gps == "no_usable_time_stamp" else stamp_tags,
+            "basis": derived_basis}},
+            f"a zone worked out needs the place lookup ({gps})")
     # A file's own offset not applied, from one table: the EXIF and the clip form, the local time window's inside
     # ends and a millisecond out, and each rule the cause must keep (unit capture-time-2)
     not_applied = {"localDateTime": "9999-12-31T21:00:00", "utcOffsetMinutes": None, "utc": None, "marks": "recorded",

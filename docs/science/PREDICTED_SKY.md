@@ -51,9 +51,11 @@ was lined up from. [tested]
   `place_time_zone_agrees_with_gps_time_stamp`, with the instant's stated uncertainty in whole seconds: the second a
   tagged photo's EXIF time counts, plus how far the camera's clock and the GPS time stamp differ, rounded up.
   Otherwise nothing is derived, and the record's capture time says why, each label naming its cause [tested]:
-  - `placeTimeZone`: `no_usable_position` (none in the file, malformed, or at (0, 0)); `outside_every_time_zone` (no
-    zone of the boundary data holds the point); `time_zone_data_unavailable` (the system's zone database, which
-    `zoneinfo` reads, could not load a zone the point lies in, as on a machine without it); `no_whole_minute_offset`
+  - `placeTimeZone`: `no_usable_position` (none in the file, malformed, or at (0, 0)); `place_lookup_unavailable`
+    (the boundary data's package, tzfpy, cannot be imported on this host, which still starts);
+    `outside_every_time_zone` (no zone of the boundary data holds the point); `time_zone_data_unavailable`
+    (`zoneinfo` could load a zone the point lies in neither from the system's zone database nor from the `tzdata`
+    package the app carries); `no_whole_minute_offset`
     (an offset at the place then was not a whole number of minutes, as before standard time); `more_than_one_offset`
     (the place offers more than one offset at the local time: two zones at a border point, or a wall time a clock
     change repeats or skips); `unchecked` (no usable GPS time stamp to check it against).
