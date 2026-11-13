@@ -14,7 +14,8 @@ import ts from 'typescript';
  * :not(), :has(), in a nested rule). Rules inside a keyframes block are skipped by their parent's node (a stop is never a
  * class; an invalid class there styles nothing). One place, refusalOf, decides for every at-rule and every selector
  * node whether the guard reads it, and the default is refusal: it reads only the at-rules the stylesheets use today
- * (AT_RULES_READ: @import, @keyframes and @media, each with the only preludes it may hold) and the selector node kinds
+ * (AT_RULES_READ: @font-face, @import, @keyframes and @media, each with the only preludes it may hold) and the selector
+ * node kinds
  * it walks; a selector function in any prelude, in any case, an attribute selector on class and a custom selector are
  * refused by name, and so is a string run across a raw line end (postcss's own tokens show it). Each refusal is one
  * sentence naming the form, the file and the rule, and saying what to do instead. index.html's <style> elements are
@@ -64,6 +65,7 @@ const MEDIA_FEATURES = [
  * here first.
  */
 export const AT_RULES_READ: ReadonlyMap<string, { holds: string; reads: (prelude: string) => boolean }> = new Map([
+  ['font-face', { holds: 'nothing (its rule has no prelude)', reads: (prelude: string) => prelude === '' }],
   [
     'import',
     {

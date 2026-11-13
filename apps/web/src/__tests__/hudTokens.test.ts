@@ -78,9 +78,9 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
+/** Every link in the page, noscript copies included, that asks a font host for a stylesheet. */
 function fontLinkHrefs(html: string): string[] {
-  const outsideNoscript = html.replace(/<noscript>[\s\S]*?<\/noscript>/gi, '');
-  return (outsideNoscript.match(/<link\b[^>]*>/gi) ?? [])
+  return (html.match(/<link\b[^>]*>/gi) ?? [])
     .map((tag) => tag.match(/\bhref\s*=\s*"([^"]*)"/i)?.[1] ?? '')
     .filter((href) => href.startsWith('https://fonts.googleapis.com/css2'));
 }
@@ -117,13 +117,14 @@ describe('albedian.css takes its type from the HUD tokens', () => {
 });
 
 describe('index.html loads Geist and nothing retired', () => {
-  it('asks the font host for exactly Geist and Geist Mono, swapped in', () => {
-    const hrefs = fontLinkHrefs(indexHtml);
-    expect(hrefs.length).toBe(1);
-    const url = new URL((hrefs[0] ?? '').replace(/&amp;/g, '&'));
-    const families = url.searchParams.getAll('family').map((family) => family.split(':')[0]);
+  // Until web-fonts-1 index.html asked a font host for Geist; the app now serves its own faces (styles/fonts.css,
+  // held whole by fontsRecord.test.ts), so the page asks no font host and the stacks lead with the faces it serves.
+  it("asks no font host; the stacks lead with the app's own faces, Geist and Geist Mono", () => {
+    expect(fontLinkHrefs(indexHtml)).toEqual([]);
+    expect(indexHtml).not.toMatch(/fonts\.(googleapis|gstatic)\.com/i);
+    const fontsCss = withoutComments(read(path.join(srcRoot, 'styles/fonts.css')));
+    const families = [...fontsCss.matchAll(/@font-face\s*\{[^}]*font-family:\s*'([^']+)'/g)].map((m) => m[1]);
     expect(families).toEqual(['Geist', 'Geist Mono']);
-    expect(url.searchParams.get('display')).toBe('swap');
     expect(HUD_FONTS.sans.startsWith(`'${families[0]}',`)).toBe(true);
     expect(HUD_FONTS.mono.startsWith(`'${families[1]}',`)).toBe(true);
   });

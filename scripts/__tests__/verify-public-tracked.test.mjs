@@ -261,7 +261,12 @@ describe('the public folder check', () => {
 
   it('runs first in the web build, before anything is compiled or copied', () => {
     const web = JSON.parse(readFileSync(path.join(repoRoot, 'apps/web/package.json'), 'utf8'));
-    expect(web.scripts.build).toBe('node ../../scripts/verify-public-tracked.mjs && tsc --noEmit && vite build');
+    // The step after vite build, the built page's own check, is held by check-built-page.test.mjs.
+    expect(web.scripts.build.split(' && ').slice(0, 3)).toEqual([
+      'node ../../scripts/verify-public-tracked.mjs',
+      'tsc --noEmit',
+      'vite build',
+    ]);
   });
 
   it('fails outside a git checkout, since it cannot tell what the build would ship', () => {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
-    "build": "node ../../scripts/verify-public-tracked.mjs && tsc --noEmit && vite build",
+    "build": "node ../../scripts/verify-public-tracked.mjs && tsc --noEmit && vite build && node ../../scripts/check-built-page.mjs dist",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

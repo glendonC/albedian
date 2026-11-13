@@ -34,6 +34,7 @@ import {
   type SpeechRecognitionLike,
 } from './voice/speechInput.js';
 import type { HomeRefusal } from './components/homeRefusal.js';
+import './styles/fonts.css';
 import './styles/albedian.css';
 
 /**

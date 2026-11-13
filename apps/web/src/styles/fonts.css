@@ -1,0 +1,18 @@
+/* Geist and Geist Mono, served by the app itself (public/fonts/geist, with their licence and provenance record):
+   the release's variable web fonts, every weight in one file each. Swapped in when loaded, as the outside host's
+   stylesheet asked (display=swap), so the first paint never waits for them. */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/geist/Geist-wght.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/geist/GeistMono-wght.woff2') format('woff2');
+}

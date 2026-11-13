@@ -870,6 +870,36 @@
       "licence": "CC-BY-NC-3.0-IGO",
       "licenceUrl": "https://www.cosmos.esa.int/web/gaia-users/license",
       "source": "ESA Gaia bulk repository: the Gaia EDR3 to Hipparcos-2 best-neighbour table (Marrese et al.), 99,525 rows, fetched 2026-11-12T14:56:41Z; its MD5 equals the folder's _MD5SUM.txt. ESA's DR3 bulk readme says the EDR3 cross-matches are valid for DR3. Gaia data are distributed under CC BY-NC 3.0 IGO, credit ESA/Gaia/DPAC; commercial use needs ESA's prior authorisation. Baked by scripts/bake_star_designations.py."
+    },
+    {
+      "path": ".cache/geist-font/v1.9.2/Geist-wght.woff2",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/vercel/geist-font/ef2597cfc42f4797676df105517ccc0a1cfa6569/fonts/Geist/webfonts/Geist%5Bwght%5D.woff2",
+      "bytes": 69760,
+      "sha256": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+      "licence": "OFL-1.1",
+      "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), fonts/Geist/webfonts/Geist[wght].woff2, the variable web font of Geist (every weight). Served byte for byte as apps/web/public/fonts/geist/Geist-wght.woff2. The release's zip asset holds a copy that differs (69,488 bytes); the tag's was chosen by comparing the renderings (lead, 2026-11-13)."
+    },
+    {
+      "path": ".cache/geist-font/v1.9.2/GeistMono-wght.woff2",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/vercel/geist-font/ef2597cfc42f4797676df105517ccc0a1cfa6569/fonts/GeistMono/webfonts/GeistMono%5Bwght%5D.woff2",
+      "bytes": 71596,
+      "sha256": "afaacc4c5fbba89d2ebf7a02dc4070208540874592a5504d57175782fe893101",
+      "licence": "OFL-1.1",
+      "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), fonts/GeistMono/webfonts/GeistMono[wght].woff2, the variable web font of Geist Mono (every weight). Served byte for byte as apps/web/public/fonts/geist/GeistMono-wght.woff2. The release's zip asset holds a copy that differs (71,212 bytes)."
+    },
+    {
+      "path": ".cache/geist-font/v1.9.2/OFL.txt",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/vercel/geist-font/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "bytes": 4384,
+      "sha256": "021caa749f89fecd7c2e40a50499de29e84d2bc19251659b47d499c2fbfffc17",
+      "licence": "OFL-1.1",
+      "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), OFL.txt, the release's licence text (the same bytes as in the release's zip asset): SIL Open Font License 1.1, copyright 2026 The Geist Project Authors, no Reserved Font Name declared. Served byte for byte beside the fonts as apps/web/public/fonts/geist/OFL.txt."
     }
   ]
 }

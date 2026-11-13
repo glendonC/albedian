@@ -135,7 +135,7 @@ describe('the stylesheet side: postcss and postcss-selector-parser', () => {
     ['L: a comment end searched early', '/*/ .a { } */ .b { }', ['b']],
     ['L: an unquoted @import url with a semicolon', '@import url(a;b.css); .real { }', 'refused'],
     ['L: nth-last-of-type', '.a:nth-last-of-type(2) { }', ['a']],
-    ['L: a rule inside @font-face (not used)', '@font-face { .a { } }', 'refused'],
+    ['L: a rule inside @font-face', '@font-face { .a { } }', ['a']],
     ['L: a keyframe stop not at its start', '@keyframes k { foo from { } }', []],
     ['a line end escaped with a backslash inside a string, read as CSS reads it', '.a { content: "x\\\ny"; } .b { }', ['a', 'b']],
     // Every line end CSS knows, escaped: CR LF is one line end, so a backslash before it escapes both
@@ -162,8 +162,9 @@ describe('a form the guard does not read is refused by one sentence, never passe
     }
   };
   const OFF_LIST = (rule: string) =>
-    `styles/x.css: "${rule}" is an at-rule the guard does not read (the stylesheets use only @import, @keyframes and @media); teach classGuard.ts to read it, or write its rules without it.`;
+    `styles/x.css: "${rule}" is an at-rule the guard does not read (the stylesheets use only @font-face, @import, @keyframes and @media); teach classGuard.ts to read it, or write its rules without it.`;
   const HOLDS: Record<string, string> = {
+    'font-face': 'nothing (its rule has no prelude)',
     import: "one quoted path to a stylesheet beside it ('./name.css') and nothing after it",
     keyframes: 'one name',
     media: 'media features joined by "and": a width or height in px, hover, pointer or prefers-reduced-motion',
@@ -196,7 +197,6 @@ describe('a form the guard does not read is refused by one sentence, never passe
     ['an at-rule nobody listed', '@frobnicate (x) { .a { } }', OFF_LIST('@frobnicate (x)')],
     // Every at-rule off the list, used or not elsewhere, by the one sentence
     ['@supports with a property', '@supports (display: grid) { .a { } }', OFF_LIST('@supports (display: grid)')],
-    ['@font-face', '@font-face { font-family: x; }', OFF_LIST('@font-face')],
     ['@charset', '@charset "UTF-8";', OFF_LIST('@charset "UTF-8"')],
     ['@layer', '@layer base { .a { } }', OFF_LIST('@layer base')],
     ['@container', '@container (min-width: 1px) { .a { } }', OFF_LIST('@container (min-width: 1px)')],
@@ -220,6 +220,7 @@ describe('a form the guard does not read is refused by one sentence, never passe
     ['@import from another folder', "@import '../a.css';", PRELUDE("@import '../a.css'", 'import')],
     ['@import of a file that is no stylesheet', "@import './a.js';", PRELUDE("@import './a.js'", 'import')],
     ['@keyframes named by a string', '@keyframes "k" { from { } }', PRELUDE('@keyframes "k"', 'keyframes')],
+    ['@font-face with a prelude', '@font-face geist { font-family: x; }', PRELUDE('@font-face geist', 'font-face')],
     ['@keyframes with two names', '@keyframes a b { from { } }', PRELUDE('@keyframes a b', 'keyframes')],
     // The media forms the reader found loose, each pinned: a value hover or pointer does not take, a word other than and
     ['hover with a value it does not take', '@media (hover: maybe) { .a { } }', PRELUDE('@media (hover: maybe)', 'media')],
@@ -267,8 +268,9 @@ describe('a form the guard does not read is refused by one sentence, never passe
   });
 
   it('reads exactly the at-rules the stylesheets use today, each in every form it is written in', () => {
-    expect([...AT_RULES_READ.keys()]).toEqual(['import', 'keyframes', 'media']);
+    expect([...AT_RULES_READ.keys()]).toEqual(['font-face', 'import', 'keyframes', 'media']);
     const TODAY = [
+      "@font-face { font-family: 'Geist'; src: url('/fonts/geist/Geist-wght.woff2') format('woff2'); }",
       "@import './hud-tokens.css';",
       '@import "./hud-tokens.css";',
       '@keyframes alb-ask-palette-in { from { } to { } }',
@@ -291,7 +293,7 @@ describe('a form the guard does not read is refused by one sentence, never passe
       });
       return rules;
     });
-    expect([...new Set(used)].sort()).toEqual(['import', 'keyframes', 'media']);
+    expect([...new Set(used)].sort()).toEqual(['font-face', 'import', 'keyframes', 'media']);
     expect(refusedBy('a[href$=".pdf"] .c:hover::before, #i > .d + .e ~ .f { }')).toBeNull();
   });
 });

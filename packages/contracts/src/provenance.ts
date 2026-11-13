@@ -21,7 +21,8 @@ export const ASSET_PROVENANCE_RECORD_FILENAME = 'PROVENANCE.json';
 
 /**
  * SPDX License List identifiers a record may name, each checked at https://spdx.org/licenses/
- * (License List 3.29.0, 2026-09-16; ODbL-1.0 and BSD-3-Clause on their pages on 2026-11-04).
+ * (License List 3.29.0, 2026-09-16; ODbL-1.0 and BSD-3-Clause on their pages on 2026-11-04; OFL-1.1, "SIL Open
+ * Font License 1.1", on its page on 2026-11-13).
  * Terms without a listed identifier use the SPDX form `LicenseRef-<name>` with a URL to the
  * terms. Add an identifier only after checking it there, on both sides of the contract.
  */
@@ -35,6 +36,7 @@ export const SPDX_LICENSE_IDS = [
   'MIT',
   'Apache-2.0',
   'BSD-3-Clause',
+  'OFL-1.1',
 ] as const;
 export type SpdxLicenseId = (typeof SPDX_LICENSE_IDS)[number];
 

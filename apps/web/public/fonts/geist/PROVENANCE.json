@@ -1,0 +1,57 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "geist-font-v1.9.2",
+      "title": "Geist and Geist Mono, variable web fonts, release v1.9.2",
+      "url": "https://github.com/vercel/geist-font/releases/tag/v1.9.2",
+      "version": "v1.9.2 (git commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06)",
+      "retrieved": "2026-11-13",
+      "license": {
+        "spdx": "OFL-1.1",
+        "name": "SIL Open Font License 1.1",
+        "url": "https://openfontlicense.org",
+        "conditions": "The fonts may be used, bundled, embedded and redistributed with the app, never sold by themselves; the copyright notice and the licence travel with every copy: it is OFL.txt beside this record, served with the app at /fonts/geist/OFL.txt. No Reserved Font Name is declared."
+      },
+      "credit": "Geist",
+      "note": "Copyright 2026 The Geist Project Authors (OFL.txt). The files are the release tag's own, fetched from raw.githubusercontent.com at the tag's commit by scripts/fetch_download.py and pinned in data/downloads.json; the release's zip asset holds web fonts that differ by a few hundred bytes, which build is newer could not be read without a font tool, and the renderings were compared before choosing."
+    }
+  ],
+  "files": [
+    {
+      "path": "Geist-wght.woff2",
+      "sha256": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The tag's fonts/Geist/webfonts/Geist[wght].woff2, byte for byte: Geist, every weight (the app uses 300 to 600)."
+    },
+    {
+      "path": "GeistMono-wght.woff2",
+      "sha256": "afaacc4c5fbba89d2ebf7a02dc4070208540874592a5504d57175782fe893101",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The tag's fonts/GeistMono/webfonts/GeistMono[wght].woff2, byte for byte: Geist Mono, every weight (the app uses 400 and 500)."
+    },
+    {
+      "path": "OFL.txt",
+      "sha256": "021caa749f89fecd7c2e40a50499de29e84d2bc19251659b47d499c2fbfffc17",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The release's licence text, byte for byte (the same in the tag and in the release's zip). It must travel with the fonts."
+    }
+  ],
+  "fileSets": []
+}

@@ -11,7 +11,8 @@
     "ODbL-1.0",
     "MIT",
     "Apache-2.0",
-    "BSD-3-Clause"
+    "BSD-3-Clause",
+    "OFL-1.1"
   ],
   "patterns": {
     "id": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",

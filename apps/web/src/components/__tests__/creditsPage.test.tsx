@@ -77,10 +77,9 @@ describe('creditRows: rows by what a person sees, every source credited from the
       ['Icons', true],
     ]);
     expect(CREDIT_ROWS.slice(4).every((r) => !r.approved)).toBe(true);
-    // Type has no record yet (the font comes in web-fonts-1), so it is not shown until one credits it
-    expect(rows.map((r) => r.name).slice(0, 3)).toEqual(['Milky Way photograph', 'Star catalogs', 'Icons']);
-    expect(rowNamed('Type')).toBeUndefined();
-    expect(rows.map((r) => r.name)).toEqual(CREDIT_ROWS.map((r) => r.name).filter((name) => name !== 'Type'));
+    // Every row is shown, Type among the approved four now that the app serves its own font with a record
+    expect(rows.map((r) => r.name)).toEqual(CREDIT_ROWS.map((r) => r.name));
+    expect(rowNamed('Type')?.blocks.map((b) => [b.credits, b.licences.map((l) => l.name)])).toEqual([[['Geist'], ['SIL Open Font License 1.1']]]);
   });
 
   it("credits every source on its row, in the record's own words", () => {
@@ -181,6 +180,7 @@ describe('creditRows: rows by what a person sees, every source credited from the
   it('links each notice a record serves beside its files from that source\'s row, and only those', () => {
     const linked = rows.flatMap((r) => r.blocks.flatMap((b) => b.notices.map((n) => [r.name, n.name, n.href])));
     expect(linked).toEqual([
+      ['Type', 'Notice', '/fonts/geist/OFL.txt'],
       ['Icons', 'Notice', '/notices/phosphor/LICENSE'],
       ['Constellations', 'Notice', '/catalog/constellations/LICENSE'],
       ['Unicode character data', 'Notice', '/notices/unicode/UNICODE-LICENSE.txt'],
@@ -196,7 +196,7 @@ describe('creditRows: rows by what a person sees, every source credited from the
     const walk = (dir: string): string[] =>
       fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
     const named = walk(publicRoot)
-      .filter((file) => /licen[cs]e|notice/i.test(path.basename(file)))
+      .filter((file) => /licen[cs]e|notice|^ofl\./i.test(path.basename(file)))
       .map((file) => `/${path.relative(publicRoot, file).split(path.sep).join('/')}`);
     expect(named.sort()).toEqual(linked.map(([, , href]) => href).sort());
     // The constellation notice serves both d3-celestial sources
