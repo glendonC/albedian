@@ -150,8 +150,10 @@ never half written.
 **User Story:** As the owner, when the solver improves I want my old uploads found and solved again, not served an old
 answer as if it were current.
 - **Acceptance Criteria:**
-  1. Every job SHALL record its producer: a name and a revision number, which a unit raises when it changes results
-     [decided 2026-11-11].
+  1. Every job that started SHALL record its producer, the name and revision of the runner that took it: a name and
+     a revision number, which a unit raises when it changes results [decided 2026-11-11]; a job that never started
+     SHALL have none [decided 2026-11-13: a producer names the code that made a job's result, and a job that never
+     ran has none].
   2. A guard test SHALL pin a digest of each producer's source files with its revision, and SHALL fail when the
      digest changes unless the same commit raises the revision or deliberately updates the pinned digest
      [decided 2026-11-11: nobody forgets to raise it, and a comment edit does not rerun every stored solve].

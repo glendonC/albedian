@@ -6,7 +6,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
 
 - [x] 0. platform-0: this spec (docs only), with the lead's seven rulings written in.
 
-- [ ] 1. platform-1: the job contract (REQ-JOB-2, 3, 4, 5.8, 6; P-JOB-9) [decided 2026-11-11: this lane's unit]
+- [x] 1. platform-1: the job contract (REQ-JOB-2, 3, 4, 5.8, 6; P-JOB-9) [decided 2026-11-11: this lane's unit]
   - `packages/contracts/src/ingest.ts`, `services/contracts/ingest.py`, `build_ingest_samples` and
     `tests/fixtures/ingest_contract.json`, the TS and Python contract tests, `scripts/verify-contracts.mjs` (3.8).
   - After contracts-1, which edits the same two files for finite numbers and calendar days. It types the media

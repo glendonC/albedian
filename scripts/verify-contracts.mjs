@@ -36,6 +36,7 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'IngestReceiptSchema',
   'JobStageProgressSchema',
   'SolveJobSchema',
+  'UploadJobSchema',
   'VoiceCommandRequestSchema',
   'VoiceCommandResponseSchema',
   'VoiceAnswerSchema',

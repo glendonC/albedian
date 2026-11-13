@@ -187,6 +187,9 @@ export const SolveJobSchema = z
     startedAtUTC: utcInstant().optional(),
     finishedAtUTC: utcInstant().optional(),
     stages: z.array(JobStageProgressSchema),
+    // Today's code writes `sol_` and the hash's first 16 hex characters (REQ-JOB-5.8); the rule stays a label,
+    // as the web's tests give a solve job a solution fixture's id of another form (no stored record held one,
+    // counted 2026-11-13)
     solutionId: label().optional(),
     error: z.string().min(1).max(2000).optional(),
   })
@@ -202,8 +205,9 @@ export const SolveJobSchema = z
       queued: !has.started && !has.finished && !has.solution && !has.error,
       running: has.started && !has.finished && !has.solution && !has.error,
       succeeded: has.started && has.finished && has.solution && !has.error,
-      failed: has.finished && has.error && !has.solution,
-      canceled: has.finished && !has.solution && !has.error,
+      failed: has.started && has.finished && has.error && !has.solution,
+      // No field holds a cancel time, so a canceled SolveJob is one canceled before it started
+      canceled: !has.started && has.finished && !has.solution && !has.error,
     };
     if (!rules[job.state]) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['state'], message: `fields do not fit a ${job.state} job` });

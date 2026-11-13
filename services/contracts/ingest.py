@@ -416,6 +416,9 @@ class SolveJob(_Model):
     started_at_utc: Optional[UtcInstant] = Field(default=None, alias="startedAtUTC")
     finished_at_utc: Optional[UtcInstant] = Field(default=None, alias="finishedAtUTC")
     stages: list[JobStageProgress]
+    # Today's code writes `sol_` and the hash's first 16 hex characters (REQ-JOB-5.8); the rule stays a label,
+    # as the web's tests give a solve job a solution fixture's id of another form (no stored record held one,
+    # counted 2026-11-13)
     solution_id: Optional[Label] = None
     error: Optional[Annotated[str, StringConstraints(min_length=1, max_length=2000)]] = None
 
@@ -427,8 +430,9 @@ class SolveJob(_Model):
             "queued": not started and not finished and not solution and not error,
             "running": started and not finished and not solution and not error,
             "succeeded": started and finished and solution and not error,
-            "failed": finished and error and not solution,
-            "canceled": finished and not solution and not error,
+            "failed": started and finished and error and not solution,
+            # No field holds a cancel time, so a canceled SolveJob is one canceled before it started
+            "canceled": not started and finished and not solution and not error,
         }
         if not rules[self.state]:
             raise ValueError(f"fields do not fit a {self.state} job")
@@ -636,15 +640,16 @@ def build_ingest_samples() -> dict[str, Any]:
              {"stage": "decode", "unit": "frames", "done": 12, "total": 36},
              {"stage": "solve", "unit": "steps", "done": 0, "total": None}]},
         {"id": "job_0a1b2c3d4e5f6071", "sourceAssetSha256": sha, "state": "succeeded", "createdAtUTC": "2031-05-02T19:20:00Z",
-         "startedAtUTC": "2031-05-02T19:20:01.250Z", "finishedAtUTC": "2031-05-02T19:20:41Z", "solutionId": "sol-primary", "stages": [
+         "startedAtUTC": "2031-05-02T19:20:01.250Z", "finishedAtUTC": "2031-05-02T19:20:41Z", "solutionId": f"sol_{sha[:16]}", "stages": [
              {"stage": "decode", "unit": "frames", "done": 36, "total": 36},
              {"stage": "detect", "unit": "frames", "done": 36, "total": 36},
              {"stage": "solve", "unit": "candidates", "done": 1200, "total": 1200},
              {"stage": "verify", "unit": "steps", "done": 1, "total": 1}]},
         {"id": "job_0a1b2c3d4e5f6071", "sourceAssetSha256": sha, "state": "failed", "createdAtUTC": "2031-05-02T19:20:00Z",
-         "finishedAtUTC": "2031-05-02T19:20:00.400Z", "error": "The decoder could not read the file.", "stages": []},
+         "startedAtUTC": "2031-05-02T19:20:00.100Z", "finishedAtUTC": "2031-05-02T19:20:00.400Z",
+         "error": "The decoder could not read the file.", "stages": []},
         {"id": "job_0a1b2c3d4e5f6071", "sourceAssetSha256": sha, "state": "canceled", "createdAtUTC": "2031-05-02T19:20:00Z",
-         "startedAtUTC": "2031-05-02T19:20:01Z", "finishedAtUTC": "2031-05-02T19:20:05Z", "stages": []},
+         "finishedAtUTC": "2031-05-02T19:20:05Z", "stages": []},
     ]
 
     def with_(base: dict, path: list, value: Any) -> dict:
@@ -801,6 +806,9 @@ def build_ingest_samples() -> dict[str, Any]:
     bad("SolveJob", with_(jobs[1], ["startedAtUTC"], _DROP), "a running job has a start time")
     bad("SolveJob", with_(jobs[2], ["solutionId"], _DROP), "a succeeded job names its solution")
     bad("SolveJob", with_(jobs[3], ["error"], _DROP), "a failed job says why")
+    bad("SolveJob", with_(jobs[3], ["startedAtUTC"], _DROP), "a failed job had started")
+    bad("SolveJob", with_(jobs[4], ["startedAtUTC"], "2031-05-02T19:20:01Z"),
+        "a canceled job holds no start, as nothing holds its cancel time")
     bad("SolveJob", with_(jobs[4], ["solutionId"], "sol-primary"), "a canceled job has no solution")
     bad("SolveJob", with_(jobs[2], ["finishedAtUTC"], "2031-05-02T19:20:01Z"), "finished before it started")
     bad("SolveJob", with_(jobs[1], ["startedAtUTC"], "2031-05-02T19:19:59Z"), "started before it was created")

@@ -268,8 +268,8 @@ def test_pbt_ingest_2_job_records_obey_their_state_rules(
         "queued": not started and not finished and not solution and not error,
         "running": started and not finished and not solution and not error,
         "succeeded": started and finished and solution and not error,
-        "failed": finished and error and not solution,
-        "canceled": finished and not solution and not error,
+        "failed": started and finished and error and not solution,
+        "canceled": not started and finished and not solution and not error,
     }
     in_order = (not started or order != "started-before-created") and (
         not (started and finished) or order != "finished-before-started"

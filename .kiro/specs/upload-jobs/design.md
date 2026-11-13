@@ -151,7 +151,8 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   makes each `createdAtUTC` at least one millisecond after the previous one (the contract's resolution, `format_utc`
   in `services/contracts/ingest.py:100-104`), so the order is total [proposed].
 - **Reads.** `read_job(path)` parses and checks the record; a record that fails is reported as unreadable (never
-  served, never rewritten). Today's `job.json` is upgraded in memory only: `kind: "solve"`, no `producer`.
+  served, never rewritten). Today's `job.json` is judged by `SolveJob`, today's contract, and served as it is: it
+  has no producer, could not have had one, and is never given one [decided 2026-11-13].
   `read_solution(job)` reads `solutions/<job_id>.json` (or `solution.json` for today's records) and checks it with
   `parse_observation_solution` (contracts-1); it fails closed. `newest_solution_id(sha)` serves the restoration's
   manifest (restoration design section 12).
@@ -342,24 +343,29 @@ export const SolveJobSchema = UploadJobSchema.refine((job) => job.kind === 'solv
 ```
 
 Refinements, the same in both languages, each with a named fault in the fixture:
-- Per state: `queued` has no start, finish, result id, error or cancel time; `running` has a start and none of the
-  rest; `succeeded` has a start, a finish and its kind's result ids (`solutionId` for solve; `attemptId` and
-  `variantId` for the media kinds) and no error; `rejected` (media kinds only) has a start, a finish and `attemptId`,
-  no `variantId`, no error; `failed` has a finish and an error, no `solutionId` or `variantId`, and may have
-  `attemptId`; `canceled` has a finish and no result id or error; `interrupted` has a finish and an error, and no
-  result id.
+- Per state: `queued` has no start, finish, result id, error or cancel time; `running` has a start, no finish,
+  result id or error, and may have a cancel time; `succeeded` has a start, a finish and its kind's result ids
+  (`solutionId` for solve; `attemptId` and `variantId` for the media kinds) and no error; `rejected` (media kinds
+  only) has a start, a finish and `attemptId`, no `variantId`, no error; `failed` has a start, a finish and an error,
+  no `solutionId` or `variantId`, and may have `attemptId`; `canceled` has a finish and no result id or error;
+  `interrupted` has a start, a finish and an error, and no result id [changed in platform-1's fourth version to say
+  what the table says: a running job's cancel time by the lead's ruling of 2026-11-12, and the start of a failed and
+  an interrupted job, which design 4 reaches only from `running`].
 - Per kind: `solutionId` and `inputSpan` only for solve; `request`, `graphId`, `attemptId`, `variantId` only for the
   media kinds, which require `request` and `graphId`, with `request.kind` equal to the job's kind.
 - Every stage belongs to the job's kind, appears once, in its kind's order, in one of its units (generalising
   ingest.ts:196-199).
-- `queueAhead` only when `queued` (a served count: the store refuses to write it). `cancelRequestedAtUTC` only when
-  `running`, `succeeded`, `failed` or `canceled`, and not before `startedAtUTC` nor after `finishedAtUTC`.
-- `producer` is optional so today's records stay valid; the runner always writes it (P-JOB-1 checks every record it
-  writes has one). `error` keeps its 2000 character bound.
+- `queueAhead` only when `queued` (a served count: the store refuses to write it). `cancelRequestedAtUTC` only on a
+  job that started, and on a job canceled after it started always [decided 2026-11-12: a record never drops a true
+  thing it recorded, REQ-JOB-4.2 and 4.3, so a cancel asked of a running job stays when it then succeeds, fails, is
+  refused or is interrupted], not before `startedAtUTC` nor after `finishedAtUTC`.
+- `producer` is required on a job that started and absent on one that never did, as design 4 writes it with the
+  start [decided 2026-11-13]; a record today's code wrote has none and could not have had one, so the store judges
+  it by `SolveJob` and never gives it one (3.1). `error` keeps its 2000 character bound.
 - Python: `UploadJob` with the same fields and rules (the stage's `pass_` field has the alias `pass`, a Python
-  keyword), `SolveJob` kept as the kind `solve` subset. Today's `job.json` lacks `kind`, so the store adds
-  `kind: "solve"` before checking (3.1), and the contract itself keeps `kind` required [proposed: a strict contract
-  with no silent default; the upgrade is the store's, in one place].
+  keyword), `SolveJob` kept for today's records. Today's `job.json` lacks `kind` and a producer, so the store judges
+  it by `SolveJob` (3.1), and the contract itself keeps `kind` required [proposed: a strict contract with no silent
+  default; changed 2026-11-13: no upgrade to `UploadJob` on read, which would have to make up a producer].
 - The media ids, the restore request and `JOB_ID_PATTERN`: `ingest.ts` imports `MEDIA_ID_PATTERNS` and
   `RestoreRequestSchema` from `media.ts` (the direction it imports today). `media.ts` cannot import from `ingest.ts`
   without a cycle, so the job id pattern that the restoration's attempt record needs (`ProcessingAttempt.jobId`)
@@ -369,6 +375,47 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   span, a producer, a cancel time and a queue count, and one fault per refinement above; both sides judge
   `tests/fixtures/ingest_contract.json` (P-JOB-9). `scripts/verify-contracts.mjs` lists the new schema names.
 - The receipt's `solveJobId` (ingest.ts:215) is unchanged.
+- As built in platform-1 [tested; each departure from the design above accepted by the lead on 2026-11-12, with its reason]:
+  - `UploadJob` lives in `services/contracts/jobs.py` and `packages/contracts/src/jobs.ts`, on the wire module's
+    helpers, not in the ingest files: Python's `media.py` imports `ingest.py`, so `ingest.py` could not import the
+    restore request back, and contracts-1 edits both ingest files. The fixture is `tests/fixtures/job_contract.json`.
+  - `SolveJob` and `SolveJobSchema` stay as they are: today's solve job writes the one and the web reads the other,
+    and neither carries `kind` or a fixed failure sentence. The runner (task 5) writes `UploadJob`, and the store's
+    upgrade on read (task 4) adds `kind`; `SolveJobSchema` becomes the solve subset then.
+  - No free text: the pass label is a closed list (`phone_photo_hinted`, `phone_photo_generic`, `triangle`), and a
+    failure is one of the solve kind's ten fixed sentences (today's own, with sizes, limits and the decoder's words
+    left out) or, for the media kinds, a sentence of the restoration's templates. An interrupted job says "The
+    server stopped before this job finished."
+  - Bounds: a pass number 1 to 16; a frame span's times 0 to 86,400 s; every count a safe integer.
+  - Second version, after the full audit [tested; ruled by the lead on 2026-11-12]: what each state may and must
+    hold is one table on both sides (`JOB_STATE_TABLE`, with `JOB_STATE_FIELDS` and `JOB_PRE_RUN_STAGES`), read from
+    the requirements and written beside them in `services/contracts/jobs.py`. For each group of kinds (solve, media)
+    and state it marks every optional field, and the stages a job holds once it starts, as required, forbidden, either,
+    or allowed only on a job that started, and names the failure sentences the state allows. So a job that never
+    started counts no work and holds no frame span (only the solve's store stage is written at creation); an
+    interrupted job started and gives only its sentence, which a failed job never gives; a result id only on the
+    states that have that result; a rejected solve does not exist. The validators read the table, the fixture holds
+    every state of every kind against every field, present and absent, with the table's verdict, and a test derives
+    each cell again from the requirement statements. The presence rules share one message, "the fields do not fit the
+    job's kind and state"; the old kind-field, media-needs and queue messages are folded into it.
+  - Third version, after the second audit [tested; ruled by the lead on 2026-11-12]: a rule for "required once
+    started, forbidden before" (`with_start`), for a canceled job's cancel time (REQ-JOB-4.2: a running job's cancel
+    is recorded, then the job is canceled). A failed job always started (design 4 reaches failed only from running),
+    so its "allowed once started" cells are "either". The other "allowed once started" cells stay: a canceled job's
+    frame span and stages (canceled before the decode wrote them, REQ-JOB-2.3, 2.6). The test that reads the
+    requirements again now quotes each sentence as a rule about a record and checks the table over every pattern of
+    fields. An interrupted or a rejected job that started may keep its cancel time (the lead's ruling of 2026-11-12,
+    written into this section's list above).
+  - Fourth version, after the third audit [tested]: the per-state sentence above says what the table says (a
+    running job's cancel time; the start of a failed and an interrupted job). The second reading quotes every
+    sentence whole, and a test holds each to the section it names. Today's `SolveJob` agrees with the job contract on
+    one job: a failed solve started (today's code sets the start before any failure) and a canceled one did not
+    (`SolveJob` has no field for a cancel time, and today's code never cancels); the ingest fixture's samples say so,
+    and a test judges every job-shaped sample of every fixture with the job contract as its fixture says. The
+    producer: required on a job that started and absent on one that never did, in every row (the lead's ruling of
+    2026-11-13, written into REQ-JOB-6.1 and this section's producer line); today's records are judged by
+    `SolveJob`, not upgraded. `SolveJob`'s solution id stays a label: no job record is stored on this laptop
+    (counted 2026-11-13), but the web's tests give a solve job a solution fixture's id of another form.
 
 ### 3.9 The web (its own lane) [decided 2026-11-11: not this lane's files]
 - Until the web changes, the blocking start (no `wait`) keeps today's web working unchanged.

@@ -1894,7 +1894,7 @@
         "createdAtUTC": "2031-05-02T19:20:00Z",
         "startedAtUTC": "2031-05-02T19:20:01.250Z",
         "finishedAtUTC": "2031-05-02T19:20:41Z",
-        "solutionId": "sol-primary",
+        "solutionId": "sol_0a1b2c3d4e5f6071",
         "stages": [
           {
             "stage": "decode",
@@ -1927,6 +1927,7 @@
         "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "state": "failed",
         "createdAtUTC": "2031-05-02T19:20:00Z",
+        "startedAtUTC": "2031-05-02T19:20:00.100Z",
         "finishedAtUTC": "2031-05-02T19:20:00.400Z",
         "error": "The decoder could not read the file.",
         "stages": []
@@ -1936,7 +1937,6 @@
         "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "state": "canceled",
         "createdAtUTC": "2031-05-02T19:20:00Z",
-        "startedAtUTC": "2031-05-02T19:20:01Z",
         "finishedAtUTC": "2031-05-02T19:20:05Z",
         "stages": []
       }
@@ -6983,6 +6983,7 @@
         "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "state": "failed",
         "createdAtUTC": "2031-05-02T19:20:00Z",
+        "startedAtUTC": "2031-05-02T19:20:00.100Z",
         "finishedAtUTC": "2031-05-02T19:20:00.400Z",
         "stages": []
       },
@@ -6993,9 +6994,34 @@
       "sample": {
         "id": "job_0a1b2c3d4e5f6071",
         "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "state": "failed",
+        "createdAtUTC": "2031-05-02T19:20:00Z",
+        "finishedAtUTC": "2031-05-02T19:20:00.400Z",
+        "error": "The decoder could not read the file.",
+        "stages": []
+      },
+      "reason": "a failed job had started"
+    },
+    {
+      "schema": "SolveJob",
+      "sample": {
+        "id": "job_0a1b2c3d4e5f6071",
+        "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
         "state": "canceled",
         "createdAtUTC": "2031-05-02T19:20:00Z",
-        "startedAtUTC": "2031-05-02T19:20:01Z",
+        "finishedAtUTC": "2031-05-02T19:20:05Z",
+        "stages": [],
+        "startedAtUTC": "2031-05-02T19:20:01Z"
+      },
+      "reason": "a canceled job holds no start, as nothing holds its cancel time"
+    },
+    {
+      "schema": "SolveJob",
+      "sample": {
+        "id": "job_0a1b2c3d4e5f6071",
+        "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+        "state": "canceled",
+        "createdAtUTC": "2031-05-02T19:20:00Z",
         "finishedAtUTC": "2031-05-02T19:20:05Z",
         "stages": [],
         "solutionId": "sol-primary"
@@ -7011,7 +7037,7 @@
         "createdAtUTC": "2031-05-02T19:20:00Z",
         "startedAtUTC": "2031-05-02T19:20:01.250Z",
         "finishedAtUTC": "2031-05-02T19:20:01Z",
-        "solutionId": "sol-primary",
+        "solutionId": "sol_0a1b2c3d4e5f6071",
         "stages": [
           {
             "stage": "decode",
@@ -7081,7 +7107,7 @@
         "createdAtUTC": "2031-05-02T19:20:00Z",
         "startedAtUTC": "2031-05-02T19:20:01.250Z",
         "finishedAtUTC": "2031-05-02T19:20:41Z",
-        "solutionId": "sol-primary",
+        "solutionId": "sol_0a1b2c3d4e5f6071",
         "stages": [
           {
             "stage": "verify",
@@ -7120,7 +7146,7 @@
         "createdAtUTC": "2031-05-02T19:20:00Z",
         "startedAtUTC": "2031-05-02T19:20:01.250Z",
         "finishedAtUTC": "2031-05-02T19:20:41Z",
-        "solutionId": "sol-primary",
+        "solutionId": "sol_0a1b2c3d4e5f6071",
         "stages": [
           {
             "stage": "decode",
