@@ -139,11 +139,11 @@
               }
             },
             "422": {
-              "description": "Validation Error",
+              "description": "The request is refused",
               "content": {
                 "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
+                    "$ref": "#/components/schemas/SolveRefusal"
                   }
                 }
               }
@@ -180,11 +180,11 @@
               }
             },
             "422": {
-              "description": "Validation Error",
+              "description": "The request is refused",
               "content": {
                 "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
+                    "$ref": "#/components/schemas/SolveRefusal"
                   }
                 }
               }
@@ -831,12 +831,27 @@
           "title": "SkyContextRequest",
           "description": "Request payload for `POST /api/science/sky-context`. The time and place travel in the body, never in the\nURL, whose query string an access log prints."
         },
+        "SolveRefusal": {
+          "properties": {
+            "detail": {
+              "type": "string",
+              "title": "Detail"
+            }
+          },
+          "type": "object",
+          "required": [
+            "detail"
+          ],
+          "title": "SolveRefusal",
+          "description": "The body of a solve route's 422: what is wrong with the request, in plain sentences that hold no value sent."
+        },
         "SolveRequest": {
           "properties": {
             "width": {
               "anyOf": [
                 {
                   "type": "integer",
+                  "maximum": 9007199254740991.0,
                   "exclusiveMinimum": 0.0
                 },
                 {
@@ -849,6 +864,7 @@
               "anyOf": [
                 {
                   "type": "integer",
+                  "maximum": 9007199254740991.0,
                   "exclusiveMinimum": 0.0
                 },
                 {
@@ -925,7 +941,7 @@
             },
             "sourceAssetId": {
               "type": "string",
-              "minLength": 1,
+              "pattern": "^src_[0-9a-f]{16}$",
               "title": "Sourceassetid"
             },
             "sourceSha256": {
@@ -1274,38 +1290,7 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": [
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceAssetId"
-            ],
-            "msg": "Field required",
-            "input": {
-              "width": 960,
-              "height": 540,
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0
-            }
-          },
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceSha256"
-            ],
-            "msg": "Field required",
-            "input": {
-              "width": 960,
-              "height": 540,
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0
-            }
-          }
-        ]
+        "detail": "sourceAssetId is missing: send a source asset's id as it is minted: src_ and 16 lowercase hex digits. sourceSha256 is missing: send the source asset's SHA-256 as 64 lowercase hex digits."
       }
     },
     "solve with an unmeasured detection": {
@@ -1315,44 +1300,7 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": [
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceAssetId"
-            ],
-            "msg": "Field required",
-            "input": {
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0,
-              "detections": [
-                {
-                  "xPx": 12.5
-                }
-              ]
-            }
-          },
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceSha256"
-            ],
-            "msg": "Field required",
-            "input": {
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0,
-              "detections": [
-                {
-                  "xPx": 12.5
-                }
-              ]
-            }
-          }
-        ]
+        "detail": "sourceAssetId is missing: send a source asset's id as it is minted: src_ and 16 lowercase hex digits. sourceSha256 is missing: send the source asset's SHA-256 as 64 lowercase hex digits."
       }
     },
     "horizon solve without image": {
@@ -1362,34 +1310,7 @@
         "vary": "Origin"
       },
       "body": {
-        "detail": [
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceAssetId"
-            ],
-            "msg": "Field required",
-            "input": {
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0
-            }
-          },
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceSha256"
-            ],
-            "msg": "Field required",
-            "input": {
-              "observedAtUTC": "2000-01-01T12:00:00Z",
-              "latDeg": 0.0,
-              "lonDeg": 0.0
-            }
-          }
-        ]
+        "detail": "sourceAssetId is missing: send a source asset's id as it is minted: src_ and 16 lowercase hex digits. sourceSha256 is missing: send the source asset's SHA-256 as 64 lowercase hex digits."
       }
     },
     "restore without frames or image": {

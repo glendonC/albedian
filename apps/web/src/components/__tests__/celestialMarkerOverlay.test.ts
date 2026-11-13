@@ -110,7 +110,8 @@ function buildFourClassFindings(baseSession: ObservationSession): CelestialFindi
         verificationMethod: 'DAOStarFinder centroid on original frame',
         sourceAssetSha256: sha,
         limitations: ['Measured from camera pixels only.'],
-        verifiedByIndependentHoldout: true,
+        // Only a catalog match is verified by held-out stars (the contract's FINDING_CLASS_EVIDENCE)
+        verifiedByIndependentHoldout: false,
       },
     },
     {
@@ -130,6 +131,21 @@ function buildFourClassFindings(baseSession: ObservationSession): CelestialFindi
         centroidUncertaintyPx: 0.08,
       },
       skyPosition: { raDeg: 88.7929, decDeg: 7.4071, uncertaintyArcsec: 1.4 },
+      // A catalog match carries the catalog entry it was matched to and names it in its evidence (the contract's
+      // FINDING_CLASS_EVIDENCE); the row's values are typed test data, not read from a catalog release
+      catalogRef: {
+        id: 'ref_hip_27989',
+        provider: 'Hipparcos',
+        releaseVersion: 'Hipparcos 2007',
+        catalogSourceId: 'HIP 27989',
+        commonName: 'Betelgeuse',
+        constellation: 'Orion',
+        objectType: 'star',
+        coordinateEpoch: 'J2000.0',
+        raDeg: 88.7929,
+        decDeg: 7.4071,
+        citation: 'Test row; not read from a catalog release',
+      },
       inferredDistancePc: {
         lower: 131.06,
         median: 152.67,
@@ -141,7 +157,10 @@ function buildFourClassFindings(baseSession: ObservationSession): CelestialFindi
         evidenceClass: 'catalog_matched',
         verificationMethod: 'Held-out WCS match to Hipparcos',
         sourceAssetSha256: sha,
+        catalogReferenceId: 'ref_hip_27989',
         pixelResidualPx: 0.41,
+        // A match holds both residuals; the angular one is the sky position's own uncertainty here
+        angularResidualArcsec: 1.4,
         limitations: ['Distance from Hipparcos 2007 parallax.'],
         verifiedByIndependentHoldout: true,
       },
@@ -440,6 +459,10 @@ function buildCrowdedSession(namedCount: number, unnamedCount: number, observedC
       evidenceClass: 'catalog_matched',
       verificationMethod: 'test',
       sourceAssetSha256: sha,
+      catalogReferenceId: `ref_${id}`,
+      // A match holds both residuals; the angular one is the sky position's own uncertainty here
+      pixelResidualPx: 0.08,
+      angularResidualArcsec: 10,
       limitations: ['test'],
       verifiedByIndependentHoldout: true,
     },

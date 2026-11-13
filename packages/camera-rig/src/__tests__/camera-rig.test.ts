@@ -23,6 +23,19 @@ import {
   worldToPixelWCS,
 } from '../index.js';
 
+/** What a catalog match holds beside its sky position: the detection that was matched and the catalog entry it was
+ * matched to (the contract's FINDING_CLASS_EVIDENCE). Typed test data, not read from any frame or catalog release. */
+function matchedTo(id: string, raDeg: number, decDeg: number) {
+  return {
+    sourceDetection: { assetId: 'src-1', frameTimeSec: 0, xPx: 412.5, yPx: 300.2, flux: 5000, snr: 25, fwhmPx: 2.5, centroidUncertaintyPx: 0.1 },
+    catalogRef: {
+      id: `ref-${id}`, provider: 'Hipparcos' as const, releaseVersion: 'Hipparcos 2007', catalogSourceId: `test row ${id}`, commonName: id,
+      constellation: 'not given (test row)', objectType: 'star' as const,
+      coordinateEpoch: 'J2000.0', raDeg, decDeg, citation: 'Test row; not read from a catalog release',
+    },
+  };
+}
+
 describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
   it('PBT-COORD-1: raDecToUnitVector and unitVectorToRaDec preserve unit norm and round-trip', () => {
     fc.assert(
@@ -376,6 +389,9 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
       evidenceClass: 'catalog_matched',
       title: id,
       subtitle: 'Star',
+      // A catalog match carries the detection that was matched and the catalog entry it was matched to (the
+      // contract's FINDING_CLASS_EVIDENCE); both are typed test data
+      ...matchedTo(id, raDeg, decDeg),
       skyPosition: { raDeg, decDeg, uncertaintyArcsec: 1.2 },
       inferredDistancePc: {
         lower: distPc * 0.9,
@@ -396,6 +412,10 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
         evidenceClass: 'catalog_matched',
         verificationMethod: 'wcs_holdout',
         sourceAssetSha256: '0123456789abcdef'.repeat(4),
+        catalogReferenceId: `ref-${id}`,
+        // A match holds both residuals (the contract's FINDING_CLASS_EVIDENCE); typed test values
+        pixelResidualPx: 0.03,
+        angularResidualArcsec: 1.2,
         limitations: ['Catalog distance estimate'],
         verifiedByIndependentHoldout: true,
       },
@@ -485,6 +505,7 @@ describe('@albedian/camera-rig: Property-Based & Unit Verification', () => {
 describe('@albedian/camera-rig: detections without a sky position', () => {
   const evidence = (id: string, evidenceClass: 'observed' | 'catalog_matched') => ({
     id: `ev-${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: '0123456789abcdef'.repeat(4),
+    ...(evidenceClass === 'catalog_matched' ? { catalogReferenceId: `ref-${id}`, pixelResidualPx: 0.03, angularResidualArcsec: 1.2 } : {}),
     limitations: ['Generated for camera rig tests.'], verifiedByIndependentHoldout: evidenceClass === 'catalog_matched',
   });
   const pixelOnly: CelestialFinding = {
@@ -495,6 +516,7 @@ describe('@albedian/camera-rig: detections without a sky position', () => {
   };
   const bellatrix: CelestialFinding = {
     id: 'Bellatrix', observationSolutionId: 'sol-1', evidenceClass: 'catalog_matched', title: 'Bellatrix', subtitle: 'Star',
+    ...matchedTo('Bellatrix', 81.28, 6.35),
     skyPosition: { raDeg: 81.28, decDeg: 6.35, uncertaintyArcsec: 1.2 },
     inferredDistancePc: { lower: 69.3, median: 77, upper: 84.7, method: 'photogeometric_bailer_jones_edr3' },
     evidence: evidence('Bellatrix', 'catalog_matched'),

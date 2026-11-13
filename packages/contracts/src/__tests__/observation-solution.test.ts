@@ -31,6 +31,9 @@ const CATALOG_REF = (
 )['plate_calibrated']!.findings.find((f) => f.id === 'finding-star-rigel')!.catalogRef;
 
 function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof SKY; detection?: boolean; catalog?: boolean }) {
+  // A catalog match always holds the entry it was matched to, the id naming it and both residuals (the contract's
+  // FINDING_CLASS_EVIDENCE); any finding that holds an entry names it by that id
+  const catalog = parts.catalog || evidenceClass === 'catalog_matched';
   return {
     id,
     observationSolutionId: 'sol_01',
@@ -38,10 +41,12 @@ function finding(id: string, evidenceClass: EvidenceClass, parts: { sky?: typeof
     title: `Finding ${id}`,
     subtitle: 'Generated',
     ...(parts.detection ? { sourceDetection: DETECTION } : {}),
-    ...(parts.catalog ? { catalogRef: CATALOG_REF } : {}),
+    ...(catalog ? { catalogRef: CATALOG_REF } : {}),
     ...(parts.sky ? { skyPosition: parts.sky } : {}),
     evidence: {
       id: `ev_${id}`, evidenceClass, verificationMethod: 'test', sourceAssetSha256: SHA,
+      ...(catalog ? { catalogReferenceId: (CATALOG_REF as { id: string }).id } : {}),
+      ...(evidenceClass === 'catalog_matched' ? { pixelResidualPx: 0.4, angularResidualArcsec: 50.4 } : {}),
       limitations: ['Generated for contract tests.'], verifiedByIndependentHoldout: false,
     },
   };
@@ -87,8 +92,10 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
   it.each(['catalog_matched', 'predicted', 'simulated'] as const)(
     'still requires a sky position for %s findings',
     (evidenceClass) => {
+      // A catalog match is a detection matched to the catalog, so it holds its detection besides its sky position
+      const matched = evidenceClass === 'catalog_matched';
       expect(CelestialFindingSchema.safeParse(finding('f', evidenceClass, { detection: true })).success).toBe(false);
-      expect(CelestialFindingSchema.safeParse(finding('f', evidenceClass, { sky: SKY })).success).toBe(true);
+      expect(CelestialFindingSchema.safeParse(finding('f', evidenceClass, { sky: SKY, detection: matched })).success).toBe(true);
     }
   );
 
@@ -122,13 +129,15 @@ describe('@albedian/contracts: CelestialFinding sky positions', () => {
         // puts it there, and otherwise in pixels; a predicted or simulated finding carries no detection
         // (REQ-SKY-5.2)
         // ... and held-out verification passes only with a WCS (the helper always carries the residuals)
+        // ... and the class table: an observed finding and a catalog match hold the detection they were measured
+        // from, and an observed finding holds no catalog entry (the helper gives a match its entry, id and residuals)
         const obeysContract =
           (!spec.passed || spec.wcs) &&
           spec.findings.every((f) =>
             f.evidenceClass === 'observed'
-              ? (f.sky !== undefined) === verified && (f.sky !== undefined || f.detection)
+              ? (f.sky !== undefined) === verified && f.detection && !f.catalog
               : f.sky !== undefined &&
-                (f.evidenceClass !== 'catalog_matched' || verified) &&
+                (f.evidenceClass !== 'catalog_matched' || (verified && f.detection)) &&
                 (f.evidenceClass === 'catalog_matched' || !f.detection)
           );
         const parsed = ObservationSolutionSchema.safeParse(
@@ -251,7 +260,7 @@ describe('@albedian/contracts: the recording behind the evidence', () => {
       withoutSolutionId(finding('obs', 'observed', { detection: true }))
     );
     const matched = CelestialFindingSchema.safeParse(
-      withoutSolutionId(finding('rigel', 'catalog_matched', { sky: SKY }))
+      withoutSolutionId(finding('rigel', 'catalog_matched', { sky: SKY, detection: true }))
     );
     expect(observed.error?.issues.map((i) => i.path.join('.'))).toEqual(['observationSolutionId']);
     expect(matched.error?.issues.map((i) => i.path.join('.'))).toEqual(['observationSolutionId']);
@@ -289,7 +298,7 @@ describe('@albedian/contracts: the recording behind the evidence', () => {
 
   it('rejects observed and catalog-matched evidence that names no recording', () => {
     const observed = CelestialFindingSchema.safeParse(withoutHash(finding('obs', 'observed', { detection: true })));
-    const matched = CelestialFindingSchema.safeParse(withoutHash(finding('rigel', 'catalog_matched', { sky: SKY })));
+    const matched = CelestialFindingSchema.safeParse(withoutHash(finding('rigel', 'catalog_matched', { sky: SKY, detection: true })));
     expect(observed.error?.issues.map((i) => i.path.join('.'))).toEqual(['evidence.sourceAssetSha256']);
     expect(matched.error?.issues.map((i) => i.path.join('.'))).toEqual(['evidence.sourceAssetSha256']);
   });
@@ -479,7 +488,7 @@ describe('@albedian/contracts: solution and spatial view time and place', () => 
         fc.property(specArb, (spec) => {
           const verified = spec.status === 'calibrated';
           const findings = [
-            finding('f0', verified ? 'catalog_matched' : 'observed', verified ? { sky: SKY } : { detection: true }),
+            finding('f0', verified ? 'catalog_matched' : 'observed', verified ? { sky: SKY, detection: true } : { detection: true }),
             ...(spec.hasPredictedFinding ? [finding('f1', 'predicted', { sky: SKY })] : []),
           ];
           const candidate = buildSolution({

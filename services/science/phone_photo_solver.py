@@ -939,6 +939,50 @@ def _get_tile_index(release_dir: Path = DEFAULT_TILE_RELEASE_DIR) -> _TileStarIn
 # =============================================================================================
 
 
+def _median_over_every_pair(held_out_residuals_px: Sequence[float]) -> float:
+    """The median held-out residual over every pair, inlier or not (the contract's `medianResidualPx`,
+    packages/contracts/src/astronomy.ts): the one number the gate judges and the quality record reports."""
+    return float(np.median(np.asarray(held_out_residuals_px, dtype=np.float64)))
+
+
+def held_out_residual_statistics(
+    held_out_residuals_px: Sequence[float], inlier_gate_px: float
+) -> tuple[int, int, float | None, float | None]:
+    """`(pairs, inliers, median px, 95th percentile px)` of the held-out residuals, as the quality record reports
+    them. The inliers are the pairs at or inside the per-star inlier gate; the median and the percentile cover every
+    held-out pair, inlier or not, as the contract's `medianResidualPx` and `p95ResidualPx` do, and are None with no
+    pair."""
+    residuals = np.asarray(held_out_residuals_px, dtype=np.float64)
+    if residuals.size == 0:
+        return 0, 0, None, None
+    inliers = int(np.count_nonzero(residuals <= inlier_gate_px))
+    return int(residuals.size), inliers, _median_over_every_pair(held_out_residuals_px), float(np.percentile(residuals, 95.0))
+
+
+def held_out_quality(
+    held_out_residuals_px: Sequence[float],
+    inlier_gate_px: float,
+    passed: bool,
+    *,
+    detected_candidate_count: int,
+    matched_inlier_count: int,
+    scale_deg_per_px: float,
+) -> SolutionQuality:
+    """The quality record of a solve whose held-out residuals these are and whose gate answered `passed`: the counts
+    and residuals of `held_out_residual_statistics`, the same numbers the gate judged."""
+    pairs, inliers, median_px, p95_px = held_out_residual_statistics(held_out_residuals_px, inlier_gate_px)
+    return SolutionQuality(
+        detected_candidate_count=detected_candidate_count,
+        matched_inlier_count=matched_inlier_count,
+        held_out_pair_count=pairs,
+        held_out_inliers=inliers,
+        median_residual_px=median_px,
+        p95_residual_px=p95_px,
+        median_residual_arcsec=median_px * scale_deg_per_px * 3600.0 if median_px is not None else None,
+        passed_independent_verification=passed,
+    )
+
+
 def evaluate_coincidence_gate(
     *,
     held_out_residuals_px: Sequence[float],
@@ -958,9 +1002,13 @@ def evaluate_coincidence_gate(
     if k_inliers < MIN_HELD_OUT_INLIERS:
         return (False, -100.0)
 
-    med_px = float(np.median(residuals))
+    # The median judged is the one the quality record reports, over every held-out pair, inlier or not: the held-out
+    # gate is a limit on that number (the contract's medianResidualPx; services/science/solver.py judges it so too).
+    # Judged on the inliers alone, a solve could pass while the median it reports stood above the gate. A median
+    # that is no number does not pass
+    med_px = _median_over_every_pair(held_out_residuals_px)
     p95_px = float(np.percentile(residuals, 95.0))
-    if med_px > MAX_HELD_OUT_MEDIAN_PX or p95_px > MAX_HELD_OUT_P95_PX:
+    if not med_px <= MAX_HELD_OUT_MEDIAN_PX or p95_px > MAX_HELD_OUT_P95_PX:
         return (False, -50.0)
     if dual_path_disagreement_px > MAX_DUAL_PATH_DISAGREEMENT_PX:
         return (False, -25.0)
@@ -1800,14 +1848,6 @@ def solve_phone_photo(
         dual_path_disagreement_px=dual_disagreement_px,
     )
 
-    held_out_pair_count = len(held_out_residuals_all)
-    held_out_inliers = sum(1 for r in held_out_residuals_all if r <= gate_px)
-    median_residual_px = float(np.median(held_out_residuals_all)) if held_out_pair_count > 0 else None
-    p95_residual_px = float(np.percentile(held_out_residuals_all, 95.0)) if held_out_pair_count > 0 else None
-    median_residual_arcsec = (
-        median_residual_px * refined_wcs.scale_deg_per_px * 3600.0 if median_residual_px is not None else None
-    )
-
     # Map verified inlier detections by identity
     verified_by_det_id: dict[int, tuple[CatalogStar, float, bool]] = {}
     if passed_gate:
@@ -1820,6 +1860,18 @@ def solve_phone_photo(
                     star = verify_stars[c_i]
                 if star is not None:
                     verified_by_det_id[id(det)] = (star, res_px, id(det) in train_det_ids)
+
+    # The record of the held-out check, built once from the residuals the gate judged: its counts and its median
+    # are the gate's own numbers, and what follows reads them from it
+    quality = held_out_quality(
+        held_out_residuals_all,
+        gate_px,
+        passed_gate,
+        detected_candidate_count=len(detections),
+        matched_inlier_count=len(verified_by_det_id) if passed_gate else 0,
+        scale_deg_per_px=refined_wcs.scale_deg_per_px,
+    )
+    held_out_inliers, median_residual_arcsec = quality.held_out_inliers, quality.median_residual_arcsec
 
     status = "calibrated" if passed_gate else ("ambiguous" if (held_out_inliers >= 4 and log_odds >= 6.0) else "unresolved")
     findings_list: list[CelestialFindingRecord] = []
@@ -1913,16 +1965,7 @@ def solve_phone_photo(
         observer_lon=observer_lon,
         wcs=refined_wcs if passed_gate else None,
         solver=PHONE_SOLVER_IDENTITY,
-        quality=SolutionQuality(
-            detected_candidate_count=len(detections),
-            matched_inlier_count=len(verified_by_det_id) if passed_gate else 0,
-            held_out_pair_count=held_out_pair_count,
-            held_out_inliers=held_out_inliers,
-            median_residual_px=median_residual_px,
-            p95_residual_px=p95_residual_px,
-            median_residual_arcsec=median_residual_arcsec,
-            passed_independent_verification=passed_gate,
-        ),
+        quality=quality,
         findings=findings_list,
         warnings=warnings,
     )

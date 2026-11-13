@@ -464,7 +464,7 @@ export const CelestialTargetCard: React.FC<CelestialTargetCardProps> = ({
               <dd>signal to noise</dd>
               <dt>{det.fwhmPx.toFixed(2)} px</dt>
               <dd>star width (FWHM)</dd>
-              {residualPx !== undefined && (
+              {residualPx !== undefined && selectedFinding.evidence.verifiedByIndependentHoldout === true && (
                 <>
                   <dt>{residualPx.toFixed(2)} px</dt>
                   <dd>off its solved spot (held out)</dd>

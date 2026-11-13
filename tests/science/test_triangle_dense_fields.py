@@ -17,17 +17,22 @@ Covers:
 - The consensus radius is 18 px: a field whose solution differs at 17, 18 and 19 px gets the 18 px one.
 - Pairing stays exact when the vectorized projection is off by up to 0.0007 px on each axis (another platform's
   trigonometry), in both pairings (PBT, with detections a hair inside 8 px and 18 px) and in whole solutions.
-- Non-finite values give the solution of the one-by-one rules, never an exception the loops did not raise: a detection
-  with a NaN or infinite position (through `solve_and_verify_field` and through POST /api/science/solve), NaN and
-  infinite x, y, flux and snr in random detections (PBT, whole solutions), NaN and infinite ratios (PBT), and stars
-  and projections with NaN or infinite values in both pairings (PBT).
+- Values no record holds. A detection or a WCS refuses, when it is built, what the observation solution contract
+  refuses (a position that is not finite or below 0, a flux or an SNR not above 0, a WCS angle that is no number, a
+  scale of 0), and POST /api/science/solve answers such a detection with 422 and the record's sentence, with the
+  one-by-one rules as with the fast ones. Handed to the pairings past the record's check, as raw values (`_raw`),
+  they pair as the one-by-one rules do, never with an exception the loops did not raise: a detection with a NaN or
+  infinite position, NaN and infinite ratios (PBT), and stars, detections and projections with NaN or infinite
+  values in both pairings (PBT).
 - Every float: the index limit is sqrt(largest float) / 4, the largest magnitude at which no squared distance between
   two points overflows; a KD-tree holds every point within it and overflows past it. A detection at each boundary
   (the limit, the next float past it, subnormals, 1e200, the largest float, both signs, both axes, faintest and
-  brightest) gives the one-by-one solution; stars projected past the limit pair as the loops pair them; positions,
-  ratios, fluxes and snrs drawn from every float give the one-by-one pairs, lookups and whole solutions with and
-  without a hint (PBT), and the same answers through POST /api/science/solve (PBT, and huge values as JSON text,
-  a 200-digit integer and numbers).
+  brightest) pairs as the one-by-one rule pairs it; one the record takes gives the one-by-one solution, but for
+  1e200 and the largest float, where the solver's verified WCS gives the detection no sky position and the finding
+  record refuses it (held by name: the solver's own to change); stars projected past the limit pair as the loops
+  pair them; positions, ratios, fluxes and snrs drawn from every float give the one-by-one pairs and lookups and,
+  where the record takes them, whole solutions with and without a hint (PBT), and the same answers through POST
+  /api/science/solve (PBT, and huge values as JSON text, a 200-digit integer and numbers).
 - What the search hands the fast pieces is main's: every catalog triangle with its own ratios, the detections
   without hot pixels, the whole catalog with its positions and an 18 px radius (the one-by-one path takes these
   from the same calls, so they are pinned here).
@@ -39,6 +44,7 @@ place (30 N, 40 W), and the benchmark frame's own.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, fields, replace
 from functools import lru_cache
 import hashlib
@@ -65,6 +71,7 @@ from services.science.solver import (
     solve_and_verify_field,
     verify_held_out,
 )
+from services.science.wcs_models import ContractRefusal
 
 # Cygnus at 57 degrees altitude (the fixtures' Moon moment)
 CYGNUS_UP = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
@@ -85,6 +92,27 @@ class _RenderedStar:
     ra_deg: float
     dec_deg: float
     mag: float
+
+
+def _raw(record: Any, **values: Any) -> Any:
+    """`record` copied with `values` set as they are, past the record's own check.
+
+    A detection or a WCS refuses, when it is built, a value the observation solution contract refuses
+    (`ContractRefusal`), so no solution holds one. What the search does with such a value is still its own to get
+    right, and the tests of that hand it the value in a record that never checked it. The copy keeps the record's
+    exact type, which `_project` asks for before it uses its vectorized formula."""
+    raw = copy.copy(record)
+    for name, value in values.items():
+        object.__setattr__(raw, name, value)
+    return raw
+
+
+_A_DETECTION = SourceDetection(x_px=1.0, y_px=1.0, flux=1.0, snr=1.0, fwhm_px=2.0, centroid_uncertainty_px=0.1)
+
+
+def _raw_detection(**values: Any) -> SourceDetection:
+    """A detection 2 px wide with a centroid uncertainty of 0.1 px, holding `values` as they are (`_raw`)."""
+    return _raw(_A_DETECTION, **values)
 
 
 def _epoch_jyear(obs_utc_iso: str) -> float:
@@ -463,7 +491,9 @@ def test_pbt_the_vectorized_projection_is_world_to_pixel_star_by_star(ra0, dec0,
 
 
 def _detections_near_stars(wcs, stars, offsets, extra, seed) -> list[SourceDetection]:
-    """Detections at the seeded in-frame stars' pixels moved by `offsets`, plus detections at `extra` pixels."""
+    """Detections at the seeded in-frame stars' pixels moved by `offsets`, plus detections at `extra` pixels. A star
+    near the frame's top or left edge, moved up or left, lands below 0, which the detection record refuses: the moved
+    ones are handed to the pairings as raw values (`_raw_detection`)."""
     rng = np.random.default_rng(seed)
     in_frame = []
     for star in stars:
@@ -473,8 +503,8 @@ def _detections_near_stars(wcs, stars, offsets, extra, seed) -> list[SourceDetec
     detections = []
     for k, (dx, dy, hot) in enumerate(offsets):
         x, y = in_frame[int(rng.integers(len(in_frame)))] if in_frame else (480.0, 270.0)
-        detections.append(SourceDetection(x_px=x + dx, y_px=y + dy, flux=100.0 + k, snr=20.0, fwhm_px=2.0 if not hot else 0.6,
-                                          centroid_uncertainty_px=0.1, peak_to_total_ratio=0.2 if not hot else 0.9))
+        detections.append(_raw_detection(x_px=x + dx, y_px=y + dy, flux=100.0 + k, snr=20.0, fwhm_px=2.0 if not hot else 0.6,
+                                         peak_to_total_ratio=0.2 if not hot else 0.9))
     detections += [SourceDetection(x_px=x, y_px=y, flux=50.0, snr=8.0, fwhm_px=2.0, centroid_uncertainty_px=0.1) for x, y in extra]
     return detections
 
@@ -670,57 +700,63 @@ def _pinned_true_pixels() -> tuple[WCSModel, tuple[SourceDetection, ...]]:
     return wcs, tuple(detections)
 
 
-def _catalog_matches(outcome: str) -> tuple[str, int]:
-    solution = json.loads(outcome)
-    return solution["status"], sum(1 for f in solution["findings"] if f["evidenceClass"] == "catalog_matched")
-
-
 @pytest.mark.parametrize("field", ["x_px", "y_px"])
 @pytest.mark.parametrize("value", [NAN, INF, -INF], ids=["nan", "inf", "-inf"])
 # Faintest: only the held-out pairing meets it; brightest: it is in the 14 the triangles are drawn from too
 @pytest.mark.parametrize("snr", [5.0, 500.0], ids=["faintest", "brightest"])
 def test_a_detection_at_a_non_finite_position_gives_the_one_by_one_solution(field: str, value: float, snr: float) -> None:
+    """The record refuses a position that is no finite number, so no whole solution holds one; below the record, the
+    held-out pairing meets the raw value as the one-by-one rule does."""
     wcs, pinned = _pinned_true_pixels()
     assert len(pinned) == 17
-    bad = replace(SourceDetection(x_px=100.0, y_px=10.0, flux=5.0, snr=snr, fwhm_px=2.0, centroid_uncertainty_px=0.1), **{field: value})
+    values = {"x_px": 100.0, "y_px": 10.0, "flux": 5.0, "snr": snr, field: value}
+    with pytest.raises(ContractRefusal, match=f"A source detection's {field} is outside the contract: this number is not finite."):
+        SourceDetection(**values, fwhm_px=2.0, centroid_uncertainty_px=0.1)
+    bad = _raw_detection(**values)
     detections = list(pinned) + [bad]
     got = verify_held_out(wcs, detections, get_catalog_stars(), detections[:4])
     want = _one_by_one_verify_held_out(wcs, detections, get_catalog_stars(), detections[:4])
     assert [(id(d), s.id, r, t) for d, s, r, t in got.associations] == [(id(d), s.id, r, t) for d, s, r, t in want.associations]
     assert len(got.associations) == 17
-    fast, slow = _solve_both_ways(detections, 1600, 1200, **ORION_MOMENT, **_sources("non-finite-position"))
-    assert fast == slow
-    # What the search before solver-10k-a gave: the one-by-one run above asserts it [tested]. Before landing, on
-    # 2026-11-11, the lane also ran `git show dcdbd65d:services/science/solver.py` loaded as a module on these
-    # detections, for x and y at NaN, inf, -inf and 1e200, faintest and brightest: 16 of 16 [inference: that loader is
-    # not in the repository]
-    assert _catalog_matches(fast[0]) == ("calibrated", 17)
 
 
 @pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
 def test_the_solve_endpoint_answers_the_one_by_one_solution_for_a_non_finite_detection(value: str) -> None:
+    """The route refuses the detection with 422 and the record's sentence, with the fast rules and with the
+    one-by-one rules alike: written as text, where a number goes, and written as the number itself."""
     from fastapi.testclient import TestClient
 
     from services.api import app
 
     _, pinned = _pinned_true_pixels()
+    sha = hashlib.sha256(b"non-finite").hexdigest()
     body = {
         "width": 1600, "height": 1200, **{"observedAtUTC": ORION_MOMENT["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0},
-        **{"sourceAssetId": "synthetic-non-finite", "sourceSha256": hashlib.sha256(b"non-finite").hexdigest()},
+        **{"sourceAssetId": f"src_{sha[:16]}", "sourceSha256": sha},
         "detections": [
             {"xPx": d.x_px, "yPx": d.y_px, "flux": d.flux, "snr": d.snr, "fwhmPx": d.fwhm_px, "centroidUncertaintyPx": 0.1}
             for d in pinned
         ] + [{"xPx": value, "yPx": 10.0, "flux": 5.0, "snr": 5.0, "fwhmPx": 2.0, "centroidUncertaintyPx": 0.1}],
     }
     client = TestClient(app)
-    fast = client.post("/api/science/solve", json=body)
-    with pytest.MonkeyPatch.context() as mp:
-        _use_one_by_one_rules(mp)
-        slow = client.post("/api/science/solve", json=body)
-    assert fast.status_code == slow.status_code == 200, fast.text[:200]
-    assert fast.json() == slow.json()
-    assert fast.json()["status"] == "calibrated"
-    assert sum(1 for f in fast.json()["findings"] if f["evidenceClass"] == "catalog_matched") == 17
+    for sent, said in (
+        (value, "A source detection's x_px is outside the contract: this value is not a number."),
+        (float(value), "A source detection's x_px is outside the contract: this number is not finite."),
+    ):
+        body["detections"][-1]["xPx"] = sent
+        # Python's JSON writer writes NaN and Infinity as the tokens the route's reader takes for those numbers
+        text = json.dumps(body)
+        fast = client.post("/api/science/solve", content=text, headers={"content-type": "application/json"})
+        with pytest.MonkeyPatch.context() as mp:
+            _use_one_by_one_rules(mp)
+            slow = client.post("/api/science/solve", content=text, headers={"content-type": "application/json"})
+        assert fast.status_code == slow.status_code == 422, fast.text[:200]
+        assert fast.json() == slow.json() == {"detail": said}
+    # Without it, the 17 pinned detections solve
+    body["detections"].pop()
+    solved = client.post("/api/science/solve", json=body)
+    assert solved.status_code == 200 and solved.json()["status"] == "calibrated"
+    assert sum(1 for f in solved.json()["findings"] if f["evidenceClass"] == "catalog_matched") == 17
 
 
 @settings(max_examples=20, deadline=None)
@@ -742,6 +778,8 @@ def test_the_solve_endpoint_answers_the_one_by_one_solution_for_a_non_finite_det
 # and the search before solver-10k-a raised ZeroDivisionError there (the same line runs in both)
 @example(keep=list(range(6)), jitter=(0.0, 0.0), extra=[(500.0, 500.0, 300.0), (500.0, 500.0, 290.0)], bad=[(0, "y_px", NAN)], order_seed=0)
 def test_pbt_non_finite_detections_give_the_one_by_one_whole_solution(keep, jitter, extra, bad, order_seed) -> None:
+    """No whole solution holds a detection with a value that is no finite number: the record refuses each one when it
+    is built, whichever detection and whichever of its values it is."""
     _, pinned = _pinned_true_pixels()
     detections = [replace(pinned[i], x_px=pinned[i].x_px + jitter[0], y_px=pinned[i].y_px + jitter[1]) for i in sorted(keep)]
     detections += [SourceDetection(x_px=x, y_px=y, flux=10.0 * snr, snr=snr, fwhm_px=2.0, centroid_uncertainty_px=0.1) for x, y, snr in extra]
@@ -751,9 +789,8 @@ def test_pbt_non_finite_detections_give_the_one_by_one_whole_solution(keep, jitt
         detections = [detections[i] for i in np.random.default_rng(order_seed).permutation(len(detections))]
     for index, name, value in bad:
         k = index % len(detections)
-        detections[k] = replace(detections[k], **{name: value})
-    fast, slow = _solve_both_ways(detections, 1600, 1200, **ORION_MOMENT, **_sources("non-finite-detections"))
-    assert fast == slow
+        with pytest.raises(ContractRefusal, match=f"A source detection's {name} is outside the contract: this number is not finite."):
+            replace(detections[k], **{name: value})
 
 
 odd_ratio = st.one_of(NON_FINITE, ratio)
@@ -795,7 +832,12 @@ def test_a_wcs_value_world_to_pixel_refuses_ends_both_pairings_as_the_loops_did(
     detections = _detections_near_stars(base, clean, [(0.5, 0.5, False)] * 8, [], 1)
     # `world_to_pixel` refuses an infinite angle or a zero scale only for a star in front of the camera
     stars = [replace(s, ra_deg=(s.ra_deg + 180.0) % 360.0, dec_deg=-s.dec_deg) for s in clean] if behind else list(clean)
-    wcs = replace(base, **change)
+    # The WCS record refuses each of these values when it is built, so no fit and no solution holds one. Handed one
+    # past that check, both pairings still end as the loops did
+    (name,) = change
+    with pytest.raises(ContractRefusal, match=f"A WCS's {name} is outside the contract"):
+        replace(base, **change)
+    wcs = _raw(base, **change)
     ra = np.array([s.ra_deg for s in stars])
     dec = np.array([s.dec_deg for s in stars])
     for got, want in [
@@ -832,7 +874,8 @@ def test_pbt_non_finite_stars_detections_and_projections_pair_as_the_one_by_one_
     for index, name, value in bad_detections:
         if detections:
             k = index % len(detections)
-            detections[k] = replace(detections[k], **{name: value})
+            # A position the record refuses, handed to the pairings as a raw value
+            detections[k] = _raw(detections[k], **{name: value})
     stars = list(clean)
     for index, name, value in bad_stars:
         stars[index % len(stars)] = replace(stars[index % len(stars)], **{name: value})
@@ -883,6 +926,14 @@ SUBNORMAL = 5e-324
 BOUNDARY_VALUES = [INDEX_LIMIT, PAST_LIMIT, -INDEX_LIMIT, -PAST_LIMIT, SUBNORMAL, -SUBNORMAL, 1.35e154, 1e200, -1e200,
                    FLOAT_MAX, -FLOAT_MAX]
 ANY_FLOAT = st.floats()  # every float: subnormals, both signs, NaN and both infinities
+# Positions the detection record takes that lie so far off the frame that the solver's verified WCS gives them a sky
+# position that is no number. The finding record refuses that position, inside the solve (services/science/solver.py,
+# the observed finding under a verified WCS), where the search before the records held their values wrote it out.
+# Held here by name as it is today: the solver's own to change, by refusing such a detection before it solves
+BEYOND_THE_VERIFIED_WCS = (1e200, FLOAT_MAX)
+NO_SKY_POSITION_FROM_THE_VERIFIED_WCS = (
+    "raised ContractRefusal: A finding's ra_deg is outside the contract: this number is not finite."
+)
 
 
 def test_the_index_limit_is_derived_from_the_float_format() -> None:
@@ -917,15 +968,29 @@ def test_a_kd_tree_holds_every_point_within_the_limit_and_overflows_past_it() ->
 @pytest.mark.parametrize("value", BOUNDARY_VALUES, ids=repr)
 @pytest.mark.parametrize("snr", [5.0, 500.0], ids=["faintest", "brightest"])
 def test_a_detection_at_any_boundary_float_gives_the_one_by_one_solution(field: str, value: float, snr: float) -> None:
+    """Every boundary value pairs as the one-by-one rule pairs it. A position below 0 is one the record refuses, so
+    no whole solution holds it: it reaches the pairing as a raw value. One the record takes gives the one-by-one
+    solution, but for the two so far off the frame that the solver's verified WCS gives them no sky position."""
     wcs, pinned = _pinned_true_pixels()
-    bad = replace(SourceDetection(x_px=100.0, y_px=10.0, flux=5.0, snr=snr, fwhm_px=2.0, centroid_uncertainty_px=0.1), **{field: value})
+    values = {"x_px": 100.0, "y_px": 10.0, "flux": 5.0, "snr": snr, field: value}
+    if value < 0:
+        with pytest.raises(ContractRefusal, match=f"A source detection's {field} is outside the contract: this number is below 0."):
+            SourceDetection(**values, fwhm_px=2.0, centroid_uncertainty_px=0.1)
+        bad = _raw_detection(**values)
+    else:
+        bad = SourceDetection(**values, fwhm_px=2.0, centroid_uncertainty_px=0.1)
     detections = list(pinned) + [bad]
     got = verify_held_out(wcs, detections, get_catalog_stars(), detections[:4])
     want = _one_by_one_verify_held_out(wcs, detections, get_catalog_stars(), detections[:4])
     assert [(id(d), s.id, r, t) for d, s, r, t in got.associations] == [(id(d), s.id, r, t) for d, s, r, t in want.associations]
+    if value < 0:
+        return
     fast, slow = _solve_both_ways(detections, 1600, 1200, **ORION_MOMENT, **_sources("boundary-float-position"))
     assert fast == slow
-    assert not fast[0].startswith("raised"), fast[0][:200]
+    if value in BEYOND_THE_VERIFIED_WCS:
+        assert fast[0] == NO_SKY_POSITION_FROM_THE_VERIFIED_WCS
+    else:
+        assert not fast[0].startswith("raised"), fast[0][:200]
 
 
 # Outside the rule, which is written for Python floats: an int float() refuses, None, a string, a float32. The loops
@@ -950,12 +1015,11 @@ def test_a_value_that_is_not_a_python_float_pairs_or_raises_as_the_one_by_one_ru
                    rotation_deg=10.0, k1=0.0, k2=0.0, parity=-1, width=1600, height=1200)
     stars = list(get_catalog_stars())
     pixels = [wcs.world_to_pixel(s.ra_deg, s.dec_deg) for s in stars]
-    # A detection on every star in front of the camera, so the last detection finds every star taken
-    on_stars = [
-        SourceDetection(x_px=x, y_px=y, flux=100.0, snr=50.0 - k, fwhm_px=2.0, centroid_uncertainty_px=0.1)
-        for k, (x, y) in enumerate(pixels) if math.isfinite(x)
-    ]
-    odd = replace(SourceDetection(x_px=10.0, y_px=10.0, flux=100.0, snr=1.0, fwhm_px=2.0, centroid_uncertainty_px=0.1), **{field: value})
+    # A detection on every star in front of the camera, so the last detection finds every star taken. A star off the
+    # frame's top or left lies below 0, and the odd value is no number at all: the record refuses both, so they are
+    # handed to the pairings as raw values
+    on_stars = [_raw_detection(x_px=x, y_px=y, flux=100.0, snr=50.0 - k) for k, (x, y) in enumerate(pixels) if math.isfinite(x)]
+    odd = _raw_detection(**{"x_px": 10.0, "y_px": 10.0, "flux": 100.0, "snr": 1.0, field: value})
     detections = [odd] + on_stars if place == "first" else on_stars + [odd]
     held = lambda v: ([(id(d), s.id, r, t) for d, s, r, t in v.associations], v.inlier_gate_px)  # noqa: E731
     got = _raised_or(lambda: verify_held_out(wcs, detections, stars, on_stars[:2]), held)
@@ -1004,11 +1068,13 @@ def test_float32_positions_far_from_the_origin_pair_as_the_one_by_one_rules(seed
 @pytest.mark.parametrize("field", ["x_px", "y_px"])
 @pytest.mark.parametrize("snr", [5.0, 500.0], ids=["faintest", "brightest"])
 def test_a_python_int_past_the_float_range_gives_the_one_by_one_solution(field: str, snr: float) -> None:
+    """An int past the float range is no position a detection holds: the record refuses it, so no whole solution has
+    one. The float32 positions the record takes give the one-by-one solution."""
     wcs, pinned = _pinned_true_pixels()
-    huge = replace(SourceDetection(x_px=100.0, y_px=10.0, flux=5.0, snr=snr, fwhm_px=2.0, centroid_uncertainty_px=0.1), **{field: HUGE_INT})
-    fast, slow = _solve_both_ways(list(pinned) + [huge], 1600, 1200, **ORION_MOMENT, **_sources("python-int-position"))
-    assert fast == slow
-    whole_32 = [replace(d, x_px=np.float32(d.x_px), y_px=np.float32(d.y_px)) for d in list(pinned) + [replace(huge, **{field: 100.0})]]
+    on_frame = SourceDetection(x_px=100.0, y_px=10.0, flux=5.0, snr=snr, fwhm_px=2.0, centroid_uncertainty_px=0.1)
+    with pytest.raises(ContractRefusal, match=f"A source detection's {field} is outside the contract: this number is beyond the largest a float holds."):
+        replace(on_frame, **{field: HUGE_INT})
+    whole_32 = [replace(d, x_px=np.float32(d.x_px), y_px=np.float32(d.y_px)) for d in list(pinned) + [on_frame]]
     fast, slow = _solve_both_ways(whole_32, 1600, 1200, **ORION_MOMENT, **_sources("float32-position"))
     assert fast == slow
 
@@ -1027,8 +1093,8 @@ def test_a_star_projected_past_the_limit_pairs_as_the_one_by_one_rules_pair_it()
     wcs, stars, pixels = _tiny_scale_field(1e-160)
     front = [k for k, (x, _) in enumerate(pixels) if math.isfinite(x) and abs(x) > INDEX_LIMIT]
     assert len(front) >= 6
-    detections = [SourceDetection(x_px=pixels[k][0], y_px=pixels[k][1], flux=100.0 - n, snr=50.0 - n, fwhm_px=2.0,
-                                  centroid_uncertainty_px=0.1) for n, k in enumerate(front)]
+    # Some of these pixels lie below 0, where the record refuses a position: all are handed over as raw values
+    detections = [_raw_detection(x_px=pixels[k][0], y_px=pixels[k][1], flux=100.0 - n, snr=50.0 - n) for n, k in enumerate(front)]
     got = verify_held_out(wcs, detections, stars, detections[:2])
     want = _one_by_one_verify_held_out(wcs, detections, stars, detections[:2])
     assert [(id(d), s.id, r, t) for d, s, r, t in got.associations] == [(id(d), s.id, r, t) for d, s, r, t in want.associations]
@@ -1053,9 +1119,9 @@ def test_a_star_projected_past_the_limit_pairs_as_the_one_by_one_rules_pair_it()
 @example(log_scale=-2.0, near=[(k, 0.5, 0.5) for k in range(18)], loose=[(1.2e154, 1.2e154)])
 def test_pbt_detections_and_projections_at_any_float_pair_as_the_one_by_one_rules(log_scale, near, loose) -> None:
     wcs, stars, pixels = _tiny_scale_field(10.0**log_scale)
-    detections = [SourceDetection(x_px=pixels[k][0] + dx, y_px=pixels[k][1] + dy, flux=10.0, snr=10.0, fwhm_px=2.0,
-                                  centroid_uncertainty_px=0.1) for k, dx, dy in near]
-    detections += [SourceDetection(x_px=x, y_px=y, flux=10.0, snr=10.0, fwhm_px=2.0, centroid_uncertainty_px=0.1) for x, y in loose]
+    # Positions at any float, most of which the record refuses (below 0, or no finite number): raw values
+    detections = [_raw_detection(x_px=pixels[k][0] + dx, y_px=pixels[k][1] + dy, flux=10.0, snr=10.0) for k, dx, dy in near]
+    detections += [_raw_detection(x_px=x, y_px=y, flux=10.0, snr=10.0) for x, y in loose]
     training = detections[::3]
 
     def held(fn):
@@ -1115,14 +1181,25 @@ DETECTION_FIELDS = st.sampled_from(["x_px", "y_px", "flux", "snr"])
 @example(keep=list(range(17)), bad=[(0, "snr", FLOAT_MAX), (1, "flux", -FLOAT_MAX), (16, "snr", -INF)], hint=True, order_seed=3)
 @example(keep=list(range(17)), bad=[(16, "x_px", 1e200), (15, "x_px", NAN), (14, "y_px", INF)], hint=False, order_seed=0)
 def test_pbt_detections_at_any_float_give_the_one_by_one_whole_solution(keep, bad, hint, order_seed) -> None:
+    """The record takes a position that is finite and not below 0, and a flux and an SNR that are finite and above
+    0, and refuses every other float: no whole solution holds one. With the values it takes, the fast search and the
+    one-by-one rules give the same whole solution, or raise the same error."""
     # Detections sorted brightest first, so an index under 14 is in the triangles' pool and one above is not
     _, pinned = _pinned_true_pixels()
     detections = [pinned[i] for i in sorted(keep)]
     if order_seed:
         detections = [detections[i] for i in np.random.default_rng(order_seed).permutation(len(detections))]
+    refused = False
     for index, name, value in bad:
         k = index % len(detections)
-        detections[k] = replace(detections[k], **{name: value})
+        if math.isfinite(value) and (value >= 0 if name in ("x_px", "y_px") else value > 0):
+            detections[k] = replace(detections[k], **{name: value})
+        else:
+            with pytest.raises(ContractRefusal, match=f"A source detection's {name} is outside the contract"):
+                replace(detections[k], **{name: value})
+            refused = True
+    if refused:
+        return
     hint_kwargs = {"hint_ra_deg": 84.0, "hint_dec_deg": 6.0} if hint else {}
     (fast, fast_events), (slow, slow_events) = _solve_both_ways(
         detections, 1600, 1200, **ORION_MOMENT, **hint_kwargs, **_sources("any-float-detections")
@@ -1131,7 +1208,8 @@ def test_pbt_detections_at_any_float_give_the_one_by_one_whole_solution(keep, ba
 
 
 def _as_json_value(value: float) -> float | str:
-    """A finite float as a JSON number; NaN and the infinities as the strings the route turns into floats."""
+    """A finite float as a JSON number; NaN and the infinities as text, which the route refuses where a number
+    goes."""
     return value if math.isfinite(value) else repr(value)
 
 
@@ -1158,9 +1236,10 @@ def test_pbt_the_solve_endpoint_answers_the_one_by_one_solution_for_any_float(ba
     ] + [{"xPx": 100.0, "yPx": 10.0, "flux": 5.0, "snr": 5.0, "fwhmPx": 2.0, "centroidUncertaintyPx": 0.1}]
     for index, key, value in bad:
         rows[index][key] = repr(value) if as_text else _as_json_value(value)
+    sha = hashlib.sha256(b"any-float").hexdigest()
     body = {
         "width": 1600, "height": 1200, "observedAtUTC": ORION_MOMENT["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0,
-        "sourceAssetId": "synthetic-any-float", "sourceSha256": hashlib.sha256(b"any-float").hexdigest(), "detections": rows,
+        "sourceAssetId": f"src_{sha[:16]}", "sourceSha256": sha, "detections": rows,
         **({"hintRaDeg": 84.0, "hintDecDeg": 6.0} if hint else {}),
     }
     client = TestClient(app, base_url="http://127.0.0.1", raise_server_exceptions=False)
@@ -1230,9 +1309,16 @@ def test_the_search_hands_the_fast_pieces_main_s_detections_catalog_triangles_an
         assert call == want
 
 
-@pytest.mark.parametrize("raw", ["1e200", " 1e200 ", 10**200, "Infinity", "-1.7976931348623157e308", 1.2e154],
-                         ids=["text-1e200", "text-spaced", "200-digit-integer", "text-Infinity", "text-minus-max", "both-axes-1.2e154"])
-def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_any_json_form(raw) -> None:
+# What the route answers each form with. A number written as text is no number to the detection record: 422 and its
+# sentence. The 200-digit integer is a number the record takes, far off the frame: the solver's verified WCS gives it
+# no sky position, the finding record refuses that, and the route answers 500 for a fault inside the solve. That one
+# is held by name as it is today: the solver's own to change, by refusing such a detection before it solves
+@pytest.mark.parametrize(
+    ("raw", "status"),
+    [("1e200", 422), (" 1e200 ", 422), (10**200, 500), ("Infinity", 422), ("-1.7976931348623157e308", 422), (1.2e154, 200)],
+    ids=["text-1e200", "text-spaced", "200-digit-integer", "text-Infinity", "text-minus-max", "both-axes-1.2e154"],
+)
+def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_any_json_form(raw, status: int) -> None:
     from fastapi.testclient import TestClient
 
     from services.api import app
@@ -1241,9 +1327,10 @@ def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_a
     rows = [{"xPx": d.x_px, "yPx": d.y_px, "flux": d.flux, "snr": d.snr, "fwhmPx": d.fwhm_px, "centroidUncertaintyPx": 0.1}
             for d in pinned]
     rows.append({"xPx": raw, "yPx": raw if isinstance(raw, float) else 10.0, "flux": 5.0, "snr": 5.0, "fwhmPx": 2.0, "centroidUncertaintyPx": 0.1})
+    sha = hashlib.sha256(b"huge").hexdigest()
     body = {
         "width": 1600, "height": 1200, "observedAtUTC": ORION_MOMENT["obs_utc_iso"], "latDeg": 30.0, "lonDeg": -40.0,
-        "sourceAssetId": "synthetic-huge", "sourceSha256": hashlib.sha256(b"huge").hexdigest(), "detections": rows,
+        "sourceAssetId": f"src_{sha[:16]}", "sourceSha256": sha, "detections": rows,
     }
     client = TestClient(app, base_url="http://127.0.0.1", raise_server_exceptions=False)
     fast = client.post("/api/science/solve", json=body)
@@ -1251,4 +1338,8 @@ def test_the_solve_endpoint_answers_the_one_by_one_solution_for_huge_values_in_a
         _use_one_by_one_rules(mp)
         slow = client.post("/api/science/solve", json=body)
     assert (fast.status_code, fast.text) == (slow.status_code, slow.text)
-    assert fast.status_code == 200 and fast.json()["status"] == "calibrated"
+    assert fast.status_code == status
+    if status == 422:
+        assert fast.json() == {"detail": "A source detection's x_px is outside the contract: this value is not a number."}
+    elif status == 200:
+        assert fast.json()["status"] == "calibrated"

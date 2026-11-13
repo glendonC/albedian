@@ -8,7 +8,7 @@ import {
   SHA256_HEX_PATTERN,
   SourceAssetSchema,
 } from './media.js';
-import { UTC_INSTANT_PATTERN } from './wire.js';
+import { UTC_INSTANT_PATTERN, WIRE_MESSAGES, isRealCalendarDay } from './wire.js';
 
 /**
  * Ingest contracts (roadmap Track 1 M1): what the backend returns when a photo or clip is uploaded,
@@ -38,7 +38,11 @@ export const INGEST_PATTERNS = {
   jobId: JOB_ID_PATTERN,
 } as const;
 
-const utcInstant = () => z.string().regex(new RegExp(INGEST_PATTERNS.utcInstant));
+// A time that fits its pattern also names a real day, from year 1 to 9999 (the wire module's rule, on both sides)
+const utcInstant = () =>
+  z.string().regex(new RegExp(INGEST_PATTERNS.utcInstant)).refine(isRealCalendarDay, { message: WIRE_MESSAGES.calendar });
+const localDateTime = () =>
+  z.string().regex(new RegExp(INGEST_PATTERNS.localDateTime)).refine(isRealCalendarDay, { message: WIRE_MESSAGES.calendar });
 const label = () => z.string().min(1).max(128);
 
 /** Offsets in use run from UTC-12:00 to UTC+14:00; the bound is symmetric at 14 hours. */
@@ -61,7 +65,7 @@ export const GPS_STAMP_TAGS = ['GPSDateStamp', 'GPSTimeStamp'] as const;
  */
 export const CaptureTimeHintSchema = z
   .object({
-    localDateTime: z.string().regex(new RegExp(INGEST_PATTERNS.localDateTime)).nullable(),
+    localDateTime: localDateTime().nullable(),
     utcOffsetMinutes: z.number().int().min(-UTC_OFFSET_LIMIT_MINUTES).max(UTC_OFFSET_LIMIT_MINUTES).nullable(),
     utc: utcInstant().nullable(),
     marks: z.enum(CAPTURE_TIME_MARKS),
@@ -101,7 +105,8 @@ export const LocationHintSchema = z
   .object({
     latDeg: z.number().min(-90).max(90),
     lonDeg: z.number().min(-180).max(180),
-    altitudeM: z.number().optional(),
+    // Finite on both sides: an altitude JSON cannot carry is no altitude
+    altitudeM: z.number().finite().optional(),
     horizontalAccuracyM: z.number().positive().optional(),
     source: MetadataSourceSchema,
   })

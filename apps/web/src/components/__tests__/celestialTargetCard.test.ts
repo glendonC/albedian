@@ -4,7 +4,13 @@ import path from 'node:path';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CelestialFindingSchema, EXIF_ORIENTATIONS, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
+import {
+  CelestialFindingSchema,
+  EXIF_ORIENTATIONS,
+  ObservationSolutionSchema,
+  type CelestialFinding,
+  type ObservationSession,
+} from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { choosePhotoOnHome } from './homeEntry.js';
 
@@ -504,13 +510,32 @@ describe('Go there key (hud-5)', () => {
     expect(ignored.defaultPrevented).toBe(false);
   });
 
-  it('keeps Go there and G off for a star that is not a catalog match, even with a distance', () => {
+  it('keeps Go there and G off for a star that is not a catalog match: an observed one, and a predicted or simulated one even with a catalog entry and distance', () => {
     const session = createSyntheticCalibratedSession();
     const onRunUtterance = vi.fn();
     for (const evidenceClass of ['observed', 'predicted', 'simulated'] as const) {
-      // A predicted or simulated star was not measured in the pixels, so the relabelled one keeps no detection (REQ-SKY-5.2)
-      const detection = evidenceClass === 'observed' ? {} : { sourceDetection: undefined };
-      const star = { ...betelgeuseIn(session), evidenceClass, ...detection } as CelestialFinding;
+      // Each relabelled star holds only what its class may hold (the contract's FINDING_CLASS_EVIDENCE): its evidence
+      // names the same class, it holds no residual and no held-out verification, which belong to a catalog match; a
+      // predicted or simulated star keeps its catalog entry and distance and no detection (REQ-SKY-5.2), and an
+      // observed one keeps its detection and no catalog entry or distance, which a point measured in pixels has not
+      const match = betelgeuseIn(session);
+      const { pixelResidualPx: _px, angularResidualArcsec: _arcsec, catalogReferenceId, ...evidence } = match.evidence;
+      const kept =
+        evidenceClass === 'observed'
+          ? { catalogRef: undefined, inferredDistancePc: undefined, cartesianParsecICRS: undefined }
+          : { sourceDetection: undefined };
+      const star = {
+        ...match,
+        evidenceClass,
+        ...kept,
+        evidence: {
+          ...evidence,
+          evidenceClass,
+          verifiedByIndependentHoldout: false,
+          ...(evidenceClass === 'observed' ? {} : { catalogReferenceId }),
+          ...(evidenceClass === 'observed' ? { distanceUncertaintyNote: undefined } : {}),
+        },
+      } as CelestialFinding;
       // Each relabelled star is one the contract accepts
       expect(CelestialFindingSchema.safeParse(star).success, evidenceClass).toBe(true);
       renderCard({ session, selectedFinding: star, onRunUtterance });
@@ -787,5 +812,58 @@ describe('the scan glyph names its class whole (web-guard-1)', () => {
   it.each(['observed', 'catalog_matched', 'predicted', 'simulated'] as const)('draws the %s glyph with its own class', (evidenceClass) => {
     act(() => root.render(createElement(ScanGlyph, { evidenceClass, testId: 'glyph' })));
     expect(q('glyph')!.getAttribute('class')).toBe(`alb-scan-glyph alb-scan-glyph--${evidenceClass}`);
+  });
+});
+
+// A residual is called held out only where its finding's evidence says independent held-out stars verified it. The
+// pose fit's residual an observed finding holds in an approximate solution is the fit's own (a fit with as many
+// unknowns as constraints): the card does not show it as agreement. The two records AUDIT K read on the card for
+// contracts-1-v4: the horizon solver's own solution, as the Python side writes it
+// (tests/fixtures/python_contract_solutions.json, kept current by test_unregistered_detections.py), and the
+// contract's approximate sample holding an observed fit residual (tests/fixtures/observation_solution_contract.json)
+describe('the residual is called held out only when its evidence says so (contracts-1-v5)', () => {
+  const FIXTURES = path.resolve(__dirname, '../../../../../tests/fixtures');
+  const fixtureSolution = (file: string, read: (data: Record<string, unknown>) => unknown) =>
+    ObservationSolutionSchema.parse(read(JSON.parse(fs.readFileSync(path.join(FIXTURES, file), 'utf8')) as Record<string, unknown>));
+  const pixelRowText = () => q('target-card-pixel-row')?.textContent ?? '';
+
+  it('shows a held-out residual as held out', () => {
+    const session = createSyntheticCalibratedSession();
+    const betelgeuse = betelgeuseIn(session);
+    expect(betelgeuse.evidence.verifiedByIndependentHoldout).toBe(true);
+    renderCard({ session, selectedFinding: betelgeuse });
+    expect(pixelRowText()).toContain(`${betelgeuse.evidence.pixelResidualPx!.toFixed(2)} px`);
+    expect(pixelRowText()).toContain('off its solved spot (held out)');
+  });
+
+  it('does not show a residual its evidence does not say was held out', () => {
+    const session = createSyntheticCalibratedSession();
+    const original = betelgeuseIn(session);
+    const unverified: CelestialFinding = { ...original, evidence: { ...original.evidence, verifiedByIndependentHoldout: false } };
+    renderCard({ session, selectedFinding: unverified });
+    expect(q('target-card-pixel-row')).not.toBeNull();
+    expect(pixelRowText()).not.toContain('off its solved spot');
+    expect(pixelRowText()).not.toContain('held out');
+  });
+
+  it.each([
+    ["the horizon solver's own Moon", 'python_contract_solutions.json', (data: Record<string, unknown>) => data['horizon_approximate']],
+    [
+      "the contract's approximate sample with an observed fit residual",
+      'observation_solution_contract.json',
+      (data: Record<string, unknown>) => (data['valid'] as Record<string, unknown>)['approximate_with_an_observed_fit_residual'],
+    ],
+  ])('never calls %s held out', (_name, file, read) => {
+    const solution = fixtureSolution(file, read);
+    expect(solution.status).toBe('approximate');
+    const fitted = solution.findings.filter((f) => f.evidenceClass === 'observed' && f.evidence.pixelResidualPx !== undefined);
+    expect(fitted.length).toBeGreaterThanOrEqual(1);
+    for (const finding of fitted) {
+      expect(finding.evidence.verifiedByIndependentHoldout).toBe(false);
+      renderCard({ session: { ...createSyntheticCalibratedSession(), observationSolution: solution }, selectedFinding: finding });
+      expect(q('target-card-pixel-row'), finding.id).not.toBeNull();
+      expect(pixelRowText(), finding.id).not.toContain('held out');
+      expect(pixelRowText(), finding.id).not.toContain('off its solved spot');
+    }
   });
 });

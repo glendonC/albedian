@@ -737,7 +737,7 @@ def _unresolved():
     from services.science.solver import _build_unresolved_solution, triangle_solver_identity
 
     return _build_unresolved_solution(
-        [], "sol_synthetic", "src_synthetic", "0" * 64, 0.0, SKY_MOMENT, 30.0, -40.0,
+        [], "sol_synthetic", "src_synthetic", "0123456789abcdef" * 4, 0.0, SKY_MOMENT, 30.0, -40.0,
         "Triangle pattern matching found no consistent WCS solution.", "Pixel position only.",
         triangle_solver_identity(get_catalog_stars()),
     )
@@ -747,7 +747,7 @@ def _sky_asset(basis: dict | None) -> dict:
     source: dict[str, Any] = {"container": "exif", "tags": ["DateTimeOriginal", *GPS_TAGS]}
     if basis is not None:
         source["basis"] = basis
-    return {"id": "src_synthetic", "sha256": "0" * 64, "capturedAtUTC": SKY_MOMENT, "observerLocation": SKY_PLACE,
+    return {"id": "src_synthetic", "sha256": "0123456789abcdef" * 4, "capturedAtUTC": SKY_MOMENT, "observerLocation": SKY_PLACE,
             "metadataSources": {"capturedAtUTC": source}}
 
 

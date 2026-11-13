@@ -287,9 +287,11 @@ def test_pose_estimate_refuses_an_infinite_offset_that_json_cannot_carry(key: st
 
 def test_observed_and_catalog_matched_findings_keep_their_detection() -> None:
     assert finding(0, "observed", detection=True).to_contract_dict(source_asset_id="hand-built")["sourceDetection"]
+    # A catalog match holds the catalog row it was matched to and both residuals (the contract's class table)
     matched = CelestialFindingRecord(
         id="c", observation_solution_id="sol-pose", evidence_class="catalog_matched", title="Matched", subtitle="Catalog",
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0, source_detection=DETECTION,
+        ra_deg=CATALOG_STAR.ra_deg, dec_deg=CATALOG_STAR.dec_deg, uncertainty_arcsec=12.0, source_detection=DETECTION,
+        catalog_star=CATALOG_STAR, pixel_residual_px=0.4, angular_residual_arcsec=50.4,
         limitations=("Matched to a catalog star.",), source_sha256=RECORD_SHA,
     )
     assert matched.source_detection == DETECTION

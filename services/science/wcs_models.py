@@ -1,11 +1,18 @@
 """Domain data models for point-source detections, Gnomonic TAN + radial distortion WCS,
 solution quality metrics, epistemic findings, and video calibration stacking.
+
+Each record refuses, when it is built, a value the observation solution contract refuses (a number that is not
+finite or lies outside its bounds, an unknown status, a hash that is not one): the rule it checks with is the very
+object the contract's parser checks the field with (services/contracts/astronomy.py). `ObservationSolution`'s
+`to_contract_dict` then passes its output through that parser, so no writer stores or serves a solution the
+TypeScript schema would refuse.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import math
 import numbers
 import re
@@ -13,20 +20,133 @@ from typing import Any
 
 import numpy as np
 
+from services.contracts import astronomy as contract
+from services.contracts.astronomy import (
+    EVIDENCE_CLASSES,
+    MAX_SWEPT_WCS,
+    MIN_SWEPT_WCS,
+    POSE_BEACONS,
+    POSE_METHOD_BEACONS,
+    POSE_METHODS,
+)
+from services.contracts.ingest import SHA256_HEX_PATTERN
 from services.science.catalog import CatalogStar, catalog_cartesian_pc
 
-EVIDENCE_CLASSES = ("observed", "catalog_matched", "predicted", "simulated")
-_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+_SHA256_HEX = re.compile(SHA256_HEX_PATTERN)
+
+
+class ContractRefusal(ValueError):
+    """A record of this module refusing what the observation solution contract refuses, when it is built or
+    written. A `ValueError`, so every caller that caught one still does; its own type, so a caller can tell a value
+    the contract refuses from any other fault. A refusal of one value (`require_contract_value`,
+    `require_source_sha256`) names the field and the rule and never holds the value, so it can be shown to whoever
+    sent the value."""
 
 
 def require_source_sha256(sha256: str) -> str:
     """The source asset's SHA-256 as 64 lowercase hex digits. The all-zero string is refused: it is a placeholder
     for a hash nobody computed, not a hash."""
-    if not _SHA256_HEX.fullmatch(sha256):
-        raise ValueError("source_sha256 must be the source asset's SHA-256 as 64 lowercase hex digits.")
+    if not isinstance(sha256, str) or not _SHA256_HEX.fullmatch(sha256):
+        raise ContractRefusal("source_sha256 must be the source asset's SHA-256 as 64 lowercase hex digits.")
     if set(sha256) == {"0"}:
-        raise ValueError("source_sha256 of 64 zeros is a placeholder, not a hash: pass the source asset's SHA-256.")
+        raise ContractRefusal("source_sha256 of 64 zeros is a placeholder, not a hash: pass the source asset's SHA-256.")
     return sha256
+
+
+def contract_utc_instant(moment: str) -> str:
+    """`moment` in the contract's form for a capture time: a UTC instant ending in Z. A time already in that form
+    is kept as written. One written with an offset (+00:00, as Python's isoformat writes UTC, or a clip's own
+    offset) names the same instant and is rewritten in UTC, to the microsecond. A time with no zone names no
+    instant, and anything else is not a time: both are returned as they are, for the contract's parser to refuse."""
+    if contract.UTC_INSTANT.problem(moment) is None:
+        return moment
+    try:
+        parsed = datetime.fromisoformat(moment)
+        if parsed.tzinfo is None:
+            return moment
+        utc = parsed.astimezone(timezone.utc)
+    except (ValueError, OverflowError):
+        return moment
+    fraction = f".{utc.microsecond:06d}".rstrip("0") if utc.microsecond else ""
+    return f"{utc.year:04d}-{utc.month:02d}-{utc.day:02d}T{utc.hour:02d}:{utc.minute:02d}:{utc.second:02d}{fraction}Z"
+
+
+def _contract_rules(schema: str, **wire_names: str) -> tuple[tuple[str, Any], ...]:
+    """(attribute, rule) for each attribute named, the rule being the one the contract's parser checks the field
+    `wire_names[attribute]` of `schema` with."""
+    return tuple((attribute, contract.field_rule(schema, wire_name)) for attribute, wire_name in wire_names.items())
+
+
+def require_contract_value(value: object, rule: Any, named: str) -> None:
+    """Refuse `value` when it breaks `rule`, one of the contract's own field rules (`contract.field_rule`), in a
+    sentence that calls it `named` and states the rule, never the value, so no place or capture time reaches a log
+    or an answer. The records below check each of their fields through this, and a caller that takes a value from
+    outside can hold it to the rule it will meet here before any work is done on it."""
+    # A solver computes with NumPy, whose numbers a JSON document never holds: they are judged by their value
+    problem = rule.problem(value, any_real=True) if isinstance(rule, contract.NumberRule) else rule.problem(value)
+    if problem is not None:
+        raise ContractRefusal(f"{named} is outside the contract: {problem[0].lower()}{problem[1:]}")
+
+
+def _require_contract(record: object, what: str, rules: tuple[tuple[str, Any], ...], *, optional: bool = False) -> None:
+    """Refuse `record` when one of its attributes breaks its contract rule; with `optional`, None is left out."""
+    for attribute, rule in rules:
+        value = getattr(record, attribute)
+        if optional and value is None:
+            continue
+        require_contract_value(value, rule, f"{what}'s {attribute}")
+
+
+# The share of a detection's light in its brightest pixel is not in the contract; it is held to a finite number,
+# which every comparison made with it needs
+_DETECTION_NUMBERS = (
+    *_contract_rules(
+        "SourceDetection", x_px="xPx", y_px="yPx", flux="flux", snr="snr", fwhm_px="fwhmPx",
+        centroid_uncertainty_px="centroidUncertaintyPx", frame_time_sec="frameTimeSec",
+    ),
+    ("peak_to_total_ratio", contract.NUMBER),
+)
+_DETECTION_RECORDING = _contract_rules("SourceDetection", asset_id="assetId")
+# crval_ra_deg, crval_dec_deg and the two distortion terms are held to "a finite number" here. The right ascension
+# is written modulo 360. A fit works on these records and may carry its centre past a pole, which is the same
+# pointing at RA + 180 turned half a turn, and bring it back before it writes: the declination's range is the
+# contract's to judge where a solution is written (ObservationSolution.to_contract_dict). The distortion range keeps
+# its own message below
+_WCS_NUMBERS = (
+    ("crval_ra_deg", contract.NUMBER),
+    ("crval_dec_deg", contract.NUMBER),
+    *_contract_rules(
+        "WCSCalibrationModel", crpix_x="crpixX", crpix_y="crpixY", scale_deg_per_px="scaleDegPerPx",
+        rotation_deg="rotationDeg",
+    ),
+    ("k1", contract.NUMBER),
+    ("k2", contract.NUMBER),
+)
+_QUALITY_COUNTS = _contract_rules(
+    "SolutionQuality", detected_candidate_count="detectedCandidateCount", matched_inlier_count="matchedInlierCount",
+    held_out_pair_count="heldOutPairCount", held_out_inliers="heldOutInliers",
+)
+_QUALITY_RESIDUALS = _contract_rules(
+    "SolutionQuality", median_residual_px="medianResidualPx", p95_residual_px="p95ResidualPx",
+    median_residual_arcsec="medianResidualArcsec",
+)
+_FINDING_TEXT = _contract_rules(
+    "CelestialFinding", id="id", observation_solution_id="observationSolutionId", title="title", subtitle="subtitle"
+)
+_FINDING_SKY = (
+    ("ra_deg", contract.NUMBER),
+    *_contract_rules("SkyPosition", dec_deg="decDeg", uncertainty_arcsec="uncertaintyArcsec"),
+)
+_FINDING_OPTIONAL_NUMBERS = (
+    *_contract_rules("SkyPosition", alt_deg="altDeg", az_deg="azDeg"),
+    *_contract_rules("ScientificEvidence", pixel_residual_px="pixelResidualPx", angular_residual_arcsec="angularResidualArcsec"),
+)
+_SOLVER_TEXT = _contract_rules("SolverIdentity", name="name", version="version", catalog_release="catalogRelease")
+_SOLUTION_REQUIRED = _contract_rules(
+    "ObservationSolution", id="id", source_asset_id="sourceAssetId", frame_time_sec="frameTimeSec", revision="revision",
+    status="status",
+)
+_SOLUTION_PLACE = _contract_rules("ObserverLocation", observer_lat="latDeg", observer_lon="lonDeg")
 
 
 # What each class of finding rests on, as its evidence record names it
@@ -52,6 +172,12 @@ class SourceDetection:
     asset_id: str | None = None
     frame_time_sec: float = 0.0
     peak_to_total_ratio: float = 0.25
+
+    def __post_init__(self) -> None:
+        # The contract's bounds on a detection: a position and a width that are not negative, a flux, an SNR and a
+        # centroid uncertainty above zero, all finite
+        _require_contract(self, "A source detection", _DETECTION_NUMBERS)
+        _require_contract(self, "A source detection", _DETECTION_RECORDING, optional=True)
 
     @property
     def xPx(self) -> float:
@@ -79,7 +205,7 @@ class SourceDetection:
         one given, its solution's. With neither, it is refused rather than given an id."""
         recording = self.asset_id if self.asset_id is not None else asset_id
         if recording is None:
-            raise ValueError(
+            raise ContractRefusal(
                 f"The detection at ({self.x_px:.1f}, {self.y_px:.1f}) px names no recording and none was given: "
                 "it is serialized under the id of the recording it was measured in."
             )
@@ -113,11 +239,16 @@ class WCSModel:
 
     def __post_init__(self) -> None:
         if self.width <= 0 or self.height <= 0:
-            raise ValueError(f"WCSModel width and height must be positive integers (got {self.width} x {self.height}).")
+            raise ContractRefusal(f"WCSModel width and height must be positive integers (got {self.width} x {self.height}).")
+        # Finite numbers and a scale above zero, as the contract's WCS: a NaN would pass every comparison below and
+        # leave as a number JSON cannot carry
+        _require_contract(self, "A WCS", _WCS_NUMBERS)
         if abs(self.k1) > 0.25 or abs(self.k2) > 0.25:
-            raise ValueError(
+            raise ContractRefusal(
                 f"WCSModel radial distortion coefficients k1 and k2 must lie in [-0.25, 0.25] (got k1={self.k1}, k2={self.k2})."
             )
+        if isinstance(self.parity, bool) or self.parity not in contract.PARITY.values:
+            raise ContractRefusal("A WCS's parity is 1 or -1.")
 
     @property
     def fov_horizontal_deg(self) -> float:
@@ -249,7 +380,9 @@ class SolutionQuality:
     `held_out_pair_count` counts the held-out detections paired with a catalog star within the association radius;
     `held_out_inliers` are those of them inside the per-star inlier gate, and the residuals cover all of them. The
     residuals are None exactly when no held-out star paired: the contract then leaves them out rather than carry
-    a stand-in number. The contract's rules on these fields are checked here too, so no producer can break them.
+    a stand-in number. The contract's rules on these fields are checked here too, so no producer can break them:
+    `passed_independent_verification` is true only at or above the held-out gate it stands for, the plate solver's
+    own fewest held-out inliers and largest median held-out residual (`contract.held_out_gate`).
     """
 
     detected_candidate_count: int
@@ -262,13 +395,21 @@ class SolutionQuality:
     held_out_pair_count: int = field(kw_only=True)
 
     def __post_init__(self) -> None:
+        # Whole counts that are not negative, and residuals that are finite and not negative
+        _require_contract(self, "A solution's quality", _QUALITY_COUNTS)
+        _require_contract(self, "A solution's quality", _QUALITY_RESIDUALS, optional=True)
         residuals = (self.median_residual_px, self.p95_residual_px, self.median_residual_arcsec)
         if any((value is not None) != (self.held_out_pair_count > 0) for value in residuals):
-            raise ValueError("Held-out residuals are reported exactly when a held-out star was paired.")
+            raise ContractRefusal("Held-out residuals are reported exactly when a held-out star was paired.")
         if self.held_out_inliers > self.held_out_pair_count:
-            raise ValueError("Held-out inliers are held-out pairs inside the gate: there cannot be more of them.")
+            raise ContractRefusal("Held-out inliers are held-out pairs inside the gate: there cannot be more of them.")
         if self.passed_independent_verification and self.median_residual_px is None:
-            raise ValueError("Held-out verification passes only with the held-out residuals it was judged on.")
+            raise ContractRefusal("Held-out verification passes only with the held-out residuals it was judged on.")
+        if self.passed_independent_verification:
+            # The flag stands for the held-out gate: it is never true below the gate's own numbers
+            least, most = contract.held_out_gate()
+            if self.held_out_inliers < least or self.median_residual_px > most:
+                raise ContractRefusal(contract.passes_at_the_gate_only(least, most))
 
     def to_contract_dict(self) -> dict:
         payload: dict = {
@@ -324,28 +465,53 @@ class CelestialFindingRecord:
 
     def __post_init__(self) -> None:
         if self.evidence_class not in EVIDENCE_CLASSES:
-            raise ValueError(f"Finding {self.id} has unknown evidence class {self.evidence_class!r}.")
+            raise ContractRefusal(f"Finding {self.id} has unknown evidence class {self.evidence_class!r}.")
         if self.catalog_star is not None and self.deep_sky_reference is not None:
-            raise ValueError(f"Finding {self.id} stands on one catalog row: a star or a deep-sky object, not both.")
+            raise ContractRefusal(f"Finding {self.id} stands on one catalog row: a star or a deep-sky object, not both.")
         if len(self.limitations) == 0 or any(not isinstance(lim, str) or not lim.strip() for lim in self.limitations):
-            raise ValueError(f"Finding {self.id} requires at least one non-empty limitation string in limitations.")
+            raise ContractRefusal(f"Finding {self.id} requires at least one non-empty limitation string in limitations.")
         sky = (self.ra_deg, self.dec_deg, self.uncertainty_arcsec)
         if None in sky and any(v is not None for v in (*sky, self.alt_deg, self.az_deg)):
-            raise ValueError(
+            raise ContractRefusal(
                 f"Finding {self.id} has a partial sky position: RA, Dec and uncertainty come together, "
                 "and Alt/Az need them."
             )
         if not self.has_sky_position and self.evidence_class != "observed":
-            raise ValueError(f"A {self.evidence_class} finding needs a sky position ({self.id}).")
+            raise ContractRefusal(f"A {self.evidence_class} finding needs a sky position ({self.id}).")
         if self.evidence_class in ("predicted", "simulated") and self.source_detection is not None:
-            raise ValueError(
+            raise ContractRefusal(
                 f"A {self.evidence_class} finding was not measured in the pixels, so it carries no source detection "
                 f"({self.id})."
             )
-        if not self.has_sky_position and self.source_detection is None:
-            raise ValueError(
-                f"An observed finding without a sky position needs the detection that locates it in pixels ({self.id})."
-            )
+        # What the contract's class table (contract.FINDING_CLASS_EVIDENCE) asks of an observed finding and of a catalog
+        # match among the fields this record holds: the detection each was measured from, the catalog row a match
+        # stands on, and none on an observed finding. The rest the writer gives by construction (the evidence's class
+        # is the record's own, its catalog reference id the row's)
+        catalog_row = self.catalog_star is not None or self.deep_sky_reference is not None
+        if self.evidence_class in ("observed", "catalog_matched") and self.source_detection is None:
+            table = contract.FINDING_CLASS_EVIDENCE[self.evidence_class]["must"]
+            raise ContractRefusal(f"{table['sourceDetection'][:-1]} ({self.id}).")
+        if self.evidence_class == "catalog_matched" and not catalog_row:
+            raise ContractRefusal(f"{contract.FINDING_CLASS_EVIDENCE['catalog_matched']['must']['catalogRef'][:-1]} ({self.id}).")
+        if self.evidence_class == "observed" and catalog_row:
+            raise ContractRefusal(f"{contract.FINDING_CLASS_EVIDENCE['observed']['mustNot']['catalogRef'][:-1]} ({self.id}).")
+        # The lead's rulings of 2026-11-12 in the same table: a match holds both residuals, a prediction or a simulation
+        # neither (an observed finding's stay open: the horizon solver writes its Moon with the pose fit residual), and
+        # only a match is verified by held-out stars
+        residuals = (self.pixel_residual_px, self.angular_residual_arcsec)
+        if self.evidence_class == "catalog_matched" and None in residuals:
+            raise ContractRefusal(f"{contract.FINDING_CLASS_EVIDENCE['catalog_matched']['must']['evidence.pixelResidualPx'][:-1]} ({self.id}).")
+        if self.evidence_class in ("predicted", "simulated") and residuals != (None, None):
+            raise ContractRefusal(f"{contract.FINDING_CLASS_EVIDENCE['predicted']['mustNot']['evidence.pixelResidualPx'][:-1]} ({self.id}).")
+        if self.verified_by_holdout and self.evidence_class != "catalog_matched":
+            raise ContractRefusal(f"{contract.FINDING_CLASS_EVIDENCE['observed']['mustNot']['evidence.verifiedByIndependentHoldout'][:-1]} ({self.id}).")
+        # What the contract holds each of these to: names that are not empty, a sky position on the sphere, residuals
+        # that are finite and not negative, and a real hash for the recording
+        _require_contract(self, "A finding", _FINDING_TEXT)
+        if self.has_sky_position:
+            _require_contract(self, "A finding", _FINDING_SKY)
+        _require_contract(self, "A finding", _FINDING_OPTIONAL_NUMBERS, optional=True)
+        require_source_sha256(self.source_sha256)
 
     @property
     def has_sky_position(self) -> bool:
@@ -436,23 +602,17 @@ class SolverIdentity:
     version: str
     catalog_release: str
 
+    def __post_init__(self) -> None:
+        _require_contract(self, "A solver identity", _SOLVER_TEXT)
+
     def to_contract_dict(self) -> dict:
         return {"name": self.name, "version": self.version, "catalogRelease": self.catalog_release}
 
 
-# How an approximate pose was lined up, its beacon, and how many WCS it sweeps: the bounds of the contract's
+# How an approximate pose was lined up, its beacon, and how many WCS it sweeps (POSE_METHODS, POSE_BEACONS,
+# POSE_METHOD_BEACONS, MIN_SWEPT_WCS and MAX_SWEPT_WCS) are the contract mirror's own, imported above: the bounds of
 # PoseEstimateSchema (packages/contracts/src/astronomy.ts; .kiro/specs/predicted-sky-for-every-upload/design.md
 # section 7)
-POSE_METHODS = ("moon_camera_profile_level_head", "moon_horizon", "sun_horizon")
-POSE_BEACONS = ("moon", "sun")
-# The beacon each method lines up from, as POSE_METHOD_BEACONS in the contract
-POSE_METHOD_BEACONS = {
-    "moon_camera_profile_level_head": "moon",
-    "moon_horizon": "moon",
-    "sun_horizon": "sun",
-}
-MIN_SWEPT_WCS = 2
-MAX_SWEPT_WCS = 27
 
 
 def _is_number(value: object) -> bool:
@@ -468,7 +628,7 @@ class PoseEstimate:
     azimuth, the roll and the diagonal field of view of the solution's nominal WCS, where that field of view comes
     from, and the WCS swept over the assumptions' ranges. The method names its beacon, and the two uncertainties are
     finite, so the contract dict is plain JSON. `ObservationSolution` lets it ride only on an approximate solution
-    with a WCS, every swept WCS on that WCS's crpix."""
+    with a WCS, every swept WCS on that WCS's crpix and of its width and height."""
 
     method: str
     beacon: str
@@ -484,11 +644,11 @@ class PoseEstimate:
 
     def __post_init__(self) -> None:
         if self.method not in POSE_METHODS:
-            raise ValueError(f"A pose estimate's method is one of {', '.join(POSE_METHODS)} (got {self.method!r}).")
+            raise ContractRefusal(f"A pose estimate's method is one of {', '.join(POSE_METHODS)} (got {self.method!r}).")
         if self.beacon not in POSE_BEACONS:
-            raise ValueError(f"A pose estimate's beacon is the moon or the sun (got {self.beacon!r}).")
+            raise ContractRefusal(f"A pose estimate's beacon is the moon or the sun (got {self.beacon!r}).")
         if POSE_METHOD_BEACONS[self.method] != self.beacon:
-            raise ValueError(
+            raise ContractRefusal(
                 "A pose estimate's beacon is the one its method lines up from: the moon for "
                 "moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon."
             )
@@ -498,9 +658,9 @@ class PoseEstimate:
             ("roll_deg", self.roll_deg, -180.0, 180.0),
         ):
             if not _is_number(value) or not lo <= value <= hi:
-                raise ValueError(f"A pose estimate's {name} lies in [{lo:g}, {hi:g}] (got {value!r}).")
+                raise ContractRefusal(f"A pose estimate's {name} lies in [{lo:g}, {hi:g}] (got {value!r}).")
         if not _is_number(self.fov_diagonal_deg) or not 0.0 < self.fov_diagonal_deg <= 175.0:
-            raise ValueError(
+            raise ContractRefusal(
                 f"A pose estimate's fov_diagonal_deg is positive and at most 175 (got {self.fov_diagonal_deg!r})."
             )
         for name, value in (
@@ -510,24 +670,29 @@ class PoseEstimate:
             # Not negative and finite, as the contract's .nonnegative().finite(): NaN fails both comparisons, and
             # json.dumps would write an infinity as Infinity, which is not JSON
             if not _is_number(value) or not 0.0 <= value < math.inf:
-                raise ValueError(f"A pose estimate's {name} is finite and not negative (got {value!r}).")
+                raise ContractRefusal(f"A pose estimate's {name} is finite and not negative (got {value!r}).")
         if not isinstance(self.fov_source, str) or len(self.fov_source) == 0:
-            raise ValueError("A pose estimate names where its field of view comes from.")
+            raise ContractRefusal("A pose estimate names where its field of view comes from.")
         # A list or tuple, as z.array takes: a string, a mapping (whose keys tuple() would take) or a set is refused
         if not isinstance(self.assumptions, (list, tuple)):
-            raise ValueError(
+            raise ContractRefusal(
                 f"A pose estimate's assumptions are a list or tuple of sentences (got {type(self.assumptions).__name__})."
             )
         assumptions = tuple(self.assumptions)
         if len(assumptions) == 0 or any(not isinstance(a, str) or len(a) == 0 for a in assumptions):
-            raise ValueError("A pose estimate states at least one assumption, each in words.")
+            raise ContractRefusal("A pose estimate states at least one assumption, each in words.")
+        # A list or tuple, as the assumptions are: None or a number is refused in words, not by tuple() failing
+        if not isinstance(self.swept_wcs, (list, tuple)):
+            raise ContractRefusal(
+                f"A pose estimate's swept WCS are a list or tuple of WCSModel (got {type(self.swept_wcs).__name__})."
+            )
         swept = tuple(self.swept_wcs)
         if not MIN_SWEPT_WCS <= len(swept) <= MAX_SWEPT_WCS:
-            raise ValueError(
+            raise ContractRefusal(
                 f"A pose estimate sweeps {MIN_SWEPT_WCS} to {MAX_SWEPT_WCS} WCS (got {len(swept)})."
             )
         if any(not isinstance(wcs, WCSModel) for wcs in swept):
-            raise ValueError("Each swept WCS of a pose estimate is a WCSModel.")
+            raise ContractRefusal("Each swept WCS of a pose estimate is a WCSModel.")
         # Kept as tuples, so the frozen record cannot change after it was checked
         object.__setattr__(self, "assumptions", assumptions)
         object.__setattr__(self, "swept_wcs", swept)
@@ -573,9 +738,22 @@ class ObservationSolution:
     pose_estimate: PoseEstimate | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        # What the contract holds each of these to on its own: ids that are not empty, a real hash for the recording,
+        # a frame time that is finite and not negative, a whole revision above zero, a status it names, a place on
+        # the globe, and warnings in words
+        _require_contract(self, "A solution", _SOLUTION_REQUIRED)
+        require_source_sha256(self.source_sha256)
+        _require_contract(self, "A solution", _SOLUTION_PLACE, optional=True)
+        # A capture time is text here, and to_contract_dict writes it in the contract's form or refuses it: the phone
+        # photo benchmark hands the solvers times ending in +00:00 or in a clip's own offset
+        # (research/benchmarks/phone_photos), which the solvers read correctly, so they are not refused here
+        if self.observed_at_utc is not None:
+            require_contract_value(self.observed_at_utc, contract.TEXT, "A solution's observed_at_utc")
+        for warning in self.warnings:
+            require_contract_value(warning, contract.TEXT, "One of a solution's warnings")
         if self.pose_estimate is not None:
             if self.status != "approximate" or self.wcs is None:
-                raise ValueError(
+                raise ContractRefusal(
                     "A pose estimate belongs only to an approximate solution with a WCS: "
                     "it states how far that WCS may be off."
                 )
@@ -583,38 +761,48 @@ class ObservationSolution:
                 swept.crpix_x != self.wcs.crpix_x or swept.crpix_y != self.wcs.crpix_y
                 for swept in self.pose_estimate.swept_wcs
             ):
-                raise ValueError(
+                raise ContractRefusal(
                     "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: "
+                    "all of them describe the same frame."
+                )
+            # The image size itself, which this record holds and the contract's WCS does not (there it can only be
+            # read off the fields of view, astronomy.ts and services/contracts/astronomy.py)
+            if any(
+                swept.width != self.wcs.width or swept.height != self.wcs.height
+                for swept in self.pose_estimate.swept_wcs
+            ):
+                raise ContractRefusal(
+                    "Every swept WCS of a pose estimate has the nominal WCS's width and height: "
                     "all of them describe the same frame."
                 )
         if self.status == "pending":
             if self.quality is not None:
-                raise ValueError("A pending solution has no quality: no solver has run, so nothing was counted.")
+                raise ContractRefusal("A pending solution has no quality: no solver has run, so nothing was counted.")
             if self.solver is not None:
-                raise ValueError("A pending solution names no solver: none has run.")
+                raise ContractRefusal("A pending solution names no solver: none has run.")
         else:
             if self.solver is None and self.status != "unresolved":
-                raise ValueError("Only a pending solution, or an unresolved one no solver reached, names no solver.")
+                raise ContractRefusal("Only a pending solution, or an unresolved one no solver reached, names no solver.")
             if self.quality is None and self.status in ("calibrated", "approximate"):
-                raise ValueError("A calibrated or approximate solution reports the quality it was judged on.")
+                raise ContractRefusal("A calibrated or approximate solution reports the quality it was judged on.")
         if (self.observer_lat is None) != (self.observer_lon is None):
-            raise ValueError("observer_lat and observer_lon must both be provided or both be None.")
+            raise ContractRefusal("observer_lat and observer_lon must both be provided or both be None.")
         has_place = self.observer_lat is not None and self.observer_lon is not None
         needs_time_and_place = (
             self.status in ("approximate", "predicted_only")
             or any(f.evidence_class == "predicted" for f in self.findings)
         )
         if needs_time_and_place and (self.observed_at_utc is None or not has_place):
-            raise ValueError(
+            raise ContractRefusal(
                 "An approximate or predicted_only solution, or any solution with a predicted finding, "
                 "needs observed_at_utc, observer_lat and observer_lon."
             )
         if self.quality is not None and self.quality.passed_independent_verification and self.wcs is None:
-            raise ValueError("Held-out verification passes only with a WCS.")
+            raise ContractRefusal("Held-out verification passes only with a WCS.")
         # A passed verification places catalog matches and deep-sky findings through the WCS: only a calibrated
         # solution passed it, never an approximate, ambiguous, unresolved or predicted-only one
         if self.quality is not None and self.quality.passed_independent_verification and self.status != "calibrated":
-            raise ValueError(
+            raise ContractRefusal(
                 f"Only a calibrated solution passes held-out verification, not a {self.status} one."
             )
         # Pixels reach the sky and the catalog only through a verified WCS: an observed finding has a
@@ -624,17 +812,17 @@ class ObservationSolution:
             # A finding's detection was measured in this solution's recording: one that names another is refused
             measured_in = finding.source_detection.asset_id if finding.source_detection is not None else None
             if measured_in is not None and measured_in != self.source_asset_id:
-                raise ValueError(
+                raise ContractRefusal(
                     f"Finding {finding.id}'s detection was measured in {measured_in}, "
                     f"not in this solution's recording {self.source_asset_id}."
                 )
             if finding.evidence_class == "catalog_matched" and not verified:
-                raise ValueError(
+                raise ContractRefusal(
                     f"Catalog-matched finding {finding.id} needs a verified WCS: "
                     "catalog association follows held-out verification."
                 )
             if finding.evidence_class == "observed" and finding.has_sky_position != verified:
-                raise ValueError(
+                raise ContractRefusal(
                     f"Observed finding {finding.id} "
                     + (
                         "lacks the sky position the verified WCS gives it."
@@ -642,6 +830,14 @@ class ObservationSolution:
                         else "has a sky position without a verified WCS."
                     )
                 )
+            # The pose fit's residual, the only residual an observed finding holds, belongs to an approximate solution
+            # (the lead's ruling of 2026-11-12 on the observed Moon; the contract's rule of the solution)
+            if (
+                finding.evidence_class == "observed"
+                and self.status != "approximate"
+                and (finding.pixel_residual_px is not None or finding.angular_residual_arcsec is not None)
+            ):
+                raise ContractRefusal(f"{contract.OBSERVED_RESIDUAL_OF_A_POSE[:-1]} ({finding.id}, a {self.status} solution).")
 
     @property
     def has_verified_wcs(self) -> bool:
@@ -675,7 +871,10 @@ class ObservationSolution:
             "status": self.status,
         }
         if self.observed_at_utc is not None:
-            result["observedAtUTC"] = self.observed_at_utc
+            # Always in the contract's form: a time ending in Z as written, one with an offset as the same instant
+            # in UTC (so no clip's local offset, which hints at where it was taken, is stored); a time that names
+            # no instant is refused by the parser below
+            result["observedAtUTC"] = contract_utc_instant(self.observed_at_utc)
         if self.observer_lat is not None and self.observer_lon is not None:
             result["observerLocation"] = {
                 "latDeg": float(self.observer_lat),
@@ -695,6 +894,9 @@ class ObservationSolution:
             result["wcs"] = self.wcs.to_contract_dict()
         if self.pose_estimate is not None:
             result["poseEstimate"] = self.pose_estimate.to_contract_dict()
+        # Judged by the contract's own parser before it leaves: nothing is stored or served that the TypeScript
+        # schema would refuse. A refusal names the path and the rule, never the value
+        contract.parse_observation_solution(result)
         return result
 
 

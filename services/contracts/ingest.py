@@ -19,12 +19,23 @@ from __future__ import annotations
 
 import copy
 from datetime import datetime, timedelta, timezone
+import math
 from typing import Annotated, Any, ClassVar, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from pydantic.alias_generators import to_camel
 
-from services.contracts.wire import LOOSE_WIRE_CONFIG, SHA256_HEX_PATTERN, UTC_INSTANT_PATTERN, WIRE_CONFIG, WireInt, WireModel, WireNumber, wire_length
+from services.contracts.wire import (
+    LOOSE_WIRE_CONFIG,
+    SHA256_HEX_PATTERN,
+    UTC_INSTANT_PATTERN,
+    WIRE_CONFIG,
+    WireInt,
+    WireModel,
+    WireNumber,
+    real_calendar_day,
+    wire_length,
+)
 
 MIME_TYPE_PATTERN = r"^[a-z]+/[a-z0-9.+-]+$"
 METADATA_TAG_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:/+-]{0,127}$"
@@ -32,8 +43,15 @@ _DATE = r"[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])"
 _TIME = r"(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{3})?"
 LOCAL_DATE_TIME_PATTERN = rf"^{_DATE}T{_TIME}$"
 JOB_ID_PATTERN = r"^job_[0-9a-f]{16,64}$"
-# The pattern Zod's string().datetime() accepts by default: UTC with any fraction; dates checked on parse
-ZOD_DATETIME_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z$"
+# The pattern Zod's string().datetime() runs by default (zod 3.25, datetimeRegex with no offset), with [0-9] for \d,
+# which in the regex pydantic runs would take any Unicode digit: a real calendar day (29 February in leap years
+# only, year 0000 among them), hours 00 to 23, seconds and their fraction optional, then Z. The contract test holds
+# it to Zod's own (packages/contracts/src/__tests__/observation-solution-contract.test.ts)
+_ZOD_DATE = (
+    r"(([0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29"
+    r"|[0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|(02)-(0[1-9]|1[0-9]|2[0-8])))"
+)
+ZOD_DATETIME_PATTERN = rf"^{_ZOD_DATE}T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?(Z)$"
 
 INGEST_PATTERNS = {
     "sha256": SHA256_HEX_PATTERN,
@@ -141,8 +159,20 @@ CAMERA_HINT_FIELDS = (
     "iso",
 )
 
+
+def _a_number(value: float) -> float:
+    """Zod's z.number() takes no NaN. With no bound it takes an infinity, so this does too, though JSON carries
+    neither."""
+    if math.isnan(value):
+        raise ValueError("is not a number")
+    return value
+
+
 Sha256 = Annotated[str, StringConstraints(pattern=SHA256_HEX_PATTERN)]
-UtcInstant = Annotated[str, StringConstraints(pattern=UTC_INSTANT_PATTERN)]
+# A time that fits its pattern also names a real day, from year 1 to 9999 (the wire module's rule, on both sides)
+UtcInstant = Annotated[str, StringConstraints(pattern=UTC_INSTANT_PATTERN), AfterValidator(real_calendar_day)]
+LocalDateTime = Annotated[str, StringConstraints(pattern=LOCAL_DATE_TIME_PATTERN), AfterValidator(real_calendar_day)]
+AnyNumber = Annotated[float, AfterValidator(_a_number)]
 JobId = Annotated[str, StringConstraints(pattern=JOB_ID_PATTERN)]
 Label = Annotated[str, StringConstraints(min_length=1, max_length=128)]
 Text = Annotated[str, StringConstraints(min_length=1)]
@@ -224,7 +254,7 @@ class AudioStreamDescriptor(_Loose):
 class ObserverLocation(_Loose):
     lat_deg: Annotated[float, Field(ge=-90, le=90)]
     lon_deg: Annotated[float, Field(ge=-180, le=180)]
-    elevation_m: Optional[float] = None
+    elevation_m: Optional[AnyNumber] = None
     place_name: Optional[str] = None
     uncertainty_meters: Optional[Annotated[float, Field(ge=0)]] = None
 
@@ -281,13 +311,6 @@ class SourceAsset(_Loose):
     privacy_class: Literal["private", "consented_demo", "public_sample"]
     immutable: Literal[True]
 
-    @field_validator("captured_at_utc")
-    @classmethod
-    def _real_calendar_time(cls, value: Optional[str]) -> Optional[str]:
-        if value is not None:
-            _parse_utc(value)
-        return value
-
     @model_validator(mode="after")
     def _frame_rate_is_a_clips(self) -> "SourceAsset":
         """A frame rate is a clip's and needs both fields; a still has none, so it carries neither."""
@@ -317,7 +340,7 @@ class CaptureTimeHint(_Model):
     nullable: ClassVar[frozenset[str]] = frozenset(
         {"localDateTime", "local_date_time", "utcOffsetMinutes", "utc_offset_minutes", "utc"}
     )
-    local_date_time: Optional[Annotated[str, StringConstraints(pattern=LOCAL_DATE_TIME_PATTERN)]]
+    local_date_time: Optional[LocalDateTime]
     utc_offset_minutes: Optional[Annotated[int, Field(ge=-UTC_OFFSET_LIMIT_MINUTES, le=UTC_OFFSET_LIMIT_MINUTES)]]
     utc: Optional[UtcInstant]
     marks: Literal["recorded", "file_written"]
@@ -332,7 +355,11 @@ class CaptureTimeHint(_Model):
             raise ValueError("the offset is known exactly when both the local time and UTC are")
         if both:
             local = datetime.fromisoformat(self.local_date_time)
-            expected = (local - timedelta(minutes=self.utc_offset_minutes)).replace(tzinfo=timezone.utc)
+            try:
+                expected = (local - timedelta(minutes=self.utc_offset_minutes)).replace(tzinfo=timezone.utc)
+            except OverflowError:
+                # The local time minus its offset falls outside years 1 to 9999, where no UTC instant is written
+                raise ValueError("utc must be the local time minus the offset") from None
             if _parse_utc(self.utc) != expected:
                 raise ValueError("utc must be the local time minus the offset")
         basis = self.source.basis
@@ -349,7 +376,8 @@ class CaptureTimeHint(_Model):
 class LocationHint(_Model):
     lat_deg: Annotated[float, Field(ge=-90, le=90)]
     lon_deg: Annotated[float, Field(ge=-180, le=180)]
-    altitude_m: Optional[float] = None
+    # Finite on both sides: an altitude JSON cannot carry is no altitude
+    altitude_m: Optional[Annotated[float, Field(allow_inf_nan=False)]] = None
     horizontal_accuracy_m: Optional[Annotated[float, Field(gt=0)]] = None
     source: MetadataSource
 

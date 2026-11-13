@@ -71,16 +71,16 @@ def test_routes_require_the_asset_id_and_its_hash() -> None:
     detection = {"xPx": 120.0, "yPx": 80.0, "flux": 4200.0, "snr": 18.0, "fwhmPx": 2.4, "centroidUncertaintyPx": 0.12}
     body = {**ROUTE_MOMENT, "width": 960, "height": 540, "detections": [detection] * 4}
     assert client.post("/api/science/solve", json=body).status_code == 422
-    assert client.post("/api/science/solve", json={**body, "sourceAssetId": "src_1"}).status_code == 422
+    assert client.post("/api/science/solve", json={**body, "sourceAssetId": "src_abababababababab"}).status_code == 422
     sha = "ab" * 32
     assert client.post("/api/science/solve", json={**body, "sourceSha256": sha}).status_code == 422
-    response = client.post("/api/science/solve", json={**body, "sourceAssetId": "src_1", "sourceSha256": sha})
+    response = client.post("/api/science/solve", json={**body, "sourceAssetId": "src_abababababababab", "sourceSha256": sha})
     assert response.status_code == 200
-    assert (response.json()["sourceAssetId"], response.json()["sourceSha256"]) == ("src_1", sha)
+    assert (response.json()["sourceAssetId"], response.json()["sourceSha256"]) == ("src_abababababababab", sha)
     # Four detections cannot be solved, so no residual was measured and none is sent
     assert not {"median_residual_px", "p95_residual_px"} & response.json().keys()
     for not_a_hash in ("0" * 64, "AB" * 32, "ab" * 31 + "a", "ab" * 31 + "zz"):
-        rejected = client.post("/api/science/solve", json={**body, "sourceAssetId": "src_1", "sourceSha256": not_a_hash})
+        rejected = client.post("/api/science/solve", json={**body, "sourceAssetId": "src_abababababababab", "sourceSha256": not_a_hash})
         assert rejected.status_code == 422, not_a_hash
     assert client.post("/api/media/restore", json={"image_luma": [[0.1] * 8] * 8}).status_code == 422
 
@@ -149,13 +149,13 @@ def test_discovery_gives_each_prediction_the_clips_own_hash(tmp_path, monkeypatc
 def test_solve_takes_the_image_size_from_its_pixels() -> None:
     frame, _, _ = render_synthetic_starfield(width=640, height=360, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
     client = TestClient(app)
-    body = {**ROUTE_MOMENT, "image_luma": frame.tolist(), "sourceAssetId": "src_1", "sourceSha256": _sha256(frame)}
+    body = {**ROUTE_MOMENT, "image_luma": frame.tolist(), "sourceAssetId": "src_abababababababab", "sourceSha256": _sha256(frame)}
     response = client.post("/api/science/solve", json=body)
     assert response.status_code == 200 and response.json()["status"] == "calibrated"
     assert response.json()["wcs"]["crpixX"] == pytest.approx(320.0) and response.json()["wcs"]["crpixY"] == pytest.approx(180.0)
     assert client.post("/api/science/solve", json={**body, "width": 960, "height": 540}).status_code == 422
     detection = {"xPx": 120.0, "yPx": 80.0, "flux": 4200.0, "snr": 18.0, "fwhmPx": 2.4, "centroidUncertaintyPx": 0.12}
-    no_size = {**ROUTE_MOMENT, "detections": [detection] * 4, "sourceAssetId": "src_1", "sourceSha256": "ab" * 32}
+    no_size = {**ROUTE_MOMENT, "detections": [detection] * 4, "sourceAssetId": "src_abababababababab", "sourceSha256": "ab" * 32}
     assert client.post("/api/science/solve", json=no_size).status_code == 422
 
 

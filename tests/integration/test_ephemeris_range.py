@@ -89,7 +89,7 @@ def test_the_routes_answer_422_with_the_range_outside_it() -> None:
             client.post("/api/science/ephemeris", json={"observedAtUTC": moment, **place}),
             client.post(
                 "/api/science/solve-horizon",
-                json={"observedAtUTC": moment, **place, "image_luma": frame.tolist(), "sourceAssetId": "synthetic-dark",
+                json={"observedAtUTC": moment, **place, "image_luma": frame.tolist(), "sourceAssetId": f"src_{digest[:16]}",
                       "sourceSha256": digest},
             ),
         ]

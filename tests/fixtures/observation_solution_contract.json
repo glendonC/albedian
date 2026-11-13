@@ -1,0 +1,6494 @@
+{
+ "about": "Samples and field rules for the observation solution family, written by tests/integration/test_observation_solution_contract.py and judged alike by the Zod schemas (packages/contracts/src/astronomy.ts) and the Python parser (services/contracts/astronomy.py). A number JSON cannot carry is written {\"$number\": \"NaN\"}, {\"$number\": \"Infinity\"} or {\"$number\": \"-Infinity\"}.",
+ "patterns": {
+  "sha256": "^[0-9a-f]{64}$",
+  "utcInstant": "^(([0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|(02)-(0[1-9]|1[0-9]|2[0-8])))T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\\.[0-9]+)?)?(Z)$"
+ },
+ "heldOutGate": {
+  "minHeldOutInliers": 6,
+  "maxMedianResidualPx": 3.0
+ },
+ "sweptFovToleranceDeg": 1e-09,
+ "findingClassEvidence": {
+  "observed": {
+   "source": [
+    "AGENTS.md section 1: \"observed: Measured directly from original pixels (centroid, flux, SNR, frame/time).\"",
+    "CelestialFindingSchema, as this unit writes it (stricter than the doc on main, which asks the sourceDetection only of an observed finding without a verified WCS): \"catalog_matched, predicted and simulated findings always carry a sky position. An observed finding is a pixel measurement: it carries one only when a verified WCS maps its pixels to the sky (checked by ObservationSolutionSchema), and always the sourceDetection that measured it.\"",
+    "catalog_matched, the class that holds a catalog entry: \"Associated with an external astronomical catalog (Gaia DR3, HIP, JPL) only after an independently verified WCS calibration and held-out residual check.\"",
+    "ScientificEvidenceSchema, of sourceAssetSha256: \"Absent only for a prediction made for a time and place with no recording behind it; observed and catalog-matched findings must name theirs (CelestialFindingSchema).\" celestialFindingVariant, of observationSolutionId: \"Absent only for a standalone prediction or simulation made for a time and place with no ObservationSolution; observed and catalog-matched findings, and every finding inside an ObservationSolution, name theirs.\"",
+    "lead's ruling, 2026-11-12: an observed finding holds no catalog distance and no distance note (a point measured in the pixels has no distance), and is never verified by held-out stars (only a catalog match is).",
+    "lead's ruling, 2026-11-12, the observed Moon: its residuals are may here and a rule of the solution: an observed finding holds one only in an approximate solution, the status of a pose estimate, where it is the pose fit's residual (services/science/horizon_solver.py:224-225); the pose record holds no fit residual and no solution names its beacon finding, so both belong in the pose record, an open gap for its unit."
+   ],
+   "must": {
+    "observationSolutionId": "Observed and catalog-matched findings belong to an ObservationSolution and name its id.",
+    "sourceDetection": "An observed finding is a measurement in the pixels and carries the source detection that measured it.",
+    "evidence.sourceAssetSha256": "Observed and catalog-matched evidence rests on a recording and names its SHA-256."
+   },
+   "mustNot": {
+    "catalogRef": "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched.",
+    "inferredDistancePc": "An observed finding holds no catalog distance: a point measured in the pixels has none.",
+    "cartesianParsecICRS": "An observed finding holds no catalog distance: a point measured in the pixels has none.",
+    "evidence.catalogReferenceId": "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched.",
+    "evidence.distanceUncertaintyNote": "An observed finding holds no catalog distance: a point measured in the pixels has none.",
+    "evidence.verifiedByIndependentHoldout": "Only a catalog_matched finding is verified by independent held-out stars."
+   },
+   "may": [
+    "evidence.wcsSolutionId",
+    "evidence.pixelResidualPx",
+    "evidence.angularResidualArcsec"
+   ]
+  },
+  "catalog_matched": {
+   "source": [
+    "AGENTS.md section 1: \"catalog_matched: Associated with an external astronomical catalog (Gaia DR3, HIP, JPL) only after an independently verified WCS calibration and held-out residual check.\"",
+    "ObservationSolutionSchema: \"A catalog_matched finding needs a verified WCS: catalog association follows held-out verification.\"",
+    "ScientificEvidenceSchema, of sourceAssetSha256: \"Absent only for a prediction made for a time and place with no recording behind it; observed and catalog-matched findings must name theirs (CelestialFindingSchema).\" celestialFindingVariant, of observationSolutionId: \"Absent only for a standalone prediction or simulation made for a time and place with no ObservationSolution; observed and catalog-matched findings, and every finding inside an ObservationSolution, name theirs.\"",
+    "lead's ruling, 2026-11-12: a catalog match holds both residuals, in pixels and in arcseconds: the class exists only after a held-out residual check, and a per-finding claim needs its own numbers."
+   ],
+   "must": {
+    "observationSolutionId": "Observed and catalog-matched findings belong to an ObservationSolution and name its id.",
+    "sourceDetection": "A catalog_matched finding carries the source detection that was matched to the catalog.",
+    "catalogRef": "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+    "evidence.sourceAssetSha256": "Observed and catalog-matched evidence rests on a recording and names its SHA-256.",
+    "evidence.catalogReferenceId": "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+    "evidence.pixelResidualPx": "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check.",
+    "evidence.angularResidualArcsec": "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check."
+   },
+   "mustNot": {},
+   "may": [
+    "inferredDistancePc",
+    "cartesianParsecICRS",
+    "evidence.wcsSolutionId",
+    "evidence.distanceUncertaintyNote",
+    "evidence.verifiedByIndependentHoldout"
+   ]
+  },
+  "predicted": {
+   "source": [
+    "AGENTS.md section 1: \"predicted: Computed from ephemeris/catalog + time/location/pose assumptions; never rendered as if recovered from camera pixels.\"",
+    "CelestialFindingSchema: \"A predicted or simulated finding was not measured in the pixels, so it carries no sourceDetection.\"",
+    "ObservationSolutionSchema: a solution with a predicted finding needs observedAtUTC and observerLocation.",
+    "lead's ruling, 2026-11-12: a prediction holds no residual (a residual is a measured difference between a detection and a catalog star) and is never verified by held-out stars.",
+    "lead's ruling, 2026-11-12: what a prediction was computed from (a catalog entry, or the ephemeris with its edition) has no structured field yet, so its catalog entry and a distance with no entry stay may: an open gap for a later unit."
+   ],
+   "must": {},
+   "mustNot": {
+    "sourceDetection": "A predicted or simulated finding was not measured in the pixels, so it carries no source detection.",
+    "evidence.pixelResidualPx": "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star.",
+    "evidence.angularResidualArcsec": "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star.",
+    "evidence.verifiedByIndependentHoldout": "Only a catalog_matched finding is verified by independent held-out stars."
+   },
+   "may": [
+    "observationSolutionId",
+    "catalogRef",
+    "inferredDistancePc",
+    "cartesianParsecICRS",
+    "evidence.sourceAssetSha256",
+    "evidence.wcsSolutionId",
+    "evidence.catalogReferenceId",
+    "evidence.distanceUncertaintyNote"
+   ]
+  },
+  "simulated": {
+   "source": [
+    "AGENTS.md section 1: \"simulated: Catalog-geometry 3D navigation, modeled bodies and scenes, alternative viewpoints, or historical epoch models; must display explicit disclosure that the layer or view is drawn or computed by the app and not measured in the source recording, with each layer naming its own source and limits.\"",
+    "CelestialFindingSchema: \"A predicted or simulated finding was not measured in the pixels, so it carries no sourceDetection.\"",
+    "lead's ruling, 2026-11-12: a simulated finding needs no new field (the disclosure a person reads is the screen's fixed sentence); it holds no detection, no residual and no held-out verification, and the limitation every class holds."
+   ],
+   "must": {},
+   "mustNot": {
+    "sourceDetection": "A predicted or simulated finding was not measured in the pixels, so it carries no source detection.",
+    "evidence.pixelResidualPx": "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star.",
+    "evidence.angularResidualArcsec": "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star.",
+    "evidence.verifiedByIndependentHoldout": "Only a catalog_matched finding is verified by independent held-out stars."
+   },
+   "may": [
+    "observationSolutionId",
+    "catalogRef",
+    "inferredDistancePc",
+    "cartesianParsecICRS",
+    "evidence.sourceAssetSha256",
+    "evidence.wcsSolutionId",
+    "evidence.catalogReferenceId",
+    "evidence.distanceUncertaintyNote"
+   ]
+  }
+ },
+ "findingEvidenceRules": {
+  "ownClass": "A finding's class is the class its evidence names.",
+  "sameEntry": "A finding's catalog reference id names the catalog entry the finding carries."
+ },
+ "findingFields": [
+  "observationSolutionId",
+  "sourceDetection",
+  "catalogRef",
+  "inferredDistancePc",
+  "cartesianParsecICRS",
+  "evidence.sourceAssetSha256",
+  "evidence.wcsSolutionId",
+  "evidence.catalogReferenceId",
+  "evidence.pixelResidualPx",
+  "evidence.angularResidualArcsec",
+  "evidence.distanceUncertaintyNote",
+  "evidence.verifiedByIndependentHoldout"
+ ],
+ "rules": {
+  "boolean": {
+   "type": "flag",
+   "accept": [
+    true,
+    false
+   ],
+   "refuse": [
+    0,
+    1,
+    "true",
+    null,
+    [],
+    {}
+   ]
+  },
+  "catalogDistanceMethod": {
+   "type": "choice",
+   "values": [
+    "photogeometric_bailer_jones_edr3",
+    "geometric_parallax",
+    "ephemeris_au"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "PHOTOGEOMETRIC_BAILER_JONES_EDR3",
+    "photogeometric_bailer_jones_edr3 ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "catalogObjectType": {
+   "type": "choice",
+   "values": [
+    "star",
+    "planet",
+    "moon",
+    "deep_sky",
+    "satellite_candidate"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "STAR",
+    "star ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "catalogProvider": {
+   "type": "choice",
+   "values": [
+    "Gaia DR3",
+    "Hipparcos",
+    "JPL Horizons",
+    "SIMBAD",
+    "OpenNGC"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "gAIA dr3",
+    "Gaia DR3 ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "count": {
+   "type": "number",
+   "integer": true,
+   "ge": 0.0,
+   "accept": [
+    0,
+    2.0,
+    9007199254740991
+   ],
+   "refuse": [
+    -1,
+    0.5,
+    1.5,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "degrees0to360": {
+   "type": "number",
+   "ge": 0.0,
+   "le": 360.0,
+   "accept": [
+    0.0,
+    270.0,
+    270,
+    360.0,
+    -0.0
+   ],
+   "refuse": [
+    -5e-324,
+    360.00000000000006,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "degrees180": {
+   "type": "number",
+   "ge": -180.0,
+   "le": 180.0,
+   "accept": [
+    -180.0,
+    90.0,
+    90,
+    180.0
+   ],
+   "refuse": [
+    -180.00000000000003,
+    180.00000000000003,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "degrees90": {
+   "type": "number",
+   "ge": -90.0,
+   "le": 90.0,
+   "accept": [
+    -90.0,
+    45.0,
+    45,
+    90.0
+   ],
+   "refuse": [
+    -90.00000000000001,
+    90.00000000000001,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "distortion": {
+   "type": "number",
+   "ge": -0.25,
+   "le": 0.25,
+   "accept": [
+    -0.25,
+    0.125,
+    0,
+    0.25
+   ],
+   "refuse": [
+    -0.25000000000000006,
+    0.25000000000000006,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "evidenceClass": {
+   "type": "choice",
+   "values": [
+    "observed",
+    "catalog_matched",
+    "predicted",
+    "simulated"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "OBSERVED",
+    "observed ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "fieldOfView": {
+   "type": "number",
+   "gt": 0.0,
+   "le": 175.0,
+   "accept": [
+    5e-324,
+    131.25,
+    131,
+    175.0
+   ],
+   "refuse": [
+    0.0,
+    -5e-324,
+    -0.0,
+    175.00000000000003,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "nonEmptyText": {
+   "type": "text",
+   "minLength": 1,
+   "accept": [
+    "x",
+    "A longer text, with spaces."
+   ],
+   "refuse": [
+    "",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "nonNegative": {
+   "type": "number",
+   "ge": 0.0,
+   "accept": [
+    0.0,
+    1.5,
+    1,
+    1e+308,
+    -0.0
+   ],
+   "refuse": [
+    -5e-324,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "number": {
+   "type": "number",
+   "accept": [
+    -1e+308,
+    1.5,
+    1,
+    1e+308
+   ],
+   "refuse": [
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "parity": {
+   "type": "choice",
+   "values": [
+    1,
+    -1
+   ],
+   "accept": [
+    1,
+    -1,
+    1.0
+   ],
+   "refuse": [
+    0,
+    2,
+    1.5,
+    -1.5,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    "1",
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "poseBeacon": {
+   "type": "choice",
+   "values": [
+    "moon",
+    "sun"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "MOON",
+    "moon ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "poseMethod": {
+   "type": "choice",
+   "values": [
+    "moon_camera_profile_level_head",
+    "moon_horizon",
+    "sun_horizon"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "MOON_CAMERA_PROFILE_LEVEL_HEAD",
+    "moon_camera_profile_level_head ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "positive": {
+   "type": "number",
+   "gt": 0.0,
+   "accept": [
+    5e-324,
+    1.5,
+    1,
+    1e+308
+   ],
+   "refuse": [
+    0.0,
+    -5e-324,
+    -0.0,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "positiveCount": {
+   "type": "number",
+   "integer": true,
+   "gt": 0.0,
+   "accept": [
+    1,
+    3.0,
+    9007199254740991
+   ],
+   "refuse": [
+    0,
+    1.5,
+    2.5,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "projection": {
+   "type": "choice",
+   "values": [
+    "TAN"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "tan",
+    "TAN ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "sha256": {
+   "type": "text",
+   "minLength": 0,
+   "pattern": "sha256",
+   "accept": [
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "0000000000000000000000000000000000000000000000000000000000000001"
+   ],
+   "refuse": [
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde",
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+    "0123456789abcdeg0123456789abcdeg0123456789abcdeg0123456789abcdeg",
+    "",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "solutionStatus": {
+   "type": "choice",
+   "values": [
+    "pending",
+    "calibrated",
+    "approximate",
+    "predicted_only",
+    "unresolved",
+    "ambiguous"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "PENDING",
+    "pending ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "text": {
+   "type": "text",
+   "minLength": 0,
+   "accept": [
+    "x",
+    "A longer text, with spaces.",
+    ""
+   ],
+   "refuse": [
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "utcInstant": {
+   "type": "text",
+   "minLength": 0,
+   "pattern": "utcInstant",
+   "accept": [
+    "2030-01-01T02:00:00Z",
+    "2030-01-01T02:00Z",
+    "2030-01-01T02:00:00.5Z",
+    "2030-01-01T02:00:00.123456789Z",
+    "2032-02-29T23:59:59Z",
+    "0000-02-29T00:00:00Z"
+   ],
+   "refuse": [
+    "2030-01-01T02:00:00+00:00",
+    "2030-01-01T02:00:00",
+    "2030-01-01 02:00:00Z",
+    "2031-02-29T00:00:00Z",
+    "2031-02-30T00:00:00Z",
+    "2031-04-31T00:00:00Z",
+    "2030-13-01T00:00:00Z",
+    "2030-01-01T24:00:00Z",
+    "2030-01-01T02:60:00Z",
+    "2030-01-01T02:00:60Z",
+    "2030-01-01T02:00:00Z\n",
+    " 2030-01-01T02:00:00Z",
+    "2030-01-01t02:00:00z",
+    "\uff12\uff10\uff13\uff10-01-01T02:00:00Z",
+    "2030-01-01T02:00:00.Z",
+    "2030-1-1T02:00:00Z",
+    "",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  }
+ },
+ "fields": {
+  "ObservationSolution": {
+   "id": {
+    "rule": "nonEmptyText"
+   },
+   "sourceAssetId": {
+    "rule": "nonEmptyText"
+   },
+   "sourceSha256": {
+    "rule": "sha256",
+    "optional": true
+   },
+   "frameTimeSec": {
+    "rule": "nonNegative"
+   },
+   "revision": {
+    "rule": "positiveCount"
+   },
+   "status": {
+    "rule": "solutionStatus"
+   },
+   "observedAtUTC": {
+    "rule": "utcInstant",
+    "optional": true
+   },
+   "observerLocation": {
+    "schema": "ObserverLocation",
+    "optional": true
+   },
+   "solver": {
+    "schema": "SolverIdentity",
+    "optional": true
+   },
+   "wcs": {
+    "schema": "WCSCalibrationModel",
+    "optional": true
+   },
+   "quality": {
+    "schema": "SolutionQuality",
+    "optional": true
+   },
+   "findings": {
+    "schema": "CelestialFinding",
+    "array": true
+   },
+   "warnings": {
+    "rule": "text",
+    "array": true
+   },
+   "poseEstimate": {
+    "schema": "PoseEstimate",
+    "optional": true
+   }
+  },
+  "CelestialFinding": {
+   "id": {
+    "rule": "nonEmptyText"
+   },
+   "observationSolutionId": {
+    "rule": "nonEmptyText",
+    "optional": true
+   },
+   "evidenceClass": {
+    "rule": "evidenceClass"
+   },
+   "title": {
+    "rule": "nonEmptyText"
+   },
+   "subtitle": {
+    "rule": "nonEmptyText"
+   },
+   "sourceDetection": {
+    "schema": "SourceDetection",
+    "optional": true
+   },
+   "catalogRef": {
+    "schema": "CatalogReference",
+    "optional": true
+   },
+   "skyPosition": {
+    "schema": "SkyPosition",
+    "optional": true
+   },
+   "inferredDistancePc": {
+    "schema": "InferredDistance",
+    "optional": true
+   },
+   "cartesianParsecICRS": {
+    "rule": "number",
+    "array": true,
+    "minItems": 3,
+    "maxItems": 3,
+    "optional": true
+   },
+   "evidence": {
+    "schema": "ScientificEvidence"
+   }
+  },
+  "SourceDetection": {
+   "assetId": {
+    "rule": "nonEmptyText"
+   },
+   "frameTimeSec": {
+    "rule": "nonNegative"
+   },
+   "xPx": {
+    "rule": "nonNegative"
+   },
+   "yPx": {
+    "rule": "nonNegative"
+   },
+   "flux": {
+    "rule": "positive"
+   },
+   "snr": {
+    "rule": "positive"
+   },
+   "fwhmPx": {
+    "rule": "nonNegative"
+   },
+   "centroidUncertaintyPx": {
+    "rule": "positive"
+   }
+  },
+  "SkyPosition": {
+   "raDeg": {
+    "rule": "degrees0to360"
+   },
+   "decDeg": {
+    "rule": "degrees90"
+   },
+   "uncertaintyArcsec": {
+    "rule": "nonNegative"
+   },
+   "altDeg": {
+    "rule": "degrees90",
+    "optional": true
+   },
+   "azDeg": {
+    "rule": "degrees0to360",
+    "optional": true
+   }
+  },
+  "ScientificEvidence": {
+   "id": {
+    "rule": "nonEmptyText"
+   },
+   "evidenceClass": {
+    "rule": "evidenceClass"
+   },
+   "verificationMethod": {
+    "rule": "nonEmptyText"
+   },
+   "sourceAssetSha256": {
+    "rule": "sha256",
+    "optional": true
+   },
+   "wcsSolutionId": {
+    "rule": "text",
+    "optional": true
+   },
+   "catalogReferenceId": {
+    "rule": "text",
+    "optional": true
+   },
+   "angularResidualArcsec": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "pixelResidualPx": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "distanceUncertaintyNote": {
+    "rule": "text",
+    "optional": true
+   },
+   "limitations": {
+    "rule": "text",
+    "array": true,
+    "minItems": 1
+   },
+   "verifiedByIndependentHoldout": {
+    "rule": "boolean"
+   }
+  },
+  "InferredDistance": {
+   "lower": {
+    "rule": "positive"
+   },
+   "median": {
+    "rule": "positive"
+   },
+   "upper": {
+    "rule": "positive"
+   },
+   "method": {
+    "rule": "nonEmptyText"
+   }
+  },
+  "CatalogReference": {
+   "id": {
+    "rule": "nonEmptyText"
+   },
+   "provider": {
+    "rule": "catalogProvider"
+   },
+   "releaseVersion": {
+    "rule": "nonEmptyText"
+   },
+   "catalogSourceId": {
+    "rule": "nonEmptyText"
+   },
+   "commonName": {
+    "rule": "nonEmptyText"
+   },
+   "bayerDesignation": {
+    "rule": "text",
+    "optional": true
+   },
+   "constellation": {
+    "rule": "nonEmptyText"
+   },
+   "objectType": {
+    "rule": "catalogObjectType"
+   },
+   "coordinateEpoch": {
+    "rule": "nonEmptyText"
+   },
+   "raDeg": {
+    "rule": "degrees0to360"
+   },
+   "decDeg": {
+    "rule": "degrees90"
+   },
+   "apparentMagnitude": {
+    "rule": "number",
+    "optional": true
+   },
+   "colorIndexBpRp": {
+    "rule": "number",
+    "optional": true
+   },
+   "spectralType": {
+    "rule": "text",
+    "optional": true
+   },
+   "properMotionRaMasYr": {
+    "rule": "number",
+    "optional": true
+   },
+   "properMotionDecMasYr": {
+    "rule": "number",
+    "optional": true
+   },
+   "radialVelocityKmS": {
+    "rule": "number",
+    "optional": true
+   },
+   "parallaxMas": {
+    "rule": "number",
+    "optional": true
+   },
+   "parallaxErrorMas": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "bailerJonesDistancePc": {
+    "schema": "CatalogDistance",
+    "optional": true
+   },
+   "citation": {
+    "rule": "nonEmptyText"
+   }
+  },
+  "CatalogDistance": {
+   "lower": {
+    "rule": "positive"
+   },
+   "median": {
+    "rule": "positive"
+   },
+   "upper": {
+    "rule": "positive"
+   },
+   "method": {
+    "rule": "catalogDistanceMethod"
+   }
+  },
+  "WCSCalibrationModel": {
+   "projection": {
+    "rule": "projection"
+   },
+   "crvalRaDeg": {
+    "rule": "degrees0to360"
+   },
+   "crvalDecDeg": {
+    "rule": "degrees90"
+   },
+   "crpixX": {
+    "rule": "number"
+   },
+   "crpixY": {
+    "rule": "number"
+   },
+   "scaleDegPerPx": {
+    "rule": "positive"
+   },
+   "rotationDeg": {
+    "rule": "number"
+   },
+   "radialDistortionK1": {
+    "rule": "distortion"
+   },
+   "radialDistortionK2": {
+    "rule": "distortion"
+   },
+   "parity": {
+    "rule": "parity"
+   },
+   "fovHorizontalDeg": {
+    "rule": "fieldOfView"
+   },
+   "fovVerticalDeg": {
+    "rule": "fieldOfView"
+   }
+  },
+  "PoseEstimate": {
+   "method": {
+    "rule": "poseMethod"
+   },
+   "beacon": {
+    "rule": "poseBeacon"
+   },
+   "centerAltDeg": {
+    "rule": "degrees90"
+   },
+   "centerAzDeg": {
+    "rule": "degrees0to360"
+   },
+   "rollDeg": {
+    "rule": "degrees180"
+   },
+   "fovDiagonalDeg": {
+    "rule": "fieldOfView"
+   },
+   "fovSource": {
+    "rule": "nonEmptyText"
+   },
+   "assumptions": {
+    "rule": "nonEmptyText",
+    "array": true,
+    "minItems": 1
+   },
+   "sweptWcs": {
+    "schema": "WCSCalibrationModel",
+    "array": true,
+    "minItems": 2,
+    "maxItems": 27
+   },
+   "maxCenterOffsetDeg": {
+    "rule": "nonNegative"
+   },
+   "beaconCentroidUncertaintyDeg": {
+    "rule": "nonNegative"
+   }
+  },
+  "ObserverLocation": {
+   "latDeg": {
+    "rule": "degrees90"
+   },
+   "lonDeg": {
+    "rule": "degrees180"
+   },
+   "placeName": {
+    "rule": "text",
+    "optional": true
+   }
+  },
+  "SolverIdentity": {
+   "name": {
+    "rule": "nonEmptyText"
+   },
+   "version": {
+    "rule": "nonEmptyText"
+   },
+   "catalogRelease": {
+    "rule": "nonEmptyText"
+   }
+  },
+  "SolutionQuality": {
+   "detectedCandidateCount": {
+    "rule": "count"
+   },
+   "matchedInlierCount": {
+    "rule": "count"
+   },
+   "heldOutPairCount": {
+    "rule": "count"
+   },
+   "heldOutInliers": {
+    "rule": "count"
+   },
+   "medianResidualPx": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "p95ResidualPx": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "medianResidualArcsec": {
+    "rule": "nonNegative",
+    "optional": true
+   },
+   "passedIndependentVerification": {
+    "rule": "boolean"
+   }
+  }
+ },
+ "pythonNames": {
+  "ObservationSolution": {
+   "sourceAssetId": "source_asset_id",
+   "sourceSha256": "source_sha256",
+   "frameTimeSec": "frame_time_sec",
+   "observedAtUTC": "observed_at_utc",
+   "observerLocation": "observer_location",
+   "poseEstimate": "pose_estimate"
+  },
+  "CelestialFinding": {
+   "observationSolutionId": "observation_solution_id",
+   "evidenceClass": "evidence_class",
+   "sourceDetection": "source_detection",
+   "catalogRef": "catalog_ref",
+   "skyPosition": "sky_position",
+   "inferredDistancePc": "inferred_distance_pc",
+   "cartesianParsecICRS": "cartesian_parsec_icrs"
+  },
+  "SourceDetection": {
+   "assetId": "asset_id",
+   "frameTimeSec": "frame_time_sec",
+   "xPx": "x_px",
+   "yPx": "y_px",
+   "fwhmPx": "fwhm_px",
+   "centroidUncertaintyPx": "centroid_uncertainty_px"
+  },
+  "SkyPosition": {
+   "raDeg": "ra_deg",
+   "decDeg": "dec_deg",
+   "uncertaintyArcsec": "uncertainty_arcsec",
+   "altDeg": "alt_deg",
+   "azDeg": "az_deg"
+  },
+  "ScientificEvidence": {
+   "evidenceClass": "evidence_class",
+   "verificationMethod": "verification_method",
+   "sourceAssetSha256": "source_asset_sha256",
+   "wcsSolutionId": "wcs_solution_id",
+   "catalogReferenceId": "catalog_reference_id",
+   "angularResidualArcsec": "angular_residual_arcsec",
+   "pixelResidualPx": "pixel_residual_px",
+   "distanceUncertaintyNote": "distance_uncertainty_note",
+   "verifiedByIndependentHoldout": "verified_by_independent_holdout"
+  },
+  "InferredDistance": {},
+  "CatalogReference": {
+   "releaseVersion": "release_version",
+   "catalogSourceId": "catalog_source_id",
+   "commonName": "common_name",
+   "bayerDesignation": "bayer_designation",
+   "objectType": "object_type",
+   "coordinateEpoch": "coordinate_epoch",
+   "raDeg": "ra_deg",
+   "decDeg": "dec_deg",
+   "apparentMagnitude": "apparent_magnitude",
+   "colorIndexBpRp": "color_index_bp_rp",
+   "spectralType": "spectral_type",
+   "properMotionRaMasYr": "proper_motion_ra_mas_yr",
+   "properMotionDecMasYr": "proper_motion_dec_mas_yr",
+   "radialVelocityKmS": "radial_velocity_km_s",
+   "parallaxMas": "parallax_mas",
+   "parallaxErrorMas": "parallax_error_mas",
+   "bailerJonesDistancePc": "bailer_jones_distance_pc"
+  },
+  "CatalogDistance": {},
+  "WCSCalibrationModel": {
+   "crvalRaDeg": "crval_ra_deg",
+   "crvalDecDeg": "crval_dec_deg",
+   "crpixX": "crpix_x",
+   "crpixY": "crpix_y",
+   "scaleDegPerPx": "scale_deg_per_px",
+   "rotationDeg": "rotation_deg",
+   "radialDistortionK1": "radial_distortion_k1",
+   "radialDistortionK2": "radial_distortion_k2",
+   "fovHorizontalDeg": "fov_horizontal_deg",
+   "fovVerticalDeg": "fov_vertical_deg"
+  },
+  "PoseEstimate": {
+   "centerAltDeg": "center_alt_deg",
+   "centerAzDeg": "center_az_deg",
+   "rollDeg": "roll_deg",
+   "fovDiagonalDeg": "fov_diagonal_deg",
+   "fovSource": "fov_source",
+   "sweptWcs": "swept_wcs",
+   "maxCenterOffsetDeg": "max_center_offset_deg",
+   "beaconCentroidUncertaintyDeg": "beacon_centroid_uncertainty_deg"
+  },
+  "ObserverLocation": {
+   "latDeg": "lat_deg",
+   "lonDeg": "lon_deg",
+   "placeName": "place_name"
+  },
+  "SolverIdentity": {
+   "catalogRelease": "catalog_release"
+  },
+  "SolutionQuality": {
+   "detectedCandidateCount": "detected_candidate_count",
+   "matchedInlierCount": "matched_inlier_count",
+   "heldOutPairCount": "held_out_pair_count",
+   "heldOutInliers": "held_out_inliers",
+   "medianResidualPx": "median_residual_px",
+   "p95ResidualPx": "p95_residual_px",
+   "medianResidualArcsec": "median_residual_arcsec",
+   "passedIndependentVerification": "passed_independent_verification"
+  }
+ },
+ "structureRefusals": {
+  "object": [
+   0,
+   "x",
+   true,
+   null,
+   []
+  ],
+  "array": [
+   0,
+   "x",
+   true,
+   null,
+   {}
+  ]
+ },
+ "homes": {
+  "ObservationSolution": {
+   "sample": "calibrated",
+   "path": []
+  },
+  "CelestialFinding": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0
+   ]
+  },
+  "SourceDetection": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "sourceDetection"
+   ]
+  },
+  "SkyPosition": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "skyPosition"
+   ]
+  },
+  "ScientificEvidence": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "evidence"
+   ]
+  },
+  "InferredDistance": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "inferredDistancePc"
+   ]
+  },
+  "CatalogReference": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "catalogRef"
+   ]
+  },
+  "CatalogDistance": {
+   "sample": "calibrated",
+   "path": [
+    "findings",
+    0,
+    "catalogRef",
+    "bailerJonesDistancePc"
+   ]
+  },
+  "WCSCalibrationModel": {
+   "sample": "calibrated",
+   "path": [
+    "wcs"
+   ]
+  },
+  "SolutionQuality": {
+   "sample": "calibrated",
+   "path": [
+    "quality"
+   ]
+  },
+  "SolverIdentity": {
+   "sample": "calibrated",
+   "path": [
+    "solver"
+   ]
+  },
+  "ObserverLocation": {
+   "sample": "calibrated",
+   "path": [
+    "observerLocation"
+   ]
+  },
+  "PoseEstimate": {
+   "sample": "approximate_with_pose",
+   "path": [
+    "poseEstimate"
+   ]
+  }
+ },
+ "valid": {
+  "calibrated": {
+   "id": "sol-primary",
+   "sourceAssetId": "synthetic-9782da890647",
+   "sourceSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "AlbedianTriangleSolver",
+    "version": "1.0.0",
+    "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 11,
+    "heldOutPairCount": 7,
+    "heldOutInliers": 7,
+    "passedIndependentVerification": true,
+    "medianResidualPx": 0.11587721002381521,
+    "p95ResidualPx": 0.17208332897344245,
+    "medianResidualArcsec": 25.82685551751783
+   },
+   "findings": [
+    {
+     "id": "finding-star-rigel",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Rigel",
+     "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050233353953237,
+      "altDeg": 50.187050622512594,
+      "azDeg": 198.39552420678905
+     },
+     "evidence": {
+      "id": "ev-finding-star-rigel",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-rigel",
+      "angularResidualArcsec": 13.050233353953237,
+      "pixelResidualPx": 0.0585524099203686,
+      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-9782da890647",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999745804418,
+      "yPx": 496.192205050709,
+      "flux": 1559.5250955064007,
+      "snr": 217.83736321927773,
+      "fwhmPx": 2.4316650204469092,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ]
+    },
+    {
+     "id": "finding-star-betelgeuse",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Betelgeuse",
+     "subtitle": "Alpha Orionis \u00b7 152.7 pc [135.5 to 174.8 pc]",
+     "skyPosition": {
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "uncertaintyArcsec": 29.15969756247523,
+      "altDeg": 67.36166165396949,
+      "azDeg": 184.0598941154039
+     },
+     "evidence": {
+      "id": "ev-finding-star-betelgeuse",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-betelgeuse",
+      "angularResidualArcsec": 29.15969756247523,
+      "pixelResidualPx": 0.1308306540215864,
+      "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": true
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-9782da890647",
+      "frameTimeSec": 0.0,
+      "xPx": 401.63469878954527,
+      "yPx": 252.99501063221894,
+      "flux": 1426.2537312688178,
+      "snr": 202.35930030190187,
+      "fwhmPx": 2.431692600529923,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-betelgeuse",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 27989",
+      "commonName": "Betelgeuse",
+      "bayerDesignation": "Alpha Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 88.792939,
+      "decDeg": 7.407064,
+      "apparentMagnitude": 0.42,
+      "properMotionRaMasYr": 27.54,
+      "properMotionDecMasYr": 11.3,
+      "bailerJonesDistancePc": {
+       "lower": 135.50135501355012,
+       "median": 152.67175572519085,
+       "upper": 174.82517482517483,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 6.55,
+      "parallaxErrorMas": 0.83
+     },
+     "inferredDistancePc": {
+      "lower": 135.50135501355012,
+      "median": 152.67175572519085,
+      "upper": 174.82517482517483,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      3.189289086275172,
+      151.36415608441035,
+      19.68211584639134
+     ]
+    },
+    {
+     "id": "finding-star-aldebaran",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Aldebaran",
+     "subtitle": "Alpha Tauri \u00b7 20.4 pc [20.1 to 20.8 pc]",
+     "skyPosition": {
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "uncertaintyArcsec": 5.4693991636297925,
+      "altDeg": 66.2934467955525,
+      "azDeg": 240.27495488457862
+     },
+     "evidence": {
+      "id": "ev-finding-star-aldebaran",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-aldebaran",
+      "angularResidualArcsec": 5.4693991636297925,
+      "pixelResidualPx": 0.024539523023162053,
+      "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-9782da890647",
+      "frameTimeSec": 0.0,
+      "xPx": 705.8147634399265,
+      "yPx": 71.73707307698696,
+      "flux": 1228.0515118801814,
+      "snr": 175.55144716468962,
+      "fwhmPx": 2.440765196865329,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-aldebaran",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 21421",
+      "commonName": "Aldebaran",
+      "bayerDesignation": "Alpha Tauri",
+      "constellation": "Taurus",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 68.980163,
+      "decDeg": 16.509302,
+      "apparentMagnitude": 0.86,
+      "properMotionRaMasYr": 63.45,
+      "properMotionDecMasYr": -188.94,
+      "bailerJonesDistancePc": {
+       "lower": 20.11667672500503,
+       "median": 20.43318348998774,
+       "upper": 20.759809009757113,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 48.94,
+      "parallaxErrorMas": 0.77
+     },
+     "inferredDistancePc": {
+      "lower": 20.11667672500503,
+      "median": 20.43318348998774,
+      "upper": 20.759809009757113,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      7.027045618939282,
+      18.287152938002276,
+      5.8065183050575735
+     ]
+    },
+    {
+     "id": "finding-obs-12",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #12",
+     "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+     "skyPosition": {
+      "raDeg": 75.46722171042907,
+      "decDeg": 15.738000097027232,
+      "uncertaintyArcsec": 98.24327365094196
+     },
+     "evidence": {
+      "id": "ev-finding-obs-12",
+      "evidenceClass": "observed",
+      "verificationMethod": "Measured in the image's pixels",
+      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "wcsSolutionId": "sol-primary",
+      "limitations": [
+       "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-9782da890647",
+      "frameTimeSec": 0.0,
+      "xPx": 602.084011134508,
+      "yPx": 98.81346119185388,
+      "flux": 21.201707755833688,
+      "snr": 5.533123386517967,
+      "fwhmPx": 2.3531466262708625,
+      "centroidUncertaintyPx": 0.4252835987725396
+     }
+    },
+    {
+     "id": "finding-openngc-NGC1976",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "predicted",
+     "title": "Great Orion Nebula",
+     "subtitle": "Star cluster + Nebula \u00b7 Ori \u00b7 OpenNGC CC BY-SA 4.0",
+     "skyPosition": {
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "uncertaintyArcsec": 0.15
+     },
+     "evidence": {
+      "id": "ev-finding-openngc-NGC1976",
+      "evidenceClass": "predicted",
+      "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
+      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "openngc-NGC1976",
+      "limitations": [
+       "Catalog centre from OpenNGC (J2000), projected through the solved WCS: nothing about the object is measured in the image.",
+       "An extended object is marked at its catalog centre; its outline is not drawn from the image.",
+       "Coordinates printed to 0.15 arcsec in OpenNGC; it gives no accuracy per row.",
+       "The centre of a large or diffuse object is a convention, known far less precisely than its printed coordinates."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "catalogRef": {
+      "id": "openngc-NGC1976",
+      "provider": "OpenNGC",
+      "releaseVersion": "OpenNGC v20260501",
+      "catalogSourceId": "NGC1976",
+      "commonName": "Great Orion Nebula",
+      "constellation": "Ori",
+      "objectType": "deep_sky",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 83.818667,
+      "decDeg": -5.389667,
+      "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
+      "apparentMagnitude": 4.0
+     }
+    },
+    {
+     "id": "finding-simulated-1",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "simulated",
+     "title": "Simulated point (hand-built contract sample)",
+     "subtitle": "Drawn at Rigel's catalog position",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 0.0
+     },
+     "evidence": {
+      "id": "ev-finding-simulated-1",
+      "evidenceClass": "simulated",
+      "verificationMethod": "Simulated; not measured in the image",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [
+    "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+   ],
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 84.00062398801474,
+    "crvalDecDeg": 6.000266124716505,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.06191145378085482,
+    "rotationDeg": 4.49792204944997,
+    "radialDistortionK1": -0.07383922135184579,
+    "radialDistortionK2": 0.23999999999998664,
+    "parity": -1,
+    "fovHorizontalDeg": 54.82866626746391,
+    "fovVerticalDeg": 32.52929988358449
+   }
+  },
+  "calibrated_at_the_gate": {
+   "id": "sol-contract-gate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 6,
+    "heldOutPairCount": 6,
+    "heldOutInliers": 6,
+    "medianResidualPx": 3.0,
+    "p95ResidualPx": 3.0,
+    "medianResidualArcsec": 378.0,
+    "passedIndependentVerification": true
+   },
+   "findings": [],
+   "warnings": []
+  },
+  "unresolved_pixels_only": {
+   "id": "sol-contract-unresolved",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "unresolved",
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 8,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 5,
+    "heldOutInliers": 0,
+    "medianResidualPx": 4.2,
+    "p95ResidualPx": 6.8,
+    "medianResidualArcsec": 520.0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-unresolved",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [
+    "WCS solution did not pass independent held-out calibration gate."
+   ]
+  },
+  "unresolved_before_any_solver": {
+   "id": "sol-contract-undecoded",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "unresolved",
+   "findings": [],
+   "warnings": [
+    "The file could not be decoded."
+   ]
+  },
+  "pending": {
+   "id": "sol-contract-pending",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "pending",
+   "findings": [],
+   "warnings": []
+  },
+  "pending_without_a_recording": {
+   "id": "sol-contract-new",
+   "sourceAssetId": "src-contract-sample",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "pending",
+   "findings": [],
+   "warnings": []
+  },
+  "ambiguous": {
+   "id": "sol-contract-ambiguous",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "ambiguous",
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 18,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 14,
+    "heldOutInliers": 6,
+    "medianResidualPx": 5.0,
+    "p95ResidualPx": 5.0,
+    "medianResidualArcsec": 630.0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-ambiguous",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": []
+  },
+  "predicted_only": {
+   "id": "sol-contract-predicted",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "predicted_only",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-predicted-star-rigel",
+     "observationSolutionId": "sol-contract-predicted",
+     "evidenceClass": "predicted",
+     "title": "Rigel",
+     "subtitle": "Predicted star (hand-built contract sample)",
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050233353953237,
+      "altDeg": 50.187050622512594,
+      "azDeg": 198.39552420678905
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ],
+     "evidence": {
+      "id": "ev-finding-predicted-star-rigel",
+      "evidenceClass": "predicted",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false,
+      "catalogReferenceId": "star-rigel"
+     }
+    }
+   ],
+   "warnings": []
+  },
+  "approximate": {
+   "id": "sol-contract-approximate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-approximate",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": []
+  },
+  "approximate_with_pose": {
+   "id": "sol-contract-pose",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-pose",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
+  },
+  "approximate_with_pose_narrower_by_the_tolerance": {
+   "id": "sol-contract-pose",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 2e-09,
+    "fovVerticalDeg": 2e-09
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-pose",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 2e-09,
+      "fovVerticalDeg": 2e-09
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 2e-09,
+      "fovVerticalDeg": 1e-09
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 1e-09,
+      "fovVerticalDeg": 1e-09
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
+  },
+  "approximate_with_pose_wider_by_the_tolerance": {
+   "id": "sol-contract-pose",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 1e-09,
+    "fovVerticalDeg": 1e-09
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-pose",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "poseEstimate": {
+    "method": "moon_camera_profile_level_head",
+    "beacon": "moon",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+    "assumptions": [
+     "The head is level."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 2e-09,
+      "fovVerticalDeg": 2e-09
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 2e-09,
+      "fovVerticalDeg": 1e-09
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 1e-09,
+      "fovVerticalDeg": 1e-09
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4,
+    "beaconCentroidUncertaintyDeg": 0.004
+   }
+  },
+  "approximate_with_an_observed_fit_residual": {
+   "id": "sol-contract-approximate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-approximate",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false,
+      "pixelResidualPx": 1.5,
+      "angularResidualArcsec": 189.00000000000003
+     }
+    }
+   ],
+   "warnings": []
+  }
+ },
+ "invalid": [
+  {
+   "name": "gate_one_inlier_short",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutInliers"
+     ],
+     "value": 5
+    }
+   ],
+   "reason": "one held-out inlier fewer than the gate",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Held-out verification passes only with at least 6 held-out inliers and a median held-out residual of at most 3 px."
+   ]
+  },
+  {
+   "name": "gate_median_just_above",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "medianResidualPx"
+     ],
+     "value": 3.0000000000000004
+    }
+   ],
+   "reason": "the next number above the gate's median",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Held-out verification passes only with at least 6 held-out inliers and a median held-out residual of at most 3 px."
+   ]
+  },
+  {
+   "name": "gate_no_inlier",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutInliers"
+     ],
+     "value": 0
+    }
+   ],
+   "reason": "passed with no held-out inlier",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Held-out verification passes only with at least 6 held-out inliers and a median held-out residual of at most 3 px."
+   ]
+  },
+  {
+   "name": "passed_without_a_wcs",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "wcs"
+     ]
+    }
+   ],
+   "reason": "a passed verification with no WCS",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Held-out verification passes only with a WCS and the held-out residuals it was judged on."
+   ]
+  },
+  {
+   "name": "passed_without_residuals",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutPairCount"
+     ],
+     "value": 0
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutInliers"
+     ],
+     "value": 0
+    },
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "medianResidualPx"
+     ]
+    },
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "p95ResidualPx"
+     ]
+    },
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "medianResidualArcsec"
+     ]
+    }
+   ],
+   "reason": "a passed verification that paired no held-out star",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Held-out verification passes only with a WCS and the held-out residuals it was judged on.",
+    "Held-out verification passes only with at least 6 held-out inliers and a median held-out residual of at most 3 px."
+   ]
+  },
+  {
+   "name": "passed_on_approximate",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "approximate"
+    }
+   ],
+   "reason": "a passed verification on a solution whose status is approximate",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Only a calibrated solution passes held-out verification, not a approximate one."
+   ]
+  },
+  {
+   "name": "passed_on_ambiguous",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "ambiguous"
+    }
+   ],
+   "reason": "a passed verification on a solution whose status is ambiguous",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Only a calibrated solution passes held-out verification, not a ambiguous one."
+   ]
+  },
+  {
+   "name": "passed_on_unresolved",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "unresolved"
+    }
+   ],
+   "reason": "a passed verification on a solution whose status is unresolved",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Only a calibrated solution passes held-out verification, not a unresolved one."
+   ]
+  },
+  {
+   "name": "passed_on_predicted_only",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "predicted_only"
+    }
+   ],
+   "reason": "a passed verification on a solution whose status is predicted_only",
+   "paths": [
+    "quality.passedIndependentVerification"
+   ],
+   "messages": [
+    "Only a calibrated solution passes held-out verification, not a predicted_only one."
+   ]
+  },
+  {
+   "name": "passed_on_pending",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "pending"
+    }
+   ],
+   "reason": "a pending solution with a solver and a passed quality",
+   "paths": [
+    "quality",
+    "quality.passedIndependentVerification",
+    "solver"
+   ],
+   "messages": [
+    "A pending solution has no quality: no solver has run, so nothing was counted.",
+    "A pending solution names no solver: none has run.",
+    "Only a calibrated solution passes held-out verification, not a pending one."
+   ]
+  },
+  {
+   "name": "calibrated_without_quality",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality"
+     ]
+    }
+   ],
+   "reason": "a calibrated solution with no quality",
+   "paths": [
+    "quality"
+   ],
+   "messages": [
+    "A calibrated or approximate solution reports the quality it was judged on."
+   ]
+  },
+  {
+   "name": "calibrated_without_solver",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "solver"
+     ]
+    }
+   ],
+   "reason": "a calibrated solution that names no solver",
+   "paths": [
+    "solver"
+   ],
+   "messages": [
+    "Only a pending solution, or an unresolved one no solver reached, names no solver."
+   ]
+  },
+  {
+   "name": "approximate_without_quality",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality"
+     ]
+    }
+   ],
+   "reason": "an approximate solution with no quality",
+   "paths": [
+    "quality"
+   ],
+   "messages": [
+    "A calibrated or approximate solution reports the quality it was judged on."
+   ]
+  },
+  {
+   "name": "approximate_without_solver",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "solver"
+     ]
+    }
+   ],
+   "reason": "a solution whose status is approximate and that names no solver",
+   "paths": [
+    "solver"
+   ],
+   "messages": [
+    "Only a pending solution, or an unresolved one no solver reached, names no solver."
+   ]
+  },
+  {
+   "name": "ambiguous_without_solver",
+   "base": "ambiguous",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "solver"
+     ]
+    }
+   ],
+   "reason": "a solution whose status is ambiguous and that names no solver",
+   "paths": [
+    "solver"
+   ],
+   "messages": [
+    "Only a pending solution, or an unresolved one no solver reached, names no solver."
+   ]
+  },
+  {
+   "name": "predicted_only_without_solver",
+   "base": "predicted_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "solver"
+     ]
+    }
+   ],
+   "reason": "a solution whose status is predicted_only and that names no solver",
+   "paths": [
+    "solver"
+   ],
+   "messages": [
+    "Only a pending solution, or an unresolved one no solver reached, names no solver."
+   ]
+  },
+  {
+   "name": "pending_with_quality",
+   "base": "pending",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality"
+     ],
+     "value": {
+      "detectedCandidateCount": 1,
+      "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
+      "heldOutInliers": 0,
+      "passedIndependentVerification": false
+     }
+    }
+   ],
+   "reason": "a pending solution that counted something",
+   "paths": [
+    "quality"
+   ],
+   "messages": [
+    "A pending solution has no quality: no solver has run, so nothing was counted."
+   ]
+  },
+  {
+   "name": "pending_with_solver",
+   "base": "pending",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "solver"
+     ],
+     "value": {
+      "name": "hand-built contract sample",
+      "version": "0",
+      "catalogRelease": "none"
+     }
+    }
+   ],
+   "reason": "a pending solution that names a solver",
+   "paths": [
+    "solver"
+   ],
+   "messages": [
+    "A pending solution names no solver: none has run."
+   ]
+  },
+  {
+   "name": "more_inliers_than_pairs",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutInliers"
+     ],
+     "value": 7
+    }
+   ],
+   "reason": "more held-out inliers than held-out pairs",
+   "paths": [
+    "quality.heldOutInliers"
+   ],
+   "messages": [
+    "Held-out inliers are held-out pairs inside the inlier gate: there cannot be more of them than pairs."
+   ]
+  },
+  {
+   "name": "residuals_without_a_pair",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutPairCount"
+     ],
+     "value": 0
+    }
+   ],
+   "reason": "residuals with no held-out pair",
+   "paths": [
+    "quality.medianResidualArcsec",
+    "quality.medianResidualPx",
+    "quality.p95ResidualPx"
+   ],
+   "messages": [
+    "No held-out star was paired, so there is no residual to report."
+   ]
+  },
+  {
+   "name": "a_pair_without_its_residual",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "p95ResidualPx"
+     ]
+    }
+   ],
+   "reason": "held-out pairs with one residual left out",
+   "paths": [
+    "quality.p95ResidualPx"
+   ],
+   "messages": [
+    "Held-out stars were paired, so their residual is reported."
+   ]
+  },
+  {
+   "name": "residual_not_a_number",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "medianResidualPx"
+     ],
+     "value": {
+      "$number": "NaN"
+     }
+    }
+   ],
+   "reason": "a residual that is not a number",
+   "paths": [
+    "quality.medianResidualPx"
+   ],
+   "messages": []
+  },
+  {
+   "name": "residual_infinite",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "p95ResidualPx"
+     ],
+     "value": {
+      "$number": "Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite residual",
+   "paths": [
+    "quality.p95ResidualPx"
+   ],
+   "messages": []
+  },
+  {
+   "name": "status_unknown",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "Calibrated"
+    }
+   ],
+   "reason": "a status the contract does not name",
+   "paths": [
+    "status"
+   ],
+   "messages": []
+  },
+  {
+   "name": "status_missing",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "status"
+     ]
+    }
+   ],
+   "reason": "no status",
+   "paths": [
+    "status"
+   ],
+   "messages": []
+  },
+  {
+   "name": "recording_hash_of_zeros",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "sourceSha256"
+     ],
+     "value": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+   ],
+   "reason": "64 zeros in place of a hash",
+   "paths": [
+    "sourceSha256"
+   ],
+   "messages": [
+    "A SHA-256 of 64 zeros is a placeholder, not a hash."
+   ]
+  },
+  {
+   "name": "recording_hash_in_capitals",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "sourceSha256"
+     ],
+     "value": "CD6D4797CA18A977A4840CC1909898ABBDA6E0F16EE92B10A4854B5C8C84386E"
+    }
+   ],
+   "reason": "a hash in capitals",
+   "paths": [
+    "sourceSha256"
+   ],
+   "messages": []
+  },
+  {
+   "name": "solved_without_a_recording",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "sourceSha256"
+     ]
+    }
+   ],
+   "reason": "an unresolved solution that names no recording",
+   "paths": [
+    "sourceSha256"
+   ],
+   "messages": [
+    "Only a pending solution with no findings names no recording."
+   ]
+  },
+  {
+   "name": "pending_with_a_finding_and_no_recording",
+   "base": "pending_without_a_recording",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings"
+     ],
+     "value": [
+      {
+       "id": "finding-simulated-1",
+       "observationSolutionId": "sol-contract-new",
+       "evidenceClass": "simulated",
+       "title": "Simulated point (hand-built contract sample)",
+       "subtitle": "Drawn at Rigel's catalog position",
+       "skyPosition": {
+        "raDeg": 78.634467,
+        "decDeg": -8.201638,
+        "uncertaintyArcsec": 0.0
+       },
+       "evidence": {
+        "id": "ev-finding-simulated-1",
+        "evidenceClass": "simulated",
+        "verificationMethod": "Simulated; not measured in the image",
+        "limitations": [
+         "A hand-built contract sample, not a measurement."
+        ],
+        "verifiedByIndependentHoldout": false
+       }
+      }
+     ]
+    }
+   ],
+   "reason": "a pending solution with a finding and no recording",
+   "paths": [
+    "sourceSha256"
+   ],
+   "messages": [
+    "Only a pending solution with no findings names no recording."
+   ]
+  },
+  {
+   "name": "approximate_without_a_time",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "observedAtUTC"
+     ]
+    }
+   ],
+   "reason": "an approximate solution with no capture time",
+   "paths": [
+    "observedAtUTC"
+   ],
+   "messages": [
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC."
+   ]
+  },
+  {
+   "name": "approximate_without_a_place",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "observerLocation"
+     ]
+    }
+   ],
+   "reason": "an approximate solution with no place",
+   "paths": [
+    "observerLocation"
+   ],
+   "messages": [
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation."
+   ]
+  },
+  {
+   "name": "predicted_only_without_time_or_place",
+   "base": "predicted_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "observedAtUTC"
+     ]
+    },
+    {
+     "op": "remove",
+     "path": [
+      "observerLocation"
+     ]
+    }
+   ],
+   "reason": "a predicted-only solution with no time and no place",
+   "paths": [
+    "observedAtUTC",
+    "observerLocation"
+   ],
+   "messages": [
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC.",
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation."
+   ]
+  },
+  {
+   "name": "predicted_only_with_no_finding_and_no_time_or_place",
+   "base": "predicted_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings"
+     ],
+     "value": []
+    },
+    {
+     "op": "remove",
+     "path": [
+      "observedAtUTC"
+     ]
+    },
+    {
+     "op": "remove",
+     "path": [
+      "observerLocation"
+     ]
+    }
+   ],
+   "reason": "a predicted-only solution with no finding, no time and no place: the status alone needs both",
+   "paths": [
+    "observedAtUTC",
+    "observerLocation"
+   ],
+   "messages": [
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC.",
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation."
+   ]
+  },
+  {
+   "name": "predicted_finding_without_time_or_place",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings"
+     ],
+     "value": [
+      {
+       "id": "finding-obs-1",
+       "observationSolutionId": "sol-contract-unresolved",
+       "evidenceClass": "observed",
+       "title": "Observed Point Source #1 (hand-built contract sample)",
+       "subtitle": "At (412.5, 300.2) px",
+       "sourceDetection": {
+        "assetId": "src-contract-sample",
+        "frameTimeSec": 0.0,
+        "xPx": 412.5,
+        "yPx": 300.25,
+        "flux": 5000.0,
+        "snr": 25.0,
+        "fwhmPx": 2.5,
+        "centroidUncertaintyPx": 0.1
+       },
+       "evidence": {
+        "id": "ev-finding-obs-1",
+        "evidenceClass": "observed",
+        "verificationMethod": "Hand-built for the contract fixture",
+        "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+        "limitations": [
+         "A hand-built contract sample, not a measurement."
+        ],
+        "verifiedByIndependentHoldout": false
+       }
+      },
+      {
+       "id": "finding-predicted-star-rigel",
+       "observationSolutionId": "sol-contract-unresolved",
+       "evidenceClass": "predicted",
+       "title": "Rigel",
+       "subtitle": "Predicted star (hand-built contract sample)",
+       "catalogRef": {
+        "id": "star-rigel",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 24436",
+        "commonName": "Rigel",
+        "bayerDesignation": "Beta Orionis",
+        "constellation": "Orion",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 78.634467,
+        "decDeg": -8.201638,
+        "apparentMagnitude": 0.13,
+        "properMotionRaMasYr": 1.31,
+        "properMotionDecMasYr": 0.5,
+        "bailerJonesDistancePc": {
+         "lower": 242.71844660194174,
+         "median": 264.55026455026456,
+         "upper": 290.69767441860466,
+         "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 3.78,
+        "parallaxErrorMas": 0.34
+       },
+       "skyPosition": {
+        "raDeg": 78.634467,
+        "decDeg": -8.201638,
+        "uncertaintyArcsec": 13.050233353953237,
+        "altDeg": 50.187050622512594,
+        "azDeg": 198.39552420678905
+       },
+       "inferredDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "cartesianParsecICRS": [
+        51.60106686984617,
+        256.70968851076134,
+        -37.740007898999316
+       ],
+       "evidence": {
+        "id": "ev-finding-predicted-star-rigel",
+        "evidenceClass": "predicted",
+        "verificationMethod": "Hand-built for the contract fixture",
+        "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+        "limitations": [
+         "A hand-built contract sample, not a measurement."
+        ],
+        "verifiedByIndependentHoldout": false,
+        "catalogReferenceId": "star-rigel"
+       }
+      }
+     ]
+    }
+   ],
+   "reason": "a predicted finding in a solution with no time and no place",
+   "paths": [
+    "observedAtUTC",
+    "observerLocation"
+   ],
+   "messages": [
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC.",
+    "An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation."
+   ]
+  },
+  {
+   "name": "time_with_an_offset",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "observedAtUTC"
+     ],
+     "value": "2030-01-01T02:00:00+00:00"
+    }
+   ],
+   "reason": "a capture time written with +00:00, not Z",
+   "paths": [
+    "observedAtUTC"
+   ],
+   "messages": []
+  },
+  {
+   "name": "time_sent_as_null",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "observedAtUTC"
+     ],
+     "value": null
+    }
+   ],
+   "reason": "a null capture time",
+   "paths": [
+    "observedAtUTC"
+   ],
+   "messages": []
+  },
+  {
+   "name": "wcs_sent_as_null",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "wcs"
+     ],
+     "value": null
+    }
+   ],
+   "reason": "a null WCS",
+   "paths": [
+    "wcs"
+   ],
+   "messages": []
+  },
+  {
+   "name": "findings_missing",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings"
+     ]
+    }
+   ],
+   "reason": "no findings list",
+   "paths": [
+    "findings"
+   ],
+   "messages": []
+  },
+  {
+   "name": "warnings_missing",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "warnings"
+     ]
+    }
+   ],
+   "reason": "no warnings list",
+   "paths": [
+    "warnings"
+   ],
+   "messages": []
+  },
+  {
+   "name": "warning_not_text",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "warnings"
+     ],
+     "value": [
+      5
+     ]
+    }
+   ],
+   "reason": "a number among the warnings",
+   "paths": [
+    "warnings.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "wcs_centre_pixel_infinite",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "wcs",
+      "crpixX"
+     ],
+     "value": {
+      "$number": "Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite crpixX",
+   "paths": [
+    "wcs.crpixX"
+   ],
+   "messages": []
+  },
+  {
+   "name": "wcs_scale_zero",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "wcs",
+      "scaleDegPerPx"
+     ],
+     "value": 0
+    }
+   ],
+   "reason": "a pixel scale of zero",
+   "paths": [
+    "wcs.scaleDegPerPx"
+   ],
+   "messages": []
+  },
+  {
+   "name": "predicted_finding_names_no_solution",
+   "base": "predicted_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "observationSolutionId"
+     ]
+    }
+   ],
+   "reason": "a finding inside a solution that names no solution",
+   "paths": [
+    "findings.0.observationSolutionId"
+   ],
+   "messages": [
+    "A finding inside an ObservationSolution must name its ObservationSolution id."
+   ]
+  },
+  {
+   "name": "observed_finding_names_no_solution",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "observationSolutionId"
+     ]
+    }
+   ],
+   "reason": "an observed finding that names no solution",
+   "paths": [
+    "findings.0.observationSolutionId"
+   ],
+   "messages": [
+    "Observed and catalog-matched findings belong to an ObservationSolution and name its id."
+   ]
+  },
+  {
+   "name": "catalog_match_without_a_wcs",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0
+     ],
+     "value": {
+      "id": "finding-star-rigel",
+      "observationSolutionId": "sol-primary",
+      "evidenceClass": "catalog_matched",
+      "title": "Rigel",
+      "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+      "skyPosition": {
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "uncertaintyArcsec": 13.050233353953237,
+       "altDeg": 50.187050622512594,
+       "azDeg": 198.39552420678905
+      },
+      "evidence": {
+       "id": "ev-finding-star-rigel",
+       "evidenceClass": "catalog_matched",
+       "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+       "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+       "wcsSolutionId": "sol-primary",
+       "catalogReferenceId": "star-rigel",
+       "angularResidualArcsec": 13.050233353953237,
+       "pixelResidualPx": 0.0585524099203686,
+       "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+       "limitations": [
+        "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "sourceDetection": {
+       "assetId": "synthetic-9782da890647",
+       "frameTimeSec": 0.0,
+       "xPx": 586.3999745804418,
+       "yPx": 496.192205050709,
+       "flux": 1559.5250955064007,
+       "snr": 217.83736321927773,
+       "fwhmPx": 2.4316650204469092,
+       "centroidUncertaintyPx": 0.03
+      },
+      "catalogRef": {
+       "id": "star-rigel",
+       "provider": "Hipparcos",
+       "releaseVersion": "Hipparcos 2007",
+       "catalogSourceId": "HIP 24436",
+       "commonName": "Rigel",
+       "bayerDesignation": "Beta Orionis",
+       "constellation": "Orion",
+       "objectType": "star",
+       "coordinateEpoch": "J2000.0",
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "apparentMagnitude": 0.13,
+       "properMotionRaMasYr": 1.31,
+       "properMotionDecMasYr": 0.5,
+       "bailerJonesDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+       "parallaxMas": 3.78,
+       "parallaxErrorMas": 0.34
+      },
+      "inferredDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       51.60106686984617,
+       256.70968851076134,
+       -37.740007898999316
+      ]
+     }
+    }
+   ],
+   "reason": "a catalog match in a solution with no WCS",
+   "paths": [
+    "findings.0.evidenceClass"
+   ],
+   "messages": [
+    "A catalog_matched finding needs a verified WCS: catalog association follows held-out verification."
+   ]
+  },
+  {
+   "name": "catalog_match_on_an_unverified_wcs",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0
+     ],
+     "value": {
+      "id": "finding-star-rigel",
+      "observationSolutionId": "sol-primary",
+      "evidenceClass": "catalog_matched",
+      "title": "Rigel",
+      "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+      "skyPosition": {
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "uncertaintyArcsec": 13.050233353953237,
+       "altDeg": 50.187050622512594,
+       "azDeg": 198.39552420678905
+      },
+      "evidence": {
+       "id": "ev-finding-star-rigel",
+       "evidenceClass": "catalog_matched",
+       "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+       "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+       "wcsSolutionId": "sol-primary",
+       "catalogReferenceId": "star-rigel",
+       "angularResidualArcsec": 13.050233353953237,
+       "pixelResidualPx": 0.0585524099203686,
+       "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+       "limitations": [
+        "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+       ],
+       "verifiedByIndependentHoldout": false
+      },
+      "sourceDetection": {
+       "assetId": "synthetic-9782da890647",
+       "frameTimeSec": 0.0,
+       "xPx": 586.3999745804418,
+       "yPx": 496.192205050709,
+       "flux": 1559.5250955064007,
+       "snr": 217.83736321927773,
+       "fwhmPx": 2.4316650204469092,
+       "centroidUncertaintyPx": 0.03
+      },
+      "catalogRef": {
+       "id": "star-rigel",
+       "provider": "Hipparcos",
+       "releaseVersion": "Hipparcos 2007",
+       "catalogSourceId": "HIP 24436",
+       "commonName": "Rigel",
+       "bayerDesignation": "Beta Orionis",
+       "constellation": "Orion",
+       "objectType": "star",
+       "coordinateEpoch": "J2000.0",
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "apparentMagnitude": 0.13,
+       "properMotionRaMasYr": 1.31,
+       "properMotionDecMasYr": 0.5,
+       "bailerJonesDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+       "parallaxMas": 3.78,
+       "parallaxErrorMas": 0.34
+      },
+      "inferredDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "cartesianParsecICRS": [
+       51.60106686984617,
+       256.70968851076134,
+       -37.740007898999316
+      ]
+     }
+    }
+   ],
+   "reason": "a catalog match under a WCS that did not pass verification",
+   "paths": [
+    "findings.0.evidenceClass"
+   ],
+   "messages": [
+    "A catalog_matched finding needs a verified WCS: catalog association follows held-out verification."
+   ]
+  },
+  {
+   "name": "observed_on_the_sky_without_a_verified_wcs",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "skyPosition"
+     ],
+     "value": {
+      "raDeg": 83.8,
+      "decDeg": 4.0,
+      "uncertaintyArcsec": 12.0
+     }
+    }
+   ],
+   "reason": "a detection given a sky position with no verified WCS",
+   "paths": [
+    "findings.0.skyPosition"
+   ],
+   "messages": [
+    "An observed finding has no sky position without a verified WCS."
+   ]
+  },
+  {
+   "name": "observed_off_the_sky_under_a_verified_wcs",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      3,
+      "skyPosition"
+     ]
+    }
+   ],
+   "reason": "a detection left off the sky under a verified WCS",
+   "paths": [
+    "findings.3.skyPosition"
+   ],
+   "messages": [
+    "An observed finding in a solution with a verified WCS needs the sky position that WCS gives it."
+   ]
+  },
+  {
+   "name": "catalog_match_without_a_sky_position",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "skyPosition"
+     ]
+    }
+   ],
+   "reason": "a catalog match with no sky position",
+   "paths": [
+    "findings.0.skyPosition"
+   ],
+   "messages": []
+  },
+  {
+   "name": "predicted_finding_with_a_detection",
+   "base": "predicted_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "sourceDetection"
+     ],
+     "value": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     }
+    }
+   ],
+   "reason": "a predicted finding that carries a pixel detection",
+   "paths": [
+    "findings.0.sourceDetection"
+   ],
+   "messages": [
+    "A predicted or simulated finding was not measured in the pixels, so it carries no source detection."
+   ]
+  },
+  {
+   "name": "simulated_finding_with_a_detection",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      5,
+      "sourceDetection"
+     ],
+     "value": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     }
+    }
+   ],
+   "reason": "a simulated finding that carries a pixel detection",
+   "paths": [
+    "findings.5.sourceDetection"
+   ],
+   "messages": [
+    "A predicted or simulated finding was not measured in the pixels, so it carries no source detection."
+   ]
+  },
+  {
+   "name": "observed_finding_located_nowhere",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "sourceDetection"
+     ]
+    }
+   ],
+   "reason": "an observed finding with no pixels and no sky position",
+   "paths": [
+    "findings.0.sourceDetection"
+   ],
+   "messages": [
+    "An observed finding is a measurement in the pixels and carries the source detection that measured it."
+   ]
+  },
+  {
+   "name": "observed_evidence_names_no_recording",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "sourceAssetSha256"
+     ]
+    }
+   ],
+   "reason": "observed evidence that names no recording",
+   "paths": [
+    "findings.0.evidence.sourceAssetSha256"
+   ],
+   "messages": [
+    "Observed and catalog-matched evidence rests on a recording and names its SHA-256."
+   ]
+  },
+  {
+   "name": "evidence_class_unknown",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidenceClass"
+     ],
+     "value": "measured"
+    }
+   ],
+   "reason": "an evidence class the contract does not name",
+   "paths": [
+    "findings.0.evidenceClass"
+   ],
+   "messages": []
+  },
+  {
+   "name": "no_limitation_stated",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "limitations"
+     ],
+     "value": []
+    }
+   ],
+   "reason": "evidence with no limitation",
+   "paths": [
+    "findings.0.evidence.limitations"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_left_of_the_frame",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "sourceDetection",
+      "xPx"
+     ],
+     "value": -0.5
+    }
+   ],
+   "reason": "a detection at a negative x",
+   "paths": [
+    "findings.0.sourceDetection.xPx"
+   ],
+   "messages": []
+  },
+  {
+   "name": "catalog_magnitude_infinite",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "catalogRef",
+      "apparentMagnitude"
+     ],
+     "value": {
+      "$number": "Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite catalog magnitude",
+   "paths": [
+    "findings.0.catalogRef.apparentMagnitude"
+   ],
+   "messages": []
+  },
+  {
+   "name": "position_x_infinite",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "cartesianParsecICRS",
+      0
+     ],
+     "value": {
+      "$number": "-Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite x in a finding's position in space",
+   "paths": [
+    "findings.0.cartesianParsecICRS.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "position_y_infinite",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "cartesianParsecICRS",
+      1
+     ],
+     "value": {
+      "$number": "-Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite y in a finding's position in space",
+   "paths": [
+    "findings.0.cartesianParsecICRS.1"
+   ],
+   "messages": []
+  },
+  {
+   "name": "position_z_infinite",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "cartesianParsecICRS",
+      2
+     ],
+     "value": {
+      "$number": "-Infinity"
+     }
+    }
+   ],
+   "reason": "an infinite z in a finding's position in space",
+   "paths": [
+    "findings.0.cartesianParsecICRS.2"
+   ],
+   "messages": []
+  },
+  {
+   "name": "pose_on_a_calibrated_solution",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate"
+     ],
+     "value": {
+      "method": "moon_camera_profile_level_head",
+      "beacon": "moon",
+      "centerAltDeg": 33.0,
+      "centerAzDeg": 224.0,
+      "rollDeg": 0.0,
+      "fovDiagonalDeg": 38.2,
+      "fovSource": "A synthetic camera profile for contract tests; it describes no real camera.",
+      "assumptions": [
+       "The head is level."
+      ],
+      "sweptWcs": [
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.0315,
+        "rotationDeg": -1.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 30.24,
+        "fovVerticalDeg": 17.01
+       },
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.035,
+        "rotationDeg": 4.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 33.6,
+        "fovVerticalDeg": 18.9
+       },
+       {
+        "projection": "TAN",
+        "crvalRaDeg": 83.8,
+        "crvalDecDeg": 4.0,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.0385,
+        "rotationDeg": 1.5,
+        "radialDistortionK1": -0.008,
+        "radialDistortionK2": 0.001,
+        "parity": -1,
+        "fovHorizontalDeg": 36.96,
+        "fovVerticalDeg": 20.79
+       }
+      ],
+      "maxCenterOffsetDeg": 0.4,
+      "beaconCentroidUncertaintyDeg": 0.004
+     }
+    }
+   ],
+   "reason": "a pose estimate on a calibrated solution",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
+   ]
+  },
+  {
+   "name": "pose_on_a_predicted_only_solution",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "status"
+     ],
+     "value": "predicted_only"
+    }
+   ],
+   "reason": "a pose estimate on a predicted-only solution",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
+   ]
+  },
+  {
+   "name": "pose_without_a_wcs",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "wcs"
+     ]
+    }
+   ],
+   "reason": "a pose estimate with no nominal WCS",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "A pose estimate belongs only to an approximate solution with a WCS: it states how far that WCS may be off."
+   ]
+  },
+  {
+   "name": "swept_wcs_on_another_centre_pixel",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      1,
+      "crpixX"
+     ],
+     "value": 480.5
+    }
+   ],
+   "reason": "a swept WCS on another crpixX",
+   "paths": [
+    "poseEstimate.sweptWcs.1"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's crpixX and crpixY: all of them describe the same frame."
+   ]
+  },
+  {
+   "name": "swept_wcs_same_scale_other_field_of_view",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      1,
+      "fovHorizontalDeg"
+     ],
+     "value": 40.0
+    }
+   ],
+   "reason": "a swept WCS with the nominal scale and another horizontal field of view",
+   "paths": [
+    "poseEstimate.sweptWcs.1"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_larger_scale_smaller_field",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      2,
+      "fovVerticalDeg"
+     ],
+     "value": 18.0
+    }
+   ],
+   "reason": "a swept WCS with a larger scale and a smaller vertical field of view",
+   "paths": [
+    "poseEstimate.sweptWcs.2"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_smaller_scale_larger_field",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      0,
+      "fovHorizontalDeg"
+     ],
+     "value": 34.0
+    }
+   ],
+   "reason": "a swept WCS with a smaller scale and a larger horizontal field of view",
+   "paths": [
+    "poseEstimate.sweptWcs.0"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_same_scale_narrower_field",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      1,
+      "fovHorizontalDeg"
+     ],
+     "value": 30.0
+    }
+   ],
+   "reason": "a swept WCS with the nominal scale and a narrower horizontal field of view",
+   "paths": [
+    "poseEstimate.sweptWcs.1"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_larger_scale_narrower_just_past_the_tolerance",
+   "base": "approximate_with_pose_narrower_by_the_tolerance",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      2,
+      "fovVerticalDeg"
+     ],
+     "value": 9.999999999999999e-10
+    }
+   ],
+   "reason": "a swept WCS with a larger scale, narrower by one float more than the tolerance",
+   "paths": [
+    "poseEstimate.sweptWcs.2"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_same_scale_narrower_just_past_the_tolerance",
+   "base": "approximate_with_pose_narrower_by_the_tolerance",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      1,
+      "fovVerticalDeg"
+     ],
+     "value": 9.999999999999999e-10
+    }
+   ],
+   "reason": "a swept WCS with the nominal scale, narrower by one float more than the tolerance",
+   "paths": [
+    "poseEstimate.sweptWcs.1"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_smaller_scale_wider_just_past_the_tolerance",
+   "base": "approximate_with_pose_wider_by_the_tolerance",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      0,
+      "fovHorizontalDeg"
+     ],
+     "value": 2.0000000000000005e-09
+    }
+   ],
+   "reason": "a swept WCS with a smaller scale, wider by one float more than the tolerance",
+   "paths": [
+    "poseEstimate.sweptWcs.0"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "swept_wcs_same_scale_wider_just_past_the_tolerance",
+   "base": "approximate_with_pose_wider_by_the_tolerance",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs",
+      1,
+      "fovHorizontalDeg"
+     ],
+     "value": 2.0000000000000005e-09
+    }
+   ],
+   "reason": "a swept WCS with the nominal scale, wider by one float more than the tolerance",
+   "paths": [
+    "poseEstimate.sweptWcs.1"
+   ],
+   "messages": [
+    "Every swept WCS of a pose estimate has the nominal WCS's image size: at its scale the same fields of view, at a larger scale none smaller, at a smaller scale none larger."
+   ]
+  },
+  {
+   "name": "one_swept_wcs",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "sweptWcs"
+     ],
+     "value": [
+      {
+       "projection": "TAN",
+       "crvalRaDeg": 83.8,
+       "crvalDecDeg": 4.0,
+       "crpixX": 480.0,
+       "crpixY": 270.0,
+       "scaleDegPerPx": 0.0315,
+       "rotationDeg": -1.5,
+       "radialDistortionK1": -0.008,
+       "radialDistortionK2": 0.001,
+       "parity": -1,
+       "fovHorizontalDeg": 30.24,
+       "fovVerticalDeg": 17.01
+      }
+     ]
+    }
+   ],
+   "reason": "a sweep of one WCS",
+   "paths": [
+    "poseEstimate.sweptWcs"
+   ],
+   "messages": []
+  },
+  {
+   "name": "pose_beacon_not_its_methods",
+   "base": "approximate_with_pose",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "poseEstimate",
+      "beacon"
+     ],
+     "value": "sun"
+    }
+   ],
+   "reason": "a Moon method that names the Sun as its beacon",
+   "paths": [
+    "poseEstimate.beacon"
+   ],
+   "messages": [
+    "A pose estimate's beacon is the one its method lines up from: the moon for moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon."
+   ]
+  },
+  {
+   "name": "audit_j_observed_relabelled_catalog_matched_its_evidence_still_observed",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      3,
+      "evidenceClass"
+     ],
+     "value": "catalog_matched"
+    }
+   ],
+   "reason": "AUDIT J: a verified solution's observed finding relabelled catalog_matched, its evidence still observed, no catalog entry, no id",
+   "paths": [
+    "findings.3.catalogRef",
+    "findings.3.evidence.angularResidualArcsec",
+    "findings.3.evidence.catalogReferenceId",
+    "findings.3.evidence.evidenceClass",
+    "findings.3.evidence.pixelResidualPx"
+   ],
+   "messages": [
+    "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+    "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check.",
+    "A finding's class is the class its evidence names."
+   ]
+  },
+  {
+   "name": "audit_j_catalog_match_without_its_catalog_entry",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "catalogRef"
+     ]
+    }
+   ],
+   "reason": "AUDIT J: a catalog match with its catalog entry removed, its evidence still naming the entry",
+   "paths": [
+    "findings.0.catalogRef",
+    "findings.0.evidence.catalogReferenceId"
+   ],
+   "messages": [
+    "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+    "A finding's catalog reference id names the catalog entry the finding carries."
+   ]
+  },
+  {
+   "name": "observed_relabelled_catalog_matched_with_its_evidence",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      3,
+      "evidenceClass"
+     ],
+     "value": "catalog_matched"
+    },
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      3,
+      "evidence",
+      "evidenceClass"
+     ],
+     "value": "catalog_matched"
+    }
+   ],
+   "reason": "an observed finding relabelled catalog_matched, its evidence too",
+   "paths": [
+    "findings.3.catalogRef",
+    "findings.3.evidence.angularResidualArcsec",
+    "findings.3.evidence.catalogReferenceId",
+    "findings.3.evidence.pixelResidualPx"
+   ],
+   "messages": [
+    "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+    "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check."
+   ]
+  },
+  {
+   "name": "catalog_match_relabelled_observed",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidenceClass"
+     ],
+     "value": "observed"
+    },
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "evidenceClass"
+     ],
+     "value": "observed"
+    },
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "pixelResidualPx"
+     ]
+    },
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "angularResidualArcsec"
+     ]
+    }
+   ],
+   "reason": "a catalog match relabelled observed, its evidence too: an identification the class does not hold",
+   "paths": [
+    "findings.0.cartesianParsecICRS",
+    "findings.0.catalogRef",
+    "findings.0.evidence.catalogReferenceId",
+    "findings.0.evidence.distanceUncertaintyNote",
+    "findings.0.inferredDistancePc"
+   ],
+   "messages": [
+    "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched.",
+    "An observed finding holds no catalog distance: a point measured in the pixels has none."
+   ]
+  },
+  {
+   "name": "observed_fit_residual_in_a_calibrated_solution",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      3,
+      "evidence",
+      "pixelResidualPx"
+     ],
+     "value": 1.5
+    },
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      3,
+      "evidence",
+      "angularResidualArcsec"
+     ],
+     "value": 189.00000000000003
+    }
+   ],
+   "reason": "an observed finding holding a residual in a calibrated solution, not a pose estimate's",
+   "paths": [
+    "findings.3.evidence.angularResidualArcsec",
+    "findings.3.evidence.pixelResidualPx"
+   ],
+   "messages": [
+    "An observed finding holds a residual only in an approximate solution, where it is the pose fit's residual."
+   ]
+  },
+  {
+   "name": "observed_fit_residual_in_a_unresolved_solution",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "pixelResidualPx"
+     ],
+     "value": 1.5
+    },
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "evidence",
+      "angularResidualArcsec"
+     ],
+     "value": 189.00000000000003
+    }
+   ],
+   "reason": "an observed finding holding a residual in a unresolved solution, not a pose estimate's",
+   "paths": [
+    "findings.0.evidence.angularResidualArcsec",
+    "findings.0.evidence.pixelResidualPx"
+   ],
+   "messages": [
+    "An observed finding holds a residual only in an approximate solution, where it is the pose fit's residual."
+   ]
+  },
+  {
+   "name": "predicted_relabelled_catalog_matched",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      4,
+      "evidenceClass"
+     ],
+     "value": "catalog_matched"
+    },
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      4,
+      "evidence",
+      "evidenceClass"
+     ],
+     "value": "catalog_matched"
+    }
+   ],
+   "reason": "a deep-sky prediction relabelled catalog_matched, its evidence too: no detection was matched",
+   "paths": [
+    "findings.4.evidence.angularResidualArcsec",
+    "findings.4.evidence.pixelResidualPx",
+    "findings.4.sourceDetection"
+   ],
+   "messages": [
+    "A catalog_matched finding carries the source detection that was matched to the catalog.",
+    "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check."
+   ]
+  }
+ ],
+ "unnamedKeys": {
+  "sample": {
+   "id": "sol-contract-approximate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0,
+    "accuracy": {
+     "metres": null
+    }
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9,
+    "widthPx": 960
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false,
+    "logOdds": "high"
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-approximate",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1,
+      "peakToTotalRatio": 0.25
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "note": null
+  },
+  "parsed": {
+   "id": "sol-contract-approximate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-approximate",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": []
+  }
+ },
+ "findings": {
+  "valid": {
+   "predicted_for_a_time_and_place_alone": {
+    "id": "finding-predicted-star-rigel",
+    "evidenceClass": "predicted",
+    "title": "Rigel",
+    "subtitle": "Predicted star (hand-built contract sample)",
+    "catalogRef": {
+     "id": "star-rigel",
+     "provider": "Hipparcos",
+     "releaseVersion": "Hipparcos 2007",
+     "catalogSourceId": "HIP 24436",
+     "commonName": "Rigel",
+     "bayerDesignation": "Beta Orionis",
+     "constellation": "Orion",
+     "objectType": "star",
+     "coordinateEpoch": "J2000.0",
+     "raDeg": 78.634467,
+     "decDeg": -8.201638,
+     "apparentMagnitude": 0.13,
+     "properMotionRaMasYr": 1.31,
+     "properMotionDecMasYr": 0.5,
+     "bailerJonesDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+     "parallaxMas": 3.78,
+     "parallaxErrorMas": 0.34
+    },
+    "skyPosition": {
+     "raDeg": 78.634467,
+     "decDeg": -8.201638,
+     "uncertaintyArcsec": 13.050233353953237,
+     "altDeg": 50.187050622512594,
+     "azDeg": 198.39552420678905
+    },
+    "inferredDistancePc": {
+     "lower": 242.71844660194174,
+     "median": 264.55026455026456,
+     "upper": 290.69767441860466,
+     "method": "geometric_parallax"
+    },
+    "cartesianParsecICRS": [
+     51.60106686984617,
+     256.70968851076134,
+     -37.740007898999316
+    ],
+    "evidence": {
+     "id": "ev-finding-predicted-star-rigel",
+     "evidenceClass": "predicted",
+     "verificationMethod": "Hand-built for the contract fixture",
+     "limitations": [
+      "A hand-built contract sample, not a measurement."
+     ],
+     "verifiedByIndependentHoldout": false,
+     "catalogReferenceId": "star-rigel"
+    }
+   },
+   "simulated_alone": {
+    "id": "finding-simulated-1",
+    "evidenceClass": "simulated",
+    "title": "Simulated point (hand-built contract sample)",
+    "subtitle": "Drawn at Rigel's catalog position",
+    "skyPosition": {
+     "raDeg": 78.634467,
+     "decDeg": -8.201638,
+     "uncertaintyArcsec": 0.0
+    },
+    "evidence": {
+     "id": "ev-finding-simulated-1",
+     "evidenceClass": "simulated",
+     "verificationMethod": "Simulated; not measured in the image",
+     "limitations": [
+      "A hand-built contract sample, not a measurement."
+     ],
+     "verifiedByIndependentHoldout": false
+    }
+   },
+   "observed": {
+    "id": "finding-obs-1",
+    "observationSolutionId": "sol-contract-unresolved",
+    "evidenceClass": "observed",
+    "title": "Observed Point Source #1 (hand-built contract sample)",
+    "subtitle": "At (412.5, 300.2) px",
+    "sourceDetection": {
+     "assetId": "src-contract-sample",
+     "frameTimeSec": 0.0,
+     "xPx": 412.5,
+     "yPx": 300.25,
+     "flux": 5000.0,
+     "snr": 25.0,
+     "fwhmPx": 2.5,
+     "centroidUncertaintyPx": 0.1
+    },
+    "evidence": {
+     "id": "ev-finding-obs-1",
+     "evidenceClass": "observed",
+     "verificationMethod": "Hand-built for the contract fixture",
+     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+     "limitations": [
+      "A hand-built contract sample, not a measurement."
+     ],
+     "verifiedByIndependentHoldout": false
+    }
+   },
+   "catalog_matched": {
+    "id": "finding-star-rigel",
+    "observationSolutionId": "sol-primary",
+    "evidenceClass": "catalog_matched",
+    "title": "Rigel",
+    "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+    "skyPosition": {
+     "raDeg": 78.634467,
+     "decDeg": -8.201638,
+     "uncertaintyArcsec": 13.050233353953237,
+     "altDeg": 50.187050622512594,
+     "azDeg": 198.39552420678905
+    },
+    "evidence": {
+     "id": "ev-finding-star-rigel",
+     "evidenceClass": "catalog_matched",
+     "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+     "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+     "wcsSolutionId": "sol-primary",
+     "catalogReferenceId": "star-rigel",
+     "angularResidualArcsec": 13.050233353953237,
+     "pixelResidualPx": 0.0585524099203686,
+     "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+     "limitations": [
+      "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+     ],
+     "verifiedByIndependentHoldout": false
+    },
+    "sourceDetection": {
+     "assetId": "synthetic-9782da890647",
+     "frameTimeSec": 0.0,
+     "xPx": 586.3999745804418,
+     "yPx": 496.192205050709,
+     "flux": 1559.5250955064007,
+     "snr": 217.83736321927773,
+     "fwhmPx": 2.4316650204469092,
+     "centroidUncertaintyPx": 0.03
+    },
+    "catalogRef": {
+     "id": "star-rigel",
+     "provider": "Hipparcos",
+     "releaseVersion": "Hipparcos 2007",
+     "catalogSourceId": "HIP 24436",
+     "commonName": "Rigel",
+     "bayerDesignation": "Beta Orionis",
+     "constellation": "Orion",
+     "objectType": "star",
+     "coordinateEpoch": "J2000.0",
+     "raDeg": 78.634467,
+     "decDeg": -8.201638,
+     "apparentMagnitude": 0.13,
+     "properMotionRaMasYr": 1.31,
+     "properMotionDecMasYr": 0.5,
+     "bailerJonesDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+     "parallaxMas": 3.78,
+     "parallaxErrorMas": 0.34
+    },
+    "inferredDistancePc": {
+     "lower": 242.71844660194174,
+     "median": 264.55026455026456,
+     "upper": 290.69767441860466,
+     "method": "geometric_parallax"
+    },
+    "cartesianParsecICRS": [
+     51.60106686984617,
+     256.70968851076134,
+     -37.740007898999316
+    ]
+   }
+  },
+  "taken": [
+   {
+    "name": "observed_as_it_is",
+    "base": "observed",
+    "patch": []
+   },
+   {
+    "name": "observed_may_hold_evidence.wcsSolutionId",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "wcsSolutionId"
+      ],
+      "value": "sol-primary"
+     }
+    ]
+   },
+   {
+    "name": "observed_may_hold_evidence.pixelResidualPx",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "pixelResidualPx"
+      ],
+      "value": 0.0585524099203686
+     }
+    ]
+   },
+   {
+    "name": "observed_may_hold_evidence.angularResidualArcsec",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "angularResidualArcsec"
+      ],
+      "value": 13.050233353953237
+     }
+    ]
+   },
+   {
+    "name": "catalog_matched_as_it_is",
+    "base": "catalog_matched",
+    "patch": []
+   },
+   {
+    "name": "catalog_matched_may_leave_out_inferredDistancePc",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "inferredDistancePc"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "catalog_matched_may_leave_out_cartesianParsecICRS",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "cartesianParsecICRS"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "catalog_matched_may_leave_out_evidence.wcsSolutionId",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "wcsSolutionId"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "catalog_matched_may_leave_out_evidence.distanceUncertaintyNote",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "distanceUncertaintyNote"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "catalog_matched_may_hold_evidence.verifiedByIndependentHoldout",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "verifiedByIndependentHoldout"
+      ],
+      "value": true
+     }
+    ]
+   },
+   {
+    "name": "predicted_as_it_is",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": []
+   },
+   {
+    "name": "predicted_may_hold_observationSolutionId",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "observationSolutionId"
+      ],
+      "value": "sol-primary"
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_leave_out_catalogRef",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "catalogRef"
+      ]
+     },
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_leave_out_inferredDistancePc",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "inferredDistancePc"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_leave_out_cartesianParsecICRS",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "cartesianParsecICRS"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_hold_evidence.sourceAssetSha256",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "sourceAssetSha256"
+      ],
+      "value": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980"
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_hold_evidence.wcsSolutionId",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "wcsSolutionId"
+      ],
+      "value": "sol-primary"
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_leave_out_evidence.catalogReferenceId",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "predicted_may_hold_evidence.distanceUncertaintyNote",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "distanceUncertaintyNote"
+      ],
+      "value": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error"
+     }
+    ]
+   },
+   {
+    "name": "simulated_as_it_is",
+    "base": "simulated_alone",
+    "patch": []
+   },
+   {
+    "name": "simulated_may_hold_observationSolutionId",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "observationSolutionId"
+      ],
+      "value": "sol-primary"
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_catalogRef",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "catalogRef"
+      ],
+      "value": {
+       "id": "star-rigel",
+       "provider": "Hipparcos",
+       "releaseVersion": "Hipparcos 2007",
+       "catalogSourceId": "HIP 24436",
+       "commonName": "Rigel",
+       "bayerDesignation": "Beta Orionis",
+       "constellation": "Orion",
+       "objectType": "star",
+       "coordinateEpoch": "J2000.0",
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "apparentMagnitude": 0.13,
+       "properMotionRaMasYr": 1.31,
+       "properMotionDecMasYr": 0.5,
+       "bailerJonesDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+       "parallaxMas": 3.78,
+       "parallaxErrorMas": 0.34
+      }
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_inferredDistancePc",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "inferredDistancePc"
+      ],
+      "value": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      }
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_cartesianParsecICRS",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "cartesianParsecICRS"
+      ],
+      "value": [
+       51.60106686984617,
+       256.70968851076134,
+       -37.740007898999316
+      ]
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_evidence.sourceAssetSha256",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "sourceAssetSha256"
+      ],
+      "value": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980"
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_evidence.wcsSolutionId",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "wcsSolutionId"
+      ],
+      "value": "sol-primary"
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_evidence.catalogReferenceId",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ],
+      "value": "star-rigel"
+     },
+     {
+      "op": "set",
+      "path": [
+       "catalogRef"
+      ],
+      "value": {
+       "id": "star-rigel",
+       "provider": "Hipparcos",
+       "releaseVersion": "Hipparcos 2007",
+       "catalogSourceId": "HIP 24436",
+       "commonName": "Rigel",
+       "bayerDesignation": "Beta Orionis",
+       "constellation": "Orion",
+       "objectType": "star",
+       "coordinateEpoch": "J2000.0",
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "apparentMagnitude": 0.13,
+       "properMotionRaMasYr": 1.31,
+       "properMotionDecMasYr": 0.5,
+       "bailerJonesDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+       "parallaxMas": 3.78,
+       "parallaxErrorMas": 0.34
+      }
+     }
+    ]
+   },
+   {
+    "name": "simulated_may_hold_evidence.distanceUncertaintyNote",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "distanceUncertaintyNote"
+      ],
+      "value": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error"
+     }
+    ]
+   }
+  ],
+  "invalid": [
+   {
+    "name": "observed_must_hold_observationSolutionId",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "observationSolutionId"
+      ]
+     }
+    ],
+    "reason": "a observed finding that does not hold its observationSolutionId",
+    "paths": [
+     "observationSolutionId"
+    ],
+    "messages": [
+     "Observed and catalog-matched findings belong to an ObservationSolution and name its id."
+    ]
+   },
+   {
+    "name": "observed_must_hold_sourceDetection",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "sourceDetection"
+      ]
+     }
+    ],
+    "reason": "a observed finding that does not hold its sourceDetection",
+    "paths": [
+     "sourceDetection"
+    ],
+    "messages": [
+     "An observed finding is a measurement in the pixels and carries the source detection that measured it."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_catalogRef",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "catalogRef"
+      ],
+      "value": {
+       "id": "star-rigel",
+       "provider": "Hipparcos",
+       "releaseVersion": "Hipparcos 2007",
+       "catalogSourceId": "HIP 24436",
+       "commonName": "Rigel",
+       "bayerDesignation": "Beta Orionis",
+       "constellation": "Orion",
+       "objectType": "star",
+       "coordinateEpoch": "J2000.0",
+       "raDeg": 78.634467,
+       "decDeg": -8.201638,
+       "apparentMagnitude": 0.13,
+       "properMotionRaMasYr": 1.31,
+       "properMotionDecMasYr": 0.5,
+       "bailerJonesDistancePc": {
+        "lower": 242.71844660194174,
+        "median": 264.55026455026456,
+        "upper": 290.69767441860466,
+        "method": "geometric_parallax"
+       },
+       "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+       "parallaxMas": 3.78,
+       "parallaxErrorMas": 0.34
+      }
+     }
+    ],
+    "reason": "a observed finding holding catalogRef",
+    "paths": [
+     "catalogRef"
+    ],
+    "messages": [
+     "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_inferredDistancePc",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "inferredDistancePc"
+      ],
+      "value": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      }
+     }
+    ],
+    "reason": "a observed finding holding inferredDistancePc",
+    "paths": [
+     "inferredDistancePc"
+    ],
+    "messages": [
+     "An observed finding holds no catalog distance: a point measured in the pixels has none."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_cartesianParsecICRS",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "cartesianParsecICRS"
+      ],
+      "value": [
+       51.60106686984617,
+       256.70968851076134,
+       -37.740007898999316
+      ]
+     }
+    ],
+    "reason": "a observed finding holding cartesianParsecICRS",
+    "paths": [
+     "cartesianParsecICRS"
+    ],
+    "messages": [
+     "An observed finding holds no catalog distance: a point measured in the pixels has none."
+    ]
+   },
+   {
+    "name": "observed_must_hold_evidence.sourceAssetSha256",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "sourceAssetSha256"
+      ]
+     }
+    ],
+    "reason": "a observed finding that does not hold its evidence.sourceAssetSha256",
+    "paths": [
+     "evidence.sourceAssetSha256"
+    ],
+    "messages": [
+     "Observed and catalog-matched evidence rests on a recording and names its SHA-256."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_evidence.catalogReferenceId",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ],
+      "value": "star-rigel"
+     }
+    ],
+    "reason": "a observed finding holding evidence.catalogReferenceId",
+    "paths": [
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_evidence.distanceUncertaintyNote",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "distanceUncertaintyNote"
+      ],
+      "value": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error"
+     }
+    ],
+    "reason": "a observed finding holding evidence.distanceUncertaintyNote",
+    "paths": [
+     "evidence.distanceUncertaintyNote"
+    ],
+    "messages": [
+     "An observed finding holds no catalog distance: a point measured in the pixels has none."
+    ]
+   },
+   {
+    "name": "observed_must_not_hold_evidence.verifiedByIndependentHoldout",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "verifiedByIndependentHoldout"
+      ],
+      "value": true
+     }
+    ],
+    "reason": "a observed finding holding evidence.verifiedByIndependentHoldout",
+    "paths": [
+     "evidence.verifiedByIndependentHoldout"
+    ],
+    "messages": [
+     "Only a catalog_matched finding is verified by independent held-out stars."
+    ]
+   },
+   {
+    "name": "observed_with_simulated_evidence",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "evidenceClass"
+      ],
+      "value": "simulated"
+     }
+    ],
+    "reason": "a observed finding whose evidence names simulated",
+    "paths": [
+     "evidence.evidenceClass"
+    ],
+    "messages": [
+     "A finding's class is the class its evidence names."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_observationSolutionId",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "observationSolutionId"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its observationSolutionId",
+    "paths": [
+     "observationSolutionId"
+    ],
+    "messages": [
+     "Observed and catalog-matched findings belong to an ObservationSolution and name its id."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_sourceDetection",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "sourceDetection"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its sourceDetection",
+    "paths": [
+     "sourceDetection"
+    ],
+    "messages": [
+     "A catalog_matched finding carries the source detection that was matched to the catalog."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_catalogRef",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "catalogRef"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its catalogRef",
+    "paths": [
+     "catalogRef",
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence.",
+     "A finding's catalog reference id names the catalog entry the finding carries."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_evidence.sourceAssetSha256",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "sourceAssetSha256"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its evidence.sourceAssetSha256",
+    "paths": [
+     "evidence.sourceAssetSha256"
+    ],
+    "messages": [
+     "Observed and catalog-matched evidence rests on a recording and names its SHA-256."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_evidence.catalogReferenceId",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its evidence.catalogReferenceId",
+    "paths": [
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "A catalog_matched finding carries the catalog entry it was matched to and names it in its evidence."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_evidence.pixelResidualPx",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "pixelResidualPx"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its evidence.pixelResidualPx",
+    "paths": [
+     "evidence.pixelResidualPx"
+    ],
+    "messages": [
+     "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check."
+    ]
+   },
+   {
+    "name": "catalog_matched_must_hold_evidence.angularResidualArcsec",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "angularResidualArcsec"
+      ]
+     }
+    ],
+    "reason": "a catalog_matched finding that does not hold its evidence.angularResidualArcsec",
+    "paths": [
+     "evidence.angularResidualArcsec"
+    ],
+    "messages": [
+     "A catalog_matched finding's evidence holds the match's residual in pixels and in arcseconds: the class stands on a held-out residual check."
+    ]
+   },
+   {
+    "name": "catalog_matched_with_simulated_evidence",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "evidenceClass"
+      ],
+      "value": "simulated"
+     }
+    ],
+    "reason": "a catalog_matched finding whose evidence names simulated",
+    "paths": [
+     "evidence.evidenceClass"
+    ],
+    "messages": [
+     "A finding's class is the class its evidence names."
+    ]
+   },
+   {
+    "name": "catalog_matched_naming_another_entry",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ],
+      "value": "star-rigel-not"
+     }
+    ],
+    "reason": "a catalog_matched finding whose catalog reference id names another entry than it carries",
+    "paths": [
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "A finding's catalog reference id names the catalog entry the finding carries."
+    ]
+   },
+   {
+    "name": "predicted_must_not_hold_sourceDetection",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "sourceDetection"
+      ],
+      "value": {
+       "assetId": "synthetic-9782da890647",
+       "frameTimeSec": 0.0,
+       "xPx": 586.3999745804418,
+       "yPx": 496.192205050709,
+       "flux": 1559.5250955064007,
+       "snr": 217.83736321927773,
+       "fwhmPx": 2.4316650204469092,
+       "centroidUncertaintyPx": 0.03
+      }
+     }
+    ],
+    "reason": "a predicted finding holding sourceDetection",
+    "paths": [
+     "sourceDetection"
+    ],
+    "messages": [
+     "A predicted or simulated finding was not measured in the pixels, so it carries no source detection."
+    ]
+   },
+   {
+    "name": "predicted_must_not_hold_evidence.pixelResidualPx",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "pixelResidualPx"
+      ],
+      "value": 0.0585524099203686
+     }
+    ],
+    "reason": "a predicted finding holding evidence.pixelResidualPx",
+    "paths": [
+     "evidence.pixelResidualPx"
+    ],
+    "messages": [
+     "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star."
+    ]
+   },
+   {
+    "name": "predicted_must_not_hold_evidence.angularResidualArcsec",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "angularResidualArcsec"
+      ],
+      "value": 13.050233353953237
+     }
+    ],
+    "reason": "a predicted finding holding evidence.angularResidualArcsec",
+    "paths": [
+     "evidence.angularResidualArcsec"
+    ],
+    "messages": [
+     "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star."
+    ]
+   },
+   {
+    "name": "predicted_must_not_hold_evidence.verifiedByIndependentHoldout",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "verifiedByIndependentHoldout"
+      ],
+      "value": true
+     }
+    ],
+    "reason": "a predicted finding holding evidence.verifiedByIndependentHoldout",
+    "paths": [
+     "evidence.verifiedByIndependentHoldout"
+    ],
+    "messages": [
+     "Only a catalog_matched finding is verified by independent held-out stars."
+    ]
+   },
+   {
+    "name": "predicted_with_simulated_evidence",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "evidenceClass"
+      ],
+      "value": "simulated"
+     }
+    ],
+    "reason": "a predicted finding whose evidence names simulated",
+    "paths": [
+     "evidence.evidenceClass"
+    ],
+    "messages": [
+     "A finding's class is the class its evidence names."
+    ]
+   },
+   {
+    "name": "predicted_naming_another_entry",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ],
+      "value": "star-rigel-not"
+     }
+    ],
+    "reason": "a predicted finding whose catalog reference id names another entry than it carries",
+    "paths": [
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "A finding's catalog reference id names the catalog entry the finding carries."
+    ]
+   },
+   {
+    "name": "simulated_must_not_hold_sourceDetection",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "sourceDetection"
+      ],
+      "value": {
+       "assetId": "synthetic-9782da890647",
+       "frameTimeSec": 0.0,
+       "xPx": 586.3999745804418,
+       "yPx": 496.192205050709,
+       "flux": 1559.5250955064007,
+       "snr": 217.83736321927773,
+       "fwhmPx": 2.4316650204469092,
+       "centroidUncertaintyPx": 0.03
+      }
+     }
+    ],
+    "reason": "a simulated finding holding sourceDetection",
+    "paths": [
+     "sourceDetection"
+    ],
+    "messages": [
+     "A predicted or simulated finding was not measured in the pixels, so it carries no source detection."
+    ]
+   },
+   {
+    "name": "simulated_must_not_hold_evidence.pixelResidualPx",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "pixelResidualPx"
+      ],
+      "value": 0.0585524099203686
+     }
+    ],
+    "reason": "a simulated finding holding evidence.pixelResidualPx",
+    "paths": [
+     "evidence.pixelResidualPx"
+    ],
+    "messages": [
+     "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star."
+    ]
+   },
+   {
+    "name": "simulated_must_not_hold_evidence.angularResidualArcsec",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "angularResidualArcsec"
+      ],
+      "value": 13.050233353953237
+     }
+    ],
+    "reason": "a simulated finding holding evidence.angularResidualArcsec",
+    "paths": [
+     "evidence.angularResidualArcsec"
+    ],
+    "messages": [
+     "Only a catalog_matched finding holds a residual: a residual is a measured difference between a detection and a catalog star."
+    ]
+   },
+   {
+    "name": "simulated_must_not_hold_evidence.verifiedByIndependentHoldout",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "verifiedByIndependentHoldout"
+      ],
+      "value": true
+     }
+    ],
+    "reason": "a simulated finding holding evidence.verifiedByIndependentHoldout",
+    "paths": [
+     "evidence.verifiedByIndependentHoldout"
+    ],
+    "messages": [
+     "Only a catalog_matched finding is verified by independent held-out stars."
+    ]
+   },
+   {
+    "name": "simulated_with_predicted_evidence",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "evidenceClass"
+      ],
+      "value": "predicted"
+     }
+    ],
+    "reason": "a simulated finding whose evidence names predicted",
+    "paths": [
+     "evidence.evidenceClass"
+    ],
+    "messages": [
+     "A finding's class is the class its evidence names."
+    ]
+   },
+   {
+    "name": "simulated_naming_an_entry_it_does_not_carry",
+    "base": "simulated_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "evidence",
+       "catalogReferenceId"
+      ],
+      "value": "star-rigel"
+     }
+    ],
+    "reason": "a simulated finding whose catalog reference id names an entry it does not carry",
+    "paths": [
+     "evidence.catalogReferenceId"
+    ],
+    "messages": [
+     "A finding's catalog reference id names the catalog entry the finding carries."
+    ]
+   },
+   {
+    "name": "observed_names_no_solution",
+    "base": "observed",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "observationSolutionId"
+      ]
+     }
+    ],
+    "reason": "an observed finding belongs to a solution",
+    "paths": [
+     "observationSolutionId"
+    ],
+    "messages": [
+     "Observed and catalog-matched findings belong to an ObservationSolution and name its id."
+    ]
+   },
+   {
+    "name": "catalog_match_names_no_recording",
+    "base": "catalog_matched",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "evidence",
+       "sourceAssetSha256"
+      ]
+     }
+    ],
+    "reason": "a catalog match rests on a recording",
+    "paths": [
+     "evidence.sourceAssetSha256"
+    ],
+    "messages": [
+     "Observed and catalog-matched evidence rests on a recording and names its SHA-256."
+    ]
+   },
+   {
+    "name": "solution_id_sent_as_null",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "observationSolutionId"
+      ],
+      "value": null
+     }
+    ],
+    "reason": "a missing id is left out, never null",
+    "paths": [
+     "observationSolutionId"
+    ],
+    "messages": []
+   },
+   {
+    "name": "solution_id_empty",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "set",
+      "path": [
+       "observationSolutionId"
+      ],
+      "value": ""
+     }
+    ],
+    "reason": "an empty id names nothing",
+    "paths": [
+     "observationSolutionId"
+    ],
+    "messages": []
+   },
+   {
+    "name": "predicted_without_a_sky_position",
+    "base": "predicted_for_a_time_and_place_alone",
+    "patch": [
+     {
+      "op": "remove",
+      "path": [
+       "skyPosition"
+      ]
+     }
+    ],
+    "reason": "a prediction is a sky position",
+    "paths": [
+     "skyPosition"
+    ],
+    "messages": []
+   }
+  ]
+ },
+ "ingest": {
+  "valid": [
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "queued",
+     "createdAtUTC": "2032-02-29T19:20:00Z",
+     "stages": []
+    }
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": "2032-02-29T05:42:18",
+     "utcOffsetMinutes": null,
+     "utc": null,
+     "marks": "recorded",
+     "source": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal"
+      ]
+     }
+    }
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": null,
+     "utcOffsetMinutes": null,
+     "utc": "2031-06-30T19:20:00Z",
+     "marks": "file_written",
+     "source": {
+      "container": "quicktime",
+      "tags": [
+       "creation_time"
+      ]
+     }
+    }
+   },
+   {
+    "schema": "LocationHint",
+    "sample": {
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "altitudeM": 12.5,
+     "source": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLongitude"
+      ]
+     }
+    }
+   },
+   {
+    "schema": "LocationHint",
+    "sample": {
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "altitudeM": -431.0,
+     "source": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLongitude"
+      ]
+     }
+    }
+   }
+  ],
+  "invalid": [
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "queued",
+     "createdAtUTC": "2031-02-30T19:20:00Z",
+     "stages": []
+    },
+    "reason": "created on the thirtieth of February"
+   },
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "queued",
+     "createdAtUTC": "2031-02-29T19:20:00Z",
+     "stages": []
+    },
+    "reason": "created on the twenty-ninth of February of a year that is not a leap year"
+   },
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "queued",
+     "createdAtUTC": "0000-01-01T00:00:00Z",
+     "stages": []
+    },
+    "reason": "created in year zero, which neither side's calendar holds alike"
+   },
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "running",
+     "createdAtUTC": "2031-04-30T19:20:00Z",
+     "stages": [],
+     "startedAtUTC": "2031-04-31T00:00:01Z"
+    },
+    "reason": "started on the thirty-first of April"
+   },
+   {
+    "schema": "SolveJob",
+    "sample": {
+     "id": "job_0a1b2c3d4e5f6071",
+     "sourceAssetSha256": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+     "state": "failed",
+     "createdAtUTC": "2031-06-30T23:59:00Z",
+     "stages": [],
+     "finishedAtUTC": "2031-06-31T00:00:01Z",
+     "error": "The decoder could not read the file."
+    },
+    "reason": "finished on the thirty-first of June"
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": "2031-02-30T05:42:18",
+     "utcOffsetMinutes": null,
+     "utc": null,
+     "marks": "recorded",
+     "source": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal"
+      ]
+     }
+    },
+    "reason": "a local time on the thirtieth of February"
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": "0000-01-01T05:42:18",
+     "utcOffsetMinutes": null,
+     "utc": null,
+     "marks": "recorded",
+     "source": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal"
+      ]
+     }
+    },
+    "reason": "a local time in year zero"
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": null,
+     "utcOffsetMinutes": null,
+     "utc": "2031-06-31T19:20:00Z",
+     "marks": "file_written",
+     "source": {
+      "container": "quicktime",
+      "tags": [
+       "creation_time"
+      ]
+     }
+    },
+    "reason": "a file time on the thirty-first of June"
+   },
+   {
+    "schema": "CaptureTimeHint",
+    "sample": {
+     "localDateTime": "2031-02-30T05:42:18",
+     "utcOffsetMinutes": 120,
+     "utc": "2031-02-30T03:42:18Z",
+     "marks": "recorded",
+     "source": {
+      "container": "exif",
+      "tags": [
+       "DateTimeOriginal"
+      ]
+     }
+    },
+    "reason": "a local time and its UTC both on the thirtieth of February"
+   },
+   {
+    "schema": "LocationHint",
+    "sample": {
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "altitudeM": {
+      "$number": "NaN"
+     },
+     "source": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLongitude"
+      ]
+     }
+    },
+    "reason": "an altitude that is not a number"
+   },
+   {
+    "schema": "LocationHint",
+    "sample": {
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "altitudeM": {
+      "$number": "Infinity"
+     },
+     "source": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLongitude"
+      ]
+     }
+    },
+    "reason": "an infinite altitude"
+   },
+   {
+    "schema": "LocationHint",
+    "sample": {
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "altitudeM": {
+      "$number": "-Infinity"
+     },
+     "source": {
+      "container": "exif",
+      "tags": [
+       "GPSLatitude",
+       "GPSLongitude"
+      ]
+     }
+    },
+    "reason": "an altitude of minus infinity"
+   }
+  ]
+ },
+ "keyCases": {
+  "levels": 138,
+  "dropped": 1679,
+  "refusedWhenRenamed": 629,
+  "leftOutWhenRenamed": 84
+ }
+}

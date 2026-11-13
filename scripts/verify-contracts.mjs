@@ -50,6 +50,8 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'BrightStarSupplementSchema',
   'PointingRecordSchema',
 ];
+// Numbers and limits the contracts export for both languages to share, not schemas
+const REQUIRED_CONTRACT_CONSTANTS = ['MIN_HELD_OUT_INLIERS', 'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX', 'SWEPT_FOV_TOLERANCE_DEG'];
 
 const VALID_WHEN_TYPES = new Set([
   'fileEdited',
@@ -80,6 +82,13 @@ const missingSchemas = REQUIRED_ENTITY_SCHEMAS.filter(
 
 if (missingSchemas.length > 0) {
   console.error('Missing required domain entity schemas:', missingSchemas);
+  process.exit(1);
+}
+
+const missingConstants = REQUIRED_CONTRACT_CONSTANTS.filter((name) => !contractsSource.includes(`export const ${name} =`));
+
+if (missingConstants.length > 0) {
+  console.error('Missing required contract constants:', missingConstants);
   process.exit(1);
 }
 
@@ -115,5 +124,5 @@ for (const file of hookFiles) {
 }
 
 console.log(
-  `[verify:contracts] OK: verified ${REQUIRED_ENTITY_SCHEMAS.length} domain entity schemas and ${hookFiles.length} Kiro 1.4.62 hooks.`
+  `[verify:contracts] OK: verified ${REQUIRED_ENTITY_SCHEMAS.length} domain entity schemas, ${REQUIRED_CONTRACT_CONSTANTS.length} contract constants and ${hookFiles.length} Kiro 1.4.62 hooks.`
 );

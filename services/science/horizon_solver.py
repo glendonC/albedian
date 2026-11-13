@@ -101,17 +101,23 @@ def solve_horizon_and_beacon_pose(
             # uncertainty is the usual FWHM / (2.355 * SNR) statistical estimate
             sigma_sq = float(np.sum(((xx - bx) ** 2 + (yy - by) ** 2) * patch) / (2.0 * tot))
             fwhm_px = 2.355 * math.sqrt(max(sigma_sq, 0.0))
-            beacon_detection = SourceDetection(
-                x_px=bx,
-                y_px=by,
-                flux=tot,
-                snr=peak_snr,
-                fwhm_px=fwhm_px,
-                centroid_uncertainty_px=fwhm_px / (2.355 * peak_snr),
-                asset_id=source_asset_id,
-                frame_time_sec=frame_time_sec,
-                peak_to_total_ratio=float(np.max(patch)) / tot,
-            )
+            centroid_uncertainty_px = fwhm_px / (2.355 * peak_snr)
+            # A spot with no measured width, all of its light in one pixel, is no beacon: the width is what gives
+            # the centroid its uncertainty, and a detection whose uncertainty is zero, or is no finite number, is
+            # no measurement (the contract takes none). The count is of pixels, since rounding alone can give one
+            # pixel a width of 1e-15 px. The answer is then the one for a frame with no bright source
+            if np.count_nonzero(patch) >= 2 and 0.0 < centroid_uncertainty_px < math.inf:
+                beacon_detection = SourceDetection(
+                    x_px=bx,
+                    y_px=by,
+                    flux=tot,
+                    snr=peak_snr,
+                    fwhm_px=fwhm_px,
+                    centroid_uncertainty_px=centroid_uncertainty_px,
+                    asset_id=source_asset_id,
+                    frame_time_sec=frame_time_sec,
+                    peak_to_total_ratio=float(np.max(patch)) / tot,
+                )
 
     wcs: WCSModel | None = None
     fit_residuals_px: np.ndarray | None = None

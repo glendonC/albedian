@@ -325,6 +325,13 @@ def find_moon_blob(luma: np.ndarray, *, min_diameter_px: float, max_diameter_px:
     sigma_sq = float((((xx - x_px) ** 2 + (yy - y_px) ** 2) * weights).sum() / (2.0 * total))
     fwhm_px = 2.355 * math.sqrt(max(sigma_sq, 0.0))
     snr = height / _effective_sigma(mad_sigma, luma)
+    # A spot of no width is no beacon (the lead's decision of 2026-11-11): with its light in one pixel there is no
+    # width to measure, and a centroid uncertainty that is zero or no finite number is no measurement, which no
+    # detection record takes. The count is of pixels, since rounding alone can give one pixel a width of 1e-15 px
+    if np.count_nonzero(weights) < 2:
+        return _not_confirmed("the brightest spot has no width, all of its light in one pixel")
+    if not 0.0 < fwhm_px / (2.355 * snr) < math.inf:
+        return _not_confirmed("the brightest spot's width came out as zero or as no finite number")
     area = int(region.sum())
     return MoonBlob(
         x_px=x_px,

@@ -63,7 +63,7 @@ PLATE_MOMENT = {"obs_utc_iso": "2030-01-01T02:00:00Z", "observer_lat": 30.0, "ob
 def _sources(frame: np.ndarray) -> dict[str, str]:
     """The id and SHA-256 a recording would carry, here of the synthetic frame the test builds."""
     digest = hashlib.sha256(np.ascontiguousarray(frame).tobytes()).hexdigest()
-    return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
+    return {"source_asset_id": f"src_{digest[:16]}", "source_sha256": digest}
 
 
 def _request_sources(frame: np.ndarray) -> dict[str, str]:

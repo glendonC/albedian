@@ -182,8 +182,14 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
     valid = (
         evidence_class in ("observed", "catalog_matched", "predicted", "simulated")
         and complete
-        and (has_sky or (evidence_class == "observed" and with_detection))
+        and (has_sky or evidence_class == "observed")
         and not (evidence_class in ("predicted", "simulated") and with_detection)
+        # The contract's class table among a record's own fields: an observed finding and a catalog match hold the
+        # detection they were measured from, a match its catalog row (and both residuals, given below), and an
+        # observed finding no catalog row
+        and (evidence_class not in ("observed", "catalog_matched") or with_detection)
+        and (evidence_class != "catalog_matched" or with_catalog_star)
+        and not (evidence_class == "observed" and with_catalog_star)
     )
 
     def build() -> CelestialFindingRecord:
@@ -197,6 +203,7 @@ def test_pbt_finding_records_follow_the_sky_position_contract(
                 else None
             ),
             catalog_star=get_star_by_name("Rigel") if with_catalog_star else None,
+            **({"pixel_residual_px": 0.4, "angular_residual_arcsec": 50.4} if evidence_class == "catalog_matched" else {}),
             limitations=("Synthetic test finding limitation.",),
             source_sha256=RECORD_SHA,
         )
@@ -255,10 +262,14 @@ def test_solution_ties_sky_positions_and_catalog_matches_to_a_verified_wcs() -> 
         ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
         limitations=("Placed by verified WCS.",), source_sha256=RECORD_SHA,
     )
+    # A catalog match holds the catalog row it was matched to and both residuals (the contract's class table), here
+    # Rigel at its own catalog position, 0.4 px off at the WCS's 0.035 deg/px
+    star = get_star_by_name("Rigel")
     matched = CelestialFindingRecord(
         id="finding-star-x", observation_solution_id="sol-1", evidence_class="catalog_matched",
-        title="Matched star", subtitle="Catalog", source_detection=det,
-        ra_deg=83.8, dec_deg=4.0, uncertainty_arcsec=12.0,
+        title="Matched star", subtitle="Catalog", source_detection=det, catalog_star=star,
+        ra_deg=star.ra_deg, dec_deg=star.dec_deg, uncertainty_arcsec=12.0,
+        pixel_residual_px=0.4, angular_residual_arcsec=0.4 * 0.035 * 3600.0,
         limitations=("Matched to catalog star.",), source_sha256=RECORD_SHA,
     )
     wcs = WCSModel(

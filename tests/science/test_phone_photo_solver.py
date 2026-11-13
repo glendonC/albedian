@@ -116,7 +116,7 @@ def test_solve_phone_photo_preserves_original_pixel_detections_and_contract_inva
 
     contract = sol.to_contract_dict()
     assert contract["status"] == "calibrated"
-    assert contract["observedAtUTC"] == meta["utc"]
+    assert contract["observedAtUTC"] == meta["utc"].replace("+00:00", "Z")
     assert contract["observerLocation"] == {"latDeg": meta["latDeg"], "lonDeg": meta["lonDeg"]}
 
     matched = [f for f in sol.findings if f.evidence_class == "catalog_matched"]
