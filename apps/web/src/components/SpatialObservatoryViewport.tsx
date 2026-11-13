@@ -334,13 +334,18 @@ export const SpatialObservatoryViewport: React.FC<
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
+    // While the home covers the canvas no frame of the scene can be seen, so the scene stops drawing; the order here
+    // is the point: drawing stops before a landing scene is asked for (a renderer not drawing holds it, so none of its
+    // pictures loads), and on leaving the showcase ends, dropping what was held, before drawing starts again
     if (!entryStageActive) {
       renderer.showSkyView?.();
       renderer.setShowcaseMode(false);
       appliedShowcaseRef.current.sceneKey = null;
+      renderer.setDrawing?.(true);
       return;
     }
 
+    renderer.setDrawing?.(false);
     renderer.setShowcaseMode(true);
     const sceneDef = showcaseScenes[showcaseSceneIdx] ?? showcaseScenes[0];
     if (!sceneDef) return;

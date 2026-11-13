@@ -171,16 +171,9 @@ export function createGlobalPhotorealisticSkyDomeMesh(
   return new THREE.Mesh(skyGeo, skyMat);
 }
 
-export function loadAstronomicalSceneTextures(
-  textureLoader: THREE.TextureLoader,
-  skyDomeUniforms: SkyDomeUniforms,
-  earthUniforms: EarthUniforms,
-  moonUniforms: MoonUniforms,
-  nebulaUniforms: NebulaUniforms,
-  planetarySkyUniforms: PlanetarySkyUniforms,
-  lupus3Url: string
-): void {
-  const loadTex = (
+/** A loader for the scenes' pictures: repeating across, clamped up and down, sRGB unless asked otherwise. */
+function textureLoading(textureLoader: THREE.TextureLoader) {
+  return (
     url: string,
     onLoad: (tex: THREE.Texture) => void,
     srgb = true
@@ -198,7 +191,11 @@ export function loadAstronomicalSceneTextures(
       () => {}
     );
   };
+}
 
+/** The sky view's one picture, the registered Milky Way panorama: loaded on every visit. */
+export function loadSkyViewTextures(textureLoader: THREE.TextureLoader, skyDomeUniforms: SkyDomeUniforms): void {
+  const loadTex = textureLoading(textureLoader);
   const panorama = new Promise<THREE.Texture>((resolve) =>
     loadTex('/textures/eso_milkyway_panorama.jpg', resolve)
   );
@@ -226,6 +223,21 @@ export function loadAstronomicalSceneTextures(
     (error: unknown) =>
       console.warn('[sky] panorama registration failed; the dome is drawn without the panorama', error)
   );
+}
+
+/**
+ * The landing scenes' pictures, which the sky view never draws: the Earth, the Moon, the atmosphere table and the
+ * Lupus 3 photograph. Loaded when a landing scene first starts, not on every visit.
+ */
+export function loadLandingSceneTextures(
+  textureLoader: THREE.TextureLoader,
+  earthUniforms: EarthUniforms,
+  moonUniforms: MoonUniforms,
+  nebulaUniforms: NebulaUniforms,
+  planetarySkyUniforms: PlanetarySkyUniforms,
+  lupus3Url: string
+): void {
+  const loadTex = textureLoading(textureLoader);
   loadTex('/textures/earth_day_bluemarble_2004-03_base_8k.jpg', (t) => {
     earthUniforms.uDayTex.value = t;
   });

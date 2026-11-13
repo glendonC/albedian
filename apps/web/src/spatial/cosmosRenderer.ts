@@ -37,6 +37,11 @@ export interface CosmosRenderer {
   clearObserverCoordinates?(): void;
   setShowcaseMode(enabled: boolean): void;
   /**
+   * Stops drawing frames while no frame of the scene can be seen (the home covers the canvas) and starts again
+   * when one can; the scene's clock does not count the time it was stopped. Absent where a renderer cannot stop.
+   */
+  setDrawing?(drawing: boolean): void;
+  /**
    * Shows the sky view when the landing ends, unless it is already showing (so the viewer keeps
    * their turn); absent where a renderer draws only the landing scene.
    */

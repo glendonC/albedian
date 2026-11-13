@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SparkControls, SparkRenderer, SparkXr, type SplatMesh } from '@sparkjsdev/spark';
 import type { RenderLayerSet } from '@albedian/contracts';
 import { cameraSkyPose } from './cameraSkyPose.js';
-import type { CameraSkyPose } from './cosmosRenderer.js';
+import type { CameraSkyPose, ShowcaseSceneKey } from './cosmosRenderer.js';
 import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStats } from './catalogStars/index.js';
 import { webglRenderLayersFor } from './webglRenderLayers.js';
 import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, observerHorizonVisible } from './observerPose.js';
@@ -15,7 +15,7 @@ import { canvasCompassLabel, createObserverHorizon, disposeObserverHorizon } fro
 import { centreOnCamera } from './skyMounts.js';
 import {
   createSkyDomeUniforms, createCinemaOpticsUniforms, createCinemaOpticsPass,
-  createGlobalPhotorealisticSkyDomeMesh, loadAstronomicalSceneTextures,
+  createGlobalPhotorealisticSkyDomeMesh, loadLandingSceneTextures, loadSkyViewTextures,
   type SkyDomeUniforms, type CinemaOpticsUniforms,
 } from './webgl/skyDomeAndCinemaShader.js';
 import {
@@ -106,6 +106,10 @@ export class SparkPortalRenderer {
   private showcaseMode = false;
   private onRegimeChange?: (regime: SpatialScaleRegime) => void;
   private rafId = 0;
+  private drawing = true; // false while the home covers the canvas (setDrawing)
+  private heldScene: { sceneKey: ShowcaseSceneKey; instant: boolean } | null = null; // asked for while not drawing
+  private landingPicturesAsked = false; // once, by the first landing scene
+  private tick: ((timestamp: number) => void) | null = null; // the frame loop's step, once started
   private timer = new THREE.Timer();
   private heldClockSec: number | null = null;
 
@@ -156,12 +160,9 @@ export class SparkPortalRenderer {
 
       this.sparkControls = new SparkControls({ canvas: this.renderer.domElement });
       this.catalogStars = new CatalogStarField();
-      // Binds sky, body, and Bruneton LUT (sampleBrunetonAtmoLut) textures
-      loadAstronomicalSceneTextures(
-        this.textureLoader, this.skyDomeUniforms, this.earthUniforms,
-        this.moonUniforms, this.nebulaUniforms, this.planetarySkyUniforms,
-        '/textures/eso1804a.jpg'
-      );
+      // The sky view's panorama on every visit; the landing scenes' pictures (the bodies, and the Bruneton table that
+      // sampleBrunetonAtmoLut reads) wait for a landing scene
+      loadSkyViewTextures(this.textureLoader, this.skyDomeUniforms);
       this.localFrame.add(createGlobalPhotorealisticSkyDomeMesh(this.skyDomeUniforms));
       this.buildEarthCaptureWorld();
       this.buildCislunarWorld();
@@ -345,9 +346,39 @@ export class SparkPortalRenderer {
       } else {
         this.renderer.render(this.scene, this.camera);
       }
-      this.rafId = window.requestAnimationFrame(tick);
+      this.scheduleNext();
     };
-    this.rafId = window.requestAnimationFrame(tick);
+    this.tick = tick;
+    this.scheduleNext();
+  }
+
+  /** Asks the browser for the next frame, unless frames are not being drawn now. */
+  private scheduleNext(): void {
+    if (this.drawing && this.tick) this.rafId = window.requestAnimationFrame(this.tick);
+  }
+
+  /** Stops drawing while no frame can be seen, and draws again with its clock reset, so the scene does not jump. */
+  public setDrawing(drawing: boolean): void {
+    if (drawing === this.drawing) return;
+    this.drawing = drawing;
+    if (typeof window === 'undefined') return;
+    if (!drawing) {
+      if (this.rafId) window.cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+      return;
+    }
+    this.timer.reset();
+    this.scheduleNext();
+    const held = this.heldScene;
+    this.heldScene = null;
+    if (held && this.showcaseMode) this.transitionToShowcaseScene(held.sceneKey, held.instant);
+  }
+
+  /** Asks for the landing scenes' pictures the first time a landing scene starts, where there is a context to draw them. */
+  private askLandingPictures(): void {
+    if (this.landingPicturesAsked || !this.renderer) return;
+    this.landingPicturesAsked = true;
+    loadLandingSceneTextures(this.textureLoader, this.earthUniforms, this.moonUniforms, this.nebulaUniforms, this.planetarySkyUniforms, '/textures/eso1804a.jpg');
   }
 
   public dragLook(deltaPixelsX: number, deltaPixelsY: number): void {
@@ -451,10 +482,13 @@ export class SparkPortalRenderer {
 
   public setShowcaseMode(enabled: boolean): void {
     this.showcaseMode = enabled;
-    if (!enabled) { this.lookTarget.yaw = 0; this.lookTarget.pitch = 0; this.targetFov = 56; }
+    if (!enabled) { this.lookTarget.yaw = 0; this.lookTarget.pitch = 0; this.targetFov = 56; this.heldScene = null; }
   }
 
-  public transitionToShowcaseScene(sceneKey: 'cislunar' | 'black_hole' | 'supergiant' | 'saturn_horizon', instant = false): void {
+  public transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant = false): void {
+    // While no frame is drawn no landing scene starts, so none of its pictures loads behind the home
+    if (!this.drawing) { this.heldScene = { sceneKey, instant }; return; }
+    this.askLandingPictures();
     let targetRegime: SpatialScaleRegime = 'cislunar';
     if (sceneKey === 'black_hole') {
       targetRegime = 'deep_sky';

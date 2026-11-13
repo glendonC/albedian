@@ -230,6 +230,8 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     });
   }
 
+  private drawing = true; // false while the home covers the canvas; setDrawing pauses the loop and resumes it (resetting the clock)
+  setDrawing(drawing: boolean): void { if (drawing !== this.drawing) { this.drawing = drawing; if (drawing) this.resumeLoop(); else this.pauseLoop(); } }
   /** Stops the animation loop (benchmarks drive frames themselves); `resumeLoop` restarts it. */
   pauseLoop(): void {
     this.host?.stop();
@@ -303,7 +305,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
     host.resize(this.cssSize.width, this.cssSize.height);
     this.post = buildCosmosPostChain(host.renderer, this.scene, this.camera, this.postOptions, this.optics);
     if (typeof document !== 'undefined') this.timer.connect(document);
-    this.resumeLoop();
+    if (this.drawing) this.resumeLoop(); // a host ready while the home covers the canvas waits until it leaves
     if (options.exposeForAutomation && typeof window !== 'undefined') {
       window.__albedianCosmos = createCosmosAutomation(this);
     }
