@@ -39,6 +39,7 @@ from services.contracts.provenance import (  # noqa: E402
     parse_sha256sums,
     sha256_file,
 )
+from scripts.git_env import git_environment  # noqa: E402
 
 PUBLIC_REL = "apps/web/public"
 DEFAULT_GAPS = ROOT_DIR / "scripts" / "provenance_gaps.json"
@@ -81,6 +82,7 @@ def _git_files(root: Path, public_rel: str, *extra: str) -> list[str]:
         ["git", "-C", str(root), "ls-files", "-z", *extra, "--", public_rel],
         check=True,
         capture_output=True,
+        env=git_environment(),
     ).stdout
     return sorted({p for p in out.decode("utf-8").split("\0") if p and (root / p).is_file()})
 

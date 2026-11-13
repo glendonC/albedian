@@ -16,8 +16,9 @@
  *    on 192 kHz audio and correct the gain again, and say so in the facts;
  * 4. measure again, look for clicks (clicks.ts), encode AAC at 256 kb/s with no metadata.
  * The samples come from .cache/music/sources/ (sources.json lists each with its licence and SHA-256,
- * checked here before rendering), served by the dev server. Only Node's built-ins, an installed Chrome
- * and an installed ffmpeg are used. CHROME_PATH and FFMPEG_PATH override the defaults.
+ * checked here before rendering), served by the dev server. Only Node's built-ins, an installed Chrome,
+ * an installed ffmpeg and one file of this repository, scripts/git-env.mjs (git's environment), are used.
+ * CHROME_PATH and FFMPEG_PATH override the defaults.
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -28,6 +29,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { gitEnvironment } from '../../../../scripts/git-env.mjs';
 
 const { values: args } = parseArgs({
   options: {
@@ -333,8 +335,8 @@ function serveSources() {
 }
 
 function renderRecord() {
-  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim();
-  const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/music'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim() !== '';
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8', env: gitEnvironment() }).stdout.trim();
+  const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/music'], { cwd: repoRoot, encoding: 'utf8', env: gitEnvironment() }).stdout.trim() !== '';
   return { commit: head, uncommittedAudioChanges: dirty, renderedAt: new Date().toISOString().slice(0, 10) };
 }
 

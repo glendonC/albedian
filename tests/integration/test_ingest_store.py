@@ -23,6 +23,7 @@ from hypothesis import strategies as st
 from PIL import Image
 
 from services.api import app
+from scripts.git_env import git_environment
 from services.contracts.ingest import IngestReceipt
 from services.ingest import router as ingest_router
 from services.ingest.store import DEFAULT_ROOT, SNIFF_BYTES, IngestStore, Refused, sniff
@@ -263,7 +264,7 @@ def test_only_a_full_hash_reaches_a_stored_file(client: TestClient) -> None:
 def test_the_default_store_is_ignored_by_git() -> None:
     assert DEFAULT_ROOT == ROOT / "data" / "ingest"
     probe = "data/ingest/ab/" + "ab" * 32 + "/original.jpg"
-    assert subprocess.run(["git", "check-ignore", "-q", probe], cwd=ROOT).returncode == 0
+    assert subprocess.run(["git", "check-ignore", "-q", probe], cwd=ROOT, env=git_environment()).returncode == 0
 
 
 @pytest.mark.parametrize(

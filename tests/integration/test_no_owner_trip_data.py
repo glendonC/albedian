@@ -49,6 +49,7 @@ import sys
 from hypothesis import example, given, settings, strategies as st
 import pytest
 
+from scripts.git_env import git_environment
 from services.media.discovery import normalize_creation_utc, parse_iso6709_location
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -384,7 +385,7 @@ def read_captures(folder: Path) -> list[Capture]:
 
 
 def tracked_text_files() -> Iterator[tuple[str, str]]:
-    listed = subprocess.run(["git", "-C", str(REPO_ROOT), "ls-files", "-z"], capture_output=True, check=True)
+    listed = subprocess.run(["git", "-C", str(REPO_ROOT), "ls-files", "-z"], capture_output=True, check=True, env=git_environment())
     for rel in listed.stdout.decode("utf-8").split("\0"):
         path = REPO_ROOT / rel
         if not rel or not path.is_file():

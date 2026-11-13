@@ -20,6 +20,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { gitEnvironment } from './git-env.mjs';
 
 export const PUBLIC_DIR = 'apps/web/public';
 
@@ -42,7 +43,7 @@ function entriesUnder(root, folder) {
 /** git's answer for a command, or null when git fails. Its own error output is dropped: it may carry paths. */
 function git(root, args) {
   try {
-    return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], env: gitEnvironment() });
   } catch {
     return null;
   }
@@ -140,6 +141,7 @@ function refusal(message) {
 function checkoutOf(folder) {
   try {
     const root = execFileSync('git', ['-C', folder, 'rev-parse', '--show-toplevel'], {
+      env: gitEnvironment(),
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();

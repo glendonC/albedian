@@ -19,6 +19,8 @@ from typing import Any
 
 import pytest
 
+from scripts.git_env import git_environment
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -52,7 +54,7 @@ class Repo:
 
     def __init__(self, path: Path):
         self.root = path
-        subprocess.run(["git", "init", "-q", str(path)], check=True)
+        subprocess.run(["git", "init", "-q", str(path)], check=True, env=git_environment())
         (path / "scripts").mkdir()
         (path / "scripts" / "bake_sample.py").write_text("# a stand-in bake script\n")
         self.gaps: list[dict[str, str]] = []

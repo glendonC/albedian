@@ -46,6 +46,8 @@ from hypothesis import HealthCheck, event, example, given, settings
 from hypothesis import strategies as st
 import pytest
 
+from scripts.git_env import git_environment
+
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / "data" / "downloads.json"
 FIELDS = {"path", "fetch", "url", "bytes", "sha256", "licence", "licenceUrl", "source"}
@@ -1390,7 +1392,7 @@ def test_property_no_redirect_reaches_a_host_or_port_outside_the_rule(
 
 
 def test_every_registry_entry_is_complete_and_its_fetch_script_is_tracked() -> None:
-    tracked = set(subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.splitlines())
+    tracked = set(subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True, env=git_environment()).stdout.splitlines())
     paths = [entry["path"] for entry in ENTRIES]
     assert len(paths) == len(set(paths)), "each download is listed once"
     for entry in ENTRIES:

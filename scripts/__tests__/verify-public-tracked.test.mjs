@@ -19,6 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
+import { GIT_REDIRECTS, gitEnvironment } from '../git-env.mjs';
 import { PLUGIN_NAME, PUBLIC_DIR, publicTrackedCheck, verifyPublicTracked } from '../verify-public-tracked.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -27,7 +28,7 @@ const roots = [];
 function scratch({ git = true, files = {} } = {}) {
   const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'albedian-public-')));
   roots.push(root);
-  if (git) execFileSync('git', ['init', '--quiet', root]);
+  if (git) execFileSync('git', ['init', '--quiet', root], { env: gitEnvironment() });
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
@@ -49,13 +50,13 @@ const COMMIT = [
 
 /** Stages names without committing them. */
 function stage(root, ...names) {
-  execFileSync('git', ['-C', root, 'add', '--', ...names]);
+  execFileSync('git', ['-C', root, 'add', '--', ...names], { env: gitEnvironment() });
 }
 
 /** Stages names and commits everything staged, so the last commit holds them. */
 function track(root, ...names) {
   stage(root, ...names);
-  execFileSync('git', ['-C', root, ...COMMIT, 'commit', '--quiet', '--no-verify', '-m', 'track']);
+  execFileSync('git', ['-C', root, ...COMMIT, 'commit', '--quiet', '--no-verify', '-m', 'track'], { env: gitEnvironment() });
 }
 
 afterAll(() => {
@@ -122,7 +123,10 @@ describe('the public folder check', () => {
     symlinkSync('../../../outside/holiday', path.join(root, PUBLIC_DIR, 'renders'));
     track(root, `${PUBLIC_DIR}/kept.json`, `${PUBLIC_DIR}/renders`);
     // git tracks the link itself (mode 120000), not the folder it points to
-    const staged = execFileSync('git', ['-C', root, 'ls-files', '--stage', '--', `${PUBLIC_DIR}/renders`], { encoding: 'utf8' });
+    const staged = execFileSync('git', ['-C', root, 'ls-files', '--stage', '--', `${PUBLIC_DIR}/renders`], {
+      encoding: 'utf8',
+      env: gitEnvironment(),
+    });
     expect(staged).toMatch(/^120000 /);
     const result = publicTrackedCheck(root);
     expect(result).toEqual({
@@ -284,13 +288,14 @@ describe('the public folder check', () => {
 
 /**
  * A scratch checkout laid out like this one for one app: its own Vite config and the modules the config imports
- * (the check and the /api proxy guard) at the paths it imports them from, a page to build, and the app's
- * node_modules linked outside the public folder.
+ * (the check, the git environment it imports, and the /api proxy guard) at the paths it imports them from, a page
+ * to build, and the app's node_modules linked outside the public folder.
  */
 function appCheckout(app, files) {
   const root = scratch({ files: { [`${app}/index.html`]: '<!doctype html><title>scratch</title>\n', ...files } });
   mkdirSync(path.join(root, 'scripts'), { recursive: true });
   copyFileSync(path.join(repoRoot, 'scripts/verify-public-tracked.mjs'), path.join(root, 'scripts/verify-public-tracked.mjs'));
+  copyFileSync(path.join(repoRoot, 'scripts/git-env.mjs'), path.join(root, 'scripts/git-env.mjs'));
   copyFileSync(path.join(repoRoot, 'scripts/field-proxy-guard.mjs'), path.join(root, 'scripts/field-proxy-guard.mjs'));
   copyFileSync(path.join(repoRoot, app, 'vite.config.ts'), path.join(root, app, 'vite.config.ts'));
   symlinkSync(path.join(repoRoot, app, 'node_modules'), path.join(root, app, 'node_modules'));
@@ -354,7 +359,7 @@ describe('the check as a Vite plugin, at build start', () => {
   }, 120_000);
 
   it('runs at build start in every Vite config in the repository', async () => {
-    const configs = execFileSync('git', ['-C', repoRoot, 'ls-files', '--', '*vite.config.*'], { encoding: 'utf8' })
+    const configs = execFileSync('git', ['-C', repoRoot, 'ls-files', '--', '*vite.config.*'], { encoding: 'utf8', env: gitEnvironment() })
       .split('\n')
       .filter(Boolean);
     expect(configs).toContain('apps/webgpu-spike/vite.config.ts');
@@ -428,5 +433,60 @@ describe('the check as a Vite plugin, at build start', () => {
     expect(() => start(root, path.join(root, PUBLIC_DIR))).toThrow(
       '[verify:public] FAIL: git could not list the files it tracks here'
     );
+  });
+});
+
+describe('git kept to the scratch repository', () => {
+  it('leaves a decoy repository that GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE and GIT_COMMON_DIR all name as it was', () => {
+    const decoy = scratch({ files: { 'decoy.txt': 'the decoy\n' } });
+    track(decoy, 'decoy.txt');
+    const dot = path.join(decoy, '.git');
+    const status = () => execFileSync('git', ['-C', decoy, 'status', '--porcelain'], { encoding: 'utf8', env: gitEnvironment() });
+    const snapshot = () => [
+      readFileSync(path.join(dot, 'HEAD')),
+      readFileSync(path.join(dot, 'config')),
+      readFileSync(path.join(dot, 'index')),
+      status(),
+    ];
+    const before = snapshot();
+    // The four by their own names, not the helper's list, so a list that lost one cannot hide it here
+    const named = { GIT_DIR: dot, GIT_WORK_TREE: decoy, GIT_INDEX_FILE: path.join(dot, 'index'), GIT_COMMON_DIR: dot };
+    const four = Object.keys(named);
+    expect([...GIT_REDIRECTS].sort(), "the helper's list of the four").toEqual([...four].sort());
+    const saved = Object.fromEntries(four.map((name) => [name, process.env[name]]));
+    // Each step's git failure is kept as a value, so a helper that lets a variable through fails an assertion below
+    // that names it, not git's own error
+    const failed = [];
+    const step = (what, run) => {
+      try {
+        return run();
+      } catch (error) {
+        failed.push(`${what}: ${String(error.message).split('\n')[0]}`);
+        return undefined;
+      }
+    };
+    let leaked;
+    let kept;
+    let checked;
+    Object.assign(process.env, named);
+    try {
+      leaked = Object.keys(gitEnvironment()).filter((name) => four.includes(name));
+      // The file's own helpers init, stage and commit a scratch repository; the check lists and compares it
+      const root = step('init', () => scratch({ files: { [`${PUBLIC_DIR}/index.json`]: '{}' } }));
+      if (root !== undefined) step('stage and commit', () => track(root, PUBLIC_DIR));
+      if (root !== undefined) checked = step('check', () => publicTrackedCheck(root).ok);
+      kept = Object.fromEntries(four.map((name) => [name, process.env[name]]));
+    } finally {
+      for (const [name, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+    expect(leaked, "variables the helper let through to git's environment").toEqual([]);
+    expect(failed, 'git failed in the scratch repository while the four named the decoy').toEqual([]);
+    expect(checked, 'the check passed on the scratch repository').toBe(true);
+    // The helper leaves this process's own environment as it was: only git's copy goes without the four
+    expect(kept, "the process's own environment while the four were set").toEqual(named);
+    expect(snapshot(), 'the decoy repository as it was').toEqual(before);
   });
 });

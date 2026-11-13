@@ -1,0 +1,596 @@
+{
+  "about": "Read by the two scans of git calls: tests/integration/test_git_env.py (the Python kinds) and scripts/__tests__/git-env.test.mjs (the JavaScript and TypeScript kinds). A text runs git when it is the word git alone or a path that ends in /git, or when it holds git followed by an option or by one of git's own commands (ending where no letter, digit or hyphen follows), at its start or after a space, a shell separator, a quote or a path's slash; a run-time part of a template or f-string is read as NUL and may be a command. Every such text counts wherever it sits, and passes only inside a call whose env names the helper. commands: git's own commands, the output of git --list-cmds=main (git 2.43.0). runs and names: texts the rule must take and must not take for a git command line. python_forms and node_forms: each form a git call takes, with {q} for a quote and {env} for the environment given or not; python_cases and node_cases: whole sources and what the scan finds in each (call: the last name of the innermost call around the text, null for none). not_run: each text that runs git in its words and is not run here, by file, the last name of the innermost call around it (null for none) and the text (null for every text in that call in that file), with the reason; each must still match a text. excuse_cases: per language, one excuse for every text of a call, a source, and what the scan still finds missing in it. runnable_cases: raw texts of runnable files of a kind no parser here reads, and those of them the rule takes for running git.",
+  "kinds": {
+    "python": [
+      ".py"
+    ],
+    "node": [
+      ".js",
+      ".mjs",
+      ".cjs",
+      ".jsx",
+      ".ts",
+      ".mts",
+      ".cts",
+      ".tsx"
+    ]
+  },
+  "commands": [
+    "add",
+    "am",
+    "annotate",
+    "apply",
+    "archimport",
+    "archive",
+    "bisect",
+    "blame",
+    "branch",
+    "bugreport",
+    "bundle",
+    "cat-file",
+    "check-attr",
+    "check-ignore",
+    "check-mailmap",
+    "check-ref-format",
+    "checkout",
+    "checkout--worker",
+    "checkout-index",
+    "cherry",
+    "cherry-pick",
+    "clean",
+    "clone",
+    "column",
+    "commit",
+    "commit-graph",
+    "commit-tree",
+    "config",
+    "count-objects",
+    "credential",
+    "credential-cache",
+    "credential-cache--daemon",
+    "credential-netrc",
+    "credential-osxkeychain",
+    "credential-store",
+    "cvsexportcommit",
+    "cvsimport",
+    "cvsserver",
+    "daemon",
+    "describe",
+    "diagnose",
+    "diff",
+    "diff-files",
+    "diff-index",
+    "diff-tree",
+    "difftool",
+    "difftool--helper",
+    "fast-export",
+    "fast-import",
+    "fetch",
+    "fetch-pack",
+    "filter-branch",
+    "fmt-merge-msg",
+    "for-each-ref",
+    "for-each-repo",
+    "format-patch",
+    "fsck",
+    "fsck-objects",
+    "fsmonitor--daemon",
+    "gc",
+    "get-tar-commit-id",
+    "grep",
+    "hash-object",
+    "help",
+    "hook",
+    "http-backend",
+    "http-fetch",
+    "http-push",
+    "imap-send",
+    "index-pack",
+    "init",
+    "init-db",
+    "instaweb",
+    "interpret-trailers",
+    "log",
+    "ls-files",
+    "ls-remote",
+    "ls-tree",
+    "mailinfo",
+    "mailsplit",
+    "maintenance",
+    "merge",
+    "merge-base",
+    "merge-file",
+    "merge-index",
+    "merge-octopus",
+    "merge-one-file",
+    "merge-ours",
+    "merge-recursive",
+    "merge-recursive-ours",
+    "merge-recursive-theirs",
+    "merge-resolve",
+    "merge-subtree",
+    "merge-tree",
+    "mergetool",
+    "mktag",
+    "mktree",
+    "multi-pack-index",
+    "mv",
+    "name-rev",
+    "notes",
+    "p4",
+    "pack-objects",
+    "pack-redundant",
+    "pack-refs",
+    "patch-id",
+    "pickaxe",
+    "prune",
+    "prune-packed",
+    "pull",
+    "push",
+    "quiltimport",
+    "range-diff",
+    "read-tree",
+    "rebase",
+    "receive-pack",
+    "reflog",
+    "remote",
+    "remote-ext",
+    "remote-fd",
+    "remote-ftp",
+    "remote-ftps",
+    "remote-http",
+    "remote-https",
+    "repack",
+    "replace",
+    "request-pull",
+    "rerere",
+    "reset",
+    "restore",
+    "rev-list",
+    "rev-parse",
+    "revert",
+    "rm",
+    "send-email",
+    "send-pack",
+    "sh-i18n--envsubst",
+    "shell",
+    "shortlog",
+    "show",
+    "show-branch",
+    "show-index",
+    "show-ref",
+    "sparse-checkout",
+    "stage",
+    "stash",
+    "status",
+    "stripspace",
+    "submodule",
+    "submodule--helper",
+    "subtree",
+    "switch",
+    "symbolic-ref",
+    "tag",
+    "unpack-file",
+    "unpack-objects",
+    "update-index",
+    "update-ref",
+    "update-server-info",
+    "upload-archive",
+    "upload-archive--writer",
+    "upload-pack",
+    "var",
+    "verify-commit",
+    "verify-pack",
+    "verify-tag",
+    "version",
+    "web--browse",
+    "whatchanged",
+    "worktree",
+    "write-tree"
+  ],
+  "runs": [
+    "git",
+    "git status",
+    "git -C repo log",
+    "git --no-pager log",
+    "git\tstatus",
+    "git\nstatus",
+    "cd repo && git status",
+    "a; git status",
+    "a || git status",
+    "a | git hash-object --stdin",
+    "sh -c 'git status'",
+    "sh -c \"git status\"",
+    "echo $(git rev-parse HEAD)",
+    "echo `git rev-parse HEAD`",
+    "/usr/bin/git rev-parse HEAD",
+    "/usr/bin/git",
+    "env -i git status",
+    "git ls-files -z",
+    "git check-ignore -q x",
+    "git \u0000",
+    "git \u0000 --porcelain",
+    "git status'",
+    "(git log)"
+  ],
+  "names": [
+    "",
+    "gi",
+    "gitk",
+    "git-lfs",
+    "github.com",
+    "https://github.com/x/y",
+    "digit",
+    "legit status",
+    "the git history",
+    "git could not list the files it tracks here",
+    "git history",
+    "git, then",
+    "git: not found",
+    "git's",
+    "gitstatus",
+    "agit status",
+    "git status-ish",
+    "git commits",
+    "a git repository",
+    "\u0000git",
+    "which is not in git",
+    "a git\u0000",
+    "git\n"
+  ],
+  "python_forms": {
+    "a list": "subprocess.run([{q}git{q}, {q}status{q}]{env})",
+    "a tuple": "subprocess.check_output(({q}git{q}, {q}log{q}){env})",
+    "a shell line": "subprocess.run({q}cd x && git status{q}, shell=True{env})",
+    "an f-string shell line": "subprocess.run(f{q}git -C {{root}} status{q}, shell=True{env})",
+    "a path to git": "subprocess.Popen([{q}/usr/bin/git{q}, {q}rev-parse{q}]{env})",
+    "a list built by a call": "subprocess.run(shlex.split({q}git status{q}){env})",
+    "a bytes program": "subprocess.run([b{q}git{q}, b{q}status{q}]{env})",
+    "a program of a shell": "subprocess.run([{q}sh{q}, {q}-c{q}, {q}git status{q}]{env})",
+    "a wrapper of its own": "sh({q}git status{q}{env})"
+  },
+  "python_cases": [
+    {
+      "what": "a program name kept outside any call",
+      "source": "PROGRAM = 'git'\nsubprocess.run([PROGRAM, 'status'], env=git_environment())\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": null,
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a command line kept outside any call",
+      "source": "LINE = 'git status --short'\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git status --short",
+          "call": null,
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a docstring runs nothing",
+      "source": "\"\"\"Runs `git status` in the folder.\"\"\"\n",
+      "found": []
+    },
+    {
+      "what": "a sentence that names git",
+      "source": "raise SystemExit('git could not list the files')\n",
+      "found": []
+    },
+    {
+      "what": "a message that quotes a command counts like any other text",
+      "source": "print('run git status to see them')\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "run git status to see them",
+          "call": "print",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "the helper in a copy of the environment",
+      "source": "subprocess.run(['git', 'log'], env={**git_environment(), 'LC_ALL': 'C'})\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "run",
+          "passes": true
+        }
+      ]
+    },
+    {
+      "what": "the helper named for another option",
+      "source": "subprocess.run(['git', 'log'], cwd=git_environment())\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "run",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a program name passed to a runner of its own",
+      "source": "probes.run('git', ['status'])\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "run",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "the helper given to an outer call",
+      "source": "run(shlex.split('git log'), env=git_environment())\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git log",
+          "call": "split",
+          "passes": true
+        }
+      ]
+    }
+  ],
+  "node_forms": {
+    "a program": "spawnSync({q}git{q}, [{q}status{q}]{env})",
+    "a program, the file form": "execFileSync({q}git{q}, [{q}log{q}]{env})",
+    "a shell line": "execSync({q}cd x && git status{q}{env})",
+    "a path to git": "spawn({q}/usr/bin/git{q}, [{q}rev-parse{q}]{env})",
+    "a program of a shell": "spawnSync({q}sh{q}, [{q}-c{q}, {q}git status{q}]{env})",
+    "a promise of a child": "await execFileAsync({q}git{q}, [{q}status{q}]{env})",
+    "a wrapper of its own": "sh({q}git status{q}{env})"
+  },
+  "node_cases": [
+    {
+      "what": "a program name kept outside any call",
+      "source": "const PROGRAM = 'git';\nspawnSync(PROGRAM, ['status'], { env: gitEnvironment() });\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": null,
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a command line kept outside any call",
+      "source": "const LINE = 'git status --short';\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git status --short",
+          "call": null,
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a template with a part read at run time",
+      "source": "execSync(`git -C ${root} status`);\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git -C \u0000 status",
+          "call": "execSync",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a comment and a sentence that names git",
+      "source": "// runs `git status`\nthrow new Error('git could not list the files');\n",
+      "found": []
+    },
+    {
+      "what": "messages and titles that quote a command count like any other text",
+      "source": "failures.push(`List them with: git status --short ${dir}`);\nit('fails outside a git checkout', () => {});\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "List them with: git status --short \u0000",
+          "call": "push",
+          "passes": false
+        },
+        {
+          "line": 2,
+          "text": "fails outside a git checkout",
+          "call": "it",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "the helper in a copy of the environment",
+      "source": "spawnSync('git', ['log'], { env: { ...gitEnvironment(), LC_ALL: 'C' } });\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "spawnSync",
+          "passes": true
+        }
+      ]
+    },
+    {
+      "what": "the helper named for another option",
+      "source": "spawnSync('git', ['log'], { cwd: gitEnvironment() });\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "spawnSync",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "TypeScript's own syntax",
+      "source": "const run = (args: string[]): string => execFileSync('git', args, { env: gitEnvironment() as NodeJS.ProcessEnv }).toString();\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "execFileSync",
+          "passes": true
+        }
+      ]
+    },
+    {
+      "what": "a program name passed to a runner of its own",
+      "source": "probes.run('git', ['status']);\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "run",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "a tagged template that starts a process",
+      "source": "await $`git status`;\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git status",
+          "call": "$",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "what": "the helper given to an outer call",
+      "source": "execFileSync(String('git'), ['log'], { env: gitEnvironment() });\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git",
+          "call": "String",
+          "passes": true
+        }
+      ]
+    },
+    {
+      "what": "a promised child",
+      "source": "await execAsync('git log');\n",
+      "found": [
+        {
+          "line": 1,
+          "text": "git log",
+          "call": "execAsync",
+          "passes": false
+        }
+      ]
+    }
+  ],
+  "excuse_cases": {
+    "python": {
+      "excuse": {
+        "file": "x.py",
+        "call": "print",
+        "text": null
+      },
+      "source": "print('run git status')\nprint('git log -1')\nlog('git status')\n",
+      "missing": [
+        "x.py:3 log: 'git status'"
+      ]
+    },
+    "node": {
+      "excuse": {
+        "file": "x.mjs",
+        "call": "push",
+        "text": null
+      },
+      "source": "failures.push('run git status');\nfailures.push(`git log -1`);\nlog('git status');\n",
+      "missing": [
+        "x.mjs:3 log: \"git status\""
+      ]
+    }
+  },
+  "runnable_cases": {
+    "texts": {
+      "a.sh": "#!/bin/sh\ngit status\n",
+      "b.zsh": "#!/bin/zsh\n# the check of what was built\nprint built\n",
+      "c.zsh": "#!/bin/zsh\n  cd x && git -C y log\n",
+      "d.zsh": "#!/bin/zsh\nprint 'git could not list the files'\n",
+      "e.sh": "#!/bin/sh\n# runs git status first\n"
+    },
+    "running_git": [
+      "a.sh",
+      "c.zsh",
+      "e.sh"
+    ]
+  },
+  "not_run": [
+    {
+      "file": "scripts/bake_constellations_d3celestial.py",
+      "call": null,
+      "text": "git commit \u0000 (2020-03-20)",
+      "why": "the version text of a source in the provenance record: the upstream commit the data was taken at"
+    },
+    {
+      "file": "scripts/bake_deepsky_openngc.py",
+      "call": null,
+      "text": "\u0000 (git tag v20260501, published 2026-05-01)",
+      "why": "the version text of a source in the provenance record: the upstream release and its git tag"
+    },
+    {
+      "file": "scripts/field-check.mjs",
+      "call": "run",
+      "text": "git",
+      "why": "the field check runs every program through its one runner, which passes the helper's environment (checked by the Node scan)"
+    },
+    {
+      "file": "scripts/field-check.mjs",
+      "call": null,
+      "text": "\u0000; restore them with git checkout -- \u0000",
+      "why": "advice in the field check's report: the command a person runs to restore the catalog files"
+    },
+    {
+      "file": "scripts/__tests__/fieldCheck.test.mjs",
+      "call": null,
+      "text": "git ls-files -z apps/web/public/catalog",
+      "why": "a key of the test's table of fake answers: the test answers that command line itself"
+    },
+    {
+      "file": "scripts/verify-public-tracked.mjs",
+      "call": "push",
+      "text": null,
+      "why": "the check's failure messages, collected by failures.push: each tells a person which git command lists the files; nothing runs them"
+    },
+    {
+      "file": "scripts/__tests__/verify-public-tracked.test.mjs",
+      "call": "toBe",
+      "text": null,
+      "why": "words for a person: the check's messages as its test expects them, word for word, or a test's title; nothing runs them"
+    },
+    {
+      "file": "scripts/__tests__/verify-public-tracked.test.mjs",
+      "call": "toEqual",
+      "text": null,
+      "why": "words for a person: the check's messages as its test expects them, word for word, or a test's title; nothing runs them"
+    },
+    {
+      "file": "scripts/__tests__/verify-public-tracked.test.mjs",
+      "call": "it",
+      "text": null,
+      "why": "words for a person: the check's messages as its test expects them, word for word, or a test's title; nothing runs them"
+    }
+  ]
+}

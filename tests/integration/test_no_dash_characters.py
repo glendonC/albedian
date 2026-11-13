@@ -21,6 +21,8 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 
+from scripts.git_env import git_environment
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Code points, so this file holds none of the characters it bans: the em dash, the en dash, the horizontal bar, the
@@ -41,7 +43,7 @@ def dash_points_by_line(text: str) -> list[tuple[int, list[str]]]:
 
 def dash_lines(root: Path) -> list[str]:
     """'file:line U+XXXX' for every banned character in the text files git tracks under root."""
-    listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True)
+    listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True, env=git_environment())
     found = []
     for rel in listed.stdout.decode("utf-8").split("\0"):
         path = root / rel
@@ -64,7 +66,7 @@ def test_no_tracked_text_file_holds_an_em_or_en_dash() -> None:
 
 
 def _git(root: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True, env=git_environment())
 
 
 def test_the_scan_reports_exactly_the_planted_text_lines(tmp_path: Path) -> None:

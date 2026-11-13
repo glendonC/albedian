@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.git_env import git_environment
+
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = ROOT / "apps" / "web" / "public"
 CACHE = ROOT / ".cache" / "splats"
@@ -40,7 +42,7 @@ def _verify_provenance():
 
 
 def test_no_splat_scene_is_tracked_or_shipped_under_public() -> None:
-    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "--", "apps/web/public"], capture_output=True, check=True)
+    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "--", "apps/web/public"], capture_output=True, check=True, env=git_environment())
     assert not [p for p in tracked.stdout.decode("utf-8").split("\0") if p.endswith(".spz")]
     assert not list(PUBLIC.rglob("*.spz"))
 

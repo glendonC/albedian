@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
+import { gitEnvironment } from './git-env.mjs';
 
 export const DISK_ADVICE_GB = 10;
 export const HEIC_ADVICE =
@@ -49,7 +50,7 @@ export function realProbes(repoRoot) {
     nodeVersion: process.version,
     env: process.env,
     run(command, args) {
-      const result = spawnSync(command, args, { cwd: repoRoot, encoding: 'utf8', timeout: 15_000, maxBuffer: 64 * 1024 * 1024 });
+      const result = spawnSync(command, args, { cwd: repoRoot, env: gitEnvironment(), encoding: 'utf8', timeout: 15_000, maxBuffer: 64 * 1024 * 1024 });
       return { ok: !result.error && result.status === 0, stdout: result.stdout ?? '' };
     },
     readJson(rel) {

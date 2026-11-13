@@ -16,8 +16,8 @@
  * already in <out>. `--measure` instead measures item 0 per voice and summed (main.ts's
  * measureFirstListen) into <out>/measurements.json, prints the table of AUDIO_ENGINE.md section 10
  * and writes <out>/measure-console.txt; it encodes nothing and leaves the clips and the page alone.
- * It uses only Node's built-ins, an installed Chrome and an installed ffmpeg. CHROME_PATH and
- * FFMPEG_PATH override the defaults.
+ * It uses only Node's built-ins, an installed Chrome, an installed ffmpeg and one file of this repository,
+ * scripts/git-env.mjs (git's environment). CHROME_PATH and FFMPEG_PATH override the defaults.
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { gitEnvironment } from '../../../../scripts/git-env.mjs';
 
 const { values: args } = parseArgs({
   options: {
@@ -153,8 +154,8 @@ async function withListeningPage(consoleFile, use) {
 
 /** The commit the renders come from, whether audio files differ from it, and the date (UTC). */
 function renderRecord() {
-  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim();
-  const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/listening'], { cwd: repoRoot, encoding: 'utf8' }).stdout.trim() !== '';
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8', env: gitEnvironment() }).stdout.trim();
+  const dirty = spawnSync('git', ['status', '--porcelain', '--', 'apps/web/src/audio', 'apps/web/spike/listening'], { cwd: repoRoot, encoding: 'utf8', env: gitEnvironment() }).stdout.trim() !== '';
   return { commit: head, uncommittedAudioChanges: dirty, renderedAt: new Date().toISOString().slice(0, 10) };
 }
 
