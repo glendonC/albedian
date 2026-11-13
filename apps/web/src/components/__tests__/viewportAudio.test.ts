@@ -9,6 +9,7 @@ import {
   AUDIO_DISCLOSURE,
   AUDIO_DISCLOSURE_WITHOUT_MUSIC,
   AUDIO_NOTICES_URL,
+  HeardMusic,
   appHeardMusic,
   appMusicAvailability,
   audioCreditLines,
@@ -41,6 +42,20 @@ const stub = vi.hoisted(() => ({
   onRegimeChange: null as ((regime: string) => void) | null,
   barValue: null as number | null,
 }));
+
+// Each test starts with nothing heard. audioCredits.ts keeps the pieces heard for the page's life, so a piece one test
+// adds would show in a later test's credits; here the page-wide record forwards to one that every test renews.
+const heard = vi.hoisted(() => ({ current: null as unknown as InstanceType<typeof import('../../audio/audioCredits.js').HeardMusic> }));
+vi.mock('../../audio/audioCredits.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../audio/audioCredits.js')>();
+  heard.current = new original.HeardMusic();
+  const forwarding = {
+    get: () => heard.current.get(),
+    add: (piece: Parameters<typeof heard.current.add>[0]) => heard.current.add(piece),
+    subscribe: (listener: () => void) => heard.current.subscribe(listener),
+  };
+  return { ...original, appHeardMusic: forwarding };
+});
 
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
@@ -141,6 +156,7 @@ function frames(n: number): void {
 }
 
 beforeEach(() => {
+  heard.current = new HeardMusic();
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
   stub.layers = CISLUNAR_LAYERS;
@@ -322,5 +338,20 @@ describe('the music beside the Audio control', () => {
     clickAudio();
     clickAudio();
     expect(credits()).toContain(RECORDING.credit);
+  });
+});
+
+describe('each test starts with nothing heard (web-audio-order-1)', () => {
+  // In file order: the first test hears a piece; the second must not see it, whatever ran before
+  it('hears a piece in one test', () => {
+    act(() => appHeardMusic.add('recording'));
+    expect(appHeardMusic.get()).toEqual(['recording']);
+  });
+
+  it('starts the next test with nothing heard, so the credits are the engine works alone', () => {
+    expect(appHeardMusic.get()).toEqual([]);
+    renderViewport();
+    clickAudio();
+    expect(Array.from(container.querySelectorAll('.alb-audio-credits li'), (li) => li.textContent)).toEqual([...AUDIO_CREDIT_LINES]);
   });
 });
