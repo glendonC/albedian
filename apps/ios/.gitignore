@@ -1,0 +1,6 @@
+# Swift Package Manager and Xcode build output, and each person's own Xcode state
+AlbedianCaptureCore/.build/
+AlbedianCaptureCore/.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
