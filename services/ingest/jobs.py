@@ -38,6 +38,7 @@ from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
 from services.science.detector import _to_luma_2d, detect_point_sources, stack_video_frames_for_calibration
 from services.science.bounded_worker import BoundedWorker, WorkerTimeout
 from services.science.catalog import get_catalog_stars
+from services.science.designations import upgrade_stored_solution
 from services.science.phone_photo_solver import (
     PHONE_SOLVER_IDENTITY,
     diagonal_fov_deg_from_35mm_equivalent,
@@ -139,7 +140,7 @@ def read_solution(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
     path = store.folder(sha256) / "solution.json"
     if not path.is_file():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return upgrade_stored_solution(json.loads(path.read_text(encoding="utf-8")))
 
 
 PGM_HEADER = re.compile(rb"P5\s+(\d+)\s+(\d+)\s+(\d+)\s")

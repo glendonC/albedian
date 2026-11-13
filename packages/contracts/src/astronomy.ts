@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { SHA256_HEX_PATTERN } from './media.js';
 import { EvidenceClass, EvidenceClassSchema, SolutionStatusSchema } from './primitives.js';
+import { BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN } from './designation.js';
+import { wireInt } from './wire.js';
 
 /** A recording's SHA-256 as 64 lowercase hex digits. 64 zeros is a placeholder for a hash nobody computed, not a hash. */
 export const SourceSha256Schema = z
@@ -47,7 +49,10 @@ export const CatalogReferenceSchema = z
     releaseVersion: z.string().min(1),
     catalogSourceId: z.string().min(1),
     commonName: z.string().min(1),
-    bayerDesignation: z.string().optional(),
+    // The long form the repository ships ("Alpha Orionis"), only from the designation tables (./designation.ts)
+    bayerDesignation: z.string().regex(new RegExp(BAYER_DESIGNATION_PATTERN)).optional(),
+    // A whole number within the range the baked designations hold
+    flamsteedNumber: wireInt().min(FLAMSTEED_NUMBER_MIN).max(FLAMSTEED_NUMBER_MAX).optional(),
     constellation: z.string().min(1),
     objectType: z.enum(['star', 'planet', 'moon', 'deep_sky', 'satellite_candidate']),
     coordinateEpoch: z.string().min(1),

@@ -133,6 +133,35 @@
   "evidence.verifiedByIndependentHoldout"
  ],
  "rules": {
+  "bayerDesignation": {
+   "type": "text",
+   "minLength": 0,
+   "pattern": "bayerDesignation",
+   "accept": [
+    "Alpha Orionis",
+    "Alpha2 Capricorni",
+    "Alpha Canis Majoris",
+    "Omega9 Vulpeculae",
+    "Lambda Orionis"
+   ],
+   "refuse": [
+    "Alpha Ori",
+    "alpha Orionis",
+    "Lamda Orionis",
+    "Alpha Orionis\n",
+    " Alpha Orionis",
+    "Alpha10 Orionis",
+    "HR 1713",
+    "bet Ori",
+    "\u03b1 Ori",
+    "",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
   "boolean": {
    "type": "flag",
    "accept": [
@@ -400,6 +429,40 @@
     -5e-324,
     -0.0,
     175.00000000000003,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "flamsteedNumber": {
+   "type": "number",
+   "integer": true,
+   "ge": 1,
+   "le": 140,
+   "accept": [
+    1,
+    3.0,
+    140
+   ],
+   "refuse": [
+    0,
+    1.5,
+    2.5,
+    141,
+    141.0,
     {
      "$number": "NaN"
     },
@@ -952,7 +1015,11 @@
     "rule": "nonEmptyText"
    },
    "bayerDesignation": {
-    "rule": "text",
+    "rule": "bayerDesignation",
+    "optional": true
+   },
+   "flamsteedNumber": {
+    "rule": "flamsteedNumber",
     "optional": true
    },
    "constellation": {
@@ -1205,6 +1272,7 @@
    "catalogSourceId": "catalog_source_id",
    "commonName": "common_name",
    "bayerDesignation": "bayer_designation",
+   "flamsteedNumber": "flamsteed_number",
    "objectType": "object_type",
    "coordinateEpoch": "coordinate_epoch",
    "raDeg": "ra_deg",

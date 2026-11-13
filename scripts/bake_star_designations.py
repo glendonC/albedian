@@ -16,7 +16,9 @@ A tile row is linked by HIP number only, never by position:
 - a Hipparcos row takes the designation of its own HIP number;
 - otherwise a Gaia row takes the designation of the HIP number it is the best neighbour of, if it holds at least half
   of the star's light: its V, from its G and BP-RP by Riello et al. (2021, A&A 649, A3, Table C.2), is at most
-  2.5 log10 2 mag fainter than HYG's V for the star (a fainter row is a companion, not the star). A row whose BP-RP
+  2.5 log10 2 mag fainter than HYG's V for the star. A fainter row is most often a companion, but it can be the
+  star's own brightest component when HYG's V is the light of the whole system (beta Mon, 65 Psc, 55 Eri): either
+  way the bound drops the row rather than risk a wrong star, and that component goes unlabelled. A row whose BP-RP
   is missing or outside the relation's stated range, -0.5 < BP-RP < 5.0, gets no designation, as the test cannot be
   made. Every designation that does not reach a tile row is set aside with its reason.
 
@@ -129,7 +131,8 @@ BP_RP_RANGE = (-0.5, 5.0)
 HALF_LIGHT_MAG = 2.5 * math.log10(2.0)
 
 # designations.json (HYG only)
-COLUMNS = ("hip", "flamsteed", "bayer", "constellation", "hd", "hr", "hygId")
+# vMag is HYG's V, as HYG wrote it: what tells which of several rows sharing one designation is the brightest
+COLUMNS = ("hip", "flamsteed", "bayer", "constellation", "hd", "hr", "hygId", "vMag")
 SET_ASIDE_COLUMNS = ("hygId", "hip", "reason")
 SET_ASIDE_REASONS = ("no-hip", "inconsistent-bf")
 # links.json (ESA only)
@@ -337,7 +340,10 @@ def link(
 
 def designation_rows(designations: list[Designation]) -> list[list[Any]]:
     """designations.json's rows in HIP order: HYG's values only."""
-    return [[d.hip, d.flamsteed, d.bayer, d.constellation, d.hd, d.hr, d.hyg_id] for d in sorted(designations, key=lambda d: d.hip)]
+    return [
+        [d.hip, d.flamsteed, d.bayer, d.constellation, d.hd, d.hr, d.hyg_id, d.v_mag]
+        for d in sorted(designations, key=lambda d: d.hip)
+    ]
 
 
 def build_from(cache: Path, tiles: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -453,12 +459,15 @@ def build_provenance_record(out_dir: Path) -> AssetProvenanceRecord:
     }
     aside = counts["setAside"]
     note = (
-        f"The Bayer letters and Flamsteed numbers of {counts['rows']:,} HYG v4.1 rows, keyed by HIP number, in HIP "
-        "order, evidenceKind 'catalog-derived', every value as HYG wrote it (hip, flam, bayer, con, hd, hr, id); "
-        "nothing else is in this file. "
-        f"Of {counts['designated']:,} designated HYG rows, set aside: {aside['no-hip']} without a HIP number and "
-        f"{aside['inconsistent-bf']} whose bf disagrees with its own fields. Which tile row each HIP number names is in "
-        "../designation-links/links.json, ESA data under its own record. Offered under CC BY-SA 4.0 with HYG's "
+        f"The Bayer letters and Flamsteed numbers of {counts['rows']:,} HYG v4.1 rows, keyed by HIP number, "
+        "evidenceKind 'catalog-derived'. Which tile row each HIP number names is in ../designation-links/links.json, "
+        "ESA data under its own record. "
+        f"Changed from HYG: of its {counts['designated']:,} rows with a Bayer letter, a Flamsteed number or a combined "
+        f"designation (bf), the {counts['rows']:,} with a HIP number are kept in HIP order, each with eight of its "
+        "fields as HYG wrote them (hip, flam, bayer, con, hd, hr, id, mag); "
+        f"the {aside['no-hip']} without a HIP number and the {aside['inconsistent-bf']} whose combined designation (bf) "
+        "disagrees with its own fields are listed apart with their reason; the other fields are left out, and no value "
+        "is altered. Offered under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) with HYG's "
         "attribution (HYG Database, astronexus, codeberg.org/astronexus/hyg), as it is adapted from HYG."
     )
     return _record([source], OUT_NAME, out_bytes, note)

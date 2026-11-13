@@ -3,6 +3,7 @@ import path from 'node:path';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { CatalogReferenceSchema } from '../index.js';
+import { wireInt } from '../wire.js';
 
 /**
  * The catalog reference against the samples the Python mirror wrote (services/contracts/catalog_reference.py,
@@ -20,6 +21,7 @@ interface CatalogReferenceFixture {
   distanceMethods: string[];
   valid: Reference[];
   invalid: { rule: string; reference: Reference }[];
+  designationEdges: { field: string; value: unknown; valid: boolean }[];
   droppedKey: { reference: Reference; parsed: Reference };
 }
 
@@ -51,6 +53,16 @@ describe('@albedian/contracts: the catalog reference', () => {
     expect(fixture.invalid.length).toBeGreaterThanOrEqual(10);
     for (const { rule, reference } of fixture.invalid) {
       expect(CatalogReferenceSchema.safeParse(reference).success, rule).toBe(false);
+    }
+  });
+
+  it('takes or refuses each designation bound as the Python side does, from the shared edge table', () => {
+    const base = fixture.valid.find((r) => r.provider === 'Hipparcos')!;
+    expect(fixture.designationEdges.length).toBeGreaterThanOrEqual(25);
+    for (const { field, value, valid } of fixture.designationEdges) {
+      const parsed = CatalogReferenceSchema.safeParse({ ...base, [field]: value });
+      expect(parsed.success, `${field}=${JSON.stringify(value)}`).toBe(valid);
+      if (valid) expect((parsed.data as Record<string, unknown>)[field]).toEqual(value);
     }
   });
 
@@ -87,5 +99,40 @@ describe('@albedian/contracts: the catalog reference', () => {
         ],
       }
     );
+  });
+
+  it('holds the Flamsteed number to its own edge in the solution field table, and a count to the largest safe integer', () => {
+    // The table code on main gave every integer rule the largest safe integer as an accepted edge, right for a count
+    // and wrong for 1 to 140; with an upper bound the edge is the bound and one past it
+    const table = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/observation_solution_contract.json'), 'utf8'),
+    ) as { rules: Record<string, { accept: unknown[]; refuse: unknown[]; le?: number }> };
+    const flamsteed = table.rules.flamsteedNumber ?? { accept: [], refuse: [] };
+    const count = table.rules.count ?? { accept: [], refuse: [] };
+    expect(flamsteed.le).toBe(140);
+    expect(flamsteed.accept).toContain(140);
+    expect(flamsteed.accept).not.toContain(9007199254740991);
+    expect(flamsteed.refuse).toContain(141);
+    expect(count.accept).toContain(9007199254740991);
+    expect(count.le).toBeUndefined();
+    const base = fixture.valid[0];
+    expect(CatalogReferenceSchema.safeParse({ ...base, flamsteedNumber: 140 }).success).toBe(true);
+    for (const beyond of [141, 141.0, 9007199254740991]) {
+      expect(CatalogReferenceSchema.safeParse({ ...base, flamsteedNumber: beyond }).success, String(beyond)).toBe(false);
+    }
+  });
+
+  it('takes and refuses the integer edge samples of the field table as the Python side says, for every pair of bounds', () => {
+    // catalog-2b v3: the samples are made from each rule's own bounds; Zod's own integer schema judges them here
+    const tables = (fixture as unknown as { integerEdgeTables: { bounds: { ge?: number; gt?: number; le?: number }; accept: number[]; refuse: number[] }[] }).integerEdgeTables;
+    expect(tables.length).toBeGreaterThanOrEqual(14);
+    for (const { bounds, accept, refuse } of tables) {
+      let schema = wireInt();
+      if (bounds.ge !== undefined) schema = schema.gte(bounds.ge);
+      if (bounds.gt !== undefined) schema = schema.gt(bounds.gt);
+      if (bounds.le !== undefined) schema = schema.lte(bounds.le);
+      for (const value of accept) expect(schema.safeParse(value).success, `${JSON.stringify(bounds)} ${value}`).toBe(true);
+      for (const value of refuse) expect(schema.safeParse(value).success, `${JSON.stringify(bounds)} ${value}`).toBe(false);
+    }
   });
 });

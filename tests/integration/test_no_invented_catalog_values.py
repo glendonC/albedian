@@ -38,6 +38,7 @@ from research.benchmarks.phone_photos import render, stars, suite
 from services.contracts.catalog_reference import CatalogReference
 from services.science import catalog_tiles as ct
 from services.science.catalog import ALL_SKY_CATALOG_STARS
+from services.science.designations import designation_of_row
 from services.science.phone_photo_solver import (
     _get_tile_index,
     _TileStarIndex,
@@ -53,12 +54,14 @@ CATALOG_EPOCH = float(json.loads((TILES / "manifest.json").read_text())["epochJu
 PINNED = {star.catalog_source_id: star for star in ALL_SKY_CATALOG_STARS}
 # The 88 IAU constellations: the boundary file's codes, Serpens drawn as its two parts Se1 and Se2
 IAU_CODES = {"Ser" if c["code"] in ("Se1", "Se2") else c["code"] for c in json.loads(BOUNDS.read_text())["constellations"]}
+# The pinned records by catalog id: a pinned star's shipped designation is the fallback where no link reaches it
+PINNED_BY_SOURCE = {s.catalog_source_id: s for s in ALL_SKY_CATALOG_STARS}
 # Every key a catalog reference may carry (CatalogReferenceSchema in packages/contracts/src/astronomy.ts)
 CONTRACT_KEYS = {
     "id", "provider", "releaseVersion", "catalogSourceId", "commonName", "bayerDesignation", "constellation",
     "objectType", "coordinateEpoch", "raDeg", "decDeg", "apparentMagnitude", "colorIndexBpRp", "spectralType",
     "properMotionRaMasYr", "properMotionDecMasYr", "radialVelocityKmS", "parallaxMas", "parallaxErrorMas",
-    "bailerJonesDistancePc", "citation",
+    "bailerJonesDistancePc", "citation", "flamsteedNumber",
 }
 # The tile's distance kind, as the contract names its method; a Bailer-Jones geometric distance has no name there
 METHOD_BY_KIND = {
@@ -139,10 +142,15 @@ def _expected(row: Row, name: dict[str, Any] | None, epoch: float, pinned: Any =
     only its names. A row without a distance gives none."""
     method = METHOD_BY_KIND[row.dist_kind] if row.has_distance else None
     if pinned is not None:
-        common, designation = pinned.common_name, pinned.bayer_designation
+        # The common name is the name table's, else the catalog id, as for any star (catalog-2b v2: one title on both
+        # paths); the pinned record gives the Bayer designation
+        common, designation = (name["name"] if name else row.source_id), pinned.bayer_designation
     else:
         common = name["name"] if name else row.source_id
-        designation = (name.get("designation") or None) if name else None  # the name table's full designation
+        # The baked designations' (catalog-2b): the name table's own designation is an HR, HD or other catalog number,
+        # never a Bayer designation, so it is not expected in that field
+        pin = PINNED_BY_SOURCE.get(row.source_id)
+        designation = designation_of_row(row.is_hip, int(row.source_id.split()[-1]), "", pin.bayer_designation if pin else None)[0]
     return {
         "provider": "Hipparcos" if row.is_hip else "Gaia DR3",
         "catalogSourceId": row.source_id,
@@ -182,6 +190,8 @@ def _assert_row_values(
                 assert got[bound] == pytest.approx(want[bound], rel=1e-9), (source, key, bound)
         else:
             assert got == want, (source, key, got)
+    # The Flamsteed number: the baked designations', only where its constellation is the star's
+    assert ref.get("flamsteedNumber") == designation_of_row(row.is_hip, int(source.split()[-1]), ref["constellation"])[1], source
     # The constellation: the name table's where the star has an entry, else a real IAU constellation
     if pinned is not None:
         assert ref["constellation"] == pinned.constellation and ref["id"] == pinned.id, source
@@ -249,7 +259,7 @@ def test_every_unpinned_tile_star_carries_only_its_rows_values(unpinned, names: 
         _assert_row_values(star.to_catalog_reference_dict(), row, names.get(row.source_id), CATALOG_EPOCH)
 
 
-def test_every_pinned_star_takes_its_rows_values_and_only_its_names(rows: dict[str, Row]) -> None:
+def test_every_pinned_star_takes_its_rows_values_and_only_its_names(rows: dict[str, Row], names: dict[str, Any]) -> None:
     index = _get_tile_index()
     checked = 0
     for i in range(len(index.data["sid"])):
@@ -258,7 +268,7 @@ def test_every_pinned_star_takes_its_rows_values_and_only_its_names(rows: dict[s
         if source not in PINNED:
             continue
         star = index.to_catalog_star(i, float(index.data["ra0"][i]), float(index.data["dec0"][i]), index.epoch_jyear)
-        _assert_row_values(star.to_catalog_reference_dict(), rows[source], None, CATALOG_EPOCH, PINNED[source])
+        _assert_row_values(star.to_catalog_reference_dict(), rows[source], names.get(source), CATALOG_EPOCH, PINNED[source])
         checked += 1
     assert checked == len(PINNED)
 

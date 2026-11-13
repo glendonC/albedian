@@ -107,6 +107,11 @@ class CatalogStar:
     citation: str
     epoch_year: float = 2000.0
     magnitude_band: str | None = None
+    # The Flamsteed number the baked designations give the star's tile row (catalog-2b); None for the others
+    flamsteed_number: int | None = None
+    # The IAU names file's (names.json) own designation for the star, as written there: an HR, HD, HIP, GJ or BD
+    # catalog id or a planet host's name, never a Bayer designation, so never in bayer_designation; not a contract field
+    names_file_designation: str | None = None
 
     def __post_init__(self) -> None:
         distance = (self.lower_pc, self.median_pc, self.upper_pc, self.distance_method)
@@ -140,6 +145,7 @@ class CatalogStar:
             "catalogSourceId": self.catalog_source_id,
             "commonName": self.common_name,
             "bayerDesignation": self.bayer_designation,
+            "flamsteedNumber": self.flamsteed_number,
             "constellation": self.constellation,
             "objectType": "star",
             "coordinateEpoch": f"J{self.epoch_year:.1f}",

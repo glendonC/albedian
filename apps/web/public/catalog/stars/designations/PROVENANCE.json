@@ -22,7 +22,7 @@
   "files": [
     {
       "path": "designations.json",
-      "sha256": "c96e6ee68518631e5284c18ed130bb3fb8a124099f4be9abda769fd36c3ad13b",
+      "sha256": "ebc0d42285e1398141316400c371670b4321c542caaf14008ea35029da86d728",
       "sources": [
         "hyg-v41"
       ],
@@ -31,7 +31,7 @@
         "script": "scripts/bake_star_designations.py",
         "command": "uv run python scripts/bake_star_designations.py"
       },
-      "note": "The Bayer letters and Flamsteed numbers of 3,303 HYG v4.1 rows, keyed by HIP number, in HIP order, evidenceKind 'catalog-derived', every value as HYG wrote it (hip, flam, bayer, con, hd, hr, id); nothing else is in this file. Of 3,321 designated HYG rows, set aside: 17 without a HIP number and 1 whose bf disagrees with its own fields. Which tile row each HIP number names is in ../designation-links/links.json, ESA data under its own record. Offered under CC BY-SA 4.0 with HYG's attribution (HYG Database, astronexus, codeberg.org/astronexus/hyg), as it is adapted from HYG."
+      "note": "The Bayer letters and Flamsteed numbers of 3,303 HYG v4.1 rows, keyed by HIP number, evidenceKind 'catalog-derived'. Which tile row each HIP number names is in ../designation-links/links.json, ESA data under its own record. Changed from HYG: of its 3,321 rows with a Bayer letter, a Flamsteed number or a combined designation (bf), the 3,303 with a HIP number are kept in HIP order, each with eight of its fields as HYG wrote them (hip, flam, bayer, con, hd, hr, id, mag); the 17 without a HIP number and the 1 whose combined designation (bf) disagrees with its own fields are listed apart with their reason; the other fields are left out, and no value is altered. Offered under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/) with HYG's attribution (HYG Database, astronexus, codeberg.org/astronexus/hyg), as it is adapted from HYG."
     }
   ],
   "fileSets": []

@@ -338,11 +338,11 @@ def test_rows_are_written_in_hip_order_and_a_tile_row_designated_twice_is_refuse
 def test_the_designation_rows_hold_hygs_values_only_in_hip_order() -> None:
     a = _one(hip=300, flam="21")
     b = _one(hip=200, bayer="Pi-1", con="Ori")
-    assert bake.designation_rows([a, b]) == [[200, None, "Pi-1", "Ori", None, None, 1], [300, 21, "Alp", "And", None, None, 1]]
+    assert bake.designation_rows([a, b]) == [[200, None, "Pi-1", "Ori", None, None, 1, 5.0], [300, 21, "Alp", "And", None, None, 1, 5.0]]
 
 
 def test_the_columns_are_named_once_in_the_order_of_each_row_and_no_file_mixes_the_two_sources() -> None:
-    assert bake.COLUMNS == ("hip", "flamsteed", "bayer", "constellation", "hd", "hr", "hygId")
+    assert bake.COLUMNS == ("hip", "flamsteed", "bayer", "constellation", "hd", "hr", "hygId", "vMag")
     assert bake.SET_ASIDE_COLUMNS == ("hygId", "hip", "reason")
     assert bake.SET_ASIDE_REASONS == ("no-hip", "inconsistent-bf")
     assert bake.LINK_COLUMNS == ("catalog", "catalogId", "layer", "pix", "index", "hip", "link")
@@ -470,7 +470,7 @@ def test_a_build_from_made_up_inputs_splits_hygs_values_from_esas_links(tmp_path
         fh.write("\n".join((BN_HEADER, "77,200,0.01,1,8", "78,300,0.6,1,16")) + "\n")
     _write_tiles(tiles, (0, 3, [300, 77, 78], [ct.FLAG_CATALOG_HIPPARCOS, 0, 0], [2.0, 5.0, 9.0], [0.0, 0.0, 0.0]))
     designations, links = bake.build_from(cache, tiles)
-    assert designations["rows"] == [[200, 21, None, "Psc", None, 15, 4], [300, None, "Alp", "And", 358, None, 5]]
+    assert designations["rows"] == [[200, 21, None, "Psc", None, 15, 4, 5.0], [300, None, "Alp", "And", 358, None, 5, 5.0]]
     assert designations["setAside"] == [[3, None, "no-hip"], [9, None, "no-hip"]]
     assert designations["counts"] == {"designated": 4, "rows": 2, "setAside": {"no-hip": 2, "inconsistent-bf": 0}}
     assert links["rows"] == [["gaia-dr3", "77", 0, 3, 1, 200, "gaia-best-neighbour"], ["hipparcos-2007", "300", 0, 3, 0, 300, "hipparcos-row"]]
@@ -637,6 +637,16 @@ def test_the_designations_record_pins_its_file_and_names_hyg_alone_under_cc_by_s
     assert download["licence"] == "CC-BY-SA-4.0" and download["fetch"] == "scripts/fetch_download.py"
     note = entry.note or ""
     assert "CC BY-SA 4.0" in note and "astronexus" in note and "ESA" in note and "../designation-links/links.json" in note
+    # What the licence asks of an adaptation: the source, the licence and its link, and that and how it was changed
+    assert "Changed from HYG:" in note and "no value is altered" in note
+    # The change sentence names every row it sets aside, with its reason and its count, once (AUDIT H's fourth finding)
+    aside = json.loads((OUT_DIR / "designations.json").read_text(encoding="utf-8"))["counts"]["setAside"]
+    changed = note[note.index("Changed from HYG:") : note.index("Offered under")]
+    assert (aside["no-hip"], aside["inconsistent-bf"]) == (17, 1)
+    assert "the 17 without a HIP number and the 1 whose combined designation (bf) disagrees with its own fields" in changed
+    assert "are listed apart with their reason" in changed
+    assert note.count("set aside") + note.count("listed apart") == 1 and "nothing else" not in note
+    assert "https://creativecommons.org/licenses/by-sa/4.0/" in note
 
 
 def test_the_links_record_pins_its_file_names_esas_sources_alone_and_says_the_guard_read_hyg() -> None:
@@ -723,6 +733,7 @@ def test_every_value_is_its_rows() -> None:
         assert int(h["hip"]) == r[0]
         assert (h["flam"] or None, h["bayer"] or None, h["con"]) == (None if r[1] is None else str(r[1]), r[2], r[3])
         assert (h["hd"] or None, h["hr"] or None) == (None if r[4] is None else str(r[4]), None if r[5] is None else str(r[5]))
+        assert r[7] == float(h["mag"])
         v_by_hip[r[0]] = float(h["mag"])
     for r in _links()["rows"]:
         if r[6] == "gaia-best-neighbour":
@@ -745,3 +756,13 @@ def test_the_greek_letters_are_all_that_hyg_uses() -> None:
 
 def test_v_from_g_returns_a_plain_float_for_numpy_values() -> None:
     assert isinstance(bake.v_from_gaia(np.float64(5.0), np.float64(0.2)), float)
+
+
+def test_the_bake_says_a_dropped_row_can_be_the_stars_own_brightest_component() -> None:
+    # catalog-2a's verdict, note b: for bet Mon, 65 Psc and 55 Eri the dropped row is the star's own brightest component
+    text = (ROOT / "scripts" / "bake_star_designations.py").read_text(encoding="utf-8")
+    assert "(a fainter row is a companion, not the star)" not in text
+    assert "it can be the\n  star's own brightest component" in text
+    aside = {r[0]: r[1] for r in _links()["setAside"]}
+    for hip in (30867, 3885, 21986):  # bet Mon, 65 Psc, 55 Eri
+        assert aside[hip] == "fainter-than-half-light", hip

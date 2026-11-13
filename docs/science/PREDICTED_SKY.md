@@ -128,9 +128,15 @@ each twilight band holds its darker edge (exactly -6 is civil twilight, exactly 
 - Every value of a star comes from its catalog row, and a value the row lacks is left out: a star whose row has no
   distance is shown with none. Its magnitude keeps its band (Gaia G or Hipparcos Hp), and its limitation names its
   catalog release and epoch (J2016.0). A star the IAU file names is called by that name, with the file's constellation;
-  any other star is called by its catalog id, with the IAU constellation whose boundary holds it. The file's
-  designation is mostly a Bright Star Catalogue number ("HR 2326" for Canopus), not a Bayer designation, so it is
-  shown in the subtitle's text only and the star carries no Bayer designation. [tested]
+  any other star is placed in the IAU constellation whose boundary holds it. The file's designation is mostly a
+  Bright Star Catalogue number ("HR 2326" for Canopus), not a Bayer designation, so it is shown in the subtitle's text
+  only. A star's Bayer designation ("Alpha Carinae") and Flamsteed number come from the baked HYG designations
+  (catalog/stars/designations/, joined by HIP number through designation-links/), on the brightest of the rows that
+  share one, the number only where its constellation is the star's. Its title is the IAU name, else the catalog id,
+  on the predicted and the matched path alike, from one function (services/science/designations.py `star_title`);
+  the Bayer and Flamsteed designations ("27 Cas") are in the subtitle on both. [tested] A solution stored before
+  these designations, which held the names file's designation as a Bayer designation, is read in the new shape and
+  left unchanged on disk (`upgrade_stored_solution`). [tested]
   A star the plate solver matched in the recording is not listed again. [tested]
 - Each star is carried from J2016.0 to the date by its proper motion (with its radial velocity, where its row gives
   one) and placed by ERFA's apparent place (light deflection, aberration, precession, nutation and the Earth's

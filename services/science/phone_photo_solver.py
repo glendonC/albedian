@@ -65,6 +65,7 @@ from services.science.catalog_model import (
     gaia_dr3_citation,
     hipparcos_2007_tile_citation,
 )
+from services.science.designations import designation_of_row, designation_parts, star_title
 from services.science.detector import (
     _estimate_background_and_noise,
     _to_luma_2d,
@@ -757,11 +758,15 @@ class _TileStarIndex:
 
         A value the row lacks is None: no colour, proper motion or radial velocity is filled in, a Hipparcos B-V is
         not given as BP-RP, no spectral type is named (neither release carries one), the tiles' Hipparcos distance
-        is not turned back into a parallax, and the magnitude keeps its band (Hipparcos Hp or Gaia G). Names come
-        from the IAU name table, its full designation (never a raw Bayer abbreviation such as "alf"), and a star
-        without an IAU name has no designation beyond its id. Its constellation is the name table's, else the IAU
-        boundary that holds it. A pinned star takes every catalog value from its row too; its pinned record adds
-        only the star's id and names (common name, designation and constellation).
+        is not turned back into a parallax, and the magnitude keeps its band (Hipparcos Hp or Gaia G). The common
+        name is the IAU name table's, else the catalog id, for a pinned star too, as the predicted sky names it, so a star
+        has one title on both paths (gamma Cas, which the table does not name, is "HIP 4427" with its Bayer designation
+        in the subtitle). The Bayer designation and the Flamsteed number come from
+        the baked designations through services/science/designations.py, as the predicted sky's do; the name table's
+        own designation, an HR, HD, HIP, GJ or BD id or a host's name, is kept as names_file_designation, never as a
+        Bayer designation. Its constellation is the name table's, else the IAU boundary that holds it. A pinned star takes
+        every catalog value and its common name from its row too; its pinned record adds only the star's id, its
+        constellation and its Bayer designation where the baked designations give none.
         """
         if not self.has_distance(row_idx):
             return None
@@ -771,14 +776,17 @@ class _TileStarIndex:
         pinned = self._pinned_by_source.get(cat_source_id)
         name_entry = self._names_by_source.get((is_hip, sid))
         common_name = name_entry["name"] if name_entry else cat_source_id
-        designation = (name_entry.get("designation") or None) if name_entry else None
+        names_file_designation = (name_entry.get("designation") or None) if name_entry else None
         constellation = name_entry.get("constellation") if name_entry else None
         if pinned is not None:
-            common_name, designation, constellation = pinned.common_name, pinned.bayer_designation, pinned.constellation
+            constellation = pinned.constellation
         if not constellation:
             constellation = iau_constellation_codes(
                 np.array([self.data["ra0"][row_idx]]), np.array([self.data["dec0"][row_idx]])
             )[0]
+        designation, flamsteed = designation_of_row(
+            is_hip, sid, constellation, pinned.bayer_designation if pinned is not None else None
+        )
         kind = int(self.data["dist_kind"][row_idx])
         if kind not in _DISTANCE_METHOD_BY_KIND:
             raise ValueError(f"{cat_source_id}: tile distance kind {kind} has no method")
@@ -791,6 +799,8 @@ class _TileStarIndex:
             id=pinned.id if pinned is not None else (f"hip-{sid}" if is_hip else f"gaia-dr3-{sid}"),
             common_name=common_name,
             bayer_designation=designation,
+            flamsteed_number=flamsteed,
+            names_file_designation=names_file_designation,
             constellation=constellation,
             provider="Hipparcos" if is_hip else "Gaia DR3",
             release_version=HIPPARCOS_2007_RELEASE if is_hip else GAIA_DR3_RELEASE,
@@ -922,11 +932,11 @@ def iau_constellation_codes(ra_deg: np.ndarray, dec_deg: np.ndarray) -> list[str
 
 
 def catalog_matched_subtitle(star: CatalogStar) -> str:
-    """Designation, spectral type and distance, leaving out what the catalog lacks and a designation that only
-    repeats the star's name."""
-    designation = star.bayer_designation if star.bayer_designation != star.common_name else None
+    """The designations (services/science/designations.py `designation_parts`: the Bayer designation, the Flamsteed
+    designation and the IAU names file's own designation, as the predicted sky shows them), spectral type and
+    distance, leaving out what the catalog lacks and a designation that only repeats the star's name."""
     distance = f"{star.median_pc:.1f} pc [{star.lower_pc:.1f}-{star.upper_pc:.1f} pc]"
-    return " · ".join(part for part in (designation, star.spectral_type, distance) if part)
+    return " · ".join(part for part in (*designation_parts(star), star.spectral_type, distance) if part)
 
 
 @lru_cache(maxsize=2)
@@ -1891,7 +1901,7 @@ def solve_phone_photo(
                     id=f"finding-{st.id}",
                     observation_solution_id=solution_id,
                     evidence_class="catalog_matched",
-                    title=st.common_name,
+                    title=star_title(st),
                     subtitle=catalog_matched_subtitle(st),
                     ra_deg=st.ra_deg,
                     dec_deg=st.dec_deg,

@@ -24,6 +24,7 @@ from typing import Any
 import numpy as np
 
 from services.science.camera_profiles import head_worn_profile
+from services.science.designations import designation_of_row, designation_parts, star_title
 from services.science.catalog import (
     KM_S_TO_PC_YR,
     _iso_to_julian_date,
@@ -315,8 +316,8 @@ def _sky_rows() -> _SkyRows:
     distance). The names are the shipped IAU name file's alone, for a pinned star too: the IAU name as the star's
     name and its constellation, else the IAU boundary that holds the star; a star the file does not name is called by
     its catalog id. The file's designation is mostly an HR number ("HR 2326"), not a Bayer designation, so it is kept
-    apart for the subtitle's text and the star's Bayer designation stays None: the contract has no field for an HR
-    number, and the file gives the Bayer letter only abbreviated. A pinned star keeps its pinned id, the id a plate
+    apart for the subtitle's text. The Bayer designation and the Flamsteed number come from the baked designations
+    through services/science/designations.py, as the solver's catalog star does. A pinned star keeps its pinned id, the id a plate
     solver's match of it carries."""
     index = _get_tile_index()
     data = index.data
@@ -339,7 +340,16 @@ def _sky_rows() -> _SkyRows:
         else:
             name, designation = entry["name"], entry.get("designation") or None
             constellation = entry.get("constellation") or iau_constellation_codes(np.array([ra0]), np.array([dec0]))[0]
-        stars.append(replace(star, common_name=name, bayer_designation=None, constellation=constellation))
+        pinned = index._pinned_by_source.get(star.catalog_source_id)
+        bayer, flamsteed = designation_of_row(
+            bool(data["hip"][row]), int(data["sid"][row]), constellation, pinned.bayer_designation if pinned else None
+        )
+        stars.append(
+            replace(
+                star, common_name=name, bayer_designation=bayer, flamsteed_number=flamsteed, constellation=constellation,
+                names_file_designation=designation,
+            )
+        )
         designations.append(designation)
     order = sorted(range(len(stars)), key=lambda k: (float(data["v_mag"][chosen[k]]), stars[k].id))
     return _SkyRows(
@@ -377,10 +387,13 @@ def predicted_star_uncertainty_arcsec(
 
 
 def _star_subtitle(star: CatalogStar, designation: str | None, alt: float, az: float) -> str:
-    """Constellation, the name file's designation, the row's distance where it gives one, and where the star is."""
-    parts = [f"Predicted Star ({star.constellation})"]
-    if designation is not None and designation != star.common_name:
-        parts.append(designation)
+    """Constellation, the designations the title does not show (`designation_parts`, as a solve's matched star shows
+    them) and then the catalog id if the title is not it, the row's distance where it gives one, and where the star is.
+    `designation` is the name file's, which the star also carries."""
+    title = star_title(star)
+    parts = [f"Predicted Star ({star.constellation})", *(p for p in designation_parts(star) if p != title)]
+    if title != star.catalog_source_id:
+        parts.append(star.catalog_source_id)
     if star.has_distance:
         parts.append(f"{star.median_pc:.1f} pc")
     parts += [f"Alt {alt:+.1f}° Az {az:.1f}°", "Above Horizon"]
@@ -477,7 +490,7 @@ def predicted_sky_findings(
                 id=f"finding-predicted-{star.id}",
                 observation_solution_id=solution_id,
                 evidence_class="predicted",
-                title=star.common_name,
+                title=star_title(star),
                 subtitle=_star_subtitle(star, sky.designations[k], float(alt[k]), float(az[k])),
                 ra_deg=star.ra_deg,
                 dec_deg=star.dec_deg,

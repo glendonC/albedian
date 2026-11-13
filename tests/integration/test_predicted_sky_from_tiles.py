@@ -46,9 +46,12 @@ from services.science.catalog import (
     time_scales,
     ALL_SKY_CATALOG_STARS,
 )
+from services.contracts.designation import catalog_title
 from services.science.catalog_model import hipparcos_2007_tile_citation
 from services.science.ephemeris import EARTH_ROTATION_ARCSEC_PER_S, POLAR_MOTION_BOUND_ARCSEC
 from services.science.phone_photo_solver import TYPICAL_BP_RP_FOR_RANKING, _get_tile_index
+from services.science.designations import baked_tile_row_designations as _tile_row_designations
+from services.science.designations import designation_of_row
 from services.science.predicted_sky import (
     FASTEST_PROPER_MOTION_MAS_YR,
     FASTEST_RADIAL_VELOCITY_KM_S,
@@ -258,6 +261,7 @@ def test_every_predicted_star_carries_only_its_rows_values_and_the_name_files_na
     rows: dict[str, Row], names: dict[str, Any]
 ) -> None:
     pinned_ids = {s.catalog_source_id: s.id for s in ALL_SKY_CATALOG_STARS}
+    designated = _tile_row_designations()
     checked = without_distance = 0
     for moment in NIGHTS:
         year = _year(moment)
@@ -270,10 +274,21 @@ def test_every_predicted_star_carries_only_its_rows_values_and_the_name_files_na
                 name = names.get(row.source_id)
                 ref = star.to_catalog_reference_dict()
                 # The names file's designation is an HR or other catalog number, not a Bayer designation: it is in
-                # the subtitle only, and the reference carries no Bayer designation
+                # the subtitle only. The Bayer designation and the Flamsteed number are the baked designations'
+                # (catalog-2b), the number only where its constellation is the star's
                 _assert_row_values(ref, row, {**name, "designation": None} if name else None, year)
-                assert "bayerDesignation" not in ref and star.bayer_designation is None
-                assert finding.title == (name["name"] if name else row.source_id)
+                pinned = PINNED.get(row.source_id)
+                want = designation_of_row(
+                    row.is_hip, int(row.source_id.split()[-1]), star.constellation, pinned.bayer_designation if pinned else None
+                )
+                assert (ref.get("bayerDesignation"), ref.get("flamsteedNumber")) == want
+                assert designated.get((row.is_hip, int(row.source_id.split()[-1]))) is not None or want[1] is None
+                title, parts = catalog_title(ref)
+                # The title is the name file's name, else the catalog id, as a matched star's (catalog-2b v2)
+                assert finding.title == title == (name["name"] if name else row.source_id)
+                assert all(f" · {part}" in finding.subtitle for part in parts)
+                # The subtitle never repeats the title
+                assert finding.title not in finding.subtitle.split(" · ")
                 if name and name.get("designation"):
                     assert f" · {name['designation']} · " in finding.subtitle
                 tile_id = f"hip-{row.source_id[4:]}" if row.is_hip else f"gaia-dr3-{row.source_id[9:]}"
@@ -299,14 +314,18 @@ def test_a_pinned_star_takes_the_name_files_names_not_its_typed_ones(names: dict
     assert betelgeuse.catalog_star.id == PINNED["HIP 27989"].id
     entry = names["HIP 27989"]
     assert betelgeuse.catalog_star.constellation == entry["constellation"] == "Ori"
-    # "HR 2061" is a Bright Star Catalogue number, not a Bayer designation: the subtitle's text only
-    assert entry["designation"] == "HR 2061" and betelgeuse.catalog_star.bayer_designation is None
-    assert " · HR 2061 · " in betelgeuse.subtitle
-    assert "bayerDesignation" not in betelgeuse.catalog_star.to_catalog_reference_dict()
-    assert PINNED["HIP 27989"].bayer_designation not in betelgeuse.subtitle
-    # Gamma Cassiopeiae has no IAU name: its typed name is not used, its catalog id is
+    # "HR 2061" is a Bright Star Catalogue number, not a Bayer designation: the subtitle's text only. Its Bayer
+    # designation and Flamsteed number are the baked designations', which give the pinned record's text exactly
+    assert entry["designation"] == "HR 2061"
+    assert betelgeuse.catalog_star.bayer_designation == "Alpha Orionis" == PINNED["HIP 27989"].bayer_designation
+    assert betelgeuse.catalog_star.flamsteed_number == 58
+    assert betelgeuse.title == "Betelgeuse"
+    assert " · Alpha Orionis · 58 Ori · HR 2061 · HIP 27989 · " in betelgeuse.subtitle
+    # Gamma Cassiopeiae has no IAU name: its typed name is not used, its catalog id is its title, as when it is matched,
+    # and its Bayer designation and Flamsteed number, from the baked file, are in the subtitle
     gamma_cas = _stars(predicted_sky_findings(NIGHTS[0], 60.0, -40.0, solution_id="s", source_sha256=SHA))["HIP 4427"]
-    assert gamma_cas.title == "HIP 4427" and gamma_cas.catalog_star.bayer_designation is None
+    assert gamma_cas.title == "HIP 4427" and gamma_cas.catalog_star.flamsteed_number == 27
+    assert " · Gamma Cassiopeiae · 27 Cas · " in gamma_cas.subtitle and gamma_cas.subtitle.count("HIP 4427") == 0
     assert gamma_cas.catalog_star.constellation in IAU_CODES
 
 
@@ -647,7 +666,10 @@ def test_a_row_without_a_distance_is_built_from_its_row_alone(rows: dict[str, Ro
     for i in [*hip, *gaia]:
         star = _star_without_distance(index, i)
         row = rows[star.catalog_source_id]
-        _assert_row_values(star.to_catalog_reference_dict(), row, None, CATALOG_EPOCH)
+        # The builder gives no designation; _sky_rows adds the baked one, as the row check expects
+        bayer, flamsteed = designation_of_row(row.is_hip, int(row.source_id.split()[-1]), star.constellation)
+        designated = replace(star, bayer_designation=bayer, flamsteed_number=flamsteed)
+        _assert_row_values(designated.to_catalog_reference_dict(), row, None, CATALOG_EPOCH)
         assert star.id == (f"hip-{row.source_id[4:]}" if row.is_hip else f"gaia-dr3-{row.source_id[9:]}")
         assert star.constellation in IAU_CODES and star.epoch_year == CATALOG_EPOCH
         assert star.magnitude_band == ("Hipparcos Hp" if row.mag_hp else "Gaia G")

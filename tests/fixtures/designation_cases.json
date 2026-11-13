@@ -1,0 +1,1323 @@
+{
+  "pattern": "^(Epsilon|Omicron|Upsilon|Lambda|Alpha|Delta|Gamma|Kappa|Omega|Sigma|Theta|Beta|Iota|Zeta|Chi|Eta|Phi|Psi|Rho|Tau|Mu|Nu|Pi|Xi)(1|2|3|4|5|6|7|8|9)? (Trianguli Australis|Canum Venaticorum|Coronae Austrini|Coronae Borealis|Comae Berenices|Piscis Austrini|Camelopardalis|Leonis Minoris|Canis Majoris|Canis Minoris|Chamaeleontis|Ursae Majoris|Ursae Minoris|Cassiopeiae|Microscopii|Monocerotis|Andromedae|Capricorni|Sagittarii|Sculptoris|Telescopii|Vulpeculae|Geminorum|Horologii|Phoenicis|Serpentis|Sextantis|Trianguli|Centauri|Columbae|Crateris|Delphini|Draconis|Fornacis|Herculis|Lacertae|Octantis|Ophiuchi|Pictoris|Reticuli|Sagittae|Virginis|Volantis|Antliae|Aquarii|Aquilae|Arietis|Aurigae|Carinae|Circini|Doradus|Equulei|Eridani|Leporis|Orionis|Pavonis|Piscium|Pyxidis|Scorpii|Tucanae|Velorum|Apodis|Boötis|Cancri|Cephei|Hydrae|Leonis|Librae|Lyncis|Mensae|Muscae|Normae|Pegasi|Persei|Puppis|Caeli|Corvi|Cygni|Gruis|Hydri|Lyrae|Scuti|Tauri|Arae|Ceti|Crux|Indi|Lupi)$",
+  "compact": [
+    [
+      "Alpha Andromedae",
+      "α And"
+    ],
+    [
+      "Alpha Aquarii",
+      "α Aqr"
+    ],
+    [
+      "Alpha Aquilae",
+      "α Aql"
+    ],
+    [
+      "Alpha Arietis",
+      "α Ari"
+    ],
+    [
+      "Alpha Aurigae",
+      "α Aur"
+    ],
+    [
+      "Alpha Canis Majoris",
+      "α CMa"
+    ],
+    [
+      "Alpha Canis Minoris",
+      "α CMi"
+    ],
+    [
+      "Alpha Cassiopeiae",
+      "α Cas"
+    ],
+    [
+      "Alpha Ceti",
+      "α Cet"
+    ],
+    [
+      "Alpha Cygni",
+      "α Cyg"
+    ],
+    [
+      "Alpha Geminorum",
+      "α Gem"
+    ],
+    [
+      "Alpha Lyrae",
+      "α Lyr"
+    ],
+    [
+      "Alpha Orionis",
+      "α Ori"
+    ],
+    [
+      "Alpha Pegasi",
+      "α Peg"
+    ],
+    [
+      "Alpha Persei",
+      "α Per"
+    ],
+    [
+      "Alpha Piscis Austrini",
+      "α PsA"
+    ],
+    [
+      "Alpha Tauri",
+      "α Tau"
+    ],
+    [
+      "Alpha Ursae Majoris",
+      "α UMa"
+    ],
+    [
+      "Alpha Ursae Minoris",
+      "α UMi"
+    ],
+    [
+      "Alpha2 Capricorni",
+      "α² Cap"
+    ],
+    [
+      "Beta Andromedae",
+      "β And"
+    ],
+    [
+      "Beta Aquarii",
+      "β Aqr"
+    ],
+    [
+      "Beta Aquilae",
+      "β Aql"
+    ],
+    [
+      "Beta Arietis",
+      "β Ari"
+    ],
+    [
+      "Beta Aurigae",
+      "β Aur"
+    ],
+    [
+      "Beta Canis Majoris",
+      "β CMa"
+    ],
+    [
+      "Beta Capricorni",
+      "β Cap"
+    ],
+    [
+      "Beta Cassiopeiae",
+      "β Cas"
+    ],
+    [
+      "Beta Ceti",
+      "β Cet"
+    ],
+    [
+      "Beta Geminorum",
+      "β Gem"
+    ],
+    [
+      "Beta Lyrae",
+      "β Lyr"
+    ],
+    [
+      "Beta Orionis",
+      "β Ori"
+    ],
+    [
+      "Beta Pegasi",
+      "β Peg"
+    ],
+    [
+      "Beta Persei",
+      "β Per"
+    ],
+    [
+      "Beta Tauri",
+      "β Tau"
+    ],
+    [
+      "Beta Ursae Majoris",
+      "β UMa"
+    ],
+    [
+      "Beta Ursae Minoris",
+      "β UMi"
+    ],
+    [
+      "Beta1 Cygni",
+      "β¹ Cyg"
+    ],
+    [
+      "Delta Aquarii",
+      "δ Aqr"
+    ],
+    [
+      "Delta Canis Majoris",
+      "δ CMa"
+    ],
+    [
+      "Delta Capricorni",
+      "δ Cap"
+    ],
+    [
+      "Delta Cassiopeiae",
+      "δ Cas"
+    ],
+    [
+      "Delta Cygni",
+      "δ Cyg"
+    ],
+    [
+      "Delta Orionis",
+      "δ Ori"
+    ],
+    [
+      "Delta Ursae Majoris",
+      "δ UMa"
+    ],
+    [
+      "Epsilon Aquarii",
+      "ε Aqr"
+    ],
+    [
+      "Epsilon Canis Majoris",
+      "ε CMa"
+    ],
+    [
+      "Epsilon Cassiopeiae",
+      "ε Cas"
+    ],
+    [
+      "Epsilon Cygni",
+      "ε Cyg"
+    ],
+    [
+      "Epsilon Orionis",
+      "ε Ori"
+    ],
+    [
+      "Epsilon Pegasi",
+      "ε Peg"
+    ],
+    [
+      "Epsilon Ursae Majoris",
+      "ε UMa"
+    ],
+    [
+      "Eta Ursae Majoris",
+      "η UMa"
+    ],
+    [
+      "Gamma Aquilae",
+      "γ Aql"
+    ],
+    [
+      "Gamma Capricorni",
+      "γ Cap"
+    ],
+    [
+      "Gamma Cassiopeiae",
+      "γ Cas"
+    ],
+    [
+      "Gamma Cygni",
+      "γ Cyg"
+    ],
+    [
+      "Gamma Geminorum",
+      "γ Gem"
+    ],
+    [
+      "Gamma Lyrae",
+      "γ Lyr"
+    ],
+    [
+      "Gamma Orionis",
+      "γ Ori"
+    ],
+    [
+      "Gamma Pegasi",
+      "γ Peg"
+    ],
+    [
+      "Gamma Ursae Majoris",
+      "γ UMa"
+    ],
+    [
+      "Gamma Ursae Minoris",
+      "γ UMi"
+    ],
+    [
+      "Gamma1 Andromedae",
+      "γ¹ And"
+    ],
+    [
+      "Iota Orionis",
+      "ι Ori"
+    ],
+    [
+      "Kappa Orionis",
+      "κ Ori"
+    ],
+    [
+      "Lambda Orionis",
+      "λ Ori"
+    ],
+    [
+      "Pi3 Orionis",
+      "π³ Ori"
+    ],
+    [
+      "Zeta Orionis",
+      "ζ Ori"
+    ],
+    [
+      "Zeta Tauri",
+      "ζ Tau"
+    ],
+    [
+      "Zeta Ursae Majoris",
+      "ζ UMa"
+    ],
+    [
+      "Alpha2 Capricorni",
+      "α² Cap"
+    ],
+    [
+      "Omega9 Vulpeculae",
+      "ω⁹ Vul"
+    ],
+    [
+      "Alpha Ori",
+      null
+    ],
+    [
+      "alpha Orionis",
+      null
+    ],
+    [
+      "Lamda Orionis",
+      null
+    ],
+    [
+      "",
+      null
+    ],
+    [
+      "α Ori",
+      null
+    ]
+  ],
+  "flamsteed": [
+    [
+      27,
+      "Cas",
+      "27 Cas"
+    ],
+    [
+      1,
+      "Andromeda",
+      "1 And"
+    ],
+    [
+      140,
+      "Vul",
+      "140 Vul"
+    ],
+    [
+      0,
+      "Cas",
+      null
+    ],
+    [
+      141,
+      "Cas",
+      null
+    ],
+    [
+      27,
+      "Nowhere",
+      null
+    ],
+    [
+      27,
+      "cas",
+      null
+    ]
+  ],
+  "titles": [
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "Navi",
+        "constellation": "Cas",
+        "bayerDesignation": "Gamma Cassiopeiae",
+        "flamsteedNumber": 27
+      },
+      "title": "Navi",
+      "subtitleParts": [
+        "Gamma Cassiopeiae",
+        "27 Cas",
+        "HIP 4427"
+      ]
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Cas",
+        "bayerDesignation": "Gamma Cassiopeiae",
+        "flamsteedNumber": 27
+      },
+      "title": "HIP 4427",
+      "subtitleParts": [
+        "Gamma Cassiopeiae",
+        "27 Cas"
+      ]
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Cas",
+        "flamsteedNumber": 27
+      },
+      "title": "HIP 4427",
+      "subtitleParts": [
+        "27 Cas"
+      ]
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Cassiopeia",
+        "flamsteedNumber": 27
+      },
+      "title": "HIP 4427",
+      "subtitleParts": [
+        "27 Cas"
+      ]
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Nowhere",
+        "flamsteedNumber": 27
+      },
+      "title": "HIP 4427",
+      "subtitleParts": []
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Cas",
+        "flamsteedNumber": 141
+      },
+      "title": "HIP 4427",
+      "subtitleParts": []
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "HIP 4427",
+        "constellation": "Cas"
+      },
+      "title": "HIP 4427",
+      "subtitleParts": []
+    },
+    {
+      "reference": {
+        "catalogSourceId": "HIP 4427",
+        "commonName": "Navi",
+        "constellation": "Cas"
+      },
+      "title": "Navi",
+      "subtitleParts": [
+        "HIP 4427"
+      ]
+    },
+    {
+      "reference": {
+        "catalogSourceId": "Gaia DR3 3337991583943473280",
+        "commonName": "Meissa",
+        "constellation": "Orion",
+        "bayerDesignation": "Lambda Orionis"
+      },
+      "title": "Meissa",
+      "subtitleParts": [
+        "Lambda Orionis",
+        "Gaia DR3 3337991583943473280"
+      ]
+    }
+  ],
+  "storedOldShape": {
+    "before": {
+      "id": "sol-primary",
+      "sourceAssetId": "synthetic-9782da890647",
+      "sourceSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "frameTimeSec": 0.0,
+      "revision": 1,
+      "status": "calibrated",
+      "observedAtUTC": "2030-01-01T02:00:00Z",
+      "observerLocation": {
+        "latDeg": 30.0,
+        "lonDeg": -40.0
+      },
+      "solver": {
+        "name": "AlbedianTriangleSolver",
+        "version": "1.0.0",
+        "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+      },
+      "quality": {
+        "detectedCandidateCount": 12,
+        "matchedInlierCount": 11,
+        "heldOutPairCount": 7,
+        "heldOutInliers": 7,
+        "passedIndependentVerification": true,
+        "medianResidualPx": 0.11587721002381521,
+        "p95ResidualPx": 0.17208332897344245,
+        "medianResidualArcsec": 25.82685551751783
+      },
+      "findings": [
+        {
+          "id": "finding-star-rigel",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Rigel",
+          "subtitle": "Beta Orionis · 264.6 pc [242.7 to 290.7 pc]",
+          "skyPosition": {
+            "raDeg": 78.634467,
+            "decDeg": -8.201638,
+            "uncertaintyArcsec": 13.050233353953237,
+            "altDeg": 50.18778706912651,
+            "azDeg": 198.38741087613562
+          },
+          "evidence": {
+            "id": "ev-finding-star-rigel",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-rigel",
+            "angularResidualArcsec": 13.050233353953237,
+            "pixelResidualPx": 0.0585524099203686,
+            "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 586.3999745804418,
+            "yPx": 496.192205050709,
+            "flux": 1559.5250955064007,
+            "snr": 217.83736321927773,
+            "fwhmPx": 2.4316650204469092,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-rigel",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 24436",
+            "commonName": "Rigel",
+            "bayerDesignation": "HR 1713",
+            "constellation": "Orion",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 78.634467,
+            "decDeg": -8.201638,
+            "apparentMagnitude": 0.13,
+            "properMotionRaMasYr": 1.31,
+            "properMotionDecMasYr": 0.5,
+            "bailerJonesDistancePc": {
+              "lower": 242.71844660194174,
+              "median": 264.55026455026456,
+              "upper": 290.69767441860466,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 3.78,
+            "parallaxErrorMas": 0.34
+          },
+          "inferredDistancePc": {
+            "lower": 242.71844660194174,
+            "median": 264.55026455026456,
+            "upper": 290.69767441860466,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            51.60106686984617,
+            256.70968851076134,
+            -37.740007898999316
+          ]
+        },
+        {
+          "id": "finding-star-betelgeuse",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Betelgeuse",
+          "subtitle": "Alpha Orionis · 152.7 pc [135.5 to 174.8 pc]",
+          "skyPosition": {
+            "raDeg": 88.792939,
+            "decDeg": 7.407064,
+            "uncertaintyArcsec": 29.15969756247523,
+            "altDeg": 67.36139235228273,
+            "azDeg": 184.04422995883968
+          },
+          "evidence": {
+            "id": "ev-finding-star-betelgeuse",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-betelgeuse",
+            "angularResidualArcsec": 29.15969756247523,
+            "pixelResidualPx": 0.1308306540215864,
+            "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": true
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 401.63469878954527,
+            "yPx": 252.99501063221894,
+            "flux": 1426.2537312688178,
+            "snr": 202.35930030190187,
+            "fwhmPx": 2.431692600529923,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-betelgeuse",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 27989",
+            "commonName": "Betelgeuse",
+            "bayerDesignation": "bet Ori",
+            "constellation": "Orion",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 88.792939,
+            "decDeg": 7.407064,
+            "apparentMagnitude": 0.42,
+            "properMotionRaMasYr": 27.54,
+            "properMotionDecMasYr": 11.3,
+            "bailerJonesDistancePc": {
+              "lower": 135.50135501355012,
+              "median": 152.67175572519085,
+              "upper": 174.82517482517483,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 6.55,
+            "parallaxErrorMas": 0.83
+          },
+          "inferredDistancePc": {
+            "lower": 135.50135501355012,
+            "median": 152.67175572519085,
+            "upper": 174.82517482517483,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            3.189289086275172,
+            151.36415608441035,
+            19.68211584639134
+          ]
+        },
+        {
+          "id": "finding-star-aldebaran",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Aldebaran",
+          "subtitle": "Alpha Tauri · 20.4 pc [20.1 to 20.8 pc]",
+          "skyPosition": {
+            "raDeg": 68.980163,
+            "decDeg": 16.509302,
+            "uncertaintyArcsec": 5.4693991636297925,
+            "altDeg": 66.29830612813342,
+            "azDeg": 240.26777615689815
+          },
+          "evidence": {
+            "id": "ev-finding-star-aldebaran",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-aldebaran",
+            "angularResidualArcsec": 5.4693991636297925,
+            "pixelResidualPx": 0.024539523023162053,
+            "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 705.8147634399265,
+            "yPx": 71.73707307698696,
+            "flux": 1228.0515118801814,
+            "snr": 175.55144716468962,
+            "fwhmPx": 2.440765196865329,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-aldebaran",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 21421",
+            "commonName": "Aldebaran",
+            "bayerDesignation": "bet Ori",
+            "constellation": "Taurus",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 68.980163,
+            "decDeg": 16.509302,
+            "apparentMagnitude": 0.86,
+            "properMotionRaMasYr": 63.45,
+            "properMotionDecMasYr": -188.94,
+            "bailerJonesDistancePc": {
+              "lower": 20.11667672500503,
+              "median": 20.43318348998774,
+              "upper": 20.759809009757113,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 48.94,
+            "parallaxErrorMas": 0.77
+          },
+          "inferredDistancePc": {
+            "lower": 20.11667672500503,
+            "median": 20.43318348998774,
+            "upper": 20.759809009757113,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            7.027045618939282,
+            18.287152938002276,
+            5.8065183050575735
+          ]
+        },
+        {
+          "id": "finding-obs-12",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "observed",
+          "title": "Observed Point Source #12",
+          "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+          "skyPosition": {
+            "raDeg": 75.46722171042907,
+            "decDeg": 15.738000097027232,
+            "uncertaintyArcsec": 98.24327365094196
+          },
+          "evidence": {
+            "id": "ev-finding-obs-12",
+            "evidenceClass": "observed",
+            "verificationMethod": "Measured in the image's pixels",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "limitations": [
+              "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 602.084011134508,
+            "yPx": 98.81346119185388,
+            "flux": 21.201707755833688,
+            "snr": 5.533123386517967,
+            "fwhmPx": 2.3531466262708625,
+            "centroidUncertaintyPx": 0.4252835987725396
+          }
+        }
+      ],
+      "warnings": [
+        "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+      ],
+      "wcs": {
+        "projection": "TAN",
+        "crvalRaDeg": 84.00062398801474,
+        "crvalDecDeg": 6.000266124716505,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.06191145378085482,
+        "rotationDeg": 4.49792204944997,
+        "radialDistortionK1": -0.07383922135184579,
+        "radialDistortionK2": 0.23999999999998664,
+        "parity": -1,
+        "fovHorizontalDeg": 54.82866626746391,
+        "fovVerticalDeg": 32.52929988358449
+      }
+    },
+    "after": {
+      "id": "sol-primary",
+      "sourceAssetId": "synthetic-9782da890647",
+      "sourceSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "frameTimeSec": 0.0,
+      "revision": 1,
+      "status": "calibrated",
+      "observedAtUTC": "2030-01-01T02:00:00Z",
+      "observerLocation": {
+        "latDeg": 30.0,
+        "lonDeg": -40.0
+      },
+      "solver": {
+        "name": "AlbedianTriangleSolver",
+        "version": "1.0.0",
+        "catalogRelease": "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
+      },
+      "quality": {
+        "detectedCandidateCount": 12,
+        "matchedInlierCount": 11,
+        "heldOutPairCount": 7,
+        "heldOutInliers": 7,
+        "passedIndependentVerification": true,
+        "medianResidualPx": 0.11587721002381521,
+        "p95ResidualPx": 0.17208332897344245,
+        "medianResidualArcsec": 25.82685551751783
+      },
+      "findings": [
+        {
+          "id": "finding-star-rigel",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Rigel",
+          "subtitle": "Beta Orionis · 264.6 pc [242.7 to 290.7 pc]",
+          "skyPosition": {
+            "raDeg": 78.634467,
+            "decDeg": -8.201638,
+            "uncertaintyArcsec": 13.050233353953237,
+            "altDeg": 50.18778706912651,
+            "azDeg": 198.38741087613562
+          },
+          "evidence": {
+            "id": "ev-finding-star-rigel",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-rigel",
+            "angularResidualArcsec": 13.050233353953237,
+            "pixelResidualPx": 0.0585524099203686,
+            "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 586.3999745804418,
+            "yPx": 496.192205050709,
+            "flux": 1559.5250955064007,
+            "snr": 217.83736321927773,
+            "fwhmPx": 2.4316650204469092,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-rigel",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 24436",
+            "commonName": "Rigel",
+            "bayerDesignation": "Beta Orionis",
+            "flamsteedNumber": 19,
+            "constellation": "Orion",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 78.634467,
+            "decDeg": -8.201638,
+            "apparentMagnitude": 0.13,
+            "properMotionRaMasYr": 1.31,
+            "properMotionDecMasYr": 0.5,
+            "bailerJonesDistancePc": {
+              "lower": 242.71844660194174,
+              "median": 264.55026455026456,
+              "upper": 290.69767441860466,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 3.78,
+            "parallaxErrorMas": 0.34
+          },
+          "inferredDistancePc": {
+            "lower": 242.71844660194174,
+            "median": 264.55026455026456,
+            "upper": 290.69767441860466,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            51.60106686984617,
+            256.70968851076134,
+            -37.740007898999316
+          ]
+        },
+        {
+          "id": "finding-star-betelgeuse",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Betelgeuse",
+          "subtitle": "Alpha Orionis · 152.7 pc [135.5 to 174.8 pc]",
+          "skyPosition": {
+            "raDeg": 88.792939,
+            "decDeg": 7.407064,
+            "uncertaintyArcsec": 29.15969756247523,
+            "altDeg": 67.36139235228273,
+            "azDeg": 184.04422995883968
+          },
+          "evidence": {
+            "id": "ev-finding-star-betelgeuse",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-betelgeuse",
+            "angularResidualArcsec": 29.15969756247523,
+            "pixelResidualPx": 0.1308306540215864,
+            "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": true
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 401.63469878954527,
+            "yPx": 252.99501063221894,
+            "flux": 1426.2537312688178,
+            "snr": 202.35930030190187,
+            "fwhmPx": 2.431692600529923,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-betelgeuse",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 27989",
+            "commonName": "Betelgeuse",
+            "bayerDesignation": "Alpha Orionis",
+            "flamsteedNumber": 58,
+            "constellation": "Orion",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 88.792939,
+            "decDeg": 7.407064,
+            "apparentMagnitude": 0.42,
+            "properMotionRaMasYr": 27.54,
+            "properMotionDecMasYr": 11.3,
+            "bailerJonesDistancePc": {
+              "lower": 135.50135501355012,
+              "median": 152.67175572519085,
+              "upper": 174.82517482517483,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 6.55,
+            "parallaxErrorMas": 0.83
+          },
+          "inferredDistancePc": {
+            "lower": 135.50135501355012,
+            "median": 152.67175572519085,
+            "upper": 174.82517482517483,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            3.189289086275172,
+            151.36415608441035,
+            19.68211584639134
+          ]
+        },
+        {
+          "id": "finding-star-aldebaran",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "catalog_matched",
+          "title": "Aldebaran",
+          "subtitle": "Alpha Tauri · 20.4 pc [20.1 to 20.8 pc]",
+          "skyPosition": {
+            "raDeg": 68.980163,
+            "decDeg": 16.509302,
+            "uncertaintyArcsec": 5.4693991636297925,
+            "altDeg": 66.29830612813342,
+            "azDeg": 240.26777615689815
+          },
+          "evidence": {
+            "id": "ev-finding-star-aldebaran",
+            "evidenceClass": "catalog_matched",
+            "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "catalogReferenceId": "star-aldebaran",
+            "angularResidualArcsec": 5.4693991636297925,
+            "pixelResidualPx": 0.024539523023162053,
+            "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+            "limitations": [
+              "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 705.8147634399265,
+            "yPx": 71.73707307698696,
+            "flux": 1228.0515118801814,
+            "snr": 175.55144716468962,
+            "fwhmPx": 2.440765196865329,
+            "centroidUncertaintyPx": 0.03
+          },
+          "catalogRef": {
+            "id": "star-aldebaran",
+            "provider": "Hipparcos",
+            "releaseVersion": "Hipparcos 2007",
+            "catalogSourceId": "HIP 21421",
+            "commonName": "Aldebaran",
+            "bayerDesignation": "Alpha Tauri",
+            "flamsteedNumber": 87,
+            "constellation": "Taurus",
+            "objectType": "star",
+            "coordinateEpoch": "J2000.0",
+            "raDeg": 68.980163,
+            "decDeg": 16.509302,
+            "apparentMagnitude": 0.86,
+            "properMotionRaMasYr": 63.45,
+            "properMotionDecMasYr": -188.94,
+            "bailerJonesDistancePc": {
+              "lower": 20.11667672500503,
+              "median": 20.43318348998774,
+              "upper": 20.759809009757113,
+              "method": "geometric_parallax"
+            },
+            "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+            "parallaxMas": 48.94,
+            "parallaxErrorMas": 0.77
+          },
+          "inferredDistancePc": {
+            "lower": 20.11667672500503,
+            "median": 20.43318348998774,
+            "upper": 20.759809009757113,
+            "method": "geometric_parallax"
+          },
+          "cartesianParsecICRS": [
+            7.027045618939282,
+            18.287152938002276,
+            5.8065183050575735
+          ]
+        },
+        {
+          "id": "finding-obs-12",
+          "observationSolutionId": "sol-primary",
+          "evidenceClass": "observed",
+          "title": "Observed Point Source #12",
+          "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+          "skyPosition": {
+            "raDeg": 75.46722171042907,
+            "decDeg": 15.738000097027232,
+            "uncertaintyArcsec": 98.24327365094196
+          },
+          "evidence": {
+            "id": "ev-finding-obs-12",
+            "evidenceClass": "observed",
+            "verificationMethod": "Measured in the image's pixels",
+            "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+            "wcsSolutionId": "sol-primary",
+            "limitations": [
+              "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
+            ],
+            "verifiedByIndependentHoldout": false
+          },
+          "sourceDetection": {
+            "assetId": "synthetic-9782da890647",
+            "frameTimeSec": 0.0,
+            "xPx": 602.084011134508,
+            "yPx": 98.81346119185388,
+            "flux": 21.201707755833688,
+            "snr": 5.533123386517967,
+            "fwhmPx": 2.3531466262708625,
+            "centroidUncertaintyPx": 0.4252835987725396
+          }
+        }
+      ],
+      "warnings": [
+        "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+      ],
+      "wcs": {
+        "projection": "TAN",
+        "crvalRaDeg": 84.00062398801474,
+        "crvalDecDeg": 6.000266124716505,
+        "crpixX": 480.0,
+        "crpixY": 270.0,
+        "scaleDegPerPx": 0.06191145378085482,
+        "rotationDeg": 4.49792204944997,
+        "radialDistortionK1": -0.07383922135184579,
+        "radialDistortionK2": 0.23999999999998664,
+        "parity": -1,
+        "fovHorizontalDeg": 54.82866626746391,
+        "fovVerticalDeg": 32.52929988358449
+      }
+    }
+  },
+  "namedStarDesignations": [
+    "Alpha Andromedae",
+    "Alpha Aquarii",
+    "Alpha Aquilae",
+    "Alpha Arietis",
+    "Alpha Aurigae",
+    "Alpha Boötis",
+    "Alpha Canis Majoris",
+    "Alpha Canis Minoris",
+    "Alpha Carinae",
+    "Alpha Cassiopeiae",
+    "Alpha Cephei",
+    "Alpha Ceti",
+    "Alpha Columbae",
+    "Alpha Coronae Austrini",
+    "Alpha Coronae Borealis",
+    "Alpha Crateris",
+    "Alpha Cygni",
+    "Alpha Eridani",
+    "Alpha Geminorum",
+    "Alpha Gruis",
+    "Alpha Hydrae",
+    "Alpha Leonis",
+    "Alpha Leporis",
+    "Alpha Lyrae",
+    "Alpha Ophiuchi",
+    "Alpha Orionis",
+    "Alpha Pavonis",
+    "Alpha Pegasi",
+    "Alpha Persei",
+    "Alpha Phoenicis",
+    "Alpha Piscis Austrini",
+    "Alpha Sagittae",
+    "Alpha Sagittarii",
+    "Alpha Scorpii",
+    "Alpha Serpentis",
+    "Alpha Tauri",
+    "Alpha Trianguli Australis",
+    "Alpha Ursae Majoris",
+    "Alpha Ursae Minoris",
+    "Alpha Virginis",
+    "Alpha Vulpeculae",
+    "Alpha1 Centauri",
+    "Alpha1 Crux",
+    "Alpha1 Herculis",
+    "Alpha2 Canum Venaticorum",
+    "Alpha2 Capricorni",
+    "Alpha2 Centauri",
+    "Alpha2 Librae",
+    "Beta Andromedae",
+    "Beta Aquarii",
+    "Beta Aquilae",
+    "Beta Arietis",
+    "Beta Aurigae",
+    "Beta Cancri",
+    "Beta Canis Majoris",
+    "Beta Canis Minoris",
+    "Beta Canum Venaticorum",
+    "Beta Capricorni",
+    "Beta Carinae",
+    "Beta Cassiopeiae",
+    "Beta Centauri",
+    "Beta Ceti",
+    "Beta Columbae",
+    "Beta Corvi",
+    "Beta Crux",
+    "Beta Delphini",
+    "Beta Draconis",
+    "Beta Eridani",
+    "Beta Geminorum",
+    "Beta Gruis",
+    "Beta Herculis",
+    "Beta Leonis",
+    "Beta Leporis",
+    "Beta Librae",
+    "Beta Lyrae",
+    "Beta Ophiuchi",
+    "Beta Orionis",
+    "Beta Pegasi",
+    "Beta Persei",
+    "Beta Piscium",
+    "Beta Tauri",
+    "Beta Ursae Majoris",
+    "Beta Ursae Minoris",
+    "Beta Virginis",
+    "Beta1 Cygni",
+    "Beta1 Scorpii",
+    "Beta2 Sagittarii",
+    "Chi Ursae Majoris",
+    "Delta Aquarii",
+    "Delta Cancri",
+    "Delta Canis Majoris",
+    "Delta Capricorni",
+    "Delta Cassiopeiae",
+    "Delta Corvi",
+    "Delta Crux",
+    "Delta Cygni",
+    "Delta Draconis",
+    "Delta Eridani",
+    "Delta Herculis",
+    "Delta Leonis",
+    "Delta Ophiuchi",
+    "Delta Orionis",
+    "Delta Sagittarii",
+    "Delta Scorpii",
+    "Delta Ursae Majoris",
+    "Delta Ursae Minoris",
+    "Delta Velorum",
+    "Delta Virginis",
+    "Epsilon Aquarii",
+    "Epsilon Aurigae",
+    "Epsilon Boötis",
+    "Epsilon Cancri",
+    "Epsilon Canis Majoris",
+    "Epsilon Carinae",
+    "Epsilon Cassiopeiae",
+    "Epsilon Crux",
+    "Epsilon Cygni",
+    "Epsilon Geminorum",
+    "Epsilon Ophiuchi",
+    "Epsilon Orionis",
+    "Epsilon Pegasi",
+    "Epsilon Sagittarii",
+    "Epsilon Scorpii",
+    "Epsilon Tauri",
+    "Epsilon Ursae Majoris",
+    "Epsilon Virginis",
+    "Eta Aurigae",
+    "Eta Boötis",
+    "Eta Canis Majoris",
+    "Eta Draconis",
+    "Eta Eridani",
+    "Eta Geminorum",
+    "Eta Lyrae",
+    "Eta Ophiuchi",
+    "Eta Pegasi",
+    "Eta Persei",
+    "Eta Piscium",
+    "Eta Tauri",
+    "Eta Ursae Majoris",
+    "Gamma Aquilae",
+    "Gamma Cancri",
+    "Gamma Canis Majoris",
+    "Gamma Capricorni",
+    "Gamma Cephei",
+    "Gamma Corvi",
+    "Gamma Crux",
+    "Gamma Cygni",
+    "Gamma Draconis",
+    "Gamma Eridani",
+    "Gamma Geminorum",
+    "Gamma Librae",
+    "Gamma Lyrae",
+    "Gamma Orionis",
+    "Gamma Pegasi",
+    "Gamma Tauri",
+    "Gamma Ursae Majoris",
+    "Gamma Ursae Minoris",
+    "Gamma1 Andromedae",
+    "Gamma1 Leonis",
+    "Gamma2 Arietis",
+    "Gamma2 Sagittarii",
+    "Iota Aurigae",
+    "Iota Carinae",
+    "Iota Draconis",
+    "Iota Hydrae",
+    "Iota Orionis",
+    "Iota Ursae Majoris",
+    "Kappa Aquarii",
+    "Kappa Herculis",
+    "Kappa Orionis",
+    "Kappa Serpentis",
+    "Kappa Velorum",
+    "Kappa Virginis",
+    "Lambda Boötis",
+    "Lambda Cancri",
+    "Lambda Draconis",
+    "Lambda Herculis",
+    "Lambda Leonis",
+    "Lambda Orionis",
+    "Lambda Sagittarii",
+    "Lambda Scorpii",
+    "Lambda Velorum",
+    "Mu Arae",
+    "Mu Geminorum",
+    "Mu Leonis",
+    "Mu Pegasi",
+    "Mu Ursae Majoris",
+    "Mu2 Scorpii",
+    "Nu Capricorni",
+    "Nu Scorpii",
+    "Nu Ursae Majoris",
+    "Nu1 Sagittarii",
+    "Omicron Geminorum",
+    "Omicron Leonis",
+    "Omicron Persei",
+    "Omicron Ursae Majoris",
+    "Omicron1 Eridani",
+    "Phi Virginis",
+    "Pi Sagittarii",
+    "Pi Scorpii",
+    "Pi3 Orionis",
+    "Rho Puppis",
+    "Rho Scorpii",
+    "Rho1 Cancri",
+    "Sigma Canis Majoris",
+    "Sigma Draconis",
+    "Sigma Hydrae",
+    "Sigma Librae",
+    "Sigma Octantis",
+    "Sigma Sagittarii",
+    "Sigma Scorpii",
+    "Tau Pegasi",
+    "Tau Scorpii",
+    "Theta Aquarii",
+    "Theta Aurigae",
+    "Theta Centauri",
+    "Theta Columbae",
+    "Theta Leonis",
+    "Theta Scorpii",
+    "Theta1 Eridani",
+    "Theta1 Serpentis",
+    "Upsilon Andromedae",
+    "Upsilon Pegasi",
+    "Upsilon Scorpii",
+    "Upsilon2 Cassiopeiae",
+    "Upsilon2 Eridani",
+    "Xi Andromedae",
+    "Xi Aquarii",
+    "Xi Aquilae",
+    "Xi Cephei",
+    "Xi Draconis",
+    "Xi Geminorum",
+    "Xi Persei",
+    "Zeta Aquilae",
+    "Zeta Canis Majoris",
+    "Zeta Cassiopeiae",
+    "Zeta Eridani",
+    "Zeta Geminorum",
+    "Zeta Orionis",
+    "Zeta Phoenicis",
+    "Zeta Piscium",
+    "Zeta Puppis",
+    "Zeta Tauri",
+    "Zeta Ursae Majoris"
+  ]
+}

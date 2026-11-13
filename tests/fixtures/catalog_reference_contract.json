@@ -404,5 +404,389 @@
       "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
       "apparentMagnitude": 3.44
     }
-  }
+  },
+  "designationEdges": [
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha Andromedae",
+      "valid": true
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Omega Vulpeculae",
+      "valid": true
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha1 Canum Venaticorum",
+      "valid": true
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Omega9 Andromedae",
+      "valid": true
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha0 Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha10 Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha11 Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Lamda Orionis",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "alpha Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha  Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": " Alpha Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha Andromedae ",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha Andromedae\n",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "AlphaAndromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha Andromedax",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha And",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "α And",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "Alpha¹ Andromedae",
+      "valid": false
+    },
+    {
+      "field": "bayerDesignation",
+      "value": "",
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 1,
+      "valid": true
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 140,
+      "valid": true
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 1.0,
+      "valid": true
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 0,
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 141,
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 1.5,
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": true,
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": "27",
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": -0.0,
+      "valid": false
+    },
+    {
+      "field": "flamsteedNumber",
+      "value": 9007199254740993,
+      "valid": false
+    }
+  ],
+  "integerEdgeTables": [
+    {
+      "bounds": {
+        "le": 5
+      },
+      "accept": [
+        5,
+        3.0,
+        -9007199254740991
+      ],
+      "refuse": [
+        6,
+        6.0,
+        4.5,
+        3.5
+      ]
+    },
+    {
+      "bounds": {
+        "le": -10
+      },
+      "accept": [
+        -10,
+        -12.0,
+        -9007199254740991
+      ],
+      "refuse": [
+        -9,
+        -9.0,
+        -10.5,
+        -11.5
+      ]
+    },
+    {
+      "bounds": {
+        "ge": 1,
+        "le": 2
+      },
+      "accept": [
+        1,
+        2.0,
+        2
+      ],
+      "refuse": [
+        0,
+        1.5,
+        2.5,
+        3,
+        3.0
+      ]
+    },
+    {
+      "bounds": {},
+      "accept": [
+        -3,
+        -1.0,
+        9007199254740991
+      ],
+      "refuse": [
+        -2.5,
+        -1.5
+      ]
+    },
+    {
+      "bounds": {
+        "ge": 0
+      },
+      "accept": [
+        0,
+        2.0,
+        9007199254740991
+      ],
+      "refuse": [
+        -1,
+        0.5,
+        1.5
+      ]
+    },
+    {
+      "bounds": {
+        "gt": 0
+      },
+      "accept": [
+        1,
+        3.0,
+        9007199254740991
+      ],
+      "refuse": [
+        0,
+        1.5,
+        2.5
+      ]
+    },
+    {
+      "bounds": {
+        "ge": -7
+      },
+      "accept": [
+        -7,
+        -5.0,
+        9007199254740991
+      ],
+      "refuse": [
+        -8,
+        -6.5,
+        -5.5
+      ]
+    },
+    {
+      "bounds": {
+        "gt": -7.5
+      },
+      "accept": [
+        -7,
+        -5.0,
+        9007199254740991
+      ],
+      "refuse": [
+        -8,
+        -6.5,
+        -5.5
+      ]
+    },
+    {
+      "bounds": {
+        "ge": 1,
+        "le": 140
+      },
+      "accept": [
+        1,
+        3.0,
+        140
+      ],
+      "refuse": [
+        0,
+        1.5,
+        2.5,
+        141,
+        141.0
+      ]
+    },
+    {
+      "bounds": {
+        "gt": 0,
+        "le": 3
+      },
+      "accept": [
+        1,
+        3.0,
+        3
+      ],
+      "refuse": [
+        0,
+        1.5,
+        2.5,
+        4,
+        4.0
+      ]
+    },
+    {
+      "bounds": {
+        "ge": 4,
+        "le": 4
+      },
+      "accept": [
+        4,
+        4.0,
+        4
+      ],
+      "refuse": [
+        3,
+        4.5,
+        5.5,
+        5,
+        5.0
+      ]
+    },
+    {
+      "bounds": {
+        "ge": 0.5,
+        "le": 2.5
+      },
+      "accept": [
+        1,
+        2.0,
+        2
+      ],
+      "refuse": [
+        0,
+        1.5,
+        2.5,
+        3,
+        3.0
+      ]
+    },
+    {
+      "bounds": {
+        "ge": -20,
+        "le": -18
+      },
+      "accept": [
+        -20,
+        -18.0,
+        -18
+      ],
+      "refuse": [
+        -21,
+        -19.5,
+        -18.5,
+        -17,
+        -17.0
+      ]
+    },
+    {
+      "bounds": {
+        "gt": 2.9,
+        "le": 3.2
+      },
+      "accept": [
+        3,
+        3.0,
+        3
+      ],
+      "refuse": [
+        2,
+        3.5,
+        4.5,
+        4,
+        4.0
+      ]
+    }
+  ]
 }

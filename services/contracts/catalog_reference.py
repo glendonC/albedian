@@ -17,7 +17,10 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, Strict, StringConstraints, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, Strict, StringConstraints, model_validator
+
+from services.contracts.designation import BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN
+from services.contracts.wire import wire_int
 
 CATALOG_PROVIDERS = ("Gaia DR3", "Hipparcos", "JPL Horizons", "SIMBAD", "OpenNGC")
 CATALOG_OBJECT_TYPES = ("star", "planet", "moon", "deep_sky", "satellite_candidate")
@@ -53,7 +56,14 @@ class CatalogReference(BaseModel):
     release_version: NonEmpty = Field(alias="releaseVersion")
     catalog_source_id: NonEmpty = Field(alias="catalogSourceId")
     common_name: NonEmpty = Field(alias="commonName")
-    bayer_designation: Annotated[str, Strict()] | None = Field(default=None, alias="bayerDesignation")
+    # The long form the repository ships ("Alpha Orionis"), only from the designation tables (designation.py)
+    bayer_designation: Annotated[str, Strict(), StringConstraints(pattern=BAYER_DESIGNATION_PATTERN)] | None = Field(
+        default=None, alias="bayerDesignation"
+    )
+    # A whole number within the range the baked designations hold
+    flamsteed_number: Annotated[
+        int, BeforeValidator(wire_int), Strict(), Field(ge=FLAMSTEED_NUMBER_MIN, le=FLAMSTEED_NUMBER_MAX)
+    ] | None = Field(default=None, alias="flamsteedNumber")
     constellation: NonEmpty
     object_type: Literal[CATALOG_OBJECT_TYPES] = Field(alias="objectType")
     coordinate_epoch: NonEmpty = Field(alias="coordinateEpoch")

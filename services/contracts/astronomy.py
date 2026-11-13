@@ -42,6 +42,7 @@ from services.contracts.catalog_reference import (
     CatalogDistance,
     CatalogReference,
 )
+from services.contracts.designation import BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN
 from services.contracts.ingest import SHA256_HEX_PATTERN, ZOD_DATETIME_PATTERN
 from services.contracts.render_layer import EVIDENCE_CLASSES
 
@@ -321,9 +322,20 @@ class NumberRule(_Rule):
                 entry[key] = getattr(self, key)
         low = self.ge if self.ge is not None else self.gt
         if self.integer:
-            first = int(low) + (1 if self.gt is not None else 0) if low is not None else -3
-            accept: list[Any] = [first, float(first + 2), 9007199254740991]
-            refuse: list[Any] = [first - 1, first + 0.5, first + 1.5]
+            # The smallest and the largest whole number the rule's own bounds take; every sample is made from them, so
+            # the table says of each what the rule judges, whichever bounds the rule has (a count: a lower one only)
+            lo = None if low is None else (math.floor(self.gt) + 1 if self.gt is not None else math.ceil(self.ge))
+            hi = None if self.le is None else math.floor(self.le)
+            if hi is None:
+                start = -3 if lo is None else lo
+                accept: list[Any] = [start, float(start + 2), 9007199254740991]
+                refuse: list[Any] = ([] if lo is None else [lo - 1]) + [start + 0.5, start + 1.5]
+            elif lo is None:
+                accept = [hi, float(hi - 2), -9007199254740991]
+                refuse = [hi + 1, float(hi + 1), hi - 0.5, hi - 1.5]
+            else:
+                accept = [lo, float(min(lo + 2, hi)), hi]
+                refuse = [lo - 1, lo + 0.5, lo + 1.5, hi + 1, float(hi + 1)]
         else:
             lowest = self.ge if self.ge is not None else math.nextafter(self.gt, math.inf) if self.gt is not None else -1e308
             highest = self.le if self.le is not None else 1e308
@@ -903,7 +915,14 @@ _SCHEMA_NAMES = {model: name for name, model in FAMILY.items()}
 _CATALOG_REFERENCE_RULES: dict[str, dict[str, _Rule]] = {
     "CatalogReference": {
         "id": NON_EMPTY_TEXT, "provider": CATALOG_PROVIDER, "releaseVersion": NON_EMPTY_TEXT,
-        "catalogSourceId": NON_EMPTY_TEXT, "commonName": NON_EMPTY_TEXT, "bayerDesignation": TEXT,
+        "catalogSourceId": NON_EMPTY_TEXT, "commonName": NON_EMPTY_TEXT,
+        "bayerDesignation": TextRule(
+            "bayerDesignation", pattern=BAYER_DESIGNATION_PATTERN, form="a Bayer designation in its long form",
+            accept=("Alpha Orionis", "Alpha2 Capricorni", "Alpha Canis Majoris", "Omega9 Vulpeculae", "Lambda Orionis"),
+            refuse=("Alpha Ori", "alpha Orionis", "Lamda Orionis", "Alpha Orionis\n", " Alpha Orionis", "Alpha10 Orionis",
+                    "HR 1713", "bet Ori", "\u03b1 Ori", ""),
+        ),
+        "flamsteedNumber": NumberRule("flamsteedNumber", ge=FLAMSTEED_NUMBER_MIN, le=FLAMSTEED_NUMBER_MAX, integer=True),
         "constellation": NON_EMPTY_TEXT, "objectType": CATALOG_OBJECT_TYPE, "coordinateEpoch": NON_EMPTY_TEXT,
         "raDeg": DEGREES_0_TO_360, "decDeg": DEGREES_90, "apparentMagnitude": NUMBER, "colorIndexBpRp": NUMBER,
         "spectralType": TEXT, "properMotionRaMasYr": NUMBER, "properMotionDecMasYr": NUMBER,
