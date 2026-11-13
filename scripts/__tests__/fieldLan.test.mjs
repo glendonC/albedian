@@ -4,12 +4,13 @@
 // a link to the owner's clips.
 import fs from 'node:fs';
 import http from 'node:http';
+import net from 'node:net';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import fc from 'fast-check';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createSourcesServer, listenOnLoopback } from '../../apps/web/spike/music/serveSources.mjs';
 import { DISCOVER_PATH, refuseOnNetwork } from '../field-proxy-guard.mjs';
 
@@ -21,6 +22,37 @@ async function loadVite() {
   const webRequire = createRequire(path.join(REPO_ROOT, 'apps/web/package.json'));
   const viteDir = path.dirname(webRequire.resolve('vite/package.json'));
   return import(pathToFileURL(path.join(viteDir, 'dist/node/index.js')).href);
+}
+
+
+// A port that no process holds on 127.0.0.1 at this moment, from the operating system. Vite's dev server reads port 0
+// as "the default, 5173" (its startServer falls back to the default for a falsy port; preview keeps 0), so two runs
+// of this file on one machine both took 5173 and the second failed with "Port 5173 is already in use".
+async function freeLoopbackPort() {
+  const probe = net.createServer();
+  await new Promise((resolve, reject) => {
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const { port } = probe.address();
+  await new Promise((resolve) => probe.close(resolve));
+  return port;
+}
+
+// A dev server on a port of its own: a free port for each try, strictPort so it never drifts onto a neighbour, and a
+// new try only when another process took that port between the check and the listen
+async function startDevServer(vite, options, { pickPort = freeLoopbackPort, attempts = 5 } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    const port = await pickPort();
+    const server = await vite.createServer({ ...options, server: { host: '127.0.0.1', ...options.server, port, strictPort: true } });
+    try {
+      await server.listen();
+      return server;
+    } catch (error) {
+      await server.close();
+      if (attempt >= attempts || !/is already in use/.test(String(error?.message))) throw error;
+    }
+  }
 }
 
 const fromNetwork = (url) => ({ url, socket: { remoteAddress: '192.168.1.30' } });
@@ -207,14 +239,13 @@ describe('vite preview with the web app config, as --lan serves it', () => {
     });
 
     // The dev server --lan used to run, as a control: it must hand out the same planted file, or the refusal is vacuous
-    devServer = await vite.createServer({
+    devServer = await startDevServer(vite, {
       root: path.join(root, 'apps/web'),
       configFile: false,
       logLevel: 'silent',
       optimizeDeps: { noDiscovery: true, include: [] },
-      server: { host: '127.0.0.1', port: 0, strictPort: true, hmr: false, watch: null },
+      server: { hmr: false, watch: null },
     });
-    await devServer.listen();
   }, 60_000);
 
   afterAll(async () => {
@@ -290,5 +321,138 @@ describe('vite preview with the web app config, as --lan serves it', () => {
       expect(res.body, route).toContain('standIn');
     }
     expect(apiSeen).toEqual(['/api/health', DISCOVER_PATH]);
+  });
+});
+
+
+// Two runs of this file on one machine (two gates, or a gate and a lane) must not need the same port
+describe('each run of this file takes ports of its own', () => {
+  let vite;
+  let root;
+  const DEFAULT_PORTS = [5173, 4173];
+  const holders = [];
+  const options = () => ({
+    root,
+    configFile: false,
+    logLevel: 'silent',
+    optimizeDeps: { noDiscovery: true, include: [] },
+    server: { hmr: false, watch: null },
+  });
+
+  // Hold a port on 127.0.0.1, or report that some other process holds it already: either way it is taken
+  async function hold(port) {
+    const server = net.createServer();
+    const taken = await new Promise((resolve) => {
+      server.once('error', () => resolve(false));
+      server.listen(port, '127.0.0.1', () => resolve(true));
+    });
+    if (taken) holders.push(server);
+    return taken ? server.address().port : port;
+  }
+
+  beforeAll(async () => {
+    vite = await loadVite();
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'albedian-field-lan-ports-')));
+    fs.writeFileSync(path.join(root, 'index.html'), '<!doctype html><title>port stand-in</title>\n');
+    for (const port of DEFAULT_PORTS) await hold(port);
+  }, 60_000);
+
+  afterAll(async () => {
+    for (const server of holders) await new Promise((resolve) => server.close(resolve));
+    if (root) fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it('starts the dev server on a free port while another process holds 5173', async () => {
+    const server = await startDevServer(vite, options());
+    try {
+      const { address, port } = server.httpServer.address();
+      expect(DEFAULT_PORTS).not.toContain(port);
+      expect(port).toBeGreaterThan(0);
+      // Loopback only, as every server in this file
+      expect(address).toBe('127.0.0.1');
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('takes a new port when the one it picked was taken before it could listen', async () => {
+    const taken = await hold(0);
+    const picked = [];
+    const pickPort = async () => {
+      const port = picked.length === 0 ? taken : await freeLoopbackPort();
+      picked.push(port);
+      return port;
+    };
+    const server = await startDevServer(vite, options(), { pickPort });
+    try {
+      expect(picked.length).toBe(2);
+      expect(picked[0]).toBe(taken);
+      expect(server.httpServer.address().port).toBe(picked[1]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('at its default gives up after exactly five tries, with the port error', async () => {
+    const taken = await hold(0);
+    let tries = 0;
+    const pickPort = async () => {
+      tries += 1;
+      return taken;
+    };
+    await expect(startDevServer(vite, options(), { pickPort })).rejects.toThrow(`Port ${taken} is already in use`);
+    expect(tries).toBe(5);
+  });
+
+  it('probes on 127.0.0.1 only, and hands back the very port the system gave the probe', async () => {
+    const listen = vi.spyOn(net.Server.prototype, 'listen');
+    const address = vi.spyOn(net.Server.prototype, 'address');
+    try {
+      const port = await freeLoopbackPort();
+      expect(listen).toHaveBeenCalledTimes(1);
+      expect(listen.mock.calls[0].slice(0, 2)).toEqual([0, '127.0.0.1']);
+      expect(address.mock.results.map((result) => result.value.port)).toEqual([port]);
+    } finally {
+      listen.mockRestore();
+      address.mockRestore();
+    }
+  });
+
+  it('gives up after its tries, with the port error', async () => {
+    const taken = await hold(0);
+    let tries = 0;
+    const pickPort = async () => {
+      tries += 1;
+      return taken;
+    };
+    await expect(startDevServer(vite, options(), { pickPort, attempts: 3 })).rejects.toThrow(`Port ${taken} is already in use`);
+    expect(tries).toBe(3);
+  });
+
+  it('passes on any error but a taken port at once', async () => {
+    // 192.0.2.1 is TEST-NET-1 (RFC 5737), an address no machine here owns: the listen fails with EADDRNOTAVAIL
+    let tries = 0;
+    const pickPort = async () => {
+      tries += 1;
+      return freeLoopbackPort();
+    };
+    const elsewhere = { ...options(), server: { ...options().server, host: '192.0.2.1' } };
+    await expect(startDevServer(vite, elsewhere, { pickPort })).rejects.toThrow(/EADDRNOTAVAIL/);
+    expect(tries).toBe(1);
+  });
+
+  it('runs preview on a port of its own too, since Vite keeps a preview port of 0', async () => {
+    const preview = await vite.preview({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      build: { outDir: root },
+      preview: { host: '127.0.0.1', port: 0, strictPort: true, open: false },
+    });
+    try {
+      expect(DEFAULT_PORTS).not.toContain(preview.httpServer.address().port);
+    } finally {
+      await preview.close();
+    }
   });
 });
