@@ -77,7 +77,8 @@ def position(place: tuple[float, float]) -> dict[str, Any]:
 def gps_stamps(instant: datetime) -> dict[str, Any]:
     seconds = instant.second + instant.microsecond / 1e6
     return {
-        "GPSDateStamp": instant.strftime("%Y:%m:%d"),
+        # The year written by hand: strftime's %Y below year 1000 is the platform's (Linux on Python 3.12 does not pad it)
+        "GPSDateStamp": f"{instant.year:04d}:{instant.month:02d}:{instant.day:02d}",
         "GPSTimeStamp": (Rat(instant.hour, 1), Rat(instant.minute, 1), Rat(round(seconds * 100), 100)),
     }
 
@@ -98,7 +99,8 @@ def jpeg(exif_ifd: dict[str, Any] | None = None, gps: dict[str, Any] | None = No
 
 
 def local_tag(moment: datetime) -> str:
-    return moment.strftime("%Y:%m:%d %H:%M:%S")
+    # The year written by hand, as gps_stamps does
+    return f"{moment.year:04d}" + moment.strftime(":%m:%d %H:%M:%S")
 
 
 def capture(local: datetime, place: tuple[float, float] | None, fix: datetime | None, tag: str | None = None) -> dict:
@@ -411,6 +413,30 @@ def test_each_bound_of_the_gps_stamps_at_its_inside_end_and_one_step_out(
     else:
         assert hint["utcOffsetMinutes"] is None
         assert hint["source"]["basis"] == {"placeTimeZone": "unchecked", "gpsTimeStamp": "no_usable_time_stamp"}
+
+
+def test_a_capture_time_below_year_1000_is_written_with_four_digits() -> None:
+    """The contract's local time and UTC patterns take four-digit years. Python 3.12's strftime hands %Y to the
+    platform's C library, which on Linux writes year 1 as "1" (3.14's _pydatetime pads it itself, as macOS does);
+    so the formatters write the year by hand. Caught by CI's Python 3.12 job on this table's year-1 rows."""
+    from services.contracts.ingest import format_utc
+
+    assert format_utc(datetime(1, 1, 2, 9, 0, 5, tzinfo=timezone.utc)) == "0001-01-02T09:00:05Z"
+    assert format_utc(datetime(999, 7, 1, 2, 3, 4, 5000, tzinfo=timezone.utc)) == "0999-07-01T02:03:04.005Z"
+    assert metadata._format_local(datetime(1, 1, 2, 9, 0, 5)) == "0001-01-02T09:00:05"
+    assert metadata._format_local(datetime(999, 7, 1, 2, 3, 4, 5000)) == "0999-07-01T02:03:04.005"
+    assert local_tag(datetime(1, 1, 2, 9, 0, 5)) == "0001:01:02 09:00:05"
+    assert gps_stamps(datetime(1, 1, 2, tzinfo=timezone.utc))["GPSDateStamp"] == "0001:01:02"
+
+
+def test_no_capture_time_formatter_leaves_its_year_to_the_platform() -> None:
+    # The macOS strftime pads every year, so the test above passes here either way; this one fails on any machine
+    import inspect
+
+    from services.contracts.ingest import format_utc
+
+    for formatter in (format_utc, metadata._format_local):
+        assert "%Y" not in inspect.getsource(formatter), formatter.__name__
 
 
 def test_a_fix_the_receiver_marked_void_gives_neither_source() -> None:

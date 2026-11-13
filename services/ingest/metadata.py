@@ -379,7 +379,8 @@ def _local_time(year: int, month: int, day: int, hour: int, minute: int, second:
 
 def _format_local(moment: datetime) -> str:
     millis = moment.microsecond // 1000
-    return moment.strftime("%Y-%m-%dT%H:%M:%S") + (f".{millis:03d}" if millis else "")
+    # isoformat writes four-digit years everywhere; strftime leaves years below 1000 to the platform (Linux, 3.12)
+    return moment.replace(microsecond=0).isoformat() + (f".{millis:03d}" if millis else "")
 
 
 def _capture_time(local: datetime, offset_minutes: Optional[int], marks: str, source: dict) -> dict:

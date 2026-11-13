@@ -152,7 +152,8 @@ def format_utc(moment: datetime) -> str:
     """An instant in the one UTC form both sides write: seconds, milliseconds when nonzero, then Z."""
     moment = moment.astimezone(timezone.utc)
     millis = moment.microsecond // 1000
-    return moment.strftime("%Y-%m-%dT%H:%M:%S") + (f".{millis:03d}" if millis else "") + "Z"
+    # isoformat writes four-digit years everywhere; strftime leaves years below 1000 to the platform (Linux, 3.12)
+    return moment.replace(tzinfo=None, microsecond=0).isoformat() + (f".{millis:03d}" if millis else "") + "Z"
 
 
 def _parse_utc(text: str) -> datetime:
