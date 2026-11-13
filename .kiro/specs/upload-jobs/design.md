@@ -161,6 +161,25 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   names are removed (each kind says, from a record, which paths are its results); partial outputs whose job is not
   running are removed at once, not after a day; stray `.*.tmp` scratch files are removed. It logs counts per state
   only.
+- As built in platform-4 [tested]: `services/ingest/job_store.py`. Ids, atomic records, partials and publishing,
+  the lock and the sweep as above, with these choices. The store makes only its own folders (`jobs/`,
+  `solutions/`, `.partial/`) inside an upload's folder or the root, never an upload's folder, refuses `.` and `..`
+  before touching disk, publishes only to `<upload>/solutions/<job_id>.json`, and never goes through a link below
+  the root (each step checked with `lstat`, each scan refusing links, each read opened with `O_NOFOLLOW`). Record
+  writes and sweep passes on an upload's `jobs/` folder serialize under a bounded `flock` on that folder (and a
+  `flock` on each scratch file while it is written), so an ended record is never replaced across concurrent writers
+  and a live writer's scratch is never removed by a concurrent sweep. Every read checks both the contract (wire
+  names only on `job.json` as well as `jobs/<id>.json`, UTF-8 regular files) and that the record's id and upload
+  hash match its path. A queued job whose lock is held keeps its partial outputs. The sweep runs once at the app's
+  start (its lifespan, on the store the ingest routes use) and is idempotent under concurrent starts; the sweep on
+  a read that finds an unheld `running` job comes with the runner (platform-5), which is the first writer of these
+  records. Reads: the job route serves today's 16-character ids from `job.json` and the store's 32-character ids
+  from `jobs/`, each checked, and answers a record or bucket that cannot be read or fails the contract with 409 and
+  one plain sentence; the receipt and re-upload then name no job and a start runs the solve again.
+  `read_solution_unchecked` is today's unchecked read behind the store's one function (applying catalog-2b's
+  in-memory designation upgrade now on main), named so; it is checked in
+  the unit after contracts-1 lands (`parse_observation_solution`), which also answers a stored solution the contract
+  refuses with a plain refusal [decided 2026-11-12, lead's answer to platform-4].
 
 ### 3.2 The runner (`services/ingest/runner.py`, new)
 - `JobKind` (a frozen dataclass), all the runner knows of a kind:

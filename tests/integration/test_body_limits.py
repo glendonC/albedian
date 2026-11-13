@@ -252,8 +252,6 @@ HEADER_MODES = ("none", "true", "false", "chunked")
 def test_p_job_10_a_body_over_the_limit_is_refused_as_it_arrives(
     limit: int, excess: int, cuts: list[int], mode: str, false_length: int
 ) -> None:
-    # Limits drawn from 0 up, on purpose: 0 is the no-body branch, one case of the property; any other limit tells
-    # the row from the unrouted default of 0
     length = max(0, limit + excess)
     body = (b"0123456789abcdef" * (length // 16 + 1))[:length]
     pieces = split(body, [cut % (length + 1) for cut in cuts])
@@ -265,6 +263,8 @@ def test_p_job_10_a_body_over_the_limit_is_refused_as_it_arrives(
     elif mode == "chunked":
         headers.append(("transfer-encoding", "chunked"))
     route = EchoRoute()
+    # Limits drawn from 0 up, on purpose: 0 is the no-body branch, one case of the property; any other limit tells
+    # the row from the unrouted default of 0
     exchange = drive(api.BodyLimit(route, limits={"/r": limit}), "POST", "/r", pieces, headers)
 
     declared_over = mode in ("true", "false") and int(headers[0][1]) > limit
@@ -554,8 +554,8 @@ def test_p_job_10_a_route_that_takes_no_body_never_runs_on_one(length: int, empt
     body = b"b" * length
     pieces = [b""] * empty_first + split(body, [cut % (length + 1) for cut in cuts])
     headers = {"none": [], "chunked": [("transfer-encoding", "chunked")], "false": [("content-length", "0")]}[mode]
-    # The row's 0 is on purpose: this is the branch for a route that takes no body
     route = SilentRoute()
+    # The row's 0 is on purpose: this is the branch for a route that takes no body
     exchange = drive(api.BodyLimit(route, limits={"/r": 0}), "GET", "/r", pieces, headers)
     if length:
         assert exchange.status == 413 and exchange.json() == refusal(0)
@@ -566,8 +566,8 @@ def test_p_job_10_a_route_that_takes_no_body_never_runs_on_one(length: int, empt
 
 
 def test_a_client_that_leaves_before_its_body_ends_gets_no_answer_and_runs_nothing() -> None:
-    # The row's 0 is on purpose: the branch for a route that takes no body reads ahead, and the client leaves there
     route = SilentRoute()
+    # The row's 0 is on purpose: the branch for a route that takes no body reads ahead, and the client leaves there
     guard = api.BodyLimit(route, limits={"/r": 0})
     starts: list[Any] = []
     messages = [{"type": "http.request", "body": b"", "more_body": True}, {"type": "http.disconnect"}]
@@ -619,7 +619,7 @@ def test_a_path_equal_to_its_root_path_is_judged_as_the_empty_path(size: int, st
 ROOT_PATH_CASES = [
     ("/r", ""), ("/prefix/r", "/prefix"), ("/prefix", "/prefix"), ("/prefix/", "/prefix"), ("/prefixr", "/prefix"),
     ("/abc/r", "/zz"), ("/api/voice/command", "/ap"), ("/ap/i", "/ap"), ("/", "/"), ("//r", "/"), ("/r", "/r/"),
-    ("/a/b", "/b"), ("/a/b/c", "/b"), ("/b", "/b/c"),
+    ("/a/b", "/b"), ("/a/b/c", "/b"), ("/b", "/b/c"), ("/B/r", "/b"),
 ]
 
 # The root path rule from every side: (side, path, root path, the rows, the limit of the row the router serves). Each
@@ -631,6 +631,7 @@ ROOT_RULE = [
     ("the root sits inside the path past its start", "/a/b", "/b", {"/a/b": 5, "/b": None}, 5),
     ("the root is longer than the path", "/b", "/b/c", {"/b": 5, "": None}, 5),
     ("the root is empty", "/b", "", {"/b": 5, "": None}, 5),
+    ("the root differs from the path's start only in case", "/B/r", "/b", {"/B/r": 5, "/r": None}, 5),
 ]
 
 
@@ -657,9 +658,9 @@ def test_the_root_path_is_taken_off_where_the_router_takes_it_off(path: str, roo
 
 def test_a_last_body_message_without_more_body_ends_the_body() -> None:
     # TestClient sends its last body message with no more_body, and ASGI reads a missing more_body as False: a
-    # route that takes no body runs after that one message, and nothing more is read. The row's 0 is on purpose:
-    # only the branch for a route that takes no body reads ahead
+    # route that takes no body runs after that one message, and nothing more is read
     route = SilentRoute()
+    # The row's 0 is on purpose: only the branch for a route that takes no body reads ahead
     guard = api.BodyLimit(route, limits={"/r": 0})
     starts: list[Any] = []
     pulled = 0
@@ -897,9 +898,9 @@ def test_a_declared_length_over_the_limit_is_refused_before_a_failing_route_runs
 
 
 def test_a_get_route_that_raises_has_its_error_raised_on() -> None:
-    # The row's 0 is on purpose: a GET route takes no body, and the auditor's M3 hid its error there
     route = RaisesAtOnce()
     with pytest.raises(ValueError, match="before reading"):
+        # The row's 0 is on purpose: a GET route takes no body, and the auditor's M3 hid its error there
         drive(api.BodyLimit(route, limits={"/r": 0}), "GET", "/r", [])
     assert route.calls == 1
 

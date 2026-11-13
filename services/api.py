@@ -20,11 +20,17 @@ more than the limit reaches the route: a Content-Length over the limit is refuse
 the bytes are counted as they arrive, so a body with no Content-Length, a false one or chunked transfer is refused
 at the first piece that passes the limit. The upload route counts its own body against the store's caps while it
 streams (services/ingest/store.py). A request no route serves may send no body.
+
+At start, before the first request, the job store's sweep runs once over the store the ingest routes use
+(services/ingest/job_store.py): a job a stopped process left running is recorded as interrupted, and what
+no record names is removed. It logs counts only.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
+from contextlib import asynccontextmanager
+import logging
 import os
 import re
 from typing import Any
@@ -39,6 +45,8 @@ from starlette.datastructures import Headers
 from starlette.routing import compile_path
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from services.ingest.job_store import JobStore
+from services.ingest.router import get_ingest_store
 from services.ingest.router import router as ingest_router
 from services.media.router import DEFAULT_MEDIA_FOLDERS, MediaFolders
 from services.media.router import router as media_router
@@ -363,7 +371,20 @@ def create_app(
     """
     origins = allowed_origins(cors_origins)
     hosts = allowed_hosts(trusted_hosts)
+
+    @asynccontextmanager
+    async def lifespan(started: FastAPI) -> AsyncIterator[None]:
+        # The store the ingest routes use, a test's own when it replaces the dependency
+        uploads = started.dependency_overrides.get(get_ingest_store, get_ingest_store)()
+        try:
+            JobStore(uploads).sweep()
+        except OSError as error:
+            # The app still starts; the sweep runs again at the next start. No path, id or name is logged
+            logging.getLogger("albedian.jobs").error("job sweep stopped: %s", type(error).__name__)
+        yield
+
     app = FastAPI(
+        lifespan=lifespan,
         title="Albedian Observation & Media Runtime API",
         version="0.2.0",
         description="Deterministic scientific astrometry, astronomy-aware media restoration, and voice action validation.",

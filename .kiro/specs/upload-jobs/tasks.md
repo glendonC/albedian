@@ -33,7 +33,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - After sky-3 lands (`kiro/sky` edits `run_solve_job`). Beside tasks 1 and 2.
   - _Requirements: REQ-JOB-1.5_
 
-- [ ] 4. platform-4: the job store, checked reads and the start-up sweep (REQ-JOB-3, 5; P-JOB-3, P-JOB-6)
+- [x] 4. platform-4: the job store, checked reads and the start-up sweep (REQ-JOB-3, 5; P-JOB-3, P-JOB-6)
   - `services/ingest/job_store.py` (3.1): per-attempt records, partial outputs and publishing, the `flock`, today's
     records read in place, the sweep with unnamed-result removal; `services/api.py` lifespan calls the sweep; the
     reads in `services/ingest/router.py` go through the store and check the solution with

@@ -7,6 +7,11 @@ in `X-Albedian-Filename` (percent-encoded; used only as the local title). It ans
 leaves nothing behind. `GET /api/ingest/{sha256}` returns the receipt of a stored file and
 `GET /api/ingest/{sha256}/original` its bytes. There is no listing: a stored file is reached only by
 its full hash.
+
+Job records are read through the job store (services/ingest/job_store.py), checked against the contract: a
+stored record that fails it is never served. A receipt then names no job, a start runs the solve again, and
+`GET /api/ingest/jobs/{job_id}` answers 409 with one plain sentence. The solution is read through the store's
+one solution read, which does not yet check it against the contract (that check comes with contracts-1).
 """
 
 from __future__ import annotations
@@ -20,7 +25,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
 
 from services.contracts.ingest import JOB_ID_PATTERN, IngestReceipt
-from services.ingest.jobs import read_solution, read_solve_job, read_solve_job_by_id, run_solve_job
+from services.ingest.job_store import JobStore, Unreadable
+from services.ingest.jobs import run_solve_job
 from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
 from services.ingest.store import DECLARABLE, IngestStore, Received, Refused
@@ -39,11 +45,20 @@ def _job_id_path() -> Any:
 
 
 UPLOAD_TYPES = sorted(name for names in DECLARABLE.values() for name in names)
+UNREADABLE_JOB = "The stored record of that job does not meet the contract, so it is not served; run the solve again."
 
 
 def get_ingest_store() -> IngestStore:
     """The store, configured by ALBEDIAN_INGEST_DIR and ALBEDIAN_INGEST_MAX_BYTES."""
     return IngestStore.from_environment()
+
+
+def _solve_job(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
+    """Today's solve job of an upload, checked; None when there is none or its record fails the contract."""
+    try:
+        return JobStore(store).legacy_solve_job(sha256)
+    except Unreadable:
+        return None
 
 
 def _title(header: Optional[str], sha256: str) -> str:
@@ -184,7 +199,7 @@ async def ingest_upload(request: Request, store: IngestStore = Depends(get_inges
         record = store.read_record(received.sha256)
         if record is not None:
             store.discard(received)
-            job = read_solve_job(store, received.sha256)
+            job = _solve_job(store, received.sha256)
             if job is not None:
                 record = {**record, "solveJobId": job["id"]}
             return JSONResponse(_receipt(record, True), status_code=200)
@@ -210,7 +225,7 @@ def get_ingest_receipt(sha256: str = _sha256_path(), store: IngestStore = Depend
     record = store.read_record(sha256)
     if record is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    job = read_solve_job(store, sha256)
+    job = _solve_job(store, sha256)
     if job is not None:
         record = {**record, "solveJobId": job["id"]}
     return _receipt(record, True)
@@ -241,8 +256,9 @@ async def start_ingest_solve_job(
     """Run or return the solve job for a stored upload, reporting real byte, frame and candidate denominators."""
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    existing = read_solve_job(store, sha256)
-    if existing is not None and existing.get("state") == "succeeded" and read_solution(store, sha256) is not None:
+    existing = _solve_job(store, sha256)
+    if (existing is not None and existing.get("state") == "succeeded"
+            and JobStore(store).read_solution_unchecked(sha256) is not None):
         return JSONResponse(existing, status_code=200)
     job = await run_in_threadpool(run_solve_job, store, sha256)
     return JSONResponse(job, status_code=201)
@@ -253,7 +269,18 @@ def get_ingest_solve_job(
     job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)
   ) -> dict[str, Any]:
     """The state and stage progress of a solve job."""
-    job = read_solve_job_by_id(store, job_id)
+    # Today's solve records by their 16-character ids, the job store's by its 32-character ones; a stored record
+    # that fails the contract is answered 409, never served (the docstring above is the published description)
+    jobs = JobStore(store)
+    try:
+        if len(job_id) == len("job_") + 16:
+            job = jobs.legacy_solve_job_by_id(job_id)
+        elif len(job_id) == len("job_") + 32:
+            job = jobs.read_job(job_id)
+        else:
+            job = None
+    except Unreadable:
+        raise HTTPException(status_code=409, detail=UNREADABLE_JOB) from None
     if job is None:
         raise HTTPException(status_code=404, detail="no solve job with that id is stored")
     return job
@@ -266,7 +293,7 @@ def get_ingest_solution(
     """The contract ObservationSolution produced for a stored upload."""
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    solution = read_solution(store, sha256)
+    solution = JobStore(store).read_solution_unchecked(sha256)
     if solution is None:
         raise HTTPException(status_code=404, detail="no solution is stored for that file")
     return solution
