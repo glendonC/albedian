@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
+import { Timer } from 'three/webgpu';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SparkPortalRenderer } from '../SparkPortalRenderer.js';
 import { createEarthUniforms, createMoonUniforms } from '../webgl/cislunarRegime.js';
@@ -146,7 +147,7 @@ describe('CislunarWebGpuRenderer: drawing stops and starts its host loop', () =>
   const fake = () => ({ drawing: true, pauseLoop: vi.fn(), resumeLoop: vi.fn() });
   const setDrawing = (target: ReturnType<typeof fake>, drawing: boolean) => CislunarWebGpuRenderer.prototype.setDrawing.call(target, drawing);
 
-  it('pauses its loop while not drawing and resumes it (with its clock reset) when it draws again, once each', () => {
+  it('pauses its loop while not drawing and resumes it when it draws again, once each', () => {
     const r = fake();
     setDrawing(r, false);
     setDrawing(r, false);
@@ -161,6 +162,59 @@ describe('CislunarWebGpuRenderer: drawing stops and starts its host loop', () =>
     setDrawing(r, true);
     expect(r.pauseLoop).not.toHaveBeenCalled();
     expect(r.resumeLoop).not.toHaveBeenCalled();
+  });
+
+  // The renderer's own resume, pause and frame step, on its own kind of clock (three's Timer, which reads
+  // performance.now() when it is made and when it is reset; here the test moves that clock), with a stand-in host and
+  // frame. Its private fields are set on an object made from its prototype, so its methods are called on that object.
+  const onStandIns = () => {
+    let nowMs = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+    const loop = { frame: null as ((timeMs: number) => void) | null };
+    const steps: number[] = [];
+    const r: object = Object.assign(Object.create(CislunarWebGpuRenderer.prototype) as object, {
+      drawing: true,
+      timer: new Timer(),
+      host: { start: (callback: (timeMs: number) => void) => (loop.frame = callback), stop: () => (loop.frame = null) },
+      renderFrame: (dtSec: number) => steps.push(dtSec),
+    });
+    return {
+      steps,
+      loop,
+      at: (timeMs: number) => (nowMs = timeMs),
+      frameAt: (timeMs: number) => {
+        nowMs = timeMs;
+        loop.frame!(timeMs);
+      },
+      resume: () => CislunarWebGpuRenderer.prototype.resumeLoop.call(r),
+      draw: (drawing: boolean) => CislunarWebGpuRenderer.prototype.setDrawing.call(r, drawing),
+    };
+  };
+
+  it('resets its clock when it draws again, so the first frame after a pause steps by one frame and not by the pause', () => {
+    const s = onStandIns();
+    s.resume();
+    s.frameAt(1000);
+    s.frameAt(1016);
+    expect(s.steps.at(-1)).toBeCloseTo(0.016, 9);
+    s.draw(false);
+    expect(s.loop.frame).toBeNull();
+    // A minute under the home, then drawn again: the first frame steps 16 ms, as before the pause. Without the reset
+    // it would step the whole minute, held to the frame step's cap of 0.1 s
+    s.at(61_000);
+    s.draw(true);
+    s.frameAt(61_016);
+    expect(s.steps.at(-1)).toBeCloseTo(0.016, 9);
+  });
+
+  it('steps a frame that comes late while drawing by at most a tenth of a second', () => {
+    const s = onStandIns();
+    s.resume();
+    s.frameAt(1000);
+    s.frameAt(1016);
+    // Five seconds late with no pause: the clock is not reset, so the step is held to its cap
+    s.frameAt(6016);
+    expect(s.steps.at(-1)).toBeCloseTo(0.1, 9);
   });
 });
 
