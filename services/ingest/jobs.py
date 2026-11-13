@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import copy
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from fractions import Fraction
 import json
@@ -46,6 +46,7 @@ from services.science.phone_photo_solver import (
 )
 from services.science.predicted_sky import complete_sky
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
+from services.science.wcs_models import ObservationSolution
 
 MAX_VIDEO_SOLVE_FRAMES = 8
 # The frames of a clip the head-worn Moon pose searches, spread over the whole clip (design component 6)
@@ -557,6 +558,154 @@ def _solve_chain(
     return solution
 
 
+@dataclass(frozen=True)
+class SolveContext:
+    """What the solve chain needs from the job around it: the stored upload, a way to report a stage's progress, and
+    the search's time bound (`None` for `SOLVE_TIME_LIMIT_SEC`).
+
+    `report(stage, persist=True, announce=True)` records the stage's progress; `announce` sends the job's running
+    record on, written to `job.json` when `persist`. `reports_often` says a listener follows every transition, so
+    each candidate is announced and not only the first and last.
+    """
+
+    sha256: str
+    original: Path
+    asset: Mapping[str, Any]
+    width: int
+    height: int
+    media_kind: str
+    report: Callable[..., None]
+    reports_often: bool
+    time_limit_s: float | None
+
+
+def solve_upload(ctx: SolveContext) -> ObservationSolution:
+    """The solve chain of one stored upload, from its decode to the sky predicted for its own time and place.
+
+    Decodes the frames, detects the sources, runs the searches of `_solve_chain` in the shared child under the time
+    bound, and completes the outcome with the predicted sky. Raises `SolveJobError` for a file it cannot decode; the
+    job around it (`run_solve_job`) records the stages it reports, writes the solution and the job, and fails the job
+    on any error.
+    """
+    original, asset, sha256 = ctx.original, ctx.asset, ctx.sha256
+    width, height, media_kind = ctx.width, ctx.height, ctx.media_kind
+
+    def on_decode_progress(done: int, total: int | None) -> None:
+        ctx.report({"stage": "decode", "unit": "frames", "done": done, "total": total}, persist=done == total)
+
+    frames, rgb_u8 = _decode_luma_frames(original, media_kind, width, height, on_decode_progress)
+    frame_count = len(frames)
+    ctx.report({"stage": "detect", "unit": "frames", "done": 0, "total": frame_count}, persist=False)
+
+    if frame_count > 1:
+        composite = stack_video_frames_for_calibration(frames).composite_luma
+        detections = detect_point_sources(composite, snr_threshold=4.0, asset_id=asset["id"])
+        solve_image: np.ndarray = composite
+        ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
+    else:
+        detections = detect_point_sources(frames[0], snr_threshold=4.0, asset_id=asset["id"])
+        solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
+        ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
+
+    candidate_reported = False
+    stopped_at_bound = False
+
+    def on_candidate(done: int, total: int) -> None:
+        nonlocal candidate_reported
+        candidate_reported = True
+        ctx.report({"stage": "solve", "unit": "candidates", "done": done, "total": total},
+                   persist=done in (0, total), announce=done in (0, total) or ctx.reports_often)
+
+    location = asset.get("observerLocation") or {}
+    camera_meta = asset.get("cameraMetadata") or {}
+    camera_label = camera_meta.get("model") if isinstance(camera_meta, dict) else None
+    focal_35mm = camera_meta.get("focalLength35mmMm") if isinstance(camera_meta, dict) else None
+    fov_hint: float | None = None
+    if isinstance(focal_35mm, (int, float)) and not isinstance(focal_35mm, bool) and not is_published_camera_label(camera_label):
+        try:
+            fov_hint = diagonal_fov_deg_from_35mm_equivalent(float(focal_35mm))
+        except ValueError:
+            fov_hint = None
+    obs_utc_iso = asset.get("capturedAtUTC")
+    lat_deg = location.get("latDeg")
+    lon_deg = location.get("lonDeg")
+    solution_id = f"sol_{sha256[:16]}"
+
+    def on_event(kind: str, *payload: Any) -> None:
+        if kind == "solver":
+            running_solver[0] = payload[0]
+        elif kind == "candidate":
+            on_candidate(*payload)
+
+    running_solver = ["phone_photo" if camera_meta else "triangle"]
+    chain_kwargs = dict(
+        camera_meta=bool(camera_meta),
+        camera_label=camera_label,
+        fov_hint=fov_hint,
+        obs_utc_iso=obs_utc_iso,
+        lat_deg=lat_deg,
+        lon_deg=lon_deg,
+        source_asset_id=asset["id"],
+        sha256=sha256,
+        solution_id=solution_id,
+    )
+    limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
+    if _SOLVE_IN_PROCESS:
+        solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
+    else:
+        try:
+            # One solve at a time in the shared child; the bound counts from the call, once the child is free
+            with _SOLVE_LOCK:
+                solution = _SOLVE_WORKER.call(
+                    _solve_chain,
+                    (solve_image, detections, width, height),
+                    chain_kwargs,
+                    timeout_s=limit_s,
+                    progress_kwarg="on_event",
+                    on_event=on_event,
+                )
+        except WorkerTimeout:
+            stopped_at_bound = True
+            identity = PHONE_SOLVER_IDENTITY if running_solver[0] == "phone_photo" else triangle_solver_identity(get_catalog_stars())
+            solution = _build_unresolved_solution(
+                detections,
+                solution_id,
+                asset["id"],
+                sha256,
+                0.0,
+                obs_utc_iso,
+                lat_deg,
+                lon_deg,
+                f"The search stopped at its {limit_s:g} s limit before a verified calibration was found.",
+                "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky.",
+                identity,
+            )
+
+    if not candidate_reported:
+        # A search stopped at its bound before counting a candidate did not finish its step
+        ctx.report({"stage": "solve", "unit": "steps", "done": 0 if stopped_at_bound else 1, "total": 1})
+
+    if solution.quality.held_out_pair_count > 0:
+        # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
+        ctx.report({"stage": "verify", "unit": "steps", "done": 1, "total": 1})
+
+    def pose_frames() -> list[tuple[float, np.ndarray]]:
+        # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
+        # clip's frames spread over its whole length, each alone and never stacked
+        if media_kind == "image":
+            return [(0.0, frames[0])]
+        return _decode_spread_frames(original, asset)
+
+    # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
+    # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
+    # one generic warning
+    try:
+        solution = complete_sky(solution, asset, frames=pose_frames)
+    except Exception:
+        solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
+    return solution
+
+
 def run_solve_job(
     store: IngestStore,
     sha256: str,
@@ -621,128 +770,24 @@ def run_solve_job(
     emit("queued")
     started_dt = max(datetime.now(timezone.utc), created_dt)
 
-    def on_decode_progress(done: int, total: int | None) -> None:
-        stage_map["decode"] = {"stage": "decode", "unit": "frames", "done": done, "total": total}
-        emit("running", started_dt=started_dt, persist=done == total)
+    def report(stage: dict[str, Any], *, persist: bool = True, announce: bool = True) -> None:
+        stage_map[stage["stage"]] = stage
+        if announce:
+            emit("running", started_dt=started_dt, persist=persist)
 
+    context = SolveContext(
+        sha256=sha256,
+        original=original,
+        asset=asset,
+        width=width,
+        height=height,
+        media_kind=media_kind,
+        report=report,
+        reports_often=on_transition is not None,
+        time_limit_s=solve_time_limit_s,
+    )
     try:
-        frames, rgb_u8 = _decode_luma_frames(original, media_kind, width, height, on_decode_progress)
-        frame_count = len(frames)
-        stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": 0, "total": frame_count}
-        emit("running", started_dt=started_dt, persist=False)
-
-        if frame_count > 1:
-            composite = stack_video_frames_for_calibration(frames).composite_luma
-            detections = detect_point_sources(composite, snr_threshold=4.0, asset_id=asset["id"])
-            solve_image: np.ndarray = composite
-            stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count}
-            emit("running", started_dt=started_dt)
-        else:
-            detections = detect_point_sources(frames[0], snr_threshold=4.0, asset_id=asset["id"])
-            solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
-            stage_map["detect"] = {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
-            emit("running", started_dt=started_dt)
-
-        candidate_reported = False
-        stopped_at_bound = False
-
-        def on_candidate(done: int, total: int) -> None:
-            nonlocal candidate_reported
-            candidate_reported = True
-            stage_map["solve"] = {"stage": "solve", "unit": "candidates", "done": done, "total": total}
-            if done in (0, total) or on_transition is not None:
-                emit("running", started_dt=started_dt, persist=done in (0, total))
-
-        location = asset.get("observerLocation") or {}
-        camera_meta = asset.get("cameraMetadata") or {}
-        camera_label = camera_meta.get("model") if isinstance(camera_meta, dict) else None
-        focal_35mm = camera_meta.get("focalLength35mmMm") if isinstance(camera_meta, dict) else None
-        fov_hint: float | None = None
-        if isinstance(focal_35mm, (int, float)) and not isinstance(focal_35mm, bool) and not is_published_camera_label(camera_label):
-            try:
-                fov_hint = diagonal_fov_deg_from_35mm_equivalent(float(focal_35mm))
-            except ValueError:
-                fov_hint = None
-        obs_utc_iso = asset.get("capturedAtUTC")
-        lat_deg = location.get("latDeg")
-        lon_deg = location.get("lonDeg")
-        solution_id = f"sol_{sha256[:16]}"
-
-        def on_event(kind: str, *payload: Any) -> None:
-            if kind == "solver":
-                running_solver[0] = payload[0]
-            elif kind == "candidate":
-                on_candidate(*payload)
-
-        running_solver = ["phone_photo" if camera_meta else "triangle"]
-        chain_kwargs = dict(
-            camera_meta=bool(camera_meta),
-            camera_label=camera_label,
-            fov_hint=fov_hint,
-            obs_utc_iso=obs_utc_iso,
-            lat_deg=lat_deg,
-            lon_deg=lon_deg,
-            source_asset_id=asset["id"],
-            sha256=sha256,
-            solution_id=solution_id,
-        )
-        limit_s = SOLVE_TIME_LIMIT_SEC if solve_time_limit_s is None else float(solve_time_limit_s)
-        if _SOLVE_IN_PROCESS:
-            solution = _solve_chain(solve_image, detections, width, height, **chain_kwargs, on_event=on_event)
-        else:
-            try:
-                # One solve at a time in the shared child; the bound counts from the call, once the child is free
-                with _SOLVE_LOCK:
-                    solution = _SOLVE_WORKER.call(
-                        _solve_chain,
-                        (solve_image, detections, width, height),
-                        chain_kwargs,
-                        timeout_s=limit_s,
-                        progress_kwarg="on_event",
-                        on_event=on_event,
-                    )
-            except WorkerTimeout:
-                stopped_at_bound = True
-                identity = PHONE_SOLVER_IDENTITY if running_solver[0] == "phone_photo" else triangle_solver_identity(get_catalog_stars())
-                solution = _build_unresolved_solution(
-                    detections,
-                    solution_id,
-                    asset["id"],
-                    sha256,
-                    0.0,
-                    obs_utc_iso,
-                    lat_deg,
-                    lon_deg,
-                    f"The search stopped at its {limit_s:g} s limit before a verified calibration was found.",
-                    "Pixel position only: the search stopped at its time limit before a verified WCS could place it on the sky.",
-                    identity,
-                )
-
-        if not candidate_reported:
-            # A search stopped at its bound before counting a candidate did not finish its step
-            stage_map["solve"] = {"stage": "solve", "unit": "steps", "done": 0 if stopped_at_bound else 1, "total": 1}
-            emit("running", started_dt=started_dt)
-
-        if solution.quality.held_out_pair_count > 0:
-            # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
-            stage_map["verify"] = {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
-            emit("running", started_dt=started_dt)
-
-        def pose_frames() -> list[tuple[float, np.ndarray]]:
-            # What the head-worn Moon pose searches, read only when a pose could follow: a photo's own frame, or a
-            # clip's frames spread over its whole length, each alone and never stacked
-            if media_kind == "image":
-                return [(0.0, frames[0])]
-            return _decode_spread_frames(original, asset)
-
-        # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
-        # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
-        # one generic warning
-        try:
-            solution = complete_sky(solution, asset, frames=pose_frames)
-        except Exception:
-            solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
-
+        solution = solve_upload(context)
         _write_json(folder, "solution.json", solution.to_contract_dict(), read_only=True)
         finished_dt = max(datetime.now(timezone.utc), started_dt)
         return emit("succeeded", started_dt=started_dt, finished_dt=finished_dt, solution_id=solution.id)

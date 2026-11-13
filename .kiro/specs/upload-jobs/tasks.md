@@ -25,7 +25,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
     regenerate `api_surface.json`: the lead sequences them.
   - _Requirements: REQ-JOB-8.1 to 8.3, REQ-JOB-9_
 
-- [ ] 3. platform-3: the solve chain in one function (REQ-JOB-1.5)
+- [x] 3. platform-3: the solve chain in one function (REQ-JOB-1.5)
   - A pure refactor of `services/ingest/jobs.py`: `solve_upload(ctx)` holds the chain (3.4) behind a small context
     the old `run_solve_job` builds, so every output is the same. Characterization: the six existing solve job test
     files pass before and after, plus a test that the stored job and solution of a synthetic upload are equal field
@@ -48,6 +48,14 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
     this lane's files].
   - The fix of `_write_json`'s leftover scratch file (jobs.py:86-94, design section 1), with a test that fails a
     `json.dump` and finds no scratch left [decided 2026-11-11].
+  - Every failure the solve kind stores is one of its fixed sentences. Of the fourteen failure texts today's solve
+    job can store, the job contract refuses nine (found from the code and pinned by
+    `test_every_failure_text_todays_solve_job_can_store_is_judged` in `tests/integration/test_job_contract.py`): no
+    PGM header; an unexpected frame size with its maximum value; a last frame cut short; ffmpeg's time limit; "could
+    not read the file" with the decoder's own words, and with "no frame bytes produced"; a frame of another size than
+    the stored one; tile grids that do not give one image; a tile grid that does not cover the stored image. Each gets
+    its kind's fixed sentence, which drops the decoder's own words and the sizes; the test's two lists change with
+    it on purpose [decided 2026-11-13, lead's request platform-3-v4].
   - Sets the solve kind's time bound from measured real-case durations with `uptime`'s load, and measures a solve
     beside a running fake media job to answer the open question on slots.
   - After tasks 3 and 4. The restoration lane wires its kinds and routes to the runner only after this lands.

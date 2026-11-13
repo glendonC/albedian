@@ -237,6 +237,18 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   300 s, but detection, stacking and `complete_sky` run in the server thread with no bound of their own and have not
   been timed on the real case; the unit reports `.lead/kiro/real_case.zsh 1` durations with `uptime`'s load.
 - `run_solve_job` stays as a thin wrapper (start, wait, return the record) for the tests and scripts that call it.
+- As built in platform-3 [tested], a pure refactor: `solve_upload(ctx)` holds the chain from the decode to
+  `complete_sky`, moved as it is; `run_solve_job` keeps the job around it (the queued record, the stage table, the
+  writes of `solution.json` and `job.json`, the failed record on any error) and builds the context. `SolveContext`
+  holds the stored upload (hash, original, asset, size, media kind), `report(stage, persist, announce)` for a stage's
+  progress, `reports_often` (a listener follows every transition) and the time bound as given. Still to come, in
+  platform-4 and platform-5: `ctx.progress`, `ctx.child()`, `ctx.pass_`, `ctx.remaining_s()`, the partial solution
+  under `solutions/<job_id>.json` and the `KindResult`; until then `solve_upload` returns the completed solution.
+  `tests/integration/test_solve_upload_characterization.py` pins what a solve job returns and writes for 27 cases
+  and a refused start (`tests/fixtures/solve_upload_characterization.json`, written from main's code before the move):
+  each written solution whole, every finding in order with its texts and numbers (floats within a stated tolerance);
+  its place, moment and predicted sky compared with what the case sent; each stamp as the read of the test's own
+  clock that made it.
 
 ### 3.5 The producer and stale solves (unit 10i) [decided 2026-11-11]
 - Each kind declares `producer = {name, revision}`: `albedian.solve_chain` with revision 1 in `jobs.py`, and the

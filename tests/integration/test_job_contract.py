@@ -9,19 +9,24 @@ it, so a record one side takes and the other refuses fails one of the two. Regen
 
 from __future__ import annotations
 
+import ast
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+import importlib
 import json
 import math
 import os
 from pathlib import Path
 import re
 import sys
-from typing import Annotated, Any, get_args
+from typing import Annotated, Any, Optional, get_args
 
 from pydantic import BaseModel, Field, StringConstraints, ValidationError
 import pytest
 
 from services.contracts import ingest, jobs
 from services.contracts.jobs import UploadJob, build_job_samples
+from services.ingest import jobs as solve_job
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "job_contract.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_JOB_FIXTURE"
@@ -557,6 +562,18 @@ def _job_shaped_in(value: Any) -> list[Any]:
     return found
 
 
+def _job_shaped_with_paths(value: Any, path: str) -> list[tuple[str, Any]]:
+    """As `_job_shaped_in`, each with where it is in `value` (`returned`, `transitions[1]`, `writes[1].payload`)."""
+    found = [(path or "(the value itself)", value)] if _job_shaped(value) else []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            found += _job_shaped_with_paths(child, f"{path}.{key}" if path else key)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            found += _job_shaped_with_paths(child, f"{path}[{index}]")
+    return found
+
+
 def _job_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
     """job_contract.json: what each of its sections says of each sample."""
     out = [(f"valid[{i}]", s, True) for i, s in enumerate(data["valid"])]
@@ -599,8 +616,52 @@ def _solution_ingest_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool
     return [(where, sample, accepted, _todays_record_but_its_gap(sample)) for where, sample, accepted in out]
 
 
+def _characterization_verdicts(data: dict[str, Any]) -> list[tuple[str, Any, bool, Any]]:
+    """solve_upload_characterization.json: what `run_solve_job` returned, reported and wrote in each case, as today's
+    code wrote it, so the job contract is expected to take each record (with its placeholders read back into values
+    of their form: each `<now k>` the characterization's own clock instant, the sent hash and size made-up values,
+    and, as for today's other records, `kind: "solve"` and on a started job the solve samples' producer).
+    The exception, named: `decode_refuses_the_file` stands for one of the nine failure texts today's solve job can
+    store that the job contract refuses (`test_every_failure_text_todays_solve_job_can_store_is_judged` finds all
+    fourteen from the code and pins the nine). Its error keeps the decoder's own words ("The decoder could not read
+    the upload: " and what the decoder said); the job contract takes only its kind's fixed sentences (platform-1,
+    design 3.8 as built), so it refuses those three records (the returned one, the last transition and the last
+    job.json write) by that rule, and SolveJob, which judges today's records, takes them."""
+    out = []
+    for case, record in data.items():
+        for where, job in _job_shaped_with_paths(record, ""):
+            # A stand-in for the nine refused texts, each given its fixed sentence by the runner (platform-5, the
+            # spec's task 5): refused by this rule, by name
+            refused = case == "decode_refuses_the_file" and job["state"] == "failed"
+            accepted: Any = jobs.M_FAILURE if refused else True
+            out.append((f"{case} {where}: a {job['state']} record", job, accepted,
+                        _todays_record_but_its_gap(_unplaced(job))))
+    return out
+
+
+CHARACTERIZATION_HASH = "c" * 64
+CHARACTERIZATION_CLOCK = datetime(2030, 1, 1, 4, 0, tzinfo=timezone.utc)  # the characterization's CLOCK_START
+
+
+def _unplaced(value: Any) -> Any:
+    """A characterization record with each of its placeholders read back into a value of its form."""
+    if isinstance(value, dict):
+        return {k: _unplaced(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_unplaced(v) for v in value]
+    if isinstance(value, str):
+        now = re.fullmatch(r"<now (\d+)>", value)
+        if now:
+            return ingest.format_utc(CHARACTERIZATION_CLOCK + timedelta(minutes=int(now.group(1))))
+        if value == "<bytes sent>":
+            return 1000
+        return value.replace("<sha256 sent>", CHARACTERIZATION_HASH).replace("<sha16 sent>", CHARACTERIZATION_HASH[:16])
+    return value
+
+
 JOB_FIXTURE_READERS: dict[str, Any] = {"job_contract.json": _job_verdicts, "ingest_contract.json": _ingest_verdicts,
-                                       "observation_solution_contract.json": _solution_ingest_verdicts}
+                                       "observation_solution_contract.json": _solution_ingest_verdicts,
+                                       "solve_upload_characterization.json": _characterization_verdicts}
 
 
 def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:
@@ -623,15 +684,20 @@ def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:
                    for sample in shaped if id(sample) not in covered]
         for where, _, accepted, record in verdicts:
             judged += 1
-            if verdict(record)[0] is not accepted:
-                wrong.append(f"{rel} {where}: the job contract {'refuses' if accepted else 'takes'} it")
+            # An expectation is True (taken), False (refused) or the message of the one rule that refuses it
+            taken, why = verdict(record)
+            if taken is not (accepted is True) or (isinstance(accepted, str) and accepted not in why):
+                rule = "" if taken or not isinstance(accepted, str) else f", not by the rule \"{accepted}\""
+                wrong.append(f"{rel} {where}: the job contract {'takes' if taken else 'refuses'} it{rule}")
     return unread, wrong, judged
 
 
 def test_every_job_shaped_sample_in_every_fixture_is_judged_as_its_fixture_says() -> None:
     unread, wrong, judged = _fixture_disagreements(FIXTURES)
     assert unread == [] and wrong == [], (unread, wrong[:10], len(wrong))
-    assert judged > 1800  # the two fixtures' sections hold 1,827 job-shaped samples on 2026-11-13
+    # the four readers judge 2,672 job-shaped samples on 2026-11-13: 1,827 in the two contract fixtures, 6 in the
+    # solution contract's ingest section, 839 in the solve chain's characterization
+    assert judged >= 2672
 
 
 def test_the_fixture_check_finds_an_unread_job_and_a_wrong_verdict(tmp_path: Path) -> None:
@@ -651,6 +717,214 @@ def test_the_fixture_check_finds_an_unread_job_and_a_wrong_verdict(tmp_path: Pat
         f"ingest_contract.json valid.SolveJob[{len(ingest['valid']['SolveJob']) - 1}]",
         f"job_contract.json valid[{len(job['valid']) - 1}]",
         f"job_contract.json invalid[0] {job['invalid'][0]['reason']}"]
+
+
+CHARACTERIZATION = "solve_upload_characterization.json"
+
+
+def _characterization_with(tmp_path: Path, change: Callable[[dict[str, Any]], None]) -> list[str]:
+    """The fixture check's wrong verdicts on a copy of the characterization alone, changed by `change`."""
+    data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
+    change(data)
+    (tmp_path / CHARACTERIZATION).write_text(json.dumps(data), encoding="utf-8")
+    unread, wrong, _ = _fixture_disagreements(tmp_path)
+    assert unread == []
+    return wrong
+
+
+def test_a_record_refused_by_another_rule_than_the_one_named_is_a_wrong_verdict(tmp_path: Path) -> None:
+    """One of the three expected refused by the failure rule, given a fixed sentence and a finish before its start: the
+    contract still refuses it, by the times rule alone, and the check names the record and the rule it expected."""
+    def change(data: dict[str, Any]) -> None:
+        returned = data["decode_refuses_the_file"]["returned"]
+        returned["error"] = "The solve stopped on an internal error."
+        returned["startedAtUTC"], returned["finishedAtUTC"] = "<now 9>", "<now 0>"
+
+    assert _characterization_with(tmp_path, change) == [
+        f"{CHARACTERIZATION} decode_refuses_the_file returned: a failed record: the job contract refuses it, "
+        f"not by the rule \"{jobs.M_FAILURE}\""]
+
+
+def test_a_succeeded_record_finished_before_it_started_is_a_wrong_verdict(tmp_path: Path) -> None:
+    """Each `<now k>` is read back as its own instant, k minutes after the clock's start: a succeeded record whose
+    finish is before its start is named."""
+    found: list[str] = []
+
+    def change(data: dict[str, Any]) -> None:
+        for case, record in data.items():
+            for where, job in _job_shaped_with_paths(record, ""):
+                if job["state"] == "succeeded" and not found:
+                    job["startedAtUTC"], job["finishedAtUTC"] = "<now 9>", "<now 0>"
+                    found.append(f"{CHARACTERIZATION} {case} {where}: a succeeded record: the job contract refuses it")
+
+    assert _characterization_with(tmp_path, change) == found and len(found) == 1
+
+
+# ---- Every failure text today's solve job can store (platform-3's fourth version) ----
+
+REPO = Path(__file__).resolve().parents[2]
+STAND_IN_ORIGINAL = Path("/stand-in/original.heic")
+# What the job contract does with each, by name. A failure text added to the solve job, or one changed, fails the test
+# below until it is added here. The nine refused each get their kind's fixed sentence from the runner (platform-5, the
+# spec's task 5), which drops the decoder's own words and sizes.
+TAKEN_FAILURE_TEXTS = {
+    "ffmpeg is not installed to decode the upload.",
+    solve_job.HEIF_PROBE_REFUSAL,
+    solve_job.TILE_DECODE_REFUSAL,
+    "The decoder did not write one frame for every tile.",
+    solve_job.UNEXPECTED_ERROR_REASON,
+}
+REFUSED_FAILURE_TEXTS = {
+    "The decoder wrote a frame without a PGM header.",
+    "The decoder wrote an unexpected {width}x{height} frame with maximum value {maxval}.",
+    "The decoder's last frame is cut short.",
+    f"ffmpeg took longer than {solve_job.DECODE_TIMEOUT_SEC} s to decode the upload.",
+    "The decoder could not read the file: {msg}",
+    "The decoder could not read the file: no frame bytes produced",
+    "The decoder produced a {frame.shape[1]}x{frame.shape[0]} frame, not the stored {width}x{height}.",
+    "The file's tile grids do not give one {width}x{height} image.",
+    "The file's tile grid does not cover the stored {width}x{height} image.",
+}
+
+
+def _text_forms(node: ast.expr, function: Optional[ast.AST], module: Any, where: str) -> list[str]:
+    """The texts a SolveJobError's argument can be: a literal; a module constant; an f-string whose slots are module
+    constants (filled) or other values (kept as `{the expression}`), and, for a slot that is a variable its function
+    sets to a literal in one branch, that literal too. Any other form fails here, so no text is left out unread."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
+    if isinstance(node, ast.Name) and isinstance(getattr(module, node.id, None), str):
+        return [getattr(module, node.id)]
+    assert isinstance(node, ast.JoinedStr), f"{where}: a SolveJobError text this test cannot read"
+    forms = [""]
+    for part in node.values:
+        if isinstance(part, ast.Constant):
+            options = [str(part.value)]
+        else:
+            assert isinstance(part, ast.FormattedValue) and part.conversion == -1 and part.format_spec is None, \
+                f"{where}: a SolveJobError text this test cannot read"
+            value = part.value
+            constant = getattr(module, value.id, None) if isinstance(value, ast.Name) else None
+            if isinstance(constant, (str, int)) and not isinstance(constant, bool):
+                options = [str(constant)]
+            else:
+                options = ["{" + ast.unparse(value) + "}"]
+                if isinstance(value, ast.Name) and function is not None:
+                    options += _literals_set_to(value.id, function)
+        forms = [form + option for form in forms for option in options]
+    return forms
+
+
+def _literals_set_to(name: str, function: ast.AST) -> list[str]:
+    """The string literals `function` sets `name` to, directly or as a branch of a conditional expression."""
+    out = []
+    for node in ast.walk(function):
+        if isinstance(node, ast.Assign) and [ast.unparse(t) for t in node.targets] == [name]:
+            branches = [node.value.body, node.value.orelse] if isinstance(node.value, ast.IfExp) else [node.value]
+            out += [b.value for b in branches if isinstance(b, ast.Constant) and isinstance(b.value, str)]
+    return out
+
+
+def _failure_texts_in(source: str, rel: str, module: Any) -> dict[str, list[str]]:
+    """The texts of every `SolveJobError(...)` in one module's source, each with where it is written."""
+    found: dict[str, list[str]] = {}
+    tree = ast.parse(source)
+    functions = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    for call in ast.walk(tree):
+        if not (isinstance(call, ast.Call) and ast.unparse(call.func).split(".")[-1] == "SolveJobError"):
+            continue
+        where = f"{rel}:{call.lineno}"
+        assert len(call.args) == 1 and not call.keywords, f"{where}: a SolveJobError this test cannot read"
+        # the innermost function the call is written in
+        function = min((f for f in functions if f.lineno <= call.lineno <= (f.end_lineno or f.lineno)),
+                       key=lambda f: (f.end_lineno or f.lineno) - f.lineno, default=None)
+        for text in _text_forms(call.args[0], function, module, where):
+            found.setdefault(text, []).append(where)
+    return found
+
+
+def _storable_failure_texts() -> dict[str, list[str]]:
+    """Every failure text today's solve job can store, found in the code: each `SolveJobError(...)` under `services/`
+    (the solve job stores its text through `_stored_reason`) and the internal error; each with where it is written."""
+    found: dict[str, list[str]] = {}
+    for path in sorted((REPO / "services").rglob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        if "SolveJobError" not in source:
+            continue
+        rel = path.relative_to(REPO)
+        module = importlib.import_module(".".join(rel.with_suffix("").parts))
+        for text, where in _failure_texts_in(source, str(rel), module).items():
+            found.setdefault(text, []).extend(where)
+    found.setdefault(solve_job.UNEXPECTED_ERROR_REASON, []).append("UNEXPECTED_ERROR_REASON")
+    return found
+
+
+def _fixed_sentences_fitting(text: str) -> list[str]:
+    """The solve kind's fixed sentences that `text` gives when each `{slot}` is filled with any text, the empty one
+    too; none for a text with no slot, which is judged as it is."""
+    pieces = re.split(r"\{[^{}]*\}", text)
+    if len(pieces) == 1:
+        return []
+    pattern = ".*".join(re.escape(piece) for piece in pieces)
+    return [s for s in jobs.SOLVE_FAILURE_SENTENCES if re.fullmatch(pattern, s, re.DOTALL)]
+
+
+def _refused_by_the_failure_rule_alone(why: str) -> bool:
+    """Whether the job contract's refusal names the failure rule and no other of its rules. (A field's own error stops
+    the record before the rules are read, so a refusal that names a rule names no field error.)"""
+    rules = [getattr(jobs, n) for n in dir(jobs) if n.startswith("M_") and getattr(jobs, n) in why]
+    return rules == [jobs.M_FAILURE]
+
+
+def test_every_failure_text_todays_solve_job_can_store_is_judged() -> None:
+    """Each text as `_stored_reason` stores it, set as the error of the characterization's failed record that the job
+    contract takes (decode_fails_unexpectedly's), and judged as the fixture check judges it. A text with a slot is
+    judged with the slot as written, and no fixed sentence fits its pattern, so no filling of it is taken either."""
+    data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
+    base = next(j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")
+    assert verdict(_todays_record_but_its_gap(_unplaced(base)))[0], "the base record is taken as it is"
+    taken, refused = set(), set()
+    for text in _storable_failure_texts():
+        stored = solve_job._stored_reason(text, STAND_IN_ORIGINAL)
+        ok, why = verdict(_todays_record_but_its_gap(_unplaced({**base, "error": stored})))
+        if ok:
+            taken.add(text)
+        else:
+            assert _refused_by_the_failure_rule_alone(why), (text, why)
+            refused.add(text)
+        assert _fixed_sentences_fitting(text) == [], f"a filling of {text!r} may be taken"
+    assert (len(taken | refused), len(refused)) == (14, 9)
+    assert (taken, refused) == (TAKEN_FAILURE_TEXTS, REFUSED_FAILURE_TEXTS)
+
+
+def test_the_failure_text_finder_reads_every_form_and_refuses_one_it_cannot_read() -> None:
+    module = type("M", (), {"LIMIT": 60, "FIXED": "A fixed text."})
+    source = ('def f(d):\n    word = d[0] if d else "outer"\n\n    def g(d):\n        word = d[0] if d else "none"\n'
+              '        raise SolveJobError(f"Read {word}: {LIMIT} s.")\n    raise SolveJobError(FIXED)\n')
+    assert _failure_texts_in(source, "m.py", module) == {
+        "Read {word}: 60 s.": ["m.py:6"], "Read none: 60 s.": ["m.py:6"], "A fixed text.": ["m.py:7"]}
+    for call in ('SolveJobError("a", "b")', 'SolveJobError("a", cause=1)', "SolveJobError()"):
+        with pytest.raises(AssertionError, match="^m.py:1: a SolveJobError this test cannot read"):
+            _failure_texts_in(call, "m.py", module)
+    for unread in ('"a" + "b"', 'f"{x!r}"', 'f"{x:>4}"', "OTHER"):
+        with pytest.raises(AssertionError, match="^f: a SolveJobError text this test cannot read"):
+            _text_forms(ast.parse(unread, mode="eval").body, None, module, "f")
+    assert _fixed_sentences_fitting("ffmpeg is not installed to decode the {what}.") == [
+        "ffmpeg is not installed to decode the upload."]
+    assert _fixed_sentences_fitting("ffmpeg is not installed to decode the upload.{tail}") == [
+        "ffmpeg is not installed to decode the upload."], "a slot may be filled with nothing"
+    assert _fixed_sentences_fitting("ffmpeg is not installed to decode the upload.") == []
+
+
+def test_a_refusal_counts_as_the_failure_rules_only_when_it_names_that_one_error() -> None:
+    data = json.loads((FIXTURES / CHARACTERIZATION).read_text(encoding="utf-8"))
+    base = _todays_record_but_its_gap(_unplaced(next(
+        j for j in _job_shaped_in(data["decode_fails_unexpectedly"]) if j["state"] == "failed")))
+    wrong_text = {**base, "error": "Not a fixed sentence."}
+    assert _refused_by_the_failure_rule_alone(verdict(wrong_text)[1])
+    taken, why = verdict({**wrong_text, "finishedAtUTC": "2000-01-01T00:00:00Z"})
+    assert not taken and jobs.M_FAILURE in why and jobs.M_TIMES in why
+    assert not _refused_by_the_failure_rule_alone(why)
 
 
 def test_a_record_todays_code_wrote_is_judged_by_its_own_contract_and_never_given_a_producer() -> None:
