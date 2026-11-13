@@ -23,8 +23,17 @@ dependencies = [
 dev = [
     "pytest>=8.3.0",
     "hypothesis>=6.120.0",
+    "pytest-timeout==2.4.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Every test's own time bound (pytest-timeout): a test still running at 300 s fails by name with its stack and the run
+# goes on, so CI's job never runs into its 20 minute limit unnamed. 300 s is about five times the slowest test of the
+# whole job in CI's own Linux on this laptop [proposed]; a test that needs longer carries @pytest.mark.timeout(n) of
+# its own with the reason beside it, and the default is not raised for one test. Its two limits: the signal (SIGALRM)
+# is handled between Python bytecodes, so a test held inside one long native call is not stopped until that call
+# returns; and only the main thread is covered, the one pytest runs every test in.
+timeout = 300
+timeout_method = "signal"
