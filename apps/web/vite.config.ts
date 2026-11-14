@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { verifyPublicTracked } from '../../scripts/verify-public-tracked.mjs';
 import { refuseOnNetwork } from '../../scripts/field-proxy-guard.mjs';
+import { POLICY, POLICY_HEADER } from '../../scripts/content-policy.mjs';
 
 export default defineConfig({
   // verifyPublicTracked refuses a build while the public folder holds a file git does not track or a link
@@ -29,5 +30,11 @@ export default defineConfig({
         rewrite: (url) => url.slice('/music-sources'.length),
       },
     },
+  },
+  // The built app's content security policy, report-only (scripts/content-policy.mjs), on every answer of `vite
+  // preview`, which `pnpm field --lan` serves the build with. The dev server sends none: its hot reload is no part of
+  // the built app.
+  preview: {
+    headers: { [POLICY_HEADER]: POLICY },
   },
 });

@@ -25,11 +25,19 @@
  * or of a stylesheet (which CSS still reads as an address, while the check needs its closing bracket), an @import
  * whose string is left open at the end of a stylesheet (which CSS still reads), and a meta refresh whose address holds
  * an apostrophe (a well-formed address, which the check reads as ending at the apostrophe and so does not read).
+ * It also holds each built page to the content policy (scripts/content-policy.mjs, which the preview server sends),
+ * reading the page with jsdom, an HTML parser the web app already declares, so the page is read as a browser parses
+ * it: each style element's text must hash to one of the policy's STYLE_HASHES, and a page may hold no script element
+ * without a src, no event attribute (any attribute whose name begins with "on" and a letter is read as one) and no
+ * style attribute, none of which the policy allows; a template's content is read as the page is. Nothing of the page
+ * is run or fetched.
  * Usage: node scripts/check-built-page.mjs <build folder>
  */
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { STYLE_HASHES, styleHash } from './content-policy.mjs';
 
 /** The attributes whose value the check reads as an address, on any element. */
 export const ADDRESS_ATTRIBUTES = [
@@ -214,6 +222,48 @@ export function builtOutsideAddresses(dir) {
   });
 }
 
+/** jsdom, from the web app, which declares it (the check lives outside the app and declares nothing of its own). */
+const { JSDOM } = createRequire(path.join(path.dirname(fileURLToPath(import.meta.url)), '../apps/web/package.json'))('jsdom');
+
+/** Every element of a parsed page in document order, a template's content read where the template stands. */
+function* elementsOf(root) {
+  for (const el of root.querySelectorAll('*')) {
+    yield el;
+    if (el.localName === 'template' && el.content) yield* elementsOf(el.content);
+  }
+}
+
+/**
+ * What of a page the content policy would refuse, as [form, what] in document order, the page read by jsdom: a style
+ * element whose text's hash is not one of the policy's, a script element without a src, an on... event attribute, a
+ * style attribute.
+ */
+export function policyMisfits(html, hashes = STYLE_HASHES) {
+  const found = [];
+  for (const el of elementsOf(new JSDOM(html).window.document)) {
+    if (el.localName === 'style') {
+      const hash = styleHash(el.textContent ?? '');
+      if (!hashes.includes(hash)) found.push(['style element, its hash not in the content policy', hash]);
+    }
+    if (el.localName === 'script' && !el.hasAttribute('src')) {
+      found.push(['inline script, which the content policy allows none of', (el.textContent ?? '').trim().slice(0, 60)]);
+    }
+    for (const name of el.getAttributeNames()) {
+      const lower = name.toLowerCase();
+      if (!/^on[a-z]/.test(lower) && lower !== 'style') continue;
+      const what = lower === 'style' ? 'a style attribute' : 'an event attribute';
+      found.push([`${el.localName} ${lower}, ${what} the content policy allows none of`, el.getAttribute(name) ?? '']);
+    }
+  }
+  return found;
+}
+
+/** What the content policy would refuse in the built pages of a build folder, as [file, form, what], files sorted. */
+export function builtPolicyMisfits(dir) {
+  const files = fs.readdirSync(dir, { recursive: true }).map(String).filter((f) => /\.html$/.test(f)).sort();
+  return files.flatMap((file) => policyMisfits(fs.readFileSync(path.join(dir, file), 'utf8')).map(([form, what]) => [file.split(path.sep).join('/'), form, what]));
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const dir = process.argv[2];
   if (!dir || !fs.existsSync(dir)) {
@@ -226,5 +276,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     for (const [file, form, address] of outside) console.error(`  ${file}: ${form}: ${address}`);
     process.exit(1);
   }
-  console.log("[check-built-page] OK: in the forms the check reads, as the build writes its pages and stylesheets, no address is outside the app's own origin; this check is no guarantee of what a page loads (an enforced content security policy would be, and the app does not enforce one yet)");
+  const misfits = builtPolicyMisfits(dir);
+  if (misfits.length > 0) {
+    console.error(`[check-built-page] ${misfits.length} inline form(s) in the built pages that the content policy would refuse:`);
+    for (const [file, form, what] of misfits) console.error(`  ${file}: ${form}: ${what}`);
+    process.exit(1);
+  }
+  console.log("[check-built-page] OK: in the forms the check reads, as the build writes its pages and stylesheets, no address is outside the app's own origin and no inline form falls outside the content policy; this check is no guarantee of what a page loads (an enforced content security policy would be, and the app does not enforce one yet)");
 }

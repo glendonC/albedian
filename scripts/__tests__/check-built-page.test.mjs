@@ -11,12 +11,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { STYLE_HASHES, styleHash } from '../content-policy.mjs';
 import {
   builtOutsideAddresses,
+  builtPolicyMisfits,
   decodeAttribute,
   decodeCss,
   isOutside,
   pageOutsideAddresses,
+  policyMisfits,
   refreshAddress,
   srcsetAddresses,
   stylesheetOutsideAddresses,
@@ -47,7 +50,7 @@ describe("the app's page and stylesheets name no outside address the check reads
       const r = spawnSync(process.execPath, [path.join(repoRoot, 'scripts/check-built-page.mjs'), dist], { encoding: 'utf8' });
       expect(r.status).toBe(0);
       expect(r.stdout.trim()).toBe(
-        "[check-built-page] OK: in the forms the check reads, as the build writes its pages and stylesheets, no address is outside the app's own origin; this check is no guarantee of what a page loads (an enforced content security policy would be, and the app does not enforce one yet)",
+        "[check-built-page] OK: in the forms the check reads, as the build writes its pages and stylesheets, no address is outside the app's own origin and no inline form falls outside the content policy; this check is no guarantee of what a page loads (an enforced content security policy would be, and the app does not enforce one yet)",
       );
     } finally {
       fs.rmSync(dist, { recursive: true, force: true });
@@ -217,4 +220,144 @@ describe('each form the check reads, refused by its form and its address', () =>
     expect(refreshAddress('0, https://example.com/c')).toBe('https://example.com/c');
     expect(refreshAddress('30')).toBeNull();
   });
+});
+
+describe('the built page holds nothing inline the content policy would refuse', () => {
+  it("passes the app's own page, whose one inline style is the policy's hash, and reads that style", () => {
+    const page = fs.readFileSync(path.join(webDir, 'index.html'), 'utf8');
+    expect(policyMisfits(page)).toEqual([]);
+    // With no hash allowed, the same page is refused for its style: the style is read, not passed over
+    expect(policyMisfits(page, [])).toEqual([['style element, its hash not in the content policy', STYLE_HASHES[0]]]);
+  });
+
+  // Each inline form the policy would refuse, with what the check names, and the forms it lets through; the page is
+  // read by an HTML parser (jsdom), so each is read as a browser parses it
+  const OWN = '<style>body { margin: 0 }</style>';
+  const hashes = [styleHash('body { margin: 0 }')];
+  const MISFITS = [
+    ['a style whose hash the policy holds', OWN, []],
+    ['a style it does not', '<style>body { margin: 1px }</style>', [['style element, its hash not in the content policy', styleHash('body { margin: 1px }')]]],
+    ['a script with a source', '<script type="module" src="/assets/a.js"></script>', []],
+    ['an inline script', '<script>fetch("/x")</script>', [['inline script, which the content policy allows none of', 'fetch("/x")']]],
+    ['an inline module script', '<script type="module">\n  import "/a.js";\n</script>', [['inline script, which the content policy allows none of', 'import "/a.js";']]],
+    ['an event attribute in lower case', '<link rel="stylesheet" href="/a.css" onload="this.media=\'all\'">', [["link onload, an event attribute the content policy allows none of", "this.media='all'"]]],
+    ['an event attribute in upper case', '<IMG SRC="/a.png" ONERROR="x()">', [['img onerror, an event attribute the content policy allows none of', 'x()']]],
+    ['a style attribute on a div', '<div style="color: red"></div>', [['div style, a style attribute the content policy allows none of', 'color: red']]],
+    ['each of them in a comment', '<!-- <script>x()</script><div style="a" onclick="b"></div><style>c</style> -->', []],
+    ['an attribute whose name holds "on" after its start', '<div data-onclick="x" aria-label="on"></div>', []],
+    ['any attribute named "on" and a letter, from a to z, read as an event attribute', '<div ona="1" onz="2"></div>', [['div ona, an event attribute the content policy allows none of', '1'], ['div onz, an event attribute the content policy allows none of', '2']]],
+    ['an attribute named "on" alone, "on" and no letter, or "style" with more characters, not read as one', '<meta name="viewport" content="width=device-width"><div on="1" on-x="2" on1="3" stylex="4" data-style="5"></div>', []],
+    // The reader's three (AUDIT K, web-csp-1): each form in capitals, and a script between two comments
+    ['a style element in capitals', '<STYLE>body { margin: 1px }</STYLE>', [['style element, its hash not in the content policy', styleHash('body { margin: 1px }')]]],
+    ['a script element in capitals', '<SCRIPT>x()</SCRIPT>', [['inline script, which the content policy allows none of', 'x()']]],
+    ['an inline script between two comments', '<!-- a --><script>x()</script><!-- b -->', [['inline script, which the content policy allows none of', 'x()']]],
+    // Each pattern read whole: every comment, every style and every script of a page, each on its own
+    ['two comments, each holding a form', '<!-- <script>a()</script> --><p>between</p><!-- <div style="b"></div> -->', []],
+    ['two style elements, the second not the policy\'s', `${OWN}<style>x</style>`, [['style element, its hash not in the content policy', styleHash('x')]]],
+    ['two scripts, the first with a source', '<script src="/b.js"></script><script>a()</script>', [['inline script, which the content policy allows none of', 'a()']]],
+    ['a script whose double-quoted attribute holds ">"', '<script data-x="a>b">x()</script>', [['inline script, which the content policy allows none of', 'x()']]],
+    ["a script whose single-quoted attribute holds \">\"", "<script data-x='a>b'>x()</script>", [['inline script, which the content policy allows none of', 'x()']]],
+    // AUDIT G's three (web-csp-1 v2): a style over several lines, a comment over several lines, a script ended by "</script >"
+    ['a style element over several lines', '<style>\n  body { margin: 1px }\n</style>', [['style element, its hash not in the content policy', styleHash('\n  body { margin: 1px }\n')]]],
+    ['a comment over several lines holding a form', '<!--\n<div style="a"></div>\n-->', []],
+    ['an inline script ended by "</script >"', '<script>x()</script >', [['inline script, which the content policy allows none of', 'x()']]],
+    // The reader's two notes: a comment closed by "--!>", and an end tag with an attribute, each read as a browser reads it
+    ['a script after a comment closed by "--!>" before a later comment', '<!-- a --!><script>x()</script><!-- b -->', [['inline script, which the content policy allows none of', 'x()']]],
+    ['an inline script ended by an end tag with an attribute', '<script>x()</script data-y="z"><p>after</p>', [['inline script, which the content policy allows none of', 'x()']]],
+    ['an inline script inside a template', '<template><script>x()</script></template>', [['inline script, which the content policy allows none of', 'x()']]],
+    ['an inline script inside a template that is inside another', '<template><template><div><script>x()</script></div></template></template>', [['inline script, which the content policy allows none of', 'x()']]],
+    ['a long inline script, trimmed and cut to sixty characters', `<script>  a${'x'.repeat(58)}bc  </script>`, [['inline script, which the content policy allows none of', `a${'x'.repeat(58)}b`]]],
+    // AUDIT H's eleven (web-csp-1 v3) and full-walk order/branch pins
+    ['an event attribute on an allowed style element', '<style onload="x()">body { margin: 0 }</style>', [['style onload, an event attribute the content policy allows none of', 'x()']]],
+    ['an event attribute on a disallowed style element, both reported in order', '<style onload="x()">body { margin: 1px }</style>', [['style element, its hash not in the content policy', styleHash('body { margin: 1px }')], ['style onload, an event attribute the content policy allows none of', 'x()']]],
+    ['an inline script that also carries an event attribute, both reported in order', '<script onclick="x()">y()</script>', [['inline script, which the content policy allows none of', 'y()'], ['script onclick, an event attribute the content policy allows none of', 'x()']]],
+    ['an event attribute on an external script with a source', '<script src="/assets/a.js" onload="x()"></script>', [['script onload, an event attribute the content policy allows none of', 'x()']]],
+    ['an inline script inside an svg element named template, where content is undefined', '<svg><template><script>x()</script></template></svg>', [['inline script, which the content policy allows none of', 'x()']]],
+    ['a template with a style attribute before the inline script inside its content', '<template style="color: red"><script>x()</script></template>', [['template style, a style attribute the content policy allows none of', 'color: red'], ['inline script, which the content policy allows none of', 'x()']]],
+    ['an inline script inside a template followed by a sibling inline script, in document order', '<template><script>a()</script></template><script>b()</script>', [['inline script, which the content policy allows none of', 'a()'], ['inline script, which the content policy allows none of', 'b()']]],
+    ['two disallowed style elements, both reported in document order', '<style>a{}</style><style>b{}</style>', [['style element, its hash not in the content policy', styleHash('a{}')], ['style element, its hash not in the content policy', styleHash('b{}')]]],
+    ['two inline scripts, both reported in document order', '<script>a()</script><script>b()</script>', [['inline script, which the content policy allows none of', 'a()'], ['inline script, which the content policy allows none of', 'b()']]],
+    ['a script with an empty src attribute, which HTML treats as external', '<script src="">ignored()</script>', []],
+    ['an event attribute whose name has a digit after its leading letter', '<div ona1="1"></div>', [['div ona1, an event attribute the content policy allows none of', '1']]],
+    ['both a style attribute and an event attribute on one element, both reported', '<div style="color: red" onclick="x()"></div>', [['div style, a style attribute the content policy allows none of', 'color: red'], ['div onclick, an event attribute the content policy allows none of', 'x()']]],
+  ];
+  it.each(MISFITS)('%s', (_name, page, refused) => {
+    let got;
+    expect(() => {
+      got = policyMisfits(page, hashes);
+    }).not.toThrow();
+    expect(got, refused.map(([form, what]) => `${form}: ${what}`).join('; ')).toEqual(refused);
+  });
+
+  it("reads the policy's own hashes when none are given", () => {
+    expect(STYLE_HASHES.length).toBeGreaterThan(0);
+    expect(policyMisfits(OWN)).toEqual([['style element, its hash not in the content policy', hashes[0]]]);
+  });
+});
+
+describe('the command the web build runs', () => {
+  const CHECK = path.join(repoRoot, 'scripts/check-built-page.mjs');
+  const OWN_STYLE = fs.readFileSync(path.join(webDir, 'index.html'), 'utf8').match(/<style\b[^>]*>[\s\S]*?<\/style\s*>/i)[0];
+  /** A build folder holding these files, the command run on it, the folder removed: its exit and its output. */
+  function run(files) {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'albedian-built-check-'));
+    try {
+      for (const [file, body] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(dist, file)), { recursive: true });
+        fs.writeFileSync(path.join(dist, file), body);
+      }
+      const r = spawnSync(process.execPath, [CHECK, dist], { encoding: 'utf8' });
+      return { status: r.status, out: r.stdout + r.stderr };
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  }
+
+  it('passes a build whose page and stylesheets the check finds nothing in, with its OK line', () => {
+    const r = run({ 'index.html': `<head>${OWN_STYLE}</head><script type="module" src="/assets/a.js"></script>`, 'assets/a.css': '.a{background:url(/b.png)}' });
+    expect(r.status).toBe(0);
+    expect(r.out).toContain("[check-built-page] OK: in the forms the check reads, as the build writes its pages and stylesheets, no address is outside the app's own origin and no inline form falls outside the content policy; this check is no guarantee of what a page loads (an enforced content security policy would be, and the app does not enforce one yet)");
+  });
+
+  it('fails a build with an outside address, naming file, form and address', () => {
+    const r = run({ 'index.html': `<head>${OWN_STYLE}</head><img src="https://example.com/i.png">` });
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('index.html: img src: https://example.com/i.png');
+  });
+
+  it('fails a build whose page holds an inline form the content policy would refuse, naming file, form and what', () => {
+    const r = run({ 'index.html': `<head>${OWN_STYLE}</head>`, 'sub/page.html': '<script>x()</script>' });
+    expect(r.status).toBe(1);
+    expect(r.out).toContain('[check-built-page] 1 inline form(s) in the built pages that the content policy would refuse:');
+    expect(r.out).toContain('sub/page.html: inline script, which the content policy allows none of: x()');
+    // Every .html page of the folder, sorted by path; b/c.html holds the app's own style, and non-.html files are skipped
+    expect(builtPolicyMisfitsIn({
+      'a.html': '<script>a()</script>',
+      'a/z.html': '<script>az()</script>',
+      'index.html': '<div style="a"></div>',
+      'b/c.html': OWN_STYLE,
+      'b/d.html': '<style>x</style>',
+      'note.html.txt': '<script>y()</script>',
+      'notehtml': '<script>w()</script>',
+    })).toEqual([
+      ['a.html', 'inline script, which the content policy allows none of', 'a()'],
+      ['a/z.html', 'inline script, which the content policy allows none of', 'az()'],
+      ['b/d.html', 'style element, its hash not in the content policy', styleHash('x')],
+      ['index.html', 'div style, a style attribute the content policy allows none of', 'a'],
+    ]);
+  });
+
+  /** builtPolicyMisfits over a folder made of these files. */
+  function builtPolicyMisfitsIn(files) {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'albedian-built-misfits-'));
+    try {
+      for (const [file, body] of Object.entries(files)) {
+        fs.mkdirSync(path.dirname(path.join(dist, file)), { recursive: true });
+        fs.writeFileSync(path.join(dist, file), body);
+      }
+      return builtPolicyMisfits(dist);
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  }
 });

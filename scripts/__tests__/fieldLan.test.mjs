@@ -12,6 +12,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import fc from 'fast-check';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createSourcesServer, listenOnLoopback } from '../../apps/web/spike/music/serveSources.mjs';
+import { POLICY, POLICY_HEADER } from '../content-policy.mjs';
 import { DISCOVER_PATH, refuseOnNetwork } from '../field-proxy-guard.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -191,7 +192,7 @@ describe('vite preview with the web app config, as --lan serves it', () => {
         let body = '';
         res.setEncoding('utf8');
         res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => resolve({ status: res.statusCode, body }));
+        res.on('end', () => resolve({ status: res.statusCode, body, headers: res.headers }));
       });
       req.on('error', reject);
       req.end();
@@ -264,6 +265,17 @@ describe('vite preview with the web app config, as --lan serves it', () => {
     const res = await get(portOf(devServer.httpServer), `/@fs${root}/data/uploads/planted-clip.txt`);
     expect(res.status).toBe(200);
     expect(res.body).toContain(MARKER);
+  });
+
+  // The policy governs what a page and its workers load, so it is held on the preview's own answers: the page, a file
+  // of the build, a miss. The API's answers come through the proxy as the API sends them, and are not read here.
+  it('sends the content policy report-only, and no policy that blocks, with the page, a file and a miss', async () => {
+    const port = portOf(preview.httpServer);
+    for (const route of ['/', '/index.html', '/no-such-file.png']) {
+      const res = await get(port, route);
+      expect(res.headers[POLICY_HEADER.toLowerCase()], route).toBe(POLICY);
+      expect(res.headers['content-security-policy'], route).toBeUndefined();
+    }
   });
 
   it('serves the built app', async () => {
