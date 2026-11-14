@@ -137,7 +137,9 @@ class TrueNorthAttitude(_Model):
 
 class MeasuredHeading(_Model):
     """The motion sample's attitude in the true-north frame, Core Location's true heading of the axis
-    `heading_orientation` names, the accuracy it stated, and the heading event's offset from the photo."""
+    `heading_orientation` names, `heading_accuracy_deg`, the possible error Core Location states for the magnetic
+    heading (CLHeading.headingAccuracy; it states none for the true heading), and the heading event's offset from the
+    photo."""
 
     state: Literal["measured"]
     attitude: TrueNorthAttitude

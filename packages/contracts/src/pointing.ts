@@ -5,8 +5,9 @@ import { wireInt, wireNumber, wireSha256, wireUtcInstant } from './wire.js';
  * The pointing record (spec `ios-capture-companion`, REQ-IOS-1.2, 1.3, 2, 6 and 7): what the phone's own sensors
  * said at the moment it took a photo, kept beside the photo and never inside it, and tied to it by the photo's
  * SHA-256. It says what was measured and how well, and never more:
- * - the device's attitude only with a heading, and a heading only with the accuracy the device stated for it and
- *   only when that accuracy is inside `HEADING_ACCURACY_LIMIT_DEG`; otherwise an explicit "no heading" and why;
+ * - the device's attitude only with a heading, and a heading only with the accuracy the device stated for its magnetic
+ *   heading, and only when that accuracy is inside `HEADING_ACCURACY_LIMIT_DEG`; otherwise an explicit "no heading" and
+ *   why (Apple states no accuracy for the true heading itself);
  * - a place only when the person allowed it, with the accuracy the device stated for it;
  * - every angle with its unit and frame in its field's name or type, and every accuracy the device's own number.
  * Its evidence statement is fixed: the record is a hint for the solvers and the basis of an approximate pose, never
@@ -21,9 +22,10 @@ import { wireInt, wireNumber, wireSha256, wireUtcInstant } from './wire.js';
  *   coremotion/cmacceleration/x ("in G's"), coremotion/getting-raw-gyroscope-events ("radians per second");
  *   sample times coremotion/cmlogitem/timestamp ("seconds since the device booted");
  * - heading: corelocation/clheading/trueheading (degrees from true north, 90 is east; "negative" when it could not
- *   be determined; needs location updates), corelocation/clheading/headingaccuracy ("maximum deviation (measured in
- *   degrees)"; "negative" means invalid), corelocation/cllocationmanager/headingorientation (the device axis the
- *   heading is measured along; faceUp, faceDown and unknown "have no effect");
+ *   be determined; needs location updates), corelocation/clheading/headingaccuracy (the maximum deviation in degrees
+ *   between the reported heading and the true geomagnetic heading, so the magnetic heading's possible error; Apple
+ *   states none for the true heading; "negative" means invalid), corelocation/cllocationmanager/headingorientation
+ *   (the device axis the heading is measured along; faceUp, faceDown and unknown "have no effect");
  * - place: corelocation/cllocationcoordinate2d (WGS 84), corelocation/cllocation/horizontalaccuracy (radius in
  *   metres; "negative" is invalid), corelocation/cllocation/verticalaccuracy (0 or negative means the altitudes
  *   are invalid), corelocation/cllocation/altitude and ellipsoidalaltitude, corelocation/claccuracyauthorization,
@@ -168,7 +170,8 @@ export type AttitudeQuaternion = z.infer<typeof AttitudeQuaternionSchema>;
 /**
  * A heading the device measured: the attitude of the motion sample in the true-north frame (which carries the
  * heading of every device axis, the camera's among them), Core Location's true heading of the axis
- * `headingOrientation` names, and the accuracy Core Location stated for it. The heading event's time is given as its
+ * `headingOrientation` names, and `headingAccuracyDeg`, the possible error Core Location states for the magnetic
+ * heading (CLHeading.headingAccuracy; it states none for the true heading). The heading event's time is given as its
  * offset from the photo on the device clock; it may precede the photo by any amount, since a still phone sends no new
  * heading events.
  */

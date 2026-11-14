@@ -26,7 +26,7 @@ Out of scope here: solving on the phone, the 3D flight on iOS, a native reveal (
 **User Story:** As someone under a dark sky, I want to take the photo in Albedian so it knows where I pointed the phone.
 - **Acceptance Criteria:**
   1. WHEN the user takes a photo, THE app SHALL keep the image file exactly as the camera wrote it (the `SourceAsset` is content addressed by its sha256 and never changed).
-  2. THE app SHALL record, in a separate pointing record and never inside the image file: the device attitude from Core Motion, the true heading and its stated accuracy, the camera's field of view from the active format, the lens, and when location is allowed, the location and its accuracy, plus the capture time from the device clock.
+  2. THE app SHALL record, in a separate pointing record and never inside the image file: the device attitude from Core Motion, the true heading and the accuracy Core Location states for the magnetic heading it is computed from (Apple states none for the true heading), the camera's field of view from the active format, the lens, and when location is allowed, the location and its accuracy, plus the capture time from the device clock.
   3. WHEN heading accuracy is unavailable or worse than a stated limit, THE pointing record SHALL say so and carry no heading, rather than a guessed one.
 
 ### REQ-IOS-2: Pointing is a hint, never evidence

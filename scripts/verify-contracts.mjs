@@ -49,6 +49,8 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'ConstellationBoundariesSchema',
   'BrightStarSupplementSchema',
   'PointingRecordSchema',
+  'PointingRecordReceiptSchema',
+  'PointingRecordRefusalSchema',
 ];
 // Numbers and limits the contracts export for both languages to share, not schemas
 const REQUIRED_CONTRACT_CONSTANTS = ['MIN_HELD_OUT_INLIERS', 'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX', 'SWEPT_FOV_TOLERANCE_DEG'];

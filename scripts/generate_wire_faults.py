@@ -33,7 +33,7 @@ if str(ROOT) not in sys.path:
 
 from pydantic import BaseModel, ValidationError  # noqa: E402
 
-from services.contracts import ingest, media, pointing, voice, wire  # noqa: E402
+from services.contracts import ingest, media, pointing, pointing_reply, voice, wire  # noqa: E402
 
 FAULTS_DIR = ROOT / "tests" / "fixtures" / "wire_faults"
 MARK = "@@wire fault@@"
@@ -144,6 +144,21 @@ def _pointing(schema: str, record: Any) -> Any:
     return pointing.PointingRecord.model_validate(record).model_dump(by_alias=True)
 
 
+REPLY_SCHEMAS = {"receipt": "PointingRecordReceipt", "refusal": "PointingRecordRefusal"}
+REPLY_MODELS = {
+    "PointingRecordReceipt": pointing_reply.PointingRecordReceipt,
+    "PointingRecordRefusal": pointing_reply.PointingRecordRefusal,
+}
+
+
+def _pointing_reply_samples(data: dict[str, Any]) -> list[tuple[str, str, Any]]:
+    return [(f"/valid/{i}/reply", REPLY_SCHEMAS[sample["kind"]], sample["reply"]) for i, sample in enumerate(data["valid"])]
+
+
+def _pointing_reply(schema: str, record: Any) -> Any:
+    return REPLY_MODELS[schema].model_validate(record).to_wire_dict()
+
+
 ANSWER_ADAPTERS = {"AnswerStatement": voice.ANSWER_STATEMENT, "VoiceAnswer": voice.VOICE_ANSWER}
 
 
@@ -155,9 +170,10 @@ def _answer(schema: str, record: Any) -> Any:
 PAIRS = {
     "media": Pair("tests/fixtures/media_contract.json", _by_schema, _media),
     "pointing": Pair("tests/fixtures/pointing_contract.json", _pointing_samples, _pointing),
+    "pointing_reply": Pair("tests/fixtures/pointing_reply_contract.json", _pointing_reply_samples, _pointing_reply),
     "voice_answer": Pair("tests/fixtures/voice_answer_contract.json", _by_schema, _answer),
 }
-PYTHON_NAMES = _python_names(media, ingest, pointing, voice)
+PYTHON_NAMES = _python_names(media, ingest, pointing, pointing_reply, voice)
 
 
 # =============================================================================================

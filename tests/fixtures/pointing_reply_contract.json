@@ -1,0 +1,3311 @@
+{
+ "format": "albedian.pointing-receipt",
+ "formatVersion": 1,
+ "limits": {
+  "issuesMax": 32,
+  "pathMaxDepth": 8
+ },
+ "routeSentences": {
+  "differentRecordHeld": "A different pointing record is already held for this photo.",
+  "anotherPhoto": "The record names another photo than the one in its address.",
+  "noSuchPhoto": "No photo with this SHA-256 is held, so no record is kept for it.",
+  "notARecord": "The body is not a pointing record by its contract.",
+  "notJson": "The body is not JSON text."
+ },
+ "refusalSentences": [
+  "A heading needs the place: true north is found from the device location, so a record with no place carries no heading.",
+  "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why.",
+  "No heading for want of a place needs a record with no place.",
+  "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit.",
+  "Only a heading left out for its accuracy carries a reported accuracy.",
+  "The attitude is a unit quaternion, as Core Motion reports it.",
+  "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused.",
+  "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp.",
+  "The motion window runs forward: it ends no earlier than it starts.",
+  "A SHA-256 of 64 zeros is a placeholder, not a hash.",
+  "A different pointing record is already held for this photo.",
+  "The record names another photo than the one in its address.",
+  "No photo with this SHA-256 is held, so no record is kept for it.",
+  "The body is not a pointing record by its contract.",
+  "The body is not JSON text."
+ ],
+ "recordKeys": [
+  "aboveEllipsoidM",
+  "aboveMeanSeaLevelM",
+  "accuracyAuthorization",
+  "activeFormatDimensionsPx",
+  "altitude",
+  "attitude",
+  "camera",
+  "capturedAtDeviceClockUTC",
+  "contentAwareDistortionCorrection",
+  "device",
+  "deviceType",
+  "distortionCorrected",
+  "endOffsetSec",
+  "eventOffsetFromPhotoSec",
+  "evidence",
+  "fieldOfView",
+  "fixOffsetFromPhotoSec",
+  "format",
+  "formatVersion",
+  "gravityDeviceG",
+  "hardwareModel",
+  "heading",
+  "headingAccuracyDeg",
+  "headingOrientation",
+  "height",
+  "horizontalAccuracyM",
+  "horizontalDeg",
+  "latDeg",
+  "location",
+  "lonDeg",
+  "maxRotationRateRadPerSec",
+  "motion",
+  "photoDimensionsPx",
+  "position",
+  "quaternion",
+  "reason",
+  "referenceFrame",
+  "reportedHeadingAccuracyDeg",
+  "role",
+  "rotationRateDeviceRadPerSec",
+  "sampleCount",
+  "sampleOffsetFromPhotoSec",
+  "sourceAssetSha256",
+  "startOffsetSec",
+  "state",
+  "statement",
+  "systemVersion",
+  "trueHeadingDeg",
+  "verticalAccuracyM",
+  "videoZoomFactor",
+  "w",
+  "width",
+  "window",
+  "x",
+  "y",
+  "z"
+ ],
+ "recordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+ "valid": [
+  {
+   "name": "a receipt for a record this request stored",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "a receipt for the same record sent again",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": true
+   }
+  },
+  {
+   "name": "a refusal: A heading needs the place: true north is found from the device location, so a record with no place carries no heading.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A heading needs the place: true north is found from the device location, so a record with no place carries no heading."
+   }
+  },
+  {
+   "name": "a refusal: A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why."
+   }
+  },
+  {
+   "name": "a refusal: No heading for want of a place needs a record with no place.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "No heading for want of a place needs a record with no place."
+   }
+  },
+  {
+   "name": "a refusal: A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit."
+   }
+  },
+  {
+   "name": "a refusal: Only a heading left out for its accuracy carries a reported accuracy.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "Only a heading left out for its accuracy carries a reported accuracy."
+   }
+  },
+  {
+   "name": "a refusal: The attitude is a unit quaternion, as Core Motion reports it.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The attitude is a unit quaternion, as Core Motion reports it."
+   }
+  },
+  {
+   "name": "a refusal: Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused."
+   }
+  },
+  {
+   "name": "a refusal: The motion sample is the one at the photo: its time lies within the limit of the photo timestamp.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp."
+   }
+  },
+  {
+   "name": "a refusal: The motion window runs forward: it ends no earlier than it starts.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The motion window runs forward: it ends no earlier than it starts."
+   }
+  },
+  {
+   "name": "a refusal: A SHA-256 of 64 zeros is a placeholder, not a hash.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A SHA-256 of 64 zeros is a placeholder, not a hash."
+   }
+  },
+  {
+   "name": "a refusal: A different pointing record is already held for this photo.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A different pointing record is already held for this photo."
+   }
+  },
+  {
+   "name": "a refusal: The record names another photo than the one in its address.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The record names another photo than the one in its address."
+   }
+  },
+  {
+   "name": "a refusal: No photo with this SHA-256 is held, so no record is kept for it.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "No photo with this SHA-256 is held, so no record is kept for it."
+   }
+  },
+  {
+   "name": "a refusal: The body is not a pointing record by its contract.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract."
+   }
+  },
+  {
+   "name": "a refusal: The body is not JSON text.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not JSON text."
+   }
+  },
+  {
+   "name": "a refusal by the rule headingNeedsPlace, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A heading needs the place: true north is found from the device location, so a record with no place carries no heading.",
+    "issues": [
+     {
+      "path": [
+       "heading"
+      ],
+      "message": "A heading needs the place: true north is found from the device location, so a record with no place carries no heading."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule headingInsideLimit, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "headingAccuracyDeg"
+      ],
+      "message": "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule noPlaceReasonNeedsNoPlace, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "No heading for want of a place needs a record with no place.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reason"
+      ],
+      "message": "No heading for want of a place needs a record with no place."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule outsideLimitCarriesAccuracy, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reportedHeadingAccuracyDeg"
+      ],
+      "message": "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule onlyOutsideLimitReportsAccuracy, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "Only a heading left out for its accuracy carries a reported accuracy.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reportedHeadingAccuracyDeg"
+      ],
+      "message": "Only a heading left out for its accuracy carries a reported accuracy."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule unitQuaternion, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The attitude is a unit quaternion, as Core Motion reports it.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "attitude",
+       "quaternion"
+      ],
+      "message": "The attitude is a unit quaternion, as Core Motion reports it."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule gravityNearOneG, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "gravityDeviceG"
+      ],
+      "message": "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule sampleAtThePhoto, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "sampleOffsetFromPhotoSec"
+      ],
+      "message": "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule windowRunsForward, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The motion window runs forward: it ends no earlier than it starts.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "window"
+      ],
+      "message": "The motion window runs forward: it ends no earlier than it starts."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the rule placeholderSha256, with its issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A SHA-256 of 64 zeros is a placeholder, not a hash.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "A SHA-256 of 64 zeros is a placeholder, not a hash."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule differentRecordHeld, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A different pointing record is already held for this photo.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "A different pointing record is already held for this photo."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule anotherPhoto, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The record names another photo than the one in its address.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "The record names another photo than the one in its address."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule noSuchPhoto, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "No photo with this SHA-256 is held, so no record is kept for it.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "No photo with this SHA-256 is held, so no record is kept for it."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule notARecord, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule notJson, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not JSON text.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "The body is not JSON text."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal with the most issues",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal with the deepest path",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "location",
+       "altitude",
+       "aboveEllipsoidM",
+       "x",
+       "x",
+       "x",
+       "x",
+       "x"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal with an empty issue list",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not JSON text.",
+    "issues": []
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "a receipt that is text",
+   "kind": "receipt",
+   "reply": "albedian.pointing-receipt"
+  },
+  {
+   "name": "a receipt that is a number",
+   "kind": "receipt",
+   "reply": 1
+  },
+  {
+   "name": "a receipt that is a list",
+   "kind": "receipt",
+   "reply": []
+  },
+  {
+   "name": "a receipt that is null",
+   "kind": "receipt",
+   "reply": null
+  },
+  {
+   "name": "a receipt that is true",
+   "kind": "receipt",
+   "reply": true
+  },
+  {
+   "name": "another format",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "format version 2",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 2,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "format version as text",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": "1",
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "format version true",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": true,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "no format version",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash a placeholder",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash in capitals",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840D2F2A4690637448F127B4AC7B86D08350B5F087F68AA45B4480F6F66B1FF2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash not hex",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "g40d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "no photo hash",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash a placeholder",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash in capitals",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "D977E7C9D4785CB8FEEF2FC31DA3CF5424EB14AD3B066F51473D61C47A18D254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash not hex",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "g977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash 63 characters",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d25",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash 65 characters",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254a",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "no record hash",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "alreadyStored as text",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": "true"
+   }
+  },
+  {
+   "name": "alreadyStored as 1",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": 1
+   }
+  },
+  {
+   "name": "alreadyStored null",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": null
+   }
+  },
+  {
+   "name": "no alreadyStored",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254"
+   }
+  },
+  {
+   "name": "a receipt with an unknown key",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false,
+    "storedAtUTC": "2031-01-01T00:00:00Z"
+   }
+  },
+  {
+   "name": "a refusal that is text",
+   "kind": "refusal",
+   "reply": "The body is not JSON text."
+  },
+  {
+   "name": "a refusal that is a list",
+   "kind": "refusal",
+   "reply": []
+  },
+  {
+   "name": "a refusal that is null",
+   "kind": "refusal",
+   "reply": null
+  },
+  {
+   "name": "a detail in free words",
+   "kind": "refusal",
+   "reply": {
+    "detail": "Expecting value: line 1 column 1 (char 0)"
+   }
+  },
+  {
+   "name": "a detail with a value of the record",
+   "kind": "refusal",
+   "reply": {
+    "detail": "latDeg 89.5"
+   }
+  },
+  {
+   "name": "a detail null",
+   "kind": "refusal",
+   "reply": {
+    "detail": null
+   }
+  },
+  {
+   "name": "no detail",
+   "kind": "refusal",
+   "reply": {
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "issues null",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": null
+   }
+  },
+  {
+   "name": "issues not a list",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": {
+     "path": [
+      "motion"
+     ],
+     "message": "The body is not a pointing record by its contract."
+    }
+   }
+  },
+  {
+   "name": "an issue not an object",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     "motion"
+    ]
+   }
+  },
+  {
+   "name": "an issue with no path",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue with no message",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue in free words",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "Input should be a valid number"
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue path not a list",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": "motion",
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue path naming a key the record made up",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "zqxSecret"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue path holding an index",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       0
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue with an unknown key",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract.",
+      "value": 89.5
+     }
+    ]
+   }
+  },
+  {
+   "name": "an issue with a snake_case key",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract.",
+      "field_path": [
+       "motion"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal with an unknown key",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ],
+    "status": 409
+   }
+  },
+  {
+   "name": "a refusal with a snake_case key",
+   "kind": "refusal",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ],
+    "issue_list": []
+   }
+  },
+  {
+   "name": "formatVersion under its Python name format_version",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "format_version": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "sourceAssetSha256 under its Python name source_asset_sha256",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "source_asset_sha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "pointingRecordSha256 under its Python name pointing_record_sha256",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointing_record_sha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "alreadyStored under its Python name already_stored",
+   "kind": "receipt",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "already_stored": false
+   }
+  }
+ ],
+ "edges": [
+  {
+   "name": "issues, the fewest: inside",
+   "kind": "refusal",
+   "verdict": "accepted",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": []
+   }
+  },
+  {
+   "name": "issues, the fewest: outside",
+   "kind": "refusal",
+   "verdict": "refused",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": null
+   }
+  },
+  {
+   "name": "issues, the most: inside",
+   "kind": "refusal",
+   "verdict": "accepted",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "issues, the most: outside",
+   "kind": "refusal",
+   "verdict": "refused",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     },
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a path, the shortest: inside",
+   "kind": "refusal",
+   "verdict": "accepted",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a path, the shortest: outside",
+   "kind": "refusal",
+   "verdict": "refused",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a path, the deepest: inside",
+   "kind": "refusal",
+   "verdict": "accepted",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a path, the deepest: outside",
+   "kind": "refusal",
+   "verdict": "refused",
+   "reply": {
+    "detail": "The body is not a pointing record by its contract.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion",
+       "motion"
+      ],
+      "message": "The body is not a pointing record by its contract."
+     }
+    ]
+   }
+  },
+  {
+   "name": "the photo's hash, 64 vs 63 characters: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, 64 vs 63 characters: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, 64 vs 65 characters: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, 64 vs 65 characters: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2a",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, leading zeros up to one bit: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000001",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, leading zeros up to one bit: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, trailing zeros: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "1000000000000000000000000000000000000000000000000000000000000000",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the photo's hash, trailing zeros: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, 64 vs 63 characters: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, 64 vs 63 characters: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d25",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, 64 vs 65 characters: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, 64 vs 65 characters: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254a",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, leading zeros up to one bit: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "0000000000000000000000000000000000000000000000000000000000000001",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, leading zeros up to one bit: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, trailing zeros: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "1000000000000000000000000000000000000000000000000000000000000000",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the record's hash, trailing zeros: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, below 1: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, below 1: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 0,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, above 1: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, above 1: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 2,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, 1.0 is 1: inside",
+   "kind": "receipt",
+   "verdict": "accepted",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1.0,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  },
+  {
+   "name": "the format version, 1.0 is 1: outside",
+   "kind": "receipt",
+   "verdict": "refused",
+   "reply": {
+    "format": "albedian.pointing-receipt",
+    "formatVersion": 1.5,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "pointingRecordSha256": "d977e7c9d4785cb8feef2fc31da3cf5424eb14ad3b066f51473d61c47a18d254",
+    "alreadyStored": false
+   }
+  }
+ ],
+ "wireFaults": [
+  {
+   "name": "receipt: unknown key at root",
+   "kind": "receipt",
+   "path": [],
+   "op": "add",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal: unknown key at root",
+   "kind": "refusal",
+   "path": [],
+   "op": "add",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal: unknown key in issue",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0
+   ],
+   "op": "add",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt: formatVersion renamed to format_version",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "rename",
+   "to": "format_version",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt: sourceAssetSha256 renamed to source_asset_sha256",
+   "kind": "receipt",
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "op": "rename",
+   "to": "source_asset_sha256",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt: pointingRecordSha256 renamed to pointing_record_sha256",
+   "kind": "receipt",
+   "path": [
+    "pointingRecordSha256"
+   ],
+   "op": "rename",
+   "to": "pointing_record_sha256",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt: alreadyStored renamed to already_stored",
+   "kind": "receipt",
+   "path": [
+    "alreadyStored"
+   ],
+   "op": "rename",
+   "to": "already_stored",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: 1.0",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "1.0",
+   "verdict": "accepted"
+  },
+  {
+   "name": "receipt.formatVersion: 1e400",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "1e400",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: a 401 digit integer",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: 2^53 + 1",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "9007199254740993",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: minus zero",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "-0.0",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: true",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "true",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.formatVersion: text",
+   "kind": "receipt",
+   "path": [
+    "formatVersion"
+   ],
+   "op": "raw",
+   "raw": "\"1\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.alreadyStored: 1",
+   "kind": "receipt",
+   "path": [
+    "alreadyStored"
+   ],
+   "op": "raw",
+   "raw": "1",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.alreadyStored: the text true",
+   "kind": "receipt",
+   "path": [
+    "alreadyStored"
+   ],
+   "op": "raw",
+   "raw": "\"true\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.format: over long",
+   "kind": "receipt",
+   "path": [
+    "format"
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.format: a lone surrogate",
+   "kind": "receipt",
+   "path": [
+    "format"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.format: outside the basic plane",
+   "kind": "receipt",
+   "path": [
+    "format"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.format: a control character",
+   "kind": "receipt",
+   "path": [
+    "format"
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.sourceAssetSha256: over long",
+   "kind": "receipt",
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.sourceAssetSha256: a lone surrogate",
+   "kind": "receipt",
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.sourceAssetSha256: outside the basic plane",
+   "kind": "receipt",
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.sourceAssetSha256: a control character",
+   "kind": "receipt",
+   "path": [
+    "sourceAssetSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.pointingRecordSha256: over long",
+   "kind": "receipt",
+   "path": [
+    "pointingRecordSha256"
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.pointingRecordSha256: a lone surrogate",
+   "kind": "receipt",
+   "path": [
+    "pointingRecordSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.pointingRecordSha256: outside the basic plane",
+   "kind": "receipt",
+   "path": [
+    "pointingRecordSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "receipt.pointingRecordSha256: a control character",
+   "kind": "receipt",
+   "path": [
+    "pointingRecordSha256"
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.detail: over long",
+   "kind": "refusal",
+   "path": [
+    "detail"
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.detail: a lone surrogate",
+   "kind": "refusal",
+   "path": [
+    "detail"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.detail: outside the basic plane",
+   "kind": "refusal",
+   "path": [
+    "detail"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.detail: a control character",
+   "kind": "refusal",
+   "path": [
+    "detail"
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.path.0: over long",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "path",
+    0
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.path.0: a lone surrogate",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "path",
+    0
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.path.0: outside the basic plane",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "path",
+    0
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.path.0: a control character",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "path",
+    0
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.message: over long",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "message"
+   ],
+   "op": "raw",
+   "raw": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.message: a lone surrogate",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "message"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud800\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.message: outside the basic plane",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "message"
+   ],
+   "op": "raw",
+   "raw": "\"\\ud83c\\udf0c\"",
+   "verdict": "refused"
+  },
+  {
+   "name": "refusal.issues.0.message: a control character",
+   "kind": "refusal",
+   "path": [
+    "issues",
+    0,
+    "message"
+   ],
+   "op": "raw",
+   "raw": "\"\\u0000\"",
+   "verdict": "refused"
+  }
+ ],
+ "valueFree": [
+  {
+   "rule": "headingNeedsPlace",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "none",
+     "reason": "not_allowed"
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "A heading needs the place: true north is found from the device location, so a record with no place carries no heading.",
+    "issues": [
+     {
+      "path": [
+       "heading"
+      ],
+      "message": "A heading needs the place: true north is found from the device location, so a record with no place carries no heading."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "headingInsideLimit",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 25.5,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "headingAccuracyDeg"
+      ],
+      "message": "A measured heading has an accuracy inside the limit; outside it, the record says there is no heading and why."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "noPlaceReasonNeedsNoPlace",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "none",
+     "reason": "no_place"
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "No heading for want of a place needs a record with no place.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reason"
+      ],
+      "message": "No heading for want of a place needs a record with no place."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "outsideLimitCarriesAccuracy",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "none",
+     "reason": "accuracy_outside_limit",
+     "reportedHeadingAccuracyDeg": 25.0
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reportedHeadingAccuracyDeg"
+      ],
+      "message": "A heading left out for its accuracy carries the accuracy the device reported, and that accuracy is outside the limit."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "onlyOutsideLimitReportsAccuracy",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "none",
+     "reason": "heading_invalid",
+     "reportedHeadingAccuracyDeg": 41.5
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "Only a heading left out for its accuracy carries a reported accuracy.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "reportedHeadingAccuracyDeg"
+      ],
+      "message": "Only a heading left out for its accuracy carries a reported accuracy."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "unitQuaternion",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.3,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "The attitude is a unit quaternion, as Core Motion reports it.",
+    "issues": [
+     {
+      "path": [
+       "heading",
+       "attitude",
+       "quaternion"
+      ],
+      "message": "The attitude is a unit quaternion, as Core Motion reports it."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "gravityNearOneG",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": -2.0
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "gravityDeviceG"
+      ],
+      "message": "Gravity is given in g, so its length lies inside the stated band around one g: a zero vector, or one written in metres per second squared, is refused."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "sampleAtThePhoto",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.060000000000000005,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "sampleOffsetFromPhotoSec"
+      ],
+      "message": "The motion sample is the one at the photo: its time lies within the limit of the photo timestamp."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "windowRunsForward",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "840d2f2a4690637448f127b4ac7b86d08350b5f087f68aa45b4480f6f66b1ff2",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": -0.6,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "The motion window runs forward: it ends no earlier than it starts.",
+    "issues": [
+     {
+      "path": [
+       "motion",
+       "window"
+      ],
+      "message": "The motion window runs forward: it ends no earlier than it starts."
+     }
+    ]
+   }
+  },
+  {
+   "rule": "placeholderSha256",
+   "record": {
+    "format": "albedian.pointing-record",
+    "formatVersion": 1,
+    "sourceAssetSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "capturedAtDeviceClockUTC": "2030-01-01T02:00:00Z",
+    "device": {
+     "hardwareModel": "Synthetic1,1",
+     "systemVersion": "27.1"
+    },
+    "camera": {
+     "position": "back",
+     "deviceType": "wide_angle",
+     "activeFormatDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "photoDimensionsPx": {
+      "width": 4032,
+      "height": 3024
+     },
+     "fieldOfView": {
+      "state": "reported",
+      "horizontalDeg": 69.5,
+      "distortionCorrected": true
+     },
+     "videoZoomFactor": 1.0,
+     "contentAwareDistortionCorrection": false
+    },
+    "motion": {
+     "sampleOffsetFromPhotoSec": -0.004,
+     "gravityDeviceG": {
+      "x": 0.0,
+      "y": -0.6,
+      "z": -0.8
+     },
+     "rotationRateDeviceRadPerSec": {
+      "x": 0.002,
+      "y": -0.001,
+      "z": 0.0005
+     },
+     "window": {
+      "startOffsetSec": -0.5,
+      "endOffsetSec": 10.5,
+      "sampleCount": 1101,
+      "maxRotationRateRadPerSec": 0.004
+     }
+    },
+    "heading": {
+     "state": "measured",
+     "attitude": {
+      "referenceFrame": "x_true_north_z_vertical",
+      "quaternion": {
+       "x": 0.2,
+       "y": -0.4,
+       "z": 0.4,
+       "w": 0.8
+      }
+     },
+     "trueHeadingDeg": 212.5,
+     "headingAccuracyDeg": 12.0,
+     "headingOrientation": "portrait",
+     "eventOffsetFromPhotoSec": -1.25
+    },
+    "location": {
+     "state": "allowed",
+     "latDeg": 30.0,
+     "lonDeg": -40.0,
+     "horizontalAccuracyM": 8.0,
+     "accuracyAuthorization": "full",
+     "altitude": {
+      "aboveMeanSeaLevelM": 12.0,
+      "aboveEllipsoidM": 45.5,
+      "verticalAccuracyM": 3.0
+     },
+     "fixOffsetFromPhotoSec": -2.5
+    },
+    "evidence": {
+     "role": "pointing_hint",
+     "statement": "The phone sensors say where the phone pointed. This record is a hint for the solvers and the basis of an approximate pose, never a measurement of the sky: anything placed from it is predicted, and a finding becomes catalog_matched only through held-out verification."
+    }
+   },
+   "refusal": {
+    "detail": "A SHA-256 of 64 zeros is a placeholder, not a hash.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "A SHA-256 of 64 zeros is a placeholder, not a hash."
+     }
+    ]
+   }
+  }
+ ]
+}
