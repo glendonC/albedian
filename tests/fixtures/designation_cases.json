@@ -375,10 +375,10 @@
         "bayerDesignation": "Gamma Cassiopeiae",
         "flamsteedNumber": 27
       },
-      "title": "HIP 4427",
+      "title": "Gamma Cassiopeiae",
       "subtitleParts": [
-        "Gamma Cassiopeiae",
-        "27 Cas"
+        "27 Cas",
+        "HIP 4427"
       ]
     },
     {
@@ -388,9 +388,9 @@
         "constellation": "Cas",
         "flamsteedNumber": 27
       },
-      "title": "HIP 4427",
+      "title": "27 Cassiopeiae",
       "subtitleParts": [
-        "27 Cas"
+        "HIP 4427"
       ]
     },
     {
@@ -400,9 +400,9 @@
         "constellation": "Cassiopeia",
         "flamsteedNumber": 27
       },
-      "title": "HIP 4427",
+      "title": "27 Cassiopeiae",
       "subtitleParts": [
-        "27 Cas"
+        "HIP 4427"
       ]
     },
     {
@@ -458,6 +458,697 @@
         "Gaia DR3 3337991583943473280"
       ]
     }
+  ],
+  "flamsteedProbes": [
+    [
+      1,
+      "And",
+      "1 And",
+      "1 Andromedae"
+    ],
+    [
+      1.0,
+      "Cas",
+      "1 Cas",
+      "1 Cassiopeiae"
+    ],
+    [
+      27,
+      "Cas",
+      "27 Cas",
+      "27 Cassiopeiae"
+    ],
+    [
+      27.0,
+      "Cas",
+      "27 Cas",
+      "27 Cassiopeiae"
+    ],
+    [
+      119,
+      "Tau",
+      "119 Tau",
+      "119 Tauri"
+    ],
+    [
+      119.0,
+      "Tau",
+      "119 Tau",
+      "119 Tauri"
+    ],
+    [
+      62,
+      "Sagittarius",
+      "62 Sgr",
+      "62 Sagittarii"
+    ],
+    [
+      62.0,
+      "Sagittarius",
+      "62 Sgr",
+      "62 Sagittarii"
+    ],
+    [
+      140,
+      "Vul",
+      "140 Vul",
+      "140 Vulpeculae"
+    ],
+    [
+      140.0,
+      "Vulpecula",
+      "140 Vul",
+      "140 Vulpeculae"
+    ],
+    [
+      0,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      0.0,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "__NEG_ZERO__",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      -1,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      -1.0,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      141,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      141.0,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      0.5,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      1.5,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      27.5,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      140.5,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "__NAN__",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "__INF__",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "__NEG_INF__",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      true,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      false,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "27",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      null,
+      "Cas",
+      null,
+      null
+    ],
+    [
+      "__UNDEFINED__",
+      "Cas",
+      null,
+      null
+    ],
+    [
+      [
+        27
+      ],
+      "Cas",
+      null,
+      null
+    ],
+    [
+      27,
+      "Nowhere",
+      null,
+      null
+    ],
+    [
+      27,
+      "cas",
+      null,
+      null
+    ],
+    [
+      27,
+      "",
+      null,
+      null
+    ],
+    [
+      27,
+      "   ",
+      null,
+      null
+    ],
+    [
+      27,
+      "Serpens Caput",
+      null,
+      null
+    ],
+    [
+      27,
+      null,
+      null,
+      null
+    ],
+    [
+      27,
+      "__UNDEFINED__",
+      null,
+      null
+    ],
+    [
+      27,
+      27,
+      null,
+      null
+    ],
+    [
+      27,
+      [
+        "Cas"
+      ],
+      null,
+      null
+    ]
+  ],
+  "compactProbes": [
+    [
+      "Alpha2 Capricorni",
+      "α² Cap"
+    ],
+    [
+      "Lambda Orionis",
+      "λ Ori"
+    ],
+    [
+      "Alpha Canis Majoris",
+      "α CMa"
+    ],
+    [
+      "",
+      null
+    ],
+    [
+      "   ",
+      null
+    ],
+    [
+      "Alpha Ori",
+      null
+    ],
+    [
+      "alpha Orionis",
+      null
+    ],
+    [
+      "Lamda Orionis",
+      null
+    ],
+    [
+      "Alpha Orionis\n",
+      null
+    ],
+    [
+      null,
+      null
+    ],
+    [
+      "__UNDEFINED__",
+      null
+    ],
+    [
+      123,
+      null
+    ],
+    [
+      true,
+      null
+    ],
+    [
+      [
+        "Alpha Orionis"
+      ],
+      null
+    ]
+  ],
+  "titleProbes": [
+    [
+      "wire_whole_float_flamsteed_title",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        27.0
+      ],
+      "27 Cassiopeiae",
+      [
+        "HIP 4427"
+      ]
+    ],
+    [
+      "wire_whole_float_119_tau",
+      [
+        "Gaia DR3 3400796031719045632",
+        "Gaia DR3 3400796031719045632",
+        "Tau",
+        "__UNDEFINED__",
+        119.0
+      ],
+      "119 Tauri",
+      [
+        "Gaia DR3 3400796031719045632"
+      ]
+    ],
+    [
+      "wire_whole_float_flamsteed_subtitle",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27.0
+      ],
+      "Gamma Cassiopeiae",
+      [
+        "27 Cas",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "named_with_whole_float_flamsteed",
+      [
+        "HIP 4427",
+        "Navi",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27.0
+      ],
+      "Navi",
+      [
+        "Gamma Cassiopeiae",
+        "27 Cas",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "fractional_float_1_5",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        1.5
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "str_flamsteed_27",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        "27"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "bool_true_flamsteed",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        true
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "nan_flamsteed",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        "__NAN__"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "inf_flamsteed",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        "__INF__"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "null_flamsteed",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "__UNDEFINED__",
+        null
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "empty_common_with_bayer",
+      [
+        "HIP 4427",
+        "",
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "Gamma Cassiopeiae",
+      [
+        "HIP 4427"
+      ]
+    ],
+    [
+      "spaces_common_with_bayer",
+      [
+        "HIP 4427",
+        "   ",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27
+      ],
+      "Gamma Cassiopeiae",
+      [
+        "27 Cas",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "tabs_common_with_flamsteed",
+      [
+        "HIP 4427",
+        " \t\n\r\f\u000b ",
+        "Cas",
+        "__UNDEFINED__",
+        27
+      ],
+      "27 Cassiopeiae",
+      [
+        "HIP 4427"
+      ]
+    ],
+    [
+      "nbsp_common_only_id",
+      [
+        "HIP 4427",
+        " ",
+        "Cas",
+        "__UNDEFINED__",
+        "__UNDEFINED__"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "empty_bayer_with_flamsteed",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "",
+        27
+      ],
+      "27 Cassiopeiae",
+      [
+        "HIP 4427"
+      ]
+    ],
+    [
+      "spaces_bayer_only_id",
+      [
+        "HIP 4427",
+        "HIP 4427",
+        "Cas",
+        "   ",
+        "__UNDEFINED__"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "empty_bayer_and_common",
+      [
+        "HIP 4427",
+        "",
+        "Cas",
+        "",
+        "__UNDEFINED__"
+      ],
+      "HIP 4427",
+      []
+    ],
+    [
+      "empty_source_id_with_bayer",
+      [
+        "",
+        "",
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "Gamma Cassiopeiae",
+      []
+    ],
+    [
+      "spaces_source_id_with_bayer",
+      [
+        "   ",
+        "   ",
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "Gamma Cassiopeiae",
+      []
+    ],
+    [
+      "all_empty_strings",
+      [
+        "",
+        "",
+        "Cas",
+        "",
+        "__UNDEFINED__"
+      ],
+      "",
+      []
+    ],
+    [
+      "all_spaces_strings",
+      [
+        "   ",
+        "   ",
+        "Cas",
+        "   ",
+        "__UNDEFINED__"
+      ],
+      "   ",
+      []
+    ],
+    [
+      "non_string_source_id_missing",
+      [
+        null,
+        null,
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "Gamma Cassiopeiae",
+      []
+    ],
+    [
+      "non_string_int_source_id",
+      [
+        123,
+        123,
+        "Cas",
+        "__UNDEFINED__",
+        "__UNDEFINED__"
+      ],
+      "",
+      []
+    ],
+    [
+      "non_string_all_missing",
+      [
+        "__UNDEFINED__",
+        "__UNDEFINED__",
+        "__UNDEFINED__",
+        "__UNDEFINED__",
+        "__UNDEFINED__"
+      ],
+      "",
+      []
+    ],
+    [
+      "nel_u0085_not_blank_parity",
+      [
+        "HIP 4427",
+        "__NEL_U0085__",
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "",
+      [
+        "Gamma Cassiopeiae",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "unit_sep_u001f_not_blank_parity",
+      [
+        "HIP 4427",
+        "__US_U001F__",
+        "Cas",
+        "Gamma Cassiopeiae",
+        "__UNDEFINED__"
+      ],
+      "\u001f",
+      [
+        "Gamma Cassiopeiae",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "named_equals_bayer",
+      [
+        "HIP 4427",
+        "Gamma Cassiopeiae",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27
+      ],
+      "Gamma Cassiopeiae",
+      [
+        "27 Cas",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "named_equals_flamsteed_long",
+      [
+        "HIP 4427",
+        "27 Cassiopeiae",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27
+      ],
+      "27 Cassiopeiae",
+      [
+        "Gamma Cassiopeiae",
+        "HIP 4427"
+      ]
+    ],
+    [
+      "named_equals_flamsteed_short",
+      [
+        "HIP 4427",
+        "27 Cas",
+        "Cas",
+        "Gamma Cassiopeiae",
+        27
+      ],
+      "27 Cas",
+      [
+        "Gamma Cassiopeiae",
+        "HIP 4427"
+      ]
+    ]
   ],
   "storedOldShape": {
     "before": {

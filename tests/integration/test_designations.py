@@ -16,6 +16,7 @@ import re
 import sys
 import unicodedata
 from pathlib import Path
+from collections import Counter
 from typing import Any
 
 import pytest
@@ -200,6 +201,118 @@ def _stored_old_shape() -> dict[str, Any]:
     return {"before": before, "after": upgrade_stored_solution(before)}
 
 
+_PROBE_TOKENS: dict[str, Any] = {
+    "__NAN__": float("nan"),
+    "__INF__": float("inf"),
+    "__NEG_INF__": float("-inf"),
+    "__NEG_ZERO__": -0.0,
+    "__NEL_U0085__": "\u0085",
+    "__US_U001F__": "\u001f",
+}
+
+
+def _decode_probe(token: Any) -> Any:
+    return _PROBE_TOKENS[token] if isinstance(token, str) and token in _PROBE_TOKENS else token
+
+
+def _build_probe_ref(parts: list[Any]) -> dict[str, Any]:
+    keys = ("catalogSourceId", "commonName", "constellation", "bayerDesignation", "flamsteedNumber")
+    return {k: _decode_probe(v) for k, v in zip(keys, parts, strict=True) if v != "__UNDEFINED__"}
+
+
+FLAMSTEED_PROBES: list[list[Any]] = [
+    [1, "And", "1 And", "1 Andromedae"],
+    [1.0, "Cas", "1 Cas", "1 Cassiopeiae"],
+    [27, "Cas", "27 Cas", "27 Cassiopeiae"],
+    [27.0, "Cas", "27 Cas", "27 Cassiopeiae"],
+    [119, "Tau", "119 Tau", "119 Tauri"],
+    [119.0, "Tau", "119 Tau", "119 Tauri"],
+    [62, "Sagittarius", "62 Sgr", "62 Sagittarii"],
+    [62.0, "Sagittarius", "62 Sgr", "62 Sagittarii"],
+    [FLAMSTEED_NUMBER_MAX, "Vul", "140 Vul", "140 Vulpeculae"],
+    [float(FLAMSTEED_NUMBER_MAX), "Vulpecula", "140 Vul", "140 Vulpeculae"],
+    [0, "Cas", None, None],
+    [0.0, "Cas", None, None],
+    ["__NEG_ZERO__", "Cas", None, None],
+    [-1, "Cas", None, None],
+    [-1.0, "Cas", None, None],
+    [FLAMSTEED_NUMBER_MAX + 1, "Cas", None, None],
+    [float(FLAMSTEED_NUMBER_MAX + 1), "Cas", None, None],
+    [0.5, "Cas", None, None],
+    [1.5, "Cas", None, None],
+    [27.5, "Cas", None, None],
+    [140.5, "Cas", None, None],
+    ["__NAN__", "Cas", None, None],
+    ["__INF__", "Cas", None, None],
+    ["__NEG_INF__", "Cas", None, None],
+    [True, "Cas", None, None],
+    [False, "Cas", None, None],
+    ["27", "Cas", None, None],
+    ["", "Cas", None, None],
+    [None, "Cas", None, None],
+    ["__UNDEFINED__", "Cas", None, None],
+    [[27], "Cas", None, None],
+    [27, "Nowhere", None, None],
+    [27, "cas", None, None],
+    [27, "", None, None],
+    [27, "   ", None, None],
+    [27, "Serpens Caput", None, None],
+    [27, None, None, None],
+    [27, "__UNDEFINED__", None, None],
+    [27, 27, None, None],
+    [27, ["Cas"], None, None],
+]
+
+COMPACT_PROBES: list[list[Any]] = [
+    ["Alpha2 Capricorni", "α² Cap"],
+    ["Lambda Orionis", "λ Ori"],
+    ["Alpha Canis Majoris", "α CMa"],
+    ["", None],
+    ["   ", None],
+    ["Alpha Ori", None],
+    ["alpha Orionis", None],
+    ["Lamda Orionis", None],
+    ["Alpha Orionis\n", None],
+    [None, None],
+    ["__UNDEFINED__", None],
+    [123, None],
+    [True, None],
+    [["Alpha Orionis"], None],
+]
+
+TITLE_PROBES: list[list[Any]] = [
+    ["wire_whole_float_flamsteed_title", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", 27.0], "27 Cassiopeiae", ["HIP 4427"]],
+    ["wire_whole_float_119_tau", ["Gaia DR3 3400796031719045632", "Gaia DR3 3400796031719045632", "Tau", "__UNDEFINED__", 119.0], "119 Tauri", ["Gaia DR3 3400796031719045632"]],
+    ["wire_whole_float_flamsteed_subtitle", ["HIP 4427", "HIP 4427", "Cas", "Gamma Cassiopeiae", 27.0], "Gamma Cassiopeiae", ["27 Cas", "HIP 4427"]],
+    ["named_with_whole_float_flamsteed", ["HIP 4427", "Navi", "Cas", "Gamma Cassiopeiae", 27.0], "Navi", ["Gamma Cassiopeiae", "27 Cas", "HIP 4427"]],
+    ["fractional_float_1_5", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", 1.5], "HIP 4427", []],
+    ["str_flamsteed_27", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", "27"], "HIP 4427", []],
+    ["bool_true_flamsteed", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", True], "HIP 4427", []],
+    ["nan_flamsteed", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", "__NAN__"], "HIP 4427", []],
+    ["inf_flamsteed", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", "__INF__"], "HIP 4427", []],
+    ["null_flamsteed", ["HIP 4427", "HIP 4427", "Cas", "__UNDEFINED__", None], "HIP 4427", []],
+    ["empty_common_with_bayer", ["HIP 4427", "", "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "Gamma Cassiopeiae", ["HIP 4427"]],
+    ["spaces_common_with_bayer", ["HIP 4427", "   ", "Cas", "Gamma Cassiopeiae", 27], "Gamma Cassiopeiae", ["27 Cas", "HIP 4427"]],
+    ["tabs_common_with_flamsteed", ["HIP 4427", " \t\n\r\f\v\u00a0", "Cas", "__UNDEFINED__", 27], "27 Cassiopeiae", ["HIP 4427"]],
+    ["nbsp_common_only_id", ["HIP 4427", "\u00a0", "Cas", "__UNDEFINED__", "__UNDEFINED__"], "HIP 4427", []],
+    ["empty_bayer_with_flamsteed", ["HIP 4427", "HIP 4427", "Cas", "", 27], "27 Cassiopeiae", ["HIP 4427"]],
+    ["spaces_bayer_only_id", ["HIP 4427", "HIP 4427", "Cas", "   ", "__UNDEFINED__"], "HIP 4427", []],
+    ["empty_bayer_and_common", ["HIP 4427", "", "Cas", "", "__UNDEFINED__"], "HIP 4427", []],
+    ["empty_source_id_with_bayer", ["", "", "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "Gamma Cassiopeiae", []],
+    ["spaces_source_id_with_bayer", ["   ", "   ", "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "Gamma Cassiopeiae", []],
+    ["all_empty_strings", ["", "", "Cas", "", "__UNDEFINED__"], "", []],
+    ["all_spaces_strings", ["   ", "   ", "Cas", "   ", "__UNDEFINED__"], "   ", []],
+    ["non_string_source_id_missing", [None, None, "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "Gamma Cassiopeiae", []],
+    ["non_string_int_source_id", [123, 123, "Cas", "__UNDEFINED__", "__UNDEFINED__"], "", []],
+    ["non_string_all_missing", ["__UNDEFINED__", "__UNDEFINED__", "__UNDEFINED__", "__UNDEFINED__", "__UNDEFINED__"], "", []],
+    ["nel_u0085_not_blank_parity", ["HIP 4427", "__NEL_U0085__", "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "\u0085", ["Gamma Cassiopeiae", "HIP 4427"]],
+    ["unit_sep_u001f_not_blank_parity", ["HIP 4427", "__US_U001F__", "Cas", "Gamma Cassiopeiae", "__UNDEFINED__"], "\u001f", ["Gamma Cassiopeiae", "HIP 4427"]],
+    ["named_equals_bayer", ["HIP 4427", "Gamma Cassiopeiae", "Cas", "Gamma Cassiopeiae", 27], "Gamma Cassiopeiae", ["27 Cas", "HIP 4427"]],
+    ["named_equals_flamsteed_long", ["HIP 4427", "27 Cassiopeiae", "Cas", "Gamma Cassiopeiae", 27], "27 Cassiopeiae", ["Gamma Cassiopeiae", "HIP 4427"]],
+    ["named_equals_flamsteed_short", ["HIP 4427", "27 Cas", "Cas", "Gamma Cassiopeiae", 27], "27 Cas", ["Gamma Cassiopeiae", "HIP 4427"]],
+]
+
+
 def build_cases() -> dict[str, Any]:
     longs = sorted({s.bayer_designation for s in ALL_SKY_CATALOG_STARS if s.bayer_designation})
     longs += ["Alpha2 Capricorni", "Omega9 Vulpeculae", "Alpha Ori", "alpha Orionis", "Lamda Orionis", "", "α Ori"]
@@ -211,6 +324,9 @@ def build_cases() -> dict[str, Any]:
             for n, c in ((27, "Cas"), (1, "Andromeda"), (FLAMSTEED_NUMBER_MAX, "Vul"), (0, "Cas"), (FLAMSTEED_NUMBER_MAX + 1, "Cas"), (27, "Nowhere"), (27, "cas"))
         ],
         "titles": _title_cases(),
+        "flamsteedProbes": FLAMSTEED_PROBES,
+        "compactProbes": COMPACT_PROBES,
+        "titleProbes": TITLE_PROBES,
         # AUDIT H's made-up stored solution of the old shape, and how it is read now: the web's schema refuses the one
         # and takes the other (packages/contracts/src/__tests__/designation.test.ts)
         "storedOldShape": _stored_old_shape(),
@@ -221,9 +337,53 @@ def build_cases() -> dict[str, Any]:
 
 def test_the_shared_cases_are_current() -> None:
     cases = build_cases()
+    rendered = json.dumps(cases, indent=2, ensure_ascii=False) + "\n"
     if os.environ.get(UPDATE_ENV) == "1":
-        CASES.write_text(json.dumps(cases, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    assert json.loads(CASES.read_text(encoding="utf-8")) == cases, f"regenerate with {UPDATE_ENV}=1 uv run pytest {Path(__file__).relative_to(ROOT)}"
+        CASES.write_text(rendered, encoding="utf-8")
+    assert CASES.read_text(encoding="utf-8") == rendered, (
+        f"regenerate with {UPDATE_ENV}=1 uv run pytest {Path(__file__).relative_to(ROOT)}"
+    )
+
+
+def test_the_designation_contract_exports_each_symbol_by_name() -> None:
+    expected = [
+        "BAYER_DESIGNATION_PATTERN",
+        "FLAMSTEED_NUMBER_MAX",
+        "FLAMSTEED_NUMBER_MIN",
+        "catalog_title",
+        "compact_designation",
+        "flamsteed_designation",
+        "flamsteed_long_designation",
+        "long_designation",
+    ]
+    assert dz.__all__ == expected
+    assert all(hasattr(dz, name) for name in dz.__all__)
+
+
+def _safe_call(fn: Any, *args: Any) -> tuple[str, Any]:
+    try:
+        return ("ok", fn(*args))
+    except Exception as exc:  # noqa: BLE001
+        return ("err", type(exc).__name__)
+
+
+def test_python_and_typescript_designation_parity_probes() -> None:
+    loaded = json.loads(CASES.read_text(encoding="utf-8"))
+    for num_tok, con_tok, exp_short, exp_long in loaded.get("flamsteedProbes", FLAMSTEED_PROBES):
+        num = None if num_tok == "__UNDEFINED__" else _decode_probe(num_tok)
+        con = None if con_tok == "__UNDEFINED__" else _decode_probe(con_tok)
+        assert _safe_call(dz.flamsteed_designation, num, con) == ("ok", exp_short), (num_tok, con_tok)
+        assert _safe_call(dz.flamsteed_long_designation, num, con) == ("ok", exp_long), (num_tok, con_tok)
+    for abbr, name, genitive in DESIGNATION_CONSTELLATIONS:
+        assert _safe_call(dz.flamsteed_designation, 1.0, abbr) == ("ok", f"1 {abbr}")
+        assert _safe_call(dz.flamsteed_long_designation, 140.0, name) == ("ok", f"140 {genitive}")
+    for text_tok, exp_compact in loaded.get("compactProbes", COMPACT_PROBES):
+        val = None if text_tok == "__UNDEFINED__" else _decode_probe(text_tok)
+        assert _safe_call(dz.compact_designation, val) == ("ok", exp_compact), text_tok
+    for tag, raw_parts, exp_title, exp_sub in loaded.get("titleProbes", TITLE_PROBES):
+        ref = _build_probe_ref(raw_parts)
+        kind, res = _safe_call(dz.catalog_title, ref)
+        assert (kind, (res[0], list(res[1])) if kind == "ok" else res) == ("ok", (exp_title, exp_sub)), tag
 
 
 def test_the_long_form_from_abbreviations() -> None:
@@ -260,12 +420,13 @@ def test_the_compact_form_and_the_title_order() -> None:
         assert dz.compact_designation(text) is None, text
     titles = {json.dumps(c["reference"], sort_keys=True): (c["title"], c["subtitleParts"]) for c in _title_cases()}
     assert list(titles.values()) == [
-        # The title is the common name, else the catalog id, as main showed on both paths before catalog-2b; the
-        # designations go in the subtitle
+        # The title is the IAU name, else the Bayer designation, else the Flamsteed designation with the genitive in
+        # full, else the catalog id (catalog-2c, the owner's yes); the others go in the subtitle, the Flamsteed one
+        # never again in its short form when it is the title
         ("Navi", ["Gamma Cassiopeiae", "27 Cas", "HIP 4427"]),
-        ("HIP 4427", ["Gamma Cassiopeiae", "27 Cas"]),
-        ("HIP 4427", ["27 Cas"]),
-        ("HIP 4427", ["27 Cas"]),
+        ("Gamma Cassiopeiae", ["27 Cas", "HIP 4427"]),
+        ("27 Cassiopeiae", ["HIP 4427"]),
+        ("27 Cassiopeiae", ["HIP 4427"]),
         ("HIP 4427", []),
         ("HIP 4427", []),
         ("HIP 4427", []),
@@ -527,6 +688,16 @@ def test_a_designation_or_a_number_that_only_repeats_the_name_is_left_out() -> N
     assert star.common_name not in catalog_matched_subtitle(same_number).split(" · ")
     twice = replace(star, names_file_designation=star.bayer_designation)
     assert designation_parts(twice).count(star.bayer_designation) == 1
+    # Unnamed designated star (catalog-2c): title is its designation ("Gamma Cassiopeiae") while common_name is its
+    # catalog id ("HIP 4427"); repeating common_name in names_file_designation or bayer_designation is still omitted
+    from services.science.predicted_sky import _sky_rows, _star_subtitle
+
+    gamma_cas = next(s for s in _sky_rows().stars if s.catalog_source_id == "HIP 4427")
+    assert gamma_cas.common_name == "HIP 4427" and dz.catalog_title(gamma_cas.to_catalog_reference_dict())[0] == "Gamma Cassiopeiae"
+    unnamed_same_id = replace(gamma_cas, names_file_designation=gamma_cas.common_name)
+    assert designation_parts(unnamed_same_id) == ["27 Cas"]
+    assert "HIP 4427" not in catalog_matched_subtitle(unnamed_same_id).split(" · ")
+    assert _star_subtitle(unnamed_same_id, gamma_cas.common_name, 45.0, 180.0).split(" · ").count("HIP 4427") == 1
 
 
 def test_the_flamsteed_number_goes_only_with_its_own_constellation_by_abbreviation_or_name() -> None:
@@ -547,22 +718,29 @@ def test_the_flamsteed_number_goes_only_with_its_own_constellation_by_abbreviati
 # =============================================================================================
 
 
-def test_a_star_has_one_title_on_both_paths_its_common_name_else_its_catalog_id() -> None:
+def test_a_star_has_one_title_on_both_paths_its_name_else_its_designation_else_its_catalog_id() -> None:
     from services.science.phone_photo_solver import _get_tile_index
     from services.science.predicted_sky import _sky_rows
 
     ix = _get_tile_index()
     sky = _sky_rows()
     compared = 0
+    kinds: Counter[str] = Counter()
     for k, row in enumerate(sky.rows.tolist()):
         matched = ix.to_catalog_star(row, float(ix.data["ra0"][row]), float(ix.data["dec0"][row]), ix.epoch_jyear)
         if matched is None:
             continue
         predicted = sky.stars[k]
         titles = (dz.catalog_title(predicted.to_catalog_reference_dict())[0], dz.catalog_title(matched.to_catalog_reference_dict())[0])
-        assert titles == (matched.common_name, matched.common_name), (predicted.id, titles)
+        named = matched.common_name != matched.catalog_source_id
+        flamsteed = None if matched.flamsteed_number is None else f"{matched.flamsteed_number} {_GENITIVE[_abbr(matched.constellation)]}"
+        rule = matched.common_name if named else (matched.bayer_designation or flamsteed or matched.catalog_source_id)
+        assert titles == (rule, rule), (predicted.id, titles)
+        kinds[("name" if named else "bayer" if matched.bayer_designation else "flamsteed" if flamsteed else "id")] += 1
         compared += 1
     assert compared == 952
+    # The counts the report proposed to the owner: 348 by a Bayer designation and 50 by a Flamsteed number
+    assert (kinds["bayer"], kinds["flamsteed"]) == (348, 50), kinds
 
 
 def test_both_paths_take_a_stars_title_from_the_one_function() -> None:
@@ -747,3 +925,52 @@ def test_the_upgrade_reads_each_stored_text_whole() -> None:
     # Without a constellation nothing is looked up or guessed, and nothing is raised
     assert {"bayerDesignation", "flamsteedNumber"}.isdisjoint(read(bayerDesignation="HR 1713", constellation=None))
     assert {"bayerDesignation", "flamsteedNumber"}.isdisjoint(read(bayerDesignation="HR 1713", constellation=["Ori"]))
+
+
+
+_GENITIVE = {abbr: genitive for abbr, _, genitive in DESIGNATION_CONSTELLATIONS}
+_ABBR = {name: abbr for abbr, name, _ in DESIGNATION_CONSTELLATIONS}
+
+
+def _abbr(constellation: str) -> str:
+    return constellation if constellation in _GENITIVE else _ABBR[constellation]
+
+
+# The report's ten real examples (catalogue id, the title shown): the owner sees these on a screen
+TEN = [
+    ("HIP 4427", "Gamma Cassiopeiae"), ("HIP 61932", "Gamma Centauri"), ("HIP 66657", "Epsilon Centauri"),
+    ("HIP 71860", "Alpha Lupi"), ("HIP 39953", "Gamma2 Velorum"), ("Gaia DR3 2921635736292220800", "Omicron2 Canis Majoris"),
+    ("HIP 87073", "Iota1 Scorpii"), ("Gaia DR3 5964991494281655808", "Zeta2 Scorpii"),
+    ("Gaia DR3 3400796031719045632", "119 Tauri"), ("Gaia DR3 6750856228950043264", "62 Sagittarii"),
+]
+
+
+def test_the_ten_examples_are_titled_as_the_report_shows_and_no_subtitle_repeats_its_title() -> None:
+    from services.science.designations import designation_parts, star_title
+    from services.science.phone_photo_solver import _get_tile_index, catalog_matched_subtitle
+    from services.science.predicted_sky import _sky_rows, _star_subtitle
+
+    sky = _sky_rows()
+    by_id = {s.catalog_source_id: s for s in sky.stars}
+    assert [star_title(by_id[source]) for source, _ in TEN] == [title for _, title in TEN]
+    ix = _get_tile_index()
+    for k, row in enumerate(sky.rows.tolist()):
+        star = sky.stars[k]
+        title = star_title(star)
+        parts = _star_subtitle(star, sky.designations[k], 45.0, 180.0).split(" · ")
+        assert title not in parts and title not in designation_parts(star), star.id
+        if star.flamsteed_number is not None and title.split(" ")[0] == str(star.flamsteed_number):
+            assert f"{star.flamsteed_number} {_abbr(star.constellation)}" not in parts, star.id
+        matched = ix.to_catalog_star(row, float(ix.data["ra0"][row]), float(ix.data["dec0"][row]), ix.epoch_jyear)
+        if matched is not None:
+            assert star_title(matched) not in catalog_matched_subtitle(matched).split(" · "), star.id
+
+
+def test_the_long_flamsteed_form_takes_the_genitive_in_full() -> None:
+    assert dz.flamsteed_long_designation(119, "Tau") == "119 Tauri"
+    assert dz.flamsteed_long_designation(62, "Sagittarius") == "62 Sagittarii"
+    assert dz.flamsteed_long_designation(27, "Cas") == "27 Cassiopeiae"
+    assert dz.flamsteed_long_designation(27, "Nowhere") is None
+    assert dz.flamsteed_long_designation(FLAMSTEED_NUMBER_MAX + 1, "Cas") is None
+    assert dz.flamsteed_long_designation(0, "Cas") is None
+    assert dz.flamsteed_long_designation(True, "Cas") is None

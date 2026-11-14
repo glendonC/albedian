@@ -9,10 +9,11 @@
  * - The compact form, for display only: the Greek letter itself, the index as a superscript and the constellation's
  *   three-letter abbreviation ("α² Cap").
  * - A Flamsteed designation is its number and the constellation's abbreviation ("27 Cas").
- * - The title is the IAU name (a common name that is not the catalog id), else the catalog id, as both paths showed
- *   before catalog-2b; the Bayer designation, the Flamsteed designation and the catalog id that is not the title are
- *   the subtitle's parts, in that order. Titling a star with no IAU name by its designation is a wording choice for
- *   the owner, and changes this one function on each side.
+ * - The title is the IAU name (a common name that is not the catalog id), else the Bayer designation, else the
+ *   Flamsteed designation with the constellation's genitive in full ("119 Tauri"), else the catalog id (catalog-2c,
+ *   the owner's yes; the Flamsteed title's form is proposed to the owner); the Bayer designation, the Flamsteed
+ *   designation in its short form ("119 Tau") and the catalog id are the subtitle's parts, in that order, each left
+ *   out where it is the title.
  */
 import {
   DESIGNATION_CONSTELLATIONS,
@@ -29,6 +30,7 @@ const SUPERSCRIPT = new Map(DESIGNATION_INDICES.map(([digit, glyph]) => [digit, 
 const ABBR_BY_GENITIVE = new Map(DESIGNATION_CONSTELLATIONS.map(([abbr, , genitive]) => [genitive, abbr]));
 const ABBR_BY_NAME = new Map(DESIGNATION_CONSTELLATIONS.map(([abbr, name]) => [name, abbr]));
 const ABBRS = new Set(DESIGNATION_CONSTELLATIONS.map(([abbr]) => abbr));
+const GENITIVE_BY_ABBR = new Map(DESIGNATION_CONSTELLATIONS.map(([abbr, , genitive]) => [abbr, genitive]));
 
 // Longest first, so no alternative stops at a shorter one that begins it; ties in code-point order, as Python sorts
 const alternatives = (words: readonly string[]): string =>
@@ -43,8 +45,14 @@ export const BAYER_DESIGNATION_PATTERN =
   `(${alternatives(DESIGNATION_CONSTELLATIONS.map(([, , genitive]) => genitive))})$`;
 const BAYER = new RegExp(BAYER_DESIGNATION_PATTERN);
 
+const BLANK = /^[ \t\n\r\f\v\u00a0]*$/;
+
+const nonBlank = (value: unknown): string | null =>
+  typeof value === 'string' && !BLANK.test(value) ? value : null;
+
 /** The display form of a wire-form Bayer designation ("Alpha2 Capricorni" gives "α² Cap"); null for any other text. */
 export function compactDesignation(designation: string): string | null {
+  if (typeof designation !== 'string') return null;
   const match = BAYER.exec(designation);
   if (match === null) return null;
   // The pattern admits only names, digits and genitives the tables hold, so each lookup finds its row
@@ -52,14 +60,23 @@ export function compactDesignation(designation: string): string | null {
   return `${GLYPH_BY_NAME.get(name)}${digit === undefined ? '' : SUPERSCRIPT.get(digit)} ${ABBR_BY_GENITIVE.get(genitive)}`;
 }
 
-/** "27 Cas" from the number and the constellation, by its abbreviation or its Latin name; null when the
- * constellation is neither or the number is outside the contract's range. */
+/** "27 Cas" from the number (an integer or whole float in the contract's range) and the constellation, by its
+ * abbreviation or its Latin name; null for any other number, type or constellation. */
 export function flamsteedDesignation(number: number, constellation: string): string | null {
   const abbr = ABBRS.has(constellation) ? constellation : ABBR_BY_NAME.get(constellation);
   if (abbr === undefined || !Number.isInteger(number) || number < FLAMSTEED_NUMBER_MIN || number > FLAMSTEED_NUMBER_MAX) {
     return null;
   }
   return `${number} ${abbr}`;
+}
+
+/** "119 Tauri" from the number and the constellation (its abbreviation or its Latin name), the genitive in full as the
+ * Bayer form writes it; null where `flamsteedDesignation` gives null. */
+export function flamsteedLongDesignation(number: number, constellation: string): string | null {
+  const short = flamsteedDesignation(number, constellation);
+  if (short === null) return null;
+  const space = short.indexOf(' ');
+  return `${short.slice(0, space)} ${GENITIVE_BY_ABBR.get(short.slice(space + 1))}`;
 }
 
 export interface CatalogTitleInput {
@@ -70,14 +87,22 @@ export interface CatalogTitleInput {
   flamsteedNumber?: number;
 }
 
-/** The title and the subtitle's parts of a catalog reference: the IAU name, else the catalog id; the subtitle holds
- * the Bayer designation, the Flamsteed designation and the catalog id where it is not the title, in that order. */
+/** The title and the subtitle's parts of a catalog reference: the IAU name, else the Bayer designation, else the
+ * Flamsteed designation with the genitive in full, else the catalog id; the subtitle holds the Bayer designation, the
+ * Flamsteed designation in its short form and the catalog id, in that order, each left out where it is the title or
+ * blank. */
 export function catalogTitle(reference: CatalogTitleInput): { title: string; subtitleParts: string[] } {
-  const sourceId = reference.catalogSourceId;
-  const name = reference.commonName !== sourceId ? reference.commonName : null;
-  const bayer = reference.bayerDesignation ?? null;
-  const flamsteed =
-    reference.flamsteedNumber === undefined ? null : flamsteedDesignation(reference.flamsteedNumber, reference.constellation);
-  const title = name ?? sourceId;
-  return { title, subtitleParts: [bayer, flamsteed, sourceId].filter((part): part is string => part !== null && part !== title) };
+  const sourceId = typeof reference.catalogSourceId === 'string' ? reference.catalogSourceId : '';
+  const sourcePart = nonBlank(sourceId);
+  const common = nonBlank(reference.commonName);
+  const name = common !== sourceId ? common : null;
+  const bayer = nonBlank(reference.bayerDesignation);
+  const flamsteed = flamsteedDesignation(reference.flamsteedNumber as number, reference.constellation);
+  const flamsteedLong = flamsteedLongDesignation(reference.flamsteedNumber as number, reference.constellation);
+  const title = name ?? bayer ?? flamsteedLong ?? sourceId;
+  const shown = new Set<string | null>([title, ...(title === flamsteedLong ? [flamsteed] : [])]);
+  return {
+    title,
+    subtitleParts: [bayer, flamsteed, sourcePart].filter((part): part is string => part !== null && !shown.has(part)),
+  };
 }

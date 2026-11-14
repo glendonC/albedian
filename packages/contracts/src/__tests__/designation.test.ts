@@ -7,13 +7,16 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   BAYER_DESIGNATION_PATTERN,
+  FLAMSTEED_NUMBER_MAX,
+  FLAMSTEED_NUMBER_MIN,
   catalogTitle,
   compactDesignation,
   flamsteedDesignation,
+  flamsteedLongDesignation,
   type CatalogTitleInput,
-} from '../designation.js';
+} from '../index.js';
 import { CatalogReferenceSchema, ObservationSolutionSchema } from '../astronomy.js';
-import { DESIGNATION_CONSTELLATIONS, DESIGNATION_INDICES, DESIGNATION_LETTERS, FLAMSTEED_NUMBER_MAX } from '../designation-tables.js';
+import { DESIGNATION_CONSTELLATIONS, DESIGNATION_INDICES, DESIGNATION_LETTERS } from '../designation-tables.js';
 
 const CASES = path.resolve(__dirname, '../../../../tests/fixtures/designation_cases.json');
 
@@ -22,9 +25,35 @@ interface Cases {
   compact: [string, string | null][];
   flamsteed: [number, string, string | null][];
   titles: { reference: CatalogTitleInput; title: string; subtitleParts: string[] }[];
+  flamsteedProbes?: [unknown, unknown, string | null, string | null][];
+  compactProbes?: [unknown, string | null][];
+  titleProbes?: [string, [unknown, unknown, unknown, unknown, unknown], string, string[]][];
   namedStarDesignations: string[];
   storedOldShape: { before: Record<string, unknown>; after: Record<string, unknown> };
 }
+
+const PROBE_TOKENS: Record<string, unknown> = {
+  __NAN__: Number.NaN,
+  __INF__: Number.POSITIVE_INFINITY,
+  __NEG_INF__: Number.NEGATIVE_INFINITY,
+  __NEG_ZERO__: -0,
+  __NEL_U0085__: '\u0085',
+  __US_U001F__: '\u001f',
+};
+
+const decodeProbe = (token: unknown): unknown =>
+  typeof token === 'string' && Object.prototype.hasOwnProperty.call(PROBE_TOKENS, token) ? PROBE_TOKENS[token] : token;
+
+const buildProbeRef = (parts: [unknown, unknown, unknown, unknown, unknown]): CatalogTitleInput => {
+  const keys = ['catalogSourceId', 'commonName', 'constellation', 'bayerDesignation', 'flamsteedNumber'] as const;
+  const out: Record<string, unknown> = {};
+  keys.forEach((key, idx) => {
+    if (parts[idx] !== '__UNDEFINED__') {
+      out[key] = decodeProbe(parts[idx]);
+    }
+  });
+  return out as unknown as CatalogTitleInput;
+};
 
 const cases = JSON.parse(fs.readFileSync(CASES, 'utf8')) as Cases;
 
@@ -67,9 +96,46 @@ describe('@albedian/contracts: designations', () => {
     expect(CatalogReferenceSchema.safeParse({ ...old, bayerDesignation: 'Theta1 Eridani' }).success).toBe(true);
   });
 
+  it('writes a Flamsteed title with the genitive in full, as the Python side does', () => {
+    expect(flamsteedLongDesignation(119, 'Tau')).toBe('119 Tauri');
+    expect(flamsteedLongDesignation(62, 'Sagittarius')).toBe('62 Sagittarii');
+    expect(flamsteedLongDesignation(27, 'Cas')).toBe('27 Cassiopeiae');
+    expect(flamsteedLongDesignation(27, 'Nowhere')).toBeNull();
+    expect(flamsteedLongDesignation(FLAMSTEED_NUMBER_MAX + 1, 'Cas')).toBeNull();
+    expect(flamsteedLongDesignation(0, 'Cas')).toBeNull();
+    expect(flamsteedLongDesignation(1.5, 'Cas')).toBeNull();
+  });
+
   it('orders the title and the subtitle as the Python side does', () => {
+    expect(FLAMSTEED_NUMBER_MIN).toBe(1);
     for (const { reference, title, subtitleParts } of cases.titles) {
       expect(catalogTitle(reference), JSON.stringify(reference)).toEqual({ title, subtitleParts });
+    }
+  });
+
+  it('agrees with Python on whole floats, non-integers, non-numbers, empty strings and whitespace probes', () => {
+    const flamsteedProbes = cases.flamsteedProbes ?? [];
+    expect(flamsteedProbes.length).toBeGreaterThanOrEqual(40);
+    for (const [numTok, conTok, expShort, expLong] of flamsteedProbes) {
+      const num = numTok === '__UNDEFINED__' ? undefined : decodeProbe(numTok);
+      const con = conTok === '__UNDEFINED__' ? undefined : decodeProbe(conTok);
+      expect(flamsteedDesignation(num as number, con as string), `short ${String(numTok)} ${String(conTok)}`).toBe(expShort);
+      expect(flamsteedLongDesignation(num as number, con as string), `long ${String(numTok)} ${String(conTok)}`).toBe(expLong);
+    }
+    for (const [abbr, name, genitive] of DESIGNATION_CONSTELLATIONS) {
+      expect(flamsteedDesignation(1.0, abbr)).toBe(`1 ${abbr}`);
+      expect(flamsteedLongDesignation(140.0, name)).toBe(`140 ${genitive}`);
+    }
+    const compactProbes = cases.compactProbes ?? [];
+    expect(compactProbes.length).toBeGreaterThanOrEqual(10);
+    for (const [textTok, expCompact] of compactProbes) {
+      const val = textTok === '__UNDEFINED__' ? undefined : decodeProbe(textTok);
+      expect(compactDesignation(val as string), `compact ${String(textTok)}`).toBe(expCompact);
+    }
+    const titleProbes = cases.titleProbes ?? [];
+    expect(titleProbes.length).toBeGreaterThanOrEqual(20);
+    for (const [tag, rawParts, expTitle, expSub] of titleProbes) {
+      expect(catalogTitle(buildProbeRef(rawParts)), tag).toEqual({ title: expTitle, subtitleParts: expSub });
     }
   });
 

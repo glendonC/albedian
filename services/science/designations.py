@@ -19,7 +19,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from services.contracts.designation import BAYER_DESIGNATION_PATTERN, catalog_title, flamsteed_designation, long_designation
+from services.contracts.designation import (
+    BAYER_DESIGNATION_PATTERN,
+    catalog_title,
+    flamsteed_designation,
+    flamsteed_long_designation,
+    long_designation,
+)
 from services.contracts.designation_tables import DESIGNATION_CONSTELLATIONS
 
 if TYPE_CHECKING:
@@ -96,20 +102,23 @@ def designation_of_row(
 def designation_parts(star: CatalogStar) -> list[str]:
     """The designations a star's subtitle shows, in this order: its Bayer designation, its Flamsteed designation ("27
     Cas", from the number and the star's constellation) and the IAU names file's own designation as written there;
-    each left out where it only repeats the star's name, and none twice. The one function both the predicted sky's
-    subtitle and the solver's matched-star subtitle take these parts from."""
+    each left out where it only repeats the star's name or is the star's title (catalog-2c: the Flamsteed designation
+    in its short form too, where its long form is the title), and none twice. The one function both the predicted
+    sky's subtitle and the solver's matched-star subtitle take these parts from."""
     number = star.flamsteed_number
     flamsteed = None if number is None else flamsteed_designation(number, star.constellation)
+    title = star_title(star)
+    shown = {star.common_name, title} | ({flamsteed} if number is not None and title == flamsteed_long_designation(number, star.constellation) else set())
     parts: list[str] = []
     for part in (star.bayer_designation, flamsteed, star.names_file_designation):
-        if part and part != star.common_name and part not in parts:
+        if part and part not in shown and part not in parts:
             parts.append(part)
     return parts
 
 
 def star_title(star: CatalogStar) -> str:
     """The title a star's finding shows, the one function the predicted sky and the solver's matched star both take
-    it from: `catalog_title` of its reference (the IAU name, else the catalog id)."""
+    it from: `catalog_title` of its reference (the IAU name, else a designation, else the catalog id)."""
     return catalog_title(star.to_catalog_reference_dict())[0]
 
 

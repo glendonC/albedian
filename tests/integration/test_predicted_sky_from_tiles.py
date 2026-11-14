@@ -46,7 +46,7 @@ from services.science.catalog import (
     time_scales,
     ALL_SKY_CATALOG_STARS,
 )
-from services.contracts.designation import catalog_title
+from services.contracts.designation import catalog_title, flamsteed_long_designation
 from services.science.catalog_model import hipparcos_2007_tile_citation
 from services.science.ephemeris import EARTH_ROTATION_ARCSEC_PER_S, POLAR_MOTION_BOUND_ARCSEC
 from services.science.phone_photo_solver import TYPICAL_BP_RP_FOR_RANKING, _get_tile_index
@@ -284,8 +284,15 @@ def test_every_predicted_star_carries_only_its_rows_values_and_the_name_files_na
                 assert (ref.get("bayerDesignation"), ref.get("flamsteedNumber")) == want
                 assert designated.get((row.is_hip, int(row.source_id.split()[-1]))) is not None or want[1] is None
                 title, parts = catalog_title(ref)
-                # The title is the name file's name, else the catalog id, as a matched star's (catalog-2b v2)
-                assert finding.title == title == (name["name"] if name else row.source_id)
+                # The title is the name file's name, else the Bayer designation, else the Flamsteed designation with
+                # the genitive in full, else the catalog id (catalog-2c)
+                expected_flamsteed_long = (
+                    None
+                    if ref.get("flamsteedNumber") is None
+                    else flamsteed_long_designation(ref["flamsteedNumber"], ref["constellation"])
+                )
+                expected_title = name["name"] if name else (ref.get("bayerDesignation") or expected_flamsteed_long or row.source_id)
+                assert finding.title == title == expected_title
                 assert all(f" · {part}" in finding.subtitle for part in parts)
                 # The subtitle never repeats the title
                 assert finding.title not in finding.subtitle.split(" · ")
@@ -321,11 +328,11 @@ def test_a_pinned_star_takes_the_name_files_names_not_its_typed_ones(names: dict
     assert betelgeuse.catalog_star.flamsteed_number == 58
     assert betelgeuse.title == "Betelgeuse"
     assert " · Alpha Orionis · 58 Ori · HR 2061 · HIP 27989 · " in betelgeuse.subtitle
-    # Gamma Cassiopeiae has no IAU name: its typed name is not used, its catalog id is its title, as when it is matched,
-    # and its Bayer designation and Flamsteed number, from the baked file, are in the subtitle
+    # Gamma Cassiopeiae has no IAU name: its typed name is not used; its Bayer designation, from the baked file, is its
+    # title, as when it is matched (catalog-2c), and its Flamsteed number and catalog id are in the subtitle
     gamma_cas = _stars(predicted_sky_findings(NIGHTS[0], 60.0, -40.0, solution_id="s", source_sha256=SHA))["HIP 4427"]
-    assert gamma_cas.title == "HIP 4427" and gamma_cas.catalog_star.flamsteed_number == 27
-    assert " · Gamma Cassiopeiae · 27 Cas · " in gamma_cas.subtitle and gamma_cas.subtitle.count("HIP 4427") == 0
+    assert gamma_cas.title == "Gamma Cassiopeiae" and gamma_cas.catalog_star.flamsteed_number == 27
+    assert " · 27 Cas · HIP 4427 · " in gamma_cas.subtitle and "Gamma Cassiopeiae" not in gamma_cas.subtitle
     assert gamma_cas.catalog_star.constellation in IAU_CODES
 
 
