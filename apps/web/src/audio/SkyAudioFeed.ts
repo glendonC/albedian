@@ -9,128 +9,53 @@
  * is on. A renderer that reports no pose leaves the sky silent.
  */
 
-import { STAR_CATALOG_BASE_URL } from '../spatial/catalogStars/CatalogStarField.js';
-import { CatalogStarTileLoader } from '../spatial/catalogStars/CatalogStarTileLoader.js';
-import type { CatalogStarAstroTile } from '../spatial/catalogStars/tileCodec.js';
 import { observatoryAudio } from './ObservatoryAudioEngine.js';
-import { screenStars, type ScreenStar } from './music/starNotes.js';
+import { AstroTileStore } from './skyFeed/astroTileStore.js';
 import {
-  angleBetweenUnit,
-  skySourcesInView,
-  skyViewFromPose,
-  type SkyCameraPose,
-  type SkyTileData,
-  type SkyView,
-} from './skySources.js';
-import type { AudioSourceInput, Quat, Vec3 } from './voicePlanning.js';
+  EMPTY_FEED_COUNTS,
+  normalizeEvidenceClass,
+  type SkyAudioFeedCounts,
+  type SkyAudioFeedOptions,
+  type SkyAudioFeedStatus,
+  type SkyAudioTarget,
+  type SkyCatalogStatus,
+  type SkyMusicTarget,
+} from './skyFeed/feedTypes.js';
+import {
+  nextPlannedTileCone,
+  sameOrientation,
+  shouldComputeSources,
+  type ComputedSourceFrame,
+  type PlannedTileCone,
+} from './skyFeed/poseCadence.js';
+import {
+  EMPTY_PASSED_SOURCES_KEY,
+  nextVoiceEmission,
+  projectMusicScreenStars,
+  projectViewSources,
+} from './skyFeed/sourceProjection.js';
+import { skyViewFromPose, type SkyCameraPose, type SkyView } from './skySources.js';
+import type { Quat } from './voicePlanning.js';
 
-/** The engine calls the feed makes; `observatoryAudio` provides them. */
-export interface SkyAudioTarget {
-  setSources(sources: readonly AudioSourceInput[]): void;
-  setListenerOrientation(orientation: Quat): void;
-}
-
-/** Where the stars on screen go for the music's data part (`observatoryAudio` provides it). */
-export interface SkyMusicTarget {
-  setMusicStars(stars: readonly ScreenStar[]): void;
-  /** False while no music can play (no samples served, a file missing, or the music off): no tile is loaded for it. */
-  wantsMusicStars(): boolean;
-}
-
-export type SkyCatalogStatus = 'idle' | 'loading' | 'ready' | 'unavailable';
-
-export interface SkyAudioFeedStatus {
-  readonly catalog: SkyCatalogStatus;
-  /** Why the catalog or an astro tile could not be read, if one could not. */
-  readonly error: string | null;
-  /** Drawn stars on screen at the last update, in tiles whose astro columns had arrived. */
-  readonly starsInView: number;
-  /** Of those, stars with a distance, a temperature and a luminosity. */
-  readonly completeInView: number;
-  /** Sources passed to the engine: stars with all three values, and stars missing one. */
-  readonly audibleSources: number;
-  readonly silentSources: number;
-  /** Tiles in view whose astro columns are loading or failed; their stars are left out. */
-  readonly tilesWithoutAstro: number;
-  readonly astroFailures: number;
-  /** True once the tiles the view wants and their astro columns have arrived or failed. */
-  readonly settled: boolean;
-}
-
-export interface SkyAudioFeedOptions {
-  readonly baseUrl?: string;
-  readonly fetch?: typeof fetch;
-  readonly now?: () => number;
-  readonly maxAudible?: number;
-  readonly maxSilent?: number;
-  /** Resident star bound of the feed's own loader. */
-  readonly maxResidentStars?: number;
-  /**
-   * False: the feed passes no stars to `setSources`, so no star voice is planned. Without a music
-   * target it then only turns the listener with the camera and loads nothing. Default true.
-   */
-  readonly voices?: boolean;
-  /** Receives the stars on screen, with their screen positions, for the music's data part. */
-  readonly music?: SkyMusicTarget;
-}
-
-/** As the star fields: plan tiles again when the view moves 0.01 rad, at most every 120 ms. */
-const VIEW_REPLAN_RAD = 0.01;
-const VIEW_REPLAN_MS = 120;
-/** The tile cone is the frustum's half diagonal plus this margin, as the star fields use. */
-const VIEW_CONE_MARGIN_RAD = 0.08;
-/** Sources are computed again at most ten times a second. */
-const SOURCE_REFRESH_MS = 100;
-/** A failed astro tile is asked for again after this long, the loader's own retry interval. */
-const ASTRO_RETRY_MS = 15_000;
-/** Orientations whose quaternions differ by less than this (1 - |dot|) are the same. */
-const ORIENTATION_EPSILON = 1e-12;
-/** The naked-eye layer holds about 12,000 stars; a fully unveiled view in one direction fits too. */
-const DEFAULT_MAX_RESIDENT_STARS = 400_000;
-
-type AstroState =
-  | { readonly state: 'loading' }
-  | { readonly state: 'ready'; readonly tile: CatalogStarAstroTile }
-  | { readonly state: 'failed'; readonly at: number };
-
-const tileKey = (layer: number, pix: number) => `${layer}/${pix}`;
-
-function sameOrientation(a: Quat, b: Quat): boolean {
-  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
-  return 1 - Math.abs(dot) < ORIENTATION_EPSILON;
-}
-
-function sameView(a: SkyView, b: SkyView): boolean {
-  return (
-    sameOrientation(a.orientationIcrs, b.orientationIcrs) &&
-    a.tanHalfFovX === b.tanHalfFovX &&
-    a.tanHalfFovY === b.tanHalfFovY &&
-    a.limitingMagnitude === b.limitingMagnitude
-  );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+export type {
+  SkyAudioFeedOptions,
+  SkyAudioFeedStatus,
+  SkyAudioTarget,
+  SkyCatalogStatus,
+  SkyMusicTarget,
+};
 
 export class SkyAudioFeed {
   private readonly now: () => number;
-  private loader: CatalogStarTileLoader | null = null;
-  private catalog: SkyCatalogStatus = 'idle';
-  private error: string | null = null;
-  private readonly astro = new Map<string, AstroState>();
-  private astroFailures = 0;
+  private readonly store: AstroTileStore;
   private orientation: Quat | null = null;
-  private planned: { center: Vec3; radius: number; limit: number; at: number } | null = null;
-  private computed: { view: SkyView; at: number } | null = null;
+  private planned: PlannedTileCone | null = null;
+  private computed: ComputedSourceFrame | null = null;
   private dirty = true;
   private evidenceClass: string | null = null;
   private passedIds: ReadonlySet<string> = new Set();
-  /** The evidence class and ids last passed; the engine starts with no sources and no class. */
-  private passedKey = '|';
-  /** Tiles in view at the last update whose astro columns were absent. */
-  private withoutAstro: ReadonlySet<string> = new Set();
-  private counts = { starsInView: 0, completeInView: 0, audibleSources: 0, silentSources: 0, tilesWithoutAstro: 0 };
+  private passedKey = EMPTY_PASSED_SOURCES_KEY;
+  private counts: SkyAudioFeedCounts = EMPTY_FEED_COUNTS;
   private disposed = false;
 
   constructor(
@@ -138,6 +63,15 @@ export class SkyAudioFeed {
     private readonly options: SkyAudioFeedOptions = {}
   ) {
     this.now = options.now ?? (() => performance.now());
+    this.store = new AstroTileStore({
+      ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
+      ...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
+      ...(options.maxResidentStars !== undefined ? { maxResidentStars: options.maxResidentStars } : {}),
+      now: this.now,
+      onDirty: () => {
+        this.dirty = true;
+      },
+    });
   }
 
   /** Whether the feed passes the stars in view to the engine (see `SkyAudioFeedOptions.voices`). */
@@ -163,168 +97,70 @@ export class SkyAudioFeed {
       this.audio.setListenerOrientation(view.orientationIcrs);
     }
     if (!this.voicesEnabled && !this.musicEnabled) return;
-    if (this.catalog === 'idle') this.open();
-    const loader = this.loader;
-    if (!loader) return;
+    this.store.ensureOpen();
+    if (!this.store.isReady) return;
     const now = this.now();
-    this.planTiles(loader, view, now);
-    if (this.astroRetryDue(now)) this.dirty = true;
-    if (this.computed && now - this.computed.at < SOURCE_REFRESH_MS) return;
-    if (!this.dirty && this.computed && sameView(this.computed.view, view)) return;
-    this.computeSources(loader, view, now);
+    const cone = nextPlannedTileCone(this.planned, view, now);
+    if (cone !== null) {
+      this.store.setViewCone(cone.center, cone.radius, cone.limit);
+      this.planned = cone;
+    }
+    if (this.store.isRetryDue(now)) this.dirty = true;
+    if (!shouldComputeSources(this.computed, view, this.dirty, now)) return;
+    this.computeSources(view, now);
   }
 
   /** The evidence class of the star layer being drawn; null where the renderer declares none. */
   setEvidenceClass(evidenceClass: string | null): void {
-    const next = typeof evidenceClass === 'string' && evidenceClass.length > 0 ? evidenceClass : null;
+    const next = normalizeEvidenceClass(evidenceClass);
     if (next === this.evidenceClass) return;
     this.evidenceClass = next;
     this.dirty = true;
   }
 
   getStatus(): SkyAudioFeedStatus {
-    let pendingAstro = 0;
-    for (const state of this.astro.values()) if (state.state === 'loading') pendingAstro += 1;
-    const stats = this.loader?.getStats();
-    const tilesArrived = stats !== undefined && stats.tilesInFlight === 0 && stats.tilesLoaded >= stats.tilesWanted;
     return {
-      catalog: this.catalog,
-      error: this.error,
+      catalog: this.store.catalog,
+      error: this.store.error,
       ...this.counts,
-      astroFailures: this.astroFailures,
-      settled: this.catalog === 'unavailable' || (this.catalog === 'ready' && tilesArrived && pendingAstro === 0 && !this.dirty),
+      astroFailures: this.store.astroFailures,
+      settled: this.store.isSettled(this.dirty),
     };
   }
 
   dispose(): void {
     this.disposed = true;
-    this.loader?.dispose();
-    this.loader = null;
-    this.astro.clear();
+    this.store.dispose();
   }
 
-  private open(): void {
-    this.catalog = 'loading';
-    CatalogStarTileLoader.open(this.options.baseUrl ?? STAR_CATALOG_BASE_URL, {
-      ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
-      maxResidentStars: this.options.maxResidentStars ?? DEFAULT_MAX_RESIDENT_STARS,
-      onTileLoaded: () => {
-        this.dirty = true;
-      },
-      onTileEvicted: (key) => {
-        this.astro.delete(tileKey(key.layer, key.pix));
-        this.dirty = true;
-      },
-    }).then(
-      (loader) => {
-        if (this.disposed) {
-          loader.dispose();
-          return;
-        }
-        this.loader = loader;
-        this.catalog = 'ready';
-        this.dirty = true;
-        if (loader.manifest.formatVersion < 2) {
-          this.error = `catalog release ${loader.manifest.releaseId} has no astro tiles, so every star stays silent`;
-        }
-      },
-      (error: unknown) => {
-        if (this.disposed) return;
-        // No stand-in stars: without the catalog the sky stays silent
-        this.catalog = 'unavailable';
-        this.error = errorMessage(error);
-        console.warn('[sky audio] catalog unavailable; the sky stays silent', error);
-      }
-    );
-  }
-
-  private planTiles(loader: CatalogStarTileLoader, view: SkyView, now: number): void {
-    const radius = view.halfDiagonalRad + VIEW_CONE_MARGIN_RAD;
-    const last = this.planned;
-    const changed =
-      last === null ||
-      angleBetweenUnit(last.center, view.centerIcrs) > VIEW_REPLAN_RAD ||
-      Math.abs(radius - last.radius) > 0.01 ||
-      last.limit !== view.limitingMagnitude;
-    if (!changed || (last !== null && now - last.at < VIEW_REPLAN_MS)) return;
-    const [x, y, z] = view.centerIcrs;
-    loader.setView({ centerIcrs: [x, y, z], radiusRad: radius, limitingMagnitude: view.limitingMagnitude });
-    this.planned = { center: view.centerIcrs, radius, limit: view.limitingMagnitude, at: now };
-  }
-
-  private computeSources(loader: CatalogStarTileLoader, view: SkyView, now: number): void {
+  private computeSources(view: SkyView, now: number): void {
+    const releaseId = this.store.releaseId;
+    if (releaseId === null) return;
     this.dirty = false;
     this.computed = { view, at: now };
-    const tiles: SkyTileData[] = loader.getLoadedTiles().map((core) => {
-      const state = this.astro.get(tileKey(core.layer, core.pix));
-      return { core, astro: state?.state === 'ready' ? state.tile : null };
-    });
-    const result = skySourcesInView(tiles, view, {
-      releaseId: loader.manifest.releaseId,
+    const projected = projectViewSources({
+      tiles: this.store.getLoadedTilesWithAstro(),
+      view,
+      releaseId,
       ...(this.options.maxAudible !== undefined ? { maxAudible: this.options.maxAudible } : {}),
       ...(this.options.maxSilent !== undefined ? { maxSilent: this.options.maxSilent } : {}),
       evidenceClass: this.evidenceClass,
       incumbents: this.passedIds,
     });
-    this.withoutAstro = new Set(result.tilesWithoutAstro);
-    for (const key of result.tilesWithoutAstro) this.requestAstro(loader, key, now);
-
-    let audibleSources = 0;
-    for (const source of result.sources) {
-      if (source.distancePc != null && source.teffK != null && source.luminositySolar != null) audibleSources += 1;
-    }
-    this.counts = {
-      starsInView: result.starsInView,
-      completeInView: result.completeInView,
-      audibleSources,
-      silentSources: result.sources.length - audibleSources,
-      tilesWithoutAstro: result.tilesWithoutAstro.length,
-    };
+    this.store.requestMissingAstro(projected.tilesWithoutAstro, now);
+    this.counts = projected.counts;
 
     // Screen positions move with the camera, so the music gets every update
-    if (this.musicEnabled) this.options.music?.setMusicStars(screenStars(result.sources, view));
+    if (this.musicEnabled) {
+      this.options.music?.setMusicStars(projectMusicScreenStars(projected.sources, view));
+    }
     if (!this.voicesEnabled) return;
 
-    // A star's catalog values never change within a release, so its id stands for its values
-    const ids = result.sources.map((source) => source.id);
-    const passedKey = `${this.evidenceClass ?? ''}|${ids.join(',')}`;
-    if (passedKey === this.passedKey) return;
-    this.passedKey = passedKey;
-    this.passedIds = new Set(ids);
-    this.audio.setSources(result.sources);
-  }
-
-  private requestAstro(loader: CatalogStarTileLoader, key: string, now: number): void {
-    if (loader.manifest.formatVersion < 2) return;
-    const state = this.astro.get(key);
-    if (state?.state === 'loading' || state?.state === 'ready') return;
-    if (state?.state === 'failed' && now - state.at < ASTRO_RETRY_MS) return;
-    const [layer, pix] = key.split('/').map(Number) as [number, number];
-    this.astro.set(key, { state: 'loading' });
-    loader.loadAstro(layer, pix).then(
-      (tile) => {
-        if (this.disposed) return;
-        this.astro.set(key, { state: 'ready', tile });
-        if (![...this.astro.values()].some((other) => other.state === 'failed')) this.error = null;
-        this.dirty = true;
-      },
-      (error: unknown) => {
-        if (this.disposed) return;
-        this.astro.set(key, { state: 'failed', at: this.now() });
-        this.astroFailures += 1;
-        this.error = errorMessage(error);
-        this.dirty = true;
-      }
-    );
-  }
-
-  /** A failed astro tile still in view is due to be asked for again. */
-  private astroRetryDue(now: number): boolean {
-    for (const key of this.withoutAstro) {
-      const state = this.astro.get(key);
-      if (state?.state === 'failed' && now - state.at >= ASTRO_RETRY_MS) return true;
-    }
-    return false;
+    const emission = nextVoiceEmission(this.passedKey, this.evidenceClass, projected.sources);
+    if (emission === null) return;
+    this.passedKey = emission.key;
+    this.passedIds = emission.ids;
+    this.audio.setSources(projected.sources);
   }
 }
 
