@@ -190,6 +190,30 @@ def test_a_stopped_phone_photo_search_names_the_phone_solver(client: TestClient,
     assert stages["solve"]["total"] > 1 and stages["solve"]["done"] < stages["solve"]["total"], stages["solve"]
 
 
+def test_a_job_given_no_limit_stops_its_search_at_the_products_own_bound(
+    client: TestClient, store: IngestStore, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The job's default limit is SOLVE_TIME_LIMIT_SEC itself, read when the job runs: the bound the shared child is
+    called with when no limit is passed, as the router passes none. The constant is set to another value, and the
+    bound follows it, so a default taken from any other number, even one equal to 180, fails here. The call is spied
+    on and goes through, so the job runs as it does in use."""
+    body = _dense_png(320, 240, 200)
+    assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
+    sha = hashlib.sha256(body).hexdigest()
+    bounds: list[float] = []
+    real = ingest_jobs._SOLVE_WORKER.call
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        bounds.append(kwargs["timeout_s"])
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_jobs._SOLVE_WORKER, "call", spy)
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 123.5)
+    job = ingest_jobs.run_solve_job(store, sha)
+    assert job["state"] == "succeeded"
+    assert bounds == [123.5]
+
+
 def test_production_runs_the_searches_in_the_worker() -> None:
     assert ingest_jobs._SOLVE_IN_PROCESS is False
     assert ingest_jobs.SOLVE_TIME_LIMIT_SEC == 180.0

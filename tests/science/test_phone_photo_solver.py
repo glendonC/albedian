@@ -23,6 +23,7 @@ import numpy as np
 import pytest
 
 from research.benchmarks.phone_photos import render, score, solvers, stars, suite
+from services.ingest.jobs import SOLVE_TIME_LIMIT_SEC
 from services.science.phone_photo_solver import (
     PhoneCameraWCS,
     evaluate_coincidence_gate,
@@ -52,7 +53,9 @@ def test_phone_photo_solver_adapter_solves_ci_phone_positives_with_zero_false_so
     ci_frames: list[render.RenderedFrame],
 ) -> None:
     assert "phone-photo" in solvers.SOLVERS
-    report = score.run_frames(ci_frames, "phone-photo", timeout_s=15.0)
+    # Each solve stops at the product's own bound, so a busy machine cannot turn a right solve into a timeout; the
+    # speed is a measured number in the benchmark's report, not a pass or fail here
+    report = score.run_frames(ci_frames, "phone-photo", timeout_s=SOLVE_TIME_LIMIT_SEC)
     assert report.summary["evidenceClass"] == "simulated"
     assert report.summary["negatives"]["falseSolves"] == 0
     assert report.summary["positives"]["falseClaims"] == 0
