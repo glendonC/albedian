@@ -7,8 +7,9 @@ Covers:
   warnings) is the same on a ci frame of the phone photo benchmark, a pinned-star field, a dense wide distorted field
   and a dense Milky Way frame (thousands of rendered tile stars, none of the 18 pinned stars in it), each with the 18
   pinned stars and with the 71-star list.
-- Random dots (2,500 sources, no sky), with a time and place and blind, finish within a stated bound and make no
-  claim, naming the 18 pinned stars.
+- Random dots (2,500 sources, no sky), with a time and place and blind, stay on the fast search (star-by-star and
+  vectorized projections counted around the solve and held to three times the measured counts, under a stop taken from
+  the product's solve bound) and make no claim, naming the 18 pinned stars.
 - PBT: the ratio lookup returns exactly the catalog triangles within the 0.045 tolerance on both ratios.
 - PBT: the vectorized projection equals `WCSModel.world_to_pixel` star by star, NaN where it is NaN.
 - PBT: a candidate's consensus pairs are the one-by-one rule's (nearest unused star closer than the radius).
@@ -53,13 +54,16 @@ import math
 import sys
 import time
 from typing import Any, Callable
+import warnings
 
 from hypothesis import example, given, settings, strategies as st
 import numpy as np
 import pytest
 
 from research.benchmarks.phone_photos.stars import TileCatalog
+from services.ingest import jobs as ingest_jobs
 from services.science import solver as sv
+from services.science.bounded_worker import BoundedWorker, WorkerTimeout
 from services.science.catalog import angular_separation_deg, get_all_sky_catalog_stars, get_catalog_stars
 from services.science.catalog_model import CatalogStar
 from services.science.solver import (
@@ -77,12 +81,17 @@ from services.science.wcs_models import ContractRefusal
 CYGNUS_UP = {"obs_utc_iso": "2031-08-30T03:01:00Z", "observer_lat": 30.0, "observer_lon": -40.0}
 PINNED_RELEASE = "18 pinned bright stars (Gaia DR3 and Hipparcos 2007 rows)"
 
-# The random dots' solve-time bound in seconds, solve only (detection excluded). Before landing (parent dcdbd65d,
-# 2026-11-11) the lane timed it on an 18-core laptop shared with other agents' runs (load average 29 to 43): the
-# search before solver-10k-a took 34.1 to 37.6 s (6 runs), this one 0.64 to 0.91 s (20 runs) [inference: that timing
-# script is not in the repository]. The bound is 11 times the slowest fast solve and under a third of the fastest
-# solve before; the test below asserts the solve stays within it [tested]
-RANDOM_DOTS_SOLVE_BOUND_S = 10.0
+# What the random dots' work bound is for: the random dots must stay on the fast search, which finds the pinned
+# stars' triangles through a KD-tree and pairs stars through one vectorized projection a candidate. Measured on the
+# test's own random dots (2,371 detections, both moments) on 2026-11-13 at main 37365835 and re-verified on
+# 2026-11-17 at main aa7ee78d [tested]: today's fast search makes 23,408 star-by-star calls to
+# `WCSModel.world_to_pixel` and 1,152 vectorized calls to `sv._project`, whereas the search before solver-10k-a
+# (`f5da344c`'s parent) made 35,610,005 star-by-star calls and 0 vectorized calls. Each count is held to at most
+# three times today's count, while the solve runs in a `BoundedWorker` child stopped at `ingest_jobs.SOLVE_TIME_LIMIT_SEC`
+# so a hang ends. A unit that changes the search and must raise a count says why in its report.
+RANDOM_DOTS_STAR_BY_STAR_PROJECTIONS = 23_408
+RANDOM_DOTS_VECTORIZED_PROJECTIONS = 1_152
+RANDOM_DOTS_PROJECTION_GUARD = 3
 
 
 @dataclass(frozen=True)
@@ -387,20 +396,188 @@ def test_the_fast_search_gives_the_solution_of_the_one_by_one_rules(frame_name: 
 
 
 # =============================================================================================
-# Dense frames: within the time bound, no claim
+# Dense frames: stay on the fast search's projection counts under the product's stop, no claim
 # =============================================================================================
+
+
+def _solve_counting_projections(
+    detections: list[SourceDetection], moment: dict[str, Any], slow_one_by_one: bool = False
+) -> tuple[Any, int, int]:
+    """Run `solve_and_verify_field` while counting its own calls to `WCSModel.world_to_pixel` and `sv._project`."""
+    star_by_star = 0
+    vectorized = 0
+    real_star_by_star = WCSModel.world_to_pixel
+    real_vectorized = sv._project
+
+    def count_star_by_star(self: WCSModel, ra_deg: float, dec_deg: float) -> tuple[float, float]:
+        nonlocal star_by_star
+        star_by_star += 1
+        return real_star_by_star(self, ra_deg, dec_deg)
+
+    def count_vectorized(wcs: WCSModel, ra_deg: np.ndarray, dec_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        nonlocal vectorized
+        vectorized += 1
+        return real_vectorized(wcs, ra_deg, dec_deg)
+
+    with pytest.MonkeyPatch.context() as mp:
+        if slow_one_by_one:
+            _use_one_by_one_rules(mp)
+        mp.setattr(WCSModel, "world_to_pixel", count_star_by_star)
+        mp.setattr(sv, "_project", count_vectorized)
+        sol = solve_and_verify_field(detections, 1600, 1200, **moment, **_sources("random-dots"))
+    return sol, star_by_star, vectorized
+
+
+def _hang_in_solve(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def _run_random_dots_bounded(
+    detections: list[SourceDetection],
+    moment: dict[str, Any],
+    *,
+    target: Callable[..., Any] = _solve_counting_projections,
+    extra_args: tuple[Any, ...] = (),
+) -> Any:
+    with BoundedWorker() as worker:
+        return worker.call(
+            target,
+            (detections, moment, *extra_args) if target is _solve_counting_projections else extra_args,
+            timeout_s=ingest_jobs.SOLVE_TIME_LIMIT_SEC,
+        )
+
+
+def _check_random_dots_projection_counts(star_by_star: int, vectorized: int) -> None:
+    star_by_star_bound = RANDOM_DOTS_PROJECTION_GUARD * RANDOM_DOTS_STAR_BY_STAR_PROJECTIONS
+    vectorized_bound = RANDOM_DOTS_PROJECTION_GUARD * RANDOM_DOTS_VECTORIZED_PROJECTIONS
+    assert 0 < star_by_star <= star_by_star_bound, (
+        f"star-by-star projections {star_by_star} outside 1..{star_by_star_bound} "
+        f"({RANDOM_DOTS_PROJECTION_GUARD}x {RANDOM_DOTS_STAR_BY_STAR_PROJECTIONS})"
+    )
+    assert 0 < vectorized <= vectorized_bound, (
+        f"vectorized projections {vectorized} outside 1..{vectorized_bound} "
+        f"({RANDOM_DOTS_PROJECTION_GUARD}x {RANDOM_DOTS_VECTORIZED_PROJECTIONS})"
+    )
 
 
 @pytest.mark.parametrize("moment", [CYGNUS_UP, None], ids=["with-time-and-place", "blind"])
 def test_random_dots_finish_within_the_bound_and_make_no_claim(moment: dict | None) -> None:
+    """The random dots must stay on the fast search, which finds the pinned stars' triangles through a KD-tree and
+    pairs stars through one vectorized projection a candidate: its own star-by-star and vectorized projection calls
+    stay within three times today's counts, under a stop taken from `ingest_jobs.SOLVE_TIME_LIMIT_SEC` so a hang ends,
+    and it makes no claim."""
     detections = detect_point_sources(_random_dots(), snr_threshold=4.0)
     assert len(detections) > 1500
-    started = time.monotonic()
-    sol = solve_and_verify_field(detections, 1600, 1200, **(moment or {}), **_sources("random-dots"))
-    elapsed = time.monotonic() - started
+    sol, star_by_star, vectorized = _run_random_dots_bounded(detections, moment or {})
+    warnings.warn(
+        f"random-dots projections ({'with-time-and-place' if moment else 'blind'}): "
+        f"star_by_star={star_by_star}, vectorized={vectorized}",
+        stacklevel=1,
+    )
     _assert_no_claim(sol)
     assert sol.solver.catalog_release == PINNED_RELEASE
-    assert elapsed < RANDOM_DOTS_SOLVE_BOUND_S, f"took {elapsed:.2f} s"
+    expected_moment = (
+        (moment["obs_utc_iso"], moment["observer_lat"], moment["observer_lon"])
+        if moment is not None
+        else (None, None, None)
+    )
+    assert (sol.observed_at_utc, sol.observer_lat, sol.observer_lon) == expected_moment
+    _check_random_dots_projection_counts(star_by_star, vectorized)
+
+
+def test_random_dots_projection_guard_names_the_count_on_slow_search_and_stops_a_hang_at_the_products_bound(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A return to one-by-one pairing fails `_check_random_dots_projection_counts` by an assertion naming the count,
+    `_solve_counting_projections` counts one call per projection while forwarding `moment` and restoring every patched
+    symbol, and `_run_random_dots_bounded` reads `ingest_jobs.SOLVE_TIME_LIMIT_SEC` when called so a hang ends at it."""
+    detections = detect_point_sources(_random_dots(), snr_threshold=4.0)
+    top_subset = sorted(detections, key=lambda d: d.snr, reverse=True)[:60]
+    orig_wtp = WCSModel.world_to_pixel
+    orig_proj = sv._project
+    orig_lookup = sv._RatioIndex.lookup
+    orig_greedy = sv._greedy_pairs
+    orig_verify = sv.verify_held_out
+    sample_wcs, _ = _orion_wcs_and_stars()
+    expected_pt = orig_wtp(sample_wcs, 83.82, -5.39)
+    expected_arr = orig_proj(sample_wcs, np.array([83.82, 85.19]), np.array([-5.39, -1.20]))
+    this_mod = sys.modules[__name__]
+    try:
+        for target_scalar, target_vec in ((0, 0), (3, 2)):
+            seen_kwargs: list[dict[str, Any]] = []
+
+            def controlled_solve(
+                dets: list[SourceDetection],
+                width: int,
+                height: int,
+                *,
+                _ns: int = target_scalar,
+                _nv: int = target_vec,
+                **kwargs: Any,
+            ) -> str:
+                assert (dets, width, height) == (top_subset[:2], 1600, 1200)
+                seen_kwargs.append(kwargs)
+                for _ in range(_ns):
+                    assert WCSModel.world_to_pixel(sample_wcs, 83.82, -5.39) == expected_pt
+                for _ in range(_nv):
+                    px, py = sv._project(sample_wcs, np.array([83.82, 85.19]), np.array([-5.39, -1.20]))
+                    assert np.array_equal(px, expected_arr[0]) and np.array_equal(py, expected_arr[1])
+                return "stub-solution"
+
+            with monkeypatch.context() as mp:
+                mp.setattr(this_mod, "solve_and_verify_field", controlled_solve)
+                stub_sol, counted_scalar, counted_vec = _solve_counting_projections(top_subset[:2], CYGNUS_UP)
+            assert (stub_sol, counted_scalar, counted_vec) == ("stub-solution", target_scalar, target_vec)
+            assert seen_kwargs == [{**CYGNUS_UP, **_sources("random-dots")}]
+            assert (
+                WCSModel.world_to_pixel is orig_wtp
+                and sv._project is orig_proj
+                and sv._RatioIndex.lookup is orig_lookup
+                and sv._greedy_pairs is orig_greedy
+                and sv.verify_held_out is orig_verify
+            )
+
+        sol_slow, slow_scalar, slow_vec = _solve_counting_projections(top_subset, CYGNUS_UP, slow_one_by_one=True)
+        assert (
+            WCSModel.world_to_pixel is orig_wtp
+            and sv._project is orig_proj
+            and sv._RatioIndex.lookup is orig_lookup
+            and sv._greedy_pairs is orig_greedy
+            and sv.verify_held_out is orig_verify
+        )
+    finally:
+        WCSModel.world_to_pixel = orig_wtp
+        sv._project = orig_proj
+        sv._RatioIndex.lookup = orig_lookup
+        sv._greedy_pairs = orig_greedy
+        sv.verify_held_out = orig_verify
+
+    assert (sol_slow.observed_at_utc, sol_slow.observer_lat, sol_slow.observer_lon) == (
+        CYGNUS_UP["obs_utc_iso"],
+        CYGNUS_UP["observer_lat"],
+        CYGNUS_UP["observer_lon"],
+    )
+    assert slow_vec == 0 and slow_scalar > RANDOM_DOTS_PROJECTION_GUARD * RANDOM_DOTS_STAR_BY_STAR_PROJECTIONS
+    with pytest.raises(AssertionError, match=str(slow_scalar)):
+        _check_random_dots_projection_counts(slow_scalar, 1)
+    for ok_scalar, ok_vec in ((1, 1), (70_224, 1), (1, 3_456), (70_224, 3_456)):
+        _check_random_dots_projection_counts(ok_scalar, ok_vec)
+    for bad_scalar, bad_vec, named in ((0, 1, "0"), (70_225, 1, "70225"), (1, 0, "0"), (1, 3_457, "3457")):
+        with pytest.raises(AssertionError, match=named):
+            _check_random_dots_projection_counts(bad_scalar, bad_vec)
+
+    seen_timeouts: list[float] = []
+    real_call = BoundedWorker.call
+
+    def spy_call(self: BoundedWorker, target: Callable[..., Any], args: tuple[Any, ...] = (), **kwargs: Any) -> Any:
+        seen_timeouts.append(kwargs["timeout_s"])
+        return real_call(self, target, args, **kwargs)
+
+    monkeypatch.setattr(BoundedWorker, "call", spy_call)
+    monkeypatch.setattr(ingest_jobs, "SOLVE_TIME_LIMIT_SEC", 0.25)
+    with pytest.raises(WorkerTimeout):
+        _run_random_dots_bounded([], {}, target=_hang_in_solve, extra_args=(30.0,))
+    assert seen_timeouts == [0.25]
 
 
 # =============================================================================================
