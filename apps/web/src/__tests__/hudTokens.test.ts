@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -139,8 +140,33 @@ describe('index.html loads Geist and nothing retired', () => {
     expect(indexHtml).not.toContain('\u2014');
   });
 
-  it("is titled with the product's name alone, in one title element", () => {
-    expect([...indexHtml.matchAll(/<title\b[^>]*>([\s\S]*?)<\/title>/gi)].map((m) => m[1])).toEqual(['Albedian']);
+  /** Every HTML-namespace <title> element's text in document order, parsed by the HTML5 DOM parser. */
+  const htmlTitles = (html: string): string[] => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return [...doc.querySelectorAll('title')]
+      .filter((el): el is HTMLTitleElement => el instanceof HTMLTitleElement)
+      .map((el) => el.textContent ?? '');
+  };
+
+  it("is titled with the product's name alone, in one HTML title element, with no runtime document.title write", () => {
+    expect(htmlTitles(indexHtml)).toEqual(['Albedian']);
+    expect(new DOMParser().parseFromString(indexHtml, 'text/html').title).toBe('Albedian');
+    for (const file of sourceFiles(srcRoot)) {
+      expect(read(file), path.relative(webRoot, file)).not.toMatch(/\bdocument\.title\s*=/);
+    }
+  });
+
+  it.each([
+    ['a second title closed with trailing space before >', '<head><title>Albedian</title><title>Second</title ></head>', ['Albedian', 'Second']],
+    ['a second title closed with an attribute on its end tag', '<head><title>Albedian</title><title>Second</title x="1"></head>', ['Albedian', 'Second']],
+    ['a second title left unclosed at end of file', '<head><title>Albedian</title><title>Unclosed', ['Albedian', 'Unclosed']],
+    ['a title element whose quoted attribute holds >', '<head><title data-x="a>b">Albedian</title></head>', ['Albedian']],
+    ['a title inside an HTML comment beside the real title', '<head><!--<title>Old</title>--><title>Albedian</title></head>', ['Albedian']],
+    ['a title string literal inside an inline script', '<head><title>Albedian</title><script>const t = "<title>Not one</title>";</script></head>', ['Albedian']],
+    ['an accessible inline SVG title alongside the page title', '<head><title>Albedian</title></head><body><svg><title>Icon</title></svg></body>', ['Albedian']],
+    ['an inline SVG title alone with no HTML page title', '<body><svg><title>Albedian</title></svg></body>', []],
+  ])('parses HTML5 <title> elements as a browser does: %s', (_case, html, expected) => {
+    expect(htmlTitles(html)).toEqual(expected);
   });
 
   it('names no retired family in any stylesheet, font variable or inline font', () => {

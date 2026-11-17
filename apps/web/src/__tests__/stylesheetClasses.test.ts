@@ -2,9 +2,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fc from 'fast-check';
 import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
-import { AT_RULES_READ, UnreadForm, deadClasses, filesUnder, htmlNames, htmlStyles, refusalOf, sourceNames, stylesheetClasses } from './classGuard.js';
+import { AT_RULES_READ, UnreadForm, deadClasses, filesUnder, htmlNames, htmlStyles, isDataAddress, refusalOf, sourceNames, stylesheetClasses } from './classGuard.js';
 
 // The guard (classGuard.ts says its rule, how it reads, and what it does not do): every class a stylesheet of the web
 // app names appears whole in a string of the web's sources. These rows say each part of the rule in its own words;
@@ -31,7 +32,7 @@ const usedNames = () =>
   ]);
 
 describe('every class the web app styles is used whole by its sources', () => {
-  it("styles no class that no source names, in the five files and the page's inline style (each named with its dead classes)", () => {
+  it("styles no class that no source names, in the stylesheets and the page's inline style (each named with its dead classes)", () => {
     const used = usedNames();
     const dead = sheetsChecked().map(([name, css]) => [name, deadClasses(stylesheetClasses(css, name), used)] as const).filter(([, names]) => names.length > 0);
     expect(Object.fromEntries(dead)).toEqual({});
@@ -46,7 +47,7 @@ describe('every class the web app styles is used whole by its sources', () => {
   });
 
   it('finds every stylesheet by walking the source folder, so a new one is guarded without a list', () => {
-    expect(stylesheets()).toEqual(expect.arrayContaining(['styles/albedian.css', 'styles/hud-tokens.css', 'styles/look.css', 'styles/look-tokens.css', 'styles/home.css']));
+    expect(stylesheets()).toEqual(expect.arrayContaining(['styles/albedian.css', 'styles/fonts.css', 'styles/hud-tokens.css', 'styles/look.css', 'styles/look-tokens.css', 'styles/home.css']));
     expect(stylesheets().every((f) => f.endsWith('.css'))).toBe(true);
   });
 
@@ -146,9 +147,90 @@ describe('the stylesheet side: postcss and postcss-selector-parser', () => {
     ['two line ends escaped in one string', '.a { content: "x\\\ny\\\nz"; } .b { }', ['a', 'b']],
     ['two CR LF escaped in one string', '.a { content: "x\\\r\ny\\\r\nz"; } .b { }', ['a', 'b']],
     ['an escaped backslash, then a CR LF escaped, in one string', '.a { content: "x\\\\\\\r\ny"; } .b { }', ['a', 'b']],
+    // CSS hex escapes (1 to 6 hex digits) consume one trailing whitespace (including CR LF, LF, CR or form feed)
+    ['a hex escape followed by LF inside a string, consumed by the escape as CSS reads it', '.a { content: "x\\61\ny"; } .b { }', ['a', 'b']],
+    ['a hex escape followed by CR LF inside a string', '.a { content: "x\\61\r\ny"; } .b { }', ['a', 'b']],
+    ['a hex escape followed by CR inside a string', '.a { content: "x\\61\ry"; } .b { }', ['a', 'b']],
+    ['a hex escape followed by a form feed inside a string', '.a { content: "x\\61\fy"; } .b { }', ['a', 'b']],
+    ['a six-digit hex escape with all hex ranges followed by LF inside a string', '.a { content: "x\\09afAF\ny"; } .b { }', ['a', 'b']],
+    ['a one-digit hex escape followed by LF inside a string', '.a { content: "x\\9\ny"; } .b { }', ['a', 'b']],
+    ['a hex escape followed by an escaped line end inside a string', '.a { content: "x\\61\\\ny"; } .b { }', ['a', 'b']],
+    ['a vertical tab inside a string, which CSS does not treat as a line end', '.a { content: "x\vy"; } .b { }', ['a', 'b']],
   ];
   it.each(ROWS)('%s', (_label, css, classes) => {
     expect(classesOf(css)).toEqual(classes);
+  });
+
+  // Reference CSS Syntax Level 3 string-escape scanner: checks whether raw content inside double quotes has an unescaped line end
+  function cssStringHasRawLineEnd(inner: string): boolean {
+    const isHex = (c: string) => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    const isLineEnd = (c: string) => c === '\n' || c === '\r' || c === '\f';
+    for (let i = 0; i < inner.length; i++) {
+      const c = inner[i]!;
+      if (c === '\\') {
+        if (i + 1 >= inner.length) continue;
+        const next = inner[i + 1]!;
+        if (next === '\r' && inner[i + 2] === '\n') {
+          i += 2;
+          continue;
+        }
+        if (isLineEnd(next)) {
+          i += 1;
+          continue;
+        }
+        if (isHex(next)) {
+          let digits = 0;
+          while (digits < 6 && i + 1 + digits < inner.length && isHex(inner[i + 1 + digits]!)) digits++;
+          i += digits;
+          if (inner[i + 1] === '\r' && inner[i + 2] === '\n') i += 2;
+          else if (inner[i + 1] === ' ' || inner[i + 1] === '\t' || (inner[i + 1] !== undefined && isLineEnd(inner[i + 1]!))) i += 1;
+          continue;
+        }
+        i += 1;
+        continue;
+      }
+      if (isLineEnd(c)) return true;
+    }
+    return false;
+  }
+
+  it('PBT: agrees with CSS Syntax Level 3 string escape and line-end rules across generated strings', () => {
+    const piece = fc.oneof(
+      fc.constantFrom('x', '0', '9', 'a', 'f', 'A', 'F', 'g', ' ', '\t', '\v', '\\\\', '\\"', '\\\n', '\\\r\n', '\\\r', '\\\f'),
+      fc.tuple(
+        fc.array(fc.constantFrom('0', '9', 'a', 'f', 'A', 'F'), { minLength: 1, maxLength: 7 }).map((a) => a.join('')),
+        fc.constantFrom('', ' ', '\t', '\v', '\n', '\r', '\f', '\r\n', '\n\r', '\r\n\n'),
+      ).map(([hex, tail]) => `\\${hex}${tail}`),
+      fc.tuple(
+        fc.constantFrom('/', ':', '`', 'g', '@', 'G', '_', 'z'),
+        fc.constantFrom('\n', '\r', '\f', '\r\n'),
+      ).map(([nonHex, nl]) => `\\${nonHex}${nl}`),
+      fc.constantFrom('\n', '\r', '\f', '\r\n'),
+    );
+    const seedEnv = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
+    fc.assert(
+      fc.property(fc.array(piece, { minLength: 1, maxLength: 8 }), (parts) => {
+        const inner = `${parts.join('')}z`;
+        const css = `.a { content: "${inner}"; } .b { }`;
+        expect(classesOf(css)).toEqual(cssStringHasRawLineEnd(inner) ? 'refused' : ['a', 'b']);
+      }),
+      {
+        numRuns: 250,
+        ...(seedEnv !== undefined ? { seed: seedEnv } : {}),
+        examples: [
+          [['\\61\n']],
+          [['\\61\r\n']],
+          [['\\0000611\n']],
+          [['\\\\', '61\n']],
+          [['\\61\n\r']],
+          [['\\g\n']],
+          [['\\G\n']],
+          [['\\:\n']],
+          [['\\/\n']],
+          [['\\z\n']],
+        ],
+      },
+    );
   });
 });
 
@@ -237,6 +319,23 @@ describe('a form the guard does not read is refused by one sentence, never passe
     // a raw line end (its sentence quotes the string up to its first line end, the escaped one here)
     ['a string across a CR after an escaped LF', '.a { content: "x\\\n\ry" }', LINE_END('"x\\…')],
     ['a string across an LF after an escaped CR LF', '.a { content: "x\\\r\n\ny" }', LINE_END('"x\\…')],
+    ['a string with seven hex digits before a raw LF', '.a { content: "x\\0000611\ny" }', LINE_END('"x\\0000611…')],
+    ['a string with an escaped backslash before hex digits and a raw LF', '.a { content: "x\\\\61\ny" }', LINE_END('"x\\\\61…')],
+    ['a string with an escaped backslash immediately before a raw LF', '.a { content: "x\\\\\ny" }', LINE_END('"x\\\\…')],
+    ['a string with a hex escape, a space and then a raw LF', '.a { content: "x\\61 \ny" }', LINE_END('"x\\61 …')],
+    ['a string with a hex escape, a tab and then a raw LF', '.a { content: "x\\61\t\ny" }', LINE_END('"x\\61\t…')],
+    ['a string with a hex escape, a vertical tab and then a raw LF', '.a { content: "x\\61\v\ny" }', LINE_END('"x\\61\v…')],
+    ['a string with a hex escape and LF followed by CR', '.a { content: "x\\61\n\ry" }', LINE_END('"x\\61…')],
+    ['a string with a hex escape and CR LF followed by LF', '.a { content: "x\\61\r\n\ny" }', LINE_END('"x\\61…')],
+    // Non-hex escapes right outside [0-9a-fA-F] do not consume a trailing line end (AUDIT H: H1, H2, H3a, H3b, H3c)
+    ['a string with \\g before a raw LF (above a-f)', '.a { content: "x\\g\ny" }', LINE_END('"x\\g…')],
+    ['a string with \\` before a raw LF (below a-f)', '.a { content: "x\\`\ny" }', LINE_END('"x\\`…')],
+    ['a string with \\G before a raw LF (above A-F)', '.a { content: "x\\G\ny" }', LINE_END('"x\\G…')],
+    ['a string with \\@ before a raw LF (below A-F)', '.a { content: "x\\@\ny" }', LINE_END('"x\\@…')],
+    ['a string with \\: before a raw LF (above 0-9)', '.a { content: "x\\:\ny" }', LINE_END('"x\\:…')],
+    ['a string with \\/ before a raw LF (below 0-9)', '.a { content: "x\\/\ny" }', LINE_END('"x\\/…')],
+    ['a string with \\z before a raw LF (non-hex word char)', '.a { content: "x\\z\ny" }', LINE_END('"x\\z…')],
+    ['a string with \\_ before a raw LF (underscore)', '.a { content: "x\\_\ny" }', LINE_END('"x\\_…')],
     // A selector function in any prelude, in any case (the reader's two forms)
     ['@import with supports(selector())', "@import url('x.css') supports(selector(.p));", SELECTOR_FN("@import url('x.css') supports(selector(.p))")],
     ['@import with SELECTOR() in capitals', "@import './hud-tokens.css' supports(SELECTOR(.p));", SELECTOR_FN("@import './hud-tokens.css' supports(SELECTOR(.p))")],
@@ -255,6 +354,7 @@ describe('a form the guard does not read is refused by one sentence, never passe
     ['a dead class in an @import condition (the second reader\'s R5)', '@import url("x.css") supports(selector(.alb-audit-dead-import));'],
     ['a dead class in @supports SELECTOR() in capitals (its G3)', '@supports SELECTOR(.alb-audit-dead-caps) { .alb-scan-glyph { color: red; } }'],
     ['a dead class between two strings run across line ends (the third reader\'s first)', ':root { --audit-h: "a\n}\n.alb-audit-h-dead { color: rgb(255, 0, 0) }\n:root { --audit-h2: " }'],
+    ['a dead class after a non-hex escape before a line end (AUDIT H\'s H1)', ':root { --audit-h1: "a\\g\n} .alb-audit-h1-dead { color: red } :root { --audit-h1b: " }'],
   ])("fails the reader's probe: %s added to albedian.css", (_label, rule) => {
     const css = `${fs.readFileSync(path.join(srcRoot, 'styles/albedian.css'), 'utf8')}\n${rule}\n`;
     expect(() => stylesheetClasses(css, 'styles/albedian.css')).toThrow(UnreadForm);
@@ -325,14 +425,54 @@ describe('index.html: its inline style elements, read as the files are', () => {
       ['<html><body><object data="data:text/html,<style>.x{}</style>"></object></body></html>', 'object'],
       ['<html><body><embed src="data:text/html,x"></body></html>', 'embed'],
       ['<html><frameset><frame src="data:text/html,<style>.x{}</style>"></frameset></html>', 'frame'],
+      ['<html><frameset><frame src="da&#9;ta:text/html,<style>.x{}</style>"></frameset></html>', 'frame'],
+      ['<html><body><iframe src="da&#10;ta:text/html,<style>.x{}</style>"></iframe></body></html>', 'iframe'],
+      ['<html><body><object data="d&#9;a&#13;t&#10;a:text/html,<style>.x{}</style>"></object></body></html>', 'object'],
+      ['<html><body><iframe src="&#1;data:text/html,<style>.x{}</style>"></iframe></body></html>', 'iframe'],
+      ['<html><body><embed src="&#31;data:text/html,x"></body></html>', 'embed'],
     ];
     for (const [html, element] of ROWS) {
       expect(() => htmlStyles(html), html).toThrow(
         new UnreadForm(`index.html: a <${element}> holds a page of its own in a data address, which the guard does not read; serve that page as a file instead.`)
       );
     }
-    // A data address that is no page is read as before: an image's, and a frame's own file
-    expect(htmlStyles('<html><body><img src="data:image/png;base64,AA"><iframe src="/page.html"></iframe><style>.a { }</style></body></html>')).toEqual(['.a { }']);
+    // A data address that is no page is read as before: an image's, a frame's own file, an embedded C0 control or
+    // space that WHATWG URL parsing does not strip, and a spurious src on <style> or <template> (AUDIT H/M: H4a-H5b, M_A11)
+    let allowedStyles: string[] = [];
+    expect(() => {
+      allowedStyles = htmlStyles(
+        '<html><body><img src="data:image/png;base64,AA"><iframe src="/page.html"></iframe><iframe src="da&#8;ta:text/html,x"></iframe><iframe src="da&#14;ta:text/html,x"></iframe><iframe src="da ta:text/html,x"></iframe><iframe src="da&#32;ta:text/html,x"></iframe><object data="/ok.svg" src="data:text/html,x"><style>.o { }</style></object><style src="data:text/plain,x">.a { }</style><template src="data:text/plain,x"><style>.t { }</style></template></body></html>',
+      );
+    }).not.toThrow();
+    expect(allowedStyles).toEqual(['.o { }', '.a { }', '.t { }']);
+  });
+
+  it('judges a data: address with WHATWG URL control and ASCII tab/newline stripping at every boundary', () => {
+    const EDGES: Array<[address: string, expected: boolean]> = [
+      ['DATA:text/html,x', true],
+      ['\u0000data:text/html,x', true],
+      ['\u0001data:text/html,x', true],
+      ['\u001fdata:text/html,x', true],
+      ['\u0020data:text/html,x', true],
+      ['\u0000\u0020data:text/html,x', true],
+      ['\u0021data:text/html,x', false],
+      ['\u00a0data:text/html,x', false],
+      ['d\ta\nt\ra:text/html,x', true],
+      ['da\u0000ta:text/html,x', false],
+      ['da\u0008ta:text/html,x', false],
+      ['da\fta:text/html,x', false],
+      ['da\vta:text/html,x', false],
+      ['da\u000eta:text/html,x', false],
+      ['da\u001fta:text/html,x', false],
+      ['da ta:text/html,x', false],
+      ['da\u00a0ta:text/html,x', false],
+      ['da data:text/html,x', false],
+      ['database.html', false],
+      ['http://example.com/?q=data:text/html,x', false],
+    ];
+    for (const [address, expected] of EDGES) {
+      expect(isDataAddress(address), JSON.stringify(address)).toBe(expected);
+    }
   });
 
   it('refuses a page that holds a page of its own in srcdoc, by its sentence', () => {

@@ -191,7 +191,7 @@ describe('CislunarWebGpuRenderer: drawing stops and starts its host loop', () =>
     };
   };
 
-  it('resets its clock when it draws again, so the first frame after a pause steps by one frame and not by the pause', () => {
+  it('resets its clock when it draws again, so the first frame after a pause steps from the resume and not across the pause', () => {
     const s = onStandIns();
     s.resume();
     s.frameAt(1000);
@@ -199,12 +199,31 @@ describe('CislunarWebGpuRenderer: drawing stops and starts its host loop', () =>
     expect(s.steps.at(-1)).toBeCloseTo(0.016, 9);
     s.draw(false);
     expect(s.loop.frame).toBeNull();
-    // A minute under the home, then drawn again: the first frame steps 16 ms, as before the pause. Without the reset
-    // it would step the whole minute, held to the frame step's cap of 0.1 s
+    // A minute under the home, then drawn again: the first frame steps by the time since setDrawing(true) ran, not
+    // across the minute-long pause (which would hit the 0.1 s cap)
     s.at(61_000);
     s.draw(true);
     s.frameAt(61_016);
     expect(s.steps.at(-1)).toBeCloseTo(0.016, 9);
+    s.draw(false);
+    s.at(121_000);
+    s.draw(true);
+    s.frameAt(121_080);
+    expect(s.steps.at(-1)).toBeCloseTo(0.08, 9);
+  });
+
+  it("clamps the frame step at zero when an animation frame's timestamp precedes the clock reset", () => {
+    const s = onStandIns();
+    s.resume();
+    s.frameAt(1000);
+    s.draw(false);
+    // requestAnimationFrame latches its frame timestamp at vsync, which can precede performance.now() inside resumeLoop
+    s.at(61_005);
+    s.draw(true);
+    s.loop.frame!(61_000);
+    expect(s.steps.at(-1)).toBe(0);
+    s.loop.frame!(61_001);
+    expect(s.steps.at(-1)).toBeCloseTo(0.001, 9);
   });
 
   it('steps a frame that comes late while drawing by at most a tenth of a second', () => {

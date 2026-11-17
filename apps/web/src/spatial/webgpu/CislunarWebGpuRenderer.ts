@@ -314,7 +314,7 @@ export class CislunarWebGpuRenderer implements CosmosRenderer {
 
   private onAnimationFrame(timeMs: number): void {
     this.timer.update(timeMs);
-    this.renderFrame(Math.min(0.1, this.timer.getDelta()));
+    this.renderFrame(Math.max(0, Math.min(0.1, this.timer.getDelta())));
   }
 
   private step(dtSec: number, clockSec: number | null): void {

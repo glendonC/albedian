@@ -40,9 +40,8 @@ import ts from 'typescript';
  * - A class name built from parts at run time is not found whole, so its rule is reported dead (the guard fails; a
  *   name must be written whole).
  * - A stylesheet built or changed at run time (a style element or rule written by a script, the CSSOM, a style
- *   attribute) is not read; nor is a stylesheet linked from the page (index.html links the outside font host's, which
- *   names no class of the app), nor a page held in a srcdoc or a data address (both refused), nor a .css file
- *   outside src.
+ *   attribute) is not read; nor is a stylesheet linked from the page (index.html links none), nor a page held in a
+ *   srcdoc or a data address (both refused), nor a .css file outside src.
  * - @import is read in its plain form only, and the file it names is read because it is one of the files under src,
  *   not by following the import.
  * - Only what decides whether a rule can match is read: a class in a declaration (content: '.x') is not a class.
@@ -155,15 +154,24 @@ export function stylesheetClasses(css: string, file = 'a stylesheet'): Set<strin
 
 /**
  * The first string, by postcss's own tokens, that holds a raw line end, or null. A line end escaped with a backslash
- * is CSS's line continuation and is not one; CR LF is one line end, as CSS reads it, so a backslash escapes both.
+ * is CSS's line continuation and is not one, and a hex escape (1 to 6 hex digits) consumes one trailing line end as
+ * part of the escape; CR LF is one line end in both places, as CSS preprocesses it.
  */
 function lineEndString(css: string): string | null {
   const tokens = tokenizer(new postcss.Input(css));
   while (!tokens.endOfFile()) {
     const token = tokens.nextToken();
-    if (token?.[0] === 'string' && /[\n\r\f]/.test(token[1].replace(/\\(?:\r\n|[\s\S])/g, ''))) return token[1];
+    if (token?.[0] === 'string' && /[\n\r\f]/.test(token[1].replace(/\\(?:[0-9a-fA-F]{1,6}(?:\r\n|[\n\r\f])|\r\n|[\s\S])/g, ''))) return token[1];
   }
   return null;
+}
+
+/**
+ * Whether an attribute's address names the data: scheme as a browser's URL parser reads it (WHATWG URL Standard
+ * Section 4.4: ASCII tab and newline characters removed, leading C0 controls and space stripped).
+ */
+export function isDataAddress(address: string): boolean {
+  return /^data:/i.test(address.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, ''));
 }
 
 /**
@@ -181,7 +189,7 @@ export function htmlStyles(html: string, file = 'index.html'): string[] {
         throw new UnreadForm(`${file}: a <${element.localName}> holds a page of its own in srcdoc, which the guard does not read; serve that page as a file instead.`);
       }
       const address = element.getAttribute(element.localName === 'object' ? 'data' : 'src') ?? '';
-      if (/^\s*data:/i.test(address) && element.localName !== 'style' && element.localName !== 'template') {
+      if (isDataAddress(address) && element.localName !== 'style' && element.localName !== 'template') {
         throw new UnreadForm(`${file}: a <${element.localName}> holds a page of its own in a data address, which the guard does not read; serve that page as a file instead.`);
       }
       if (element instanceof HTMLTemplateElement) visit(element.content);
