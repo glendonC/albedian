@@ -9,7 +9,6 @@ struct PipelineScreen: View {
     @State private var model = PipelineModel()
 
     var body: some View {
-        NavigationStack {
             Form {
                 Section("Sample sensors") {
                     Toggle("True-north frame", isOn: $model.options.trueNorthFrame)
@@ -57,8 +56,7 @@ struct PipelineScreen: View {
                     }
                 }
             }
-            .navigationTitle("Albedian Capture")
-        }
+            .navigationTitle("Pipeline with sample values")
     }
 
     private func degrees(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(0...2))) + "\u{B0}" }

@@ -107,6 +107,11 @@ read_word=(DataRead "makes an address from text" StringRead "reads an address" N
 for name in ${(k)reads}; do
   compile_swift "planted_$name" "${reads[$name]}" && expect refused "$name" "${read_word[$name]}" "$scratch/planted_$name.o"
 done
+# A listed exception: the store's read-back of a file it wrote passes in its own object, and nowhere else
+readback='import Foundation
+public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }'
+compile_swift CaptureStore "$readback" && expect passes "the store's listed read-back" - "$scratch/CaptureStore.o"
+compile_swift Elsewhere "$readback" && expect refused "the same read in another object" "reads an address" "$scratch/Elsewhere.o"
 # The transport's own object may make an address from text
 compile_swift UploadClient 'import Foundation
 public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect passes "the transport making the paired address" - "$scratch/UploadClient.o"

@@ -80,7 +80,8 @@ public final class SensorRecorder: @unchecked Sendable {
         public var samplesRefused: Int
         public var authorization: LocationAuthorization?
         public var accuracy: AccuracyAuthorization?
-        /// The newest by arrival.
+        /// The newest motion sample, and the newest heading and fix by arrival.
+        public var lastSample: MotionSample?
         public var lastHeading: HeadingEvent?
         public var lastFix: LocationEvent?
     }
@@ -177,7 +178,8 @@ public final class SensorRecorder: @unchecked Sendable {
     public var status: Status {
         lock.withLock {
             Status(running: running, frame: frame, samplesKept: ring.count, samplesOverwritten: ring.overwrittenCount,
-                   samplesRefused: ring.refusedCount, authorization: authorization, accuracy: accuracy, lastHeading: headings.last,
+                   samplesRefused: ring.refusedCount, authorization: authorization, accuracy: accuracy, lastSample: ring.newest,
+                   lastHeading: headings.last,
                    lastFix: fixes.last)
         }
     }

@@ -5,9 +5,10 @@ pointed beside it, and send both to the laptop's service over the local network.
 nothing about the sky. Spec: `.kiro/specs/ios-capture-companion/` (requirements, design, tasks).
 
 Unit mobile-0 holds the project, the tested core and one plain screen. Unit mobile-1 adds the sensors: Core Motion
-and Core Location read into the core, tested on the Mac with stand-in sources; no screen shows them yet. The
-camera, a check screen and the permission texts come with mobile-2. Nothing is styled: the look waits for the
-reference board and the owner's yes.
+and Core Location read into the core, tested on the Mac with stand-in sources. Unit mobile-2 adds the camera, keeps
+each photo and its record on the phone until the laptop has them, and a check screen that shows what the sensors
+report and takes a photo; the permission texts for the camera, motion and location are in `AlbedianCapture-Info.plist`.
+Only the capture button follows the approved look; the rest of the check screen is the system's default style.
 
 ## Layout
 
@@ -22,15 +23,28 @@ reference board and the owner's yes.
     `PUT /api/ingest/{sha256}/pointing` [proposed in the design; unit pointing-2 builds the route]. It writes each
     request itself on a connection of its own to the paired address (`LaptopConnection.swift`); its states come from
     what that connection reports; it takes only a local network address.
+  - `CaptureStore` keeps each photo as the bytes given, named by its SHA-256 and its type's extension, and its record
+    beside it as the record's JSON bytes; a file counts as kept only once it has been read back and equals the bytes
+    given, and a name holds no time, place or count. `CaptureUploader.send(photo:contentType:recordWire:)` sends a kept
+    capture: the record goes out as the very bytes kept, after the same checks.
+  - `PhotoClock` gives the device clock at the photo from one pair of readings of the boot clock and the device clock
+    taken together after the shot.
+  - `CheckReadout` writes the check screen's words for each reading (tested here): the heading accuracy named for the
+    magnetic heading Apple states it for, Apple's words for a true heading that could not be determined, no place,
+    and every value that is not a number written as such. `CheckCaptureState` runs the check screen's photo hashing,
+    keeps and counts on the store's queue off the main actor.
   - `SampleCapture` holds synthetic readings (open ocean, the fixtures' synthetic moment) for tests and the screen.
   - `SensorRecorder` starts the two sensor sources, keeps their reports (device motion in a `MotionRing`, the
     newest headings and fixes) and at a photo hands the builder a `SensorCapture`: the window's samples, and the
     newest heading and fix not after the photo. `SensorMapping` carries each report onto the core's types as the
     device gave it. The sources are protocols (`SensorReadings.swift`), so the tests feed synthetic reports.
-- `AlbedianCapture/`: the app, one screen in the system's default style, to run the pipeline by hand, and
-  `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device has it) and
-  `CoreLocationSource` (`CLLocationManager`, when in use only, best accuracy). Both run only on an iPhone: the
-  simulator has no motion sensors.
+- `AlbedianCapture/`: the app, two screens in the system's default style: the pipeline run by hand with sample values,
+  and the sensors and camera check (`CaptureCheckScreen`), with the capture button (`UI/CaptureButton.swift`,
+  Albedian's mark as its disc). `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device
+  has it), `CoreLocationSource` (`CLLocationManager`, when in use only, best accuracy) and `CameraSession` (the back
+  wide-angle camera, HEIC else JPEG, the bytes of `fileDataRepresentation()` as they are, content-aware distortion
+  correction off). All three run only on an iPhone: the simulator has no motion sensors and no camera, and the check
+  screen says so.
 - `AlbedianCapture.xcodeproj`: the iPhone app target, using the package.
 
 ## Run the tests
@@ -74,6 +88,10 @@ address `pnpm field --lan` prints. The sample photo is a black image the app dra
   the field of view per aspect ratio, which the iOS 26.5 SDK header marks `API_AVAILABLE(ios(26.0))` [verified in
   `AVCaptureDevice.h`]. The others the design names are older, `synchronizationClock` from iOS 15.4 among them
   [verified in `AVCaptureSession.h`; the rest as the design read them at Apple's documentation].
+- The field of view: mobile-2 reads the active format's `videoFieldOfView` and
+  `geometricDistortionCorrectedVideoFieldOfView` with the session's photo preset; the iOS 26 call per aspect ratio is
+  not called yet [open]. That the preset's format has the photo's aspect ratio, so the two agree, is [inference],
+  on the owner's checklist.
 - Bundle identifier `com.example.albedian.capture` [proposed]: a placeholder under the domain reserved for examples
   (RFC 2606), so it names no one. The owner picks the real one before a device build.
 - No signing team and no Apple account: builds are for the simulator only. Running on an iPhone needs the owner to

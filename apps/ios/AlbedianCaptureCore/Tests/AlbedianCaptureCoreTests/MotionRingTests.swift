@@ -33,6 +33,15 @@ final class MotionRingTests: XCTestCase {
         XCTAssertEqual(ring.samples.map(\.bootClockSec), [5 * step, 6 * step, 7 * step])
         XCTAssertEqual(ring.overwrittenCount, 5)
         XCTAssertEqual(ring.refusedCount, 0)
+        XCTAssertEqual(ring.newest?.bootClockSec, 7 * step)
+        ring.append(sample(8 * step))
+        XCTAssertEqual(ring.newest?.bootClockSec, 8 * step)
+        XCTAssertEqual(ring.samples.last, ring.newest)
+        XCTAssertNil(try XCTUnwrap(MotionRing(capacity: 3)).newest)
+        var partial = try XCTUnwrap(MotionRing(capacity: 3))
+        partial.append(sample(0))
+        partial.append(sample(step))
+        XCTAssertEqual(partial.newest?.bootClockSec, step)
         var one = try XCTUnwrap(MotionRing(capacity: 1))
         one.append(sample(0))
         one.append(sample(step, gravityX: 0.01))
@@ -119,6 +128,7 @@ final class MotionRingTests: XCTestCase {
             XCTAssertEqual(ring.refusedCount, refused)
             XCTAssertEqual(ring.overwrittenCount, max(0, accepted.count - capacity))
             XCTAssertEqual(ring.count, min(accepted.count, capacity))
+            XCTAssertEqual(ring.newest, ring.samples.last)
         }
     }
 }

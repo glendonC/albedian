@@ -7,6 +7,12 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Albedian takes your night photo with the camera and keeps it exactly as the camera wrote it.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Albedian records which way the phone pointed for each photo, as a hint for finding its stars.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Albedian uses your location while you aim to find true north and the sky above you, and sends it only to your laptop.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Albedian sends your photo and where the phone pointed to your laptop on this network.</string>
 </dict>

@@ -66,8 +66,11 @@ final class PrivacyScanTests: XCTestCase {
     /// paired laptop's, from the text a person types, and the request's Host line).
     static let transportFiles: Set<String> = ["LaptopConnection.swift", "UploadClient.swift"]
 
-    /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why. Empty in this unit.
-    static let exceptions: [Exception] = []
+    /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
+    static let exceptions: [Exception] = [
+        (file: "CaptureStore.swift", line: 98, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
+         reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
+    ]
 
     /// The first labels of `URL(...)` the first rule lets through outside the transport: a file's address from a path.
     static let fileAddressLabels: Set<String> = ["fileURLWithPath", "filePath"]
@@ -245,6 +248,19 @@ final class PrivacyScanTests: XCTestCase {
         XCTAssertTrue(Self.exempt("Store.swift", 2, "  \(code)  ", in: listed))
         XCTAssertFalse(Self.exempt("Store.swift", 2, code + " ", in: []))
         XCTAssertFalse(Self.exempt("Store.swift", 2, "let d = try Data(contentsOf: file) // changed", in: listed))
+    }
+
+    func testListsEachExceptionAtTheLineThatHoldsItsCode() throws {
+        // An exception names a line; if the code moves or changes, the exception no longer stands for it
+        for exception in Self.exceptions {
+            let url = try XCTUnwrap(Self.builtRoots.lazy.compactMap { root in
+                FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL }.first { $0.lastPathComponent == exception.file }
+            }.first, exception.file)
+            let lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
+            XCTAssertGreaterThanOrEqual(lines.count, exception.line, exception.file)
+            XCTAssertEqual(lines[exception.line - 1].trimmingCharacters(in: .whitespaces), exception.code, "\(exception.file):\(exception.line)")
+            XCTAssertFalse(exception.reason.isEmpty)
+        }
     }
 
     func testOpensTheOneConnectionOnlyToTheEndpointTheGateApproved() throws {

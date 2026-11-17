@@ -72,7 +72,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     distortion correction left off; the record built at the shutter; photo and record kept in the app's own storage
     until sent (REQ-IOS-4.3). P3 on the phone: the stored bytes and SHA-256 equal the bytes the camera wrote. A
     check screen in system default style (the sensors' readings, then the camera's), and the usage descriptions
-    for the camera, motion and location.
+    for the camera, motion and location (`PhotoClock`, `CaptureStore`, `CheckReadout` and the uploader's send of a
+    kept record in the core; the app's `CameraSession`, `CaptureCheckScreen` and `CaptureButton`). The iOS 26 field of
+    view per aspect ratio is not called yet [open].
   - Needs first: mobile-1; the owner's yes on the capture screen's look (reference board) before it is styled.
   - Only on an iPhone: the simulator has no camera. Checks: the host clock and `CMLogItem.timestamp` count the same
     seconds; whether `AVCapturePhoto.metadata` holds an EXIF time and its offset; which axis "horizontal" field of

@@ -15,7 +15,8 @@ final class AAShuffledOrder: XCTestCase {
         JSONTextTests.self, PrivacyScanTests.self, RecordBuilderPropertyTests.self, RecordBuilderTests.self,
         SharedFixtureTests.self, UploadClientTests.self, RecordBuilderEdgeTests.self, JSONEdgeTests.self,
         LaptopAddressEdgeTests.self, InstantEdgeTests.self, CalendarDayTests.self, RequestGateTests.self, HTTPReaderTests.self,
-        SensorMappingTests.self, MotionRingTests.self, SensorRecorderTests.self,
+        SensorMappingTests.self, MotionRingTests.self, SensorRecorderTests.self, PhotoClockTests.self, CaptureStoreTests.self,
+        StoredRecordSendTests.self, CheckReadoutTests.self, CaptureStoreFailureTests.self, OffMainActorTests.self, ShutterGeometryTests.self,
     ]
 
     override class var defaultTestSuite: XCTestSuite {

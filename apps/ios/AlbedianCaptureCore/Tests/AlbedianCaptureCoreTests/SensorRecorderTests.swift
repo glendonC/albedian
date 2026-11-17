@@ -118,6 +118,7 @@ final class SensorRecorderTests: XCTestCase {
         deliverPlace(headingEvent(-1.25))
         for index in -20...20 { deliverMotion(motionEvent(Double(index) * step)) }
         XCTAssertEqual(recorder.status.samplesKept, 41)
+        XCTAssertEqual(recorder.status.lastSample, SensorMapping.sample(motionEvent(20 * step)))
         XCTAssertEqual(recorder.status.authorization, .authorizedWhenInUse)
         XCTAssertEqual(recorder.status.accuracy, .full)
 

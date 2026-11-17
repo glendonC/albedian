@@ -41,6 +41,12 @@ public struct MotionRing: Sendable {
 
     public var count: Int { storage.count }
 
+    /// The newest sample kept, for a check screen.
+    public var newest: MotionSample? {
+        guard !storage.isEmpty else { return nil }
+        return storage.count < capacity ? storage[storage.count - 1] : storage[(head + capacity - 1) % capacity]
+    }
+
     /// The samples kept, oldest first.
     public var samples: [MotionSample] { Array(storage[head...] + storage[..<head]) }
 

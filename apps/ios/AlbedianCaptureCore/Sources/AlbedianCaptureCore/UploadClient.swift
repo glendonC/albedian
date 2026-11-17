@@ -211,9 +211,29 @@ public final class CaptureUploader: Sendable {
         return await transmit(photo: photo, sha256: sha256, contentType: contentType, recordBody: recordBody, onState: onState)
     }
 
+    /// Sends a capture the phone kept (`CaptureStore`): the photo as given, then the record as the very bytes kept,
+    /// after the same checks (contract JSON naming these bytes' SHA-256), so the record sent is the record kept.
+    public func send(photo: Data, contentType: PhotoContentType, recordWire: Data?,
+                     onState: @escaping @Sendable (UploadState) -> Void) async -> UploadState {
+        onState(.waiting)
+        let sha256 = PhotoHash.sha256Hex(photo)
+        if let recordWire {
+            do throws(CaptureStoreError) {
+                try CaptureStore.check(recordWire, for: sha256)
+            } catch .recordNamesAnotherPhoto {
+                return Self.finish(.failed(.recordNamesAnotherPhoto), onState)
+            } catch {
+                let issues: [PointingIssue]
+                if case .recordNotContract(let found) = error { issues = found } else { issues = [] }
+                return Self.finish(.failed(.recordNotWritable(issues)), onState)
+            }
+        }
+        return await transmit(photo: photo, sha256: sha256, contentType: contentType, recordBody: recordWire, onState: onState)
+    }
+
     /// The two requests, once the record's bytes (if any) are checked.
-    func transmit(photo: Data, sha256: String, contentType: PhotoContentType, recordBody: Data?,
-                  onState: @escaping @Sendable (UploadState) -> Void) async -> UploadState {
+    private func transmit(photo: Data, sha256: String, contentType: PhotoContentType, recordBody: Data?,
+                          onState: @escaping @Sendable (UploadState) -> Void) async -> UploadState {
         let photoReply: HTTPReply
         switch await exchange(method: "POST", path: "/api/ingest", contentType: contentType.rawValue, body: photo, phase: .photo, onState: onState) {
         case .failure(let failure): return Self.finish(.failed(failure), onState)

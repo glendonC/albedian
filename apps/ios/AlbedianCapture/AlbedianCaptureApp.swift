@@ -1,13 +1,30 @@
 import SwiftUI
 
-/// The capture companion. In unit mobile-0 it has one plain screen, in the system's default style, for running the
-/// core's pipeline by hand in the simulator with sample sensor values; the look waits for the reference board and
-/// the owner's yes.
+/// The capture companion. Two plain screens in the system's default style, while the approved screens wait their
+/// units: the pipeline run by hand with sample values (mobile-0), and the sensors and camera check (mobile-2).
 @main
 struct AlbedianCaptureApp: App {
+    #if DEBUG
+    @State private var samplePath: [Int] = ProcessInfo.processInfo.arguments.contains("-AlbedianOpenCheck") ? [0] : []
+    #endif
+
     var body: some Scene {
         WindowGroup {
-            PipelineScreen()
+            #if DEBUG
+            NavigationStack(path: $samplePath) {
+                rootList.navigationDestination(for: Int.self) { _ in CaptureCheckScreen() }
+            }
+            #else
+            NavigationStack { rootList }
+            #endif
         }
+    }
+
+    private var rootList: some View {
+        List {
+            NavigationLink("Pipeline with sample values") { PipelineScreen() }
+            NavigationLink("Sensors and camera") { CaptureCheckScreen() }
+        }
+        .navigationTitle("Albedian Capture")
     }
 }

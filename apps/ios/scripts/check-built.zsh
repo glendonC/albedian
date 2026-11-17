@@ -42,7 +42,8 @@ client_object='LaptopConnection'
 address_making='(^|[^A-Za-z0-9_])(URL\.init\(string:|URL\.init\(dataRepresentation:|URL\.init\(resolvingBookmarkData:|URLComponents|NSURL[^A-Za-z]|objc class NSURL$)'
 address_reading='(^|[^A-Za-z0-9_])(Data\.init\(contentsOf:|String\.init\(contentsOf:|NSData|NSString\.init\(contentsOf)'
 transport_objects=(LaptopConnection.o UploadClient.o)
-exceptions=()
+# CaptureStore reads back each file it has just written (P3): a file's address in the app's own folder
+exceptions=(CaptureStore.o:Data.init)
 # The four closed lists, read from the .app
 allowed_links=(
   /System/Library/Frameworks/Foundation.framework/Foundation /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
