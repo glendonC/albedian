@@ -7,7 +7,8 @@ rules between fields, refused at the same paths in the same words. Three things 
 document as JavaScript does:
 - a number is finite, and never a boolean or text; 4.0 is the integer 4; an integer too large for a float is refused,
   since JavaScript reads it as Infinity;
-- an optional field is left out, never null, and a key the contract does not name is dropped, not refused;
+- an optional field is left out, never null, and a key the contract does not name is dropped, not refused, but by
+  the two closed records of what the detector measured (`DetectionQuality`, `StarProfile`), which refuse it;
 - a refusal names the field and the rule, never the value, so no capture time or place reaches a log.
 
 Each field's own rule is one object (a `NumberRule`, `TextRule`, `ChoiceRule` or `FlagRule`) that the model checks
@@ -26,12 +27,12 @@ import math
 import numbers
 import re
 import types
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Annotated, Any, Optional, Union, get_args, get_origin, get_type_hints
 
-from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler, ValidationError, ValidatorFunctionWrapHandler, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import InitErrorDetails, PydanticCustomError, core_schema
 
@@ -45,6 +46,7 @@ from services.contracts.catalog_reference import (
 from services.contracts.designation import BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN
 from services.contracts.ingest import SHA256_HEX_PATTERN, ZOD_DATETIME_PATTERN
 from services.contracts.render_layer import EVIDENCE_CLASSES
+from services.contracts.wire import real_calendar_day
 
 SOLUTION_STATUSES = ("pending", "calibrated", "approximate", "predicted_only", "unresolved", "ambiguous")
 # How an approximate pose was lined up, and the beacon each method lines up from (POSE_METHOD_BEACONS in the contract)
@@ -61,6 +63,24 @@ MAX_SWEPT_WCS = 27
 # billionth of a degree covers the last digits of an arctangent; one pixel more of image width moves a field of view
 # by about the pixel scale, millions of times more]. SWEPT_FOV_TOLERANCE_DEG in the contract.
 SWEPT_FOV_TOLERANCE_DEG = 1e-9
+# What the detector measured on the frame's own pixels (quality.detection; services/science/detector.py, REALSKY's,
+# fills it). The star profile's bounds are literals, the same in the contract, and REALSKY's fill imports them, so a
+# width the fit leaves exactly at a bound is taken on every machine (the lead's ruling of 07:16 on 2026-11-13): the
+# narrowest width 1 / sqrt(2 ln 20) px written as its double, a Gaussian whose four nearest pixels hold 5 % of its
+# peak (detector.py's PROFILE_MIN_SIGMA_PX); the widest the fit's own bound; the fewest and most stars the profile is
+# measured from (PROFILE_MIN_STARS, PROFILE_MAX_STARS there); and the angle's bound, pi / 2, written as its double
+# (the detector folds the angle into above -pi / 2 and at most pi / 2).
+PROFILE_MIN_SIGMA_PX = 0.4085389826536349
+PROFILE_MAX_SIGMA_PX = 8.0
+PROFILE_MIN_STARS = 10
+PROFILE_MAX_STARS = 400
+PROFILE_ANGLE_LIMIT_RAD = 1.5707963267948966
+# What every detection's snr counts, and the measured conditions under which the detector's false rate is not
+# controlled, in the one order a list of them is written in. "quantised" left with realsky-4's second version (measured
+# to have no cause once the background is on a grid) and "noise_tail" stays out until its meaning is settled (the
+# lead's rulings of 2026-11-13): both are refused
+DETECTION_STATISTICS = ("matched", "whitened")
+NOISE_LIMITS = ("near_black_clip",)
 
 # The contract's own sentences (packages/contracts/src/astronomy.ts), word for word
 LEFT_OUT_NEVER_NULL = "No field is null: one with no value is left out."
@@ -217,11 +237,20 @@ PASSES_WITH_A_WCS = "Held-out verification passes only with a WCS and the held-o
 NAMES_ITS_RECORDING_UNLESS_PENDING = "Only a pending solution with no findings names no recording."
 NEEDS_ITS_TIME = "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC."
 NEEDS_ITS_PLACE = "An approximate or predicted_only solution, or any solution with a predicted finding, needs observerLocation."
+INSTANT_ON_A_REAL_DAY = "A UTC instant falls on a real calendar day, in a year from 1 to 9999."
 FINDING_NAMES_ITS_SOLUTION = "A finding inside an ObservationSolution must name its ObservationSolution id."
 MATCH_NEEDS_A_VERIFIED_WCS = "A catalog_matched finding needs a verified WCS: catalog association follows held-out verification."
 OBSERVED_NEEDS_ITS_SKY_POSITION = "An observed finding in a solution with a verified WCS needs the sky position that WCS gives it."
 OBSERVED_HAS_NO_SKY_POSITION = "An observed finding has no sky position without a verified WCS."
 OBSERVED_RESIDUAL_OF_A_POSE = "An observed finding holds a residual only in an approximate solution, where it is the pose fit's residual."
+WHITENED_HAS_ITS_PROFILE = "A detection scored by the whitened statistic holds the star profile it was built for."
+NOISE_LIMITS_ONCE_IN_ORDER = "A detection lists each noise limit at most once, in the contract's order."
+PROFILE_MINOR_AT_MOST_MAJOR = "A star profile's narrower width is at most its wider one."
+
+
+def unrecognized_keys(keys: list[str]) -> str:
+    """Zod's own sentence for keys a closed record does not name (z.object().strict()), which the parser repeats."""
+    return "Unrecognized key(s) in object: " + ", ".join(f"'{key}'" for key in keys)
 
 
 def held_out_gate() -> tuple[int, float]:
@@ -311,7 +340,10 @@ class NumberRule(_Rule):
 
     def accepted(self, value: Any) -> Any:
         super().accepted(value)
-        return int(value) if self.integer else float(value)
+        if self.integer:
+            return int(value)
+        number = float(value)
+        return 0.0 if number == 0.0 else number
 
     def table_entry(self) -> dict[str, Any]:
         entry: dict[str, Any] = {"type": "number"}
@@ -322,20 +354,25 @@ class NumberRule(_Rule):
                 entry[key] = getattr(self, key)
         low = self.ge if self.ge is not None else self.gt
         if self.integer:
-            # The smallest and the largest whole number the rule's own bounds take; every sample is made from them, so
-            # the table says of each what the rule judges, whichever bounds the rule has (a count: a lower one only)
-            lo = None if low is None else (math.floor(self.gt) + 1 if self.gt is not None else math.ceil(self.ge))
+            # The smallest and largest whole numbers the rule's own bounds take; every sample is made from them, so
+            # the table agrees with the rule's judgment for lower bounds alone, upper bounds alone, narrow spans, or none
+            bounds = ([math.ceil(self.ge)] if self.ge is not None else []) + ([math.floor(self.gt) + 1] if self.gt is not None else [])
+            lo = max(bounds) if bounds else None
             hi = None if self.le is None else math.floor(self.le)
+            anchor = -3 if lo is None and hi is None else (hi - 2 if lo is None else lo)
+            pair = [anchor + 0.5, anchor + 1.5]
+            fractions = [0.5, 1.5] if any(x.is_integer() for x in pair) else pair
             if hi is None:
-                start = -3 if lo is None else lo
-                accept: list[Any] = [start, float(start + 2), 9007199254740991]
-                refuse: list[Any] = ([] if lo is None else [lo - 1]) + [start + 0.5, start + 1.5]
+                accept: list[Any] = [anchor, float(min(anchor + 2, 9007199254740991)), 9007199254740991]
             elif lo is None:
-                accept = [hi, float(hi - 2), -9007199254740991]
-                refuse = [hi + 1, float(hi + 1), hi - 0.5, hi - 1.5]
+                accept = [hi, float(max(hi - 2, -9007199254740991)), -9007199254740991]
             else:
                 accept = [lo, float(min(lo + 2, hi)), hi]
-                refuse = [lo - 1, lo + 0.5, lo + 1.5, hi + 1, float(hi + 1)]
+            refuse: list[Any] = (
+                [hi + 1, float(hi + 1), *reversed(fractions)]
+                if lo is None and hi is not None
+                else ([] if lo is None else [lo - 1]) + fractions + ([] if hi is None else [hi + 1, float(hi + 1)])
+            )
         else:
             lowest = self.ge if self.ge is not None else math.nextafter(self.gt, math.inf) if self.gt is not None else -1e308
             highest = self.le if self.le is not None else 1e308
@@ -353,16 +390,30 @@ class NumberRule(_Rule):
         return {**entry, "accept": accept, "refuse": [*refuse, *NOT_FINITE, BEYOND_ANY_FLOAT, *WRONG_TYPES_FOR_A_NUMBER]}
 
 
+def _any_day(_: str) -> str | None:
+    return None
+
+
+def _real_day(value: str) -> str | None:
+    try:
+        real_calendar_day(value)
+    except ValueError:
+        return INSTANT_ON_A_REAL_DAY
+    return None
+
+
 @dataclass(frozen=True)
 class TextRule(_Rule):
     """Text as the contract's z.string() chain takes it: text only, at least `min_length` long, in `pattern` when
-    there is one. `placeholder` is one text the pattern takes and the contract still refuses, with its sentence."""
+    there is one. `placeholder` is one text the pattern takes and the contract still refuses, with its sentence;
+    `day_rule` holds a time the pattern takes to the wire module's real calendar day, from year 1 to 9999."""
 
     name: str
     min_length: int = 0
     pattern: str | None = None
     form: str | None = None
     placeholder: tuple[str, str] | None = None
+    day_rule: Callable[[str], str | None] = _any_day
     accept: tuple[str, ...] = ()
     refuse: tuple[str, ...] = ()
 
@@ -376,7 +427,7 @@ class TextRule(_Rule):
             return f"This text is not {self.form}."
         if self.placeholder is not None and _compiled(self.placeholder[0]).fullmatch(value) is not None:
             return self.placeholder[1]
-        return None
+        return self.day_rule(value)
 
     def table_entry(self) -> dict[str, Any]:
         entry: dict[str, Any] = {"type": "text", "minLength": self.min_length}
@@ -390,10 +441,12 @@ class TextRule(_Rule):
 @dataclass(frozen=True)
 class ChoiceRule(_Rule):
     """One of the values the contract lists (z.enum, z.literal or a union of literals). A listed number is taken as
-    JavaScript compares one: 1.0 is 1, and true is not."""
+    JavaScript compares one: 1.0 is 1, and true is not. `also_refused` names values a reader might expect the rule to
+    take, each tried at the field's edges and refused there."""
 
     name: str
     values: tuple[Any, ...]
+    also_refused: tuple[Any, ...] = ()
 
     def problem(self, value: object) -> str | None:
         if isinstance(value, bool) or not isinstance(value, (str, int, float)) or value not in self.values:
@@ -409,7 +462,7 @@ class ChoiceRule(_Rule):
         if isinstance(first, str):
             # Accepting one listed value in place of another is a rule between fields, so none is tried on its own
             accept: list[Any] = []
-            refuse: list[Any] = ["", first.swapcase(), f"{first} ", *WRONG_TYPES_FOR_TEXT]
+            refuse: list[Any] = ["", first.swapcase(), f"{first} ", *self.also_refused, *WRONG_TYPES_FOR_TEXT]
         else:
             accept = [*self.values, float(first)]
             refuse = [0, 2, 1.5, -1.5, *NOT_FINITE[:2], "1", True, None, [], {}]
@@ -470,15 +523,17 @@ SHA256 = TextRule(
 )
 # The year 2030 in full-width digits, which are digits to Unicode and not to the contract's pattern
 FULLWIDTH_2030 = "".join(chr(0xFF10 + digit) for digit in (2, 0, 3, 0))
-# Zod's own pattern for z.string().datetime(): a real calendar day, seconds and their fraction optional, then Z.
-# The examples are synthetic moments and forms, none of them a recording's
+# Zod's own pattern for z.string().datetime(): a calendar day of the years 0000 to 9999, seconds and their fraction
+# optional, then Z. Year 0000 is no year to Python's dates, so the time is also held to the wire module's real day,
+# from year 1 to 9999, on both sides. The examples are synthetic moments and forms, none of them a recording's
 UTC_INSTANT = TextRule(
     "utcInstant",
     pattern=ZOD_DATETIME_PATTERN,
     form="a UTC date and time ending in Z",
+    day_rule=_real_day,
     accept=("2030-01-01T02:00:00Z", "2030-01-01T02:00Z", "2030-01-01T02:00:00.5Z", "2030-01-01T02:00:00.123456789Z",
-            "2032-02-29T23:59:59Z", "0000-02-29T00:00:00Z"),
-    refuse=("2030-01-01T02:00:00+00:00", "2030-01-01T02:00:00", "2030-01-01 02:00:00Z", "2031-02-29T00:00:00Z",
+            "2032-02-29T23:59:59Z", "0001-01-01T00:00:00Z", "9999-12-31T23:59:59.999Z"),
+    refuse=("0000-02-29T00:00:00Z", "0000-12-31T23:59:59.999Z", "2030-01-01T02:00:00+00:00", "2030-01-01T02:00:00", "2030-01-01 02:00:00Z", "2031-02-29T00:00:00Z",
             "2031-02-30T00:00:00Z", "2031-04-31T00:00:00Z", "2030-13-01T00:00:00Z", "2030-01-01T24:00:00Z",
             "2030-01-01T02:60:00Z", "2030-01-01T02:00:60Z", "2030-01-01T02:00:00Z\n", " 2030-01-01T02:00:00Z",
             "2030-01-01t02:00:00z", f"{FULLWIDTH_2030}-01-01T02:00:00Z", "2030-01-01T02:00:00.Z", "2030-1-1T02:00:00Z", ""),
@@ -493,6 +548,15 @@ PARITY = ChoiceRule("parity", (1, -1))
 CATALOG_PROVIDER = ChoiceRule("catalogProvider", tuple(CATALOG_PROVIDERS))
 CATALOG_OBJECT_TYPE = ChoiceRule("catalogObjectType", tuple(CATALOG_OBJECT_TYPES))
 CATALOG_DISTANCE_METHOD = ChoiceRule("catalogDistanceMethod", tuple(CATALOG_DISTANCE_METHODS))
+# The detector's measures: observed and nothing else, one of its two statistics, its one limit and never the
+# quantised flag or the noise tail, and the star profile's literal bounds (either width alone is held to both ends; their order is the detection's
+# rule)
+DETECTION_EVIDENCE_CLASS = ChoiceRule("detectionEvidenceClass", ("observed",), also_refused=("catalog_matched", "predicted", "simulated"))
+DETECTION_STATISTIC = ChoiceRule("detectionStatistic", DETECTION_STATISTICS)
+NOISE_LIMIT = ChoiceRule("noiseLimit", NOISE_LIMITS, also_refused=("quantised", "noise_tail"))
+PROFILE_SIGMA = NumberRule("profileSigmaPx", ge=PROFILE_MIN_SIGMA_PX, le=PROFILE_MAX_SIGMA_PX)
+PROFILE_ANGLE = NumberRule("profileAngleRad", gt=-PROFILE_ANGLE_LIMIT_RAD, le=PROFILE_ANGLE_LIMIT_RAD)
+PROFILE_STARS = NumberRule("profileStars", ge=PROFILE_MIN_STARS, le=PROFILE_MAX_STARS, integer=True)
 
 Number = Annotated[float, NUMBER]
 NonNegative = Annotated[float, NON_NEGATIVE]
@@ -527,25 +591,52 @@ def _wire_names(model: type[BaseModel]) -> frozenset[str]:
     return frozenset(field.alias or name for name, field in model.model_fields.items())
 
 
+@lru_cache(maxsize=None)
+def _optional_wire_names(model: type[BaseModel]) -> frozenset[str]:
+    return frozenset(str(field.alias) for field in model.model_fields.values() if not field.is_required())
+
+
 class _Contract(BaseModel):
     """A loose z.object under the contract's camelCase names: unknown keys dropped, an optional field left out and
     never null, and no input value kept in a refusal."""
 
     model_config = ConfigDict(alias_generator=to_camel, extra="ignore", frozen=True, hide_input_in_errors=True, strict=True)
 
-    @model_validator(mode="before")
+    def _cross_field_issues(self) -> list[Issue]:
+        return []
+
+    @model_validator(mode="wrap")
     @classmethod
-    def _left_out_never_null(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            names = _wire_names(cls)
-            nulls: list[Issue] = [((key,), LEFT_OUT_NEVER_NULL) for key, value in data.items() if value is None and key in names]
-            if nulls:
-                raise _refusal(cls.__name__, nulls)
-        return data
+    def _wire_object(cls, data: Any, handler: ValidatorFunctionWrapHandler) -> Any:
+        if not isinstance(data, dict):
+            return handler(data)
+        optional = _optional_wire_names(cls)
+        issues: list[Issue] = [((key,), LEFT_OUT_NEVER_NULL) for key, value in data.items() if value is None and key in optional]
+        if issubclass(cls, _Closed):
+            unknown = [key for key in data if key not in _wire_names(cls)]
+            if unknown:
+                issues.append(((), unrecognized_keys(unknown)))
+        if not issues:
+            built = handler(data)
+            cross = built._cross_field_issues()
+            if cross:
+                raise _refusal(cls.__name__, cross)
+            return built
+        try:
+            handler(data)
+        except ValidationError as exc:
+            prior: list[Issue] = [(err["loc"], err["msg"]) for err in exc.errors()]
+            raise _refusal(cls.__name__, [*prior, *issues]) from None
+        raise _refusal(cls.__name__, issues)
 
     def to_contract_dict(self) -> dict[str, Any]:
         """The contract dict this was parsed from: wire names, and no key for a field that was left out."""
         return self.model_dump(by_alias=True, exclude_none=True)
+
+
+class _Closed(_Contract):
+    """A closed z.object (`.strict()`): a key the record does not name, a field's Python name among them, is refused
+    at the record itself in Zod's words, as the wire rules ask; the older records of the family still drop one."""
 
 
 class SourceDetection(_Contract):
@@ -674,8 +765,37 @@ class SolverIdentity(_Contract):
     catalog_release: NonEmptyText
 
 
+class StarProfile(_Closed):
+    """The frame's measured star (`quality.detection.starProfile`): an elliptical Gaussian fitted to the median of the
+    frame's bright, isolated, unsaturated stars. Widths in pixels, the angle of the wider axis from +x toward +y in
+    radians (it means nothing when the widths are equal), and how many stars it was measured from. That the narrower
+    width is at most the wider is the detection's rule."""
+
+    sigma_major_px: Annotated[float, PROFILE_SIGMA]
+    sigma_minor_px: Annotated[float, PROFILE_SIGMA]
+    angle_rad: Annotated[float, PROFILE_ANGLE]
+    stars: Annotated[int, PROFILE_STARS]
+
+
+class DetectionQuality(_Closed):
+    """What the detector measured on the pixels the solution's detections were measured on (`quality.detection`):
+    the statistic every detection's snr counts, the noise limits it measured (none raised is an empty list), and the
+    star profile a whitened statistic was built for. It says itself that it was observed."""
+
+    evidence_class: Annotated[str, DETECTION_EVIDENCE_CLASS]
+    statistic: Annotated[str, DETECTION_STATISTIC]
+    noise_limits: _listed(Annotated[str, NOISE_LIMIT])
+    star_profile: Optional[StarProfile] = None
+
+    def _cross_field_issues(self) -> list[Issue]:
+        profile = self.star_profile
+        widths = None if profile is None else (profile.sigma_major_px, profile.sigma_minor_px)
+        return detection_issues(self.statistic, self.noise_limits, widths)
+
+
 class SolutionQuality(_Contract):
-    """What the solver measured (`quality`). The rules between these fields are the solution's."""
+    """What the solver measured (`quality`). The rules between these fields are the solution's; the detection keeps
+    its own."""
 
     detected_candidate_count: Count
     matched_inlier_count: Count
@@ -685,6 +805,7 @@ class SolutionQuality(_Contract):
     p95_residual_px: Optional[NonNegative] = None
     median_residual_arcsec: Optional[NonNegative] = None
     passed_independent_verification: Flag
+    detection: Optional[DetectionQuality] = None
 
 
 class ObservationSolution(_Contract):
@@ -793,6 +914,31 @@ def _of_another_image_size(swept: WCSCalibrationModel, nominal: WCSCalibrationMo
         elif wider_by > SWEPT_FOV_TOLERANCE_DEG:
             return True
     return False
+
+
+def listed_once_each_in_order(limits: Any, order: tuple[str, ...] = NOISE_LIMITS) -> bool:
+    """Whether `limits` lists each value at most once and in `order`'s order (true for none at all); every value is one
+    of `order`'s. The detection's noise limits are held to it with NOISE_LIMITS, so a later limit enters by that list
+    alone; the fixture's noiseLimitOrderCases hold it, on both sides, to an order of two values."""
+    rank = {value: index for index, value in enumerate(order)}
+    return all(limit in rank for limit in limits) and all(
+        rank[earlier] < rank[later] for earlier, later in zip(limits, limits[1:])
+    )
+
+
+def detection_issues(statistic: str, noise_limits: Any, widths: tuple[float, float] | None) -> list[Issue]:
+    """The detection's rules between its fields, at their paths under it: a whitened statistic holds its star profile,
+    each noise limit is listed once in NOISE_LIMITS' order, and the narrower width is at most the wider (`widths` is
+    the profile's (wider, narrower), None without one). Pure, so the records that write a detection
+    (services/science/wcs_models.py) judge by the same function as the parser."""
+    issues: list[Issue] = []
+    if statistic == "whitened" and widths is None:
+        issues.append((("starProfile",), WHITENED_HAS_ITS_PROFILE))
+    if not listed_once_each_in_order(noise_limits):
+        issues.append((("noiseLimits",), NOISE_LIMITS_ONCE_IN_ORDER))
+    if widths is not None and widths[1] > widths[0]:
+        issues.append((("starProfile", "sigmaMinorPx"), PROFILE_MINOR_AT_MOST_MAJOR))
+    return issues
 
 
 def _solution_issues(solution: ObservationSolution) -> list[Issue]:
@@ -908,6 +1054,8 @@ FAMILY: dict[str, type[BaseModel]] = {
     "ObserverLocation": ObserverLocation,
     "SolverIdentity": SolverIdentity,
     "SolutionQuality": SolutionQuality,
+    "DetectionQuality": DetectionQuality,
+    "StarProfile": StarProfile,
 }
 _SCHEMA_NAMES = {model: name for name, model in FAMILY.items()}
 # The catalog reference's own mirror states its bounds in pydantic's words, so its rows are named here; the tests
@@ -998,4 +1146,6 @@ def field_table() -> dict[str, Any]:
         },
         # What an object or a list is never: each is refused at the field itself
         "structureRefusals": {"object": [0, "x", True, None, []], "array": [0, "x", True, None, {}]},
+        # The records that refuse a key they do not name, at the record (z.object().strict()); the rest drop one
+        "closedSchemas": sorted(schema for schema, model in FAMILY.items() if issubclass(model, _Closed)),
     }

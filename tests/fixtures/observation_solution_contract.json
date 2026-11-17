@@ -9,6 +9,528 @@
   "maxMedianResidualPx": 3.0
  },
  "sweptFovToleranceDeg": 1e-09,
+ "detection": {
+  "profileMinSigmaPx": 0.4085389826536349,
+  "profileMaxSigmaPx": 8.0,
+  "profileMinStars": 10,
+  "profileMaxStars": 400,
+  "profileAngleLimitRad": 1.5707963267948966,
+  "statistics": [
+   "matched",
+   "whitened"
+  ],
+  "noiseLimits": [
+   "near_black_clip"
+  ]
+ },
+ "noiseLimitOrderCases": {
+  "order": [
+   "first",
+   "second"
+  ],
+  "cases": [
+   {
+    "limits": [],
+    "listed": true
+   },
+   {
+    "limits": [
+     "first"
+    ],
+    "listed": true
+   },
+   {
+    "limits": [
+     "second"
+    ],
+    "listed": true
+   },
+   {
+    "limits": [
+     "first",
+     "second"
+    ],
+    "listed": true
+   },
+   {
+    "limits": [
+     "second",
+     "first"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "first",
+     "first"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "second",
+     "second"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "first",
+     "second",
+     "second"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "first",
+     "first",
+     "second"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "second",
+     "first",
+     "second"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "other"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "other",
+     "first"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "first",
+     "other"
+    ],
+    "listed": false
+   },
+   {
+    "limits": [
+     "other",
+     "other"
+    ],
+    "listed": false
+   }
+  ]
+ },
+ "integerRuleEdgeCases": [
+  {
+   "name": "unbounded",
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "accept": [
+     -3,
+     -1.0,
+     9007199254740991
+    ],
+    "refuse": [
+     -2.5,
+     -1.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "upper_only",
+   "le": 5,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "le": 5,
+    "accept": [
+     5,
+     3.0,
+     -9007199254740991
+    ],
+    "refuse": [
+     6,
+     6.0,
+     4.5,
+     3.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "negative_upper",
+   "le": -10,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "le": -10,
+    "accept": [
+     -10,
+     -12.0,
+     -9007199254740991
+    ],
+    "refuse": [
+     -9,
+     -9.0,
+     -10.5,
+     -11.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "one_to_two",
+   "ge": 1,
+   "le": 2,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 1,
+    "le": 2,
+    "accept": [
+     1,
+     2.0,
+     2
+    ],
+    "refuse": [
+     0,
+     1.5,
+     2.5,
+     3,
+     3.0,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "single_value",
+   "ge": 5,
+   "le": 5,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 5,
+    "le": 5,
+    "accept": [
+     5,
+     5.0,
+     5
+    ],
+    "refuse": [
+     4,
+     5.5,
+     6.5,
+     6,
+     6.0,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "both_lows",
+   "ge": 5,
+   "gt": 2,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 5,
+    "gt": 2,
+    "accept": [
+     5,
+     7.0,
+     9007199254740991
+    ],
+    "refuse": [
+     4,
+     5.5,
+     6.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "fractional_bounds",
+   "ge": 0.5,
+   "le": 2.5,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 0.5,
+    "le": 2.5,
+    "accept": [
+     1,
+     2.0,
+     2
+    ],
+    "refuse": [
+     0,
+     1.5,
+     2.5,
+     3,
+     3.0,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "exclusive_fractional",
+   "gt": 0.5,
+   "le": 2.5,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "gt": 0.5,
+    "le": 2.5,
+    "accept": [
+     1,
+     2.0,
+     2
+    ],
+    "refuse": [
+     0,
+     1.5,
+     2.5,
+     3,
+     3.0,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "near_top",
+   "ge": 9007199254740990,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 9007199254740990,
+    "accept": [
+     9007199254740990,
+     9007199254740991.0,
+     9007199254740991
+    ],
+    "refuse": [
+     9007199254740989,
+     0.5,
+     1.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "near_bottom",
+   "le": -9007199254740990,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "le": -9007199254740990,
+    "accept": [
+     -9007199254740990,
+     -9007199254740991.0,
+     -9007199254740991
+    ],
+    "refuse": [
+     -9007199254740989,
+     -9007199254740989.0,
+     1.5,
+     0.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  },
+  {
+   "name": "near_ulp_step",
+   "ge": 4503599627370495,
+   "entry": {
+    "type": "number",
+    "integer": true,
+    "ge": 4503599627370495,
+    "accept": [
+     4503599627370495,
+     4503599627370497.0,
+     9007199254740991
+    ],
+    "refuse": [
+     4503599627370494,
+     0.5,
+     1.5,
+     {
+      "$number": "NaN"
+     },
+     {
+      "$number": "Infinity"
+     },
+     {
+      "$number": "-Infinity"
+     },
+     10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+     "1",
+     true,
+     false,
+     null,
+     [],
+     {}
+    ]
+   }
+  }
+ ],
  "findingClassEvidence": {
   "observed": {
    "source": [
@@ -363,6 +885,44 @@
     {}
    ]
   },
+  "detectionEvidenceClass": {
+   "type": "choice",
+   "values": [
+    "observed"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "OBSERVED",
+    "observed ",
+    "catalog_matched",
+    "predicted",
+    "simulated",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
+  "detectionStatistic": {
+   "type": "choice",
+   "values": [
+    "matched",
+    "whitened"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "MATCHED",
+    "matched ",
+    0,
+    true,
+    null,
+    [],
+    {}
+   ]
+  },
   "distortion": {
    "type": "number",
    "ge": -0.25,
@@ -476,6 +1036,25 @@
     "1",
     true,
     false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "noiseLimit": {
+   "type": "choice",
+   "values": [
+    "near_black_clip"
+   ],
+   "accept": [],
+   "refuse": [
+    "",
+    "NEAR_BLACK_CLIP",
+    "near_black_clip ",
+    "quantised",
+    "noise_tail",
+    0,
+    true,
     null,
     [],
     {}
@@ -682,6 +1261,103 @@
     {}
    ]
   },
+  "profileAngleRad": {
+   "type": "number",
+   "gt": -1.5707963267948966,
+   "le": 1.5707963267948966,
+   "accept": [
+    -1.5707963267948963,
+    0.7853981633974485,
+    0,
+    1.5707963267948966
+   ],
+   "refuse": [
+    -1.5707963267948966,
+    -1.5707963267948968,
+    1.5707963267948968,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "profileSigmaPx": {
+   "type": "number",
+   "ge": 0.4085389826536349,
+   "le": 8.0,
+   "accept": [
+    0.4085389826536349,
+    6.102134745663409,
+    6,
+    8.0
+   ],
+   "refuse": [
+    0.40853898265363486,
+    8.000000000000002,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
+  "profileStars": {
+   "type": "number",
+   "integer": true,
+   "ge": 10,
+   "le": 400,
+   "accept": [
+    10,
+    12.0,
+    400
+   ],
+   "refuse": [
+    9,
+    10.5,
+    11.5,
+    401,
+    401.0,
+    {
+     "$number": "NaN"
+    },
+    {
+     "$number": "Infinity"
+    },
+    {
+     "$number": "-Infinity"
+    },
+    10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+    "1",
+    true,
+    false,
+    null,
+    [],
+    {}
+   ]
+  },
   "projection": {
    "type": "choice",
    "values": [
@@ -770,9 +1446,12 @@
     "2030-01-01T02:00:00.5Z",
     "2030-01-01T02:00:00.123456789Z",
     "2032-02-29T23:59:59Z",
-    "0000-02-29T00:00:00Z"
+    "0001-01-01T00:00:00Z",
+    "9999-12-31T23:59:59.999Z"
    ],
    "refuse": [
+    "0000-02-29T00:00:00Z",
+    "0000-12-31T23:59:59.999Z",
     "2030-01-01T02:00:00+00:00",
     "2030-01-01T02:00:00",
     "2030-01-01 02:00:00Z",
@@ -1219,6 +1898,40 @@
    },
    "passedIndependentVerification": {
     "rule": "boolean"
+   },
+   "detection": {
+    "schema": "DetectionQuality",
+    "optional": true
+   }
+  },
+  "DetectionQuality": {
+   "evidenceClass": {
+    "rule": "detectionEvidenceClass"
+   },
+   "statistic": {
+    "rule": "detectionStatistic"
+   },
+   "noiseLimits": {
+    "rule": "noiseLimit",
+    "array": true
+   },
+   "starProfile": {
+    "schema": "StarProfile",
+    "optional": true
+   }
+  },
+  "StarProfile": {
+   "sigmaMajorPx": {
+    "rule": "profileSigmaPx"
+   },
+   "sigmaMinorPx": {
+    "rule": "profileSigmaPx"
+   },
+   "angleRad": {
+    "rule": "profileAngleRad"
+   },
+   "stars": {
+    "rule": "profileStars"
    }
   }
  },
@@ -1327,6 +2040,16 @@
    "p95ResidualPx": "p95_residual_px",
    "medianResidualArcsec": "median_residual_arcsec",
    "passedIndependentVerification": "passed_independent_verification"
+  },
+  "DetectionQuality": {
+   "evidenceClass": "evidence_class",
+   "noiseLimits": "noise_limits",
+   "starProfile": "star_profile"
+  },
+  "StarProfile": {
+   "sigmaMajorPx": "sigma_major_px",
+   "sigmaMinorPx": "sigma_minor_px",
+   "angleRad": "angle_rad"
   }
  },
  "structureRefusals": {
@@ -1345,6 +2068,10 @@
    {}
   ]
  },
+ "closedSchemas": [
+  "DetectionQuality",
+  "StarProfile"
+ ],
  "homes": {
   "ObservationSolution": {
    "sample": "calibrated",
@@ -1416,6 +2143,21 @@
    "sample": "calibrated",
    "path": [
     "quality"
+   ]
+  },
+  "DetectionQuality": {
+   "sample": "calibrated_at_the_gate",
+   "path": [
+    "quality",
+    "detection"
+   ]
+  },
+  "StarProfile": {
+   "sample": "calibrated_at_the_gate",
+   "path": [
+    "quality",
+    "detection",
+    "starProfile"
    ]
   },
   "SolverIdentity": {
@@ -1844,7 +2586,18 @@
     "medianResidualPx": 3.0,
     "p95ResidualPx": 3.0,
     "medianResidualArcsec": 378.0,
-    "passedIndependentVerification": true
+    "passedIndependentVerification": true,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "whitened",
+     "noiseLimits": [],
+     "starProfile": {
+      "sigmaMajorPx": 2.1,
+      "sigmaMinorPx": 1.6,
+      "angleRad": 0.5,
+      "stars": 37
+     }
+    }
    },
    "findings": [],
    "warnings": []
@@ -1869,7 +2622,14 @@
     "medianResidualPx": 4.2,
     "p95ResidualPx": 6.8,
     "medianResidualArcsec": 520.0,
-    "passedIndependentVerification": false
+    "passedIndependentVerification": false,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "matched",
+     "noiseLimits": [
+      "near_black_clip"
+     ]
+    }
    },
    "findings": [
     {
@@ -1955,7 +2715,20 @@
     "medianResidualPx": 5.0,
     "p95ResidualPx": 5.0,
     "medianResidualArcsec": 630.0,
-    "passedIndependentVerification": false
+    "passedIndependentVerification": false,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "matched",
+     "noiseLimits": [
+      "near_black_clip"
+     ],
+     "starProfile": {
+      "sigmaMajorPx": 1.2,
+      "sigmaMinorPx": 1.2,
+      "angleRad": 1.5707963267948966,
+      "stars": 10
+     }
+    }
    },
    "findings": [
     {
@@ -3261,6 +4034,26 @@
    ]
   },
   {
+   "name": "approximate_in_year_zero",
+   "base": "approximate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "observedAtUTC"
+     ],
+     "value": "0000-12-31T23:59:59Z"
+    }
+   ],
+   "reason": "a capture time in year 0000, which the pattern takes and is no year",
+   "paths": [
+    "observedAtUTC"
+   ],
+   "messages": [
+    "A UTC instant falls on a real calendar day, in a year from 1 to 9999."
+   ]
+  },
+  {
    "name": "approximate_without_a_place",
    "base": "approximate",
    "patch": [
@@ -4532,6 +5325,370 @@
    ],
    "messages": [
     "A pose estimate's beacon is the one its method lines up from: the moon for moon_camera_profile_level_head and moon_horizon, the sun for sun_horizon."
+   ]
+  },
+  {
+   "name": "detection_whitened_without_its_profile",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile"
+     ]
+    }
+   ],
+   "reason": "a whitened statistic with no star profile",
+   "paths": [
+    "quality.detection.starProfile"
+   ],
+   "messages": [
+    "A detection scored by the whitened statistic holds the star profile it was built for."
+   ]
+  },
+  {
+   "name": "detection_noise_limit_twice",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "noiseLimits"
+     ],
+     "value": [
+      "near_black_clip",
+      "near_black_clip"
+     ]
+    }
+   ],
+   "reason": "the same noise limit listed twice",
+   "paths": [
+    "quality.detection.noiseLimits"
+   ],
+   "messages": [
+    "A detection lists each noise limit at most once, in the contract's order."
+   ]
+  },
+  {
+   "name": "detection_quantised",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "noiseLimits"
+     ],
+     "value": [
+      "quantised"
+     ]
+    }
+   ],
+   "reason": "the quantised flag, which left with realsky-4's second version",
+   "paths": [
+    "quality.detection.noiseLimits.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_noise_tail",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "noiseLimits"
+     ],
+     "value": [
+      "noise_tail"
+     ]
+    }
+   ],
+   "reason": "the noise tail, which stays out until its meaning is settled",
+   "paths": [
+    "quality.detection.noiseLimits.0"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_narrower_width_above_the_wider",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile",
+      "sigmaMinorPx"
+     ],
+     "value": 2.1000000000000005
+    }
+   ],
+   "reason": "a narrower width one float above the wider one",
+   "paths": [
+    "quality.detection.starProfile.sigmaMinorPx"
+   ],
+   "messages": [
+    "A star profile's narrower width is at most its wider one."
+   ]
+  },
+  {
+   "name": "detection_claims_another_class",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "evidenceClass"
+     ],
+     "value": "predicted"
+    }
+   ],
+   "reason": "a detection that calls itself predicted",
+   "paths": [
+    "quality.detection.evidenceClass"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_without_its_class",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "detection",
+      "evidenceClass"
+     ]
+    }
+   ],
+   "reason": "a detection that does not say it was observed",
+   "paths": [
+    "quality.detection.evidenceClass"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_without_its_noise_limits",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "quality",
+      "detection",
+      "noiseLimits"
+     ]
+    }
+   ],
+   "reason": "a detection that does not say which limits it measured",
+   "paths": [
+    "quality.detection.noiseLimits"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_with_an_unknown_key",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "noiseTail"
+     ],
+     "value": true
+    }
+   ],
+   "reason": "a key the detection does not name",
+   "paths": [
+    "quality.detection"
+   ],
+   "messages": [
+    "Unrecognized key(s) in object: 'noiseTail'"
+   ]
+  },
+  {
+   "name": "star_profile_with_a_python_named_key",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile",
+      "sigma_major_px"
+     ],
+     "value": 2.1
+    }
+   ],
+   "reason": "a star profile's wider width also under its Python name",
+   "paths": [
+    "quality.detection.starProfile"
+   ],
+   "messages": [
+    "Unrecognized key(s) in object: 'sigma_major_px'"
+   ]
+  },
+  {
+   "name": "star_profile_from_a_fraction_of_a_star",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile",
+      "stars"
+     ],
+     "value": 37.5
+    }
+   ],
+   "reason": "a profile measured from 37.5 stars",
+   "paths": [
+    "quality.detection.starProfile.stars"
+   ],
+   "messages": []
+  },
+  {
+   "name": "detection_extra_key_and_bad_class",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "evidenceClass"
+     ],
+     "value": "predicted"
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "extra"
+     ],
+     "value": 1
+    }
+   ],
+   "reason": "an unknown key alongside a forbidden evidence class on a closed detection",
+   "paths": [
+    "quality.detection",
+    "quality.detection.evidenceClass"
+   ],
+   "messages": [
+    "Unrecognized key(s) in object: 'extra'"
+   ]
+  },
+  {
+   "name": "detection_extra_key_and_null_profile",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile"
+     ],
+     "value": null
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "extra"
+     ],
+     "value": 1
+    }
+   ],
+   "reason": "an unknown key alongside an explicit null optional profile",
+   "paths": [
+    "quality.detection",
+    "quality.detection.starProfile"
+   ],
+   "messages": [
+    "Unrecognized key(s) in object: 'extra'"
+   ]
+  },
+  {
+   "name": "star_profile_snake_case_only",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detection",
+      "starProfile"
+     ],
+     "value": {
+      "sigma_major_px": 2.1,
+      "sigma_minor_px": 1.6,
+      "angle_rad": 0.5,
+      "stars": 37
+     }
+    }
+   ],
+   "reason": "a star profile whose camelCase fields are sent only in snake_case",
+   "paths": [
+    "quality.detection.starProfile",
+    "quality.detection.starProfile.angleRad",
+    "quality.detection.starProfile.sigmaMajorPx",
+    "quality.detection.starProfile.sigmaMinorPx"
+   ],
+   "messages": [
+    "Unrecognized key(s) in object: 'sigma_major_px', 'sigma_minor_px', 'angle_rad'"
+   ]
+  },
+  {
+   "name": "pending_with_a_detection",
+   "base": "pending",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality"
+     ],
+     "value": {
+      "detectedCandidateCount": 1,
+      "matchedInlierCount": 0,
+      "heldOutPairCount": 0,
+      "heldOutInliers": 0,
+      "passedIndependentVerification": false,
+      "detection": {
+       "evidenceClass": "observed",
+       "statistic": "matched",
+       "noiseLimits": [
+        "near_black_clip"
+       ]
+      }
+     }
+    }
+   ],
+   "reason": "a pending solution holding a detector's measures",
+   "paths": [
+    "quality"
+   ],
+   "messages": [
+    "A pending solution has no quality: no solver has run, so nothing was counted."
    ]
   },
   {
@@ -6554,9 +7711,10 @@
   ]
  },
  "keyCases": {
-  "levels": 138,
+  "levels": 143,
   "dropped": 1679,
-  "refusedWhenRenamed": 629,
+  "refusedUnknown": 49,
+  "refusedWhenRenamed": 643,
   "leftOutWhenRenamed": 84
  }
 }

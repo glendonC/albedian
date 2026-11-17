@@ -130,6 +130,9 @@ _QUALITY_RESIDUALS = _contract_rules(
     "SolutionQuality", median_residual_px="medianResidualPx", p95_residual_px="p95ResidualPx",
     median_residual_arcsec="medianResidualArcsec",
 )
+_PROFILE_FIELDS = _contract_rules(
+    "StarProfile", sigma_major_px="sigmaMajorPx", sigma_minor_px="sigmaMinorPx", angle_rad="angleRad", stars="stars"
+)
 _FINDING_TEXT = _contract_rules(
     "CelestialFinding", id="id", observation_solution_id="observationSolutionId", title="title", subtitle="subtitle"
 )
@@ -374,6 +377,66 @@ class WCSModel:
 
 
 @dataclass(frozen=True)
+class StarProfileRecord:
+    """The frame's measured star, as the detector fits it (services/science/detector.py): the wider and narrower
+    widths in pixels, the wider axis's angle from +x toward +y in radians, and how many stars it was measured from.
+    Each held to the contract's own rule when built, and the narrower width at most the wider."""
+
+    sigma_major_px: float
+    sigma_minor_px: float
+    angle_rad: float
+    stars: int
+
+    def __post_init__(self) -> None:
+        _require_contract(self, "A star profile", _PROFILE_FIELDS)
+        if self.sigma_minor_px > self.sigma_major_px:
+            raise ContractRefusal(contract.PROFILE_MINOR_AT_MOST_MAJOR)
+
+    def to_contract_dict(self) -> dict:
+        angle = float(self.angle_rad)
+        return {
+            "sigmaMajorPx": float(self.sigma_major_px),
+            "sigmaMinorPx": float(self.sigma_minor_px),
+            "angleRad": 0.0 if angle == 0.0 else angle,
+            "stars": int(self.stars),
+        }
+
+
+@dataclass(frozen=True)
+class DetectionQualityRecord:
+    """What the detector measured on the pixels the solution's detections were measured on (`quality.detection`): the
+    statistic every detection's snr counts, the noise limits it measured (an empty list when it measured and none was
+    raised), and the star profile a whitened statistic was built for. Every value is measured on those pixels, so the
+    record writes its evidence class `observed` itself: it has no field that could say anything else. Refused when
+    built: what the contract refuses, by the contract's own rules (`contract.detection_issues`)."""
+
+    statistic: str
+    noise_limits: tuple[str, ...]
+    star_profile: StarProfileRecord | None = None
+
+    def __post_init__(self) -> None:
+        require_contract_value(self.statistic, contract.DETECTION_STATISTIC, "A detection's statistic")
+        if not isinstance(self.noise_limits, (list, tuple)):
+            raise ContractRefusal(f"A detection's noise limits are a list or tuple (got {type(self.noise_limits).__name__}).")
+        object.__setattr__(self, "noise_limits", tuple(self.noise_limits))
+        for limit in self.noise_limits:
+            require_contract_value(limit, contract.NOISE_LIMIT, "A detection's noise limit")
+        if self.star_profile is not None and not isinstance(self.star_profile, StarProfileRecord):
+            raise ContractRefusal("A detection's star profile is a StarProfileRecord.")
+        profile = self.star_profile
+        widths = None if profile is None else (profile.sigma_major_px, profile.sigma_minor_px)
+        issues = contract.detection_issues(self.statistic, self.noise_limits, widths)
+        if issues:
+            raise ContractRefusal(issues[0][1])
+
+    def to_contract_dict(self) -> dict:
+        payload: dict = {"evidenceClass": "observed", "statistic": self.statistic, "noiseLimits": list(self.noise_limits)}
+        if self.star_profile is not None:
+            payload["starProfile"] = self.star_profile.to_contract_dict()
+        return payload
+
+
+@dataclass(frozen=True)
 class SolutionQuality:
     """Astrometric verification metrics including independent held-out residual evaluation.
 
@@ -393,8 +456,12 @@ class SolutionQuality:
     median_residual_arcsec: float | None
     passed_independent_verification: bool
     held_out_pair_count: int = field(kw_only=True)
+    # What the detector measured, when it ran and its measures were kept (REALSKY's fill writes it; nothing here does)
+    detection: DetectionQualityRecord | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
+        if self.detection is not None and not isinstance(self.detection, DetectionQualityRecord):
+            raise ContractRefusal("A solution quality's detection is a DetectionQualityRecord.")
         # Whole counts that are not negative, and residuals that are finite and not negative
         _require_contract(self, "A solution's quality", _QUALITY_COUNTS)
         _require_contract(self, "A solution's quality", _QUALITY_RESIDUALS, optional=True)
@@ -426,6 +493,8 @@ class SolutionQuality:
         ):
             if value is not None:
                 payload[key] = float(value)
+        if self.detection is not None:
+            payload["detection"] = self.detection.to_contract_dict()
         return payload
 
 

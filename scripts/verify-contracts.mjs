@@ -53,7 +53,17 @@ const REQUIRED_ENTITY_SCHEMAS = [
   'PointingRecordRefusalSchema',
 ];
 // Numbers and limits the contracts export for both languages to share, not schemas
-const REQUIRED_CONTRACT_CONSTANTS = ['MIN_HELD_OUT_INLIERS', 'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX', 'SWEPT_FOV_TOLERANCE_DEG'];
+const REQUIRED_CONTRACT_CONSTANTS = [
+  'MIN_HELD_OUT_INLIERS',
+  'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX',
+  'SWEPT_FOV_TOLERANCE_DEG',
+  // The star profile's literal bounds, which the detector's fill imports
+  'PROFILE_MIN_SIGMA_PX',
+  'PROFILE_MAX_SIGMA_PX',
+  'PROFILE_MIN_STARS',
+  'PROFILE_MAX_STARS',
+  'PROFILE_ANGLE_LIMIT_RAD',
+];
 
 const VALID_WHEN_TYPES = new Set([
   'fileEdited',

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { SHA256_HEX_PATTERN } from './media.js';
 import { EvidenceClass, EvidenceClassSchema, SolutionStatusSchema } from './primitives.js';
 import { BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN } from './designation.js';
-import { wireInt } from './wire.js';
+import { isRealCalendarDay, wireInt, wireNumber } from './wire.js';
 
 /** A recording's SHA-256 as 64 lowercase hex digits. 64 zeros is a placeholder for a hash nobody computed, not a hash. */
 export const SourceSha256Schema = z
@@ -34,6 +34,94 @@ export const MAX_HELD_OUT_MEDIAN_RESIDUAL_PX = 3.0;
  * by about the pixel scale, millions of times more].
  */
 export const SWEPT_FOV_TOLERANCE_DEG = 1e-9;
+
+/**
+ * What the detector measured on the frame's own pixels (`quality.detection`; services/science/detector.py fills it).
+ * The star profile's bounds are literals, the same in the Python parser, and the detector's fill imports them, so a
+ * width the fit leaves exactly at a bound is taken on every machine: the narrowest width 1 / sqrt(2 ln 20) px written
+ * as its double, a Gaussian whose four nearest pixels hold 5 % of its peak; the widest the fit's own bound; the fewest
+ * and most stars the profile is measured from; and the angle's bound, pi / 2, written as its double (the detector
+ * folds the angle into above -pi / 2 and at most pi / 2).
+ */
+export const PROFILE_MIN_SIGMA_PX = 0.4085389826536349;
+export const PROFILE_MAX_SIGMA_PX = 8.0;
+export const PROFILE_MIN_STARS = 10;
+export const PROFILE_MAX_STARS = 400;
+export const PROFILE_ANGLE_LIMIT_RAD = 1.5707963267948966;
+/** What every detection's snr counts. */
+export const DETECTION_STATISTICS = ['matched', 'whitened'] as const;
+/**
+ * The measured conditions under which the detector's false rate is not controlled, in the one order a list of them is
+ * written in. "quantised" left with realsky-4's second version (measured to have no cause once the background is on a
+ * grid) and "noise_tail" stays out until its meaning is settled: both are refused.
+ */
+export const NOISE_LIMITS = ['near_black_clip'] as const;
+
+/**
+ * Whether `limits` lists each value at most once and in `order`'s order (true for none at all); every value is one of
+ * `order`'s. The detection's noise limits are held to it with NOISE_LIMITS, so a later limit enters by that list alone;
+ * the fixture's noiseLimitOrderCases hold it, on both sides, to an order of two values.
+ */
+export function listsEachOnceInOrder(limits: readonly string[], order: readonly string[] = NOISE_LIMITS): boolean {
+  const places = limits.map((limit) => order.indexOf(limit));
+  return places.every((place, index) => place >= 0 && (index === 0 || places[index - 1]! < place));
+}
+
+/**
+ * The frame's measured star: an elliptical Gaussian fitted to the median of the frame's bright, isolated, unsaturated
+ * stars. Widths in pixels, the angle of the wider axis from +x toward +y in radians (it means nothing when the widths
+ * are equal), and how many stars it was measured from. A closed record: it refuses a key it does not name. That the
+ * narrower width is at most the wider is the detection's rule.
+ */
+export const StarProfileSchema = z
+  .object({
+    sigmaMajorPx: z.number().min(PROFILE_MIN_SIGMA_PX).max(PROFILE_MAX_SIGMA_PX),
+    sigmaMinorPx: z.number().min(PROFILE_MIN_SIGMA_PX).max(PROFILE_MAX_SIGMA_PX),
+    angleRad: wireNumber().gt(-PROFILE_ANGLE_LIMIT_RAD).max(PROFILE_ANGLE_LIMIT_RAD),
+    stars: z.number().int().min(PROFILE_MIN_STARS).max(PROFILE_MAX_STARS),
+  })
+  .strict();
+export type StarProfile = z.infer<typeof StarProfileSchema>;
+
+/**
+ * What the detector measured on the pixels the solution's detections were measured on (the source frame, or a clip's
+ * stacked composite): the statistic every detection's snr counts, the noise limits it measured (an empty list when it
+ * measured and none was raised), and the star profile a whitened statistic was built for. Every value is measured on
+ * those pixels and on nothing else, and the record says so itself. A closed record: it refuses a key it does not name.
+ */
+export const DetectionQualitySchema = z
+  .object({
+    evidenceClass: z.literal('observed'),
+    statistic: z.enum(DETECTION_STATISTICS),
+    noiseLimits: z.array(z.enum(NOISE_LIMITS)),
+    starProfile: StarProfileSchema.optional(),
+  })
+  .strict()
+  .superRefine((detection, ctx) => {
+    if (detection.statistic === 'whitened' && detection.starProfile === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['starProfile'],
+        message: 'A detection scored by the whitened statistic holds the star profile it was built for.',
+      });
+    }
+    if (!listsEachOnceInOrder(detection.noiseLimits)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['noiseLimits'],
+        message: "A detection lists each noise limit at most once, in the contract's order.",
+      });
+    }
+    const profile = detection.starProfile;
+    if (profile !== undefined && profile.sigmaMinorPx > profile.sigmaMajorPx) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['starProfile', 'sigmaMinorPx'],
+        message: "A star profile's narrower width is at most its wider one.",
+      });
+    }
+  });
+export type DetectionQuality = z.infer<typeof DetectionQualitySchema>;
 
 /**
  * The catalog row a finding stands on. Its Python mirror is services/contracts/catalog_reference.py, and
@@ -481,6 +569,9 @@ function isOfAnotherImageSize(swept: WCSCalibrationModel, nominal: WCSCalibratio
   });
 }
 
+const ZOD_UTC_DATETIME = z.string().datetime();
+const isRealDayWhenDatetime = (value: string): boolean => !ZOD_UTC_DATETIME.safeParse(value).success || isRealCalendarDay(value);
+
 export const ObservationSolutionSchema = z
   .object({
     id: z.string().min(1),
@@ -491,7 +582,10 @@ export const ObservationSolutionSchema = z
     revision: z.number().int().positive(),
     status: SolutionStatusSchema,
     // Present when the recording's capture time is known; required whenever a pose or finding is predicted from time and place
-    observedAtUTC: z.string().datetime().optional(),
+    // Zod's datetime takes year 0000, which is no year to Python's dates: the wire module's real day holds it to 1 to 9999
+    observedAtUTC: ZOD_UTC_DATETIME
+      .refine(isRealDayWhenDatetime, { message: 'A UTC instant falls on a real calendar day, in a year from 1 to 9999.' })
+      .optional(),
     observerLocation: z
       .object({
         latDeg: z.number().min(-90).max(90),
@@ -524,6 +618,9 @@ export const ObservationSolutionSchema = z
       medianResidualArcsec: z.number().nonnegative().finite().optional(),
       // True only at or above the held-out gate: MIN_HELD_OUT_INLIERS inliers, MAX_HELD_OUT_MEDIAN_RESIDUAL_PX median
       passedIndependentVerification: z.boolean(),
+      // What the detector measured on the frame's own pixels: absent when the detector did not run, or on a solution
+      // made before the field existed
+      detection: DetectionQualitySchema.optional(),
     }).optional(),
     findings: z.array(CelestialFindingSchema),
     warnings: z.array(z.string()),

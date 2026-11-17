@@ -44,6 +44,10 @@ Covers:
   through the upload job, where a spot the Moon test passes always builds its detection (P-CONTRACT-8,
   services/science/pose_estimate.py); and the phone solver's gate judges the median its quality record reports, so a
   solve that passes its gate always builds its record (P-CONTRACT-7, services/science/phone_photo_solver.py)
+- What the detector measured on the frame's own pixels (quality.detection): it says itself it was observed; a
+  whitened statistic holds its star profile; each noise limit once, never the quantised flag or the noise tail; the narrower
+  width at most the wider; the profile's bounds are literals both sides hold; a key the detection or its profile
+  does not name is refused there, in Zod's words; the records REALSKY's fill will build refuse the same when built
 - The ingest contract's calendar days and finite numbers (services/contracts/ingest.py)
 - Real data: every pinned star and a spread of the phone solver's tile stars give a catalog reference the contract
   accepts, the ephemeris writes findings it accepts, and a solution the solve job stores parses as it was stored
@@ -101,11 +105,13 @@ from services.science.solver import render_synthetic_starfield
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ContractRefusal,
+    DetectionQualityRecord,
     ObservationSolution,
     PoseEstimate,
     SolutionQuality,
     SolverIdentity,
     SourceDetection,
+    StarProfileRecord,
     WCSModel,
     contract_utc_instant,
     require_source_sha256,
@@ -150,8 +156,50 @@ UNVERIFIED = {
     "detectedCandidateCount": 1, "matchedInlierCount": 0, "heldOutPairCount": 0, "heldOutInliers": 0,
     "passedIndependentVerification": False,
 }
+# What the detector measured on the frame's own pixels (quality.detection), in the form REALSKY's detector fills it
+# (services/science/detector.py, FrameMeasures): hand-built numbers, not a measurement
+PROFILE = {"sigmaMajorPx": 2.1, "sigmaMinorPx": 1.6, "angleRad": 0.5, "stars": 37}
+WHITENED = {"evidenceClass": "observed", "statistic": "whitened", "noiseLimits": [], "starProfile": PROFILE}
+MATCHED_AT_THE_CLIP = {"evidenceClass": "observed", "statistic": "matched", "noiseLimits": ["near_black_clip"]}
+# A round star, whose angle means nothing and may be any in range: here at the range's inclusive end, from the fewest
+# stars a profile is measured from
+ROUND_AT_THE_EDGES = {
+    "evidenceClass": "observed", "statistic": "matched", "noiseLimits": ["near_black_clip"],
+    "starProfile": {"sigmaMajorPx": 1.2, "sigmaMinorPx": 1.2, "angleRad": contract.PROFILE_ANGLE_LIMIT_RAD, "stars": contract.PROFILE_MIN_STARS},
+}
+# The noise limits' order rule on its own, with an order of two made-up values, so it is held now while NOISE_LIMITS
+# holds one value and a later limit enters by that list alone (the lead's answer of 18:27 on 2026-11-13): each case is
+# a list and whether it lists each value once, in the order's order. Both sides judge them from the fixture
+NOISE_LIMIT_ORDER = ["first", "second"]
+NOISE_LIMIT_ORDER_CASES = [
+    {"limits": [], "listed": True}, {"limits": ["first"], "listed": True}, {"limits": ["second"], "listed": True},
+    {"limits": ["first", "second"], "listed": True}, {"limits": ["second", "first"], "listed": False},
+    {"limits": ["first", "first"], "listed": False}, {"limits": ["second", "second"], "listed": False},
+    {"limits": ["first", "second", "second"], "listed": False}, {"limits": ["first", "first", "second"], "listed": False},
+    {"limits": ["second", "first", "second"], "listed": False},
+    {"limits": ["other"], "listed": False}, {"limits": ["other", "first"], "listed": False},
+    {"limits": ["first", "other"], "listed": False}, {"limits": ["other", "other"], "listed": False},
+]
+# Integer rules across every combination of bounds: no lower bound, negative upper bound, narrow ranges, fractional
+# bounds, both lower bounds together, and bounds where float spacing reaches one whole unit
+INTEGER_RULE_EDGE_SPECS: list[dict[str, Any]] = [
+    {"name": "unbounded"},
+    {"name": "upper_only", "le": 5},
+    {"name": "negative_upper", "le": -10},
+    {"name": "one_to_two", "ge": 1, "le": 2},
+    {"name": "single_value", "ge": 5, "le": 5},
+    {"name": "both_lows", "ge": 5, "gt": 2},
+    {"name": "fractional_bounds", "ge": 0.5, "le": 2.5},
+    {"name": "exclusive_fractional", "gt": 0.5, "le": 2.5},
+    {"name": "near_top", "ge": 9007199254740990},
+    {"name": "near_bottom", "le": -9007199254740990},
+    {"name": "near_ulp_step", "ge": 2**52 - 1},
+]
 # The contract's own sentences (packages/contracts/src/astronomy.ts), which the parser repeats word for word
 SAYS = {
+    "whitened_profile": "A detection scored by the whitened statistic holds the star profile it was built for.",
+    "noise_limits_once": "A detection lists each noise limit at most once, in the contract's order.",
+    "profile_minor": "A star profile's narrower width is at most its wider one.",
     "observed_needs_pixels": "An observed finding is a measurement in the pixels and carries the source detection that measured it.",
     "no_detection": "A predicted or simulated finding was not measured in the pixels, so it carries no source detection.",
     "names_its_solution": "Observed and catalog-matched findings belong to an ObservationSolution and name its id.",
@@ -182,6 +230,7 @@ SAYS = {
     "observed_needs_sky": "An observed finding in a solution with a verified WCS needs the sky position that WCS gives it.",
     "observed_no_sky": "An observed finding has no sky position without a verified WCS.",
     "zeros": "A SHA-256 of 64 zeros is a placeholder, not a hash.",
+    "real_day": "A UTC instant falls on a real calendar day, in a year from 1 to 9999.",
 }
 
 
@@ -348,7 +397,7 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
                 "detectedCandidateCount": 12, "matchedInlierCount": least, "heldOutPairCount": least,
                 "heldOutInliers": least, "medianResidualPx": most, "p95ResidualPx": most,
                 "medianResidualArcsec": round(most * WCS["scaleDegPerPx"] * 3600.0, 6),
-                "passedIndependentVerification": True,
+                "passedIndependentVerification": True, "detection": copy.deepcopy(WHITENED),
             },
             findings=[], warnings=[],
         ),
@@ -357,7 +406,7 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
             quality={
                 "detectedCandidateCount": 8, "matchedInlierCount": 0, "heldOutPairCount": 5, "heldOutInliers": 0,
                 "medianResidualPx": 4.2, "p95ResidualPx": 6.8, "medianResidualArcsec": 520.0,
-                "passedIndependentVerification": False,
+                "passedIndependentVerification": False, "detection": copy.deepcopy(MATCHED_AT_THE_CLIP),
             },
             findings=[_pixels_only("sol-contract-unresolved")],
             warnings=["WCS solution did not pass independent held-out calibration gate."],
@@ -375,7 +424,7 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
             quality={
                 "detectedCandidateCount": 18, "matchedInlierCount": 0, "heldOutPairCount": 14, "heldOutInliers": least,
                 "medianResidualPx": 5.0, "p95ResidualPx": 5.0, "medianResidualArcsec": 630.0,
-                "passedIndependentVerification": False,
+                "passedIndependentVerification": False, "detection": copy.deepcopy(ROUND_AT_THE_EDGES),
             },
             findings=[_pixels_only("sol-contract-ambiguous")], warnings=[],
         ),
@@ -488,6 +537,9 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         says=(SAYS["names_no_recording"],))
     bad("approximate_without_a_time", "approximate", "an approximate solution with no capture time", ["observedAtUTC"],
         drop(["observedAtUTC"]), says=(SAYS["needs_time"],))
+    # Zod's datetime pattern takes year 0000; the wire module's real day, on both sides, does not
+    bad("approximate_in_year_zero", "approximate", "a capture time in year 0000, which the pattern takes and is no year",
+        ["observedAtUTC"], put(["observedAtUTC"], "0000-12-31T23:59:59Z"), says=(SAYS["real_day"],))
     bad("approximate_without_a_place", "approximate", "an approximate solution with no place", ["observerLocation"],
         drop(["observerLocation"]), says=(SAYS["needs_place"],))
     bad("predicted_only_without_time_or_place", "predicted_only", "a predicted-only solution with no time and no place",
@@ -590,6 +642,49 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         put(["poseEstimate", "sweptWcs"], SWEPT[:1]))
     bad("pose_beacon_not_its_methods", "approximate_with_pose", "a Moon method that names the Sun as its beacon",
         ["poseEstimate.beacon"], put(["poseEstimate", "beacon"], "sun"), says=(SAYS["beacon"],))
+    # What the detector measured (quality.detection): its rules between fields, and the keys it does not name, which
+    # it refuses (a closed record, unlike the older records of this family, which drop them)
+    detected = ["quality", "detection"]
+    bad("detection_whitened_without_its_profile", gate, "a whitened statistic with no star profile",
+        ["quality.detection.starProfile"], drop([*detected, "starProfile"]), says=(SAYS["whitened_profile"],))
+    bad("detection_noise_limit_twice", unresolved, "the same noise limit listed twice", ["quality.detection.noiseLimits"],
+        put([*detected, "noiseLimits"], ["near_black_clip", "near_black_clip"]), says=(SAYS["noise_limits_once"],))
+    bad("detection_quantised", unresolved, "the quantised flag, which left with realsky-4's second version",
+        ["quality.detection.noiseLimits.0"], put([*detected, "noiseLimits"], ["quantised"]))
+    bad("detection_noise_tail", unresolved, "the noise tail, which stays out until its meaning is settled",
+        ["quality.detection.noiseLimits.0"], put([*detected, "noiseLimits"], ["noise_tail"]))
+    bad("detection_narrower_width_above_the_wider", gate, "a narrower width one float above the wider one",
+        ["quality.detection.starProfile.sigmaMinorPx"],
+        put([*detected, "starProfile", "sigmaMinorPx"], math.nextafter(PROFILE["sigmaMajorPx"], math.inf)),
+        says=(SAYS["profile_minor"],))
+    bad("detection_claims_another_class", gate, "a detection that calls itself predicted", ["quality.detection.evidenceClass"],
+        put([*detected, "evidenceClass"], "predicted"))
+    bad("detection_without_its_class", gate, "a detection that does not say it was observed",
+        ["quality.detection.evidenceClass"], drop([*detected, "evidenceClass"]))
+    bad("detection_without_its_noise_limits", unresolved, "a detection that does not say which limits it measured",
+        ["quality.detection.noiseLimits"], drop([*detected, "noiseLimits"]))
+    bad("detection_with_an_unknown_key", unresolved, "a key the detection does not name", ["quality.detection"],
+        put([*detected, "noiseTail"], True), says=("Unrecognized key(s) in object: 'noiseTail'",))
+    bad("star_profile_with_a_python_named_key", gate, "a star profile's wider width also under its Python name",
+        ["quality.detection.starProfile"], put([*detected, "starProfile", "sigma_major_px"], PROFILE["sigmaMajorPx"]),
+        says=("Unrecognized key(s) in object: 'sigma_major_px'",))
+    bad("star_profile_from_a_fraction_of_a_star", gate, "a profile measured from 37.5 stars",
+        ["quality.detection.starProfile.stars"], put([*detected, "starProfile", "stars"], 37.5))
+    bad("detection_extra_key_and_bad_class", unresolved, "an unknown key alongside a forbidden evidence class on a closed detection",
+        ["quality.detection", "quality.detection.evidenceClass"],
+        put([*detected, "evidenceClass"], "predicted"), put([*detected, "extra"], 1),
+        says=("Unrecognized key(s) in object: 'extra'",))
+    bad("detection_extra_key_and_null_profile", unresolved, "an unknown key alongside an explicit null optional profile",
+        ["quality.detection", "quality.detection.starProfile"],
+        put([*detected, "starProfile"], None), put([*detected, "extra"], 1),
+        says=("Unrecognized key(s) in object: 'extra'",))
+    bad("star_profile_snake_case_only", gate, "a star profile whose camelCase fields are sent only in snake_case",
+        ["quality.detection.starProfile", "quality.detection.starProfile.angleRad",
+         "quality.detection.starProfile.sigmaMajorPx", "quality.detection.starProfile.sigmaMinorPx"],
+        put([*detected, "starProfile"], {"sigma_major_px": 2.1, "sigma_minor_px": 1.6, "angle_rad": 0.5, "stars": 37}),
+        says=("Unrecognized key(s) in object: 'sigma_major_px', 'sigma_minor_px', 'angle_rad'",))
+    bad("pending_with_a_detection", "pending", "a pending solution holding a detector's measures", ["quality"],
+        put(["quality"], {**UNVERIFIED, "detection": MATCHED_AT_THE_CLIP}), says=(SAYS["pending_quality"],))
     cases += _class_evidence_cases(valid)
     return cases
 
@@ -836,6 +931,8 @@ def build_fixture() -> dict[str, Any]:
         "CatalogDistance": {"sample": "calibrated", "path": ["findings", rigel_at, "catalogRef", "bailerJonesDistancePc"]},
         "WCSCalibrationModel": {"sample": "calibrated", "path": ["wcs"]},
         "SolutionQuality": {"sample": "calibrated", "path": ["quality"]},
+        "DetectionQuality": {"sample": "calibrated_at_the_gate", "path": ["quality", "detection"]},
+        "StarProfile": {"sample": "calibrated_at_the_gate", "path": ["quality", "detection", "starProfile"]},
         "SolverIdentity": {"sample": "calibrated", "path": ["solver"]},
         "ObserverLocation": {"sample": "calibrated", "path": ["observerLocation"]},
         "PoseEstimate": {"sample": "approximate_with_pose", "path": ["poseEstimate"]},
@@ -856,6 +953,19 @@ def build_fixture() -> dict[str, Any]:
         # Read from services/science/solver.py, never retyped here
         "heldOutGate": {"minHeldOutInliers": least, "maxMedianResidualPx": most},
         "sweptFovToleranceDeg": contract.SWEPT_FOV_TOLERANCE_DEG,
+        # The detector's star profile bounds and the two lists, literals both sides hold (the lead's ruling of 07:16
+        # on 2026-11-13: a value the fit leaves exactly at a bound is then taken on every machine)
+        "detection": {
+            "profileMinSigmaPx": contract.PROFILE_MIN_SIGMA_PX, "profileMaxSigmaPx": contract.PROFILE_MAX_SIGMA_PX,
+            "profileMinStars": contract.PROFILE_MIN_STARS, "profileMaxStars": contract.PROFILE_MAX_STARS,
+            "profileAngleLimitRad": contract.PROFILE_ANGLE_LIMIT_RAD,
+            "statistics": list(contract.DETECTION_STATISTICS), "noiseLimits": list(contract.NOISE_LIMITS),
+        },
+        "noiseLimitOrderCases": {"order": NOISE_LIMIT_ORDER, "cases": NOISE_LIMIT_ORDER_CASES},
+        "integerRuleEdgeCases": [
+            {**spec, "entry": contract.NumberRule(spec["name"], ge=spec.get("ge"), gt=spec.get("gt"), le=spec.get("le"), integer=True).table_entry()}
+            for spec in INTEGER_RULE_EDGE_SPECS
+        ],
         # What each evidence class needs and refuses, and the rules between a finding's fields: one table, both sides
         "findingClassEvidence": contract.FINDING_CLASS_EVIDENCE,
         "findingEvidenceRules": contract.FINDING_EVIDENCE_RULES,
@@ -911,6 +1021,209 @@ def test_the_gate_numbers_are_the_plate_solvers_own() -> None:
     assert gate_sentence().replace(str(least), "${MIN_HELD_OUT_INLIERS}").replace(
         f"{most:g} px", "${MAX_HELD_OUT_MEDIAN_RESIDUAL_PX} px"
     ) in ASTRONOMY_TS.read_text(encoding="utf-8")
+
+
+def test_the_detection_bounds_are_literals_both_sides_hold() -> None:
+    """The star profile's bounds are literals the contract holds on each side, never computed there, so a width the
+    fit leaves exactly at a bound is taken on every machine (the lead's ruling of 07:16 on 2026-11-13); REALSKY's
+    fill imports them. The rules both sides check with are made from them."""
+    table = read_fixture()
+    assert table["detection"] == {
+        "profileMinSigmaPx": 0.4085389826536349, "profileMaxSigmaPx": 8.0, "profileMinStars": 10, "profileMaxStars": 400,
+        "profileAngleLimitRad": 1.5707963267948966, "statistics": ["matched", "whitened"], "noiseLimits": ["near_black_clip"],
+    }
+    # Written as literals in both sources, the angle's too (not a computed half pi)
+    for source, form in ((Path(contract.__file__), "{name} = {value}\n"), (ASTRONOMY_TS, "export const {name} = {value};\n")):
+        text = source.read_text(encoding="utf-8")
+        for name, value in (("PROFILE_MIN_SIGMA_PX", "0.4085389826536349"), ("PROFILE_MAX_SIGMA_PX", "8.0"), ("PROFILE_MIN_STARS", "10"),
+                            ("PROFILE_MAX_STARS", "400"), ("PROFILE_ANGLE_LIMIT_RAD", "1.5707963267948966")):
+            assert form.format(name=name, value=value) in text, (source.name, name)
+    # The narrowest width is 1 / sqrt(2 ln 20) px (services/science/detector.py), here to within a few last bits, as
+    # another machine's logarithm may round it; the half pi is math.pi halved, which is exact everywhere
+    assert math.isclose(contract.PROFILE_MIN_SIGMA_PX, 1.0 / math.sqrt(2.0 * math.log(20.0)), rel_tol=1e-15, abs_tol=0.0)
+    assert contract.PROFILE_ANGLE_LIMIT_RAD == math.pi / 2
+    rules = table["rules"]
+    assert {key: rules["profileSigmaPx"][key] for key in ("ge", "le")} == {"ge": contract.PROFILE_MIN_SIGMA_PX, "le": contract.PROFILE_MAX_SIGMA_PX}
+    assert {key: rules["profileAngleRad"][key] for key in ("gt", "le")} == {"gt": -contract.PROFILE_ANGLE_LIMIT_RAD, "le": contract.PROFILE_ANGLE_LIMIT_RAD}
+    assert {key: rules["profileStars"][key] for key in ("ge", "le", "integer")} == {
+        "ge": contract.PROFILE_MIN_STARS, "le": contract.PROFILE_MAX_STARS, "integer": True}
+    assert rules["detectionStatistic"]["values"] == list(contract.DETECTION_STATISTICS)
+    assert rules["noiseLimit"]["values"] == list(contract.NOISE_LIMITS) and all(left_out in rules["noiseLimit"]["refuse"] for left_out in ("quantised", "noise_tail"))
+    assert rules["detectionEvidenceClass"]["values"] == ["observed"]
+    assert all(other in rules["detectionEvidenceClass"]["refuse"] for other in ("catalog_matched", "predicted", "simulated"))
+    # The two records of the detector's measures are the family's only closed ones
+    assert table["closedSchemas"] == ["DetectionQuality", "StarProfile"]
+
+
+def test_the_noise_limits_order_rule_holds_for_an_order_of_two_values() -> None:
+    """The rule a detection's noise limits are held to, on its own: each value once, in the order's order. NOISE_LIMITS
+    holds one value today, so the samples alone could not tell the order from a repeat; these cases can."""
+    # With the contract's own list, as the parser and the records use it, out-of-set values return False cleanly
+    assert contract.listed_once_each_in_order([]) is True and contract.listed_once_each_in_order(["near_black_clip"]) is True
+    assert contract.listed_once_each_in_order(["near_black_clip", "near_black_clip"]) is False
+    assert contract.listed_once_each_in_order(["quantised"]) is False
+    assert contract.listed_once_each_in_order(["quantised", "near_black_clip"]) is False
+    assert contract.listed_once_each_in_order(["matched"]) is False
+    assert contract.detection_issues("matched", ["quantised"], None) == [(("noiseLimits",), SAYS["noise_limits_once"])]
+    table = read_fixture()["noiseLimitOrderCases"]
+    assert table == {"order": NOISE_LIMIT_ORDER, "cases": NOISE_LIMIT_ORDER_CASES}
+    for case in table["cases"]:
+        assert contract.listed_once_each_in_order(case["limits"], tuple(table["order"])) is case["listed"], case
+
+
+def test_star_profile_and_records_normalize_minus_zero_angle_to_zero() -> None:
+    """Minus zero (-0.0) on StarProfile.angleRad is normalized to +0.0 across model_validate, model_validate_json,
+    DetectionQuality, ObservationSolution, and StarProfileRecord.to_contract_dict (WIRE_RULES.md Rule 2)."""
+    raw_profile = '{"sigmaMajorPx": 2.1, "sigmaMinorPx": 1.6, "angleRad": -0.0, "stars": 37}'
+    for parsed in (contract.StarProfile.model_validate(json.loads(raw_profile)), contract.StarProfile.model_validate_json(raw_profile)):
+        assert parsed.angle_rad == 0.0 and math.copysign(1.0, parsed.angle_rad) == 1.0
+        dumped = parsed.to_contract_dict()
+        assert dumped["angleRad"] == 0.0 and math.copysign(1.0, dumped["angleRad"]) == 1.0
+        assert '"angleRad": 0.0' in json.dumps(dumped) and '"angleRad": -0.0' not in json.dumps(dumped)
+    dq = contract.DetectionQuality.model_validate(
+        json.loads('{"evidenceClass": "observed", "statistic": "whitened", "noiseLimits": [], "starProfile": ' + raw_profile + "}")
+    )
+    assert math.copysign(1.0, dq.star_profile.angle_rad) == 1.0 and '"angleRad": -0.0' not in json.dumps(dq.to_contract_dict())  # type: ignore[union-attr]
+    base = read_fixture()["valid"]["calibrated_at_the_gate"]
+    sol_raw = json.dumps(base).replace('"angleRad": 0.5', '"angleRad": -0.0')
+    sol = contract.parse_observation_solution(json.loads(sol_raw))
+    assert math.copysign(1.0, sol.quality.detection.star_profile.angle_rad) == 1.0  # type: ignore[union-attr]
+    assert '"angleRad": 0.0' in json.dumps(sol.to_contract_dict()) and '"angleRad": -0.0' not in json.dumps(sol.to_contract_dict())
+    for angle in (-0.0, 0.0, np.float32(-0.0), np.float64(-0.0)):
+        rec_dict = StarProfileRecord(2.1, 1.6, angle, 37).to_contract_dict()  # type: ignore[arg-type]
+        assert rec_dict["angleRad"] == 0.0 and math.copysign(1.0, rec_dict["angleRad"]) == 1.0
+        assert '"angleRad": 0.0' in json.dumps(rec_dict) and '"angleRad": -0.0' not in json.dumps(rec_dict)
+
+
+def test_closed_records_and_utc_instants_report_the_same_paths_and_messages_as_zod() -> None:
+    """Multi-fault inputs on closed and loose records report field issues alongside null-optional and unrecognized-key
+    issues without running cross-field rules prematurely, and syntax-invalid observedAtUTC strings report only the
+    syntax message."""
+    approx = read_fixture()["valid"]["approximate"]
+    cases: list[tuple[Any, dict[str, Any], list[str], list[str]]] = [
+        (contract.StarProfile, {"sigma_major_px": 2.1, "sigma_minor_px": 1.6, "angle_rad": 0.5, "stars": 37},
+         ["", "angleRad", "sigmaMajorPx", "sigmaMinorPx"],
+         ["Unrecognized key(s) in object: 'sigma_major_px', 'sigma_minor_px', 'angle_rad'"]),
+        (contract.StarProfile, {"sigmaMajorPx": None, "sigmaMinorPx": 1.6, "angleRad": 0.5, "stars": 37},
+         ["sigmaMajorPx"], ["This value is not a number."]),
+        (contract.StarProfile, {"sigmaMajorPx": None, "sigmaMinorPx": 1.6, "angleRad": 0.5, "stars": 37, "extra": 1},
+         ["", "sigmaMajorPx"], ["This value is not a number.", "Unrecognized key(s) in object: 'extra'"]),
+        (contract.DetectionQuality, {"evidenceClass": "observed", "statistic": "matched", "noiseLimits": [], "starProfile": None, "extra": 1},
+         ["", "starProfile"], [contract.LEFT_OUT_NEVER_NULL, "Unrecognized key(s) in object: 'extra'"]),
+        (contract.DetectionQuality, {"evidenceClass": "predicted", "statistic": "matched", "noiseLimits": [], "extra": 1},
+         ["", "evidenceClass"], ["Unrecognized key(s) in object: 'extra'"]),
+        (contract.DetectionQuality, {"evidenceClass": "observed", "statistic": "whitened", "noiseLimits": [], "starProfile": None},
+         ["starProfile"], [contract.LEFT_OUT_NEVER_NULL]),
+        (contract.DetectionQuality, {"evidenceClass": "observed", "statistic": "whitened", "noiseLimits": [], "extra": 1},
+         [""], ["Unrecognized key(s) in object: 'extra'"]),
+        (contract.DetectionQuality, {"evidenceClass": 1, "statistic": None, "noiseLimits": ["quantised"]},
+         ["evidenceClass", "noiseLimits.0", "statistic"], []),
+        (contract.ObservationSolution, {**approx, "sourceSha256": None, "revision": 0},
+         ["revision", "sourceSha256"], [contract.LEFT_OUT_NEVER_NULL]),
+    ]
+    for model, payload, expected_paths, required_msgs in cases:
+        with pytest.raises(ValidationError) as refused:
+            model.model_validate(payload)
+        assert contract.issue_paths(refused.value) == expected_paths, payload
+        msgs = contract.issue_messages(refused.value)
+        for msg in required_msgs:
+            assert msg in msgs, (payload, msgs)
+        if payload.get("statistic") == "whitened" and ("extra" in payload or payload.get("starProfile") is None):
+            assert SAYS["whitened_profile"] not in msgs
+    # Required null on StarProfile emits exactly one message (type mismatch, never Field required + null)
+    with pytest.raises(ValidationError) as req_null:
+        contract.StarProfile.model_validate({"sigmaMajorPx": None, "sigmaMinorPx": 1.6, "angleRad": 0.5, "stars": 37})
+    assert contract.issue_messages(req_null.value) == ["This value is not a number."]
+    # Syntax-invalid observedAtUTC emits only the format refusal, never INSTANT_ON_A_REAL_DAY
+    for bad_syntax in ("not-a-date", "2031-02-29T00:00:00Z", "1900-02-29T00:00:00Z", "0000-02-30T00:00:00Z"):
+        with pytest.raises(ValidationError) as bad_dt:
+            contract.parse_observation_solution({**approx, "observedAtUTC": bad_syntax})
+        assert contract.issue_paths(bad_dt.value) == ["observedAtUTC"]
+        assert contract.issue_messages(bad_dt.value) == ["This text is not a UTC date and time ending in Z."]
+    for year_zero in ("0000-01-01T00:00:00Z", "0000-02-29T00:00:00Z", "0000-12-31T23:59:59.999Z"):
+        with pytest.raises(ValidationError) as y0_dt:
+            contract.parse_observation_solution({**approx, "observedAtUTC": year_zero})
+        assert contract.issue_paths(y0_dt.value) == ["observedAtUTC"]
+        assert contract.issue_messages(y0_dt.value) == [SAYS["real_day"]]
+
+
+def _assert_integer_rule_edges_hold(rule: contract.NumberRule) -> dict[str, Any]:
+    entry = rule.table_entry()
+    for sample in entry["accept"]:
+        assert rule.problem(decode(sample)) is None, (rule, sample)
+    for sample in entry["refuse"]:
+        assert rule.problem(decode(sample)) is not None, (rule, sample)
+    return entry
+
+
+def test_an_integer_rules_edge_samples_hold_for_every_pair_of_bounds() -> None:
+    """Every integer NumberRule builds accept and refuse samples that agree with its own judgment, whether bounded
+    below, bounded above, bounded on both sides, unbounded, narrow, or near the safe-integer and float-precision limits."""
+    pinned = {
+        "unbounded": ([-3, -1.0, 9007199254740991], [-2.5, -1.5]),
+        "upper_only": ([5, 3.0, -9007199254740991], [6, 6.0, 4.5, 3.5]),
+        "negative_upper": ([-10, -12.0, -9007199254740991], [-9, -9.0, -10.5, -11.5]),
+        "one_to_two": ([1, 2.0, 2], [0, 1.5, 2.5, 3, 3.0]),
+        "single_value": ([5, 5.0, 5], [4, 5.5, 6.5, 6, 6.0]),
+        "both_lows": ([5, 7.0, 9007199254740991], [4, 5.5, 6.5]),
+        "fractional_bounds": ([1, 2.0, 2], [0, 1.5, 2.5, 3, 3.0]),
+        "exclusive_fractional": ([1, 2.0, 2], [0, 1.5, 2.5, 3, 3.0]),
+        "near_top": ([9007199254740990, 9007199254740991.0, 9007199254740991], [9007199254740989, 0.5, 1.5]),
+        "near_bottom": ([-9007199254740990, -9007199254740991.0, -9007199254740991], [-9007199254740989, -9007199254740989.0, 1.5, 0.5]),
+        "near_ulp_step": ([2**52 - 1, float(2**52 + 1), 9007199254740991], [2**52 - 2, 0.5, 1.5]),
+    }
+    cases = read_fixture().get("integerRuleEdgeCases", [])
+    for spec in INTEGER_RULE_EDGE_SPECS:
+        rule = contract.NumberRule(spec["name"], ge=spec.get("ge"), gt=spec.get("gt"), le=spec.get("le"), integer=True)
+        entry = _assert_integer_rule_edges_hold(rule)
+        expected_accept, expected_refuse_head = pinned[spec["name"]]
+        assert entry["accept"] == expected_accept, spec
+        assert entry["refuse"][: len(expected_refuse_head)] == expected_refuse_head, spec
+    assert [case["name"] for case in cases] == [spec["name"] for spec in INTEGER_RULE_EDGE_SPECS]
+
+
+@st.composite
+def integer_rule_bounds(draw: st.DrawFn) -> tuple[float | None, float | None, float | None]:
+    safe = 9007199254740991
+    bound = st.one_of(
+        st.integers(min_value=-safe, max_value=safe),
+        st.integers(min_value=-1000, max_value=1000).map(lambda n: n + 0.5),
+    )
+    ge = draw(st.one_of(st.none(), bound))
+    gt = draw(st.one_of(st.none(), st.integers(min_value=-safe, max_value=safe - 1), st.integers(min_value=-1000, max_value=1000).map(lambda n: n + 0.5)))
+    lows = ([math.ceil(ge)] if ge is not None else []) + ([math.floor(gt) + 1] if gt is not None else [])
+    lo = max(lows) if lows else None
+    if lo is None:
+        le = draw(st.one_of(st.none(), bound))
+    else:
+        choices: list[st.SearchStrategy[float | None]] = [
+            st.none(),
+            st.integers(min_value=lo, max_value=min(lo + 3, safe)),
+            st.integers(min_value=lo, max_value=safe),
+        ]
+        if lo <= 1000:
+            choices.append(st.integers(min_value=max(lo, -1000), max_value=1000).map(lambda n: n + 0.5))
+        le = draw(st.one_of(choices))
+    return ge, gt, le
+
+
+@settings(max_examples=300, deadline=None)
+@given(bounds=integer_rule_bounds())
+@example(bounds=(None, None, None))
+@example(bounds=(None, None, 5))
+@example(bounds=(None, None, -10))
+@example(bounds=(1, None, 2))
+@example(bounds=(5, None, 5))
+@example(bounds=(5, 2, None))
+@example(bounds=(2**52 - 1, None, None))
+@example(bounds=(9007199254740990, None, None))
+@example(bounds=(None, None, -9007199254740990))
+def test_pbt_contract_9_an_integer_rules_edge_samples_agree_with_its_own_judgment(
+    bounds: tuple[float | None, float | None, float | None],
+) -> None:
+    """P-CONTRACT-9. Every integer NumberRule's generated edge samples satisfy its own accept/refuse judgment."""
+    ge, gt, le = bounds
+    _assert_integer_rule_edges_hold(contract.NumberRule("drawn", ge=ge, gt=gt, le=le, integer=True))
 
 
 def test_the_parser_refuses_in_the_contracts_own_words() -> None:
@@ -982,9 +1295,11 @@ def key_cases(table: dict[str, Any]) -> dict[str, int]:
       set beside the wire name with the same value, all at once and one at a time: the record parses to what it was;
     - a field carried only under its Python name is not carried: a required one is refused as missing at its wire
       name, and an optional one is left out. No Python name is ever read from the wire.
+    A closed record (the field table's `closedSchemas`, z.object().strict()) refuses each of those added keys at the
+    record itself, in Zod's words, instead of dropping it.
     Returns how many cases there were of each kind, which the fixture carries so that the Zod schemas are held to
     the same counts on the same cases (observation-solution-contract.test.ts)."""
-    counts = {"levels": 0, "dropped": 0, "refusedWhenRenamed": 0, "leftOutWhenRenamed": 0}
+    counts = {"levels": 0, "dropped": 0, "refusedUnknown": 0, "refusedWhenRenamed": 0, "leftOutWhenRenamed": 0}
     for name, schema, path in key_levels(table):
         on_its_own = name.startswith("finding ")
         sample = table["findings"]["valid"][name.removeprefix("finding ")] if on_its_own else table["valid"][name]
@@ -994,6 +1309,13 @@ def key_cases(table: dict[str, Any]) -> dict[str, int]:
         twins = [put([*path, python], record[wire]) for wire, python in names.items()]
         added = [[put([*path, "unknownToTheContract"], value)] for value in UNKNOWN_KEY_VALUES] + [twins] + [[twin] for twin in twins]
         for steps in added:
+            if schema in table["closedSchemas"]:
+                error = refusal(patched(sample, steps), parse)
+                assert error is not None and contract.issue_paths(error) == [dotted(path)], (name, schema, path, steps)
+                keys = ", ".join(f"'{step['path'][-1]}'" for step in steps)
+                assert contract.issue_messages(error) == [f"Unrecognized key(s) in object: {keys}"], (name, schema, path, steps)
+                counts["refusedUnknown"] += 1
+                continue
             assert parse(patched(sample, steps)).to_contract_dict() == sample, (name, schema, path, steps)
             counts["dropped"] += 1
         for wire, python in names.items():
@@ -1302,6 +1624,10 @@ def one_fault(draw: st.DrawFn) -> tuple[str, list[Any], dict[str, Any]]:
 @example(fault=("approximate", ["observedAtUTC"], put(["observedAtUTC"], "2030-01-01T02:00:00+00:00")))
 @example(fault=("approximate", ["findings", 0, "sourceDetection", "flux"], put(["findings", 0, "sourceDetection", "flux"], 0.0)))
 @example(fault=("approximate", ["findings"], drop(["findings"])))
+@example(fault=("calibrated_at_the_gate", ["quality", "detection", "starProfile", "stars"], put(["quality", "detection", "starProfile", "stars"], 37.5)))
+@example(fault=("ambiguous", ["quality", "detection", "starProfile", "angleRad"],
+                put(["quality", "detection", "starProfile", "angleRad"], -contract.PROFILE_ANGLE_LIMIT_RAD)))
+@example(fault=("unresolved_pixels_only", ["quality", "detection", "noiseLimits", 0], put(["quality", "detection", "noiseLimits"], ["noise_tail"])))
 def test_pbt_contract_2_one_field_outside_its_contract_is_refused_at_that_field(fault: tuple[str, list[Any], dict[str, Any]]) -> None:
     """P-CONTRACT-2. The TypeScript property draws from the same table and the same samples."""
     base, where, step = fault
@@ -1336,6 +1662,8 @@ def in_contract_changes(draw: st.DrawFn) -> tuple[str, list[dict[str, Any]]]:
 @example(change=("approximate_with_pose", [put(["poseEstimate", "rollDeg"], -180.0)]))
 @example(change=("calibrated_at_the_gate", [put(["revision"], 7.0), put(["frameTimeSec"], 3)]))
 @example(change=("pending_without_a_recording", [put(["warnings"], ["", "x"])]))
+@example(change=("ambiguous", [put(["quality", "detection", "starProfile", "sigmaMajorPx"], contract.PROFILE_MAX_SIGMA_PX)]))
+@example(change=("calibrated_at_the_gate", [put(["quality", "detection", "starProfile", "stars"], float(contract.PROFILE_MAX_STARS))]))
 def test_pbt_contract_1_an_accepted_sample_comes_back_unchanged(change: tuple[str, list[dict[str, Any]]]) -> None:
     """P-CONTRACT-1. A change inside each field's own rule may still break a rule between fields; whatever the
     parser accepts, it gives back as it was given, and accepts again."""
@@ -1412,19 +1740,26 @@ def test_pbt_contract_3_a_passed_verification_stands_at_or_above_the_gate(inlier
 # The dataclasses that write solutions (services/science/wcs_models.py)
 # =============================================================================================
 
-NOMINAL = WCSModel(crval_ra_deg=83.8, crval_dec_deg=4.0, crpix_x=480.0, crpix_y=270.0, scale_deg_per_px=0.035, width=WIDTH, height=HEIGHT)
-DETECTION = SourceDetection(x_px=412.5, y_px=300.25, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
-IDENTITY = SolverIdentity(name="hand-built in this test", version="0", catalog_release="none")
 NOT_A_NUMBER = (math.nan, math.inf, -math.inf, True, "1", None)
 STAR = get_star_by_name("Rigel")
 
 
 def detection(**changes: Any) -> SourceDetection:
-    return replace(DETECTION, **changes)
+    base: dict[str, Any] = {"x_px": 412.5, "y_px": 300.25, "flux": 5000.0, "snr": 25.0, "fwhm_px": 2.5, "centroid_uncertainty_px": 0.1}
+    return SourceDetection(**{**base, **changes})
 
 
 def wcs(**changes: Any) -> WCSModel:
-    return replace(NOMINAL, **changes)
+    base: dict[str, Any] = {
+        "crval_ra_deg": 83.8, "crval_dec_deg": 4.0, "crpix_x": 480.0, "crpix_y": 270.0,
+        "scale_deg_per_px": 0.035, "width": WIDTH, "height": HEIGHT,
+    }
+    return WCSModel(**{**base, **changes})
+
+
+def identity(**changes: Any) -> SolverIdentity:
+    base: dict[str, Any] = {"name": "hand-built in this test", "version": "0", "catalog_release": "none"}
+    return SolverIdentity(**{**base, **changes})
 
 
 def quality(passed: bool = False, **changes: Any) -> SolutionQuality:
@@ -1447,14 +1782,14 @@ def record(evidence_class: str = "observed", *, placed: bool = False, **changes:
         "source_sha256": SHA,
     }
     if evidence_class in ("observed", "catalog_matched"):
-        fields["source_detection"] = DETECTION
+        fields["source_detection"] = detection()
     if evidence_class != "observed" or placed:
         fields.update(ra_deg=STAR.ra_deg, dec_deg=STAR.dec_deg, uncertainty_arcsec=12.0, alt_deg=41.5, az_deg=200.25)
     if evidence_class in ("catalog_matched", "predicted"):
         fields.update(catalog_star=STAR, pixel_residual_px=0.4 if evidence_class == "catalog_matched" else None)
     if evidence_class == "catalog_matched":
         # Both residuals, as every writer of a match gives them: the pixel one at the nominal WCS's scale
-        fields.update(angular_residual_arcsec=0.4 * NOMINAL.scale_deg_per_px * 3600.0)
+        fields.update(angular_residual_arcsec=0.4 * wcs().scale_deg_per_px * 3600.0)
     return CelestialFindingRecord(**{**fields, **changes})
 
 
@@ -1467,6 +1802,17 @@ def pose(**changes: Any) -> PoseEstimate:
         "max_center_offset_deg": 0.4, "beacon_centroid_uncertainty_deg": 0.004,
     }
     return PoseEstimate(**{**fields, **changes})
+
+
+def star_profile(**changes: Any) -> StarProfileRecord:
+    fields: dict[str, Any] = {"sigma_major_px": 2.1, "sigma_minor_px": 1.6, "angle_rad": 0.5, "stars": 37}
+    return StarProfileRecord(**{**fields, **changes})
+
+
+def detection_quality(**changes: Any) -> DetectionQualityRecord:
+    """What a detector measured on a frame, as REALSKY's fill builds it: whitened, from its star profile."""
+    fields: dict[str, Any] = {"statistic": "whitened", "noise_limits": (), "star_profile": star_profile()}
+    return DetectionQualityRecord(**{**fields, **changes})
 
 
 RECIPES = ("pending", "calibrated", "approximate", "approximate_with_pose", "predicted_only", "unresolved", "unresolved_before_any_solver", "ambiguous")
@@ -1488,8 +1834,8 @@ def dataclass_solution(recipe: str, **changes: Any) -> ObservationSolution:
         findings += [record("predicted"), record("simulated")]
     fields: dict[str, Any] = {
         "id": "sol-dataclass", "source_asset_id": "hand-built", "source_sha256": SHA, "frame_time_sec": 0.0, "revision": 1,
-        "status": status, "wcs": NOMINAL if has_wcs else None, "quality": quality(calibrated) if solved else None,
-        "solver": IDENTITY if solved else None, "observed_at_utc": MOMENT if timed else None,
+        "status": status, "wcs": wcs() if has_wcs else None, "quality": quality(calibrated) if solved else None,
+        "solver": identity() if solved else None, "observed_at_utc": MOMENT if timed else None,
         "observer_lat": PLACE["latDeg"] if timed else None, "observer_lon": PLACE["lonDeg"] if timed else None,
         "findings": findings, "warnings": ["Hand-built for contract tests."],
         "pose_estimate": pose() if recipe == "approximate_with_pose" else None,
@@ -1526,9 +1872,9 @@ DATACLASS_FAULTS: dict[str, tuple[str, Any]] = {
         "calibrated", quality=quality(True, held_out_inliers=contract.held_out_gate()[0] - 1))),
     "quality_passed_median_just_above": ("calibrated", lambda: dataclass_solution(
         "calibrated", quality=quality(True, median_residual_px=math.nextafter(contract.held_out_gate()[1], math.inf)))),
-    **{f"solver_{name}_empty": ("unresolved", lambda n=name: dataclass_solution("unresolved", solver=replace(IDENTITY, **{n: ""})))
+    **{f"solver_{name}_empty": ("unresolved", lambda n=name: dataclass_solution("unresolved", solver=identity(**{n: ""})))
        for name in ("name", "version", "catalog_release")},
-    "solver_name_not_text": ("unresolved", lambda: dataclass_solution("unresolved", solver=replace(IDENTITY, name=5))),
+    "solver_name_not_text": ("unresolved", lambda: dataclass_solution("unresolved", solver=identity(name=5))),
     **{f"finding_{name}_empty": ("unresolved", lambda n=name: dataclass_solution("unresolved", findings=[record(**{n: ""})]))
        for name in ("id", "observation_solution_id", "title", "subtitle")},
     **{f"finding_{name}_{label}": ("predicted_only", lambda n=name, v=value: dataclass_solution("predicted_only", findings=[record("predicted", **{n: v})]))
@@ -1569,6 +1915,16 @@ DATACLASS_FAULTS: dict[str, tuple[str, Any]] = {
         "approximate_with_pose", pose_estimate=pose(swept_wcs=(wcs(height=HEIGHT // 2), wcs(scale_deg_per_px=0.0385))))),
     "swept_wcs_not_a_sequence": ("approximate_with_pose", lambda: dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=None))),
     "swept_wcs_a_number": ("approximate_with_pose", lambda: dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=3))),
+    # What the detector measured, in a solution's quality
+    **{f"detection_profile_{name}_{label}": ("ambiguous", lambda n=name, v=value: dataclass_solution(
+        "ambiguous", quality=quality(detection=detection_quality(star_profile=star_profile(**{n: v})))))
+       for name in ("sigma_major_px", "sigma_minor_px", "angle_rad", "stars")
+       for label, value in (("nan", math.nan), ("infinite", math.inf), ("text", "1"), ("true", True))},
+    "detection_whitened_without_its_profile": ("ambiguous", lambda: dataclass_solution(
+        "ambiguous", quality=quality(detection=detection_quality(star_profile=None)))),
+    **{f"detection_{left_out}": ("ambiguous", lambda v=left_out: dataclass_solution(
+        "ambiguous", quality=quality(detection=detection_quality(noise_limits=(v,)))))
+       for left_out in ("quantised", "noise_tail")},
 }
 
 
@@ -1629,7 +1985,7 @@ RECORD_FAULTS: dict[str, tuple[Any, str | Callable[[], str]]] = {
                                                  f"A {evidence_class} finding needs a sky position")
        for evidence_class in ("catalog_matched", "predicted", "simulated")},
     "catalog_matched_finding_off_the_sky_with_its_detection": (lambda: record("catalog_matched", **SKY_FREE), "A catalog_matched finding needs a sky position"),
-    **{f"{evidence_class}_finding_with_a_detection": (lambda c=evidence_class: record(c, source_detection=DETECTION),
+    **{f"{evidence_class}_finding_with_a_detection": (lambda c=evidence_class: record(c, source_detection=detection()),
                                                       f"A {evidence_class} finding was not measured in the pixels")
        for evidence_class in ("predicted", "simulated")},
     # The class table among the fields a record holds (contract.FINDING_CLASS_EVIDENCE), placed or not, each refused in
@@ -1685,16 +2041,16 @@ RECORD_FAULTS: dict[str, tuple[Any, str | Callable[[], str]]] = {
     "pose_assumptions_none": (lambda: pose(assumptions=()), "states at least one assumption, each in words"),
     "pose_assumption_empty": (lambda: pose(assumptions=("The head is level.", "")), "states at least one assumption, each in words"),
     "pose_assumption_not_text": (lambda: pose(assumptions=(5,)), "states at least one assumption, each in words"),
-    "pose_swept_wcs_not_a_wcs": (lambda: pose(swept_wcs=(NOMINAL, "wcs")), "Each swept WCS of a pose estimate is a WCSModel."),
+    "pose_swept_wcs_not_a_wcs": (lambda: pose(swept_wcs=(wcs(), "wcs")), "Each swept WCS of a pose estimate is a WCSModel."),
     # The solution's own rules between its fields, each broken alone
     "pose_on_a_predicted_only_solution": (lambda: dataclass_solution("predicted_only", pose_estimate=pose()),
                                           "A pose estimate belongs only to an approximate solution with a WCS"),
     "pose_on_an_approximate_solution_without_a_wcs": (lambda: dataclass_solution("approximate_with_pose", wcs=None),
                                                       "A pose estimate belongs only to an approximate solution with a WCS"),
-    "pose_sweeping_another_centre_pixel": (lambda: dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=(NOMINAL, wcs(crpix_y=270.5)))),
+    "pose_sweeping_another_centre_pixel": (lambda: dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=(wcs(), wcs(crpix_y=270.5)))),
                                            "has the nominal WCS's crpixX and crpixY"),
     "pending_with_a_quality": (lambda: dataclass_solution("pending", quality=quality()), "A pending solution has no quality"),
-    "pending_naming_a_solver": (lambda: dataclass_solution("pending", solver=IDENTITY), "A pending solution names no solver: none has run."),
+    "pending_naming_a_solver": (lambda: dataclass_solution("pending", solver=identity()), "A pending solution names no solver: none has run."),
     **{f"{recipe}_naming_no_solver": (lambda r=recipe: dataclass_solution(r, solver=None),
                                       "Only a pending solution, or an unresolved one no solver reached, names no solver.")
        for recipe in ("calibrated", "approximate", "predicted_only", "ambiguous")},
@@ -1712,7 +2068,7 @@ RECORD_FAULTS: dict[str, tuple[Any, str | Callable[[], str]]] = {
     **{f"passed_on_an_{recipe}_solution": (lambda r=recipe: dataclass_solution(r, quality=quality(True)),
                                            f"Only a calibrated solution passes held-out verification, not a {recipe} one")
        for recipe in ("approximate",)},
-    "passed_on_an_ambiguous_solution_with_a_wcs": (lambda: dataclass_solution("ambiguous", wcs=NOMINAL, quality=quality(True)),
+    "passed_on_an_ambiguous_solution_with_a_wcs": (lambda: dataclass_solution("ambiguous", wcs=wcs(), quality=quality(True)),
                                                    "Only a calibrated solution passes held-out verification, not a ambiguous one"),
     "detection_measured_in_another_recording": (lambda: dataclass_solution("unresolved", findings=[record(source_detection=detection(asset_id="another"))]),
                                                 "detection was measured in another, not in this solution's recording hand-built"),
@@ -1722,6 +2078,23 @@ RECORD_FAULTS: dict[str, tuple[Any, str | Callable[[], str]]] = {
                                                    "has a sky position without a verified WCS"),
     "observed_off_the_sky_with_a_verified_wcs": (lambda: dataclass_solution("calibrated", findings=[record("observed"), record("catalog_matched")]),
                                                  "lacks the sky position the verified WCS gives it"),
+    # What the detector measured, built alone: each field held to the contract's own rule, and the rules between them
+    **{f"profile_{name}_{label}": (lambda n=name, v=value: star_profile(**{n: v}), f"A star profile's {name} is outside the contract")
+       for name in ("sigma_major_px", "sigma_minor_px", "angle_rad", "stars")
+       for label, value in (("nan", math.nan), ("infinite", math.inf), ("true", True), ("text", "1"), ("none", None))},
+    "profile_from_a_fraction_of_a_star": (lambda: star_profile(stars=37.5), "A star profile's stars is outside the contract: this number is not a whole number."),
+    "profile_narrower_above_the_wider": (lambda: star_profile(sigma_minor_px=math.nextafter(2.1, math.inf)), SAYS["profile_minor"]),
+    "detection_of_an_unknown_statistic": (lambda: detection_quality(statistic="median"), "A detection's statistic is outside the contract"),
+    "detection_noise_tail": (lambda: detection_quality(noise_limits=("noise_tail",)), "A detection's noise limit is outside the contract"),
+    "detection_noise_limits_one_text": (lambda: detection_quality(noise_limits="near_black_clip"), "A detection's noise limits are a list or tuple (got str)"),
+    "detection_noise_limit_twice": (lambda: detection_quality(noise_limits=("near_black_clip", "near_black_clip")), SAYS["noise_limits_once"]),
+    "detection_quantised": (lambda: detection_quality(noise_limits=("quantised",)), "A detection's noise limit is outside the contract"),
+    "detection_whitened_without_its_profile": (lambda: detection_quality(star_profile=None), SAYS["whitened_profile"]),
+    # Two faults at once: the record answers with the first the contract's rule function names, as the parser lists it
+    "detection_whitened_without_its_profile_and_limits_out_of_order": (
+        lambda: detection_quality(star_profile=None, noise_limits=("near_black_clip", "near_black_clip")), SAYS["whitened_profile"]),
+    "detection_profile_not_a_record": (lambda: detection_quality(star_profile=PROFILE), "A detection's star profile is a StarProfileRecord."),
+    "quality_detection_not_a_record": (lambda: quality(detection=WHITENED), "A solution quality's detection is a DetectionQualityRecord."),
 }
 # The bounds a record holds on its own, beyond the contract's field rules: a value at each inside end is built and
 # one just outside is refused, from one table: (what builds the record from the value, inside ends, just outside,
@@ -1740,8 +2113,25 @@ RECORD_BOUNDS: dict[str, tuple[Any, tuple[Any, ...], tuple[Any, ...], str]] = {
                               "fov_diagonal_deg is positive and at most 175"),
     **{f"pose_{name}": (lambda v, n=name: pose(**{n: v}), (0.0, math.nextafter(math.inf, 0.0)), (math.nextafter(0.0, -math.inf), math.inf), f"A pose estimate's {name} is finite and not negative")
        for name in ("max_center_offset_deg", "beacon_centroid_uncertainty_deg")},
-    "pose_swept_wcs_count": (lambda v: pose(swept_wcs=(NOMINAL,) * v), (contract.MIN_SWEPT_WCS, contract.MAX_SWEPT_WCS),
+    "pose_swept_wcs_count": (lambda v: pose(swept_wcs=(wcs(),) * v), (contract.MIN_SWEPT_WCS, contract.MAX_SWEPT_WCS),
                              (contract.MIN_SWEPT_WCS - 1, contract.MAX_SWEPT_WCS + 1), "A pose estimate sweeps 2 to 27 WCS"),
+    # The star profile's literals, each width tried with the other at the end that lets it reach both of its own
+    "profile_sigma_major_px": (lambda v: star_profile(sigma_major_px=v, sigma_minor_px=contract.PROFILE_MIN_SIGMA_PX),
+                               (contract.PROFILE_MIN_SIGMA_PX, contract.PROFILE_MAX_SIGMA_PX),
+                               (math.nextafter(contract.PROFILE_MIN_SIGMA_PX, 0.0), math.nextafter(contract.PROFILE_MAX_SIGMA_PX, math.inf)),
+                               "A star profile's sigma_major_px is outside the contract"),
+    "profile_sigma_minor_px": (lambda v: star_profile(sigma_minor_px=v, sigma_major_px=contract.PROFILE_MAX_SIGMA_PX),
+                               (contract.PROFILE_MIN_SIGMA_PX, contract.PROFILE_MAX_SIGMA_PX),
+                               (math.nextafter(contract.PROFILE_MIN_SIGMA_PX, 0.0), math.nextafter(contract.PROFILE_MAX_SIGMA_PX, math.inf)),
+                               "A star profile's sigma_minor_px is outside the contract"),
+    "profile_angle_rad": (lambda v: star_profile(angle_rad=v),
+                          (math.nextafter(-contract.PROFILE_ANGLE_LIMIT_RAD, 0.0), contract.PROFILE_ANGLE_LIMIT_RAD),
+                          (-contract.PROFILE_ANGLE_LIMIT_RAD, math.nextafter(contract.PROFILE_ANGLE_LIMIT_RAD, math.inf)),
+                          "A star profile's angle_rad is outside the contract"),
+    "profile_stars": (lambda v: star_profile(stars=v), (contract.PROFILE_MIN_STARS, contract.PROFILE_MAX_STARS),
+                      (contract.PROFILE_MIN_STARS - 1, contract.PROFILE_MAX_STARS + 1), "A star profile's stars is outside the contract"),
+    "profile_narrower_width": (lambda v: star_profile(sigma_minor_px=v), (contract.PROFILE_MIN_SIGMA_PX, 2.1), (math.nextafter(2.1, math.inf),),
+                               SAYS["profile_minor"]),
 }
 
 
@@ -1771,7 +2161,7 @@ def test_the_cases_beside_each_record_fault_are_built() -> None:
     for evidence_class in ("observed", "catalog_matched", "predicted", "simulated"):
         record(evidence_class, limitations=("One limitation.",))
     record("observed", placed=True)
-    assert record("observed").source_detection is DETECTION and not record("observed").has_sky_position
+    assert record("observed").source_detection == detection() and not record("observed").has_sky_position
     for method, beacon in contract.POSE_METHOD_BEACONS.items():
         assert pose(method=method, beacon=beacon).beacon == beacon
     assert detection(asset_id="src-1").to_contract_dict()["assetId"] == "src-1"
@@ -1779,6 +2169,74 @@ def test_the_cases_beside_each_record_fault_are_built() -> None:
     # The pose fit's residual on an observed finding, in an approximate solution as the horizon solver writes it
     fit = dataclass_solution("approximate", findings=[record("observed", pixel_residual_px=1.5, angular_residual_arcsec=189.0)])
     assert fit.to_contract_dict()["findings"][0]["evidence"]["pixelResidualPx"] == 1.5
+
+
+def test_what_a_detector_measured_is_written_as_the_contract_takes_it_and_says_it_was_observed() -> None:
+    """What REALSKY's fill will build (no writer fills it in this unit): whitened with its star profile, matched
+    without one at both limits, and a round star from NumPy numbers at the edges, each in a solution's quality. The
+    record has no evidence class to set: it writes `observed` itself, as the contract's literal asks."""
+    detections = (
+        detection_quality(),
+        detection_quality(statistic="matched", star_profile=None, noise_limits=["near_black_clip"]),
+        detection_quality(statistic="matched", noise_limits=("near_black_clip",), star_profile=star_profile(
+            sigma_major_px=np.float64(1.2), sigma_minor_px=np.float64(1.2), angle_rad=np.float64(contract.PROFILE_ANGLE_LIMIT_RAD),
+            stars=np.int64(contract.PROFILE_MIN_STARS))),
+    )
+    written = [
+        {"evidenceClass": "observed", "statistic": "whitened", "noiseLimits": [], "starProfile": PROFILE},
+        MATCHED_AT_THE_CLIP,
+        ROUND_AT_THE_EDGES,
+    ]
+    for detection, expected in zip(detections, written, strict=True):
+        assert detection.to_contract_dict() == expected
+        for solution in (dataclass_solution("ambiguous", quality=quality(detection=detection)),
+                         dataclass_solution("calibrated", quality=quality(True, detection=detection))):
+            payload = solution.to_contract_dict()
+            assert payload["quality"]["detection"] == expected
+            assert contract.parse_observation_solution(payload).to_contract_dict() == payload
+            assert json.loads(json.dumps(payload, allow_nan=False)) == payload
+    # Whole numbers stay whole and all three profile floats stay plain Python floats (even from np.float32)
+    round_star = detections[2].to_contract_dict()["starProfile"]
+    assert (
+        type(round_star["stars"]) is int
+        and type(round_star["sigmaMajorPx"]) is float
+        and type(round_star["sigmaMinorPx"]) is float
+        and type(round_star["angleRad"]) is float
+    )
+    f32_dict = StarProfileRecord(
+        sigma_major_px=np.float32(2.5),
+        sigma_minor_px=np.float32(1.5),
+        angle_rad=np.float32(0.25),
+        stars=np.int32(25),  # type: ignore[arg-type]
+    ).to_contract_dict()
+    assert (
+        type(f32_dict["sigmaMajorPx"]) is float
+        and type(f32_dict["sigmaMinorPx"]) is float
+        and type(f32_dict["angleRad"]) is float
+        and type(f32_dict["stars"]) is int
+    )
+    assert json.loads(json.dumps(f32_dict, allow_nan=False)) == f32_dict
+    # Passing a mutable list normalizes noise_limits to an immutable tuple so caller mutation cannot bypass validation
+    # and both DetectionQualityRecord and SolutionQuality(..., detection=...) hash cleanly
+    caller_limits = ["near_black_clip"]
+    from_list = DetectionQualityRecord(statistic="matched", noise_limits=caller_limits)  # type: ignore[arg-type]
+    assert type(from_list.noise_limits) is tuple and from_list.noise_limits == ("near_black_clip",)
+    caller_limits.append("quantised")
+    assert from_list.noise_limits == ("near_black_clip",)
+    assert from_list.to_contract_dict() == MATCHED_AT_THE_CLIP
+    assert isinstance(hash(from_list), int)
+    assert isinstance(hash(quality(detection=from_list)), int)
+    # Nothing on the record can say the measures are anything but observed
+    with pytest.raises(TypeError):
+        DetectionQualityRecord(statistic="matched", noise_limits=(), evidence_class="predicted")  # type: ignore[call-arg]
+    assert "detection" not in quality().to_contract_dict()
+    # Once built, neither record changes, so what was judged is what is written
+    for built, attribute, value in ((star_profile(), "stars", 401), (detection_quality(), "statistic", "median")):
+        with pytest.raises(FrozenInstanceError):
+            setattr(built, attribute, value)
+    # The detection is given to a quality by name only, never in the place of a positional field
+    with pytest.raises(TypeError):
+        SolutionQuality(1, 0, 0, None, None, None, False, detection_quality(), held_out_pair_count=0)  # type: ignore[misc]
 
 
 @settings(max_examples=200, deadline=None)
@@ -1909,7 +2367,7 @@ def test_a_swept_wcs_has_the_nominal_width_and_height() -> None:
         DATACLASS_FAULTS["swept_wcs_of_another_width"][1]()
     with pytest.raises(ValueError, match="width and height"):
         DATACLASS_FAULTS["swept_wcs_of_another_height"][1]()
-    for not_a_sequence in (None, 3, "wcs", {"wcs": NOMINAL}):
+    for not_a_sequence in (None, 3, "wcs", {"wcs": wcs()}):
         with pytest.raises(ValueError, match="pose estimate"):
             pose(swept_wcs=not_a_sequence)
 
@@ -1925,7 +2383,7 @@ def test_a_wcs_centred_past_a_pole_is_built_and_refused_only_where_it_is_written
         # Any swept WCS and the nominal one are judged alike when the solution is written
         for built, where in (
             (dataclass_solution("approximate", wcs=past), "wcs.crvalDecDeg"),
-            (dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=(NOMINAL, past, NOMINAL))), "poseEstimate.sweptWcs.1.crvalDecDeg"),
+            (dataclass_solution("approximate_with_pose", pose_estimate=pose(swept_wcs=(wcs(), past, wcs()))), "poseEstimate.sweptWcs.1.crvalDecDeg"),
         ):
             with pytest.raises(ValidationError) as refused:
                 built.to_contract_dict()
@@ -1968,13 +2426,15 @@ def test_a_solution_is_always_written_with_its_capture_time_in_the_contracts_for
         ("2030-01-01T02:00:00+00:00", "2030-01-01T02:00:00Z"),
         ("2029-12-31T19:00:00-07:00", "2030-01-01T02:00:00Z"),
         ("2030-01-01T07:30:00.5+05:30", "2030-01-01T02:00:00.5Z"),
+        ("0001-01-01T00:00:00Z", "0001-01-01T00:00:00Z"),
     ):
         built = dataclass_solution("predicted_only", observed_at_utc=moment)
         assert built.observed_at_utc == moment
         payload = built.to_contract_dict()
         assert payload["observedAtUTC"] == written
         assert contract.parse_observation_solution(payload).to_contract_dict() == payload
-    for moment in ("2030-01-01T02:00:00", "2030-01-01 02:00:00", "2030-01-01", "soon", "", "2031-02-30T00:00:00Z"):
+    for moment in ("2030-01-01T02:00:00", "2030-01-01 02:00:00", "2030-01-01", "soon", "", "2031-02-30T00:00:00Z",
+                   "0000-12-31T23:59:59Z"):
         built = dataclass_solution("predicted_only", observed_at_utc=moment)
         with pytest.raises(ValueError, match="observedAtUTC") as refused:
             built.to_contract_dict()
@@ -2104,6 +2564,8 @@ def _shown(value: Any) -> list[str]:
     """How a value sent would read in an answer that held it; nothing for one too short to tell from other text."""
     if isinstance(value, bool) or value is None:
         return []
+    if isinstance(value, int):
+        return [str(value)] if len(str(abs(value))) >= 4 else []
     if isinstance(value, float):
         return ["NaN"] if math.isnan(value) else ["Infinity"] if math.isinf(value) else [repr(value)]
     if isinstance(value, str):
@@ -2299,6 +2761,7 @@ def request_faults(draw: st.DrawFn) -> tuple[str, list[tuple[str, Any]]]:
 @example(case=("/api/science/solve", [("sourceAssetId", "src_1"), ("width", 2**53)]))
 @example(case=("/api/science/solve-horizon", [("sourceAssetId", "src_0123456789ABCDEF")]))
 @example(case=("/api/science/solve", [("height", 10**400), ("detections.flux", math.nan)]))
+@example(case=("/api/science/solve", [("lonDeg", -181.0), ("height", -180)]))
 def test_pbt_contract_6_what_the_contract_refuses_is_a_plain_422_and_never_a_500(case: tuple[str, list[tuple[str, Any]]]) -> None:
     """P-CONTRACT-6. Whatever a client sends to a solve route that a solution record would refuse, or that the
     request itself refuses (a size no frame has, an id not of the minted form), one value or two at once, the answer
@@ -3399,11 +3862,16 @@ def test_ingest_times_at_the_ends_of_the_calendar_are_refused_not_raised() -> No
 
 
 def test_a_source_assets_capture_time_is_judged_by_zods_own_pattern() -> None:
+    """The asset's capture instant has the form the solution's has, Zod's datetime: every time the instant rule takes,
+    the asset takes, and every one the rule refuses for its form, the asset refuses. The rule also refuses year 0000,
+    which the form takes, for its real day; whether the asset holds that too is the ingest contract's rule to say."""
     photo = ingest.build_ingest_samples()["valid"]["SourceAsset"][0]
     rule = read_fixture()["rules"]["utcInstant"]
     for moment in rule["accept"]:
         ingest.SourceAsset.model_validate({**photo, "capturedAtUTC": moment})
-    for moment in rule["refuse"]:
+    by_form = [moment for moment in rule["refuse"] if contract.UTC_INSTANT.problem(moment) != contract.INSTANT_ON_A_REAL_DAY]
+    assert [moment for moment in rule["refuse"] if moment not in by_form] == ["0000-02-29T00:00:00Z", "0000-12-31T23:59:59.999Z"]
+    for moment in by_form:
         with pytest.raises(ValidationError):
             ingest.SourceAsset.model_validate({**photo, "capturedAtUTC": moment})
 

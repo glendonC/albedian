@@ -9,15 +9,24 @@ import {
   CaptureTimeHintSchema,
   CatalogReferenceSchema,
   CelestialFindingSchema,
+  DETECTION_STATISTICS,
+  DetectionQualitySchema,
   EvidenceClassSchema,
   FINDING_CLASS_EVIDENCE,
   FINDING_EVIDENCE_RULES,
   FINDING_FIELDS,
   findingClassIssues,
+  listsEachOnceInOrder,
   LocationHintSchema,
   MAX_HELD_OUT_MEDIAN_RESIDUAL_PX,
   MIN_HELD_OUT_INLIERS,
+  NOISE_LIMITS,
   ObservationSolutionSchema,
+  PROFILE_ANGLE_LIMIT_RAD,
+  PROFILE_MAX_SIGMA_PX,
+  PROFILE_MAX_STARS,
+  PROFILE_MIN_SIGMA_PX,
+  PROFILE_MIN_STARS,
   PoseEstimateSchema,
   SHA256_HEX_PATTERN,
   SWEPT_FOV_TOLERANCE_DEG,
@@ -26,6 +35,7 @@ import {
   SolutionStatusSchema,
   SolveJobSchema,
   SourceDetectionSchema,
+  StarProfileSchema,
   WCSCalibrationModelSchema,
 } from '../index.js';
 
@@ -82,7 +92,19 @@ interface Fixture {
   rules: Record<string, Rule>;
   fields: Record<string, Record<string, FieldEntry>>;
   pythonNames: Record<string, Record<string, string>>;
-  keyCases: { levels: number; dropped: number; refusedWhenRenamed: number; leftOutWhenRenamed: number };
+  closedSchemas: string[];
+  detection: {
+    profileMinSigmaPx: number;
+    profileMaxSigmaPx: number;
+    profileMinStars: number;
+    profileMaxStars: number;
+    profileAngleLimitRad: number;
+    statistics: string[];
+    noiseLimits: string[];
+  };
+  noiseLimitOrderCases: { order: string[]; cases: { limits: string[]; listed: boolean }[] };
+  integerRuleEdgeCases: { name: string; ge?: number; gt?: number; le?: number; entry: Rule }[];
+  keyCases: { levels: number; dropped: number; refusedUnknown: number; refusedWhenRenamed: number; leftOutWhenRenamed: number };
   structureRefusals: { object: unknown[]; array: unknown[] };
   homes: Record<string, { sample: string; path: Key[] }>;
   valid: Record<string, Sample>;
@@ -148,9 +170,29 @@ const SCHEMAS: Record<string, z.ZodTypeAny> = {
   CatalogDistance: referenceShape.bailerJonesDistancePc.unwrap(),
   WCSCalibrationModel: WCSCalibrationModelSchema,
   SolutionQuality: solutionShape.quality.unwrap(),
+  DetectionQuality: DetectionQualitySchema,
+  StarProfile: StarProfileSchema,
   SolverIdentity: solutionShape.solver.unwrap(),
   ObserverLocation: solutionShape.observerLocation.unwrap(),
   PoseEstimate: PoseEstimateSchema,
+};
+/** The objects whose keys the contract states, by schema: a closed one (z.object().strict()) refuses any other key. */
+const OBJECTS: Record<string, z.AnyZodObject> = {
+  ObservationSolution: ObservationSolutionSchema.innerType(),
+  CelestialFinding: findingVariants[0]!,
+  SourceDetection: SourceDetectionSchema,
+  SkyPosition: SkyPositionSchema,
+  ScientificEvidence: ScientificEvidenceSchema,
+  InferredDistance: observedShape.inferredDistancePc.unwrap(),
+  CatalogReference: CatalogReferenceSchema.innerType(),
+  CatalogDistance: referenceShape.bailerJonesDistancePc.unwrap(),
+  WCSCalibrationModel: WCSCalibrationModelSchema,
+  SolutionQuality: solutionShape.quality.unwrap(),
+  DetectionQuality: DetectionQualitySchema.innerType(),
+  StarProfile: StarProfileSchema,
+  SolverIdentity: solutionShape.solver.unwrap(),
+  ObserverLocation: solutionShape.observerLocation.unwrap(),
+  PoseEstimate: PoseEstimateSchema.innerType(),
 };
 const SHAPES: Record<string, z.ZodRawShape> = {
   ObservationSolution: solutionShape,
@@ -163,6 +205,8 @@ const SHAPES: Record<string, z.ZodRawShape> = {
   CatalogDistance: referenceShape.bailerJonesDistancePc.unwrap().shape,
   WCSCalibrationModel: WCSCalibrationModelSchema.shape,
   SolutionQuality: solutionShape.quality.unwrap().shape,
+  DetectionQuality: DetectionQualitySchema.innerType().shape,
+  StarProfile: StarProfileSchema.shape,
   SolverIdentity: solutionShape.solver.unwrap().shape,
   ObserverLocation: solutionShape.observerLocation.unwrap().shape,
   PoseEstimate: PoseEstimateSchema.innerType().shape,
@@ -204,6 +248,121 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(fixture.rules['catalogProvider']!.values).toEqual(referenceShape.provider.options);
     expect(fixture.rules['catalogObjectType']!.values).toEqual(referenceShape.objectType.options);
     expect(fixture.rules['catalogDistanceMethod']!.values).toEqual(referenceShape.bailerJonesDistancePc.unwrap().shape.method.options);
+    const detectionShape = DetectionQualitySchema.innerType().shape;
+    expect(fixture.rules['detectionStatistic']!.values).toEqual(detectionShape.statistic.options);
+    expect(fixture.rules['noiseLimit']!.values).toEqual(detectionShape.noiseLimits.element.options);
+    expect(fixture.rules['detectionEvidenceClass']!.values).toEqual([detectionShape.evidenceClass.value]);
+  });
+
+  it("holds the detector's star profile bounds and lists as the same literals the Python parser holds", () => {
+    expect(fixture.detection).toEqual({
+      profileMinSigmaPx: PROFILE_MIN_SIGMA_PX,
+      profileMaxSigmaPx: PROFILE_MAX_SIGMA_PX,
+      profileMinStars: PROFILE_MIN_STARS,
+      profileMaxStars: PROFILE_MAX_STARS,
+      profileAngleLimitRad: PROFILE_ANGLE_LIMIT_RAD,
+      statistics: [...DETECTION_STATISTICS],
+      noiseLimits: [...NOISE_LIMITS],
+    });
+    // Half pi as a literal: Math.PI halved is exact on every machine, so this holds wherever it runs
+    expect(PROFILE_ANGLE_LIMIT_RAD).toBe(Math.PI / 2);
+    expect(fixture.rules['profileSigmaPx']).toMatchObject({ ge: PROFILE_MIN_SIGMA_PX, le: PROFILE_MAX_SIGMA_PX });
+    expect(fixture.rules['profileAngleRad']).toMatchObject({ gt: -PROFILE_ANGLE_LIMIT_RAD, le: PROFILE_ANGLE_LIMIT_RAD });
+    expect(fixture.rules['profileStars']).toMatchObject({ ge: PROFILE_MIN_STARS, le: PROFILE_MAX_STARS, integer: true });
+  });
+
+  it("holds the noise limits' order rule, as the Python parser does, to an order of two values", () => {
+    // With the contract's own list, as the schema uses it, out-of-set values return false cleanly
+    expect(listsEachOnceInOrder([])).toBe(true);
+    expect(listsEachOnceInOrder(['near_black_clip'])).toBe(true);
+    expect(listsEachOnceInOrder(['near_black_clip', 'near_black_clip'])).toBe(false);
+    expect(listsEachOnceInOrder(['quantised'])).toBe(false);
+    expect(listsEachOnceInOrder(['quantised', 'near_black_clip'])).toBe(false);
+    expect(listsEachOnceInOrder(['matched'])).toBe(false);
+    // NOISE_LIMITS holds one value today, so the samples alone could not tell the order from a repeat; these cases can
+    const { order, cases } = fixture.noiseLimitOrderCases;
+    expect(cases.length).toBeGreaterThanOrEqual(14);
+    for (const { limits, listed } of cases) expect(listsEachOnceInOrder(limits, order), JSON.stringify(limits)).toBe(listed);
+  });
+
+  it('normalizes minus zero to zero on StarProfile.angleRad across StarProfile, DetectionQuality, and ObservationSolution', () => {
+    const rawProfile = JSON.parse('{"sigmaMajorPx":2.1,"sigmaMinorPx":1.6,"angleRad":-0.0,"stars":37}');
+    const profile = StarProfileSchema.parse(rawProfile);
+    expect(Object.is(profile.angleRad, -0)).toBe(false);
+    expect(Object.is(profile.angleRad, 0)).toBe(true);
+
+    const rawDq = JSON.parse(
+      '{"evidenceClass":"observed","statistic":"whitened","noiseLimits":[],"starProfile":{"sigmaMajorPx":2.1,"sigmaMinorPx":1.6,"angleRad":-0.0,"stars":37}}',
+    );
+    const dq = DetectionQualitySchema.parse(rawDq);
+    expect(Object.is(dq.starProfile?.angleRad, -0)).toBe(false);
+    expect(Object.is(dq.starProfile?.angleRad, 0)).toBe(true);
+
+    const solRaw = JSON.stringify(fixture.valid['calibrated_at_the_gate']).replace('"angleRad":0.5', '"angleRad":-0.0');
+    const sol = ObservationSolutionSchema.parse(JSON.parse(solRaw));
+    expect(Object.is(sol.quality?.detection?.starProfile?.angleRad, -0)).toBe(false);
+    expect(Object.is(sol.quality?.detection?.starProfile?.angleRad, 0)).toBe(true);
+  });
+
+  it('reports field issues alongside extra keys on closed records and only Invalid datetime when observedAtUTC fails syntax', () => {
+    const snakeOnly = StarProfileSchema.safeParse({ sigma_major_px: 2.1, sigma_minor_px: 1.6, angle_rad: 0.5, stars: 37 });
+    expect(issuePaths(snakeOnly)).toEqual(['', 'angleRad', 'sigmaMajorPx', 'sigmaMinorPx']);
+
+    const nullAndExtra = DetectionQualitySchema.safeParse({
+      evidenceClass: 'observed',
+      statistic: 'matched',
+      noiseLimits: [],
+      starProfile: null,
+      extra: 1,
+    });
+    expect(issuePaths(nullAndExtra)).toEqual(['', 'starProfile']);
+
+    const badClassAndExtra = DetectionQualitySchema.safeParse({
+      evidenceClass: 'predicted',
+      statistic: 'matched',
+      noiseLimits: [],
+      extra: 1,
+    });
+    expect(issuePaths(badClassAndExtra)).toEqual(['', 'evidenceClass']);
+
+    const approx = fixture.valid['approximate']!;
+    const realDaySentence = 'A UTC instant falls on a real calendar day, in a year from 1 to 9999.';
+    for (const badSyntax of ['not-a-date', '2031-02-29T00:00:00Z', '1900-02-29T00:00:00Z', '0000-02-30T00:00:00Z']) {
+      const parsed = ObservationSolutionSchema.safeParse({ ...approx, observedAtUTC: badSyntax });
+      expect(issuePaths(parsed), badSyntax).toEqual(['observedAtUTC']);
+      expect(issueMessages(parsed), badSyntax).toEqual(['Invalid datetime']);
+      expect(issueMessages(parsed), badSyntax).not.toContain(realDaySentence);
+    }
+    for (const yearZero of ['0000-01-01T00:00:00Z', '0000-02-29T00:00:00Z', '0000-12-31T23:59:59.999Z']) {
+      const parsed = ObservationSolutionSchema.safeParse({ ...approx, observedAtUTC: yearZero });
+      expect(issuePaths(parsed), yearZero).toEqual(['observedAtUTC']);
+      expect(issueMessages(parsed), yearZero).toEqual([realDaySentence]);
+    }
+  });
+
+  it("holds an integer rule's edge samples on the Zod side too, across upper bounds alone and narrow ranges", () => {
+    expect(fixture.integerRuleEdgeCases.length).toBeGreaterThanOrEqual(11);
+    for (const { name, entry } of fixture.integerRuleEdgeCases) {
+      let schema = z.number().int();
+      if (entry.ge !== undefined) schema = schema.min(entry.ge);
+      if (entry.gt !== undefined) schema = schema.gt(entry.gt);
+      if (entry.le !== undefined) schema = schema.max(entry.le);
+      for (const sample of entry.accept) {
+        expect(schema.safeParse(decode(sample)).success, `${name} accept ${JSON.stringify(sample)}`).toBe(true);
+      }
+      for (const sample of entry.refuse) {
+        expect(schema.safeParse(decode(sample)).success, `${name} refuse ${JSON.stringify(sample)}`).toBe(false);
+      }
+    }
+  });
+
+  it('closes exactly the records the fixture names as closed, and leaves the older ones to drop a key they do not name', () => {
+    expect(Object.keys(OBJECTS).sort()).toEqual(Object.keys(SHAPES).sort());
+    for (const [schema, object] of Object.entries(OBJECTS)) {
+      expect(Object.keys(object.shape).sort(), schema).toEqual(Object.keys(SHAPES[schema]!).sort());
+      expect(object._def.unknownKeys, schema).toBe(fixture.closedSchemas.includes(schema) ? 'strict' : 'strip');
+    }
+    expect(fixture.closedSchemas).toEqual(['DetectionQuality', 'StarProfile']);
   });
 
   it.each(Object.keys(fixture.valid))('parses the valid sample %s and returns it unchanged', (name) => {
@@ -239,17 +398,25 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     ];
     expect(new Set(levels.map((level) => level.schema))).toEqual(new Set(Object.keys(SHAPES)));
     const unknownValues: unknown[] = [1, 'text', null, true, [1, 2], { nested: { deeper: 1 } }];
-    const counts = { levels: 0, dropped: 0, refusedWhenRenamed: 0, leftOutWhenRenamed: 0 };
+    const counts = { levels: 0, dropped: 0, refusedUnknown: 0, refusedWhenRenamed: 0, leftOutWhenRenamed: 0 };
     for (const level of levels) {
       const where = `${level.name} ${level.schema} ${dotted(level.path)}`;
       const record = at(level.sample, level.path) as Sample;
       const names = Object.entries(fixture.pythonNames[level.schema]!).filter(([wire]) => wire in record);
       // A key no schema names, whatever its value, and the Python name of every field set beside its wire name,
-      // all at once and one at a time: each is dropped, and the record parses to what it was
+      // all at once and one at a time: each is dropped, and the record parses to what it was; a closed record
+      // refuses them at the record itself, in Zod's words, which the Python parser repeats
       const twins = names.map(([wire, python]) => put([...level.path, python], record[wire]));
       const added = [...unknownValues.map((value) => [put([...level.path, 'unknownToTheContract'], value)]), twins, ...twins.map((twin) => [twin])];
       for (const steps of added) {
         const parsed = level.parse.safeParse(patched(level.sample, steps));
+        if (fixture.closedSchemas.includes(level.schema)) {
+          expect(issuePaths(parsed), where).toEqual([dotted(level.path)]);
+          const keys = steps.map((step) => `'${String(step.path[step.path.length - 1])}'`).join(', ');
+          expect(issueMessages(parsed), where).toEqual([`Unrecognized key(s) in object: ${keys}`]);
+          counts.refusedUnknown += 1;
+          continue;
+        }
         expect(parsed.error?.issues ?? [], where).toEqual([]);
         expect(parsed.data, where).toEqual(level.sample);
         counts.dropped += 1;
@@ -516,6 +683,10 @@ describe('@albedian/contracts: properties of the observation solution contract',
           [{ base: 'approximate', where: ['observedAtUTC'], step: put(['observedAtUTC'], '2030-01-01T02:00:00+00:00') }],
           [{ base: 'approximate', where: ['findings', 0, 'sourceDetection', 'flux'], step: put(['findings', 0, 'sourceDetection', 'flux'], 0) }],
           [{ base: 'approximate', where: ['findings'], step: drop(['findings']) }],
+          // What the detector measured: a fraction of a star, the angle's excluded end, the noise tail
+          [{ base: 'calibrated_at_the_gate', where: ['quality', 'detection', 'starProfile', 'stars'], step: put(['quality', 'detection', 'starProfile', 'stars'], 37.5) }],
+          [{ base: 'ambiguous', where: ['quality', 'detection', 'starProfile', 'angleRad'], step: put(['quality', 'detection', 'starProfile', 'angleRad'], -PROFILE_ANGLE_LIMIT_RAD) }],
+          [{ base: 'unresolved_pixels_only', where: ['quality', 'detection', 'noiseLimits', 0], step: put(['quality', 'detection', 'noiseLimits'], ['noise_tail']) }],
         ],
       }
     );
@@ -557,6 +728,8 @@ describe('@albedian/contracts: properties of the observation solution contract',
           [{ base: 'approximate_with_pose', steps: [put(['poseEstimate', 'rollDeg'], -180)] }],
           [{ base: 'calibrated_at_the_gate', steps: [put(['revision'], 7), put(['frameTimeSec'], 3)] }],
           [{ base: 'pending_without_a_recording', steps: [put(['warnings'], ['', 'x'])] }],
+          [{ base: 'ambiguous', steps: [put(['quality', 'detection', 'starProfile', 'sigmaMajorPx'], PROFILE_MAX_SIGMA_PX)] }],
+          [{ base: 'calibrated_at_the_gate', steps: [put(['quality', 'detection', 'starProfile', 'stars'], PROFILE_MAX_STARS)] }],
         ],
       }
     );
@@ -616,7 +789,16 @@ describe('@albedian/contracts: calendar days and finite numbers in the ingest co
 });
 
 describe('scripts/verify-contracts.mjs: the contract constants it requires', () => {
-  const CONSTANTS = ['MIN_HELD_OUT_INLIERS', 'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX', 'SWEPT_FOV_TOLERANCE_DEG'];
+  const CONSTANTS = [
+    'MIN_HELD_OUT_INLIERS',
+    'MAX_HELD_OUT_MEDIAN_RESIDUAL_PX',
+    'SWEPT_FOV_TOLERANCE_DEG',
+    'PROFILE_MIN_SIGMA_PX',
+    'PROFILE_MAX_SIGMA_PX',
+    'PROFILE_MIN_STARS',
+    'PROFILE_MAX_STARS',
+    'PROFILE_ANGLE_LIMIT_RAD',
+  ];
 
   /** The script run in a copy of what it reads (the contracts' sources and the hooks), after `edit` changed the copy. */
   function verified(edit: (root: string) => void) {
@@ -636,7 +818,7 @@ describe('scripts/verify-contracts.mjs: the contract constants it requires', () 
     }
   }
 
-  it('passes on the contracts as they are, and counts the three constants', () => {
+  it('passes on the contracts as they are, and counts every constant it requires', () => {
     const run = verified(() => undefined);
     expect(run.err).toBe('');
     expect(run.status).toBe(0);
