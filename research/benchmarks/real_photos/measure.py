@@ -480,7 +480,7 @@ def diagnose_ranking(photo: Photo, record: oracle.OracleRecord, upload: dict[str
     # As solve_phone_photo prepares its pool from an 8-bit image
     luma = _to_luma_2d(rgb) / 255.0
     bg, _ = _estimate_background_and_noise(luma)
-    detections = detect_point_sources(luma, snr_threshold=3.5)
+    detections = detect_point_sources(luma)
     ranked, _ = _rank_stellar_candidates(rgb, luma, bg, detections, max_pool=RANKED_KEPT)
     star_xy, star_v, _, _ = catalog_in_frame(record, scratch, root)
     out: dict[str, Any] = {

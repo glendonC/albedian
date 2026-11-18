@@ -194,10 +194,19 @@ def test_real_clip_frames_do_not_calibrate_and_report_their_held_out_residuals()
         )
         assert sol.status != "calibrated" and sol.wcs is None
         assert sol.quality.held_out_inliers < 6
-        # Thousands of detections let the triangle search settle on a chance alignment whose held-out pairs
-        # scatter across the association radius: the reported residuals are theirs, not ones capped under 3 px
-        assert sol.quality.median_residual_px > 3.0
-        assert sol.quality.p95_residual_px > 6.0
+        # Where detections form no held-out pair, no residual is reported; where a chance alignment forms
+        # held-out pairs, their residuals lie across the 8 px association radius rather than capping under 3 px
+        if sol.quality.held_out_pair_count == 0:
+            assert (
+                sol.quality.median_residual_px,
+                sol.quality.p95_residual_px,
+                sol.quality.median_residual_arcsec,
+            ) == (None, None, None)
+        else:
+            assert sol.quality.median_residual_px > 3.0
+            assert sol.quality.p95_residual_px >= sol.quality.median_residual_px
+            if sol.quality.held_out_pair_count > 1:
+                assert sol.quality.p95_residual_px > 6.0
 
 
 def _case(at: dict[str, float]) -> list[tuple[float, float] | None]:

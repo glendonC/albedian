@@ -306,8 +306,9 @@ def test_one_of_a_thing_is_one_thing() -> None:
 
 def test_the_catalogs_distance_is_cited_before_the_inferred_one() -> None:
     sky = with_finding(RIGEL, ["inferredDistancePc"], {"lower": 40.0, "median": 50.0, "upper": 60.0, "method": "geometric_parallax"})
+    rigel_index = next(i for i, f in enumerate(sky["findings"]) if f["id"] == RIGEL)
     answer = ask("how far is it", RIGEL, sky)
-    assert [s["source"]["path"] for s in answer["statements"]] == [["findings", 0, "catalogRef", "bailerJonesDistancePc", "median"]]
+    assert [s["source"]["path"] for s in answer["statements"]] == [["findings", rigel_index, "catalogRef", "bailerJonesDistancePc", "median"]]
     assert answer["sentence"] == "Rigel is about 260 parsecs away, about 860 light years."
 
 
@@ -337,7 +338,7 @@ def test_the_colour_sentences() -> None:
 
 def test_a_thing_with_no_name_is_said_as_its_kind() -> None:
     sky = copy.deepcopy(CALIBRATED)
-    del sky["findings"][0]["catalogRef"]["commonName"]
+    del next(f for f in sky["findings"] if f["id"] == RIGEL)["catalogRef"]["commonName"]
     assert ask("what is it", RIGEL, sky)["sentence"] == "That is a star."
 
 

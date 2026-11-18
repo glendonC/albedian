@@ -597,6 +597,9 @@ def test_the_check_for_what_is_left_sees_a_running_child_a_zombie_and_an_end(tmp
     child = subprocess.Popen(KID.split(), stdin=subprocess.DEVNULL, start_new_session=True)
     try:
         calls.write_text(f"kid {child.pid}\n")
+        deadline = time.monotonic() + CHILD_BOUND_SEC
+        while not running(child.pid, KID) and time.monotonic() < deadline:
+            time.sleep(0.01)
         assert running(child.pid, KID) and not running(child.pid, "sleep 600")
         assert left_running(calls, within=0.0) == [f"kid {child.pid}"]
         stop_own_child(child)

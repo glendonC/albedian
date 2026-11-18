@@ -1975,7 +1975,7 @@ def test_the_ranking_diagnostic_scores_the_pool_against_the_checks_stars(monkeyp
     stars = (np.array([[10.0, 10.0], [40.0, 30.0]]), np.array([2.0, 5.0]), np.zeros(2), np.zeros(2))
     on_bright, off, on_faint = FakeDetection(10.5, 10.0), FakeDetection(30.0, 5.0), FakeDetection(40.0, 33.0)
     monkeypatch.setattr(measure, "catalog_in_frame", lambda record, scratch, root=ROOT, margin_px=0.0: stars)
-    monkeypatch.setattr(detector, "detect_point_sources", lambda luma, snr_threshold=3.5: [on_bright, off, on_faint])
+    monkeypatch.setattr(detector, "detect_point_sources", lambda luma: [on_bright, off, on_faint])
     monkeypatch.setattr(solver, "_rank_stellar_candidates", lambda rgb, luma, bg, dets, max_pool=85: ([off, on_faint], 1.0))
     out = measure.diagnose_ranking(photo, record, {"fovHintDeg": 84.0}, tmp_path, tmp_path)
     assert (out["detections"], out["ranked"], out["starsInFrame"]) == (3, 2, 2)
@@ -1986,7 +1986,7 @@ def test_the_ranking_diagnostic_scores_the_pool_against_the_checks_stars(monkeyp
     assert (fov["checkDiagonalDeg"], fov["hintDiagonalDeg"], fov["hintErrorPct"], fov["nearestGenericDeg"], fov["nearestGenericErrorPct"]) == (80.0, 84.0, 5.0, 82.0, 2.5)
     # A star with no detection near it is not detected; a ranking that keeps nothing scores nothing
     monkeypatch.setattr(solver, "_rank_stellar_candidates", lambda rgb, luma, bg, dets, max_pool=85: ([], 1.0))
-    monkeypatch.setattr(detector, "detect_point_sources", lambda luma, snr_threshold=3.5: [off])
+    monkeypatch.setattr(detector, "detect_point_sources", lambda luma: [off])
     out = measure.diagnose_ranking(photo, record, {}, tmp_path, tmp_path)
     assert (out["pool65OnStar"], out["pool65"], out["allOnStar"]) == (0, 0, 0) and out["fov"]["hintDiagonalDeg"] is None
     assert [b["found"] for b in out["brightest"]] == ["not detected", "not detected"]
@@ -2253,7 +2253,7 @@ def ranking_case(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, stars_xy: Any,
     xy = np.array(stars_xy, dtype=float).reshape(-1, 2)
     seen: dict[str, Any] = {}
 
-    def detect(luma: Any, snr_threshold: float) -> list[Any]:
+    def detect(luma: Any, snr_threshold: float | None = None) -> list[Any]:
         seen.update(luma=luma, snr=snr_threshold)
         return detections
 
@@ -2265,7 +2265,7 @@ def ranking_case(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, stars_xy: Any,
 
 
 def test_the_ranking_diagnostic_prepares_its_pool_as_the_solver_does(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """measure.diagnose_ranking: the 8-bit luma over 255 and the detector's 3.5 sigma, as solve_phone_photo uses them."""
+    """measure.diagnose_ranking: the 8-bit luma over 255 and the detector's own threshold, as solve_phone_photo uses them."""
     import numpy as np
 
     from services.science.detector import _to_luma_2d
@@ -2273,7 +2273,7 @@ def test_the_ranking_diagnostic_prepares_its_pool_as_the_solver_does(monkeypatch
     case = ranking_case(monkeypatch, tmp_path, [(10.0, 10.0)], [FakeDetection(30.0, 30.0)])
     with Image.open(case["photo"]) as image:
         rgb = np.asarray(image.convert("RGB"), dtype=np.uint8)
-    assert case["snr"] == 3.5 and np.allclose(case["luma"], _to_luma_2d(rgb) / 255.0, atol=1e-12)
+    assert case["snr"] is None and np.allclose(case["luma"], _to_luma_2d(rgb) / 255.0, atol=1e-12)
 
 
 def test_the_ranking_diagnostic_needs_a_star_and_a_detection(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

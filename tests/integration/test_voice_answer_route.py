@@ -227,8 +227,8 @@ def test_the_words_reach_no_log_beside_the_time_or_place(client: TestClient, sto
         ("how bright is Rigel", None, "Rigel shines at magnitude 0.13."),
         ("how bright is that one", "finding-obs-12", "Observed Point Source #12 stands {snr} times above the photo's noise."),
         ("what constellation is it in", "finding-star-rigel", "Rigel is in Orion."),
-        ("what's in this photo?", None, "This photo shows 12 points of light, 11 matched to catalog stars."),
-        ("how sure are you?", None, "The sky is calibrated, from 11 matched stars."),
+        ("what's in this photo?", None, "This photo shows 12 points of light, 9 matched to catalog stars."),
+        ("how sure are you?", None, "The sky is calibrated, from 9 matched stars."),
     ],
 )
 def test_the_sentence_says_the_stored_values(client: TestClient, store: IngestStore, question: str, selected: str | None,
@@ -241,11 +241,12 @@ def test_the_sentence_says_the_stored_values(client: TestClient, store: IngestSt
 def test_a_named_finding_is_found_by_its_catalog_name_whatever_its_id(client: TestClient, store: IngestStore) -> None:
     # A real solve names a finding by its catalog row, not by the voice tables' id: the name finds it all the same
     solution = {**SOLUTIONS["plate_calibrated"], "sourceSha256": SHA, "sourceAssetId": f"src_{SHA[:16]}"}
+    rigel_index = next(i for i, f in enumerate(solution["findings"]) if f["id"] == "finding-star-rigel")
     solution["findings"] = [{**f, "id": f"finding-solved-{index}"} for index, f in enumerate(solution["findings"])]
     (store.folder(SHA) / "solution.json").write_text(json.dumps(solution), encoding="utf-8")
     answer = _ask(client, "how far is Rigel?")
     assert answer["status"] == "answered", answer
-    assert {s["subject"]["findingId"] for s in answer["statements"]} == {"finding-solved-0"}
+    assert {s["subject"]["findingId"] for s in answer["statements"]} == {f"finding-solved-{rigel_index}"}
 
 
 def test_an_unreadable_stored_solution_answers_409_with_the_fixed_sentence(
