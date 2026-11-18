@@ -44,6 +44,7 @@ from typing import Any, Optional
 
 from pydantic import ValidationError
 
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import SolveJob, format_utc
 from services.contracts.jobs import INTERRUPTED_SENTENCE, MEDIA_JOB_KINDS, UploadJob
 from services.ingest.store import PRIVATE_FILE_MODE, PRIVATE_FOLDER_MODE, IngestStore, _fsync_dir
@@ -353,18 +354,42 @@ class JobStore:
                     return job
         return None
 
-    def read_solution_unchecked(self, sha256: str) -> Optional[dict[str, Any]]:
-        """NOT YET CHECKED against the contract: today's `solution.json` as it is stored (with pre-catalog-2b
-        designations upgraded in memory), read without following a link. The unit after contracts-1 lands makes this
-        a checked read; until then nothing built on it may claim a checked solution."""
+    def read_solution(self, sha256: str) -> Optional[dict[str, Any]]:
+        """Today's `solution.json`, read without following a link, parsed as RFC 8259 JSON with finite numbers,
+        upgraded in memory for pre-catalog-2b star designations (`upgrade_stored_solution`), and checked against
+        this upload's hash and id and the solution contract (`parse_observation_solution`), then returned without
+        re-dumping through the model. None when none is stored; Unreadable when its folder or file cannot be read as
+        a regular UTF-8 file, is not finite JSON, names another upload, or fails the contract. Never rewritten or
+        removed here."""
         path = self.upload_folder(sha256) / "solution.json"
-        if not self._exists(path.parent):
+        try:
+            exists = self._exists(path.parent)
+        except OSError as error:
+            raise Unreadable("a stored solution folder that cannot be read") from error
+        if not exists:
             return None
         try:
-            raw = json.loads(_read_regular(path))
+            text = _read_regular(path)
         except FileNotFoundError:
             return None
-        return upgrade_stored_solution(raw) if isinstance(raw, dict) else raw
+        except (OSError, ValueError) as error:
+            raise Unreadable("a stored solution that cannot be read as a regular UTF-8 file") from error
+        try:
+            raw = json.loads(
+                text,
+                parse_float=_finite_json_float,
+                parse_int=_finite_json_int,
+                parse_constant=_no_json_constant,
+            )
+            if not isinstance(raw, dict):
+                raise ValueError("stored solution is not a JSON object")
+            solution = upgrade_stored_solution(raw)
+            parsed = parse_observation_solution(solution)
+        except (ValidationError, ValueError, RecursionError) as error:
+            raise Unreadable("a stored solution fails the contract") from error
+        if parsed.source_sha256 != sha256 or parsed.source_asset_id != f"src_{sha256[:16]}":
+            raise Unreadable("a stored solution names another upload")
+        return solution
 
     # ---- Locks: one per piece of work, held until its attempt has ended ----
 

@@ -29,6 +29,7 @@ import pytest
 from services.api import create_app
 from services.contracts.jobs import INTERRUPTED_SENTENCE, UploadJob, build_job_samples
 from services.ingest import job_store
+from services.ingest import jobs as ingest_jobs
 from services.ingest import router as ingest_router
 from services.ingest.job_store import Ended, JobStore, SweepCounts, Unreadable, new_job_id
 from services.ingest.store import IngestStore
@@ -38,6 +39,77 @@ NOW = datetime(2030, 1, 1, 5, 0, tzinfo=timezone.utc)
 SHAS = [hashlib.sha256(bytes([n])).hexdigest() for n in range(3)]
 VALID = build_job_samples()["valid"]
 STATES = sorted({(r["kind"], r["state"]) for r in VALID})
+SOLUTIONS = json.loads(
+    (Path(__file__).resolve().parents[1] / "fixtures" / "observation_solution_contract.json").read_text(encoding="utf-8")
+)
+A_SOLUTION = SOLUTIONS["valid"]["calibrated"]
+SOLUTION_SENTINEL = "unserved_solution_marker_9f3a"
+
+
+def _solution_for(sha: str, base: dict[str, Any] | None = None) -> dict[str, Any]:
+    """A contract solution belonging to upload `sha`: its `sourceSha256` and `sourceAssetId` set to `sha`'s."""
+    source = A_SOLUTION if base is None else base
+    old_sha = source.get("sourceSha256") or A_SOLUTION["sourceSha256"]
+    old_asset = source.get("sourceAssetId") or A_SOLUTION["sourceAssetId"]
+    out = _swap(copy.deepcopy(source), old_sha, sha)
+    out = _swap(out, old_asset, f"src_{sha[:16]}")
+    out["sourceSha256"] = sha
+    out["sourceAssetId"] = f"src_{sha[:16]}"
+    return out
+
+
+def _refused_sample(name: str) -> dict[str, Any]:
+    """A named solution of the solution contract's fixture that the contract refuses: its base with its steps."""
+    case = next(c for c in SOLUTIONS["invalid"] if c["name"] == name)
+    out = copy.deepcopy(SOLUTIONS["valid"][case["base"]])
+    for step in case["patch"]:
+        target = out
+        for key in step["path"][:-1]:
+            target = target[key]
+        if step["op"] == "remove":
+            del target[step["path"][-1]]
+        else:
+            target[step["path"][-1]] = step["value"]
+    return out
+
+
+def _bad_catalog_provider(sha: str) -> dict[str, Any]:
+    """A calibrated sample whose catalog provider fails validation with a sentinel string in Pydantic's error."""
+    out = _solution_for(sha)
+    matched = next(f for f in out["findings"] if f["evidenceClass"] == "catalog_matched")
+    matched["catalogRef"]["provider"] = SOLUTION_SENTINEL
+    return out
+
+
+def _refused_solutions(sha: str) -> dict[str, bytes]:
+    other_sha = SHAS[1] if sha != SHAS[1] else SHAS[2]
+    valid = _solution_for(sha)
+    return {
+        "bytes that are not UTF-8": b"\xff\xfe{}",
+        "text that is not JSON": f'{{"id": "{SOLUTION_SENTINEL}"'.encode(),
+        "non-JSON NaN in an ignored key": ('{"extra": NaN, ' + json.dumps(valid)[1:]).encode(),
+        "non-JSON Infinity in an ignored key": ('{"extra": Infinity, ' + json.dumps(valid)[1:]).encode(),
+        "overflow float in an ignored key": ('{"extra": 1e500, ' + json.dumps(valid)[1:]).encode(),
+        "overflow integer in an ignored key": ('{"extra": ' + "9" * 400 + ", " + json.dumps(valid)[1:]).encode(),
+        "deeply nested JSON": b"[" * 2500 + b"]" * 2500,
+        "a JSON list": b"[]",
+        "a JSON list of key-value pairs": json.dumps(list(valid.items())).encode(),
+        "JSON null": b"null",
+        "JSON number": b"42",
+        "JSON text": f'"{SOLUTION_SENTINEL}"'.encode(),
+        "JSON boolean": b"true",
+        "an empty object": b"{}",
+        "an observed finding relabelled catalog_matched": json.dumps(
+            _solution_for(sha, _refused_sample("audit_j_observed_relabelled_catalog_matched_its_evidence_still_observed"))
+        ).encode(),
+        "a catalog match without its catalog entry": json.dumps(
+            _solution_for(sha, _refused_sample("audit_j_catalog_match_without_its_catalog_entry"))
+        ).encode(),
+        "a catalog reference failing validation with secret input": json.dumps(_bad_catalog_provider(sha)).encode(),
+        "another upload's solution": json.dumps(_solution_for(other_sha)).encode(),
+        "wrong sourceSha256 only": json.dumps({**valid, "sourceSha256": other_sha}).encode(),
+        "wrong sourceAssetId only": json.dumps({**valid, "sourceAssetId": f"src_{other_sha[:16]}"}).encode(),
+    }
 
 
 # ---- Made-up uploads and records ----
@@ -419,7 +491,7 @@ def test_reads_make_no_folder_and_find_nothing_where_nothing_is(tree: Any) -> No
     assert jobs.jobs_of(SHAS[0]) == [] and jobs.jobs_of(SHAS[2]) == []
     assert jobs.legacy_solve_job(SHAS[0]) is None and jobs.legacy_solve_job(SHAS[2]) is None
     assert jobs.legacy_solve_job_by_id(f"job_{SHAS[2][:16]}") is None
-    assert jobs.read_solution_unchecked(SHAS[0]) is None and jobs.read_solution_unchecked(SHAS[2]) is None
+    assert jobs.read_solution(SHAS[0]) is None and jobs.read_solution(SHAS[2]) is None
     assert not jobs.is_held(jobs.lock_path(SHAS[0], "solve"))
     assert sorted(os.listdir(jobs.upload_folder(SHAS[0]))) == ["original.jpg", "record.json"]
     assert sorted(os.listdir(jobs.root)) == [SHAS[0][:2]]
@@ -475,17 +547,20 @@ def test_an_uploads_records_are_listed_oldest_first_and_only_its_records(tree: A
 
 
 def test_todays_records_are_never_read_through_a_linked_upload_folder(tree: Any) -> None:
-    tmp, _, jobs = tree
+    tmp, uploads, jobs = tree
     outside = tmp / "outside-upload"
     outside.mkdir()
     (outside / "job.json").write_text(json.dumps(_legacy_job(SHAS[1])), encoding="utf-8")
-    (outside / "solution.json").write_text("{}", encoding="utf-8")
+    (outside / "solution.json").write_text(json.dumps(_solution_for(SHAS[1])), encoding="utf-8")
     bucket = jobs.root / SHAS[1][:2]
     bucket.mkdir(exist_ok=True)
     (bucket / SHAS[1]).symlink_to(outside, target_is_directory=True)
     assert jobs.legacy_solve_job(SHAS[1]) is None
     assert jobs.legacy_solve_job_by_id(f"job_{SHAS[1][:16]}") is None
-    assert jobs.read_solution_unchecked(SHAS[1]) is None
+    assert jobs.read_solution(SHAS[1]) is None
+    assert ingest_router._checked_solution(uploads, SHAS[1]) is None
+    (outside / "solution.json").write_text("{}", encoding="utf-8")
+    assert jobs.read_solution(SHAS[1]) is None
     with pytest.raises(ValueError):
         jobs.legacy_solve_job_by_id(f"job_{SHAS[1][:16]}0")
 
@@ -1015,6 +1090,118 @@ def test_the_job_route_serves_a_checked_record_and_refuses_one_that_fails(app_an
         assert (response.status_code, response.json()) == (409, {"detail": ingest_router.UNREADABLE_JOB})
 
 
+def test_a_stored_solution_is_read_through_the_contract_and_returned_as_stored(tree: Any) -> None:
+    _, _, jobs = tree
+    path = jobs.upload_folder(SHAS[0]) / "solution.json"
+    stored_valid = {**_solution_for(SHAS[0]), "extraPreserved": 7}
+    body = json.dumps(stored_valid, indent=1).encode()
+    path.write_bytes(body)
+    assert jobs.read_solution(SHAS[0]) == stored_valid
+    assert path.read_bytes() == body
+    old_shape = _solution_for(SHAS[0])
+    matched = next(f for f in old_shape["findings"] if f["evidenceClass"] == "catalog_matched")
+    matched["catalogRef"] = {
+        **matched["catalogRef"],
+        "catalogSourceId": "HIP 24436",
+        "constellation": "Ori",
+        "bayerDesignation": "HR 1713",
+    }
+    matched["catalogRef"].pop("flamsteedNumber", None)
+    old_bytes = json.dumps(old_shape).encode()
+    path.write_bytes(old_bytes)
+    upgraded = jobs.read_solution(SHAS[0])
+    assert upgraded is not None
+    up_matched = next(f for f in upgraded["findings"] if f["evidenceClass"] == "catalog_matched")
+    assert up_matched["catalogRef"]["bayerDesignation"] == "Beta Orionis"
+    assert up_matched["catalogRef"]["flamsteedNumber"] == 19
+    assert path.read_bytes() == old_bytes
+    with pytest.raises(ValueError):
+        jobs.read_solution("not-a-sha256")
+
+
+@pytest.mark.parametrize("kind", sorted(_refused_solutions(SHAS[0])))
+def test_a_stored_solution_that_cannot_be_served_is_unreadable_and_left_as_it_is(tree: Any, kind: str) -> None:
+    _, _, jobs = tree
+    payload = _refused_solutions(SHAS[0])[kind]
+    path = jobs.upload_folder(SHAS[0]) / "solution.json"
+    path.write_bytes(payload)
+    with pytest.raises(Unreadable):
+        jobs.read_solution(SHAS[0])
+    assert path.read_bytes() == payload
+    assert sorted(os.listdir(path.parent)) == ["original.jpg", "record.json", "solution.json"]
+
+
+def test_a_solution_that_is_a_link_or_a_folder_is_refused_and_never_followed(tree: Any) -> None:
+    tmp, _, jobs = tree
+    outside = tmp / "outside-solution.json"
+    outside.write_text(json.dumps(_solution_for(SHAS[0])), encoding="utf-8")
+    path = jobs.upload_folder(SHAS[0]) / "solution.json"
+    path.symlink_to(outside)
+    with pytest.raises(Unreadable):
+        jobs.read_solution(SHAS[0])
+    assert path.is_symlink()
+    path.unlink()
+    path.mkdir()
+    with pytest.raises(Unreadable):
+        jobs.read_solution(SHAS[0])
+    assert path.is_dir()
+    path.rmdir()
+    path.write_text(json.dumps(_solution_for(SHAS[0])), encoding="utf-8")
+    os.chmod(path, 0o000)
+    try:
+        with pytest.raises(Unreadable):
+            jobs.read_solution(SHAS[0])
+    finally:
+        os.chmod(path, 0o600)
+    bucket = path.parent.parent
+    os.chmod(bucket, 0o000)
+    try:
+        with pytest.raises(Unreadable):
+            jobs.read_solution(SHAS[0])
+    finally:
+        os.chmod(bucket, 0o700)
+
+
+def test_the_solution_route_serves_a_checked_solution_and_refuses_every_other_kind_alike(
+        app_and_store: Any, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    assert ingest_router.UNREADABLE_SOLUTION == (
+        "The stored solution for that file does not meet the contract, so it is not served; run the solve again."
+    )
+    assert ingest_router.UNREADABLE_SOLUTION != ingest_router.UNREADABLE_JOB
+    app, _, jobs = app_and_store
+    client = TestClient(app)
+    png = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55"
+                        "0000000a49444154789c63600000000200015e2fe9e30000000049454e44ae426082")
+    stored = client.post("/api/ingest", content=png, headers={"content-type": "image/png"})
+    assert stored.status_code == 201, stored.text
+    sha = stored.json()["sourceAsset"]["sha256"]
+    path = jobs.upload_folder(sha) / "solution.json"
+    assert client.get(f"/api/ingest/{sha}/solution").status_code == 404, "no solution stored"
+    with caplog.at_level(logging.DEBUG):
+        for kind, body in _refused_solutions(sha).items():
+            path.write_bytes(body)
+            answer = client.get(f"/api/ingest/{sha}/solution")
+            assert (answer.status_code, answer.json()) == (409, {"detail": ingest_router.UNREADABLE_SOLUTION}), kind
+            assert path.read_bytes() == body, kind
+            assert SOLUTION_SENTINEL not in answer.text and str(path) not in answer.text, kind
+        path.unlink()
+        outside = tmp_path / "outside-valid-solution.json"
+        outside.write_text(json.dumps(_solution_for(sha)), encoding="utf-8")
+        path.symlink_to(outside)
+        answer = client.get(f"/api/ingest/{sha}/solution")
+        assert (answer.status_code, answer.json()) == (409, {"detail": ingest_router.UNREADABLE_SOLUTION}), "symlink"
+        path.unlink()
+        path.mkdir()
+        answer = client.get(f"/api/ingest/{sha}/solution")
+        assert (answer.status_code, answer.json()) == (409, {"detail": ingest_router.UNREADABLE_SOLUTION}), "folder"
+        path.rmdir()
+    assert SOLUTION_SENTINEL not in caplog.text and str(path) not in caplog.text
+    valid_for_sha = _solution_for(sha)
+    path.write_text(json.dumps(valid_for_sha), encoding="utf-8")
+    answer = client.get(f"/api/ingest/{sha}/solution")
+    assert (answer.status_code, answer.json()) == (200, valid_for_sha)
+
+
 def test_no_read_or_lock_waits_on_a_fifo_named_like_a_store_file(tree: Any) -> None:
     """A FIFO named like a record, today's job.json or solution.json, or a lock is refused at once as no regular file,
     never waited on and never read as an empty file: each call runs in a thread given 10 s, and one still waiting fails
@@ -1031,13 +1218,13 @@ def test_no_read_or_lock_waits_on_a_fifo_named_like_a_store_file(tree: Any) -> N
     os.mkfifo(folder / "solution.json")
     os.mkfifo(jobs.lock_path(SHAS[0], "solve"))
     calls = {"read_job": lambda: jobs.read_job(job_id), "legacy": lambda: jobs.legacy_solve_job(SHAS[0]),
-             "solution": lambda: jobs.read_solution_unchecked(SHAS[0]),
+             "solution": lambda: jobs.read_solution(SHAS[0]),
              "is_held": lambda: jobs.is_held(jobs.lock_path(SHAS[0], "solve")),
              "try_hold": lambda: jobs.try_hold(jobs.lock_path(SHAS[0], "solve")),
              "jobs_of": lambda: jobs.jobs_of(SHAS[0]), "sweep": lambda: jobs.sweep(now=NOW)}
     # An OSError is named with its errno: EINVAL is the store's own "not a regular file", raised before any read or lock
     no_regular_file = f"OSError {errno.EINVAL}"
-    expected = {"read_job": "Unreadable", "legacy": "Unreadable", "solution": no_regular_file, "is_held": False,
+    expected = {"read_job": "Unreadable", "legacy": "Unreadable", "solution": "Unreadable", "is_held": False,
                 "try_hold": no_regular_file, "jobs_of": []}
     for name, call in calls.items():
         out: dict[str, Any] = {}
@@ -1626,22 +1813,46 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
     stored = client.post("/api/ingest", content=png, headers={"content-type": "image/png"})
     assert stored.status_code == 201, stored.text
     sha = stored.json()["sourceAsset"]["sha256"]
-    ran: list[str] = []
-    monkeypatch.setattr(ingest_router, "run_solve_job", lambda store, s: ran.append(s) or {"ran": s})
     folder = jobs.upload_folder(sha)
+    original_path = uploads.original(sha)
+    assert original_path is not None
+    original_before = original_path.read_bytes()
+    record_before = (folder / "record.json").read_bytes()
+    valid_sol = _solution_for(sha)
     succeeded = {**_legacy_job(sha), "state": "succeeded", "startedAtUTC": "2030-01-01T05:00:01Z",
                  "finishedAtUTC": "2030-01-01T05:00:02Z", "solutionId": f"sol_{sha[:16]}"}
+    ran: list[str] = []
+    write_new_solution = [False]
+
+    def fake_solve(store: IngestStore, target_sha: str) -> dict[str, Any]:
+        ran.append(target_sha)
+        if write_new_solution[0]:
+            ingest_jobs._write_json(store.folder(target_sha), "solution.json", valid_sol, read_only=True)
+            ingest_jobs._write_json(store.folder(target_sha), "job.json", succeeded)
+        return succeeded
+
+    monkeypatch.setattr(ingest_router, "run_solve_job", fake_solve)
     (folder / "job.json").write_text(json.dumps(succeeded), encoding="utf-8")
     assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha], "no solution: run again"
-    (folder / "solution.json").write_text("{}", encoding="utf-8")
+    ingest_jobs._write_json(
+        folder,
+        "solution.json",
+        _solution_for(sha, _refused_sample("audit_j_observed_relabelled_catalog_matched_its_evidence_still_observed")),
+        read_only=True,
+    )
+    assert client.get(f"/api/ingest/{sha}/solution").status_code == 409
+    write_new_solution[0] = True
+    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha, sha], "refused solution: run again"
+    served = client.get(f"/api/ingest/{sha}/solution")
+    assert (served.status_code, served.json()) == (200, valid_sol)
     answer = client.post(f"/api/ingest/{sha}/solve")
-    assert (answer.status_code, answer.json(), ran) == (200, succeeded, [sha])
-    old_ref = {"findings": [{"catalogRef": {"catalogSourceId": "HIP 24436", "constellation": "Ori", "bayerDesignation": "HR 1713"}}]}
-    (folder / "solution.json").write_text(json.dumps(old_ref), encoding="utf-8")
-    upgraded = jobs.read_solution_unchecked(sha)
-    assert upgraded is not None and upgraded["findings"][0]["catalogRef"]["bayerDesignation"] == "Beta Orionis"
-    assert json.loads((folder / "solution.json").read_text(encoding="utf-8")) == old_ref
-    (folder / "solution.json").write_text("null", encoding="utf-8")
-    assert jobs.read_solution_unchecked(sha) is None
+    assert (answer.status_code, answer.json(), ran) == (200, succeeded, [sha, sha])
+    write_new_solution[0] = False
+    failed = {**_legacy_job(sha), "state": "failed", "startedAtUTC": "2030-01-01T05:00:01Z",
+              "finishedAtUTC": "2030-01-01T05:00:02Z", "error": "The solve stopped on an internal error."}
+    (folder / "job.json").write_text(json.dumps(failed), encoding="utf-8")
+    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 3, "failed job: run again"
     (folder / "job.json").write_text(json.dumps({**succeeded, "state": "finished"}), encoding="utf-8")
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha, sha], "unreadable: run again"
+    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 4, "unreadable: run again"
+    assert original_path.read_bytes() == original_before
+    assert (folder / "record.json").read_bytes() == record_before

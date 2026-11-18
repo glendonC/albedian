@@ -180,6 +180,13 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   in-memory designation upgrade now on main), named so; it is checked in
   the unit after contracts-1 lands (`parse_observation_solution`), which also answers a stored solution the contract
   refuses with a plain refusal [decided 2026-11-12, lead's answer to platform-4].
+- As built in platform-4b [tested]: the store's one solution read is `read_solution`, applying catalog-2b's
+  in-memory `upgrade_stored_solution` and checking both the upload's own hash/asset id and
+  `parse_observation_solution`: a stored `solution.json` whose folder or file cannot be read as a regular UTF-8 file,
+  is not finite RFC 8259 JSON, names another upload, or fails the contract is `Unreadable`, left on disk as it is and
+  never served. `GET /api/ingest/{sha256}/solution` answers it with 409 and `UNREADABLE_SOLUTION` (the answer route
+  takes the same constant), and a start whose job succeeded runs the solve again when its solution is refused
+  [decided 2026-11-13, lead's answer to platform-4b].
 
 ### 3.2 The runner (`services/ingest/runner.py`, new)
 - `JobKind` (a frozen dataclass), all the runner knows of a kind:

@@ -11,7 +11,8 @@ its full hash.
 Job records are read through the job store (services/ingest/job_store.py), checked against the contract: a
 stored record that fails it is never served. A receipt then names no job, a start runs the solve again, and
 `GET /api/ingest/jobs/{job_id}` answers 409 with one plain sentence. The solution is read through the store's
-one solution read, which does not yet check it against the contract (that check comes with contracts-1).
+one solution read, checked by the solution contract's parser: one it refuses is never served. A start then runs the
+solve again, and `GET /api/ingest/{sha256}/solution` answers 409 with one plain sentence.
 """
 
 from __future__ import annotations
@@ -46,6 +47,11 @@ def _job_id_path() -> Any:
 
 UPLOAD_TYPES = sorted(name for names in DECLARABLE.values() for name in names)
 UNREADABLE_JOB = "The stored record of that job does not meet the contract, so it is not served; run the solve again."
+# The one reply for a stored solution that cannot be served (not JSON, not a solution, another upload's, or one the
+# contract refuses); answers-4b's route takes this same constant (lead, 2026-11-13). Proposed wording for UIUX work
+UNREADABLE_SOLUTION = (
+    "The stored solution for that file does not meet the contract, so it is not served; run the solve again."
+)
 
 
 def get_ingest_store() -> IngestStore:
@@ -57,6 +63,14 @@ def _solve_job(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
     """Today's solve job of an upload, checked; None when there is none or its record fails the contract."""
     try:
         return JobStore(store).legacy_solve_job(sha256)
+    except Unreadable:
+        return None
+
+
+def _checked_solution(store: IngestStore, sha256: str) -> Optional[dict[str, Any]]:
+    """An upload's stored solution, checked; None when there is none or the contract refuses it."""
+    try:
+        return JobStore(store).read_solution(sha256)
     except Unreadable:
         return None
 
@@ -257,8 +271,7 @@ async def start_ingest_solve_job(
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
     existing = _solve_job(store, sha256)
-    if (existing is not None and existing.get("state") == "succeeded"
-            and JobStore(store).read_solution_unchecked(sha256) is not None):
+    if existing is not None and existing.get("state") == "succeeded" and _checked_solution(store, sha256) is not None:
         return JSONResponse(existing, status_code=200)
     job = await run_in_threadpool(run_solve_job, store, sha256)
     return JSONResponse(job, status_code=201)
@@ -293,7 +306,10 @@ def get_ingest_solution(
     """The contract ObservationSolution produced for a stored upload."""
     if store.read_record(sha256) is None or store.original(sha256) is None:
         raise HTTPException(status_code=404, detail="no file with that hash is stored")
-    solution = JobStore(store).read_solution_unchecked(sha256)
+    try:
+        solution = JobStore(store).read_solution(sha256)
+    except Unreadable:
+        raise HTTPException(status_code=409, detail=UNREADABLE_SOLUTION) from None
     if solution is None:
         raise HTTPException(status_code=404, detail="no solution is stored for that file")
     return solution
