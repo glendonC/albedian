@@ -4,7 +4,9 @@ Covers:
 - Star detections measured on original pixels (`observed` for centroids/flux/SNR, `catalog_matched` only after
   the coincidence-weighed held-out + dual-path WCS verification gate passes)
 - Solving positive phone photos across main and ultra-wide lenses (both Brown-Conrady and Kannala-Brandt
-  fisheye) on the phone-photo benchmark (`outcome == "correct"`, median field error <= 3 px)
+  fisheye) on the phone-photo benchmark (`outcome == "correct"`, median field error <= 3 px), with each CI
+  positive's child CPU seconds guarded at three times its machine's measured set and written to the warnings
+  summary
 - Blind timeless/placeless solving (`obs_utc_iso=None, observer_lat=None, observer_lon=None`), half-location
   rejection, and real candidate denominator progress reporting (`on_candidate`)
 - Zero false solves (`falseSolves == 0`) on hard negatives (overcast, moon in cloud, screen, random dots, dark)
@@ -17,6 +19,9 @@ from __future__ import annotations
 from dataclasses import replace
 import hashlib
 import math
+import platform
+import sys
+import warnings
 
 from hypothesis import example, given, settings, strategies as st
 import numpy as np
@@ -71,6 +76,174 @@ def test_phone_photo_solver_adapter_solves_ci_phone_positives_with_zero_false_so
     for fid in ("ci-04", "ci-05", "ci-06", "ci-07"):
         assert not by_id[fid].claimed, f"{fid} falsely claimed: {by_id[fid]}"
         assert not by_id[fid].false_solve
+
+
+# The three CI phone positives `phone-photo` solves (`ci-03` is the 1/30 s `head-worn-video` frame).
+CI_POSITIVE_IDS = ("ci-00", "ci-01", "ci-02")
+# Each CI positive's phone-photo solve in CPU seconds of the bounded child that runs it (`time.process_time`, all its
+# threads), keyed by `platform.machine()` [tested, measured on 2026-11-18 at b1ea12f4, solver unchanged at c6d4dbab]:
+# - `arm64`: the largest of five runs on the project's 18-core arm64 laptop (loads 25.43 to 32.50);
+# - `x86_64`: the largest of five runs of `py312-distro` and five runs of `py314-pinned` in the laptop's emulated
+#   `linux/amd64` container (loads 17.75 to 33.21); because on `x86_64` the numbers come from an emulated container, on
+#   a real x86-64 runner the guard is looser and still a guard, and the warning summary below shows the measured CPU
+#   seconds on a pass as well so that after the first CI run the `x86_64` set can be taken from CI's own runner in a
+#   later unit.
+CI_POSITIVE_CPU_S_MEASURED: dict[str, dict[str, float]] = {
+    "arm64": {"ci-00": 2.52, "ci-01": 3.54, "ci-02": 3.00},
+    "x86_64": {"ci-00": 10.32, "ci-01": 13.70, "ci-02": 12.62},
+}
+# How many times its machine's measured CPU seconds each CI positive solve may take: a guard against a solve getting
+# much slower unseen, not a product target. A unit that must raise a number says why in its report.
+CI_POSITIVE_CPU_GUARD = 3.0
+
+
+def _judge_ci_positive_cpu_seconds(machine: str, spent: dict[str, float]) -> None:
+    if machine not in CI_POSITIVE_CPU_S_MEASURED:
+        pytest.fail(
+            f"No measured CI positive CPU-second set for machine {machine!r}; measure ci-00, ci-01 and ci-02 on "
+            f"{machine!r} and add its entry to CI_POSITIVE_CPU_S_MEASURED."
+        )
+    measured = CI_POSITIVE_CPU_S_MEASURED[machine]
+    non_positive = {fid: spent[fid] for fid in CI_POSITIVE_IDS if not (spent[fid] > 0.0)}
+    assert not non_positive, f"non-positive child CPU seconds recorded: {non_positive}"
+    slower = {
+        fid: spent[fid]
+        for fid in CI_POSITIVE_IDS
+        if spent[fid] > CI_POSITIVE_CPU_GUARD * measured[fid]
+    }
+    assert not slower, (
+        f"CI positive solves on {machine} over {CI_POSITIVE_CPU_GUARD:g} times their measured CPU seconds: {slower}; "
+        f"measured {measured}"
+    )
+    formatted = ", ".join(f"{fid}={spent[fid]:.2f}s" for fid in CI_POSITIVE_IDS)
+    warnings.warn(f"CI positive child CPU seconds on {machine}: {formatted}", stacklevel=2)
+
+
+def test_no_ci_positive_solve_has_got_much_slower_unseen(ci_frames: list[render.RenderedFrame]) -> None:
+    """Guard against a solve getting much slower unseen, not a product target: each CI positive's solve in the bounded
+    child's CPU seconds is at most three times its machine's measured number (`arm64` from this laptop; on `x86_64` the
+    numbers come from an emulated container, so on a real x86-64 runner the guard is looser and still a guard), and the
+    measured CPU seconds are emitted into the warnings summary so CI's log shows them on a pass as well."""
+    by_id = {frame.spec.frame_id: frame for frame in ci_frames}
+    spent: dict[str, float] = {}
+    for fid in CI_POSITIVE_IDS:
+        frame = by_id[fid]
+        outcome = solvers.run_solver("phone-photo", solvers.SolverInput(frame.rgb, frame.truth.metadata), SOLVE_TIME_LIMIT_SEC)
+        assert outcome.status == "calibrated" and outcome.claimed, (fid, outcome.status, outcome.error)
+        spent[fid] = float(outcome.extra["cpuS"])
+    _judge_ci_positive_cpu_seconds(platform.machine(), spent)
+
+
+def test_phone_photo_adapter_records_child_cpu_seconds_and_guard_handles_machines_and_edges(
+    ci00_frame: render.RenderedFrame, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import services.science.phone_photo_solver as pps_mod
+
+    cpu_now = 10.0
+    wall_now = 100.0
+    real_solve = pps_mod.solve_phone_photo
+    fake_sol = real_solve(
+        np.zeros((32, 32, 3), dtype=np.uint8),
+        detections=[],
+        source_asset_id="src_fake",
+        source_sha256=hashlib.sha256(b"fake").hexdigest(),
+    )
+
+    def fake_solve_phone_photo(*args: object, **kwargs: object) -> object:
+        nonlocal cpu_now, wall_now
+        cpu_now = 12.75
+        wall_now = 105.5
+        return fake_sol
+
+    monkeypatch.setattr(pps_mod, "solve_phone_photo", fake_solve_phone_photo)
+    monkeypatch.setattr(solvers.time, "process_time", lambda: cpu_now)
+    monkeypatch.setattr(solvers.time, "perf_counter", lambda: wall_now)
+    outcome = solvers._phone_photo(solvers.SolverInput(ci00_frame.rgb, ci00_frame.truth.metadata))
+    assert outcome.extra["cpuS"] == 12.75 - 10.0
+    assert outcome.elapsed_s == 105.5 - 100.0
+
+    with pytest.raises(pytest.fail.Exception, match="measure ci-00, ci-01 and ci-02 on 'riscv64'"):
+        _judge_ci_positive_cpu_seconds("riscv64", {"ci-00": 1.0, "ci-01": 1.0, "ci-02": 1.0})
+
+    assert CI_POSITIVE_IDS == ("ci-00", "ci-01", "ci-02")
+    assert CI_POSITIVE_CPU_GUARD == 3.0
+    assert CI_POSITIVE_CPU_S_MEASURED == {
+        "arm64": {"ci-00": 2.52, "ci-01": 3.54, "ci-02": 3.00},
+        "x86_64": {"ci-00": 10.32, "ci-01": 13.70, "ci-02": 12.62},
+    }
+    for machine in ("arm64", "x86_64"):
+        measured = CI_POSITIVE_CPU_S_MEASURED[machine]
+        at_bound = {fid: 3.0 * measured[fid] for fid in ("ci-00", "ci-01", "ci-02")}
+        expected_warning = (
+            f"CI positive child CPU seconds on {machine}: "
+            f"ci-00={at_bound['ci-00']:.2f}s, ci-01={at_bound['ci-01']:.2f}s, ci-02={at_bound['ci-02']:.2f}s"
+        )
+        with pytest.warns(UserWarning) as caught:
+            _judge_ci_positive_cpu_seconds(machine, at_bound)
+        assert [str(w.message) for w in caught] == [expected_warning]
+        for fid in ("ci-00", "ci-01", "ci-02"):
+            for bad in (0.0, -0.1, math.nan):
+                with pytest.raises(AssertionError, match="non-positive"):
+                    _judge_ci_positive_cpu_seconds(machine, {**at_bound, fid: bad})
+            for over in (float(np.nextafter(at_bound[fid], math.inf)), math.inf):
+                with pytest.raises(AssertionError, match=fid):
+                    _judge_ci_positive_cpu_seconds(machine, {**at_bound, fid: over})
+
+    this_mod = sys.modules[__name__]
+    with monkeypatch.context() as mp:
+        mp.setattr(this_mod, "CI_POSITIVE_CPU_GUARD", 2.0)
+        two_x = {fid: 2.0 * CI_POSITIVE_CPU_S_MEASURED["arm64"][fid] for fid in ("ci-00", "ci-01", "ci-02")}
+        with pytest.warns(UserWarning):
+            _judge_ci_positive_cpu_seconds("arm64", two_x)
+        with pytest.raises(AssertionError, match="over 2 times"):
+            _judge_ci_positive_cpu_seconds(
+                "arm64", {**two_x, "ci-01": float(np.nextafter(two_x["ci-01"], math.inf))}
+            )
+
+    synthetic_ci = [replace(ci00_frame, spec=replace(ci00_frame.spec, frame_id=fid)) for fid in ("ci-00", "ci-01", "ci-02")]
+    seen_calls: list[tuple[str, float]] = []
+    fake_outcomes: dict[str, solvers.SolverOutcome] = {}
+    rgb_by_fid = {}
+    for idx, fid in enumerate(("ci-00", "ci-01", "ci-02")):
+        tagged = np.full((4, 4, 3), idx + 1, dtype=np.uint8)
+        synthetic_ci[idx] = replace(synthetic_ci[idx], rgb=tagged)
+        rgb_by_fid[idx + 1] = fid
+        fake_outcomes[fid] = solvers.SolverOutcome(
+            status="calibrated",
+            claimed=True,
+            wcs=None,
+            matches=[],
+            detections=10,
+            held_out_inliers=6,
+            self_median_residual_px=0.5,
+            elapsed_s=1.0,
+            extra={"cpuS": 1.0 + idx},
+        )
+
+    def fake_run_solver(name: str, inp: solvers.SolverInput, timeout_s: float) -> solvers.SolverOutcome:
+        fid = rgb_by_fid[int(inp.rgb[0, 0, 0])]
+        seen_calls.append((f"{name}:{fid}", timeout_s))
+        return fake_outcomes[fid]
+
+    with monkeypatch.context() as mp:
+        mp.setattr(solvers, "run_solver", fake_run_solver)
+        mp.setattr(platform, "machine", lambda: "x86_64")
+        mp.setattr(this_mod, "SOLVE_TIME_LIMIT_SEC", 42.5)
+        with pytest.warns(UserWarning) as caught_full:
+            test_no_ci_positive_solve_has_got_much_slower_unseen(synthetic_ci)
+        assert seen_calls == [("phone-photo:ci-00", 42.5), ("phone-photo:ci-01", 42.5), ("phone-photo:ci-02", 42.5)]
+        assert [str(w.message) for w in caught_full] == [
+            "CI positive child CPU seconds on x86_64: ci-00=1.00s, ci-01=2.00s, ci-02=3.00s"
+        ]
+        fake_outcomes["ci-02"] = replace(fake_outcomes["ci-02"], extra={"cpuS": 50.0})
+        with pytest.raises(AssertionError, match="ci-02"):
+            test_no_ci_positive_solve_has_got_much_slower_unseen(synthetic_ci)
+        fake_outcomes["ci-02"] = replace(fake_outcomes["ci-02"], claimed=False, extra={"cpuS": 1.0})
+        with pytest.raises(AssertionError, match="ci-02"):
+            test_no_ci_positive_solve_has_got_much_slower_unseen(synthetic_ci)
+        fake_outcomes["ci-02"] = replace(fake_outcomes["ci-02"], status="unresolved", claimed=True, extra={"cpuS": 1.0})
+        with pytest.raises(AssertionError, match="ci-02"):
+            test_no_ci_positive_solve_has_got_much_slower_unseen(synthetic_ci)
 
 
 def test_solve_phone_photo_preserves_original_pixel_detections_and_contract_invariants(

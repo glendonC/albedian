@@ -147,6 +147,8 @@ def _phone_photo(inp: SolverInput) -> SolverOutcome:
     from services.science.phone_photo_solver import solve_phone_photo
 
     start = time.perf_counter()
+    # CPU seconds of the process running the solve (all its threads): in the bounded child, the solve's own
+    cpu_start = time.process_time()
     sha = hashlib.sha256(np.ascontiguousarray(inp.rgb).tobytes()).hexdigest()
     solution = solve_phone_photo(
         inp.rgb,
@@ -172,6 +174,7 @@ def _phone_photo(inp: SolverInput) -> SolverOutcome:
         held_out_inliers=solution.quality.held_out_inliers,
         self_median_residual_px=solution.quality.median_residual_px,
         elapsed_s=time.perf_counter() - start,
+        extra={"cpuS": time.process_time() - cpu_start},
     )
 
 
