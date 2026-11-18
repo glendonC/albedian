@@ -92,6 +92,139 @@
    "python": null
   },
   {
+   "name": "maxPasses true",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":true,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "maxPasses false",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":false,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "maxPasses \"three\"",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"maxPasses\",\"value\":\"three\",\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv 0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge exposureEv 6",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":6,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":6,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge exposureEv -1",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":-1,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv 7",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":7,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv -0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":-0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge exposureEv -0.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":-0.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge exposureEv 2",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":2,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":2,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge exposureEv 2.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":2.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":2,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "edge confirmThresholdSnr 0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":0,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":0,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "edge confirmThresholdSnr 100",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":100,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":100,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "edge confirmThresholdSnr -0.0001",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":-0.0001,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge confirmThresholdSnr 101",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":101,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv true",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":true,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv false",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":false,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "edge exposureEv 1e400",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1e400,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": false,
+   "python": null
+  },
+  {
    "name": "exposureEv 1.5",
    "schema": "GraphParameter",
    "text": "{\"name\":\"exposureEv\",\"value\":1.5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
@@ -99,11 +232,60 @@
    "python": "{\"name\":\"exposureEv\",\"value\":1.5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
   },
   {
-   "name": "exposureEv 2.0",
+   "name": "exposureEv 0.25",
    "schema": "GraphParameter",
-   "text": "{\"name\":\"exposureEv\",\"value\":2.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "text": "{\"name\":\"exposureEv\",\"value\":0.25,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
    "taken": true,
-   "python": "{\"name\":\"exposureEv\",\"value\":2.0,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+   "python": "{\"name\":\"exposureEv\",\"value\":0.25,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 0.0001",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":0.0001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0.0001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 0.00001",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":0.00001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0.00001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 1e-5",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1e-5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0.00001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 1e-6",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1e-6,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":0.000001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 9.999999999999997e-7",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":9.999999999999997e-7,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":9.999999999999997e-7,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 1e-7",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1e-7,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":1e-7,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
+  },
+  {
+   "name": "exposureEv 1.25e-8",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"value\":1.25e-8,\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
+   "taken": true,
+   "python": "{\"name\":\"exposureEv\",\"value\":1.25e-8,\"origin\":\"requested\",\"basis\":\"exposureEv\"}"
   },
   {
    "name": "confirmThresholdSnr 4.75",
@@ -111,6 +293,34 @@
    "text": "{\"name\":\"confirmThresholdSnr\",\"value\":4.75,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
    "taken": true,
    "python": "{\"name\":\"confirmThresholdSnr\",\"value\":4.75,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "confirmThresholdSnr 15.0",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":15.0,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":15,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "confirmThresholdSnr 0.00001",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":0.00001,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":0.00001,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "confirmThresholdSnr 1e-6",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":1e-6,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":0.000001,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
+  },
+  {
+   "name": "confirmThresholdSnr 1e-7",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"confirmThresholdSnr\",\"value\":1e-7,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}",
+   "taken": true,
+   "python": "{\"name\":\"confirmThresholdSnr\",\"value\":1e-7,\"origin\":\"default\",\"basis\":\"The detector's own floor.\"}"
   },
   {
    "name": "transfer \"hlg\"",
@@ -141,6 +351,13 @@
    "python": null
   },
   {
+   "name": "a name of [\"maxPasses\"] beside 2",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[\"maxPasses\"],\"value\":2,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
    "name": "a name of {\"row\":\"maxPasses\"} beside 3.0",
    "schema": "GraphParameter",
    "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
@@ -158,6 +375,13 @@
    "name": "a name of {\"row\":\"maxPasses\"} beside -0.0",
    "schema": "GraphParameter",
    "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":-0.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of {\"row\":\"maxPasses\"} beside 2",
+   "schema": "GraphParameter",
+   "text": "{\"name\":{\"row\":\"maxPasses\"},\"value\":2,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
    "taken": false,
    "python": null
   },
@@ -183,9 +407,30 @@
    "python": null
   },
   {
+   "name": "a name of [] beside 2",
+   "schema": "GraphParameter",
+   "text": "{\"name\":[],\"value\":2,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
    "name": "a name of \"notARow\" beside 3.0",
    "schema": "GraphParameter",
    "text": "{\"name\":\"notARow\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "a name of \"notARow\" beside 2",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"notARow\",\"value\":2,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}",
+   "taken": false,
+   "python": null
+  },
+  {
+   "name": "exposureEv missing value",
+   "schema": "GraphParameter",
+   "text": "{\"name\":\"exposureEv\",\"origin\":\"requested\",\"basis\":\"exposureEv\"}",
    "taken": false,
    "python": null
   },
@@ -265,6 +510,55 @@
    "text": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"maxPasses\",\"value\":3.0,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}]}",
    "taken": true,
    "python": "{\"kind\":\"dissolve_unconfirmed\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"maxPasses\",\"value\":3,\"origin\":\"default\",\"basis\":\"Required by REQ-RST-6.3.\"}]}"
+  },
+  {
+   "name": "a lift step with a 1e-5 parameter",
+   "schema": "GraphStep",
+   "text": "{\"kind\":\"lift\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"exposureEv\",\"value\":1e-5,\"origin\":\"requested\",\"basis\":\"exposureEv\"}]}",
+   "taken": true,
+   "python": "{\"kind\":\"lift\",\"version\":\"1.0.0\",\"parameters\":[{\"name\":\"exposureEv\",\"value\":0.00001,\"origin\":\"requested\",\"basis\":\"exposureEv\"}]}"
+  },
+  {
+   "name": "clip startPtsMs -0.0",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-0.0,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":0,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
+  },
+  {
+   "name": "clip startPtsMs -2.0",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-2.0,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-2,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
+  },
+  {
+   "name": "clip startPtsMs -0.0001",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-0.0001,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-0.0001,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
+  },
+  {
+   "name": "clip startPtsMs -1e-5",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-1e-5,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-0.00001,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
+  },
+  {
+   "name": "clip startPtsMs -1e-6",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-1e-6,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-0.000001,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
+  },
+  {
+   "name": "clip startPtsMs -1e-7",
+   "schema": "MediaVariant",
+   "text": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-1e-7,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}",
+   "taken": true,
+   "python": "{\"id\":\"var_8e79aea0f1c18d52\",\"kind\":\"restoration\",\"sourceSha256\":\"0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9\",\"sourceAssetId\":\"src_0a1b2c3d4e5f6071\",\"graphId\":\"graph_8e79aea0f1c18d52\",\"attemptId\":\"att_8e79aea0f1c18d52\",\"sha256\":\"1b4bdc2ae3ccbac10c48ce801fd4f7b8bf7d3368a62b612fc910bb7f619e3ed3\",\"uri\":\"/api/media/0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9/variants/var_8e79aea0f1c18d52/file\",\"byteSize\":52811776,\"mimeType\":\"video/quicktime\",\"width\":1080,\"height\":1920,\"durationMs\":12000,\"frameCount\":360,\"frameTimesSha256\":\"9b72baf621fa96e380f9b3a2448188aa3a4df66fea74dd4d773c3810976e3396\",\"audioStreams\":[{\"index\":1,\"codec\":\"aac\",\"sampleRateHz\":48000,\"channels\":2,\"startPtsMs\":-1e-7,\"durationMs\":12000,\"sha256\":\"7b870b7d1a1751755010de28c696936f19110123b2a315ee83ca8fbdbc136338\"}],\"colour\":{\"model\":\"ycbcr\",\"bitDepth\":8,\"range\":\"limited\",\"matrix\":\"bt2020nc\",\"transfer\":\"hlg\",\"primaries\":\"bt2020\",\"chromaSubsampling\":\"420\",\"chromaSiting\":\"left\",\"assumptions\":[]},\"displayOrientation\":{\"quarterTurnsClockwise\":1,\"mirrored\":false},\"disclosure\":\"Restored from the original's own pixels with deterministic filters. Nothing was generated.\",\"createdAtUTC\":\"2031-05-02T19:20:07.500Z\"}"
   }
  ]
 }

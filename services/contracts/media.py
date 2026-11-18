@@ -22,6 +22,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional, Union
@@ -31,6 +32,7 @@ from pydantic import AfterValidator, BeforeValidator, Field, StrictBool, StrictI
 from services.contracts.ingest import JOB_ID_PATTERN, AudioStreamDescriptor, DisplayOrientation
 from services.contracts.wire import (
     M_CALENDAR,
+    M_NOT_A_NUMBER,
     M_NOT_FINITE,
     SHA256_HEX_PATTERN,
     UTC_INSTANT_PATTERN,
@@ -41,6 +43,7 @@ from services.contracts.wire import (
     WireModel,
     WireNumber,
     wire_int,
+    wire_number,
 )
 
 # =============================================================================================
@@ -506,6 +509,61 @@ FailureReason = _from_templates(FAILURE_SENTENCES, M_FAILURE_SENTENCE)
 class _Record(WireModel):
     """The wire base: camelCase keys only, strict, no unknown key, finite and safe numbers."""
 
+    def to_wire_json(self) -> str:
+        """Compact JSON matching writeWireJson on the TypeScript side, omitting absent optional fields."""
+        return dumps_wire_json(self.model_dump(by_alias=True, exclude_none=True))
+
+
+def format_wire_number(value: int | float) -> str:
+    """Format a finite int or float with ECMAScript Number::toString rules: minus zero is '0', whole floats under 1e21
+    have no '.0', [1e-6, 1e-4) is fixed decimal rather than '1e-05', and exponents below 1e-6 omit the leading zero."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(M_NOT_A_NUMBER if isinstance(value, bool) else "a wire number is an int or float")
+    try:
+        num = float(value)
+    except OverflowError:
+        raise ValueError(M_NOT_FINITE) from None
+    if not math.isfinite(num):
+        raise ValueError(M_NOT_FINITE)
+    sign = "-" if num < 0 else ""
+    raw = repr(abs(num))
+    if "e" not in raw:
+        return sign + (raw[:-2] if raw.endswith(".0") else raw)
+    mantissa, _, exp_text = raw.partition("e")
+    digits = mantissa.replace(".", "")
+    exp = int(exp_text)
+    if -6 <= exp <= -5:
+        body = "0." + ("0" * (-exp - 1)) + digits
+    elif 16 <= exp <= 20:
+        body = digits + ("0" * (exp + 1 - len(digits)))
+    else:
+        body = f"{mantissa}e{'+' if exp > 0 else '-'}{abs(exp)}"
+    return sign + body
+
+
+def dumps_wire_json(value: Any) -> str:
+    """Compact UTF-8 JSON matching writeWireJson on the TypeScript side across whole floats and (0, 1e-4)."""
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, (int, float)):
+        return format_wire_number(value)
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(dumps_wire_json(item) for item in value) + "]"
+    if isinstance(value, dict):
+        parts = []
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError("a wire JSON object key is a string")
+            parts.append(f"{json.dumps(key, ensure_ascii=False)}:{dumps_wire_json(item)}")
+        return "{" + ",".join(parts) + "}"
+    raise TypeError(f"unsupported wire JSON value: {type(value).__name__}")
+
 
 # =============================================================================================
 # The request and the graph
@@ -531,15 +589,19 @@ class GraphParameter(_Record):
 
     @model_validator(mode="before")
     @classmethod
-    def _a_whole_float_on_an_integer_row_is_that_integer(cls, data: Any) -> Any:
-        """Wire rule 2: on an integer row a whole number written as a float (3.0, 1e3) is that integer, read and written,
-        as JSON.parse gives it to the Zod side."""
-        name = data.get("name") if isinstance(data, dict) else None
-        # Only a name that is text names a row; anything else falls through to the contract's own refusal
-        if isinstance(name, str) and isinstance(data.get("value"), float) and data["value"].is_integer():
-            row = _PARAMETER_BY_NAME.get(name)
-            if row is not None and row["type"] == "integer":
-                return {**data, "value": int(data["value"])}
+    def _row_number_form(cls, data: Any) -> Any:
+        """Wire rule 2: on an integer row a whole float (3.0, 1e3) is that integer, and on a number row a JSON integer
+        (2, as JSON.stringify writes 2.0) is its float, read and written alike on both sides."""
+        if not isinstance(data, dict) or not isinstance(data.get("name"), str):
+            return data
+        row = _PARAMETER_BY_NAME.get(data["name"])
+        value = data.get("value")
+        if row is None:
+            return data
+        if row["type"] == "integer" and isinstance(value, float) and value.is_integer():
+            return {**data, "value": int(value)}
+        if row["type"] == "number" and "value" in data:
+            return {**data, "value": wire_number(value)}
         return data
 
     @model_validator(mode="after")

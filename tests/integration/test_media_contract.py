@@ -889,17 +889,42 @@ INTEGER_ROW_EDGES = [
     ("bitDepth", "8.0", True), ("bitDepth", "16.0", True), ("bitDepth", "7.0", False), ("bitDepth", "17.0", False),
     ("maxPasses", "0.0", True), ("maxPasses", "3.0", True), ("maxPasses", "-0.0", True), ("maxPasses", "4.0", False),
     ("tilePx", "16.0", True), ("tilePx", "4096.0", True), ("tilePx", "1e3", True), ("tilePx", "4097.0", False),
-    ("maxPasses", "2.5", False),
+    ("maxPasses", "2.5", False), ("maxPasses", "true", False), ("maxPasses", "false", False), ("maxPasses", '"three"', False),
 ]  # fmt: skip
-OTHER_ROWS = [("exposureEv", "1.5"), ("exposureEv", "2.0"), ("confirmThresholdSnr", "4.75"), ("transfer", '"hlg"')]
-# A name that is no name (a list or an object, which no row is named by) beside a whole float: refused on both sides,
-# never raised (a review's nine cases)
+NUMBER_ROW_EDGES = [
+    ("exposureEv", "0", True), ("exposureEv", "6", True), ("exposureEv", "-1", False), ("exposureEv", "7", False),
+    ("exposureEv", "-0", True), ("exposureEv", "-0.0", True), ("exposureEv", "2", True), ("exposureEv", "2.0", True),
+    ("confirmThresholdSnr", "0", True), ("confirmThresholdSnr", "100", True),
+    ("confirmThresholdSnr", "-0.0001", False), ("confirmThresholdSnr", "101", False),
+    ("exposureEv", "true", False), ("exposureEv", "false", False),
+    ("exposureEv", "1" + "0" * 400, False), ("exposureEv", "1e400", False),
+]  # fmt: skip
+OTHER_ROWS = [
+    ("exposureEv", "1.5"),
+    ("exposureEv", "0.25"),
+    ("exposureEv", "0.0001"),
+    ("exposureEv", "0.00001"),
+    ("exposureEv", "1e-5"),
+    ("exposureEv", "1e-6"),
+    ("exposureEv", "9.999999999999997e-7"),
+    ("exposureEv", "1e-7"),
+    ("exposureEv", "1.25e-8"),
+    ("confirmThresholdSnr", "4.75"),
+    ("confirmThresholdSnr", "15.0"),
+    ("confirmThresholdSnr", "0.00001"),
+    ("confirmThresholdSnr", "1e-6"),
+    ("confirmThresholdSnr", "1e-7"),
+    ("transfer", '"hlg"'),
+]
+CLIP_AUDIO_STARTS = ["-0.0", "-2.0", "-0.0001", "-1e-5", "-1e-6", "-1e-7"]
+# A name that is no name (a list or an object, which no row is named by) beside a whole float or integer: refused on
+# both sides, never raised (a review's nine cases)
 NOT_A_NAME = ['["maxPasses"]', '{"row":"maxPasses"}', "[]"]
-WHOLE_FLOATS = ["3.0", "1e3", "-0.0"]
+WHOLE_FLOATS = ["3.0", "1e3", "-0.0", "2"]
 # A record that is not an object (text, a number, a list, nothing, true), alone and as a step's parameter: refused on
 # both sides, never raised (a review's case: a bare string escaped as an AttributeError with the guard taken away)
 NOT_AN_OBJECT = ['"maxPasses"', "3", '["maxPasses",3.0]', "null", "true"]
-# A name that is text but names no row, beside a whole float
+# A name that is text but names no row, beside a whole float and beside an integer
 NOT_A_ROW = '"notARow"'
 
 
@@ -918,14 +943,20 @@ def _as_a_steps_parameter(record_text: str) -> str:
     return json.dumps(step, separators=(",", ":")).replace('"@@record@@"', record_text)
 
 
+def _clip_audio_start_text(start_text: str) -> str:
+    clip = copy.deepcopy(VALID["MediaVariant"][2])
+    clip["audioStreams"][0]["startPtsMs"] = "@@start@@"
+    return json.dumps(clip, separators=(",", ":")).replace('"@@start@@"', start_text)
+
+
 def _python_writes(text: str, schema: str = "GraphParameter") -> str | None:
-    """The bytes the Python side writes for a record of `schema` read from `text`, compact as JSON.stringify writes;
+    """The bytes the Python side writes for a record of `schema` read from `text`, through its wire writer;
     None when it is refused."""
     try:
         read = getattr(media, schema).model_validate(json.loads(text))
     except ValidationError:
         return None
-    return json.dumps(read.model_dump(by_alias=True, mode="json"), separators=(",", ":"), ensure_ascii=False)
+    return read.to_wire_json()
 
 
 def _judged(row: dict[str, Any]) -> str:
@@ -944,12 +975,18 @@ def writers_rows() -> list[dict[str, Any]]:
     """The rows without what the Python side writes for them, so collecting a test over them reads no record."""
     p = "GraphParameter"
     rows = [{"name": f"{name} {value}", "schema": p, "text": _parameter_text(name, value), "taken": taken} for name, value, taken in INTEGER_ROW_EDGES]
+    rows += [{"name": f"edge {name} {value}", "schema": p, "text": _parameter_text(name, value), "taken": taken} for name, value, taken in NUMBER_ROW_EDGES]
     rows += [{"name": f"{name} {value}", "schema": p, "text": _parameter_text(name, value), "taken": True} for name, value in OTHER_ROWS]
     rows += [{"name": f"a name of {name} beside {value}", "schema": p, "text": _not_a_name_text(name, value), "taken": False} for name in NOT_A_NAME for value in WHOLE_FLOATS]
     rows += [{"name": f"a name of {NOT_A_ROW} beside 3.0", "schema": p, "text": _not_a_name_text(NOT_A_ROW, "3.0"), "taken": False}]
+    rows += [{"name": f"a name of {NOT_A_ROW} beside 2", "schema": p, "text": _not_a_name_text(NOT_A_ROW, "2"), "taken": False}]
+    rows += [{"name": "exposureEv missing value", "schema": p, "text": '{"name":"exposureEv","origin":"requested","basis":"exposureEv"}', "taken": False}]
     rows += [{"name": f"a record of {record} alone", "schema": p, "text": record, "taken": False} for record in NOT_AN_OBJECT]
     rows += [{"name": f"a record of {record} as a step's parameter", "schema": "GraphStep", "text": _as_a_steps_parameter(record), "taken": False} for record in NOT_AN_OBJECT]
     rows += [{"name": "a step with its own parameter", "schema": "GraphStep", "text": _as_a_steps_parameter(_parameter_text("maxPasses", "3.0")), "taken": True}]
+    lift_step = json.dumps({"kind": "lift", "version": "1.0.0", "parameters": ["@@record@@"]}, separators=(",", ":")).replace('"@@record@@"', _parameter_text("exposureEv", "1e-5"))
+    rows += [{"name": "a lift step with a 1e-5 parameter", "schema": "GraphStep", "text": lift_step, "taken": True}]
+    rows += [{"name": f"clip startPtsMs {start}", "schema": "MediaVariant", "text": _clip_audio_start_text(start), "taken": True} for start in CLIP_AUDIO_STARTS]
     return rows
 
 
@@ -969,8 +1006,9 @@ def test_a_whole_float_on_an_integer_row_is_that_integer_read_and_written(name: 
     written = _python_writes(_parameter_text(name, value))
     assert (written is not None) == taken
     if taken:
+        parsed = media.GraphParameter.model_validate_json(_parameter_text(name, value))
         read = json.loads(written)["value"]
-        assert type(read) is int and read == int(float(value)) and f'"value":{int(float(value))},' in written
+        assert type(parsed.value) is int and type(read) is int and read == int(float(value)) and f'"value":{int(float(value))},' in written
 
 
 @pytest.mark.parametrize("row", writers_rows(), ids=lambda row: row["name"])
@@ -982,5 +1020,124 @@ def test_every_row_is_taken_or_refused_by_the_contract_and_never_raised(row: dic
 
 def test_a_number_row_keeps_its_float_and_a_text_row_its_text() -> None:
     assert json.loads(_python_writes(_parameter_text("exposureEv", "1.5")))["value"] == 1.5
-    assert type(json.loads(_python_writes(_parameter_text("exposureEv", "2.0")))["value"]) is float
+    from_float = media.GraphParameter.model_validate_json(_parameter_text("exposureEv", "2.0"))
+    from_int = media.GraphParameter.model_validate_json(_parameter_text("exposureEv", "2"))
+    from_neg_zero = media.GraphParameter.model_validate_json(_parameter_text("exposureEv", "-0.0"))
+    from_zero_int = media.GraphParameter.model_validate_json(_parameter_text("exposureEv", "0"))
+    from_wire = media.GraphParameter.model_validate_json(from_float.to_wire_json())
+    assert type(from_float.value) is float and type(from_int.value) is float and type(from_wire.value) is float
+    assert type(from_neg_zero.value) is float and math.copysign(1.0, from_neg_zero.value) > 0
+    assert type(from_zero_int.value) is float and math.copysign(1.0, from_zero_int.value) > 0
+    assert from_float.to_wire_json() == from_int.to_wire_json()
+    assert '"value":2,' in from_float.to_wire_json()
+    huge_int = _parameter_text("exposureEv", "1" + "0" * 400)
+    assert messages(media.GraphParameter, json.loads(huge_int)) == [f"Value error, {wire.M_NOT_FINITE}"]
+    assert messages(media.GraphParameter, {"name": "exposureEv", "origin": "requested", "basis": "exposureEv"}) == ["Field required"]
     assert json.loads(_python_writes(_parameter_text("transfer", '"hlg"')))["value"] == "hlg"
+
+
+WIRE_NUMBER_CASES: list[tuple[int | float, str]] = [
+    (0, "0"),
+    (0.0, "0"),
+    (-0.0, "0"),
+    (2, "2"),
+    (2.0, "2"),
+    (-2.0, "-2"),
+    (15.0, "15"),
+    (1.5, "1.5"),
+    (-1.5, "-1.5"),
+    (0.25, "0.25"),
+    (-0.25, "-0.25"),
+    (0.0001, "0.0001"),
+    (-0.0001, "-0.0001"),
+    (1e-5, "0.00001"),
+    (1.25e-5, "0.0000125"),
+    (-1e-5, "-0.00001"),
+    (1e-6, "0.000001"),
+    (-1e-6, "-0.000001"),
+    (9.999999999999997e-7, "9.999999999999997e-7"),
+    (1e-7, "1e-7"),
+    (-1e-7, "-1e-7"),
+    (1.25e-8, "1.25e-8"),
+    (1e15, "1000000000000000"),
+    (1e16, "10000000000000000"),
+    (1e20, "100000000000000000000"),
+    (1.5e20, "150000000000000000000"),
+    (-1e20, "-100000000000000000000"),
+    (1e21, "1e+21"),
+    (1.5e21, "1.5e+21"),
+    (-1e21, "-1e+21"),
+    (wire.MAX_SAFE_INTEGER, "9007199254740991"),
+]
+
+
+def _called(fn: Any, *args: Any) -> Any:
+    try:
+        return fn(*args)
+    except Exception as exc:  # noqa: BLE001
+        return f"escaped as {type(exc).__name__}: {exc}"
+
+
+@pytest.mark.parametrize(("value", "expected"), WIRE_NUMBER_CASES, ids=[f"{i}:{expected}" for i, (_, expected) in enumerate(WIRE_NUMBER_CASES)])
+def test_format_wire_number_matches_ecmascript_number_formatting(value: int | float, expected: str) -> None:
+    assert _called(media.format_wire_number, value) == expected
+
+
+def test_dumps_wire_json_handles_all_json_shapes_and_refuses_non_json() -> None:
+    def raised(fn: Any, *args: Any) -> Exception | None:
+        try:
+            fn(*args)
+        except Exception as exc:  # noqa: BLE001
+            return exc
+        return None
+
+    assert _called(media.dumps_wire_json, None) == "null"
+    assert _called(media.dumps_wire_json, True) == "true"
+    assert _called(media.dumps_wire_json, False) == "false"
+    assert _called(media.dumps_wire_json, 2) == "2"
+    assert _called(media.dumps_wire_json, "sky") == '"sky"'
+    assert _called(media.dumps_wire_json, 'a"b\nc') == '"a\\"b\\nc"'
+    assert _called(media.dumps_wire_json, [1.0, 1e-5, (True, None)]) == "[1,0.00001,[true,null]]"
+    assert _called(media.dumps_wire_json, {"a": 2.0, "b": 1e-7}) == '{"a":2,"b":1e-7}'
+    req_omitted = media.RestoreRequest.model_validate({"kind": "display_copy"})
+    assert _called(req_omitted.to_wire_json) == '{"kind":"display_copy"}'
+    req_set = media.RestoreRequest.model_validate({"kind": "restoration", "exposureEv": 1e-5})
+    assert _called(req_set.to_wire_json) == '{"kind":"restoration","exposureEv":0.00001}'
+    for flag in (True, False):
+        err = raised(media.format_wire_number, flag)
+        assert type(err) is TypeError and wire.M_NOT_A_NUMBER in str(err)
+    for bad in ("2", None):
+        err = raised(media.format_wire_number, bad)
+        assert type(err) is TypeError and "int or float" in str(err)
+    for non_finite in (float("inf"), float("-inf"), float("nan"), 10**400, -(10**400)):
+        err = raised(media.format_wire_number, non_finite)
+        assert type(err) is ValueError and wire.M_NOT_FINITE in str(err)
+    assert type(raised(media.dumps_wire_json, {1: "a"})) is TypeError
+    assert type(raised(media.dumps_wire_json, object())) is TypeError
+
+
+@settings(max_examples=80, deadline=None)
+@given(
+    value=st.one_of(
+        st.integers(min_value=0, max_value=6),
+        st.floats(min_value=0.0, max_value=6.0, allow_nan=False, allow_infinity=False),
+    )
+)
+@example(value=0)
+@example(value=-0.0)
+@example(value=2)
+@example(value=2.0)
+@example(value=1e-5)
+@example(value=1e-6)
+@example(value=1e-7)
+def test_property_number_row_normalizes_to_float_and_round_trips_through_wire_json(value: int | float) -> None:
+    raw = _parameter_text("exposureEv", "-0.0" if isinstance(value, float) and math.copysign(1.0, value) < 0 else repr(value))
+    parsed = media.GraphParameter.model_validate_json(raw)
+    assert type(parsed.value) is float
+    if value == 0:
+        assert math.copysign(1.0, parsed.value) > 0
+    written = parsed.to_wire_json()
+    reparsed = media.GraphParameter.model_validate_json(written)
+    assert type(reparsed.value) is float
+    assert math.isclose(reparsed.value, float(value), rel_tol=0.0, abs_tol=0.0)
+    assert reparsed.to_wire_json() == written

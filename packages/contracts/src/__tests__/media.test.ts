@@ -45,9 +45,11 @@ import {
   STEP_PARAMETERS,
   TEMPLATE_SLOTS,
   VARIANT_KINDS,
+  formatWireNumber,
   variantUri,
+  writeWireJson,
 } from '../index.js';
-import { UTC_INSTANT_PATTERN } from '../wire.js';
+import { UTC_INSTANT_PATTERN, WIRE_MESSAGES } from '../wire.js';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
@@ -929,7 +931,7 @@ describe("GraphParameter's value keeps its type (an order-dependent union on the
 describe("an integer row's whole float is that integer on both sides, and the two writers' bytes", () => {
   interface Row {
     name: string;
-    schema: 'GraphParameter' | 'GraphStep';
+    schema: 'GraphParameter' | 'GraphStep' | 'MediaVariant';
     text: string;
     taken: boolean;
     python: string | null;
@@ -937,10 +939,14 @@ describe("an integer row's whole float is that integer on both sides, and the tw
   const writers = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/graph_parameter_writers.json'), 'utf8'),
   ) as { rows: Row[] };
-  const schemas = { GraphParameter: GraphParameterSchema, GraphStep: GraphStepSchema };
+  const schemas = {
+    GraphParameter: GraphParameterSchema,
+    GraphStep: GraphStepSchema,
+    MediaVariant: MediaVariantSchema,
+  };
   const written = (row: Row): string | null => {
     const read = schemas[row.schema].safeParse(JSON.parse(row.text));
-    return read.success ? JSON.stringify(read.data) : null;
+    return read.success ? writeWireJson(read.data) : null;
   };
 
   it('reads every row by a schema it names', () => {
@@ -955,11 +961,86 @@ describe("an integer row's whole float is that integer on both sides, and the tw
     },
   );
 
-  it('writes every taken record byte for byte as the Python side does, but a number row whole float', () => {
-    // A number row's whole float: Python writes 2.0 and JSON.stringify 2, the same number. No record's bytes are
-    // compared across the two languages today (the report says where that was looked for).
-    const differing = writers.rows.filter((row) => row.taken && written(row) !== row.python);
-    expect(differing.map((row) => row.text.match(/"name":"([^"]+)","value":([^,]+),/)?.slice(1).join(' '))).toEqual(['exposureEv 2.0']);
-    for (const row of differing) expect(written(row)).toBe((row.python as string).replace(/"value":(-?\d+)\.0,/, '"value":$1,'));
+  it('writes every taken record byte for byte identically across both writers', () => {
+    expect(contracts.formatWireNumber).toBe(formatWireNumber);
+    expect(contracts.writeWireJson).toBe(writeWireJson);
+    const takenRows = writers.rows.filter((row) => row.taken);
+    expect(takenRows.length).toBeGreaterThan(30);
+    for (const row of takenRows) {
+      expect(written(row), row.name).toBe(row.python);
+    }
+  });
+
+  it('formats wire numbers, omits undefined fields, and refuses non-finite or non-JSON values', () => {
+    const wireCases: [number, string][] = [
+      [0, '0'],
+      [-0, '0'],
+      [2, '2'],
+      [-2, '-2'],
+      [1.5, '1.5'],
+      [0.25, '0.25'],
+      [0.0001, '0.0001'],
+      [-0.0001, '-0.0001'],
+      [1e-5, '0.00001'],
+      [-1e-5, '-0.00001'],
+      [1e-6, '0.000001'],
+      [-1e-6, '-0.000001'],
+      [9.999999999999997e-7, '9.999999999999997e-7'],
+      [1e-7, '1e-7'],
+      [-1e-7, '-1e-7'],
+      [1.25e-8, '1.25e-8'],
+      [1e20, '100000000000000000000'],
+      [1e21, '1e+21'],
+      [1.5e21, '1.5e+21'],
+      [-1e21, '-1e+21'],
+      [Number.MAX_SAFE_INTEGER, '9007199254740991'],
+    ];
+    for (const [val, expected] of wireCases) {
+      expect(formatWireNumber(val)).toBe(expected);
+    }
+    expect(writeWireJson(null)).toBe('null');
+    expect(writeWireJson(true)).toBe('true');
+    expect(writeWireJson(false)).toBe('false');
+    expect(writeWireJson('a"b\nc')).toBe('"a\\"b\\nc"');
+    expect(writeWireJson([1, -0, 1e-5, [true, null]])).toBe('[1,0,0.00001,[true,null]]');
+    expect(writeWireJson({ a: 2, omit: undefined, b: 1e-7 })).toBe('{"a":2,"b":1e-7}');
+    expect(writeWireJson(RestoreRequestSchema.parse({ kind: 'display_copy' }))).toBe('{"kind":"display_copy"}');
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, '2' as unknown as number, true as unknown as number]) {
+      expect(() => formatWireNumber(bad)).toThrow(WIRE_MESSAGES.notFinite);
+    }
+    expect(() => writeWireJson({ a: Number.POSITIVE_INFINITY })).toThrow(WIRE_MESSAGES.notFinite);
+    for (const nonJson of [undefined, new Date(0), new Map(), () => 1]) {
+      expect(() => writeWireJson(nonJson)).toThrow(TypeError);
+    }
+  });
+
+  it('formats generated number-row parameters without -0 and round-trips through writeWireJson (PBT)', () => {
+    const numArb = fc.oneof(
+      fc.integer({ min: 0, max: 6 }),
+      fc.double({ min: 0, max: 6, noNaN: true, noDefaultInfinity: true }),
+      fc.constantFrom(-0, 0, 2, 1e-4, 1e-5, 1e-6, 1e-7, 1.25e-8),
+    );
+    fc.assert(
+      fc.property(numArb, (value) => {
+        const parsed = GraphParameterSchema.safeParse({
+          name: 'exposureEv',
+          value,
+          origin: 'requested',
+          basis: 'exposureEv',
+        });
+        expect(parsed.success).toBe(true);
+        if (parsed.success) {
+          expect(Object.is(parsed.data.value, -0)).toBe(false);
+          const encoded = writeWireJson(parsed.data);
+          const reparsed = GraphParameterSchema.safeParse(JSON.parse(encoded));
+          expect(reparsed.success && writeWireJson(reparsed.data)).toBe(encoded);
+        }
+      }),
+      {
+        seed: SEED,
+        numRuns: 80,
+        examples: [[-0], [0], [2], [1e-5], [1e-6], [1e-7]],
+      },
+    );
   });
 });

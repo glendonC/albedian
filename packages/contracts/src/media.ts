@@ -724,6 +724,33 @@ export function variantUri(sourceSha256: string, variantId: string): string {
   return `/api/media/${sourceSha256}/variants/${variantId}/file`;
 }
 
+/** Format a finite wire number with ECMAScript Number::toString rules (-0 as '0', refusing NaN and Infinity). */
+export function formatWireNumber(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(WIRE_MESSAGES.notFinite);
+  }
+  return String(value);
+}
+
+/** Compact JSON matching services/contracts/media.py dumps_wire_json across whole floats and (0, 1e-4). */
+export function writeWireJson(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return formatWireNumber(value);
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => writeWireJson(item)).join(',')}]`;
+  if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    const parts: string[] = [];
+    for (const [key, item] of Object.entries(value)) {
+      if (item !== undefined) {
+        parts.push(`${JSON.stringify(key)}:${writeWireJson(item)}`);
+      }
+    }
+    return `{${parts.join(',')}}`;
+  }
+  throw new TypeError('unsupported wire JSON value');
+}
+
 const count = () => wireInt().nonnegative();
 const positiveInt = () => wireInt().positive();
 const sha256 = () => wireSha256();
