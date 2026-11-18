@@ -38,6 +38,10 @@ BISECTION_STEPS = 100
 # Points of the scan from the weakest lift to the strongest that brackets a bound's edge [proposed: 0.028 nats of
 # log(beta) apart, so a bound broken over less than that is the most a scan can miss; tested by P-RST-8]
 SCAN_POINTS = 2000
+# Positive linear-light floor when evaluating encode_slope at a dark level of zero, deep inside sRGB, BT.709, HLG
+# and PQ black toes while above 1e-12 transfer clamps [proposed: avoids 0/0 or inf/inf at dark == 0 and keeps the
+# limit E'(f(d)) f'(d) / E'(d) as d -> 0+ continuous]
+DARK_LIGHT_FLOOR = 1e-9
 
 # The closed list of the media contract's notes (REQ-RST-4.3 to 4.5)
 NOTE_REQUEST_HELD = "The requested exposure was beyond a measured bound, so the lift stops at that bound."
@@ -96,8 +100,10 @@ def dark_level(luminance: np.ndarray) -> float:
 
 def _code_ratio(dark: float, beta: float, encode_slope: Slope) -> float:
     """How many code steps one step of the original at the dark level becomes: E'(f(d)) f'(d) / E'(d)."""
-    lifted = float(curve(np.array([dark]), beta)[0])
-    return float(encode_slope(np.array(lifted)) * slope(np.array(dark), beta) / encode_slope(np.array(dark)))
+    level = max(float(dark), DARK_LIGHT_FLOOR)
+    lifted = float(curve(np.array([level]), beta)[0])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return float(encode_slope(np.array(lifted)) * slope(np.array(level), beta) / encode_slope(np.array(level)))
 
 
 def quantisation_ratio(dark: float, beta: float, encode_slope: Slope) -> float:
@@ -107,14 +113,20 @@ def quantisation_ratio(dark: float, beta: float, encode_slope: Slope) -> float:
 def noise_ratio(dark: float, beta: float, encode_slope: Slope, original_noise: float, working_noise: float) -> float:
     """The noise left after reduction, lifted and encoded, over the original's noise in its own codes:
     E'(f(d)) f'(d) s_r / (E'(d) s_o). At most 1 is the noise bound."""
-    return _code_ratio(dark, beta, encode_slope) * working_noise / original_noise
+    if working_noise <= 0.0 and original_noise >= 0.0:
+        return 0.0
+    if original_noise <= 0.0:
+        return math.inf
+    return _code_ratio(dark, beta, encode_slope) * (working_noise / original_noise)
 
 
 def _code_ratios(dark: float, betas: np.ndarray, encode_slope: Slope) -> np.ndarray:
     """E'(f(d)) f'(d) / E'(d) for each beta of an array."""
-    lifted = np.arcsinh(dark / betas) / np.arcsinh(1 / betas)
-    slopes = 1 / (betas * np.sqrt(1 + (dark / betas) ** 2) * np.arcsinh(1 / betas))
-    return np.asarray(encode_slope(lifted), dtype=np.float64) * slopes / float(encode_slope(np.array(dark)))
+    level = max(float(dark), DARK_LIGHT_FLOOR)
+    lifted = np.arcsinh(level / betas) / np.arcsinh(1 / betas)
+    slopes = 1 / (betas * np.sqrt(1 + (level / betas) ** 2) * np.arcsinh(1 / betas))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.asarray(encode_slope(lifted), dtype=np.float64) * slopes / float(encode_slope(np.array(level)))
 
 
 def _weakest_break(ratios: Callable[[np.ndarray], np.ndarray], bound: float) -> float:
@@ -123,7 +135,7 @@ def _weakest_break(ratios: Callable[[np.ndarray], np.ndarray], bound: float) -> 
     to the strongest finds the first that breaks it, and bisection on log(beta) its edge; BETA_LOW when no lift in
     the range breaks it, infinity when even the weakest does."""
     grid = np.exp(np.linspace(math.log(BETA_HIGH), math.log(BETA_LOW), SCAN_POINTS))
-    broken = np.nonzero(ratios(grid) > bound)[0]
+    broken = np.nonzero(~(ratios(grid) <= bound))[0]
     if broken.size == 0:
         return BETA_LOW
     if broken[0] == 0:
@@ -207,7 +219,13 @@ def solve_lift(luminance: np.ndarray, *, encode_slope: Slope, decode: Slope, ori
         ("maximum", _smallest_beta(lambda beta: gain_at_black(beta) <= MAXIMUM_GAIN)),
     ]
     if original_noise is not None and working_noise is not None:
-        bounds.insert(0, ("noise_bound", _weakest_break(lambda betas: ratios(betas) * working_noise / original_noise, 1.0)))
+        if working_noise <= 0.0 and original_noise >= 0.0:
+            noise_bound = BETA_LOW
+        elif original_noise <= 0.0:
+            noise_bound = math.inf
+        else:
+            noise_bound = _weakest_break(lambda betas: ratios(betas) * (working_noise / original_noise), 1.0)
+        bounds.insert(0, ("noise_bound", noise_bound))
     beta, decided_by = aim, aimed_by
     for name, bound in bounds:
         # A bound decides only where it holds the lift weaker than what was aimed at: one equal to the aim (both no lift

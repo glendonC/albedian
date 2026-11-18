@@ -299,3 +299,48 @@ def test_the_darkest_quarter_and_its_fine_noise_with_no_flat_block_and_with_one_
     # Every flat block of one level is at the quarter, so every one is chosen
     assert noise.darkest_quarter_blocks(plane, np.zeros((64, 64)), nothing).all()
     assert math.isnan(noise.fine_noise(plane, np.zeros(64, bool)))
+
+
+def test_zero_intensity_bin_with_infinite_slope_at_black_keeps_positive_floor_and_finite_spatial_guide() -> None:
+    from services.media import spatial
+
+    assert noise.DARK_LIGHT_FLOOR == 1e-9
+
+    rng = np.random.default_rng(71)
+    # 128x192 frame (16x24 = 384 blocks -> 32 blocks per bin): columns 0..17 are all-zero black (giving 32 unbled
+    # 8x8 blocks in columns 0..15 even after 2-px B3 smoothing), remaining pixels have ramp + noise so <= 50% of
+    # fine detail is zero while bin 0 has intensity 0.0 and energy 0.0
+    height, width = 128, 192
+    ramp = np.tile(np.linspace(0.004, 0.25, width), (height, 1))
+    frame = np.stack([ramp + 0.002 * rng.standard_normal((height, width)) for _ in range(3)], axis=-1)
+    frame = np.clip(frame, 0.0, 1.0)
+    frame[:, :18, :] = 0.0
+    codes = np.round(np.clip(np.sqrt(np.maximum(frame, 0.0)), 0.0, 1.0) * 65535).astype(np.uint16)
+    codes[:, :18, :] = 0
+    hlg_slope_analytical = lambda x: 0.5 * np.sqrt(3.0) / np.sqrt(np.asarray(x, dtype=np.float64))
+
+    footprint = np.zeros((height, width))
+    clipped = np.zeros((height, width), dtype=bool)
+    measured = noise.measure_noise(frame, codes, footprint, clipped, encode_slope=hlg_slope_analytical, code_steps=65535)
+    assert measured.reason is None
+    assert measured.intensities[0] == 0.0
+    luma_sigmas = dict(measured.sigma)["luma"]
+    assert all(math.isfinite(v) and v > 0.0 for v in luma_sigmas)
+
+    luma = frame @ LUMA
+    guide = noise.stabilised(luma, measured)
+    assert np.all(np.isfinite(guide))
+    assert guide[0, 0] == pytest.approx(0.0, abs=1e-12)
+    denoised = spatial.edge_avoiding(frame, guide, footprint)
+    assert np.all(np.isfinite(denoised.frame)) and all(math.isfinite(w) for w in denoised.widths)
+
+    # Direct guard in stabilised when a caller-supplied NoiseMeasurement has zero or non-finite sigma in a bin or everywhere
+    mixed_zero = noise.NoiseMeasurement(None, (0.0, 0.05, 0.2), (("luma", (0.0, 0.002, math.inf)),), (24, 24, 24))
+    guide_mixed = noise.stabilised(luma, mixed_zero)
+    assert np.all(np.isfinite(guide_mixed))
+    assert np.all(np.isfinite(spatial.edge_avoiding(frame, guide_mixed, footprint).frame))
+
+    all_zero = noise.NoiseMeasurement(None, (0.0, 0.05, 0.2), (("luma", (0.0, 0.0, 0.0)),), (24, 24, 24))
+    guide_zero = noise.stabilised(luma, all_zero)
+    assert np.array_equal(guide_zero, np.zeros_like(luma))
+    assert np.all(np.isfinite(spatial.edge_avoiding(frame, guide_zero, footprint).frame))

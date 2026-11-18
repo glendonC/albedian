@@ -47,6 +47,9 @@ STABILISER_POINTS = 4096
 # The standard deviation of a rounding error spread evenly over one code step [verified: the variance of a uniform
 # distribution of width 1 is 1/12]
 ROUNDING_SIGMA = 1 / math.sqrt(12)
+# Positive linear-light floor when evaluating encode_slope at zero intensity, matching tone.py [proposed: keeps the
+# rounding-noise floor finite and positive when a dark bin's mean luminance is zero under infinite slope at black]
+DARK_LIGHT_FLOOR = 1e-9
 
 
 def b3_smooth(plane: np.ndarray, step: int = 1) -> np.ndarray:
@@ -172,7 +175,9 @@ def measure_noise(frame: np.ndarray, codes: np.ndarray, footprint: np.ndarray, c
         return NoiseMeasurement("too_few_flat_blocks")
     intensities = np.array([float(level[group].mean()) for group in pooled])
     counts = np.array([group.size for group in pooled])
-    floor = W1_WHITE_SIGMA * ROUNDING_SIGMA / code_steps / np.asarray(encode_slope(intensities), dtype=np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        slopes = np.asarray(encode_slope(np.maximum(intensities, DARK_LIGHT_FLOOR)), dtype=np.float64)
+        floor = W1_WHITE_SIGMA * ROUNDING_SIGMA / code_steps / slopes
     sigma = []
     for name, values in energies.items():
         measured = np.array([_sigma(values[group]) for group in pooled])
@@ -187,8 +192,13 @@ def stabilised(luminance: np.ndarray, measurement: NoiseMeasurement) -> np.ndarr
     low, high = min(0.0, float(luminance.min())), max(float(luminance.max()), 0.0)
     if high <= low:
         return np.zeros_like(luminance)
+    luma_sigma = np.asarray(dict(measurement.sigma)["luma"], dtype=np.float64)
+    positive = luma_sigma[np.isfinite(luma_sigma) & (luma_sigma > 0.0)]
+    if positive.size == 0:
+        return np.zeros_like(luminance)
+    clamped_sigma = np.where(np.isfinite(luma_sigma) & (luma_sigma > 0.0), luma_sigma, float(positive.min()))
     grid = np.linspace(low, high, STABILISER_POINTS)
-    pixel_sigma = np.interp(grid, measurement.intensities, dict(measurement.sigma)["luma"]) / W1_WHITE_SIGMA
+    pixel_sigma = np.interp(grid, measurement.intensities, clamped_sigma) / W1_WHITE_SIGMA
     inverse = 1.0 / pixel_sigma
     steps = np.diff(grid) * (inverse[1:] + inverse[:-1]) / 2
     integral = np.concatenate([[0.0], np.cumsum(steps)])

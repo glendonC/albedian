@@ -115,8 +115,22 @@ def weight_floor(offset: float) -> str | None:
     return "own value kept"
 
 
+def margin_candidate_at(cand_x: float) -> str | None:
+    # A 32x32 frame with stars at x0 = 4 and x0 = 27 (w - 5): candidates with rounded x in [2, 29] reach [4, 28)
+    from services.science.detector import verify_candidates_on_original_pixels
+
+    yy, xx = np.mgrid[0:32, 0:32]
+    frame = np.full((32, 32), 20.0)
+    for sx in (4.0, 27.0):
+        frame += 10.0 * np.exp(-((xx - sx) ** 2 + (yy - 16.0) ** 2) / (2.0 * 1.15**2))
+    found = verify_candidates_on_original_pixels(frame, [(cand_x, 16.0)], snr_threshold=3.5, noise_floor=0.05)
+    return TAKEN if len(found) == 1 else "outside margin reach"
+
+
 EDGES = {
     # name: (the call, None when it takes a value and what happens when it does not, values taken, values refused, that)
+    "a candidate's rounded x reach near the 4 px detector margin":
+        (margin_candidate_at, [2.0, 29.0], [1.4, 29.6], "outside margin reach"),
     "a frame's shorter side (noise.MIN_SIDE_PX)": (side, [noise.MIN_SIDE_PX, 128], [noise.MIN_SIDE_PX - 1], "frame_too_small"),
     "a channel's share of exactly zero fine detail (noise.ZERO_SHARE_MAX)":
         (with_zero_share, [0.0, noise.ZERO_SHARE_MAX], [np.nextafter(noise.ZERO_SHARE_MAX, 1.0)], "fine_detail_mostly_zero"),

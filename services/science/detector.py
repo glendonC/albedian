@@ -406,14 +406,11 @@ def verify_candidates_on_original_pixels(
             resolved_asset_id = asset_id
 
         xc, yc = int(round(cand_x)), int(round(cand_y))
-        if not (margin <= xc < w - margin and margin <= yc < h - margin):
-            continue
-
         y_lo, y_hi = max(margin, yc - 2), min(h - margin, yc + 3)
         x_lo, x_hi = max(margin, xc - 2), min(w - margin, xc + 3)
-        win = snr_map[y_lo:y_hi, x_lo:x_hi]
-        if win.size == 0:
+        if y_lo >= y_hi or x_lo >= x_hi:
             continue
+        win = snr_map[y_lo:y_hi, x_lo:x_hi]
         wy, wx = np.unravel_index(int(np.argmax(win)), win.shape)
         y0, x0 = y_lo + int(wy), x_lo + int(wx)
 

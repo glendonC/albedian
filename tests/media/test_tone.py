@@ -302,3 +302,64 @@ def test_the_weakest_break_brackets_the_first_edge_whatever_breaks_beyond_it() -
     point = float(grid[1000])
     lone = lambda betas: np.where(np.abs(np.log(np.asarray(betas, dtype=float)) - math.log(point)) < 1e-6, 2.0, 0.5)
     assert tone._weakest_break(lone, 1.0) == pytest.approx(point, rel=1e-5)
+
+
+def test_zero_dark_level_and_zero_original_noise_never_produce_nan_or_bypass_bounds() -> None:
+    assert tone.DARK_LIGHT_FLOOR == 1e-9
+    # >= 12.5% zero pixels makes dark_level(lum) == 0.0 while median > 0
+    lum_zero_dark = np.concatenate([np.zeros(200), np.full(600, 0.002)]).reshape(20, 40)
+    lum_tiny_dark = np.concatenate([np.full(200, 1e-9), np.full(600, 0.002)]).reshape(20, 40)
+    assert tone.dark_level(lum_zero_dark) == 0.0
+
+    # 1. Analytical HLG derivative on [0, 1/12] has encode_slope(0.0) == +inf; must not produce NaN or bypass bounds
+    hlg_slope_analytical = lambda x: 0.5 * np.sqrt(3.0) / np.sqrt(np.asarray(x, dtype=np.float64))
+    hlg_decode = lambda e: np.asarray(e, dtype=np.float64) ** 2 / 3.0
+    grid = np.exp(np.linspace(math.log(tone.BETA_HIGH), math.log(tone.BETA_LOW), 64))
+    ratios = tone._code_ratios(0.0, grid, hlg_slope_analytical)
+    assert np.all(np.isfinite(ratios)) and np.all(ratios > 0.0)
+
+    sol_an = tone.solve_lift(
+        lum_zero_dark,
+        encode_slope=hlg_slope_analytical,
+        decode=hlg_decode,
+        original_noise=None,
+        working_noise=None,
+        exposure_ev=6.0,
+    )
+    assert sol_an.decided_by == "quantisation_bound"
+    # HLG is sqrt(3 L) near black: gain 16 multiplies linear light by 16 and sqrt(L) by 4 (design.md section 6)
+    assert sol_an.record()["gainAtBlack"] == pytest.approx(16.0, rel=1e-4)
+
+    # Noise bound with analytical HLG at dark == 0.0: working_noise / original_noise = 0.5 caps sqrt(gain) * 0.5 <= 1 -> gain <= 4
+    sol_noise = tone.solve_lift(
+        lum_zero_dark,
+        encode_slope=hlg_slope_analytical,
+        decode=hlg_decode,
+        original_noise=0.002,
+        working_noise=0.001,
+        exposure_ev=5.0,
+    )
+    assert sol_noise.decided_by == "noise_bound"
+    assert sol_noise.record()["gainAtBlack"] == pytest.approx(4.0, rel=1e-4)
+
+    # 2. Clamped HLG derivative (clamped at 1e-12) stays continuous between dark == 1e-9 and dark == 0.0 (no 4x collapse)
+    hlg_slope_clamped = lambda x: 0.5 * np.sqrt(3.0 / np.maximum(np.asarray(x, dtype=np.float64), 1e-12))
+    sol_c0 = tone.solve_lift(lum_zero_dark, encode_slope=hlg_slope_clamped, decode=hlg_decode,
+                             original_noise=None, working_noise=None, exposure_ev=5.0)
+    sol_c9 = tone.solve_lift(lum_tiny_dark, encode_slope=hlg_slope_clamped, decode=hlg_decode,
+                             original_noise=None, working_noise=None, exposure_ev=5.0)
+    assert (sol_c0.decided_by, sol_c9.decided_by) == ("quantisation_bound", "quantisation_bound")
+    assert sol_c0.record()["gainAtBlack"] == pytest.approx(16.0, rel=1e-4)
+    assert sol_c0.record()["gainAtBlack"] == pytest.approx(sol_c9.record()["gainAtBlack"], rel=1e-6)
+
+    # 3. original_noise == 0.0 in noise_ratio and solve_lift: never ZeroDivisionError or NaN
+    assert tone.noise_ratio(0.0, 0.1, srgb_encode_slope, 0.0, 0.0) == 0.0
+    assert math.isinf(tone.noise_ratio(0.0, 0.1, srgb_encode_slope, 0.0, 1e-4))
+    sol_z0 = solve(lum_zero_dark, s_o=0.0, s_r=0.0, exposure_ev=5.0)
+    assert sol_z0.decided_by == "quantisation_bound"
+    assert sol_z0.record()["gainAtBlack"] == pytest.approx(4.0, rel=1e-4)
+    sol_zpos = solve(lum_zero_dark, s_o=0.0, s_r=1e-4, exposure_ev=2.0)
+    assert (sol_zpos.decided_by, sol_zpos.record()["gainAtBlack"]) == ("noise_bound", 1.0)
+
+    # 4. _weakest_break fails closed (math.inf, never BETA_LOW) if ratios return NaN
+    assert tone._weakest_break(lambda betas: np.full(np.shape(betas), math.nan), 4.0) == math.inf

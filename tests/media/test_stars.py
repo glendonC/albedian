@@ -418,3 +418,83 @@ def test_the_find_stars_parameters_come_in_the_contracts_table_order() -> None:
     table = [row["name"] for row in contracts.STEP_PARAMETERS if "find_stars" in row["steps"]]
     names = [row["name"] for row in stars.parameters()]
     assert names == [name for name in table if name in names]
+
+
+def _add_star(plane: np.ndarray, x_px: float, y_px: float, amp: float, sigma: float = 1.2) -> None:
+    h, w = plane.shape
+    yy, xx = np.mgrid[max(0, int(y_px) - 6) : min(h, int(y_px) + 7), max(0, int(x_px) - 6) : min(w, int(x_px) + 7)]
+    plane[max(0, int(y_px) - 6) : min(h, int(y_px) + 7), max(0, int(x_px) - 6) : min(w, int(x_px) + 7)] += amp * np.exp(
+        -((xx - x_px) ** 2 + (yy - y_px) ** 2) / (2.0 * sigma * sigma)
+    )
+
+
+def test_tile_margin_peaks_with_subpixel_centroids_past_half_pixel_are_confirmed_on_single_and_overlapping_tiles() -> None:
+    rng = np.random.default_rng(104)
+    single = 0.02 + 1e-4 * rng.standard_normal((256, 256))
+    # Four margin stars on a 256x256 single-tile frame whose peaks are at 4 / 251 while 5x5 centroids round to 3 or 252
+    _add_star(single, 4.0, 128.0, 0.05)
+    single[126, 2] += 0.08
+    single[130, 2] += 0.08
+    _add_star(single, 251.0, 128.0, 0.05)
+    single[126, 253] += 0.08
+    single[130, 253] += 0.08
+    _add_star(single, 128.0, 4.0, 0.05)
+    single[2, 126] += 0.08
+    single[2, 130] += 0.08
+    _add_star(single, 128.0, 251.0, 0.05)
+    single[253, 126] += 0.08
+    single[253, 130] += 0.08
+
+    clipped_single = np.zeros(single.shape, dtype=bool)
+    pts, left_out = stars.find_points(single, stars.CONFIRM_THRESHOLD_SNR, clipped_single)
+    assert len(pts) == 4 and left_out == 0
+    assert any(p.x_px < 3.5 for p in pts) and any(p.x_px > 251.5 for p in pts)
+    assert any(p.y_px < 3.5 for p in pts) and any(p.y_px > 251.5 for p in pts)
+    assert stars.confirm(pts, single) == [True, True, True, True]
+    field = stars.find_stars(single, peak=1.0)
+    assert field.found == 4 and field.confirmed == 4
+    for s in field.stars:
+        assert field.footprint[int(round(s.y_px)), int(round(s.x_px))] == pytest.approx(1.0, abs=1e-12)
+
+    # Multi-tile 256x480 frame: Tile 0 is [0, 256), Tile 1 is [224, 480).
+    # (a) Seam star at x ~ 251.6 where Tile 1 has higher noise so _merged keeps Tile 0's detection.
+    # (b) Variant shift across Tile 1's 4-px left border: original star at x = 227.3 (inside Tile 0, < 4 px into Tile 1),
+    #     variant star nudged to x = 228.1 with tile = 1.
+    multi = 0.02 + 1e-4 * rng.standard_normal((256, 480))
+    multi[:, 260:] += 8e-4 * rng.standard_normal((256, 220))  # raises Tile 1's sigma_m above Tile 0's
+    _add_star(multi, 251.0, 96.0, 0.05)
+    multi[94, 253] += 0.08
+    multi[98, 253] += 0.08
+    _add_star(multi, 227.3, 180.0, 0.05)
+
+    multi_field = stars.find_stars(multi, peak=1.0)
+    assert multi_field.found == 2 and multi_field.confirmed == 2
+
+    variant_shifted = [
+        stars.Point(x_px=228.1, y_px=180.0, snr=12.0, tile=1),
+        stars.Point(x_px=240.0, y_px=60.0, snr=12.0, tile=1),  # painted only in variant: must remain unconfirmed
+    ]
+    assert stars.confirm(variant_shifted, multi) == [True, False]
+
+    # Half-open tile membership [x0, x1) x [y0, y1) at every edge of a 480x480 2x2 tile grid
+    seen_tiles: list[tuple[int, int]] = []
+
+    def fake_verify(part: np.ndarray, places: list[tuple[float, float]], noise_floor: float):
+        seen_tiles.append((part.shape[0], len(places)))
+        return []
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(stars, "verify_candidates_on_original_pixels", fake_verify)
+        patch.setattr(stars, "matched_noise", lambda part: 1.0)
+        # x = 224.0, y = 224.0 enters all 4 tiles; x = 223.9, y = 223.9 enters only Tile 0; x = 256.0 enters only right/bottom tiles
+        edge_pts = [
+            stars.Point(224.0, 224.0, 8.0, 0),
+            stars.Point(223.9, 223.9, 8.0, 0),
+            stars.Point(256.0, 256.0, 8.0, 3),
+            stars.Point(480.0, 20.0, 8.0, 1),
+            stars.Point(20.0, 480.0, 8.0, 2),
+            stars.Point(-0.1, 20.0, 8.0, 0),
+            stars.Point(20.0, -0.1, 8.0, 0),
+        ]
+        stars.confirm(edge_pts, np.zeros((480, 480)))
+    assert seen_tiles == [(256, 2), (256, 1), (256, 1), (256, 2)]

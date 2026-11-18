@@ -254,3 +254,50 @@ def test_pbt_variant_gain_and_hallucinations_never_corrupt_original_pixel_photom
         assert abs(d1.flux - d2.flux) < 1e-9
         assert abs(d1.snr - d2.snr) < 1e-9
         assert d2.asset_id == "src_pbt"
+
+
+def test_margin_peaks_accepted_by_detect_point_sources_pass_verify_candidates_on_identical_image() -> None:
+    h, w = 64, 64
+    rng = np.random.default_rng(314)
+    orig = 20.0 + rng.normal(0.0, 0.02, size=(h, w))
+    # Asymmetric stars whose integer SNR peaks lie inside [4, w - 4) x [4, h - 4) (at 4 and 59) while 5x5 centroids
+    # pull into [2.0, 3.5) and (59.5, 61.0], which round outside [4, 60)
+    targets = [
+        (4.0, 32.0),   # peak at x0 = 4, symmetric corners at x = 2 pull 5x5 centroid < 3.5 (rounds to 3)
+        (59.0, 32.0),  # peak at x0 = 59, symmetric corners at x = 61 pull 5x5 centroid > 59.5 (rounds to 60)
+        (32.0, 4.0),   # peak at y0 = 4, symmetric corners at y = 2 pull 5x5 centroid < 3.5 (rounds to 3)
+        (32.0, 59.0),  # peak at y0 = 59, symmetric corners at y = 61 pull 5x5 centroid > 59.5 (rounds to 60)
+    ]
+    for sx, sy in targets:
+        _add_gaussian_star(orig, sx, sy, flux=35.0, sigma_px=1.15)
+    # Symmetric outer corners of each 5x5 window leave the 3x3 PSF core and peak at 4 / 59 intact while pulling centroid > 0.5 px
+    orig[30, 2] += 6.0
+    orig[34, 2] += 6.0
+    orig[30, 61] += 6.0
+    orig[34, 61] += 6.0
+    orig[2, 30] += 6.0
+    orig[2, 34] += 6.0
+    orig[61, 30] += 6.0
+    orig[61, 34] += 6.0
+
+    detected = detect_point_sources(orig, snr_threshold=3.5, asset_id="src_margin")
+    assert len(detected) == 4
+    assert any(d.x_px < 3.5 for d in detected)
+    assert any(d.x_px > w - 4.5 for d in detected)
+    assert any(d.y_px < 3.5 for d in detected)
+    assert any(d.y_px > h - 4.5 for d in detected)
+
+    verified = verify_candidates_on_original_pixels(orig, detected, snr_threshold=3.5, asset_id="src_margin")
+    assert len(verified) == 4
+    for d_orig in detected:
+        nearest_v = min(verified, key=lambda v: math.hypot(v.x_px - d_orig.x_px, v.y_px - d_orig.y_px))
+        assert math.hypot(nearest_v.x_px - d_orig.x_px, nearest_v.y_px - d_orig.y_px) < 1e-9
+
+    # Inside ends of the 5x5 peak search window (xc = 2 and xc = w - 3, yc = 2 and yc = h - 3) find the margin peaks,
+    # while just outside (xc = 1 and xc = w - 2, yc = 1 and yc = h - 2) misses [4, w - 4) entirely and is rejected
+    inside_ends = [(2.0, 32.0), (float(w - 3), 32.0), (32.0, 2.0), (32.0, float(h - 3))]
+    assert len(verify_candidates_on_original_pixels(orig, inside_ends, snr_threshold=3.5, asset_id="src_margin")) == 4
+    out_of_reach = [(1.4, 32.0), (float(w - 2), 32.0), (32.0, 1.4), (32.0, float(h - 2))]
+    assert verify_candidates_on_original_pixels(orig, out_of_reach, snr_threshold=3.5, asset_id="src_margin") == []
+    assert verify_candidates_on_original_pixels(orig, [(1.4, 32.0)], snr_threshold=3.5, asset_id="src_margin") == []
+    assert verify_candidates_on_original_pixels(orig, [(32.0, 1.4)], snr_threshold=3.5, asset_id="src_margin") == []

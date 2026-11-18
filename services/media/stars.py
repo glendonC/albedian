@@ -191,20 +191,26 @@ def find_points(luma: np.ndarray, threshold_snr: float, clipped: np.ndarray,
 
 
 def confirm(points: list[Point], original_luma: np.ndarray, noises: list[TileNoise] | None = None) -> list[bool]:
-    """For each point, whether forced photometry on the original's pixels of its tile, with that tile's sigma_m,
-    gives a verified detection within MATCH_RADIUS_PX. `noises` are the original's tile noises, when known."""
+    """For each point, whether forced photometry on the original's pixels of a tile covering it, with that tile's
+    sigma_m, gives a verified detection within MATCH_RADIUS_PX. `noises` are the original's tile noises, when known."""
     original = np.asarray(original_luma, dtype=np.float64)
     grid = tiles(*original.shape)
+    by_tile: dict[int, list[int]] = {}
+    for i, point in enumerate(points):
+        for idx, tile in enumerate(grid):
+            if tile.x0 <= point.x_px < tile.x1 and tile.y0 <= point.y_px < tile.y1:
+                by_tile.setdefault(idx, []).append(i)
     confirmed = [False] * len(points)
-    for index in sorted({point.tile for point in points}):
+    for index in sorted(by_tile):
         tile = grid[index]
-        members = [i for i, point in enumerate(points) if point.tile == index]
+        members = by_tile[index]
         part = original[tile.y0:tile.y1, tile.x0:tile.x1]
         places = [(points[i].x_px - tile.x0, points[i].y_px - tile.y0) for i in members]
         sigma = matched_noise(part) if noises is None else noises[index].matched
         verified = verify_candidates_on_original_pixels(part, places, noise_floor=sigma)
         for i, (x, y) in zip(members, places):
-            confirmed[i] = any(math.hypot(d.x_px - x, d.y_px - y) <= MATCH_RADIUS_PX for d in verified)
+            if any(math.hypot(d.x_px - x, d.y_px - y) <= MATCH_RADIUS_PX for d in verified):
+                confirmed[i] = True
     return confirmed
 
 
