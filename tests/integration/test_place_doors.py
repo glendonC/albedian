@@ -52,6 +52,9 @@ DOORS: dict[str, Callable[[float, float], Any]] = {
         lambda lat, lon: catalog.anchored_rotation_omission_arcsec(10.0, 5.0, [(10.0, 5.0, 1.0)], lat, lon, MOMENT),
     "ephemeris.compute_solar_system_ephemerides":
         lambda lat, lon: ephemeris.compute_solar_system_ephemerides(MOMENT, lat, lon, bodies=("Moon",)),
+    "ephemeris.moon_phase": lambda lat, lon: ephemeris.moon_phase(MOMENT, lat, lon),
+    "ephemeris.apparent_magnitude": lambda lat, lon: ephemeris.apparent_magnitude("Mars", MOMENT, lat, lon),
+    "ephemeris.rise_transit_set": lambda lat, lon: ephemeris.rise_transit_set("Moon", MOMENT, lat, lon),
     "pose_estimate.topocentric_moon": lambda lat, lon: pose_estimate.topocentric_moon(MOMENT, lat, lon),
     "pose_estimate.moon_is_up": lambda lat, lon: pose_estimate.moon_is_up(MOMENT, lat, lon),
     "pose_estimate.sun_is_up": lambda lat, lon: pose_estimate.sun_is_up(MOMENT, lat, lon),

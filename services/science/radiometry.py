@@ -1,96 +1,41 @@
-"""Lunar phase and the Krisciunas & Schaefer (1991) moonlit sky brightness model, predicted for a stated target.
+"""Lunar phase (from services/science/ephemeris.py, on ERFA) and the Krisciunas & Schaefer (1991) moonlit sky
+brightness model, predicted for a stated target.
 
 No sensor limiting magnitude is estimated: its coefficients would have to come from a measured camera.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import math
 from typing import Any
 
-
-def _iso_to_jd(obs_utc_iso: str) -> float:
-    """Convert an ISO-8601 UTC timestamp string to Julian Date."""
-    cleaned = obs_utc_iso.strip()
-    if cleaned.endswith("Z"):
-        cleaned = cleaned[:-1] + "+00:00"
-    dt = datetime.fromisoformat(cleaned)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    else:
-        dt = dt.astimezone(timezone.utc)
-    return dt.timestamp() / 86400.0 + 2440587.5
+from services.science.ephemeris import moon_phase
 
 
 def compute_lunar_phase_and_illumination(obs_utc_iso: str) -> dict[str, Any]:
-    """Compute Sun-Moon elongation, selenocentric phase angle `alpha_deg`, illuminated
-    fraction (`0..1`), visual lunar magnitude, and human-readable lunar phase name.
+    """The Moon's phase from the Earth's centre at `obs_utc_iso` (services/science/ephemeris.py `moon_phase`, on
+    ERFA): the synodic angle, the Sun-Moon elongation, the selenocentric phase angle `alpha_deg`, the illuminated
+    fraction (0 to 1), Krisciunas and Schaefer's (1991) visual lunar magnitude at that phase angle, and the phase
+    name (None within the synodic angle's bound of a sector's edge). Raises EphemerisOutOfRange outside the
+    ephemeris' span.
     """
-    jd = _iso_to_jd(obs_utc_iso)
-    d = jd - 2451545.0
-    t = d / 36525.0
-
-    # Mean solar longitude & anomaly (Meeus Ch. 25 / 47)
-    sun_mean_lon = (280.46646 + 36000.76983 * t) % 360.0
-    sun_mean_anom = math.radians((357.52911 + 35999.05029 * t) % 360.0)
-    sun_ecl_lon = (
-        sun_mean_lon
-        + 1.914602 * math.sin(sun_mean_anom)
-        + 0.019993 * math.sin(2.0 * sun_mean_anom)
-    ) % 360.0
-
-    # Mean lunar longitude, elongation, and anomaly (Meeus Ch. 47)
-    moon_mean_lon = (218.3165 + 481267.8813 * t) % 360.0
-    moon_mean_anom = math.radians((134.9634 + 477198.8675 * t) % 360.0)
-    mean_elong = math.radians((297.8502 + 445267.1115 * t) % 360.0)
-    moon_ecl_lon = (
-        moon_mean_lon
-        + 6.2888 * math.sin(moon_mean_anom)
-        + 1.2740 * math.sin(2.0 * mean_elong - moon_mean_anom)
-        + 0.6583 * math.sin(2.0 * mean_elong)
-        + 0.2136 * math.sin(2.0 * moon_mean_anom)
-    ) % 360.0
-
-    # Signed synodic cycle angle [0, 360): 0=New, 90=First Quarter, 180=Full, 270=Last Quarter
-    synodic_angle_deg = (moon_ecl_lon - sun_ecl_lon) % 360.0
-    elongation_deg = 180.0 - abs(180.0 - synodic_angle_deg)
-    alpha_deg = max(0.0, min(180.0, 180.0 - elongation_deg))
-    illumination_fraction = 0.5 * (1.0 + math.cos(math.radians(alpha_deg)))
-
+    phase = moon_phase(obs_utc_iso)
+    alpha_deg = phase.phase_angle_deg
     # Krisciunas & Schaefer (1991) visual lunar magnitude formula
     lunar_visual_mag = -12.73 + 0.026 * abs(alpha_deg) + 4.0e-9 * (alpha_deg**4)
-
-    if synodic_angle_deg < 22.5 or synodic_angle_deg >= 337.5:
-        phase_name = "New Moon"
-    elif synodic_angle_deg < 67.5:
-        phase_name = "Waxing Crescent"
-    elif synodic_angle_deg < 112.5:
-        phase_name = "First Quarter"
-    elif synodic_angle_deg < 157.5:
-        phase_name = "Waxing Gibbous"
-    elif synodic_angle_deg < 202.5:
-        phase_name = "Full Moon"
-    elif synodic_angle_deg < 247.5:
-        phase_name = "Waning Gibbous"
-    elif synodic_angle_deg < 292.5:
-        phase_name = "Last Quarter"
-    else:
-        phase_name = "Waning Crescent"
-
     return {
         "observedAtUTC": obs_utc_iso,
-        "synodicAngleDeg": round(synodic_angle_deg, 2),
-        "elongation_deg": round(elongation_deg, 2),
-        "elongationDeg": round(elongation_deg, 2),
+        "synodicAngleDeg": round(phase.synodic_angle_deg, 2),
+        "elongation_deg": round(phase.elongation_deg, 2),
+        "elongationDeg": round(phase.elongation_deg, 2),
         "alpha_deg": round(alpha_deg, 2),
         "alphaDeg": round(alpha_deg, 2),
-        "illumination_fraction": round(illumination_fraction, 4),
-        "illuminationFraction": round(illumination_fraction, 4),
+        "illumination_fraction": round(phase.illuminated_fraction, 4),
+        "illuminationFraction": round(phase.illuminated_fraction, 4),
         "lunar_visual_mag": round(lunar_visual_mag, 2),
         "lunarVisualMag": round(lunar_visual_mag, 2),
-        "phase_name": phase_name,
-        "phaseName": phase_name,
+        "phase_name": phase.phase_name,
+        "phaseName": phase.phase_name,
     }
 
 

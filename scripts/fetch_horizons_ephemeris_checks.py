@@ -23,9 +23,15 @@ kept binary, as the catalog star tiles are, because the repository's trip guard
 place, and 1,600 rows of sky coordinates hold such pairs by chance; the instants and places here are synthetic. The
 JSON text form passed the guard's time and date checks (no finding of either kind) before it was compressed.
 
+A second set (--set phase) asks, the same way and at the same kind of synthetic instants and places, for the
+visual magnitude (quantity 9), the illuminated fraction (10) and the Sun-target-observer angle (24) of the Moon
+and the planets, and for the rise, transit and set times of the Sun, the Moon, Mars and Saturn over three synthetic
+three-day spans at each place (R_T_S_ONLY, refracted, geometric horizon at sea level), into
+tests/fixtures/horizons_phase_rts.json.gz, cached under .cache/horizons/phase-rts-checks/.
+
 Usage:
-  uv run python scripts/fetch_horizons_ephemeris_checks.py [--cache DIR]
-  uv run python scripts/fetch_horizons_ephemeris_checks.py --verify [--cache DIR]
+  uv run python scripts/fetch_horizons_ephemeris_checks.py [--cache DIR] [--set positions|phase]
+  uv run python scripts/fetch_horizons_ephemeris_checks.py --verify [--cache DIR] [--set positions|phase]
       rebuilds the committed requests from the cache alone (no request) and compares the result with the fixture
 """
 
@@ -53,6 +59,13 @@ USER_AGENT = "Albedian/0.1 (research prototype)"
 DEFAULT_CACHE = REPO_ROOT / ".cache" / "horizons" / "ephemeris-checks"
 OUT = REPO_ROOT / "tests" / "fixtures" / "horizons_ephemeris.json.gz"
 FORMAT = "albedian.horizons-ephemeris-checks"
+PHASE_CACHE = REPO_ROOT / ".cache" / "horizons" / "phase-rts-checks"
+PHASE_OUT = REPO_ROOT / "tests" / "fixtures" / "horizons_phase_rts.json.gz"
+PHASE_FORMAT = "albedian.horizons-phase-rts-checks"
+# The rise, transit and set spans: synthetic three-day spans (UTC dates), each asked at every place
+RTS_SPANS: tuple[tuple[str, str], ...] = (("1903-03-14", "1903-03-17"), ("2031-08-29", "2031-09-01"),
+                                         ("2047-12-19", "2047-12-22"))
+RTS_BODIES = ("Sun", "Moon", "Mars", "Saturn")
 PAUSE_S = 2.0
 # The API answered 502 to a 1,900-character request URL and 200 to one of 1,825 (tried 2026-11-11), so no URL
 # goes past 1,800
@@ -160,6 +173,33 @@ def observer_url(command: str, moments: list[str], quantities: str, *, site: tup
     return query_url(params)
 
 
+def rts_url(command: str, start: str, stop: str, site: tuple[float, float]) -> str:
+    """The rise, transit and set table over [start, stop] at the place, refracted, searched at one-minute steps
+    against the geometric horizon (GEO: no dip, at sea level the same horizon as the true visual one)."""
+    lat, lon = site
+    return query_url({
+        "COMMAND": f"'{command}'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'coord@399'",
+        "COORD_TYPE": "'GEODETIC'",
+        "SITE_COORD": f"'{lon:g},{lat:g},0'",
+        "START_TIME": f"'{start}'",
+        "STOP_TIME": f"'{stop}'",
+        "STEP_SIZE": "'1m GEO'",
+        "R_T_S_ONLY": "'YES'",
+        "TIME_TYPE": "'UT'",
+        "TIME_DIGITS": "'SECONDS'",
+        "CAL_FORMAT": "'CAL'",
+        "QUANTITIES": "'4'",
+        "ANG_FORMAT": "'DEG'",
+        "APPARENT": "'REFRACTED'",
+        "EXTRA_PREC": "'YES'",
+        "CSV_FORMAT": "'YES'",
+    })
+
+
 def fetch(url: str, cache: Path, offline: bool) -> dict:
     """The cached answer for this exact URL, fetched first if it is not cached: the text exactly as received."""
     path = cache / f"{hashlib.sha256(url.encode()).hexdigest()[:24]}.json"
@@ -205,10 +245,35 @@ def plan() -> list[dict]:
     return requests
 
 
+def plan_phase() -> list[dict]:
+    """The phase, magnitude and rise-set requests, in a fixed order: the Moon from every place and from the Earth's
+    centre, each planet from the first place and from the Earth's centre (quantities 9, 10, 24), then the rise,
+    transit and set spans."""
+    requests = []
+    for body in BODIES:
+        if body.object_type == "sun":
+            continue
+        sites = SITES if body.object_type == "moon" else SITES[:1]
+        for index, (site, lat, lon) in enumerate(sites):
+            requests.append({"kind": "phase-topocentric", "body": body.name, "site": site, "latDeg": lat,
+                             "lonDeg": lon, "url": observer_url(body.horizons_id, even_instants(index), "9,10,24",
+                                                               site=(lat, lon))})
+        requests.append({"kind": "phase-geocentric", "body": body.name, "site": None, "latDeg": None,
+                         "lonDeg": None, "url": observer_url(body.horizons_id, even_instants(0), "9,10,24",
+                                                            site=None)})
+    for name in RTS_BODIES:
+        command = next(body.horizons_id for body in BODIES if body.name == name)
+        for site, lat, lon in SITES:
+            for start, stop in RTS_SPANS:
+                requests.append({"kind": "rts", "body": name, "site": site, "latDeg": lat, "lonDeg": lon,
+                                 "url": rts_url(command, start, stop, (lat, lon))})
+    return requests
+
+
 REQUEST_KEYS = ("kind", "body", "site", "latDeg", "lonDeg", "url")
 
 
-def build(requests: list[dict], cache: Path, offline: bool) -> dict:
+def build(requests: list[dict], cache: Path, offline: bool, phase: bool = False) -> dict:
     out = []
     for request in requests:
         request = {key: request[key] for key in REQUEST_KEYS}
@@ -216,6 +281,24 @@ def build(requests: list[dict], cache: Path, offline: bool) -> dict:
         out.append({**request, "retrievedUtc": entry["retrievedUtc"],
                     "responseSha256": hashlib.sha256(entry["text"].encode("utf-8")).hexdigest(),
                     "response": entry["text"]})
+    if phase:
+        return {
+            "format": PHASE_FORMAT,
+            "description": (
+                "JPL Horizons observer tables (DE441): the visual magnitude, illuminated fraction and "
+                "Sun-target-observer angle of the Moon and the planets, and rise, transit and set tables of the Sun, the "
+                "Moon, Mars and Saturn, at synthetic instants and spans and open-ocean places, fetched once by the script "
+                "below; each answer is kept exactly as received with its request, retrieval time and SHA-256."
+            ),
+            "terms": (
+                "The Horizons pages state no data licence; they link Caltech/JPL's notice, whose Copyright Status "
+                "says: 'All documents available from this server may be protected under the U.S. and Foreign "
+                "Copyright Laws. Permission to reproduce may be required.' (read 2026-11-12)"
+            ),
+            "script": "scripts/fetch_horizons_ephemeris_checks.py --set phase",
+            "source": API,
+            "requests": out,
+        }
     return {
         "format": FORMAT,
         "description": (
@@ -231,22 +314,29 @@ def build(requests: list[dict], cache: Path, offline: bool) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--cache", type=Path, default=DEFAULT_CACHE)
+    parser.add_argument("--cache", type=Path, default=None)
     parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--set", choices=("positions", "phase"), default="positions")
     args = parser.parse_args()
+    phase = args.set == "phase"
+    out_path = PHASE_OUT if phase else OUT
+    cache = (PHASE_CACHE if phase else DEFAULT_CACHE) if args.cache is None else args.cache
     # --verify rebuilds the committed requests (their instants were chosen once, with the ephemeris of that day);
     # without it the requests are planned afresh
-    requests = json.loads(gzip.decompress(OUT.read_bytes()).decode("utf-8"))["requests"] if args.verify else plan()
-    fixture = build(requests, args.cache, offline=args.verify)
+    if args.verify:
+        requests = json.loads(gzip.decompress(out_path.read_bytes()).decode("utf-8"))["requests"]
+    else:
+        requests = plan_phase() if phase else plan()
+    fixture = build(requests, cache, offline=args.verify, phase=phase)
     text = json.dumps(fixture, indent=1, ensure_ascii=False) + "\n"
     if args.verify:
-        if gzip.decompress(OUT.read_bytes()).decode("utf-8") != text:
-            raise SystemExit(f"{OUT} differs from the fixture rebuilt from the cache")
-        print(f"{OUT.relative_to(REPO_ROOT)} matches the cache: {len(fixture['requests'])} requests")
+        if gzip.decompress(out_path.read_bytes()).decode("utf-8") != text:
+            raise SystemExit(f"{out_path} differs from the fixture rebuilt from the cache")
+        print(f"{out_path.relative_to(REPO_ROOT)} matches the cache: {len(fixture['requests'])} requests")
         return
     # mtime 0, so the same text gives the same bytes with the same zlib
-    OUT.write_bytes(gzip.compress(text.encode("utf-8"), compresslevel=9, mtime=0))
-    print(f"wrote {OUT.relative_to(REPO_ROOT)}: {len(fixture['requests'])} requests")
+    out_path.write_bytes(gzip.compress(text.encode("utf-8"), compresslevel=9, mtime=0))
+    print(f"wrote {out_path.relative_to(REPO_ROOT)}: {len(fixture['requests'])} requests")
 
 
 if __name__ == "__main__":

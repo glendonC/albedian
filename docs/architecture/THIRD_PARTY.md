@@ -86,6 +86,14 @@ UTC) and its SHA-256. `scripts/fetch_horizons_ephemeris_checks.py` fetched them 
 `tests/integration/test_ephemeris_horizons.py` checks the ephemeris against them. No place or time from anyone's
 recording is in them.
 
+`tests/fixtures/horizons_phase_rts.json.gz` holds 67 more (DE441), fetched the same way by the same script with
+`--set phase`, all on 2026-11-13 (UTC): 19 tables of the visual magnitude, illuminated fraction and Sun-target-observer
+angle of the Moon and the planets Mercury to Neptune, from the Earth's centre and from open-ocean places, and 48 rise,
+transit and set tables (Horizons' refracted events) of the Sun, the Moon, Mars and Saturn, 12 each, at synthetic
+spans. `tests/integration/test_ephemeris_phase.py`, `test_ephemeris_magnitudes.py` and `test_ephemeris_rise_set.py`
+check the phase, the magnitudes and the rise, transit and set times against them. No place or time from anyone's
+recording is in them either.
+
 JPL states no licence for Horizons output. The Horizons pages link Caltech/JPL's notice, whose Copyright Status
 says: "All documents available from this server may be protected under the U.S. and Foreign Copyright Laws.
 Permission to reproduce may be required." The owner agreed on 2026-11-12 to store these values in the repository with
@@ -94,6 +102,13 @@ JPL's citation. In the form the Horizons manual gives under Acknowledgements (re
 > Giorgini, JD and JPL Solar System Dynamics Group, NASA/JPL Horizons On-Line Ephemeris System,
 > < https://ssd.jpl.nasa.gov/horizons/ >, data retrieved 2026-Nov-11.
 
-And in the form the Solar System Dynamics "about" page asks for data downloaded from its website:
+for `horizons_ephemeris.json.gz`, and for `horizons_phase_rts.json.gz`:
+
+> Giorgini, JD and JPL Solar System Dynamics Group, NASA/JPL Horizons On-Line Ephemeris System,
+> < https://ssd.jpl.nasa.gov/horizons/ >, data retrieved 2026-Nov-13.
+
+And in the form the Solar System Dynamics "about" page asks for data downloaded from its website, for each in turn:
 
 > NASA/JPL Solar System Dynamics. Data retrieved on 2026 November 11. (Horizons System). https://ssd.jpl.nasa.gov
+
+> NASA/JPL Solar System Dynamics. Data retrieved on 2026 November 13. (Horizons System). https://ssd.jpl.nasa.gov

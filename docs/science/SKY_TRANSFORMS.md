@@ -90,3 +90,8 @@ Every function here that takes a place refuses a latitude outside -90 to 90 degr
 180, or either one not finite, with `PlaceOutOfRange` (catalog.py `require_place`), as the API's requests do. A
 latitude past a pole names no place: the transforms would answer for the point on the far meridian, its azimuth half
 a turn off. [tested: tests/integration/test_place_doors.py, at each end of both ranges for every such function]
+
+## The Moon's phase, the planets' magnitudes, rise and set
+
+The same vectors give the Moon's phase, the planets' magnitudes (Mallama and Hilton 2018) and rise, transit and set
+by USNO's convention, each with its method's stated limits: [EPHEMERIS_PHASE.md](EPHEMERIS_PHASE.md).
