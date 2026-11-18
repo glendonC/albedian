@@ -205,6 +205,9 @@ BODY_LIMITS: dict[str, int | None] = {
     # Largest measured body 5,154 bytes from the tests and 553 from the web's; an utterance at its 2,000 UTF-16
     # unit cap is at most 12,000 bytes of JSON (services/contracts/voice.py UTTERANCE_MAX_UTF16)
     "/api/voice/command": BODY_LIMIT_FLOOR,
+    # Largest measured body 517 bytes from the tests (an over-long question, refused); the words at their 500 UTF-16
+    # unit cap and a finding id at its 128 are at most 3,169 bytes of JSON (services/contracts/voice.py)
+    "/api/voice/answer/{sha256}": BODY_LIMIT_FLOOR,
     # The file itself: 256 MiB for a still and 2 GiB for a clip, or ALBEDIAN_INGEST_MAX_STILL_BYTES and
     # ALBEDIAN_INGEST_MAX_BYTES, counted by IngestStore.receive as the body streams
     "/api/ingest": None,

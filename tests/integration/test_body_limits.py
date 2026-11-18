@@ -42,6 +42,7 @@ from services import api
 SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16}
 UPLOAD_PATH = "/api/ingest"
 VOICE_PATH = "/api/voice/command"
+ANSWER_PATH = "/api/voice/answer/{sha256}"
 SOLVE_JOB_PATH = "/api/ingest/{sha256}/solve"
 DEV_ORIGIN = "http://localhost:5173"
 
@@ -56,6 +57,8 @@ MEASURED_LARGEST_BODY = {
     "/api/science/ephemeris": 130,
     "/api/media/restore": 1_072_159,
     VOICE_PATH: 5_154,
+    # The question at one past its 500 unit cap, which the contract refuses (test_voice_answer_route.py)
+    ANSWER_PATH: 516,
 }
 
 

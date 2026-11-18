@@ -336,6 +336,59 @@
           }
         }
       },
+      "/api/voice/answer/{sha256}": {
+        "post": {
+          "summary": "Post Voice Answer",
+          "description": "Answer a question about a stored upload from its stored solution: the words as heard and one VoiceAnswer.\nNothing here logs the words, and no model reads them.",
+          "operationId": "post_voice_answer_api_voice_answer__sha256__post",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceQuestionRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Post Voice Answer Api Voice Answer  Sha256  Post"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/ingest": {
         "post": {
           "summary": "Ingest Upload",
@@ -1032,6 +1085,31 @@
           ],
           "title": "VoiceCommandRequest",
           "description": "Request payload for `POST /api/voice/command`."
+        },
+        "VoiceQuestionRequest": {
+          "properties": {
+            "question": {
+              "type": "string",
+              "title": "Question"
+            },
+            "selectedFindingId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Selectedfindingid"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "question"
+          ],
+          "title": "VoiceQuestionRequest"
         }
       }
     }
@@ -1159,6 +1237,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/voice/answer/{sha256}",
+      "methods": [
+        "POST"
+      ],
+      "name": "post_voice_answer",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
       "path": "/api/ingest",
       "methods": [
         "POST"
@@ -1272,6 +1359,7 @@
           "/api/media/discover": 0,
           "/api/media/restore": 5242880,
           "/api/voice/command": 65536,
+          "/api/voice/answer/{sha256}": 65536,
           "/api/ingest": null,
           "/api/ingest/{sha256}": 0,
           "/api/ingest/{sha256}/original": 0,
