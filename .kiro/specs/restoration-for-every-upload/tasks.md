@@ -36,37 +36,45 @@ pictures under `.cache/restore-review/<unit>/`.
     yet.
   - _Requirements: REQ-RST-10.1 to 10.4_
 
-- [ ] 2. restore-2: the variant store, the routes, the job and the display copy (REQ-RST-1, REQ-RST-2, REQ-RST-3 for
-  stills, REQ-RST-8; P-RST-1, 3, 4, 5, 6, 18, 19)
-  - New: `services/media/colour.py` (the four transfer functions, the matrices, the ranges, chroma siting, ICC
-    curves), `services/media/decode.py` (stills at 8 and 16 bits, HEIC tiles in colour),
-    `services/media/png16.py`, `services/media/variants.py`, `services/media/jobs.py` (registers the kinds
-    `display_copy` and `restoration` on the upload job runner, the upload jobs spec, design 3.10); tests under
-    `tests/media/`.
+- [ ] 2a. restore-2a: colour, the still decode, the 16 bit PNG, the variant store and the display copy as plain
+  functions (REQ-RST-1.2, 1.3, 1.5, 1.6, REQ-RST-2.1 to 2.4, REQ-RST-3.1 to 3.6; P-RST-1, 3, 4, 5, 6) [decided
+  2026-11-12 by the lead: the part of restore-2 that needs no runner, so restore-4 need not wait for platform-5]
+  - New: `services/media/colour.py` (the four transfer functions, the matrices, the ranges, chroma up at its siting
+    and back down by the least squares left inverse of the same weights, ICC curves and a profile's tone curves),
+    `services/media/decode.py` (stills at 8 and 16 bits, HEIC tiles in colour), `services/media/png16.py`,
+    `services/media/variants.py` (ids, the store, the display copy's decode, encode, verify and store); tests under
+    `tests/media/`; two synthetic colour HEIC fixtures under `tests/fixtures/media/`.
+  - Outside `services/media/`, named here for this unit: `services/ingest/metadata.py` (`read_heif` returns the
+    primary item's colour properties).
+  - Not in this unit: `services/media/jobs.py`, `services/media/router.py`, `tests/fixtures/api_surface.json`.
+  - Real data: a display copy of each of the five photos compares equal; the HEIC tests use the sips fixtures, the
+    refusal asserted where ffprobe cannot report tile grids.
+  - Done when: a display copy of a generated 8 or 16 bit PNG or TIFF, and of a HEIC, decodes to exactly the
+    decoded original and is stored with modes 0400 and 0700 without overwriting; a changed sample fails
+    verification; the original's hash and mode are untouched.
+  - _Requirements: REQ-RST-1.2, 1.3, 1.5, 1.6, 2.1 to 2.4, 3.1 to 3.6_
+
+- [ ] 2b. restore-2b: the job and the routes (REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, REQ-RST-8; P-RST-18, 19)
+  - New: `services/media/jobs.py` (registers the kinds `display_copy` and `restoration` on the upload job runner,
+    the upload jobs spec, design 3.10, calling restore-2a's functions); tests under `tests/media/`.
   - Changed: `services/media/router.py` (the restore, list, records and file routes; a job is read through the
     runner's `GET /api/ingest/jobs/{job_id}`, not a route here; the old array route stays until restore-9),
     `tests/fixtures/api_surface.json`.
   - It waits for platform-5 [decided 2026-11-11: the runner for the solve kind lands before the restoration lane
     wires its job and routes to it].
-  - Outside `services/media/`, named here for this unit: `services/ingest/metadata.py` (`read_heif` returns the
-    primary item's colour property).
   - The job runs kind `display_copy` end to end for stills and refuses it for clips; kind `restoration` answers
-    with a plain "not built yet" until restore-4.
+    with a plain "not built yet" until restore-4's statistic is chosen and wired.
   - The client asks for a display copy through the same route as any other variant; ingest makes nothing on its
     own, with a test that an upload alone leaves no `variants/` folder [decided 2026-11-11: one route for every
     variant]. A clip gets no display copy in this spec [open].
-  - Real data: a display copy of each of the five photos compares equal; a HEIC from the real-photo corpus once
-    it holds one, else a HEIC built in the test where ffmpeg can, with the refusal asserted on the older build.
-  - Done when: a HEIC upload gets a PNG the browser draws, stored beside the original with modes 0400 and 0700,
-    listed and served by its hash; a changed sample fails verification; the original's hash and mode are
-    untouched.
-  - _Requirements: REQ-RST-1.1 to 1.7, 2.1 to 2.7, 3.1 to 3.6, 8.1 to 8.8, 8.10_
+  - Done when: a HEIC upload gets a PNG the browser draws, listed and served by its hash.
+  - _Requirements: REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, 8.1 to 8.8, 8.10_
 
 - [ ] 3. restore-3: the photo path as pure functions (REQ-RST-4, REQ-RST-5, REQ-RST-6.1, 6.2, REQ-RST-8.9; P-RST-2,
   7, 8, 9, 10, 12)
   - New: `services/media/stars.py`, `services/media/noise.py`, `services/media/spatial.py`,
     `services/media/tone.py`; tests under `tests/media/`. These take arrays and return arrays and records; the
-    lift takes the transfer's slope as an argument, so the unit imports nothing from restore-2.
+    lift takes the transfer's slope as an argument, so the unit imports nothing from restore-2a or restore-2b.
   - The detector's matched-filter noise: the unit imports `matched_filter_noise` of
     `services/science/detector.py` once unit realsky-3 has landed it, and until then the two private helpers, as
     `services/media/runtime.py` does today [decided 2026-11-11: the same measure is needed to stop the detection
@@ -109,7 +117,7 @@ pictures under `.cache/restore-review/<unit>/`.
 - [ ] 5. restore-5: clip input and output (REQ-RST-3.7, REQ-RST-7.5 to 7.7, 7.9, 7.10; P-RST-15, 16, 17)
   - New: `services/media/clip_io.py` (probe, the streamed decode with each frame's time, the streamed encode with
     the frame times stamped and the audio copied, the rotation pass, the checks on the stored clip); tests under
-    `tests/media/`. It moves bytes, planes and times only, and imports nothing from restore-2 or restore-3.
+    `tests/media/`. It moves bytes, planes and times only, and imports nothing from restore-2a, restore-2b or restore-3.
   - Every ffmpeg feature it uses is exercised on both CI builds: `-fps_mode passthrough`, `showinfo`,
     `-noautorotate`, `settb`, `setpts`, `setparams`, `-enc_time_base`, `-copyts`, `-map 1:a?`, the `hash` muxer,
     `-display_rotation`, `libx264`; `libx265` where present, with the plain refusal where not.
@@ -201,8 +209,10 @@ pictures under `.cache/restore-review/<unit>/`.
 
 - restore-1 first, alone: everything else builds on its shapes.
 - Then restore-3 and restore-5 together: they share no file, and neither waits for the upload job runner.
-- restore-2 after platform-5 of the upload jobs spec, the runner and its routes [decided 2026-11-11].
-- restore-4 after restore-2 and restore-3. restore-6 after restore-3; it can run beside restore-4.
+- restore-2a after restore-3, in the same lane; it needs no runner [decided 2026-11-12 by the lead].
+- restore-2b after platform-5 of the upload jobs spec, the runner and its routes [decided 2026-11-11].
+- restore-4 after restore-2a and restore-3, without restore-2b; it wires kind `restoration` only once restore-2b
+  has landed [decided 2026-11-12 by the lead]. restore-6 after restore-3; it can run beside restore-4.
 - restore-7 after restore-4, restore-5 and restore-6. restore-8 after restore-4; it can run beside restore-7
   (`router.py` and `variants.py` against `jobs.py`, `gate.py` and `encode.py`).
 - restore-9 last.
@@ -210,7 +220,7 @@ pictures under `.cache/restore-review/<unit>/`.
 ## Not units of this lane
 
 - The web app is wired to the new routes by its own lane (`apps/web/src/`, owner `experience`): it asks for a
-  display copy after a HEIC or TIFF upload, shows variants and offers the export, once restore-2 has landed
+  display copy after a HEIC or TIFF upload, shows variants and offers the export, once restore-2b has landed
   [decided 2026-11-11: the web app is that lane's files].
 - One shared function for the detector's matched-filter noise, `matched_filter_noise` in
   `services/science/detector.py`: unit realsky-3 of the REALSKY lane; restore switches to it when it lands

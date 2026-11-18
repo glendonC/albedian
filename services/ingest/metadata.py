@@ -70,6 +70,9 @@ class HeifInfo:
     exif: Optional[bytes]
     # The primary item's irot and imir as an orientation hint with its source, or None when it has neither
     orientation: Optional[dict] = None
+    # The primary item's colr properties, or None when it has none: "nclx" (primaries, transfer, matrix as H.273
+    # numbers and fullRange) and "icc" (the profile's bytes, from a prof or rICC colr), each present when given
+    colour: Optional[dict] = None
 
 
 # HEIF's transformative properties, as libavif's include/avif/avif.h states ISO/IEC 23008-12: `irot` turns the image
@@ -180,7 +183,7 @@ def read_heif(data: bytes) -> HeifInfo:
     if primary not in items:
         raise HeifError("the primary item is not listed")
     locations = _item_locations(_one(meta, b"iloc", "meta"))
-    width, height, orientation = _primary_properties(_one(meta, b"iprp", "meta"), primary, budget)
+    width, height, orientation, colour = _primary_properties(_one(meta, b"iprp", "meta"), primary, budget)
 
     exif_ids = sorted(item for item, kind in items.items() if kind == b"Exif")
     exif = None
@@ -195,7 +198,7 @@ def read_heif(data: bytes) -> HeifInfo:
         exif = payload[start:]
         if not exif.startswith(TIFF_HEADERS):
             raise HeifError("the EXIF item has no TIFF header where it says")
-    return HeifInfo(width, height, exif, orientation)
+    return HeifInfo(width, height, exif, orientation, colour)
 
 
 def _item_types(iinf: memoryview, budget: list[int]) -> dict[int, bytes]:
@@ -252,8 +255,26 @@ def _item_locations(iloc: memoryview) -> dict[int, tuple[int, list[tuple[int, in
     return locations
 
 
-def _primary_properties(iprp: memoryview, primary: int, budget: list[int]) -> tuple[int, int, Optional[dict]]:
-    """The primary item's size (its first ispe) and its irot and imir, composed in the order the item lists them."""
+def _colour_property(body: memoryview, colour: dict) -> None:
+    """One colr property [inference: HEIF's colour information property is ISO/IEC 14496-12's colr box, a four byte
+    colour type, then for nclx two byte primaries, transfer and matrix and a byte whose top bit is the full range
+    flag, for rICC (restricted) and prof (unrestricted) an ICC profile; not re-read at the standard, the unit's tests
+    build both forms]. The first of each kind stands; another colour type is ignored."""
+    reader = _Cursor(body, "colr")
+    kind = reader.raw(4)
+    if kind == b"nclx" and "nclx" not in colour:
+        primaries, transfer, matrix = reader.uint(2), reader.uint(2), reader.uint(2)
+        colour["nclx"] = {"primaries": primaries, "transfer": transfer, "matrix": matrix, "fullRange": bool(reader.uint(1) >> 7)}
+    elif kind in (b"prof", b"rICC") and "icc" not in colour:
+        profile = bytes(body[4:])
+        if not profile:
+            raise HeifError("a colr profile holds no bytes")
+        colour["icc"] = profile
+
+
+def _primary_properties(iprp: memoryview, primary: int, budget: list[int]) -> tuple[int, int, Optional[dict], Optional[dict]]:
+    """The primary item's size (its first ispe), its irot and imir, composed in the order the item lists them, and
+    its colr properties."""
     parts = _children(iprp, 2, budget)
     properties = _children(_one(parts, b"ipco", "iprp"), 3, budget)
     ipma_version, ipma_flags, ipma = _full_box(_one(parts, b"ipma", "iprp"), "ipma")
@@ -273,6 +294,7 @@ def _primary_properties(iprp: memoryview, primary: int, budget: list[int]) -> tu
     size: Optional[tuple[int, int]] = None
     form = {"quarterTurnsClockwise": 0, "mirrored": False}
     tags: list[str] = []
+    colour: dict = {}
     for index in associated:
         if index > len(properties):
             raise HeifError("a property association points past the property list")
@@ -288,10 +310,12 @@ def _primary_properties(iprp: memoryview, primary: int, budget: list[int]) -> tu
             form = compose_display_orientations(form, _transform_form(kind, body))
             if kind.decode("latin-1") not in tags:
                 tags.append(kind.decode("latin-1"))
+        elif kind == b"colr":
+            _colour_property(body, colour)
     if size is None:
         raise HeifError("the primary image has no ispe size")
     orientation = {**form, "source": {"container": "heif", "tags": tags}} if tags else None
-    return size[0], size[1], orientation
+    return size[0], size[1], orientation, colour or None
 
 
 def _item_bytes(view: memoryview, idat: Optional[memoryview], location: Optional[tuple[int, list[tuple[int, int]]]]) -> bytes:

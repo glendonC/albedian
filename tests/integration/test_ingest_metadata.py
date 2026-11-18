@@ -695,3 +695,46 @@ def test_the_probe_reads_a_display_matrix_only_as_three_rows_of_three_integers()
     assert _display_matrix({"side_data_list": [{**entry, "displaymatrix": text.replace("65536", "1.0", 1)}]}) is None
     assert _display_matrix({"side_data_list": [{**entry, "displaymatrix": None}]}) is None
     assert _display_matrix({"side_data_list": [{"side_data_type": "Stereo 3D"}]}) is None
+
+
+# The primary item's colr properties (restore-2a: the colour decode reads a HEIC's transfer, primaries, matrix and range
+# from them; design section 1)
+def nclx(primaries: int, transfer: int, matrix: int, full: bool) -> bytes:
+    return b"nclx" + primaries.to_bytes(2, "big") + transfer.to_bytes(2, "big") + matrix.to_bytes(2, "big") + bytes([0x80 if full else 0])
+
+
+def test_heif_colr_reads_nclx_and_a_profile_each_once_and_ignores_other_types() -> None:
+    assert read_heif(heif_with([])).colour is None
+    info = read_heif(heif_with([(b"colr", nclx(12, 13, 6, True))]))
+    assert info.colour == {"nclx": {"primaries": 12, "transfer": 13, "matrix": 6, "fullRange": True}}
+    assert read_heif(heif_with([(b"colr", nclx(1, 1, 1, False))])).colour["nclx"]["fullRange"] is False
+    for kind in (b"prof", b"rICC"):
+        assert read_heif(heif_with([(b"colr", kind + b"profile bytes")])).colour == {"icc": b"profile bytes"}
+    both = read_heif(heif_with([(b"colr", nclx(9, 16, 9, True)), (b"colr", b"prof" + b"an icc"), (b"colr", nclx(1, 1, 1, False)),
+                                (b"colr", b"prof" + b"another"), (b"colr", b"abcd" + b"other")])).colour
+    # The first of each kind stands; a colour type this reader does not know is ignored
+    assert both == {"nclx": {"primaries": 9, "transfer": 16, "matrix": 9, "fullRange": True}, "icc": b"an icc"}
+
+
+def test_heif_nclx_full_range_is_its_flag_bytes_top_bit_alone() -> None:
+    # The byte's low seven bits are reserved: 0x7F is limited range, 0x80 and 0xFF full
+    def full(flag: int) -> bool:
+        return read_heif(heif_with([(b"colr", nclx(1, 1, 1, False)[:-1] + bytes([flag]))])).colour["nclx"]["fullRange"]
+
+    assert (full(0x00), full(0x01), full(0x40), full(0x7F), full(0x80), full(0xFF)) == (False, False, False, False, True, True)
+
+
+def test_heif_properties_of_other_kinds_are_skipped_even_shorter_than_a_colour_type() -> None:
+    # a1op (an operating point, one byte) and lsel (a layer, two) are associated with the primary item and not read
+    info = read_heif(heif_with([(b"a1op", b"\x00"), (b"lsel", b"\x00\x01"), (b"colr", nclx(9, 16, 9, True))]))
+    assert info.colour == {"nclx": {"primaries": 9, "transfer": 16, "matrix": 9, "fullRange": True}}
+    assert read_heif(heif_with([(b"a1op", b"\x00")])).colour is None
+
+
+def test_heif_colr_refuses_a_profile_without_bytes_and_an_nclx_cut_short() -> None:
+    with pytest.raises(HeifError):
+        read_heif(heif_with([(b"colr", b"prof")]))
+    with pytest.raises(HeifError, match="colr ends early"):
+        read_heif(heif_with([(b"colr", nclx(1, 1, 1, True)[:-1])]))
+    with pytest.raises(HeifError, match="colr ends early"):
+        read_heif(heif_with([(b"colr", b"nc")]))

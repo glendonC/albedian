@@ -120,7 +120,7 @@ for the tile grid; on an older ffmpeg a tiled HEIC fails with the solve job's ow
 
 Transfer of a still, in this order: the ICC profile's `rTRC`, `gTRC` and `bTRC` curves when the file has a profile
 (for a HEIC: the `colr` property of the primary item, which `read_heif` in `services/ingest/metadata.py` must
-return; that file is outside `services/media/`, and `tasks.md` names it for restore-2); else EXIF ColorSpace 1 as
+return; that file is outside `services/media/`, and `tasks.md` names it for restore-2a); else EXIF ColorSpace 1 as
 sRGB;
 else sRGB as a recorded assumption (`field: transfer`, reason "the file has no ICC profile and no EXIF
 ColorSpace").
@@ -165,8 +165,17 @@ Y'CbCr to R'G'B', for `n` bit samples `D`:
   BT.2020 sites chroma on the top left luma sample and BT.709 on alternate luma samples of the line [verified:
   BT.2020-2 Table 5; BT.709-6 item 4.3]. An untagged siting is assumed `left` and recorded [inference: the common
   default of H.264 and HEVC streams; the unit checks it at the codec standard before coding].
-- Going back, chroma is averaged down with the transpose of the same weights, values are rounded to the nearest
-  code and kept inside the range's legal codes.
+- Going back, the subsampled chroma is the one whose interpolation by the same weights, at the stream's own siting,
+  is closest in least squares to the full size chroma being written [decided 2026-11-12 by the lead: one definition
+  for both sitings and both axes]. On a frame that was only interpolated it is the original chroma exactly, so
+  P-RST-6 holds on any chroma; on a processed frame it uses every sample. Each axis's normal equations are
+  tridiagonal and solved by Cholesky; the solve can grow an error of the full size chroma at most 1 + 1/sqrt(2)
+  times on a co-sited axis and 2 times on a centred one, so at most 4 times on 4:2:0 [tested from 2 to 1080 luma
+  samples by the unit's tests; measured up to 4032 by the lane's probe]. Values are then rounded to the nearest code
+  and kept inside the range's legal codes (limited: BT.709-6 item 3.4's, 1 to 254 at 8 bits and 4 to 1019 at 10;
+  full: every code); that keeping is the only place the way back is inexact, and only a processed frame reaches it.
+  (The transpose of the weights, an earlier proposal here, erred by up to 65 codes on random chroma [measured by the
+  lane's probe, one axis, centred siting].)
 - An untagged range is assumed limited for Y'CbCr video and full for a JPEG or a HEIC still; an untagged matrix is
   assumed BT.709 for frames 720 lines or taller and BT.601 below, and BT.601 for a JPEG or HEIC still
   [inference: common practice, not a standard's rule]. Each assumption is recorded. An untagged transfer in a clip
