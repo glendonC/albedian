@@ -6,6 +6,14 @@ import {
   RejectedOutcomeSchema,
 } from './spatial-and-voice.js';
 import { isLetterOrDigit } from './voice-answer.js';
+import VOICE_COMMAND_GRAMMAR_JSON from './data/voice-command-grammar.json';
+
+/**
+ * The voice command grammar as written (data/voice-command-grammar.json): the words that ask for each command and
+ * the order both parsers try them in. Plain data, not a contract: each parser loads it with its own strict loader
+ * (packages/observation/src/voiceGrammar.ts, services/voice/grammar.py), so it is typed unknown here.
+ */
+export const VOICE_COMMAND_GRAMMAR_TABLE: unknown = VOICE_COMMAND_GRAMMAR_JSON;
 
 /**
  * What `POST /api/voice/command` receives and answers (services/voice/router.py; Python mirror
@@ -84,6 +92,10 @@ export const REFUSAL_KINDS = {
   sky_not_worked_out: { reasons: ['ambiguous_target', 'unresolved_sky'], said: false, name: false, catalogRow: false, backend: false },
   // Nothing in view, in a sky the view marks unresolved
   nothing_in_view_sky_not_worked_out: { reasons: ['unresolved_sky'], said: false, name: false, catalogRow: false, backend: false },
+  // A sentence that changes the scene with a word its rule does not account for: no action (answers-3b v4)
+  not_a_request: { reasons: ['not_one_request'], said: true, name: false, catalogRow: false, backend: true },
+  // A sentence that holds two requests that change the scene: neither is done
+  two_requests: { reasons: ['not_one_request'], said: false, name: false, catalogRow: false, backend: true },
 } as const satisfies Record<
   string,
   { reasons: readonly RejectionReason[]; said: boolean; name: boolean; catalogRow: boolean; backend: boolean }
@@ -175,7 +187,8 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
   const name = refusal.name ?? '';
   switch (refusal.kind) {
     case 'not_understood':
-      return `I did not understand "${said}". Say a star's or a planet's name, or select one and say "that one".`;
+      // [proposed, for the UIUX work] It fits a name no list holds ("pluto") as well as a word: it asks for nothing
+      return `I did not understand "${said}": no list of the app holds that word.`;
     case 'not_in_this_sky':
       return `${capitalized(name)} was not found in this ${media}'s sky.`;
     case 'deep_sky_out_of_reach':
@@ -192,6 +205,12 @@ export function refusalSentence(refusal: VoiceRefusal, media: RefusalMedia = 'ph
       return `The sky in this ${media} has not been worked out yet, so nothing in it can be found by name.`;
     case 'nothing_in_view_sky_not_worked_out':
       return `The sky in this ${media} has not been worked out yet, and nothing is selected or pointed at.`;
+    case 'not_a_request':
+      // [proposed, for the UIUX work]
+      return `I did not take that as a request: "${said}" is not a word of one.`;
+    case 'two_requests':
+      // [proposed, for the UIUX work]
+      return 'That asks for two things at once; say one at a time.';
   }
 }
 
@@ -222,8 +241,8 @@ export const VoiceCommandResponseSchema = z
     if (reply.status === 'rejected') {
       const refusal = reply.refusal;
       if (refusal === undefined) {
-        if (reply.reason === 'ambiguous_target') {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['refusal'], message: 'An ambiguous_target refusal says which kind it is' });
+        if (reply.reason === 'ambiguous_target' || reply.reason === 'not_one_request') {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['refusal'], message: `A ${reply.reason} refusal says which kind it is` });
         }
       } else {
         const spec = REFUSAL_KINDS[refusal.kind];

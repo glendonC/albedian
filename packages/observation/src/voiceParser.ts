@@ -11,11 +11,26 @@ import {
   VoiceActionSchema,
   type VoiceRefusal,
   deterministicHexDigest,
+  isLetterOrDigit,
+  lowerCase,
   refusalSentence,
 } from '@albedian/contracts';
 import { dispatchAlbedianAction } from './reducer.js';
 import { EMPTY_SOURCE_ASSET_ID } from './emptySession.js';
 import { CATALOG_STAR_NAMES, EVERYDAY_WORD_NAMES, NAME_CUE_VERBS } from './generated/catalogStarNames.js';
+import {
+  anotherRequest,
+  blanked,
+  changesTheScene,
+  conflictingModifier,
+  fieldsFor,
+  fold,
+  ownWordsCut,
+  ruleSays,
+  VOICE_GRAMMAR,
+  type GrammarRule,
+  type GrammarTarget,
+} from './voiceGrammar.js';
 
 /**
  * ============================================================================
@@ -175,7 +190,7 @@ function epochYear(said: SaidYear): { yearCE: number } | { refusal: string } {
 
 /** True when `name` appears in the lower-cased utterance as a whole word, so the Moon is not in "honeymoon". */
 function namesWholeWord(normalizedUtterance: string, name: string): boolean {
-  const needle = name.trim().toLowerCase();
+  const needle = lowerCase(name.trim());
   if (!needle) return false;
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(normalizedUtterance);
@@ -289,7 +304,7 @@ const NAME_CUES = NAME_CUE_VERBS.map(escapeRegExp).join('|');
  * before or after it, so "zoom in, I ran out of room" names no star.
  */
 function starNamePattern(name: string): RegExp {
-  const lower = name.trim().toLowerCase();
+  const lower = lowerCase(name.trim());
   const literal = escapeRegExp(lower);
   if (!EVERYDAY_WORDS.has(lower)) return new RegExp(`${literal}(?<![a-z0-9]${literal})(?![a-z0-9])`, 'g');
   return new RegExp(
@@ -317,7 +332,9 @@ const POINTING_WORDS = [
  * Words that say something about a thing without naming it. They stand only beside a pointing word ("that bright
  * one", "how far is it in light years"); without one, the request does not say which thing it means.
  */
-const DESCRIBING_WORDS = [
+/** The words that describe a thing itself (what it is, its kind, how it looks, where it is), which a rule that changes the
+ * scene and has a target accounts for (answers-3b v4); services/voice/names.py DESCRIBING_A_THING. */
+const DESCRIBING_A_THING = [
   'one', 'ones', 'star', 'stars', 'thing', 'things', 'object', 'objects', 'body', 'bodies', 'dot', 'dots', 'point',
   'points', 'light', 'lights', 'spot', 'spots', 'patch', 'patches', 'blob', 'blobs', 'speck', 'smudge', 'streak',
   'glow', 'marker', 'markers', 'planet', 'planets', 'galaxy', 'galaxies', 'nebula', 'nebulae', 'nebulas', 'cluster',
@@ -328,10 +345,14 @@ const DESCRIBING_WORDS = [
   'fuzzy', 'blurry', 'hazy', 'glowing', 'shiny', 'twinkling', 'flickering', 'blinking', 'moving', 'left', 'top',
   'bottom', 'middle', 'center', 'centre', 'upper', 'lower', 'corner', 'edge', 'above', 'below', 'beside', 'next',
   'nearest', 'closest', 'other', 'another', 'same', 'first', 'second', 'last', 'something', 'anything', 'else',
+];
+const DESCRIBING_WORDS = [
+  ...DESCRIBING_A_THING,
   'distance', 'year', 'years', 'parsec', 'parsecs', 'kilometre', 'kilometres', 'kilometer', 'kilometers', 'km',
   'mile', 'miles', 'au', 'ly', 'pc', 'photo', 'photos', 'picture', 'pictures', 'image', 'images', 'video', 'videos',
   'clip', 'recording', 'shot', 'frame', 'sky', 'night', 'screen', 'view', 'app', 'solve', 'solved', 'space', '3d',
   'earth', 'home', 'orbit', 'viewpoint', 'angle', 'side', 'sightline', 'different', 'distant',
+  'magnitude', 'brightness', 'dimmest', 'faintest',
 ];
 
 /**
@@ -359,6 +380,7 @@ const FUNCTION_WORDS = [
   'come', 'tell', 'say', 'said', 'give', 'explain', 'describe', 'identify', 'select', 'choose', 'pick', 'focus',
   'inspect', 'lock', 'open', 'enter', 'explore', 'visit', 'make', 'looks', 'seems', 'appears', 'called', 'named',
   'name', 'idea', 'info', 'information', 'details', 'mode', 'fly', 'lies', 'along', 'translate', 'shift', 'albedian',
+  'wait', 'yo', 'mate', 'beautiful', 'gorgeous', 'pretty', 'amazing', 'lovely', 'stunning', 'awesome', 'wonderful', 'incredible', 'instead', 'camping', 'saw',
 ];
 
 /**
@@ -382,11 +404,21 @@ const MAX_QUOTED_WORDS = 6;
 const MAX_QUOTED_CHARACTERS = 80;
 
 /**
- * The words of a text: runs of letters and digits of any script, as Python's [^\W_] finds them, so a name written in
- * another alphabet is a word no list holds, never nothing at all.
+ * The words of a text: runs of letters and digits of the tracked letters table, of any script, so a name written in
+ * another alphabet is a word no list holds, never nothing at all (services/voice/names.py words_of reads the same).
  */
 function wordsOf(text: string): string[] {
-  return text.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const words: string[] = [];
+  let word = '';
+  for (const char of text) {
+    if (isLetterOrDigit(char.codePointAt(0)!)) word += char;
+    else if (word) {
+      words.push(word);
+      word = '';
+    }
+  }
+  if (word) words.push(word);
+  return words;
 }
 
 /** `text` with the characters from `start` to `end` turned to spaces, so what is cut out no longer reads as words. */
@@ -399,6 +431,8 @@ function pointsAtTheView(text: string): boolean {
   const words = wordsOf(text);
   return words.some((word, index) => {
     if (!POINTING.has(word)) return false;
+    // "It" after "as" points at nothing ("show me the sky as it was")
+    if (word === 'it') return words[index - 1] !== 'as';
     if (word !== 'there') return true;
     const before = words[index - 1] ?? '';
     const after = words[index + 1] ?? '';
@@ -426,9 +460,10 @@ interface Wording {
  */
 function readWording(withoutNames: string, command: RegExp | undefined): Wording {
   const cutOut = (cut: string) => ' '.repeat(cut.length);
-  const rest = (command ? withoutNames.replace(new RegExp(command.source, 'gi'), cutOut) : withoutNames).replace(
-    RANKING_WORD,
-    cutOut
+  // The words that change nothing (er, the photo, can you) are plain to the target's reading too (answers-3b v4)
+  const rest = blanked(
+    VOICE_GRAMMAR.unchangingPattern,
+    (command ? withoutNames.replace(new RegExp(command.source, 'gi'), cutOut) : withoutNames).replace(RANKING_WORD, cutOut)
   );
   const words = wordsOf(rest);
   const kinds = words.map((word) =>
@@ -502,7 +537,7 @@ function spokenNamesOf(findings: readonly CelestialFinding[]): SpokenName[] {
   const said = new Map<string, Set<string>>();
   const absent = new Map<string, string>();
   const add = (names: Map<string, Set<string>>, name: string | undefined, id: string) => {
-    const spoken = name?.trim().toLowerCase();
+    const spoken = name === undefined ? undefined : lowerCase(name.trim());
     if (!spoken) return;
     if (!names.has(spoken)) names.set(spoken, new Set());
     names.get(spoken)!.add(id);
@@ -706,7 +741,8 @@ function brightestMeasuredFinding(session: ObservationSession): TargetResolution
     });
   const ranked = measured
     .filter((f) => f.sourceDetection.frameTimeSec === frame)
-    .sort((a, b) => b.sourceDetection.flux - a.sourceDetection.flux || a.id.localeCompare(b.id));
+    // Ties by id in code unit order, never the runtime's collation
+    .sort((a, b) => b.sourceDetection.flux - a.sourceDetection.flux || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const top = ranked[0]!;
   const sigma = (f: (typeof ranked)[number]) => f.sourceDetection.flux / f.sourceDetection.snr;
   const level = ranked.filter((f) => top.sourceDetection.flux - f.sourceDetection.flux <= Math.hypot(sigma(top), sigma(f)));
@@ -723,7 +759,7 @@ function brightestMeasuredFinding(session: ObservationSession): TargetResolution
 
 function brightestTarget(normalizedUtterance: string, session: ObservationSession): TargetResolutionResult {
   const kind = mediaWord(session);
-  const next = BRIGHTEST_NEXT_WORD.exec(normalizedUtterance)?.[1]?.toLowerCase();
+  const next = BRIGHTEST_NEXT_WORD.exec(normalizedUtterance)?.[1];
   if (next !== undefined && BRIGHTEST_UNRANKED_KINDS.includes(next)) {
     return {
       error: `Brightness measured in this ${kind} ranks stars and points of light only, so a brightest planet, moon, galaxy, nebula or cluster is not named.`,
@@ -883,7 +919,7 @@ function resolveTargetFinding(
   session: ObservationSession,
   said: NamesRead,
   command: RegExp | undefined,
-  alone: 'view' | 'which'
+  alone: GrammarTarget
 ): TargetResolutionResult | undefined {
   // "Brightest" asks for a ranking, answered from the measurements even when a star of this sky is named beside
   // it. The ranking's own refusals come first: they say why no brightest is named
@@ -897,6 +933,8 @@ function resolveTargetFinding(
   if (said.present.length > 0) return namedTarget(said.present, context, session);
 
   if (wording.points) return targetInView(context, session);
+  // A rule that is about a named thing (about, named) says nothing of a thing only described: the next rule reads it
+  if (alone === 'about' || alone === 'named') return undefined;
   if (wording.describes) return refused({ kind: 'which_one' }, 'ambiguous_target', session);
   if (wording.asks) return undefined;
   return alone === 'view' ? targetInView(context, session) : refused({ kind: 'which_one' }, 'ambiguous_target', session);
@@ -913,6 +951,8 @@ export function parseUtteranceToAction(
   session: ObservationSession,
   options: VoiceParseOptions = {}
 ): VoiceParseResult {
+  // The one way in: each typographic apostrophe or quote is read as its plain one before anything reads the words
+  utterance = fold(VOICE_GRAMMAR, utterance);
   const parsed = parseWithRules(utterance, context, session, options);
   // An action on the brightest says that its target was ranked by measured flux
   const action = parsed.action;
@@ -924,12 +964,6 @@ export function parseUtteranceToAction(
   return parsed;
 }
 
-/** The commands that act on one finding, by the words that ask for each. */
-const VIEWPOINT_COMMAND = /\b(another viewpoint|different viewpoint|orbit|another angle|from the side|translate viewpoint|shift viewpoint)\b/i;
-const DISTANCE_COMMAND = /\b(how far|distance|light years|parsecs|how distant)\b/i;
-const SIGHTLINE_COMMAND = /\b(what's behind|what is behind|what lies beyond|behind it|beyond it|behind|beyond|behind sightline|along this sightline)\b/i;
-const FLIGHT_COMMAND = /\b(take me there|fly there|go there|go to|explore|fly to|travel to|enter space|enter 3d|zoom into space|take me to)\b/i;
-const SELECT_COMMAND = /\b(what's that|what is that|what star is that|which star|that one|this one|select|focus on|inspect|point at|look at|tell me about)\b/i;
 
 function parseWithRules(
   utterance: string,
@@ -940,7 +974,7 @@ function parseWithRules(
   const trimmed = utterance.trim();
   if (!trimmed) return { error: 'Empty voice or text command.', reason: 'no_grounded_answer' };
 
-  const norm = trimmed.toLowerCase();
+  const norm = lowerCase(trimmed);
   // Each request gets its own id: the view's revision, the count of requests this session has heard, and the
   // words. A request repeated after a refusal, which leaves the revision as it was, is still another request
   const heard = session.voiceActions.length + 1;
@@ -954,218 +988,219 @@ function parseWithRules(
     };
   }
 
-  if (/^(stop|cancel|wait|halt|abort|freeze)\b/i.test(norm) || /\b(stop|cancel)\s+(navigation|transition|flight)\b/i.test(norm)) {
-    return {
-      action: AlbedianActionSchema.parse({ type: 'navigation.cancel', requestId, expectedViewRevision: context.viewRevision, transitionId: session.spatialView.activeTransitionId }),
-    };
-  }
-
-  if (/\b(back a little|back a bit|step back slightly|slightly back|partial back)\b/i.test(norm)) {
-    return {
-      action: AlbedianActionSchema.parse({ type: 'history.back', requestId, expectedViewRevision: context.viewRevision, mode: 'partial', fraction: 0.35 }),
-    };
-  }
-
-  if (/\b(take me back|back to moment|back to the moment|return to source|back to source|back to recording|back to photo|back to video|go back|return home)\b/i.test(norm) || norm === 'back') {
-    if (/\b(previous checkpoint|last checkpoint|checkpoint back)\b/i.test(norm)) {
-      return { action: AlbedianActionSchema.parse({ type: 'history.back', requestId, expectedViewRevision: context.viewRevision, mode: 'checkpoint' }) };
-    }
-    return {
-      // No checkpoint named: the reducer returns to the moment you left, as the button does
-      action: AlbedianActionSchema.parse({ type: 'source.return', requestId, expectedViewRevision: context.viewRevision, restoreAudio: true }),
-    };
-  }
-
-  const said = saidYear(norm, currentYear);
-  if (said !== undefined) {
-    const year = epochYear(said);
-    if ('refusal' in year) return { error: year.refusal, reason: 'invalid_epoch' };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'space.epoch',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        epochISO: epochIsoForYear(year.yearCE),
-        yearCE: year.yearCE,
-      }),
-    };
-  }
-
-  if (/\b(where is earth|earth direction|point to earth|direction to earth|home vector)\b/i.test(norm)) {
-    return { action: AlbedianActionSchema.parse({ type: 'ui.overlay', requestId, expectedViewRevision: context.viewRevision, overlay: 'earthDirectionVector', enabled: !/\b(hide|off|disable)\b/i.test(norm) }) };
-  }
-
-  if (/\b(constellation lines|constellations overlay|star lines)\b/i.test(norm)) {
-    return { action: AlbedianActionSchema.parse({ type: 'ui.overlay', requestId, expectedViewRevision: context.viewRevision, overlay: 'constellationLines', enabled: !/\b(hide|off|disable)\b/i.test(norm) }) };
-  }
-
-  if (/\b(residual vectors|residuals)\b/i.test(norm)) {
-    return { action: AlbedianActionSchema.parse({ type: 'ui.overlay', requestId, expectedViewRevision: context.viewRevision, overlay: 'residualVectors', enabled: !/\b(hide|off|disable)\b/i.test(norm) }) };
-  }
-
-  if (/\b(compare|show original|original recording|before and after|a\/b wipe|split view)\b/i.test(norm)) {
-    const originalVariant = session.mediaVariants[0]?.id ?? 'variant_original';
-    const restoredVariant = session.activeVariantId !== originalVariant ? session.activeVariantId : (session.mediaVariants[1]?.id ?? originalVariant);
-    return { action: AlbedianActionSchema.parse({ type: 'media.compare', requestId, expectedViewRevision: context.viewRevision, variantAId: originalVariant, variantBId: restoredVariant, preserveTime: true }) };
-  }
-
-  if (/\b(make the sky clearer|sky clearer|don't change the people|do not change the people|preserve the people|temporal stack|motion-compensated|denoise|clean up noise|restore|bring out faint stars)\b/i.test(norm)) {
-    const profile: 'natural' | 'temporal' | 'star_protected' = /\b(temporal|stack|faint)\b/i.test(norm) ? 'temporal' : 'star_protected';
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'media.restore',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
-        profile,
-        constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
-      }),
-    };
-  }
-
-  // What the request names, read once: findings of this sky, and the stars and bodies it does not hold
+  // The commands, tried in the order of the voice command grammar (packages/contracts/src/data/voice-command-grammar.json),
+  // which the backend's parser reads too
   const named = readNames(norm, session);
   const howMany = /\bhow\s+many\b/i.test(norm);
-  // As the backend does: a southern object, the Southern Cross, or a star or body this sky does not hold is
-  // answered here, beside a name that is here or not, before a later rule could read the request as a question,
-  // take the selection, or act on the name that is here
-  if (
-    unbakedObjectIn(norm) !== undefined ||
-    SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(norm, name)) ||
-    // a "how many" question naming a star stays a question, as the select rule and the backend read it
-    (named.absent.length > 0 && !howMany)
-  ) {
-    const resolved = resolveTargetFinding(norm, context, session, named, undefined, 'which');
-    if (resolved?.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (resolved && !resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
+  const base = { requestId, expectedViewRevision: context.viewRevision };
+  // The first refusal of a sentence a rule acted on but did not account for (answers-3b v4)
+  let notARequest: VoiceParseResult | undefined;
+  for (const rule of VOICE_GRAMMAR.rules) {
+    if (rule.id === VOICE_GRAMMAR.namesRefusedBefore) {
+      // As the backend does: a southern object, the Southern Cross, or a star or body this sky does not hold is
+      // answered here, beside a name that is here or not, before a later rule could read the request as a question,
+      // take the selection, or act on the name that is here
+      if (
+        unbakedObjectIn(norm) !== undefined ||
+        SOUTHERN_CROSS_NAMES.some((name) => namesWholeWord(norm, name)) ||
+        // a "how many" question naming a star stays a question, as the name rule and the backend read it
+        (named.absent.length > 0 && !howMany)
+      ) {
+        const resolved = resolveTargetFinding(norm, context, session, named, undefined, 'which');
+        if (resolved?.disambiguation) return { disambiguation: resolved.disambiguation };
+        if (resolved && !resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
+      }
+    }
+    const read = readRule(rule, norm, trimmed, context, session, named, howMany, base, currentYear);
+    // A rule that acted but left a word unaccounted passes the sentence to the later rules, as the backend does: its
+    // refusal is given only when no later rule accounts for it, and two requests are refused at once
+    if (read?.refusal?.kind === 'not_a_request') {
+      // The name rule's own refusal is never kept: a sentence that is more than a name is the later rules' to read
+      if (rule.match !== 'name') notARequest ??= read;
+      continue;
+    }
+    if (read && rule.match === 'rest' && notARequest) return notARequest;
+    if (read) return read;
   }
-
-  const seekMatch = norm.match(/\b(?:seek|jump|scrub)\s+(?:to\s+)?(\d+(?:\.\d+)?)\s*(?:s|sec|seconds)?\b/i);
-  if (seekMatch?.[1]) {
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'media.seek',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        sourceTimeSec: Number.parseFloat(seekMatch[1]),
-        preserveAudioSync: true,
-      }),
-    };
-  }
-
-  if (/\b(what were we looking at|what was overhead|show me what was overhead|identify the stars|calibrate|register the sky|show sky|what is in the sky|match the sky)\b/i.test(norm)) {
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'sky.show',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        mode: context.calibrationState === 'calibrated' ? 'measured' : 'predicted',
-        ...(session.observationSolution ? { observationSolutionId: session.observationSolution.id } : {}),
-      }),
-    };
-  }
-
-  const aroundWhat = VIEWPOINT_COMMAND.test(norm) ? resolveTargetFinding(norm, context, session, named, VIEWPOINT_COMMAND, 'view') : undefined;
-  if (aroundWhat) {
-    const resolved = aroundWhat;
-    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'space.viewpoint',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        targetFindingId: resolved.findingId,
-        units: 'pc',
-        offsetParsec: [12, 8, -5],
-        trajectory: /\b(translate|shift)\b/i.test(norm) ? 'translate' : 'orbit',
-      }),
-    };
-  }
-
-  const howFarWhat = DISTANCE_COMMAND.test(norm) ? resolveTargetFinding(norm, context, session, named, DISTANCE_COMMAND, 'view') : undefined;
-  if (howFarWhat) {
-    const resolved = howFarWhat;
-    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'finding.describe',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        findingId: resolved.findingId,
-        fields: ['distance', 'evidence'],
-      }),
-    };
-  }
-
-  const behindWhat = SIGHTLINE_COMMAND.test(norm) ? resolveTargetFinding(norm, context, session, named, SIGHTLINE_COMMAND, 'view') : undefined;
-  if (behindWhat) {
-    const resolved = behindWhat;
-    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'finding.describe',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        findingId: resolved.findingId,
-        fields: ['behind_sightline'],
-      }),
-    };
-  }
-
-  const toWhat = FLIGHT_COMMAND.test(norm) ? resolveTargetFinding(norm, context, session, named, FLIGHT_COMMAND, 'view') : undefined;
-  if (toWhat) {
-    const resolved = toWhat;
-    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'space.enter',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        findingId: resolved.findingId,
-        distancePolicy: 'measured_or_estimated',
-      }),
-    };
-  }
-
-  // Selecting needs a name or a pointing word: on its own it does not say which one
-  const selectWhat =
-    SELECT_COMMAND.test(norm) || BRIGHTEST_PATTERN.test(norm) || (!howMany && named.present.length > 0)
-      ? resolveTargetFinding(norm, context, session, named, SELECT_COMMAND, 'which')
-      : undefined;
-  if (selectWhat) {
-    const resolved = selectWhat;
-    if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
-    if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
-    return {
-      action: AlbedianActionSchema.parse({
-        type: 'finding.select',
-        requestId,
-        expectedViewRevision: context.viewRevision,
-        findingId: resolved.findingId,
-      }),
-    };
-  }
-
-  // No rule matches: a question, which the reducer refuses until the M3 tools can answer it from the user's data
-  if (trimmed.length > QUESTION_MAX_UTF16) {
-    return {
-      error: 'No command matches the request, and it is longer than a question can hold.',
-      reason: 'no_grounded_answer',
-    };
-  }
-  return {
-    action: AlbedianActionSchema.parse({
-      type: 'question.ask',
-      requestId,
-      expectedViewRevision: context.viewRevision,
-      question: trimmed,
-    }),
-  };
+  throw new Error('the voice command grammar ends with its rest rule, which always reads the request');
 }
+
+type RuleBase = { requestId: string; expectedViewRevision: number };
+
+/** What one rule makes of the request: a result, or undefined when the rule does not ask for it. */
+function readRule(
+  rule: GrammarRule,
+  norm: string,
+  trimmed: string,
+  context: ActionContext,
+  session: ObservationSession,
+  named: NamesRead,
+  howMany: boolean,
+  base: RuleBase,
+  currentYear: number
+): VoiceParseResult | undefined {
+  const handler = RULE_HANDLERS[rule.action];
+  if (!handler) throw new Error(`no handler for the voice command ${rule.action}`);
+  let read: VoiceParseResult | undefined;
+  if (rule.match === 'year' || rule.match === 'rest' || rule.match === 'name' || rule.match === 'seconds') {
+    read = handler({ rule, norm, trimmed, context, session, named, howMany, base, currentYear, fields: rule.with });
+  } else if (ruleSays(rule, norm)) {
+    read = handler({ rule, norm, trimmed, context, session, named, howMany, base, currentYear, fields: fieldsFor(rule, norm) });
+  }
+  // A sentence that changes the scene acts only when every word of it is accounted for (answers-3b v4); the caller
+  // passes a not_a_request to the later rules
+  if (read?.action && changesTheScene(VOICE_GRAMMAR, rule)) return notOneRequest(rule, norm, named, session) ?? read;
+  return read;
+}
+
+// The words a rule that changes the scene accounts for beside its own: the pointing words (that, it, there), and for a
+// rule with a target, the words that describe the thing itself (bright, red, star) and the star names that are also
+// everyday words (ran, fang), as services/voice/intent.py has them
+const TARGET_ACCOUNTED = new Set<string>([...POINTING, ...DESCRIBING_A_THING, ...EVERYDAY_WORD_NAMES]);
+// What the code of a year rule reads: the first of these its reading takes
+const YEAR_READS = [YEARS_AGO, A_THOUSAND_YEARS_AGO, YEARS_FROM_NOW, YEAR_THEN_ERA, ERA_THEN_YEAR, YEAR_WORD];
+
+/** A seek phrase and the seconds said after it, as the seek rule reads them. */
+function secondsSaid(rule: GrammarRule, norm: string): RegExpMatchArray | null {
+  return norm.match(new RegExp(`(?:${rule.pattern!.source})\\s+(?:to\\s+)?(\\d+(?:\\.\\d+)?)\\s*(?:s|sec|seconds)?\\b`));
+}
+
+/** `rest` with what a code-read rule's own code read of `norm` turned to spaces: the seconds after a seek phrase, or the year. */
+function codeRead(rule: GrammarRule, norm: string, rest: string): string {
+  let said: RegExpMatchArray | null | undefined;
+  if (rule.match === 'seconds') said = secondsSaid(rule, norm);
+  else if (rule.match === 'year') said = YEAR_READS.map((pattern) => norm.match(pattern)).find((match) => match !== null);
+  if (!said || said.index === undefined) return rest;
+  return rest.slice(0, said.index) + ' '.repeat(said[0].length) + rest.slice(said.index + said[0].length);
+}
+
+/**
+ * The refusal of a sentence the rule's action came from that is not one request, or undefined when it is one
+ * (services/voice/intent.py _not_one_request): a second request that changes the scene in it (two_requests), else the
+ * first word nothing accounts for (not_a_request): not the rule's own words, a name, a pointing word, for a rule with a
+ * target a describing word, what its code read, or a word that changes nothing (the table's unchanging words).
+ */
+function notOneRequest(rule: GrammarRule, norm: string, named: NamesRead, session: ObservationSession): VoiceParseResult | undefined {
+  const own = ownWordsCut(rule, named.without);
+  const media = mediaWord(session);
+  // The name rule has no words of its own, so a rule's words beside a name are that rule's to read, not a second request
+  if (rule.match !== 'name' && anotherRequest(VOICE_GRAMMAR, rule, own, named.without)) {
+    const refusal: VoiceRefusal = { kind: 'two_requests' };
+    return { error: refusalSentence(refusal, media), reason: 'not_one_request', refusal };
+  }
+  const conflict = conflictingModifier(rule, named.without);
+  if (conflict !== undefined) {
+    const refusal: VoiceRefusal = { kind: 'not_a_request', said: Array.from(wordsOf(conflict)[0]!).slice(0, MAX_QUOTED_CHARACTERS).join('') };
+    return { error: refusalSentence(refusal, media), reason: 'not_one_request', refusal };
+  }
+  let rest = codeRead(rule, norm, blanked(VOICE_GRAMMAR.unchangingPattern, own));
+  // The ranking word is the app's own reading of a target by measured flux ("the brightest star"); the backend refuses
+  // it before any rule (services/voice/intent.py BRIGHTEST), since it holds no fluxes
+  if (rule.target !== undefined) rest = blanked(RANKING_WORD, rest);
+  const accounted = rule.target !== undefined ? TARGET_ACCOUNTED : POINTING;
+  const word = wordsOf(rest).find((w) => !accounted.has(w));
+  if (word === undefined) return undefined;
+  // At most 80 characters, counted in code points as Python counts them
+  const refusal: VoiceRefusal = { kind: 'not_a_request', said: Array.from(word).slice(0, MAX_QUOTED_CHARACTERS).join('') };
+  return { error: refusalSentence(refusal, media), reason: 'not_one_request', refusal };
+}
+
+interface RuleInput {
+  rule: GrammarRule;
+  norm: string;
+  trimmed: string;
+  context: ActionContext;
+  session: ObservationSession;
+  named: NamesRead;
+  howMany: boolean;
+  base: RuleBase;
+  currentYear: number;
+  fields: Readonly<Record<string, unknown>>;
+}
+
+/** The action on the target a rule found, the question between several, or the refusal that says why there is none. */
+function onTarget(input: RuleInput, act: (findingId: string) => Record<string, unknown>): VoiceParseResult | undefined {
+  const { rule, norm, context, session, named } = input;
+  // A rule read from phrases cuts its own words before the rest is read; the name rule has none
+  const resolved = resolveTargetFinding(norm, context, session, named, rule.pattern, rule.target!);
+  if (!resolved) return undefined;
+  if (rule.target === 'named' && !resolved.findingId && !resolved.disambiguation) return undefined;
+  if (resolved.disambiguation) return { disambiguation: resolved.disambiguation };
+  if (!resolved.findingId) return { error: resolved.error, reason: resolved.reason, refusal: resolved.refusal };
+  return { action: AlbedianActionSchema.parse(act(resolved.findingId)) };
+}
+
+const acted = (action: Record<string, unknown>): VoiceParseResult => ({ action: AlbedianActionSchema.parse(action) });
+
+/** One handler per contract action the grammar names; each reads the rule's fixed fields. */
+const RULE_HANDLERS: Readonly<Record<string, (input: RuleInput) => VoiceParseResult | undefined>> = {
+  'navigation.cancel': ({ base, session }) =>
+    acted({ type: 'navigation.cancel', ...base, transitionId: session.spatialView.activeTransitionId }),
+  'history.back': ({ base, fields }) => acted({ type: 'history.back', ...base, ...fields }),
+  // No checkpoint named: the reducer returns to the moment you left, as the button does
+  'source.return': ({ base }) => acted({ type: 'source.return', ...base, restoreAudio: true }),
+  'space.epoch': ({ norm, base, currentYear }) => {
+    const said = saidYear(norm, currentYear);
+    if (said === undefined) return undefined;
+    const year = epochYear(said);
+    if ('refusal' in year) return { error: year.refusal, reason: 'invalid_epoch' };
+    return acted({ type: 'space.epoch', ...base, epochISO: epochIsoForYear(year.yearCE), yearCE: year.yearCE });
+  },
+  'ui.overlay': ({ base, fields }) => acted({ type: 'ui.overlay', ...base, ...fields }),
+  'media.compare': ({ base, session }) => {
+    const originalVariant = session.mediaVariants[0]?.id ?? 'variant_original';
+    const restoredVariant = session.activeVariantId !== originalVariant ? session.activeVariantId : (session.mediaVariants[1]?.id ?? originalVariant);
+    return acted({ type: 'media.compare', ...base, variantAId: originalVariant, variantBId: restoredVariant, preserveTime: true });
+  },
+  'media.restore': ({ base, fields, session }) =>
+    acted({
+      type: 'media.restore',
+      ...base,
+      sourceAssetId: session.sourceAsset?.id ?? EMPTY_SOURCE_ASSET_ID,
+      ...fields,
+      constraints: { preservePeople: true, allowSyntheticSky: false, protectStars: true },
+    }),
+  'media.seek': ({ rule, norm, base }) => {
+    const seekMatch = secondsSaid(rule, norm);
+    if (!seekMatch?.[1]) return undefined;
+    return acted({ type: 'media.seek', ...base, sourceTimeSec: Number.parseFloat(seekMatch[1]), preserveAudioSync: true });
+  },
+  'sky.show': ({ base, fields, context, session }) =>
+    acted({
+      type: 'sky.show',
+      ...base,
+      mode: context.calibrationState === 'calibrated' ? 'measured' : 'predicted',
+      ...fields,
+      ...(session.observationSolution ? { observationSolutionId: session.observationSolution.id } : {}),
+    }),
+  'space.viewpoint': (input) =>
+    onTarget(input, (findingId) => ({
+      type: 'space.viewpoint',
+      ...input.base,
+      targetFindingId: findingId,
+      units: 'pc',
+      offsetParsec: [12, 8, -5],
+      ...input.fields,
+    })),
+  'finding.describe': (input) => onTarget(input, (findingId) => ({ type: 'finding.describe', ...input.base, findingId, ...input.fields })),
+  'space.enter': (input) =>
+    onTarget(input, (findingId) => ({ type: 'space.enter', ...input.base, findingId, distancePolicy: 'measured_or_estimated' })),
+  'finding.select': (input) => {
+    // The name rule: a thing the request names, or a ranking by measured brightness, is what it is about
+    if (input.rule.match === 'name' && !BRIGHTEST_PATTERN.test(input.norm) && (input.howMany || input.named.present.length === 0)) return undefined;
+    return onTarget(input, (findingId) => ({ type: 'finding.select', ...input.base, findingId }));
+  },
+  // No rule matches: a question, which the reducer refuses until the M3 tools can answer it from the user's data
+  'question.ask': ({ trimmed, base }) => {
+    if (trimmed.length > QUESTION_MAX_UTF16) {
+      return { error: 'No command matches the request, and it is longer than a question can hold.', reason: 'no_grounded_answer' };
+    }
+    return acted({ type: 'question.ask', ...base, question: trimmed });
+  },
+};
+
+/** The rules of the voice command grammar this parser reads: every one whose action has a handler here. */
+export const HANDLED_RULES: ReadonlySet<string> = new Set(VOICE_GRAMMAR.rules.filter((rule) => rule.action in RULE_HANDLERS).map((rule) => rule.id));
 
 export const resolveVoiceUtterance = parseUtteranceToAction;
 

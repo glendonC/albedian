@@ -77,7 +77,9 @@ describe('@albedian/observation voice parser: star names that are everyday words
         expect(targetOf(utterance, session), utterance).not.toBe(TABLE.get('ran')!.id);
         expect(targetOf(utterance, session), utterance).not.toBe(TABLE.get('fang')!.id);
       }
-      expect(targetOf('I ran the solve again, select that one', session)).toBe(SELECTED);
+      // "I ran the solve again" holds words no rule accounts for: no action (answers-3b v4); never the star Ran
+      expect(targetOf('I ran the solve again, select that one', session)).toBeUndefined();
+      expect(targetOf('select that one', session)).toBe(SELECTED);
     }
   );
 

@@ -22,7 +22,8 @@ import anthropic
 
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 from services.science.predicted_sky import PREDICTED_BODIES
-from services.voice.names import UNBAKED_OBJECTS, named_stars
+from services.contracts.voice import lower_case
+from services.voice.names import UNBAKED_OBJECTS, ascii_capitalized, named_stars
 
 if TYPE_CHECKING:
     from services.voice.intent import ActionContext
@@ -54,7 +55,7 @@ MAX_POINTER_RECENCY_MS = 10_000.0
 # The Solar System bodies a recording's sky is predicted with, from the ephemeris' own list
 # (services/science/predicted_sky.py), never retyped here: the Sun, the Moon and five planets. The rules
 # parser in intent.py shares this vocabulary.
-PREDICTED_BODY_KEYS: tuple[str, ...] = tuple(body.lower() for body in PREDICTED_BODIES)
+PREDICTED_BODY_KEYS: tuple[str, ...] = tuple(lower_case(body) for body in PREDICTED_BODIES)
 # The pinned catalog stars, then every star of the baked IAU name table (services/voice/names.py)
 CATALOG_STAR_NAMES: dict[str, str] = {star.common_name: f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
 for _star in named_stars():
@@ -254,7 +255,7 @@ SYSTEM_PROMPT = (
     "Catalog stars (name: finding id):\n"
     + _finding_table(list(CATALOG_STAR_NAMES.items()))
     + "\n\nPredicted Solar System bodies (name: finding id):\n"
-    + _finding_table([(key.capitalize(), f"finding-predicted-{key}") for key in PREDICTED_BODY_KEYS])
+    + _finding_table([(ascii_capitalized(key), f"finding-predicted-{key}") for key in PREDICTED_BODY_KEYS])
     + "\n\nVoice cannot reach these yet, so call no tool when the user names one: "
     + ", ".join(label.removeprefix("the ") for label in UNBAKED_OBJECTS)
     + ". The Southern Cross is a constellation, not one star: call no tool unless the user names one of "

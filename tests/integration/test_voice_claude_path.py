@@ -16,16 +16,18 @@ from typing import Any
 
 import anthropic
 import httpx2
-from hypothesis import given, settings, strategies as st
+from hypothesis import example, given, settings, strategies as st
 import pytest
 
 from services.contracts import voice as contract
+from services.contracts import voice
 from services.voice import claude, intent
 from services.voice.intent import ActionContext, check_voice_command, parse_voice_intent
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "python_voice_actions.json"
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"
 TEST_KEY = "sk-ant-test-not-a-real-key"
+ROOT = Path(__file__).resolve().parents[2]
 
 # Made-up values that point at no real person, place, time or file.
 CONTEXT = ActionContext.from_dict(
@@ -724,6 +726,10 @@ WORDS_DECIDE = [
     ("select the southern cross", "the Southern Cross question"),
     ("take me to the southern cross", "the Southern Cross question"),
     ("what is crux", "the Southern Cross question"),
+    # A sentence that is not one request (answers-3b v4): no action, and no model to give one
+    ("nobody asked you to restore it", "kind not_a_request"),
+    ("hey did you restore it", "kind not_a_request"),
+    ("turn on the constellation lines and turn off the residuals", "kind two_requests"),
 ]
 
 
@@ -749,3 +755,83 @@ def test_the_table_reaches_every_kind_the_words_decide_and_the_model_is_asked_ot
     assert rules.refusal == {"kind": "which_one"} and not intent._the_words_decide(rules)
     _live, asked = _live_reply("describe the red star", MODEL_TOOL_CALLS[0])
     assert asked == 1
+
+
+# AUDIT G's four requests on the live path (answers-3-v2 verdict), with the fake model: letters new in Unicode 16.0
+# (U+1C89, U+1C8A) and 17.0 (U+A7CF). The parsers read words from the tracked letters table and lower case from the
+# tracked lower-case table, both Unicode 15.1.0, so each gets one reply on every runtime: none of the three is a letter
+READER_REQUESTS = [
+    ("select vega\u1c8a", ("finding_select", {"findingId": "finding-star-vega"}), 1, ("proposed", "finding.select", "finding-star-vega", "model")),
+    ("fly to vega\u1c8a", ("space_enter", {"findingId": "finding-star-vega"}), 1, ("proposed", "space.enter", "finding-star-vega", "model")),
+    ("select vega\ua7cf", ("finding_select", {"findingId": "finding-star-vega"}), 1, ("proposed", "finding.select", "finding-star-vega", "model")),
+    ("select \u1c89", ("finding_select", {"findingId": "finding-obs-7"}), 1, ("rejected", "ambiguous_target", "which_one", "rules")),
+]
+
+
+def _said(reply: dict[str, Any]) -> tuple[str, str, str | None, str | None]:
+    parser = (reply.get("interpretation") or {}).get("parser")
+    if reply["status"] == "proposed":
+        action = reply["proposedAction"]
+        return ("proposed", action["type"], action.get("findingId"), parser)
+    return (reply["status"], reply["reason"], (reply.get("refusal") or {}).get("kind"), parser)
+
+
+@pytest.mark.parametrize("utterance, tool, asked, said", READER_REQUESTS, ids=[r[0].encode("unicode_escape").decode() for r in READER_REQUESTS])
+def test_the_readers_requests_get_one_reply_on_every_runtime(utterance: str, tool: Any, asked: int, said: Any) -> None:
+    reply, times = _live_reply(utterance, tool)
+    assert (times, _said(reply)) == (asked, said)
+
+
+_LETTERS = json.loads((ROOT / "packages" / "contracts" / "src" / "data" / "letters-and-digits.json").read_text(encoding="utf-8"))
+_LOWER = json.loads((ROOT / "packages" / "contracts" / "src" / "data" / "lower-case.json").read_text(encoding="utf-8"))
+
+
+def _spans(version: str) -> set[int]:
+    return {cp for first, last in _LETTERS["differsFrom"][version] for cp in range(first, last + 1)}
+
+
+# The code points whose word class or lower case Unicode 15.0.0 and 17.0.0 give otherwise, from the tracked tables
+# alone: each table lists where 15.0.0 and 17.0.0 differ from its own 15.1.0, so they differ from each other where
+# exactly one of the two lists holds the code point
+DIFFERING_15_17 = sorted((_spans("15.0.0") ^ _spans("17.0.0"))
+                         | (set(_LOWER["differsFrom"]["15.0.0"]) ^ set(_LOWER["differsFrom"]["17.0.0"])))
+# What stands in for such a code point: a letter of the tables the lower-case table leaves as it is, or a sign
+_LETTER_STAND_IN, _SIGN_STAND_IN = "\u0292", "\u2020"
+LIVE_BASES = ["select vega", "fly to vega", "select ", "select that", "what is that", "take me there", "how far is rigel",
+              "tell me about it", "orbit vega", "where is saturn"]
+
+
+def test_the_differing_code_points_come_from_the_tables() -> None:
+    assert 0x1C89 in DIFFERING_15_17 and 0x1C8A in DIFFERING_15_17 and 0xA7CF in DIFFERING_15_17
+    assert len(DIFFERING_15_17) > 9000
+    assert voice.is_letter_or_digit(ord(_LETTER_STAND_IN)) and voice.lower_case(_LETTER_STAND_IN) == _LETTER_STAND_IN
+    assert not voice.is_letter_or_digit(ord(_SIGN_STAND_IN))
+
+
+@settings(max_examples=150, deadline=None)
+@given(cp=st.sampled_from(DIFFERING_15_17), base=st.sampled_from(LIVE_BASES), tool=st.sampled_from(MODEL_TOOL_CALLS),
+       inside=st.booleans())
+@example(cp=0x1C89, base="select ", tool=("finding_select", {"findingId": "finding-obs-7"}), inside=False)
+@example(cp=0x1C8A, base="fly to vega", tool=("space_enter", {"findingId": "finding-star-vega"}), inside=True)
+@example(cp=0xA7CF, base="select vega", tool=("finding_select", {"findingId": "finding-star-vega"}), inside=True)
+def test_pbt_a_character_the_versions_read_otherwise_decides_as_its_table_class_does(
+    cp: int, base: str, tool: tuple[str, dict[str, Any]], inside: bool
+) -> None:
+    """Appended to a request, a code point whose class or case changes between Unicode 15.0 and 17.0 asks the model,
+    and keeps its action, exactly as a stand-in of its class in the tracked tables does: the decision reads the
+    tables, never the runtime."""
+    stand_in = _LETTER_STAND_IN if voice.is_letter_or_digit(cp) else _SIGN_STAND_IN
+    join = "" if inside else " "
+    reply, asked = _live_reply(f"{base}{join}{chr(cp)}", tool)
+    expected, expected_asked = _live_reply(f"{base}{join}{stand_in}", tool)
+    assert (asked, _said(reply)[3]) == (expected_asked, _said(expected)[3])
+    # And the rules' own reading, before any model: the same action, target or refusal kind
+    own = parse_voice_intent(f"{base}{join}{chr(cp)}", CONTEXT, current_year=2026)
+    stood = parse_voice_intent(f"{base}{join}{stand_in}", CONTEXT, current_year=2026)
+    assert _rules_key(own) == _rules_key(stood)
+
+
+def _rules_key(read: Any) -> tuple[Any, ...]:
+    if read.action is not None:
+        return ("action", read.action["type"], read.action.get("findingId"), read.action.get("mode"))
+    return ("refused", read.reason, (read.refusal or {}).get("kind"), bool(read.choices))

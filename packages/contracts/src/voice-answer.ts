@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import LETTERS_AND_DIGITS from './data/letters-and-digits.json';
+import LOWER_CASE_TABLE from './data/lower-case.json';
 import { EvidenceClassSchema, type EvidenceClass } from './primitives.js';
 
 /**
@@ -270,6 +271,21 @@ const CONTROL = /[\u0000-\u001F\u007F-\u009F]/;
  * judges a sentence alike; services/contracts/voice.py reads the same file. */
 export const LETTERS_AND_DIGITS_UNICODE_VERSION: string = LETTERS_AND_DIGITS.unicodeVersion;
 const LETTER_RANGES: readonly (readonly number[])[] = LETTERS_AND_DIGITS.ranges;
+
+/** The lower-case table both voice parsers read (data/lower-case.json, written by scripts/generate_letters_and_digits.py):
+ * Unicode 15.1.0's simple lower-case mapping, one code point to one. A request is lowered by it, never by the
+ * runtime's own case tables, so every runtime reads a request alike; services/contracts/voice.py reads the same file. */
+const LOWER_CASE = new Map<number, number>(LOWER_CASE_TABLE.pairs.map(([upper, lower]) => [upper!, lower!]));
+
+/** `text` with every code point the lower-case table maps replaced by its lower case, and every other kept. */
+export function lowerCase(text: string): string {
+  let out = '';
+  for (const char of text) {
+    const lower = LOWER_CASE.get(char.codePointAt(0)!);
+    out += lower === undefined ? char : String.fromCodePoint(lower);
+  }
+  return out;
+}
 
 /** Whether the table counts this code point as a letter or a digit. */
 export function isLetterOrDigit(codePoint: number): boolean {

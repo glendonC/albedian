@@ -222,7 +222,7 @@ PARSED_CHECKS = [
     ("clean up the noise", "media.restore"),
     ("back to my video", "source.return"),
     ("calibrate the sky", "sky.show"),
-    ("go back", "history.back"),
+    ("go back", "source.return"),  # back to the moment, as the app reads it (answers-3b)
     ("stop", "navigation.cancel"),
 ]
 

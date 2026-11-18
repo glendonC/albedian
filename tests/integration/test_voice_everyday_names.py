@@ -78,8 +78,12 @@ def test_the_auditor_sentences_name_no_star(utterance: str) -> None:
         assert f"{shown} is not among" not in text
 
 
-def test_select_that_one_after_an_everyday_word_takes_the_selection() -> None:
+def test_select_that_one_after_an_everyday_word_is_no_request_and_never_the_star() -> None:
+    # "I ran the solve again" holds words no rule accounts for: no action (answers-3b v4); never the star Ran
     reply = _reply("I ran the solve again, select that one")
+    assert reply["status"] == "rejected"
+    assert reply["refusal"] == {"kind": "not_a_request", "said": "i"}
+    reply = _reply("select that one")
     assert reply["status"] == "proposed"
     assert reply["proposedAction"]["type"] == "finding.select"
     assert reply["proposedAction"]["findingId"] == "finding-star-vega"
@@ -96,7 +100,7 @@ def test_select_that_one_after_an_everyday_word_takes_the_selection() -> None:
         ("focus on star diadem", "diadem"),
         ("what is atlas", "atlas"),
         ("show me the star fang", "fang"),
-        ("show the atlas star", "atlas"),
+        ("the atlas star, select it", "atlas"),
     ],
 )
 def test_a_cued_everyday_word_names_its_star(utterance: str, word: str) -> None:

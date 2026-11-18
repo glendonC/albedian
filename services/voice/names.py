@@ -23,7 +23,7 @@ from pathlib import Path
 import re
 from typing import TypeVar
 
-from services.contracts.voice import JAVASCRIPT_SPACES, refusal_sentence
+from services.contracts.voice import JAVASCRIPT_SPACES, is_letter_or_digit, lower_case, refusal_sentence
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 
 T = TypeVar("T")
@@ -123,7 +123,7 @@ def whole_word(name: str) -> re.Pattern[str]:
     the regex engine can skip straight to where the name occurs. With the look-behind first it tests every
     position, and with hundreds of names a long utterance took seconds.
     """
-    literal = re.escape(name.lower())
+    literal = re.escape(lower_case(name))
     return re.compile(rf"{literal}(?<![a-z0-9]{literal})(?![a-z0-9])")
 
 
@@ -131,9 +131,9 @@ def name_pattern(name: str) -> re.Pattern[str]:
     """How a request names this star: a plain whole word, or for an everyday-word name, only after a naming verb
     (NAME_CUE_VERBS, then "the" and "star" if said) or with "star" right before or after it.
     packages/observation/src/voiceParser.ts builds the same pattern from the generated lists."""
-    if name.lower() not in EVERYDAY_WORD_NAMES:
+    if lower_case(name) not in EVERYDAY_WORD_NAMES:
         return whole_word(name)
-    literal = re.escape(name.lower())
+    literal = re.escape(lower_case(name))
     cues = "|".join(re.escape(verb) for verb in NAME_CUE_VERBS)
     s = JAVASCRIPT_SPACE
     return re.compile(
@@ -156,7 +156,9 @@ POINTING_WORDS = (
 
 # Words that say something about a thing without naming it. They stand only beside a pointing word ("that bright
 # one", "how far is it in light years"); without one, the request does not say which thing it means.
-DESCRIBING_WORDS = (
+# The words that describe a thing itself: what it is, its kind, how it looks and where it is. A rule that changes the
+# scene and has a target accounts for these beside its own words (answers-3b v4)
+DESCRIBING_A_THING = (
     # a thing with no name
     "one", "ones", "star", "stars", "thing", "things", "object", "objects", "body", "bodies", "dot", "dots",
     "point", "points", "light", "lights", "spot", "spots", "patch", "patches", "blob", "blobs", "speck", "smudge",
@@ -174,6 +176,8 @@ DESCRIBING_WORDS = (
     "left", "top", "bottom", "middle", "center", "centre", "upper", "lower", "corner", "edge", "above", "below",
     "beside", "next", "nearest", "closest", "other", "another", "same", "first", "second", "last", "something",
     "anything", "else",
+)
+DESCRIBING_WORDS = DESCRIBING_A_THING + (
     # measures
     "distance", "year", "years", "parsec", "parsecs", "kilometre", "kilometres", "kilometer", "kilometers", "km",
     "mile", "miles", "au", "ly", "pc",
@@ -182,6 +186,8 @@ DESCRIBING_WORDS = (
     "frame", "sky", "night", "screen", "view", "app", "solve", "solved", "space", "3d", "earth", "home",
     # what the app parser's commands speak of ("another viewpoint", "orbit", "from the side", "how distant")
     "orbit", "viewpoint", "angle", "side", "sightline", "different", "distant",
+    # what a question asks of a star ("what is its magnitude")
+    "magnitude", "brightness", "dimmest", "faintest",
 )
 
 # Words that can be neither the thing asked about nor a description of it: grammar, politeness and the verbs a
@@ -224,15 +230,38 @@ FUNCTION_WORDS = (
     "fly", "lies", "along", "translate", "shift",
     # the app's own name
     "albedian",
+    # an interjection, and words that praise without naming a thing ("that's beautiful, what is it?")
+    "wait", "yo", "mate", "beautiful", "gorgeous", "pretty", "amazing", "lovely", "stunning", "awesome", "wonderful", "incredible", "instead", "camping", "saw",
 )
 
 # The plain words that ask. A request that asks, names nothing and points at nothing is a question about no one
 # thing ("what is an orbit?"), not a command for what is in view.
 ASKING_WORDS = ("what", "which", "who", "whose", "where", "why", "how")
 
-# A word is a run of letters and digits of any script, as JavaScript's \p{L} and \p{N} find them, so a name
-# written in another alphabet is a word no list holds, never nothing at all
-_WORD = re.compile(r"[^\W_]+")
+
+
+def words_of(text: str) -> list[str]:
+    """The words of a text: runs of letters and digits of the tracked letters table, of any script, so a name written
+    in another alphabet is a word no list holds, never nothing at all (voiceParser.ts wordsOf reads the same table)."""
+    words: list[str] = []
+    start = None
+    for index, char in enumerate(text):
+        if is_letter_or_digit(ord(char)):
+            if start is None:
+                start = index
+        elif start is not None:
+            words.append(text[start:index])
+            start = None
+    if start is not None:
+        words.append(text[start:])
+    return words
+
+
+def ascii_capitalized(text: str) -> str:
+    """`text` with an ASCII small letter first raised: for the backend's own ASCII names and ids, never wire text."""
+    return chr(ord(text[0]) - 0x20) + text[1:] if text and "a" <= text[0] <= "z" else text
+
+
 _POINTING = frozenset(POINTING_WORDS)
 _ASKING = frozenset(ASKING_WORDS)
 # An everyday-word name said without its cue names no star ("I ran the solve again"): it only describes
@@ -268,10 +297,13 @@ def find_names(lower_text: str, table: Sequence[tuple[re.Pattern[str], T]]) -> t
 
 
 def points(lower_text: str) -> bool:
-    """True when a word of the text points at what is in view. "There" beside "is" or "are" points at nothing."""
-    words = _WORD.findall(lower_text)
+    """True when a word of the text points at what is in view. "There" beside "is" or "are" points at nothing, and
+    nor does "it" after "as" ("show me the sky as it was")."""
+    words = words_of(lower_text)
     for index, word in enumerate(words):
         if word not in _POINTING:
+            continue
+        if word == "it" and index > 0 and words[index - 1] == "as":
             continue
         if word == "there":
             before = words[index - 1] if index > 0 else ""
@@ -299,7 +331,7 @@ class Wording:
 def read_wording(without_names: str, without_names_or_command: str) -> Wording:
     """Read the words left of a lower-cased request. A pointing word counts wherever it stands, the command's own
     words included ("take me there"); the other words are judged with the command cut out too."""
-    words = _WORD.findall(without_names_or_command)
+    words = words_of(without_names_or_command)
     kinds = [
         "plain" if word in _FUNCTION or word in _POINTING else "describes" if word in _DESCRIBING else "unknown"
         for word in words
@@ -373,8 +405,8 @@ def spoken_names() -> tuple[tuple[str, str], ...]:
     by_name = {star.name: star for star in stars}
     pairs: dict[str, str] = {}
     for star in stars:
-        pairs[star.name.lower()] = star.finding_id
-        pairs[star.name_ascii.lower()] = star.finding_id
+        pairs[lower_case(star.name)] = star.finding_id
+        pairs[lower_case(star.name_ascii)] = star.finding_id
     for spoken, iau_name in SPOKEN_ALIASES.items():
         if iau_name in by_name:
             pairs.setdefault(spoken, by_name[iau_name].finding_id)
@@ -392,13 +424,13 @@ def star_name_table() -> tuple[tuple[str, str, str], ...]:
     shown: dict[str, str] = {}
     stars = named_stars()
     for star in stars:
-        shown[star.name.lower()] = star.name
-        shown[star.name_ascii.lower()] = star.name
+        shown[lower_case(star.name)] = star.name
+        shown[lower_case(star.name_ascii)] = star.name
     iau_names = {star.name for star in stars}
     for spoken, iau_name in SPOKEN_ALIASES.items():
         if iau_name in iau_names:
             shown.setdefault(spoken, iau_name)
-    table = {star.common_name.lower(): (f"finding-{star.id}", star.common_name) for star in ALL_SKY_CATALOG_STARS}
+    table = {lower_case(star.common_name): (f"finding-{star.id}", star.common_name) for star in ALL_SKY_CATALOG_STARS}
     for spoken, finding_id in spoken_names():
         table.setdefault(spoken, (finding_id, shown[spoken]))
     return tuple(sorted((spoken, finding_id, name) for spoken, (finding_id, name) in table.items()))

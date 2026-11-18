@@ -38,22 +38,35 @@ function targetOf(utterance: string, session: ObservationSession = selected): st
 }
 
 describe('@albedian/observation voice parser: the brightest star in the photo', () => {
+  // "What is" asks to describe, in the grammar both parsers read (answers-3b); the target is the same brightest finding
+  it.each(['what is the brightest star in my photo', 'What is the brightest star in my photo?'])(
+    '"%s" describes the brightest measured finding, not the selection',
+    (utterance) => {
+      const parsed = parse(utterance);
+      expect(parsed.action?.type).toBe('finding.describe');
+      expect(targetOf(utterance)).toBe('finding_sirius');
+    }
+  );
+
   it.each([
-    'what is the brightest star in my photo',
-    'What is the brightest star in my photo?',
     'brightest star',
-    'which is the brightest star here',
     'show me the brightest one',
     'select the brightest star in the picture',
-    "what's the brightest object in this image",
-    'brightest star on screen',
-    'the brightest star in view',
     'tell me about the brightest star in the photo',
   ])('"%s" selects the brightest measured finding, not the selection', (utterance) => {
     const parsed = parse(utterance);
     expect(parsed.action?.type).toBe('finding.select');
     expect(targetOf(utterance)).toBe('finding_sirius');
   });
+
+  // A question about the brightest, or a word no rule accounts for ("on screen", "in view"), selects nothing (answers-3b v4)
+  it.each(['which is the brightest star here', "what's the brightest object in this image", 'brightest star on screen', 'the brightest star in view'])(
+    '"%s" selects nothing',
+    (utterance) => {
+      expect(parse(utterance).action?.type ?? 'none').not.toBe('finding.select');
+      expect(targetOf(utterance)).toBeUndefined();
+    }
+  );
 
   it('flies to the brightest measured finding when asked to go there', () => {
     const parsed = parse('take me to the brightest star');
@@ -172,7 +185,7 @@ describe('@albedian/observation voice parser: the brightest star in the photo', 
     expect(parsed.error).toMatch(/by measured brightness alone/);
   });
 
-  it.each(['brightest light in the photo', 'the brightest point', 'brightest thing here', 'which is the brightest of them all', 'brightest?'])(
+  it.each(['brightest light in the photo', 'the brightest point', 'brightest thing here', 'brightest?'])(
     '"%s" is a star or an unqualified word, so it is answered',
     (utterance) => {
       expect(targetOf(utterance)).toBe('finding_sirius');

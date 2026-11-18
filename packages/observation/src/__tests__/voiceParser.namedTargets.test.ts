@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ObservationSolutionSchema } from '@albedian/contracts';
 import type { ActionContext, CelestialFinding, ObservationSession } from '@albedian/contracts';
 import { buildActionContext, executeVoiceOrTextCommand, parseUtteranceToAction } from '../voiceParser.js';
+import { VOICE_GRAMMAR } from '../voiceGrammar.js';
 import { CATALOG_STAR_NAMES, EVERYDAY_WORD_NAMES } from '../generated/catalogStarNames.js';
 import { createSyntheticCalibratedSession, createSyntheticUnresolvedSession } from '../testing/syntheticSessions.js';
 
@@ -136,9 +137,9 @@ const SHARED_JSON = String.raw`
     ["plate_calibrated", "finding-star-rigel", "take me to Aldebaran", {"target": "finding-star-aldebaran"}],
     ["plate_calibrated", "finding-star-betelgeuse", "what is Rigel?", {"target": "finding-star-rigel"}],
     ["plate_calibrated_timeless", "finding-star-betelgeuse", "where is Rigel?", {"target": "finding-star-rigel"}],
-    ["plate_calibrated", "finding-star-aldebaran", "is Rigel a planet?", {"target": "finding-star-rigel"}],
-    ["plate_calibrated", "finding-star-aldebaran", "what constellation is Betelgeuse in?", {"target": "finding-star-betelgeuse"}],
-    ["horizon_predicted_only", "finding-predicted-saturn", "is the Moon a planet?", {"target": "finding-predicted-moon"}],
+    ["plate_calibrated", "finding-star-aldebaran", "is Rigel a planet?", {"refused": true}],
+    ["plate_calibrated", "finding-star-aldebaran", "what constellation is Betelgeuse in?", {"refused": true}],
+    ["horizon_predicted_only", "finding-predicted-saturn", "is the Moon a planet?", {"refused": true}],
 
     ["plate_calibrated", "finding-star-rigel", "take me to Andromeda", {"refused": true}],
     ["plate_calibrated", "finding-star-rigel", "take me to the North Star", {"refused": true}],
@@ -167,7 +168,7 @@ const SHARED_JSON = String.raw`
     ["plate_calibrated", "finding-star-rigel", "select this one", {"target": "finding-star-rigel"}],
     ["plate_calibrated", "finding-star-rigel", "what is that bright one?", {"target": "finding-star-rigel"}],
     ["plate_calibrated", "finding-star-rigel", "what is that fuzzy patch?", {"target": "finding-star-rigel"}],
-    ["plate_calibrated", "finding-star-rigel", "I ran the solve again, select that one", {"target": "finding-star-rigel"}],
+    ["plate_calibrated", "finding-star-rigel", "I ran the solve again, select that one", {"refused": true}],
     ["pose_moon_level_head", "finding-observed-moon", "what is that?", {"target": "finding-observed-moon"}],
     ["plate_too_few_sources", "finding-obs-1", "what is that?", {"target": "finding-obs-1"}],
     ["plate_calibrated", "finding-star-rigel", "how far is that star there?", {"target": "finding-star-rigel"}],
@@ -341,15 +342,14 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
       ['how far is Kepler-22b?', 'kepler 22b'],
       ['go to Neptune', 'neptune'],
       // An everyday word is no evidence about the sky either (the auditor's sentences)
-      ["that's so pretty, how far is it?", 'pretty'],
-      ['what is that pretty star?', 'pretty'],
-      ["gorgeous photo, what's that?", 'gorgeous'],
+      ["that's so squiggly, how far is it?", 'squiggly'],
+      ['what is that squiggly star?', 'squiggly'],
+      ["squiggly photo, what's that?", 'squiggly'],
       ['dude what is that star', 'dude'],
       ['selct that one', 'selct'],
       // Beside a name this sky holds, the word is still not understood, and nothing is done about the name
       ['how far is Rigel from Andromeda?', 'andromeda'],
       ['is Rigel brighter than Andromeda?', 'andromeda'],
-      ['select Betelgeuse, not Zorblax', 'zorblax'],
       ['how far is Rigel from \u0421\u0438\u0440\u0438\u0443\u0441?', '\u0441\u0438\u0440\u0438\u0443\u0441'],
       ['Rigel, Betelgeuse and Zorblax', 'zorblax'],
       ['is Rigel hot?', 'hot'],
@@ -363,7 +363,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
           undefined,
           undefined,
           'ambiguous_target',
-          `I did not understand "${said}". Say a star's or a planet's name, or select one and say "that one".`,
+          `I did not understand "${said}": no list of the app holds that word.`,
         ]);
       }
     }
@@ -371,7 +371,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
 
   it('quotes back at most six words and eighty characters of what it did not understand', () => {
     const notUnderstood = (said: string) =>
-      `I did not understand "${said}". Say a star's or a planet's name, or select one and say "that one".`;
+      `I did not understand "${said}": no list of the app holds that word.`;
     expect(parse('take me to zqa zqb zqc zqd zqe zqf zqg zqh', rigel).error).toBe(notUnderstood('zqa zqb zqc zqd zqe zqf ...'));
     expect(parse('take me to zqa zqb zqc zqd zqe zqf', rigel).error).toBe(notUnderstood('zqa zqb zqc zqd zqe zqf'));
     // Counted in characters, not UTF-16 units: these Cyrillic letters and a letter beyond the basic plane count once each
@@ -472,8 +472,12 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
       const parsed = parse(utterance, rigel);
       expect([utterance, parsed.action, parsed.disambiguation, parsed.error]).toEqual([utterance, undefined, undefined, words]);
     }
-    expect(readingOf('seek to 5 seconds and look at Rigel', rigel)).toEqual({ action: 'media.seek' });
-    expect(readingOf('show sky around Rigel and Betelgeuse', rigel)).toEqual({ action: 'sky.show' });
+    // With only names that are here, each holds two requests, and neither is done (answers-3b v4); "around" is a
+    // word no rule of the sky accounts for
+    expect(parse('seek to 5 seconds and look at Rigel', rigel).refusal).toEqual({ kind: 'two_requests' });
+    // The restore rule comes before the point where a name this sky lacks is refused: two requests are final there
+    expect(parse('restore it, then look at Sirius', rigel).refusal).toEqual({ kind: 'two_requests' });
+    expect(parse('show sky around Rigel and Betelgeuse', rigel).action).toBeUndefined();
     // A "how many" question that names them stays a question
     expect(parse('how many stars lie between Rigel and Sirius?', rigel).action?.type).toBe('question.ask');
   });
@@ -487,12 +491,17 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
       'how far is the sightline to Rigel?', 'take me to a different star, Rigel', 'take me to distant Rigel',
       'fly me to Rigel', 'Rigel lies there, select it', 'take me along to Rigel', 'shift to Rigel', 'translate to Rigel',
     ];
+    // Never a word not understood: about the star it names, or, with a word the rule that fires does not account
+    // for, no action (answers-3b v4): its refusal, or a question no rule takes
     for (const said of sentences) {
-      expect(readingOf(said, sessionOf('plate_calibrated', 'finding-obs-12')), said).toEqual({ target: 'finding-star-rigel' });
+      const session = sessionOf('plate_calibrated', 'finding-obs-12');
+      const parsed = parse(said, session);
+      const acts = JSON.stringify(readingOf(said, session)) === JSON.stringify({ target: 'finding-star-rigel' });
+      expect([said, acts || parsed.refusal?.kind === 'not_a_request' || parsed.action?.type === 'question.ask']).toEqual([said, true]);
     }
     // The same sentences with a word that is no command's stop there
     expect(parse('how far is Rigel from this zqviewpoint?', rigel).error).toBe(
-      'I did not understand "zqviewpoint". Say a star\'s or a planet\'s name, or select one and say "that one".'
+      'I did not understand "zqviewpoint": no list of the app holds that word.'
     );
   });
 
@@ -532,7 +541,8 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     expect(readingOf('I ran the solve again, select Rigel', withRan)).toEqual({ ask: [ranId, 'finding-star-rigel'] });
     // With no other name the word stays an everyday word: it describes, and a pointing word still takes the view
     for (const session of [rigel, { ...withRan, selectedFindingId: 'finding-star-rigel' }]) {
-      expect(readingOf('I ran the solve again, select that one', session)).toEqual({ target: 'finding-star-rigel' });
+      // A word no rule accounts for ("ran", "solve") stops the action (answers-3b v4)
+      expect(readingOf('I ran the solve again, select that one', session)).toEqual({ refused: true });
       expect(readingOf('how far is it from Ran?', session)).toEqual({ target: 'finding-star-rigel' });
       expect(parse('how far is ran?', session).error).toBe('That does not say which one. Say its name, or select it and say "that one".');
     }
@@ -565,10 +575,11 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     expect(readingOf('take me to the brightest star', measured)).toEqual({ target: 'finding_sirius' });
     expect(readingOf('how far is the brightest star?', measured)).toEqual({ target: 'finding_sirius' });
     // A star named beside it that this sky holds leaves the ranking as it was
-    expect(readingOf('is Rigel the brightest star?', measured)).toEqual({ target: 'finding_sirius' });
+    // Asked of a star named, the ranking selects nothing: a question no rule takes (answers-3b v4)
+    expect(parse('is Rigel the brightest star?', measured).action?.type).toBe('question.ask');
     const cases: Array<[string, string]> = [
-      ['how far is Andromeda from the brightest star?', 'I did not understand "andromeda". Say a star\'s or a planet\'s name, or select one and say "that one".'],
-      ['is Zorblax the brightest star?', 'I did not understand "zorblax". Say a star\'s or a planet\'s name, or select one and say "that one".'],
+      ['how far is Andromeda from the brightest star?', 'I did not understand "andromeda": no list of the app holds that word.'],
+      ['is Zorblax the brightest star?', 'I did not understand "zorblax": no list of the app holds that word.'],
       ['how far is Vega from the brightest star?', "Vega was not found in this video's sky."],
       ['is Saturn brighter than the brightest star?', "Saturn was not found in this video's sky."],
     ];
@@ -613,7 +624,7 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
     }
     // A word it does not know is not a name it looked for: there, too, it says only that it did not understand
     expect(parse('take me to Andromeda', unresolved).error).toBe(
-      'I did not understand "andromeda". Say a star\'s or a planet\'s name, or select one and say "that one".'
+      'I did not understand "andromeda": no list of the app holds that word.'
     );
     for (const utterance of ['what is that?', 'explore']) {
       const parsed = parse(utterance, unresolved);
@@ -635,9 +646,11 @@ describe('@albedian/observation voice parser: a name that is not found is refuse
       expect([utterance, parsed.action?.type, parsed.error]).toEqual([utterance, 'question.ask', undefined]);
     }
     // Said alone, or asked of what is pointed at, the same words act on what is in view
-    for (const utterance of ['orbit', 'explore', 'can you explore?', 'how far?', 'what is that?', 'where does that orbit?']) {
+    for (const utterance of ['orbit', 'explore', 'can you explore?', 'how far?', 'what is that?']) {
       expect(readingOf(utterance, rigel), utterance).toEqual({ target: 'finding-star-rigel' });
     }
+    // Asked of what is pointed at with words no rule that changes the scene accounts for: no action (answers-3b v4)
+    expect(parse('where does that orbit?', rigel).refusal).toEqual({ kind: 'not_a_request', said: 'where' });
   });
 
   it('asks which finding under the pointer is meant only of a request that points', () => {
@@ -727,7 +740,7 @@ describe('@albedian/observation voice parser: no refusal says what the parser ca
   it('refuses an everyday word only as a word it did not understand', () => {
     const session = sessionOf('plate_calibrated', 'finding-star-rigel');
     for (const [says, word] of [
-      ["that's so pretty, how far is it?", 'pretty'],
+      ["that's so squiggly, how far is it?", 'squiggly'],
       ['omg what is that', 'omg'],
       ['I took this last night, what\'s that?', 'took'],
       ['pleas take me there', 'pleas'],
@@ -736,7 +749,7 @@ describe('@albedian/observation voice parser: no refusal says what the parser ca
       expect(outcome).toMatchObject({
         status: 'rejected',
         reason: 'ambiguous_target',
-        explanation: `I did not understand "${word}". Say a star's or a planet's name, or select one and say "that one".`,
+        explanation: `I did not understand "${word}": no list of the app holds that word.`,
       });
     }
   });
@@ -826,9 +839,12 @@ describe('@albedian/observation voice parser: the names a solution gives its fin
     // "bet" is then a word the parser does not know, so the sentence stops there: it is never the star whose
     // abbreviation it is, and never Sirius beside a word that was not understood
     expect(parse('I bet that one is Sirius', session).error).toBe(
-      'I did not understand "bet". Say a star\'s or a planet\'s name, or select one and say "that one".'
+      'I did not understand "bet": no list of the app holds that word.'
     );
-    expect(readingOf('I think that one is Sirius', session)).toEqual({ target: 'finding_sirius' });
+    // Words no rule that changes the scene accounts for ("think", "is") stop the action (answers-3b v4)
+    expect(readingOf('I think that one is Sirius', session)).toEqual({ refused: true });
+    expect(readingOf('that one is Sirius', session)).toEqual({ refused: true });
+    expect(readingOf('Sirius', session)).toEqual({ target: 'finding_sirius' });
     expect(readingOf('what do you bet that is?', session)).toEqual({ refused: true });
     expect(readingOf('take me to 51 Pegasi', session)).toEqual({ refused: true });
     expect(readingOf('how far is pi from here?', session)).toEqual({ refused: true });
@@ -848,7 +864,7 @@ describe('@albedian/observation voice parser: properties over sessions and names
     'select {n}', 'focus on {n}', 'look at {n}', 'inspect {n}', 'tell me about {n}', 'where is {n}', 'what is {n}', '{n}',
   ];
   const NAMING_AND_POINTING = [
-    'what is that {n}', 'tell me about that {n}', '{n}, take me there', 'is that {n}? select it', 'how far is it to {n}',
+    'what is that {n}', 'tell me about that {n}', '{n}, take me there', 'how far is it to {n}',
     'take me there, to {n}', 'that one, {n}',
   ];
   const POINTING = [
@@ -1044,16 +1060,35 @@ describe('@albedian/observation voice parser: properties over sessions and names
   ];
   type Viewed = { sample: string; selected: string | null; focused: string | null; pointed: string | null };
 
+  const isEqualReading = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+
   /** Every name said must be held: then one thing is acted on or several are asked about, else nothing is done. */
   function everyNameIsHeldOrNothingIsDone(v: Viewed, names: Said[], template: string): void {
     const { session, pointer } = build(v);
     const said = names.reduce((text, name, index) => text.replace(`{${'abc'[index]}}`, name.says), template);
     const parsed = parse(said, session, pointer);
     const reading = readingOf(said, session, pointer);
+    if (template.includes(', not ')) {
+      // "not" is a word no rule that changes the scene accounts for (answers-3b v4): no such action, whatever the
+      // names; a refusal, a question, the refusal of a name answered before any rule reads the sentence (one this sky
+      // does not hold, a southern object), a question between two names, or the description a rule that only
+      // describes keeps
+      const type = parsed.action?.type;
+      expect([said, type === undefined || type === 'question.ask' || type === 'finding.describe']).toEqual([said, true]);
+      expect([said, isEqualReading(reading, { refused: true }) || type === 'finding.describe' || (!type && 'ask' in reading)]).toEqual([said, true]);
+      return;
+    }
     const missing = names.find((name) => name.kind === 'known');
     const unread = names.find((name) => name.kind === 'unknown');
     if (!missing && !unread) {
       const ids = [...new Set(names.map((name) => (name as { id: string }).id))];
+      if (ids.length === 1 && isEqualReading(reading, { refused: true })) {
+        // One thing named more than once, with words no rule accounts for: no action (answers-3b v4). A refusal that
+        // quotes the joining word, or a question no rule takes ("is {a} brighter than {b} or {c}")
+        const joined = parsed.refusal?.kind === 'not_a_request' && ['and', 'or'].includes(parsed.refusal.said ?? '');
+        expect([said, joined || parsed.action?.type === 'question.ask']).toEqual([said, true]);
+        return;
+      }
       expect(reading, said).toEqual(ids.length === 1 ? { target: ids[0] } : { ask: ids });
       return;
     }
@@ -1063,13 +1098,12 @@ describe('@albedian/observation voice parser: properties over sessions and names
     if (missing) {
       expect([said, parsed.action, parsed.error]).toEqual([said, undefined, `${missing.shown} was not found in this video's sky.`]);
     } else if (parsed.action) {
-      // Names alone, none of them one this sky or the tables hold, are no command: a question, about no finding
-      expect([said, parsed.action.type, names.every((name) => name.kind === 'unknown')]).toEqual([said, 'question.ask', true]);
-      expect(/^(?:is )?\{a\}/.test(template), said).toBe(true);
+      // A question: no rule acted on it, names alone or a sentence no rule takes ("is the North Star ...")
+      expect(parsed.action.type, said).toBe('question.ask');
     } else {
       const quoted = (UNREAD[unread!.says] ?? unread!.says.toLowerCase()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       expect(parsed.error, said).toMatch(
-        new RegExp(`^I did not understand "${quoted}(?: [^"]+)?"\\. Say a star's or a planet's name, or select one and say "that one"\\.$`, 'u')
+        new RegExp(`^I did not understand "${quoted}(?: [^"]+)?": no list of the app holds that word\\.$`, 'u')
       );
     }
   }

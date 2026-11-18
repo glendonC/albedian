@@ -1321,6 +1321,7 @@ def _(f: Files) -> None:
 
 NOTICE = "notices/unicode/UNICODE-LICENSE.txt"
 LETTERS = "notices/unicode/letters-and-digits.json"
+LOWER_CASE = "notices/unicode/lower-case.json"
 
 
 @claim(NOTICE, "the notice is the Unicode licence's own text, written unchanged (equal to the script's copy of it; that copy "
@@ -1379,6 +1380,41 @@ def _(f: Files) -> None:
     f.json(LETTERS)["differsFrom"].pop("17.0.0")
 
 
+@claim(LOWER_CASE, "the simple one-to-one lower-case mapping of Unicode 15.1, as code-point pairs", cache=(UCD_DATA,))
+def _lower_case(f: Files) -> None:
+    d = f.json(LOWER_CASE)
+    expected = []
+    for line in (ROOT / UCD_DATA).read_text(encoding="utf-8").splitlines():
+        fields = line.split(";")
+        if fields[13]:
+            expected.append([int(fields[0], 16), int(fields[13], 16)])
+    expected.sort()
+    assert d["unicodeVersion"] == "15.1.0" and d["pairs"] == expected and d["count"] == len(expected)
+
+
+@_lower_case.wrong
+def _(f: Files) -> None:
+    d = f.json(LOWER_CASE)
+    a, b = d["pairs"][0]
+    d["pairs"][0] = [a, b + 1]
+
+
+@claim(LOWER_CASE, "with the code points where three other versions map otherwise")
+def _lower_case_differ(f: Files) -> None:
+    d = f.json(LOWER_CASE)
+    assert (
+        sorted(d["differsFrom"]) == ["15.0.0", "16.0.0", "17.0.0"]
+        and d["differsFrom"]["15.0.0"] == []
+        and d["differsFrom"]["16.0.0"]
+        and d["differsFrom"]["17.0.0"]
+    )
+
+
+@_lower_case_differ.wrong
+def _(f: Files) -> None:
+    f.json(LOWER_CASE)["differsFrom"].pop("17.0.0")
+
+
 # =============================================================================================
 # The rows, and that every script-made file has some
 # =============================================================================================
@@ -1411,4 +1447,4 @@ def test_every_script_made_file_has_its_claims_here() -> None:
         for entry in data["files"] + data["fileSets"]:
             if entry["producedBy"]["method"] == "script":
                 made.add(str((record.parent / (entry.get("path") or entry["checksums"])).relative_to(PUBLIC)))
-    assert made == {c.file for c in CLAIMS} and len(made) == 24
+    assert made == {c.file for c in CLAIMS} and len(made) == 25

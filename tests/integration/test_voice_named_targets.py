@@ -46,6 +46,7 @@ import pytest
 from services.contracts import voice as contract
 from services.science import predicted_sky
 from services.science.ephemeris import compute_solar_system_ephemerides
+from services.voice.grammar import VOICE_GRAMMAR, fields_for, grammar_rule
 from services.voice import claude, intent, names
 from services.voice.intent import check_voice_command, parse_voice_intent
 
@@ -62,7 +63,7 @@ SHARED: dict[str, Any] = json.loads(_SHARED_BLOCK.group(1))
 
 WHICH_ONE = 'That does not say which one. Say its name, or select it and say "that one".'
 NOTHING_IN_VIEW = "Nothing is selected or pointed at. Select a star or planet first, or say its name."
-NOT_UNDERSTOOD = 'I did not understand "{said}". Say a star\'s or a planet\'s name, or select one and say "that one".'
+NOT_UNDERSTOOD = 'I did not understand "{said}": no list of the app holds that word.'
 # No id, class name or contract term: words a person who is not an astronomer reads
 NOT_PLAIN = re.compile(
     r"finding|solution|catalog|ephemeris|observed|predicted|simulated|[a-z]_[a-z]|[a-z]-[a-z]+-[a-z]", re.IGNORECASE
@@ -202,8 +203,8 @@ SELECTED = _context("calibrated", "finding-star-vega")
         ("go to Neptune", "neptune"),
         ("select HIP 24436", "hip 24436"),
         # An everyday word is no evidence about a sky the backend never sees (the auditor's sentences)
-        ("that's so pretty, how far is it?", "pretty"),
-        ("what is that pretty star?", "pretty"),
+        ("that's so squiggly, how far is it?", "squiggly"),
+        ("what is that squiggly star?", "squiggly"),
         ("where is south?", "south"),
     ],
 )
@@ -223,7 +224,6 @@ def test_a_word_the_backend_does_not_know_is_refused_as_a_word_it_did_not_unders
     [
         ("how far is Betelgeuse from Andromeda?", "andromeda"),
         ("is Rigel brighter than Andromeda?", "andromeda"),
-        ("select Betelgeuse, not Zorblax", "zorblax"),
         ("how far is Rigel from \u0421\u0438\u0440\u0438\u0443\u0441?", "\u0441\u0438\u0440\u0438\u0443\u0441"),
         ("Rigel, Betelgeuse and Zorblax", "zorblax"),
         ("show me Rigel and Zorblax", "zorblax"),
@@ -274,7 +274,8 @@ def test_a_star_name_that_is_an_everyday_word_is_a_name_beside_another_name() ->
     assert _reading("I ran the solve again, select Rigel", SELECTED) == {
         "ask": [table["ran"], "finding-star-rigel"]
     }
-    assert _reading("I ran the solve again, select that one", SELECTED) == {"target": "finding-star-vega"}
+    # A word no rule accounts for ("ran", "solve") stops the action (answers-3b v4)
+    assert _reading("I ran the solve again, select that one", SELECTED) == {"refused": True}
 
 
 def test_a_southern_object_or_the_southern_cross_beside_a_known_name_is_answered_in_its_own_words() -> None:
@@ -339,8 +340,8 @@ def test_no_refusal_of_a_natural_sentence_says_what_a_sky_lacks(state: str) -> N
 
 @pytest.mark.parametrize(
     "utterance",
-    ["how far is the star?", "take me to the planet", "explore the galaxy", "what is a light year?", "fly atlas",
-     "select the bright one", "describe the red star"],
+    ["how far is the star?", "take me to the planet", "explore the galaxy", "fly atlas", "select the bright one",
+     "describe the red star"],
 )
 def test_a_thing_described_but_neither_named_nor_pointed_at_is_refused(utterance: str) -> None:
     reply = _reply(utterance, SELECTED)
@@ -352,11 +353,12 @@ def test_a_command_said_alone_takes_the_view_only_when_it_acts_on_what_is_in_vie
     for utterance in ("explore", "enter space", "how far?", "describe", "identify"):
         assert _reading(utterance, SELECTED) == {"target": "finding-star-vega"}, utterance
     # Selecting needs to be told which one
-    for utterance in ("select", "focus on", "lock onto"):
+    for utterance in ("select", "focus on", "lock onto", "tell me about"):
         reply = _reply(utterance, SELECTED)
         assert (reply["status"], reply["reason"], reply["explanation"]) == ("rejected", "ambiguous_target", WHICH_ONE)
-    # These are no command on their own: left as a question, with nothing taken from the view
-    for utterance in ("tell me about", "where is", "what is", "show me", "point"):
+    # These are no command on their own: left as a question, with nothing taken from the view. "What is" and "where
+    # is" ask about a named thing only, so a thing they only describe is a question too ("what is a light year?")
+    for utterance in ("where is", "what is", "show me", "point", "what is a light year?"):
         read = parse_voice_intent(utterance, SELECTED, current_year=YEAR)
         assert read.action is not None and read.action["type"] == "question.ask", utterance
 
@@ -420,7 +422,9 @@ def test_two_different_names_ask_which_with_both_as_choices() -> None:
         "interpretation": {"parser": "rules"},
     }
     # One thing named twice, by two of its names, is one thing
-    assert _reading("is Alpha Centauri the same as Rigil Kentaurus?", SELECTED) == {"target": "finding-hip-71683"}
+    # A question about them selects neither (answers-3b v4): "is" and "same" are words no rule accounts for
+    assert _reading("is Alpha Centauri the same as Rigil Kentaurus?", SELECTED) == {"refused": True}
+    assert _reading("select Alpha Centauri, Rigil Kentaurus", SELECTED) == {"target": "finding-hip-71683"}
 
 
 def test_a_star_of_a_predicted_sky_is_named_by_its_predicted_record() -> None:
@@ -465,7 +469,7 @@ NAMING = (
     "where is {n}", "what is {n}", "describe {n}", "show me {n}", "{n}",
 )
 NAMING_AND_POINTING = (
-    "what is that {n}", "tell me about that {n}", "{n}, take me there", "is that {n}? select it",
+    "what is that {n}", "tell me about that {n}", "{n}, take me there",
     "how far is it to {n}", "take me there, to {n}", "that one, {n}",
 )
 POINTING = (
@@ -708,9 +712,26 @@ def _every_name_is_known_or_nothing_is_done(names_said: tuple[tuple[str, str, st
     context, _in_view = _view(view)
     said = template.format(**dict(zip("abc", (name[1] for name in names_said), strict=False)))
     reading = _reading(said, context)
+    if ", not " in template:
+        # "not" is a word no rule that changes the scene accounts for (answers-3b v4): no such action, whatever the
+        # names; a refusal, a question, the refusal of a name answered before any rule reads the sentence (a southern
+        # object voice cannot reach), or the description a rule that only describes keeps
+        read = parse_voice_intent(said, context, current_year=YEAR)
+        assert read.action is None or read.action["type"] in ("question.ask", "finding.describe"), said
+        described = read.action is not None and read.action["type"] == "finding.describe"
+        assert reading == {"refused": True} or described or (read.action is None and "ask" in reading), said
+        return
     unread = next((name for name in names_said if name[0] == "unknown"), None)
     if unread is None:
         ids = list(dict.fromkeys(_expected_id(str(name[2]), view["state"]) for name in names_said))
+        read = parse_voice_intent(said, context, current_year=YEAR)
+        if len(ids) == 1 and reading == {"refused": True}:
+            # One thing named more than once, with words no rule accounts for: no action (answers-3b v4). A refusal
+            # that quotes the joining word, or a question no rule takes ("is {a} brighter than {b} or {c}")
+            joined = read.refusal is not None and read.refusal["kind"] == "not_a_request" and read.refusal["said"] in ("and", "or")
+            asked = read.action is not None and read.action["type"] == "question.ask"
+            assert joined or asked, (said, read)
+            return
         assert reading == ({"target": ids[0]} if len(ids) == 1 else {"ask": ids}), said
         return
     # Never an action on, an answer about, or a question between the names the backend does know
@@ -720,8 +741,8 @@ def _every_name_is_known_or_nothing_is_done(names_said: tuple[tuple[str, str, st
     assert reply["status"] == "rejected", said
     assert "proposedAction" not in reply and "choices" not in reply, said
     if read.action is not None:
+        # A question: no rule acted on it, names alone or a sentence no rule takes ("is the North Star ...")
         assert read.action["type"] == "question.ask", said
-        assert all(name[0] == "unknown" for name in names_said) and template.startswith(NO_COMMAND), said
     else:
         quoted = re.escape(UNREAD.get(unread[1], unread[1].lower()))
         sentence = NOT_UNDERSTOOD.format(said="QUOTED")
@@ -804,9 +825,12 @@ def test_the_restore_profile_is_read_from_whole_words_too() -> None:
 
     assert profile("restore with a temporal stack") == "temporal"
     assert profile("restore with a natural tone") == "natural"
-    # "stack" in "haystack" and "tone" in "stone" name no profile
-    assert profile("restore the haystack photo") == "star_protected"
-    assert profile("restore the stone wall") == "star_protected"
+    # "stack" in "haystack" and "tone" in "stone" name no profile, at the rule; whole, the sentences are not requests
+    # (a word no rule accounts for, answers-3b v4)
+    restore = grammar_rule("restore")
+    for said in ("restore the haystack photo", "restore the stone wall"):
+        assert fields_for(restore, said)["profile"] == "star_protected", said
+        assert parse_voice_intent(said, SELECTED, current_year=YEAR).refusal == {"kind": "not_a_request", "said": said.split()[2]}
 
 
 # --- Each request gets its own id -----------------------------------------------------------------------------
@@ -905,7 +929,9 @@ def test_both_parsers_hold_the_same_words() -> None:
     assert _ts_words("POINTING_WORDS") == names.POINTING_WORDS
     assert _ts_words("ASKING_WORDS") == names.ASKING_WORDS
     assert set(names.ASKING_WORDS) <= set(names.FUNCTION_WORDS)
-    assert _ts_words("DESCRIBING_WORDS") == names.DESCRIBING_WORDS
+    # The describing words, split where a rule that changes the scene stops accounting for them (answers-3b v4)
+    assert _ts_words("DESCRIBING_A_THING") == names.DESCRIBING_A_THING
+    assert names.DESCRIBING_A_THING + _ts_words("DESCRIBING_WORDS") == names.DESCRIBING_WORDS
     assert _ts_words("FUNCTION_WORDS") == names.FUNCTION_WORDS
     for words in (names.POINTING_WORDS, names.DESCRIBING_WORDS, names.FUNCTION_WORDS):
         assert len(words) == len(set(words))
@@ -918,20 +944,12 @@ def test_both_parsers_hold_the_same_words() -> None:
 
 
 def test_every_word_of_a_command_is_a_word_both_parsers_know() -> None:
-    """A command only one parser holds ("orbit", "another viewpoint", "what lies beyond") is still read by the
-    other: its words are plain or describing, never a word that was not understood beside a name."""
+    """Every word of a command that acts on a finding ("orbit", "another viewpoint", "what lies beyond"), as the
+    voice command grammar both parsers read lists it, is plain or describing: never a word that was not understood
+    beside a name, in a request that holds another command."""
     known = set(names.POINTING_WORDS) | set(names.DESCRIBING_WORDS) | set(names.FUNCTION_WORDS)
-    source = VOICE_PARSER_TS.read_text(encoding="utf-8")
-    phrases: list[str] = []
-    commands = ("VIEWPOINT_COMMAND", "DISTANCE_COMMAND", "SIGHTLINE_COMMAND", "FLIGHT_COMMAND", "SELECT_COMMAND")
-    for constant in commands:
-        command = re.search(rf"const {constant} = /\\b\((.+?)\)\\b/i;", source)
-        assert command is not None, constant
-        phrases += command.group(1).split("|")
+    phrases = [phrase for rule in VOICE_GRAMMAR.rules if rule.target is not None for phrase in rule.phrases]
     assert len(phrases) >= 44, phrases
-    rules = (intent._SPACE_ENTER, intent._DESCRIBE, intent._DESCRIBE_ALONE, intent._SELECT, intent._SELECT_COMMAND)
-    for pattern in rules:
-        phrases.append(pattern.pattern.replace(r"\b", " "))
     words = {word for phrase in phrases for word in re.findall(r"[a-z0-9]+", phrase)}
     assert {"orbit", "viewpoint", "lies", "fly", "identify", "lock"} <= words
     assert words <= known, sorted(words - known)

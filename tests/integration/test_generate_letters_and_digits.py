@@ -5,6 +5,7 @@ Covers:
   Default_Ignorable_Code_Point, one code point or a span, is taken out; a comment, a blank line or a third field is
   read as nothing more; the ranges are maximal
 - A file whose SHA-256 is not the pinned one stops the script
+- The lower-case table is field 13 of UnicodeData.txt, one code point to one, and nothing for a code point without one
 - data/downloads.json lists each Unicode file the script pins, at .cache/unicode/ucd/<version>/<name>, with the
   script's own SHA-256, its https://www.unicode.org/Public/ URL and the Unicode License v3
 - With those files in the shared .cache (`uv run python scripts/fetch_download.py <path>`), the script writes the
@@ -78,6 +79,13 @@ def test_a_range_is_read_whole_only_letters_and_digits_count_and_ignorables_go(t
     assert script.ranges(found) == [[0x30, 0x30], [0x41, 0x42], [0x3400, 0x3405]]
 
 
+def test_the_lower_case_mapping_is_field_13_one_code_point_to_one(tmp_path: Path) -> None:
+    script = _script()
+    script.INPUT_SHA256 = _write_ucd(tmp_path, "9.9.9")
+    # Only A and B carry a lower case (field 13); a range, a digit and a letter with none map to nothing
+    assert script.lower_case(tmp_path, "9.9.9") == {0x41: 0x61, 0x42: 0x62}
+
+
 def test_ranges_are_maximal_and_sorted() -> None:
     ranges = _script().ranges
     assert ranges({7, 1, 2, 3, 5, 8}) == [[1, 3], [5, 5], [7, 8]]
@@ -120,6 +128,8 @@ def test_the_script_writes_the_tracked_files_byte_for_byte(tmp_path: Path) -> No
         script.SHIPPED / "letters-and-digits.json": ROOT / "apps/web/public/notices/unicode/letters-and-digits.json",
         script.SHIPPED / "UNICODE-LICENSE.txt": ROOT / "apps/web/public/notices/unicode/UNICODE-LICENSE.txt",
         script.SHIPPED / "PROVENANCE.json": ROOT / "apps/web/public/notices/unicode/PROVENANCE.json",
+        script.OUT / "lower-case.json": ROOT / "packages/contracts/src/data/lower-case.json",
+        script.SHIPPED / "lower-case.json": ROOT / "apps/web/public/notices/unicode/lower-case.json",
     }
     for written, kept in tracked.items():
         assert written.read_bytes() == kept.read_bytes(), kept.name

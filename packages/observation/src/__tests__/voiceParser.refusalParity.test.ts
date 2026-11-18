@@ -6,10 +6,11 @@ import type { ObservationSession } from '@albedian/contracts';
 import { isTableName } from '@albedian/contracts';
 import { CATALOG_STAR_NAMES } from '../generated/catalogStarNames.js';
 import { buildActionContext, parseUtteranceToAction, PREDICTED_BODY_NAMES, UNBAKED_DEEP_SKY_ROWS } from '../voiceParser.js';
+import { fold, VOICE_GRAMMAR } from '../voiceGrammar.js';
 import { createSyntheticCalibratedSession } from '../testing/syntheticSessions.js';
 
 /**
- * The app's parser against the backend's readings of the same 568 sentences in the same three views
+ * The app's parser against the backend's readings of the same 682 sentences in the same three views
  * (tests/fixtures/voice_refusal_parity.json, written by tests/integration/test_voice_refusal_parity.py):
  * - every refusal the app gives is typed, and its sentence is the contract's for its kind and this recording;
  * - a refusal the backend can know is given by both parsers alike: the same kind, said, row and sentence;
@@ -76,9 +77,9 @@ function appReading(parsed: ReturnType<typeof parseUtteranceToAction>): AppReadi
 }
 
 describe('@albedian/observation voice parser: refusals alike with the backend', () => {
-  it('holds 568 sentences in three views', () => {
-    expect(FIXTURE.sentences.length).toBe(568);
-    expect(new Set(FIXTURE.sentences).size).toBe(568);
+  it('holds 682 sentences in three views', () => {
+    expect(FIXTURE.sentences.length).toBe(682);
+    expect(new Set(FIXTURE.sentences).size).toBe(682);
     expect(FIXTURE.views.length).toBe(3);
   });
 
@@ -93,6 +94,9 @@ describe('@albedian/observation voice parser: refusals alike with the backend', 
       FIXTURE.sentences.forEach((text, index) => {
         const backend = view.readings[index]!;
         const app = parseUtteranceToAction(text, buildActionContext(session), session, { now: NOW });
+        if (app.reason === 'ambiguous_target' || app.reason === 'not_one_request') {
+          expect(app.refusal, text).toBeDefined();
+        }
         if (app.refusal) {
           counts.appRefusals += 1;
           expect(app.error, text).toBe(refusalSentence(app.refusal, media));
@@ -120,17 +124,16 @@ describe('@albedian/observation voice parser: refusals alike with the backend', 
     }
     console.log("refusal parity", JSON.stringify(counts), "differences", differences.length);
     expect(differences, differences.slice(0, 20).join("\n")).toEqual([]);
-    // Where one parser refuses and the other does not, the other forms a question or a command on no finding: the two
-    // command grammars differ on main ("what's that" is a command only to the app, "what is it" only to the backend).
-    // Measured here so a change shows; aligning the grammars is the lead's call (answers-3 report)
-    expect(counts, oneSided.join("\n")).toEqual({ same: 158, appOnly: 33, appRefusals: 310, backendRefusals: 252, appRefusesBackendActs: 55, backendRefusesAppActs: 61 });
+    // Both parsers read one command grammar (packages/contracts/src/data/voice-command-grammar.json), so no sentence is
+    // refused by one and acted on by the other; the refusals only the app gives are those that need the photo's sky
+    expect(counts, oneSided.join("\n")).toEqual({ same: 493, appOnly: 43, appRefusals: 602, backendRefusals: 536, appRefusesBackendActs: 0, backendRefusesAppActs: 0 });
     for (const line of oneSided) expect(line, line).toMatch(/(backend no_grounded_answer|app question\.ask|app media\.compare|app navigation\.cancel|app ui\.overlay):/);
     // Every one-sided reading, held exactly in a tracked fixture that the backend's test also reads, so the list
     // changes only on purpose (answers-3b gives both parsers one command table)
     const text = `${JSON.stringify({ count: divergent.length, readings: divergent }, null, 1)}\n`;
     if (process.env[ONE_SIDED_UPDATE_ENV] === '1') fs.writeFileSync(ONE_SIDED_PATH, text, 'utf8');
     expect(fs.readFileSync(ONE_SIDED_PATH, 'utf8'), `regenerate with ${ONE_SIDED_UPDATE_ENV}=1`).toBe(text);
-    expect(divergent.length).toBe(116);
+    expect(divergent.map((d) => `${d.refuses} refuses: ${d.sentence}`)).toEqual([]);
   });
 });
 
@@ -169,5 +172,52 @@ describe('@albedian/observation voice parser: every name a refusal can show', ()
     const held = new Set([...CATALOG_STAR_NAMES.map(([, , shown]) => shown), ...Object.values(PREDICTED_BODY_NAMES), ...Object.keys(UNBAKED_DEEP_SKY_ROWS)]);
     expect(held.size).toBeGreaterThan(400);
     expect([...held].filter((name) => !isTableName(name))).toEqual([]);
+  });
+});
+
+// The sentences that must change nothing and the two requests (answers-3b v4), as tests/integration/test_voice_refusal_parity.py
+// holds the backend to them: no action that changes the scene in any view, and two requests refused as two
+describe('@albedian/observation voice parser: a sentence that is not one request does nothing', () => {
+  it('changes the scene for none of the lead\'s and the reader\'s sentences, and refuses two requests as two', () => {
+    const rows = (JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/voice_not_one_request.json'), 'utf8')) as {
+      rows: { group: string; sentence: string }[];
+    }).rows;
+    expect(rows.length).toBe(49);
+    for (const view of FIXTURE.views) {
+      const session = sessionOf(view.sample, view.selected);
+      for (const row of rows) {
+        const parsed = parseUtteranceToAction(row.sentence, buildActionContext(session), session, { now: NOW });
+        const type = parsed.action?.type;
+        expect([row.sentence, type === undefined || type === 'question.ask' || type === 'finding.describe']).toEqual([row.sentence, true]);
+        // Two requests are refused as two, but for a name this sky does not hold, which the app refuses first, as it
+        // does any name it lacks (a refusal only the photo's sky can give)
+        if (row.group === 'two requests') {
+          const kind = parsed.refusal?.kind;
+          expect([row.sentence, kind === 'two_requests' || (kind !== undefined && !REFUSAL_KINDS[kind].backend)]).toEqual([row.sentence, true]);
+        }
+      }
+    }
+  });
+});
+
+describe('@albedian/observation voice parser: a typographic apostrophe is the plain one', () => {
+  it('reads every parity sentence with an apostrophe typed any way the table folds as the plain sentence', () => {
+    // Folded on the way in, in one place (the table's folds), as the backend folds it (answers-3b v4)
+    expect(fold(VOICE_GRAMMAR, '“don’t”')).toBe('"don\'t"');
+    const said = FIXTURE.sentences.filter((text) => text.includes("'"));
+    expect(said.length).toBeGreaterThan(40);
+    for (const typed of ['’', '‘', 'ʼ']) {
+      for (const view of FIXTURE.views) {
+        const session = sessionOf(view.sample, view.selected);
+        for (const text of said) {
+          const plain = parseUtteranceToAction(text, buildActionContext(session), session, { now: NOW });
+          const got = parseUtteranceToAction(text.replaceAll("'", typed), buildActionContext(session), session, { now: NOW });
+          expect([typed, text, got.action?.type, got.refusal, got.error]).toEqual([typed, text, plain.action?.type, plain.refusal, plain.error]);
+        }
+      }
+    }
+    const s = sessionOf('plate_calibrated', 'finding-star-rigel');
+    const asked = parseUtteranceToAction('“what does ephemeris mean”', buildActionContext(s), s, { now: NOW });
+    expect(asked.action).toMatchObject({ type: 'question.ask', question: '"what does ephemeris mean"' });
   });
 });

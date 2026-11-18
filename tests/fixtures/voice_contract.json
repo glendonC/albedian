@@ -15,7 +15,8 @@
       "unsafe_synthetic_edit",
       "no_grounded_answer",
       "not_connected",
-      "invalid_action"
+      "invalid_action",
+      "not_one_request"
     ],
     "actionTypes": [
       "media.restore",
@@ -134,6 +135,24 @@
       "name": false,
       "catalogRow": false,
       "backend": false
+    },
+    "not_a_request": {
+      "reasons": [
+        "not_one_request"
+      ],
+      "said": true,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
+    },
+    "two_requests": {
+      "reasons": [
+        "not_one_request"
+      ],
+      "said": false,
+      "name": false,
+      "catalogRow": false,
+      "backend": true
     }
   },
   "refusalLimits": {
@@ -160,7 +179,7 @@
         "said": "zorblax"
       },
       "media": "photo",
-      "sentence": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"zorblax\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -168,7 +187,7 @@
         "said": "zorblax"
       },
       "media": "video",
-      "sentence": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"zorblax\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -176,7 +195,7 @@
         "said": "milky way"
       },
       "media": "photo",
-      "sentence": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"milky way\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -184,7 +203,7 @@
         "said": "milky way"
       },
       "media": "video",
-      "sentence": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"milky way\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -192,7 +211,7 @@
         "said": "a b c d e f ..."
       },
       "media": "photo",
-      "sentence": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"a b c d e f ...\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -200,7 +219,7 @@
         "said": "a b c d e f ..."
       },
       "media": "video",
-      "sentence": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"a b c d e f ...\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -208,7 +227,7 @@
         "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
       },
       "media": "photo",
-      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -216,7 +235,7 @@
         "said": "\u0441\u0438\u0440\u0438\u0443\u0441"
       },
       "media": "video",
-      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -224,7 +243,7 @@
         "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
       },
       "media": "photo",
-      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -232,7 +251,7 @@
         "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ..."
       },
       "media": "video",
-      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -438,6 +457,52 @@
     },
     {
       "refusal": {
+        "kind": "not_a_request",
+        "said": "nobody"
+      },
+      "media": "photo",
+      "sentence": "I did not take that as a request: \"nobody\" is not a word of one."
+    },
+    {
+      "refusal": {
+        "kind": "not_a_request",
+        "said": "nobody"
+      },
+      "media": "video",
+      "sentence": "I did not take that as a request: \"nobody\" is not a word of one."
+    },
+    {
+      "refusal": {
+        "kind": "not_a_request",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+      },
+      "media": "photo",
+      "sentence": "I did not take that as a request: \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\" is not a word of one."
+    },
+    {
+      "refusal": {
+        "kind": "not_a_request",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+      },
+      "media": "video",
+      "sentence": "I did not take that as a request: \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\" is not a word of one."
+    },
+    {
+      "refusal": {
+        "kind": "two_requests"
+      },
+      "media": "photo",
+      "sentence": "That asks for two things at once; say one at a time."
+    },
+    {
+      "refusal": {
+        "kind": "two_requests"
+      },
+      "media": "video",
+      "sentence": "That asks for two things at once; say one at a time."
+    },
+    {
+      "refusal": {
         "kind": "not_in_this_sky",
         "said": "tx",
         "name": "tx"
@@ -550,7 +615,7 @@
         "said": "say \"x\""
       },
       "media": "photo",
-      "sentence": "I did not understand \"say \"x\"\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"say \"x\"\": no list of the app holds that word."
     },
     {
       "refusal": {
@@ -558,7 +623,7 @@
         "said": "say \"x\""
       },
       "media": "video",
-      "sentence": "I did not understand \"say \"x\"\". Say a star's or a planet's name, or select one and say \"that one\"."
+      "sentence": "I did not understand \"say \"x\"\": no list of the app holds that word."
     }
   ],
   "valid": {
@@ -941,7 +1006,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -957,7 +1022,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"milky way\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"milky way\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -973,7 +1038,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"a b c d e f ...\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"a b c d e f ...\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -989,7 +1054,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"\u0441\u0438\u0440\u0438\u0443\u0441\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1005,7 +1070,7 @@
       {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00 ...\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -1134,6 +1199,53 @@
         },
         "refusal": {
           "kind": "nothing_in_view"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not take that as a request: \"nobody\" is not a word of one.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_a_request",
+          "said": "nobody"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not take that as a request: \"\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\" is not a word of one.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_a_request",
+          "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+        }
+      },
+      {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "That asks for two things at once; say one at a time.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "two_requests"
         }
       },
       {
@@ -1302,6 +1414,17 @@
       },
       {
         "kind": "nothing_in_view_sky_not_worked_out"
+      },
+      {
+        "kind": "not_a_request",
+        "said": "nobody"
+      },
+      {
+        "kind": "not_a_request",
+        "said": "\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00\ud835\udc00"
+      },
+      {
+        "kind": "two_requests"
       },
       {
         "kind": "not_understood",
@@ -2701,7 +2824,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2717,7 +2840,101 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not take that as a request: \"nobody\" is not a word of one.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        }
+      },
+      "reason": "a not_one_request refusal says its kind"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not take that as a request: \"nobody\" is not a word of one.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_a_request",
+          "said": "nobody"
+        }
+      },
+      "reason": "not_a_request goes out as not_one_request"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not take that as a request: \"nobody\" is not a word of one.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "not_a_request"
+        }
+      },
+      "reason": "not_a_request quotes the word that stopped it"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "That asks for two things at once; say one at a time.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "ambiguous_target",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "two_requests"
+        }
+      },
+      "reason": "two_requests goes out as not_one_request"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "That asks for two things at once; say one at a time.",
+        "nextActions": [
+          "Name a catalog star or planet, or point at one"
+        ],
+        "reason": "not_one_request",
+        "interpretation": {
+          "parser": "rules"
+        },
+        "refusal": {
+          "kind": "two_requests",
+          "said": "and"
+        }
+      },
+      "reason": "two_requests quotes nothing"
+    },
+    {
+      "schema": "VoiceCommandResponse",
+      "sample": {
+        "status": "rejected",
+        "actionId": "req-sample-1",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2737,7 +2954,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2756,7 +2973,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2773,7 +2990,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2835,7 +3052,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2877,7 +3094,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -2937,7 +3154,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3001,7 +3218,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3100,7 +3317,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],
@@ -3183,7 +3400,7 @@
       "sample": {
         "status": "rejected",
         "actionId": "req-sample-1",
-        "explanation": "I did not understand \"zorblax\". Say a star's or a planet's name, or select one and say \"that one\".",
+        "explanation": "I did not understand \"zorblax\": no list of the app holds that word.",
         "nextActions": [
           "Name a catalog star or planet, or point at one"
         ],

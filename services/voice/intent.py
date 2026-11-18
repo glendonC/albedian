@@ -32,6 +32,7 @@ from services.contracts.voice import (
     JAVASCRIPT_SPACES,
     QUESTION_MAX_UTF16,
     action_issues,
+    lower_case,
     refusal_sentence,
     utf16_length,
 )
@@ -51,8 +52,24 @@ from services.voice.claude import (
     historical_year,
     propose_action_with_claude,
 )
+from services.voice.grammar import (
+    VOICE_GRAMMAR,
+    GrammarRule,
+    another_request,
+    blanked,
+    changes_the_scene,
+    conflicting_modifier,
+    fields_for,
+    fold,
+    own_words_cut,
+    rule_says,
+)
 from services.voice.names import (
+    DESCRIBING_A_THING,
     EVERYDAY_WORD_NAMES,
+    MAX_QUOTED_CHARACTERS,
+    POINTING_WORDS,
+    ascii_capitalized,
     JAVASCRIPT_SPACE,
     find_names,
     name_pattern,
@@ -65,9 +82,15 @@ from services.voice.names import (
     unbaked_object_said,
     unbaked_refusal_record,
     whole_word,
+    words_of,
 )
 
 logger = logging.getLogger(__name__)
+# Blank by Python's str.isspace or by JavaScript's /\s/, as fixed code points: JavaScript's list, and the five Python
+# alone counts (U+001C to U+001F and U+0085), so a question formed from what is left always fits the contract
+_BLANK = frozenset(JAVASCRIPT_SPACES) | frozenset("\x1c\x1d\x1e\x1f\x85")
+# What JavaScript's trim() takes off both ends of a request, as fixed code points, never this Python's own whitespace
+_JAVASCRIPT_TRIM = "".join(sorted(JAVASCRIPT_SPACES))
 
 
 def new_request_id() -> str:
@@ -93,7 +116,7 @@ UNSAFE_PHRASES = ("fake star", "synthetic sky", "replace the sky", "hallucinate"
 
 
 # Every star name the pinned catalog and the baked IAU name table hold (services/voice/names.py)
-_STAR_NAMES: dict[str, str] = {star.common_name.lower(): f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
+_STAR_NAMES: dict[str, str] = {lower_case(star.common_name): f"finding-{star.id}" for star in ALL_SKY_CATALOG_STARS}
 for _spoken, _finding_id in spoken_names():
     _STAR_NAMES.setdefault(_spoken, _finding_id)
 
@@ -124,7 +147,7 @@ _NAME_TABLE: tuple[tuple[re.Pattern[str], _Named], ...] = tuple(
             for name, finding_id in _STAR_NAMES.items()
         ]
         + [
-            (body, whole_word(body), _Named(f"finding-predicted-{body}", None, body.capitalize()))
+            (body, whole_word(body), _Named(f"finding-predicted-{body}", None, ascii_capitalized(body)))
             for body in PREDICTED_BODY_KEYS
         ],
         key=lambda row: (-len(row[0]), row[0]),
@@ -294,7 +317,7 @@ def _said(lower_text: str) -> tuple[list[_Named], str]:
 
 def _names_something(utterance: str) -> bool:
     """True when the utterance names a catalog star or a predicted body."""
-    return bool(_said(utterance.lower())[0])
+    return bool(_said(lower_case(utterance))[0])
 
 
 def _record_id(named: _Named, context: ActionContext) -> str:
@@ -365,16 +388,21 @@ def _target(
     without_command = without_names
     if command is not None:
         without_command = command.sub(lambda match: " " * len(match.group()), without_names)
-    wording = read_wording(without_names, without_command)
+    # The words that change nothing (er, the photo, can you) are plain to the target's reading too (answers-3b v4)
+    assert VOICE_GRAMMAR.unchanging_pattern is not None
+    wording = read_wording(without_names, blanked(VOICE_GRAMMAR.unchanging_pattern, without_command))
     if wording.unknown:
         return _Target(refusal={"kind": "not_understood", "said": wording.unknown})
     if named:
         return _named_target(named, context)
     if wording.points:
         return _view_target(context)
+    # A rule that is about a named thing (alone is None) says nothing of a thing only described: the next rule reads it
+    if alone is None:
+        return None
     if wording.describes:
         return _Target(refusal={"kind": "which_one"})
-    if wording.asks or alone is None:
+    if wording.asks:
         return None
     return _view_target(context) if alone == "view" else _Target(refusal={"kind": "which_one"})
 
@@ -389,7 +417,7 @@ _UNSAFE_SYNTHETIC = re.compile(
 
 
 def _is_unsafe_synthetic(utterance: str) -> bool:
-    lower = utterance.lower()
+    lower = lower_case(utterance)
     return bool(_UNSAFE_SYNTHETIC.search(lower)) or any(phrase in lower for phrase in UNSAFE_PHRASES)
 # A number may not continue another: no digit, and no digit and separator, before it or after it
 _NUMBER = r"(?<!\d)(?<!\d[,.])(\d{1,3}(?:,\d{3})+|\d+)"
@@ -496,7 +524,7 @@ def _year_refusal(said: int | str) -> str | None:
 
 # The brightest family, read as packages/observation/src/voiceParser.ts reads it (BRIGHTEST_PATTERN). The ranking
 # comes from the fluxes measured in the photo's pixels, which the app holds and this service never receives.
-BRIGHTEST = re.compile(r"\bbrightest\b")
+BRIGHTEST = re.compile(r"\bbrightest\b", re.ASCII)
 BRIGHTEST_REFUSAL = (
     "Which star is brightest in a photo is read from the brightness measured in its pixels, which the voice "
     "service does not receive, so it names none."
@@ -511,7 +539,7 @@ BRIGHTEST_KIND_REFUSAL = (
     "Brightness measured in a photo ranks stars and points of light only, so a brightest planet, moon, galaxy, "
     "nebula or cluster is not named."
 )
-_BRIGHTEST_NEXT_WORD = re.compile(r"\bbrightest\b[\s-]*([a-z][a-z-]*)?")
+_BRIGHTEST_NEXT_WORD = re.compile(rf"\bbrightest\b(?:{_S}|-)*([a-z][a-z-]*)?", re.ASCII)
 
 # Why a request has no target, in words a person who is not an astronomer reads: no id, class or contract term.
 # A word the rules do not know is no evidence about any sky, and the backend holds no photo: it says only that it
@@ -524,161 +552,223 @@ _SOUTHERN_CROSS_QUESTION = (
     + ", ".join(star.name for star in southern_cross_stars())
     + "?"
 )
-_SPACE_ENTER = re.compile(
-    r"\b(?:take me (?:there|to)|fly (?:there|to)|go (?:there|to)|travel(?:\b| to)|"
-    r"enter(?: (?:space|3d))?|3d space|into space|zoom into space|explore|fly|beyond)\b",
-    re.ASCII,
-)
-_DESCRIBE = re.compile(
-    r"\b(?:what is|how far|where is|describe|tell me about|identify)\b",
-    re.ASCII,
-)
-# The describing commands that stand alone and act on what is in view; "what is", "where is" and "tell me about"
-# need something after them
-_DESCRIBE_ALONE = re.compile(r"\b(?:how far|describe|identify)\b", re.ASCII)
-_SELECT = re.compile(r"\b(?:select|focus|lock|point|show me|that one|this one)\b", re.ASCII)
-# The selecting words that are a command on their own. "Show me", "point", and "focus" or "lock" without "on",
-# also open other requests ("show me the predicted sky", "the focus is off"), so they select only a thing the
-# request names or points at in view; anything else is left to the rules after them, as the app's parser, which
-# has no such command, reads it.
-_SELECT_COMMAND = re.compile(r"\b(?:select|focus on|lock on(?:to)?|that one|this one)\b", re.ASCII)
-# The restore command, from whole words. "Noise" and "shadows" ask for it only after a verb that does something
-# to them, so "is that noise or a star?" proposes nothing.
-_RESTORE = re.compile(
-    r"\b(?:clean|denoise|restore|brighten|enhance)\b"
-    r"|\b(?:reduce|remove|lower|less|fix)\b[^.?!]*?\bnoise\b"
-    r"|\b(?:lift|raise|open|recover)\b[^.?!]*?\bshadows?\b",
-    re.ASCII,
-)
-_RESTORE_TEMPORAL = re.compile(r"\b(?:temporal|stack)\b", re.ASCII)
-_RESTORE_NATURAL = re.compile(r"\b(?:natural|tone)\b", re.ASCII)
-_SKY_PREDICTED = re.compile(r"\b(?:predicted|planet|ephemeris)\b", re.ASCII)
-# The requests for the sky that say so in full, read before any target is looked for, as the app's parser reads
-# them: "what is in the sky" and "identify the stars" ask about no one star
-_SKY_PHRASES = re.compile(
-    r"\b(?:what were we looking at|what was overhead|show me what was overhead|"
-    r"identify the stars|calibrate|register the sky|show (?:the )?sky|"
-    r"what is in the sky|match the sky)\b",
-    re.ASCII,
-)
-# Read after the target commands, like "predicted" and "planet" above: one word that asks for the measured sky
-_SKY_MEASURED = re.compile(r"\bconstellation\b", re.ASCII)
 _HOW_MANY = re.compile(rf"\bhow{_S}+many\b", re.ASCII)
 
 
 def _parse_with_rules(
     utterance: str, ctx: ActionContext, request_id: str, rev: int, current_year: int
 ) -> VoiceIntent:
-    """Keyword families in a fixed order. A request is about what it names: a target comes from a name, or
+    """The grammar's rules in its order. A request is about what it names: a target comes from a name, or
     from what is in view only when the request points at it or names nothing at all (`_target`)."""
-    text = utterance.strip().lower()
+    text = lower_case(utterance.strip(_JAVASCRIPT_TRIM))
     base = {"requestId": request_id, "expectedViewRevision": rev}
-
-    def formed(action_type: str, **fields: Any) -> VoiceIntent:
-        return _rules_intent(request_id, {"type": action_type, **base, **fields})
-
-    if text in ("stop", "wait", "cancel", "hold on", "pause transition"):
-        return formed("navigation.cancel")
-
-    return_phrases = (
-        "back to moment", "back to my video", "back to the video",
-        "back to photo", "return to source", "return to original", "original recording",
-    )
-    if any(phrase in text for phrase in return_phrases):
-        return formed("source.return", restoreAudio=True)
-
-    if "go back" in text or "step back" in text or "halfway back" in text:
-        if "halfway" in text or "partway" in text:
-            return formed("history.back", mode="partial", fraction=0.5)
-        return formed("history.back", mode="checkpoint")
-
-    said = _said_year(text, current_year)
-    if isinstance(said, int) and _year_refusal(said) is None:
-        return formed("space.epoch", epochISO=epoch_iso(said), yearCE=said)
-    if said is not None:
-        return _rules_intent(request_id, None, "invalid_epoch", _year_refusal(said))
-
-    if _RESTORE.search(text):
-        if ctx.source_asset_id is None:
-            return _rules_intent(
-                request_id,
-                None,
-                "missing_source",
-                "Restoring the recording needs its sourceAssetId in the request context.",
-            )
-        profile = "temporal" if _RESTORE_TEMPORAL.search(text) else "star_protected"
-        if _RESTORE_NATURAL.search(text):
-            profile = "natural"
-        return formed(
-            "media.restore",
-            sourceAssetId=ctx.source_asset_id,
-            profile=profile,
-            constraints={"preservePeople": True, "allowSyntheticSky": False, "protectStars": True},
-        )
-
+    # The commands, tried in the order of the voice command grammar (packages/contracts/src/data/voice-command-grammar.json),
+    # which the app's parser reads too
     named, without_names = _said(text)
-    # A southern object named but not baked, or the Southern Cross, is answered in its own words whatever else the
-    # request names: it never falls through to the selection, or to a star named beside it
-    unbaked = unbaked_object_said(text)
-    if unbaked is not None:
-        return _rules_intent(request_id, None, "no_grounded_answer", refusal=unbaked_refusal_record(*unbaked))
-    if names_southern_cross(text):
-        return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
+    reading = _Reading(text, utterance, ctx, request_id, base, current_year, named, without_names)
+    # The first refusal of a sentence a rule acted on but did not account for, given when no later rule accounts for it
+    not_a_request: VoiceIntent | None = None
+    for rule in VOICE_GRAMMAR.rules:
+        if rule.id == VOICE_GRAMMAR.names_refused_before:
+            # A southern object named but not baked, or the Southern Cross, is answered in its own words whatever
+            # else the request names: it never falls through to the selection, or to a star named beside it
+            unbaked = unbaked_object_said(text)
+            if unbaked is not None:
+                return _rules_intent(request_id, None, "no_grounded_answer", refusal=unbaked_refusal_record(*unbaked))
+            if names_southern_cross(text):
+                return _rules_intent(request_id, None, "ambiguous_target", _SOUTHERN_CROSS_QUESTION)
+        handler = _RULE_HANDLERS[rule.action]
+        if rule.match in ("year", "seconds", "name", "rest"):
+            intent = handler(reading, rule, rule.fixed)
+        elif rule_says(rule, text):
+            intent = handler(reading, rule, fields_for(rule, text))
+        else:
+            intent = None
+        if intent is not None:
+            # A sentence that changes the scene acts only when every word of it is accounted for (answers-3b v4): a
+            # rule that leaves a word passes it to the later rules, and two requests are refused at once. A compare,
+            # or a restore without a sourceAssetId, has no action here only because the context lacks the recording's
+            # fields, so its words are still checked before missing_source is returned
+            if (intent.action is not None or intent.reason == "missing_source") and changes_the_scene(VOICE_GRAMMAR, rule):
+                stop = _not_one_request(reading, rule)
+                if stop is None:
+                    return intent
+                if stop.refusal is not None and stop.refusal["kind"] == "two_requests":
+                    return stop
+                # The name rule's own refusal is never kept: a sentence that is more than a name is the later rules' to read
+                if rule.match != "name":
+                    not_a_request = not_a_request or stop
+                continue
+            if rule.match == "rest" and not_a_request is not None:
+                return not_a_request
+            return intent
+    raise AssertionError("the voice command grammar ends with its rest rule, which always reads the request")
 
-    def about(target: _Target, action_type: str, **fields: Any) -> VoiceIntent:
-        """The action on the target, the question between several, or the refusal that says why there is none."""
+
+# The words a rule that changes the scene accounts for beside its own: the pointing words (that, it, there), and for a
+# rule with a target, the words that describe the thing itself (bright, red, star) and the star names that are also
+# everyday words (ran, fang): not measures, the recording's words or another command's words
+_POINTING_ACCOUNTED = frozenset(POINTING_WORDS)
+_TARGET_ACCOUNTED = _POINTING_ACCOUNTED | frozenset(DESCRIBING_A_THING) | frozenset(EVERYDAY_WORD_NAMES)
+# What the code of a year rule reads: the first of these its reading takes
+_YEAR_READS = (_YEARS_AGO, _A_THOUSAND_YEARS_AGO, _YEARS_FROM_NOW, _YEAR_THEN_ERA, _ERA_THEN_YEAR, _YEAR_WORD)
+
+
+def _code_read(rule: GrammarRule, text: str, rest: str) -> str:
+    """`rest` with what a code-read rule's own code read of `text` turned to spaces: the seconds after a seek phrase,
+    or the year said."""
+    if rule.match == "seconds":
+        said = _seconds_said(rule, text)
+        if said is not None:
+            rest = rest[: said.start()] + " " * (said.end() - said.start()) + rest[said.end():]
+    elif rule.match == "year":
+        said = next((m for m in (pattern.search(text) for pattern in _YEAR_READS) if m is not None), None)
+        if said is not None:
+            rest = rest[: said.start()] + " " * (said.end() - said.start()) + rest[said.end():]
+    return rest
+
+
+def _not_one_request(reading: _Reading, rule: GrammarRule) -> VoiceIntent | None:
+    """The refusal of a sentence the rule's action came from that is not one request, or None when it is one: a
+    second request that changes the scene in it (two_requests), else the first word nothing accounts for
+    (not_a_request): not the rule's own words, a name, a pointing word, for a rule with a target a describing word,
+    what its code read, or a word that changes nothing (the table's unchanging words)."""
+    assert VOICE_GRAMMAR.unchanging_pattern is not None
+    own = own_words_cut(rule, reading.without_names)
+    # The name rule has no words of its own, so a rule's words beside a name are that rule's to read, not a second request
+    if rule.match != "name" and another_request(VOICE_GRAMMAR, rule, own, reading.without_names):
+        return _rules_intent(reading.request_id, None, "not_one_request", refusal={"kind": "two_requests"})
+    conflict = conflicting_modifier(rule, reading.without_names)
+    if conflict is not None:
+        return _rules_intent(reading.request_id, None, "not_one_request",
+                             refusal={"kind": "not_a_request", "said": words_of(conflict)[0][:MAX_QUOTED_CHARACTERS]})
+    rest = _code_read(rule, reading.text, blanked(VOICE_GRAMMAR.unchanging_pattern, own))
+    accounted = _TARGET_ACCOUNTED if rule.target is not None else _POINTING_ACCOUNTED
+    word = next((word for word in words_of(rest) if word not in accounted), None)
+    if word is None:
+        return None
+    return _rules_intent(reading.request_id, None, "not_one_request",
+                         refusal={"kind": "not_a_request", "said": word[:MAX_QUOTED_CHARACTERS]})
+
+
+@dataclass(frozen=True)
+class _Reading:
+    """One request as the rules read it: its words in lower case, its context, and the names it says."""
+
+    text: str
+    utterance: str
+    ctx: ActionContext
+    request_id: str
+    base: dict[str, Any]
+    current_year: int
+    named: list[_Named]
+    without_names: str
+
+    def formed(self, action_type: str, **fields: Any) -> VoiceIntent:
+        return _rules_intent(self.request_id, {"type": action_type, **self.base, **fields})
+
+    def about(self, rule: GrammarRule, action_type: str, act: Any) -> VoiceIntent | None:
+        """The action on the target the rule finds, the question between several, the refusal that says why there
+        is none, or None when the rule says nothing about a target (its target is about or named and the words name
+        or point at nothing; a named rule also passes on a refusal)."""
+        alone = rule.target if rule.target in ("view", "which") else None
+        # A rule read from phrases cuts its own words before the rest is read; the name rule has none
+        target = _target(self.named, self.without_names, self.ctx, rule.pattern, alone=alone)
+        if target is None:
+            return None
+        if rule.target == "named" and target.finding_id is None and not target.choices:
+            return None
         if target.finding_id is not None:
-            return formed(action_type, findingId=target.finding_id, **fields)
+            return self.formed(action_type, **act(target.finding_id))
         return _rules_intent(
-            request_id, None, "ambiguous_target", target.question, target.choices, refusal=target.refusal
+            self.request_id, None, "ambiguous_target", target.question, target.choices, refusal=target.refusal
         )
 
-    if _SKY_PHRASES.search(text):
-        return formed("sky.show", mode="measured")
 
-    if _SPACE_ENTER.search(text):
-        target = _target(named, without_names, ctx, _SPACE_ENTER, alone="view")
-        if target is not None:
-            return about(target, "space.enter", distancePolicy="measured_or_estimated")
+def _epoch(reading: _Reading, rule: GrammarRule, fields: dict[str, Any]) -> VoiceIntent | None:
+    said = _said_year(reading.text, reading.current_year)
+    if isinstance(said, int) and _year_refusal(said) is None:
+        return reading.formed("space.epoch", epochISO=epoch_iso(said), yearCE=said)
+    if said is not None:
+        return _rules_intent(reading.request_id, None, "invalid_epoch", _year_refusal(said))
+    return None
 
-    if _DESCRIBE.search(text):
-        target = _target(
-            named, without_names, ctx, _DESCRIBE, alone="view" if _DESCRIBE_ALONE.search(text) else None
+
+def _restore(reading: _Reading, rule: GrammarRule, fields: dict[str, Any]) -> VoiceIntent:
+    if reading.ctx.source_asset_id is None:
+        return _rules_intent(
+            reading.request_id, None, "missing_source", "Restoring the recording needs its sourceAssetId in the request context."
         )
-        if target is not None:
-            return about(target, "finding.describe", fields=["distance", "type", "motion", "evidence"])
+    return reading.formed(
+        "media.restore",
+        sourceAssetId=reading.ctx.source_asset_id,
+        **fields,
+        constraints={"preservePeople": True, "allowSyntheticSky": False, "protectStars": True},
+    )
 
-    if _SELECT.search(text):
-        command = _SELECT_COMMAND.search(text) is not None
-        target = _target(named, without_names, ctx, _SELECT, alone="which" if command else None)
-        if target is not None and (command or target.finding_id is not None or target.choices):
-            return about(target, "finding.select")
 
-    # A thing the request names is what it is about, before a single word could read it as a request for the sky
-    # ("is Rigel a planet?"), as the app's parser reads it; a word beside the name that was not understood still
-    # stops it ("is Rigel brighter than Andromeda?")
-    if named and not _HOW_MANY.search(text):
-        target = _target(named, without_names, ctx, None, alone=None)
-        if target is not None:
-            return about(target, "finding.select")
+def _seconds_said(rule: GrammarRule, text: str) -> re.Match[str] | None:
+    """A seek phrase and the seconds said after it, as the seek rule reads them."""
+    assert rule.pattern is not None
+    return re.search(rf"(?:{rule.pattern.pattern}){_S}+(?:to{_S}+)?(\d+(?:\.\d+)?){_S}*(?:s|sec|seconds)?\b", text, re.ASCII)
 
-    if _SKY_PREDICTED.search(text):
-        return formed("sky.show", mode="predicted")
 
-    if _SKY_MEASURED.search(text):
-        return formed("sky.show", mode="measured")
+def _seek(reading: _Reading, rule: GrammarRule, fields: dict[str, Any]) -> VoiceIntent | None:
+    assert rule.pattern is not None
+    said = _seconds_said(rule, reading.text)
+    if said is None:
+        return None
+    return reading.formed("media.seek", sourceTimeSec=float(said.group(1)), preserveAudioSync=True)
 
-    question = utterance.strip()
+
+def _select(reading: _Reading, rule: GrammarRule, fields: dict[str, Any]) -> VoiceIntent | None:
+    # The name rule: a thing the request names is what it is about, before a single word could read it as a request
+    # for the sky ("is Rigel a planet?"); a word beside the name that was not understood still stops it
+    if rule.match == "name" and (not reading.named or _HOW_MANY.search(reading.text)):
+        return None
+    return reading.about(rule, "finding.select", lambda finding_id: {"findingId": finding_id})
+
+
+def _question(reading: _Reading, rule: GrammarRule, fields: dict[str, Any]) -> VoiceIntent:
+    question = reading.utterance.strip(_JAVASCRIPT_TRIM)
     # The contract counts a question's length as JavaScript does, in UTF-16 code units
     if utf16_length(question) > QUESTION_MAX_UTF16:
         return _rules_intent(
-            request_id,
+            reading.request_id,
             None,
             "no_grounded_answer",
             "No action matches the request, and it is longer than a question can hold "
             f"({QUESTION_MAX_UTF16} characters as the app counts them).",
         )
-    return formed("question.ask", question=question)
+    return reading.formed("question.ask", question=question)
+
+
+# One handler per contract action the grammar names; each reads the rule's fixed fields
+_RULE_HANDLERS: dict[str, Any] = {
+    "navigation.cancel": lambda r, rule, f: r.formed("navigation.cancel"),
+    "history.back": lambda r, rule, f: r.formed("history.back", **f),
+    "source.return": lambda r, rule, f: r.formed("source.return", restoreAudio=True),
+    "space.epoch": _epoch,
+    "ui.overlay": lambda r, rule, f: r.formed("ui.overlay", **f),
+    # The voice service receives no variants of the recording, so it cannot name the two to compare
+    "media.compare": lambda r, rule, f: _rules_intent(
+        r.request_id, None, "missing_source", "Comparing needs the recording's variants, which the request context does not carry."
+    ),
+    "media.restore": _restore,
+    "media.seek": _seek,
+    "sky.show": lambda r, rule, f: r.formed("sky.show", **{"mode": "measured", **f}),
+    "space.viewpoint": lambda r, rule, f: r.about(
+        rule, "space.viewpoint", lambda finding_id: {"targetFindingId": finding_id, "units": "pc", "offsetParsec": [12, 8, -5], **f}
+    ),
+    "finding.describe": lambda r, rule, f: r.about(rule, "finding.describe", lambda finding_id: {"findingId": finding_id, **f}),
+    "space.enter": lambda r, rule, f: r.about(
+        rule, "space.enter", lambda finding_id: {"findingId": finding_id, "distancePolicy": "measured_or_estimated"}
+    ),
+    "finding.select": _select,
+    "question.ask": _question,
+}
+# The rules of the voice command grammar this parser reads: every one whose action has a handler here
+HANDLED_RULES = frozenset(rule.id for rule in VOICE_GRAMMAR.rules if rule.action in _RULE_HANDLERS)
 
 
 def parse_voice_intent(
@@ -695,12 +785,14 @@ def parse_voice_intent(
     enabled and forms a valid action, and the deterministic rules answer when it does not. `current_year`
     stands in for the UTC clock's year. A request with no `request_id` gets an id of its own.
     """
+    # The one way in: each typographic apostrophe or quote is read as its plain one before anything reads the words
+    utterance = fold(VOICE_GRAMMAR, utterance)
     ctx = ActionContext.from_dict(context)
     if request_id is None:
         request_id = new_request_id()
     rev = expected_view_revision if expected_view_revision is not None else ctx.view_revision
     # Blank by Python's measure or JavaScript's, so a question formed from what is left always fits the contract
-    if all(char.isspace() or char in JAVASCRIPT_SPACES for char in utterance):
+    if all(char in _BLANK for char in utterance):
         return _rules_intent(
             request_id, None, "no_grounded_answer", "The request is empty, so there is nothing to act on."
         )
@@ -712,7 +804,7 @@ def parse_voice_intent(
             "Albedian never fabricates or replaces sky observations with synthetic stars.",
         )
     # Before any model and any rule, so neither names a star, or the selection, in place of a measured ranking
-    lowered = utterance.lower()
+    lowered = lower_case(utterance)
     if BRIGHTEST.search(lowered):
         next_word = _BRIGHTEST_NEXT_WORD.search(lowered)
         unranked = next_word is not None and next_word.group(1) in BRIGHTEST_UNRANKED_KINDS
@@ -731,9 +823,9 @@ def parse_voice_intent(
     return rules
 
 
-# The refusals the words of a sentence decide: a word not understood, or a name the data does not hold or voice
-# cannot reach. No model is asked about such a sentence
-_WORD_OR_NAME_KINDS = frozenset({"not_understood", "deep_sky_out_of_reach", "no_named_row"})
+# The refusals the words of a sentence decide: a word not understood, a name the data does not hold or voice cannot
+# reach, or a sentence that is not one request. No model is asked about such a sentence
+_WORD_OR_NAME_KINDS = frozenset({"not_understood", "deep_sky_out_of_reach", "no_named_row", "not_a_request", "two_requests"})
 
 
 def _the_words_decide(rules: VoiceIntent) -> bool:
@@ -749,7 +841,7 @@ def _names_or_points_at(action: dict[str, Any], utterance: str, ctx: ActionConte
     finding_id = action.get("findingId")
     if finding_id is None:
         return True
-    named, without_names = _said(utterance.lower())
+    named, without_names = _said(lower_case(utterance))
     # The record the rules would act on for each name: in a predicted sky a star's predicted record, never the solved
     # one, which that sky does not hold
     allowed = {_record_id(each, ctx) for each in named}
@@ -875,7 +967,7 @@ def _describe_finding(finding_id: str, ctx: ActionContext) -> str | None:
     if star is not None:
         return _describe_star(star)
     if finding_id in PREDICTED_FINDING_IDS:
-        return _describe_body(finding_id.removeprefix("finding-predicted-").capitalize(), ctx)
+        return _describe_body(ascii_capitalized(finding_id.removeprefix("finding-predicted-")), ctx)
     return None
 
 
@@ -895,7 +987,7 @@ def _pointer_disambiguation(
     if pointer is None or len(pointer.overlapping_candidate_ids) <= 1 or _names_something(utterance):
         return None
     choices = [
-        {"id": cid, "label": cid.replace("finding-star-", "").capitalize()}
+        {"id": cid, "label": ascii_capitalized(cid.replace("finding-star-", ""))}
         for cid in pointer.overlapping_candidate_ids
     ]
     return {
@@ -1044,6 +1136,7 @@ def check_voice_command(
     names who interpreted the utterance when the backend parsed it rather than receiving the client's own
     action.
     """
+    utterance = fold(VOICE_GRAMMAR, utterance)
     ctx = ActionContext.from_dict(context)
     if proposed_action is not None:
         request_id = proposed_action.get("requestId") if isinstance(proposed_action, dict) else None

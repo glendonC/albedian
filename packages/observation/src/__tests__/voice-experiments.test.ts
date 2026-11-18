@@ -63,8 +63,15 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
       },
     },
     {
-      name: '04. Clean up noise in the sky -> media.restore',
+      // "sky" is a word no restore rule accounts for: no action (answers-3b v4); "Clean up noise" restores
+      name: '04. Clean up noise in the sky -> no action',
       utterance: 'Clean up noise in the sky',
+      session: baseSession,
+      expectedActionType: undefined as unknown as string,
+    },
+    {
+      name: '04b. Clean up noise -> media.restore',
+      utterance: 'Clean up noise',
       session: baseSession,
       expectedActionType: 'media.restore',
     },
@@ -106,10 +113,11 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
       expectedActionType: 'media.compare',
     },
     {
-      name: '10. Original recording -> media.compare',
+      // "Original recording" returns to the recording, in the grammar both parsers read (answers-3b)
+      name: '10. Original recording -> source.return',
       utterance: 'Original recording',
       session: baseSession,
-      expectedActionType: 'media.compare',
+      expectedActionType: 'source.return',
     },
     {
       name: '11. Seek to 7.5 seconds -> media.seek',
@@ -497,6 +505,12 @@ describe('EXP-09: Voice & Text Utterance Context Resolution, Disambiguation & Ba
     ({ utterance, session, recentPointer, expectedActionType, verify }) => {
       const context = buildActionContext(session, recentPointer);
       const parsed = parseUtteranceToAction(utterance, context, session, { now: NOW });
+      // A row with no action type is a sentence that is not one request (answers-3b v4): no action, and its refusal
+      if (expectedActionType === undefined) {
+        expect(parsed.action).toBeUndefined();
+        expect(parsed.refusal?.kind).toBe('not_a_request');
+        return;
+      }
       expect(parsed.action).toBeDefined();
       expect(parsed.action?.type).toBe(expectedActionType);
       if (parsed.action && verify) {

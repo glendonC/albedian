@@ -1,7 +1,7 @@
-"""Both parsers give the same refusal kind and the same sentence for every one of 568 sentences.
+"""Both parsers give the same refusal kind and the same sentence for every one of 682 sentences.
 
 The sentences are the 217 natural sentences of packages/observation/src/__tests__/voiceParser.namedTargets.test.ts
-(its SHARED_JSON block) and the 351 of tests/fixtures/voice_everyday_sentences.json. Each is read by the backend in
+(its SHARED_JSON block) and the 465 of tests/fixtures/voice_everyday_sentences.json. Each is read by the backend in
 three views of the backend's own solutions (tests/fixtures/python_contract_solutions.json), and the readings are
 written to tests/fixtures/voice_refusal_parity.json, which
 packages/observation/src/__tests__/voiceParser.refusalParity.test.ts reads to hold the app's parser to the same
@@ -31,7 +31,7 @@ import pytest
 
 from services.contracts import voice as contract
 from services.voice import claude
-from services.voice.intent import check_voice_command
+from services.voice.intent import check_voice_command, parse_voice_intent
 
 ROOT = Path(__file__).resolve().parents[2]
 TS_TEST = ROOT / "packages" / "observation" / "src" / "__tests__" / "voiceParser.namedTargets.test.ts"
@@ -87,7 +87,7 @@ def build_readings() -> dict[str, Any]:
 
 
 def test_the_readings_are_current_and_every_sentence_is_held_once() -> None:
-    assert len(NATURAL) == 217 and len(SENTENCES) == len(set(SENTENCES)) == 568
+    assert len(NATURAL) == 217 and len(SENTENCES) == len(set(SENTENCES)) == 682
     text = json.dumps(build_readings(), indent=1, ensure_ascii=True) + "\n"
     if os.environ.get(UPDATE_ENV) == "1":
         FIXTURE.write_text(text, encoding="utf-8")
@@ -101,7 +101,7 @@ def test_every_backend_refusal_names_its_kind_its_reason_and_its_sentence() -> N
             if reading["status"] != "rejected":
                 continue
             refusal = reading.get("refusal")
-            if reading["reason"] == "ambiguous_target":
+            if reading["reason"] in ("ambiguous_target", "not_one_request"):
                 assert refusal is not None, reading
             if refusal is None:
                 continue
@@ -109,16 +109,19 @@ def test_every_backend_refusal_names_its_kind_its_reason_and_its_sentence() -> N
             assert spec["backend"] and reading["reason"] in spec["reasons"], reading
             assert reading["explanation"] == contract.refusal_sentence(refusal), reading
             kinds[refusal["kind"]] = kinds.get(refusal["kind"], 0) + 1
-    # The 568 sentences reach four of the five kinds the backend can give over the three views; no_named_row (the
-    # Magellanic Clouds, Eta Carinae) is said by none of them and is held by the contract fixture instead
-    assert kinds == {"not_understood": 177, "which_one": 12, "deep_sky_out_of_reach": 6, "nothing_in_view": 57}, kinds
+    # The 682 sentences reach five of the seven kinds the backend can give over the three views; no_named_row (the
+    # Magellanic Clouds, Eta Carinae) and two_requests are said by none of them and are held by the contract fixture
+    # instead. not_a_request: a sentence with a word no rule that changes the scene accounts for (answers-3b v4)
+    assert kinds == {"not_understood": 171, "which_one": 12, "deep_sky_out_of_reach": 6, "nothing_in_view": 114,
+                     "not_a_request": 233}, kinds
 
 
 def test_the_backend_half_of_every_one_sided_reading_is_its_own() -> None:
     doc = json.loads(ONE_SIDED.read_text(encoding="utf-8"))
     readings = doc["readings"]
-    assert doc["count"] == len(readings) == 116
-    assert sum(r["refuses"] == "app" for r in readings) == 55 and sum(r["refuses"] == "backend" for r in readings) == 61
+    # Both parsers read one command table (packages/contracts/src/data/voice-command-grammar.json): no sentence is
+    # refused by one and acted on by the other
+    assert doc["count"] == len(readings) == 0
     built = build_readings()["views"]
     places = []
     for reading in readings:
@@ -140,3 +143,73 @@ def test_reading_the_sentences_leaves_the_environment_as_it_was(monkeypatch: pyt
     monkeypatch.setenv(claude.API_KEY_ENV, "test-key-not-a-secret")
     build_readings()
     assert (os.environ.get(claude.ENABLE_ENV), os.environ.get(claude.API_KEY_ENV)) == ("0", "test-key-not-a-secret")
+
+
+# The sentences that must change nothing and the two requests (answers-3b v4), held on both sides
+NOT_ONE = ROOT / "tests" / "fixtures" / "voice_not_one_request.json"
+
+
+def _not_one_reading(text: str, context: dict[str, Any]) -> dict[str, Any]:
+    read = parse_voice_intent(text, context, current_year=YEAR)
+    if read.action is not None:
+        return {"action": read.action["type"]}
+    if read.choices:
+        return {"ask": True}
+    return {"refused": read.reason, **({"kind": read.refusal["kind"]} if read.refusal else {})}
+
+
+def test_no_sentence_the_lead_or_the_reader_named_changes_the_scene_and_two_requests_do_neither() -> None:
+    rows = json.loads(NOT_ONE.read_text(encoding="utf-8"))["rows"]
+    assert {row["group"] for row in rows} == {"no action", "two requests"} and len(rows) == 49
+    with pytest.MonkeyPatch.context() as patch:
+        for key in (claude.ENABLE_ENV, claude.API_KEY_ENV):
+            patch.delenv(key, raising=False)
+        for row in rows:
+            for (sample, selected), stored in zip(VIEWS, row["views"], strict=True):
+                context = {"sessionId": "s-made-up", "sourceAssetId": "src_made-up", "viewRevision": 4,
+                           "calibrationState": _state(sample), "selectedFindingId": selected}
+                assert _not_one_reading(row["sentence"], context) == stored, (row["sentence"], selected)
+                assert stored.get("action") in (None, "question.ask", "finding.describe"), row["sentence"]
+                if row["group"] == "two requests":
+                    assert stored == {"refused": "not_one_request", "kind": "two_requests"}, row["sentence"]
+
+
+def test_a_typographic_apostrophe_is_read_as_the_plain_one_before_anything_reads_the_sentence() -> None:
+    # Folded on the way in, in one place (the table's folds): every sentence with an apostrophe, typed any way the
+    # table folds, reads as the plain sentence in every view, its refusal's words and sentence included (answers-3b v4)
+    from services.voice.grammar import VOICE_GRAMMAR, fold
+
+    assert {typed: plain for typed, plain in VOICE_GRAMMAR.folds.items()} == {
+        "’": "'", "‘": "'", "ʼ": "'", "“": '"', "”": '"'}
+    assert fold(VOICE_GRAMMAR, "“don’t”") == '"don\'t"'
+    plain = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    said = [(i, text) for i, text in enumerate(plain["sentences"]) if "'" in text]
+    assert len(said) > 40, len(said)
+    with pytest.MonkeyPatch.context() as patch:
+        for key in (claude.ENABLE_ENV, claude.API_KEY_ENV):
+            patch.delenv(key, raising=False)
+        for typed in ("’", "‘", "ʼ"):
+            for (sample, selected), view in zip(VIEWS, plain["views"], strict=True):
+                context = {"sessionId": "s-made-up", "sourceAssetId": "src_made-up", "viewRevision": 4,
+                           "calibrationState": _state(sample), "selectedFindingId": selected}
+                for i, text in said:
+                    reading = _reading(check_voice_command(text.replace("'", typed), context, current_year=YEAR))
+                    assert reading == view["readings"][i], (typed, text, selected)
+            overlapping = {
+                "sessionId": "s-made-up",
+                "sourceAssetId": "src_made-up",
+                "viewRevision": 4,
+                "calibrationState": "calibrated",
+                "recentPointer": {
+                    "xPx": 100.0,
+                    "yPx": 100.0,
+                    "atTimestampMs": 0.0,
+                    "viewRevision": 4,
+                    "overlappingCandidateIds": ["finding-obs-1", "finding-obs-2"],
+                },
+            }
+            assert _reading(check_voice_command(f"what{typed}s atlas", overlapping, current_year=YEAR)) == _reading(
+                check_voice_command("what's atlas", overlapping, current_year=YEAR)
+            )
+        asked = parse_voice_intent("“what does ephemeris mean”", {"viewRevision": 4}, current_year=YEAR)
+        assert asked.action is not None and asked.action["question"] == '"what does ephemeris mean"'

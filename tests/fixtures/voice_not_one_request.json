@@ -1,0 +1,887 @@
+{
+ "about": "answers-3b v4: sentences that must change nothing (the lead's request and AUDIT L's verdict on the third version, the typographic apostrophes folded on the way in) and sentences holding two requests, each with its reading in the parity test's three views (Rigel selected in a solved sky, Saturn selected in a predicted sky, nothing selected in a solved sky). Written by .lanetools from the backend's readings; read by tests/integration/test_voice_refusal_parity.py and packages/observation/src/__tests__/voiceParser.refusalParity.test.ts, which hold both parsers to it.",
+ "rows": [
+  {
+   "group": "no action",
+   "sentence": "don\u2019t show the planets",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "you shan't show the planets",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "you oughtn't restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "nobody asked you to restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "hey did you restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "so why is the predicted sky on",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "but how do I go back",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "will it restore the people",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "are we in 3d space",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "nothing_in_view"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "what are residuals",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "what's ephemeris",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "what is a temporal stack",
+   "views": [
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "please don\u2019t fly there",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "nothing_in_view"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "I don\u2019t want the constellation lines",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t select Rigel",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t take me back",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t jump to 10 seconds",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t orbit",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "nothing_in_view"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2019t stop the flight",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "please don\u2019t cancel the flight",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "um should I restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "do you think I should restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "and why did you select Rigel",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "wait are the constellation lines on",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "who turned on the constellation lines",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "explain residuals",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "what is the earth direction",
+   "views": [
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "define ephemeris",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "what does denoise do",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "take the residuals away",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "leave out the constellation lines",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "enough with the predicted sky",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "skip the predicted sky",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "forget the restore",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "scrap the restore",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "nope fly there",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "nothing_in_view"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "you mightn't restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "you daren't restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "ain't you restoring it",
+   "views": [
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    },
+    {
+     "refused": "ambiguous_target",
+     "kind": "not_understood"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "restore it nowhere",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u2018t restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don\u02bct restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "no action",
+   "sentence": "don't restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "not_a_request"
+    }
+   ]
+  },
+  {
+   "group": "two requests",
+   "sentence": "turn on the constellation lines and turn off the residuals",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    }
+   ]
+  },
+  {
+   "group": "two requests",
+   "sentence": "show the constellation lines but not the residuals",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    }
+   ]
+  },
+  {
+   "group": "two requests",
+   "sentence": "turn the earth direction on and the constellation lines off",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    }
+   ]
+  },
+  {
+   "group": "two requests",
+   "sentence": "fly there and restore it",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    }
+   ]
+  },
+  {
+   "group": "two requests",
+   "sentence": "select Rigel, then fly there",
+   "views": [
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    },
+    {
+     "refused": "not_one_request",
+     "kind": "two_requests"
+    }
+   ]
+  }
+ ]
+}

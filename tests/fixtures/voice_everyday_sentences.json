@@ -1,5 +1,5 @@
 {
-  "about": "Sentences a person might say to a night photo, written by the answers lane for answers-3-prep (2026-11-11) and made up: they name no real person, place or time. `everyday` names no sky thing the voice tables lack; `skyname` names one they lack. With the 217 natural sentences of packages/observation/src/__tests__/voiceParser.namedTargets.test.ts they are the 568 sentences both parsers are held to the same refusal kinds and sentences on (tests/integration/test_voice_refusal_parity.py).",
+  "about": "Sentences a person might say to a night photo, written by the answers lane for answers-3-prep (2026-11-11) and made up: they name no real person, place or time. `everyday` names no sky thing the voice tables lack; `skyname` names one they lack. `lead_probe`: the lead's probe sentences for answers-3b v3 (.lead/kiro/tools/probe_voice_negations.txt and probe_voice_more.txt), negations, undoing words and questions about the app, made up as well. With the 217 natural sentences of packages/observation/src/__tests__/voiceParser.namedTargets.test.ts they are the 682 sentences both parsers are held to the same refusal kinds and sentences on (tests/integration/test_voice_refusal_parity.py).",
   "sentences": [
     {
       "text": "what's that really bright one up there",
@@ -1404,6 +1404,462 @@
     {
       "text": "is that the coal sack",
       "kind": "skyname"
+    },
+    {
+      "text": "can you not show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "let's not fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I would not restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not the predicted sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "please don't fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "do not select Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "never show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I don't want the constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't hide the constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no more planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "planets off",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "switch off the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "remove the constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "get rid of the predicted sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "take away the predicted sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "close the predicted sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "lose the lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I didn't say fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "you shouldn't restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "that isn't what I asked, don't enhance the photo",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "do not enhance the photo",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't go back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't take me back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't compare",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "cannot you show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "won't you show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "can't you clean this up",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "isn't that a planet",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "leave the photo as it is",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "unselect that",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "deselect Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "forget Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "why did you select Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "did you restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "is the predicted sky on",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "are the planets showing",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "hide the predicted sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't select that",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not that one",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I do not want to fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "never fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no flying",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't describe it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't tell me about it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "anything but Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't show me another viewpoint",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no orbit",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't orbit around it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't show the sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not the measured sky",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't show the constellations",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no constellations",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "hide the constellations",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't show where earth is",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no earth direction",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't return to the recording",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not back to the moment",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I don't want to go back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no going back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't stop",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "do not cancel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "don't brighten it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no need to clean it up",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "it doesn't need cleaning",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "without restoring it, show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "show the planets without the lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "fly there, not",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "show the planets? no",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "restore it not",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "select Rigel, no wait",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "select Rigel, never mind",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "undo the restore",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "remove the restore",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "stop restoring",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "stop flying",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "stop the flight",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "leave 3d",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "exit",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "turn the constellation lines off",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "constellation lines off",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "switch the constellation lines off",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "turn off constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "kill the constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "clear the constellation lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "drop the lines",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "nope",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "no thanks",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "not now",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "nah",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "have you restored it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "has it been restored",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "was that restored",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "when did you select that",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "why is the predicted sky showing",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "are the constellation lines on",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "is it restored",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "did I select Rigel",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "am I in 3d",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "can I go back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "could I see the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "should I restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "what happens if I restore it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "what would happen if I fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "how do I go back",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "how do I show the planets",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I said fly there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "you flew there",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "I already restored it",
+      "kind": "lead_probe"
+    },
+    {
+      "text": "we went back",
+      "kind": "lead_probe"
     }
   ]
 }

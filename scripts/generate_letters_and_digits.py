@@ -18,7 +18,9 @@ in <ucd>/<version>/ (for example .cache/unicode/ucd):
 
     uv run python scripts/generate_letters_and_digits.py <ucd>
 
-Writes packages/contracts/src/data/letters-and-digits.json, the table both contracts read. The web app's bundle
+Writes packages/contracts/src/data/letters-and-digits.json, the table both contracts read, and
+packages/contracts/src/data/lower-case.json, Unicode 15.1.0's simple lower-case mapping (field 13 of UnicodeData.txt),
+which both voice parsers use to lower a request in place of their runtime's own case tables. The web app's bundle
 carries its ranges, so the table also ships on the record the web's other shipped data has, which
 scripts/verify_provenance.py checks: apps/web/public/notices/unicode/ holds a byte-identical copy of the table,
 UNICODE-LICENSE.txt (the Unicode License v3 notice, which must travel with the data) and their PROVENANCE.json.
@@ -124,6 +126,17 @@ def letters_and_digits(ucd: Path, version: str) -> set[int]:
     return found
 
 
+def lower_case(ucd: Path, version: str) -> dict[int, int]:
+    """The simple lower-case mapping of `version` (UnicodeData.txt field 13): one code point to one, for every code
+    point that has one. A code point with none is its own lower case."""
+    found: dict[int, int] = {}
+    for line in _read(ucd, version, "UnicodeData.txt").splitlines():
+        fields = line.split(";")
+        if fields[13]:
+            found[int(fields[0], 16)] = int(fields[13], 16)
+    return found
+
+
 def ranges(points: set[int]) -> list[list[int]]:
     """`points` as sorted inclusive [first, last] ranges."""
     out: list[list[int]] = []
@@ -139,6 +152,13 @@ def ranges(points: set[int]) -> list[list[int]]:
 TABLE_CHANGES = (
     "Worked out from the Unicode Character Database, not copied: the letters and digits of Unicode 15.1, "
     "less the characters that never show, as ranges, with the places where three other versions differ."
+)
+
+
+# How the file differs from its sources, written into its record as producedBy.changes
+LOWER_CASE_CHANGES = (
+    "Worked out from the Unicode Character Database, not copied: the simple one-to-one lower-case mapping of "
+    "Unicode 15.1, as code-point pairs, with the code points where three other versions map otherwise."
 )
 
 
@@ -168,6 +188,23 @@ def main(argv: list[str] | None = None) -> int:
     SHIPPED.mkdir(parents=True, exist_ok=True)
     (SHIPPED / "letters-and-digits.json").write_text(table_text, encoding="utf-8")
     (SHIPPED / "UNICODE-LICENSE.txt").write_text(UNICODE_LICENSE, encoding="utf-8")
+    lower = lower_case(ucd, TABLE_VERSION)
+    lower_doc = {
+        "format": "albedian.lower-case",
+        "formatVersion": 1,
+        "unicodeVersion": TABLE_VERSION,
+        "rule": "UnicodeData.txt field 13, the simple lower-case mapping of one code point to one; a code point with "
+        "none is its own lower case",
+        "count": len(lower),
+        "pairs": [[cp, lower[cp]] for cp in sorted(lower)],
+        "differsFrom": {
+            v: sorted(cp for cp in lower.keys() | other.keys() if lower.get(cp) != other.get(cp))
+            for v, other in ((v, lower_case(ucd, v)) for v in COMPARED_VERSIONS)
+        },
+    }
+    lower_text = json.dumps(lower_doc, separators=(",", ":")) + "\n"
+    (OUT / "lower-case.json").write_text(lower_text, encoding="utf-8")
+    (SHIPPED / "lower-case.json").write_text(lower_text, encoding="utf-8")
 
     def source(version: str) -> dict:
         return {
@@ -210,6 +247,21 @@ def main(argv: list[str] | None = None) -> int:
                 f"{TABLE_VERSION}'s; differsFrom lists where 15.0.0, 16.0.0 and 17.0.0 differ from them.",
             },
             {
+                "path": "lower-case.json",
+                "sha256": hashlib.sha256(lower_text.encode("utf-8")).hexdigest(),
+                "sources": [f"unicode-ucd-{v}" for v in (TABLE_VERSION, *COMPARED_VERSIONS)],
+                "producedBy": {
+                    "method": "script",
+                    "script": "scripts/generate_letters_and_digits.py",
+                    "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+                    "changes": LOWER_CASE_CHANGES,
+                },
+                "note": f"A byte-identical copy of packages/contracts/src/data/lower-case.json, which both voice "
+                "parsers read to lower a request and the web bundle carries. The pairs are Unicode "
+                f"{TABLE_VERSION}'s; differsFrom lists the code points whose mapping 15.0.0, 16.0.0 and 17.0.0 give "
+                "otherwise.",
+            },
+            {
                 "path": "UNICODE-LICENSE.txt",
                 "sha256": hashlib.sha256(UNICODE_LICENSE.encode("utf-8")).hexdigest(),
                 "sources": [f"unicode-ucd-{TABLE_VERSION}"],
@@ -226,6 +278,8 @@ def main(argv: list[str] | None = None) -> int:
         "fileSets": [],
     }
     (SHIPPED / "PROVENANCE.json").write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"{len(lower)} lower-case pairs; differs from "
+          + ", ".join(f"{v}: {len(points)}" for v, points in lower_doc["differsFrom"].items()))
     print(f"{len(table)} letters and digits in {len(table_doc['ranges'])} ranges; differs from "
           + ", ".join(f"{v}: {sum(b - a + 1 for a, b in r)}" for v, r in table_doc["differsFrom"].items()))
     return 0

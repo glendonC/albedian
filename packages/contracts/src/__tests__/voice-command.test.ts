@@ -194,8 +194,10 @@ describe('@albedian/contracts: the voice command reply', () => {
         fc.constantFrom(...actions),
         (reason, issues, action) => {
           const reply = { ...refusal, reason, ...(issues ? { issues } : {}) };
-          // An ambiguous_target refusal also says its kind (answers-3), so without one it is refused
-          expect(parses('VoiceCommandResponse', reply)).toBe((reason === 'invalid_action') === (issues !== undefined) && reason !== 'ambiguous_target');
+          // An ambiguous_target or not_one_request refusal also says its kind, so without one it is refused
+          expect(parses('VoiceCommandResponse', reply)).toBe(
+            (reason === 'invalid_action') === (issues !== undefined) && reason !== 'ambiguous_target' && reason !== 'not_one_request'
+          );
           expect(parses('VoiceCommandResponse', { ...reply, proposedAction: action })).toBe(false);
         }
       ),

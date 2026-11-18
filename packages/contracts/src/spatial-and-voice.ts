@@ -316,6 +316,8 @@ export const RejectedOutcomeSchema = z.object({
     'not_connected',
     // The action does not match AlbedianActionSchema
     'invalid_action',
+    // The words are not one request: a word no rule of it accounts for, or two requests at once (answers-3b v4)
+    'not_one_request',
   ]),
   explanation: z.string().min(1),
   nextActions: z.array(z.string()),

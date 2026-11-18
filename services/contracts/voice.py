@@ -399,6 +399,10 @@ REFUSAL_KINDS: dict[str, dict[str, Any]] = {
     "sky_not_worked_out": {"reasons": ["ambiguous_target", "unresolved_sky"], "said": False, "name": False, "catalogRow": False, "backend": False},
     # Nothing in view, in a sky the view marks unresolved
     "nothing_in_view_sky_not_worked_out": {"reasons": ["unresolved_sky"], "said": False, "name": False, "catalogRow": False, "backend": False},
+    # A sentence that changes the scene with a word its rule does not account for: no action (answers-3b v4)
+    "not_a_request": {"reasons": ["not_one_request"], "said": True, "name": False, "catalogRow": False, "backend": True},
+    # A sentence that holds two requests that change the scene: neither is done
+    "two_requests": {"reasons": ["not_one_request"], "said": False, "name": False, "catalogRow": False, "backend": True},
 }
 # [proposed] What a refusal quotes back: at most six words and 80 characters with " ..." (services/voice/names.py
 # MAX_QUOTED_*), so 80 astral characters and the cut mark fit. Counted in UTF-16 code units.
@@ -494,7 +498,8 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
     kind, said, row = refusal["kind"], refusal.get("said", ""), refusal.get("catalogRow", "")
     name = refusal.get("name", "")
     if kind == "not_understood":
-        return f'I did not understand "{said}". Say a star\'s or a planet\'s name, or select one and say "that one".'
+        # [proposed, for the UIUX work] It fits a name no list holds ("pluto") as well as a word: it asks for nothing
+        return f'I did not understand "{said}": no list of the app holds that word.'
     if kind == "not_in_this_sky":
         return f"{_capitalized(name)} was not found in this {media}'s sky."
     if kind == "deep_sky_out_of_reach":
@@ -517,6 +522,12 @@ def refusal_sentence(refusal: dict[str, Any], media: str = "photo") -> str:
         return f"The sky in this {media} has not been worked out yet, so nothing in it can be found by name."
     if kind == "nothing_in_view_sky_not_worked_out":
         return f"The sky in this {media} has not been worked out yet, and nothing is selected or pointed at."
+    if kind == "not_a_request":
+        # [proposed, for the UIUX work]
+        return f'I did not take that as a request: "{said}" is not a word of one.'
+    if kind == "two_requests":
+        # [proposed, for the UIUX work]
+        return "That asks for two things at once; say one at a time."
     raise ValueError(f"no sentence for a {kind} refusal")
 
 
@@ -535,6 +546,8 @@ class RejectedVoiceReply(_Strict):
         "no_grounded_answer",
         "not_connected",
         "invalid_action",
+        # The words are not one request: a word no rule of it accounts for, or two requests at once (answers-3b v4)
+        "not_one_request",
     ]
     explanation: Text
     next_actions: list[str]
@@ -550,8 +563,8 @@ class RejectedVoiceReply(_Strict):
             raise ValueError("an invalid_action refusal lists its issues, and no other refusal does")
         refusal = self.refusal
         if refusal is None:
-            if self.reason == "ambiguous_target":
-                raise ValueError("an ambiguous_target refusal says which kind it is")
+            if self.reason in ("ambiguous_target", "not_one_request"):
+                raise ValueError(f"a {self.reason} refusal says which kind it is")
             return self
         spec = REFUSAL_KINDS[refusal.kind]
         if not spec["backend"]:
@@ -789,6 +802,19 @@ _LETTERS_AND_DIGITS = json.loads(LETTERS_AND_DIGITS_PATH.read_text(encoding="utf
 LETTERS_AND_DIGITS_UNICODE_VERSION: str = _LETTERS_AND_DIGITS["unicodeVersion"]
 _LETTER_FIRSTS = [first for first, _last in _LETTERS_AND_DIGITS["ranges"]]
 _LETTER_LASTS = [last for _first, last in _LETTERS_AND_DIGITS["ranges"]]
+
+
+# The lower-case table both voice parsers read (packages/contracts/src/data/lower-case.json, written by
+# scripts/generate_letters_and_digits.py): Unicode 15.1.0's simple lower-case mapping, one code point to one. A request
+# is lowered by it, never by this Python's own case tables, so every runtime reads a request alike
+LOWER_CASE_PATH = Path(__file__).resolve().parents[2] / "packages" / "contracts" / "src" / "data" / "lower-case.json"
+_LOWER_CASE_TABLE = json.loads(LOWER_CASE_PATH.read_text(encoding="utf-8"))
+_LOWER_CASE: dict[int, int] = {upper: lower for upper, lower in _LOWER_CASE_TABLE["pairs"]}
+
+
+def lower_case(text: str) -> str:
+    """`text` with every code point the lower-case table maps replaced by its lower case, and every other kept."""
+    return text.translate(_LOWER_CASE)
 
 
 def is_letter_or_digit(code_point: int) -> bool:
@@ -1136,6 +1162,9 @@ def build_voice_samples() -> dict[str, Any]:
         {"kind": "nothing_in_view"},
         {"kind": "sky_not_worked_out"},
         {"kind": "nothing_in_view_sky_not_worked_out"},
+        {"kind": "not_a_request", "said": "nobody"},
+        {"kind": "not_a_request", "said": "\U0001d400" * 80},
+        {"kind": "two_requests"},
     ]
     backend_refusals = [r for r in refusals if REFUSAL_KINDS[r["kind"]]["backend"]]
     # The sentence of every refusal, in each media word, and of names whose first letter the ASCII rule raises or
@@ -1315,7 +1344,14 @@ def build_voice_samples() -> dict[str, Any]:
     understood = next(r for r in rejections if r.get("refusal", {}).get("kind") == "not_understood")
     out_of_reach = next(r for r in rejections if r.get("refusal", {}).get("kind") == "deep_sky_out_of_reach")
     which = next(r for r in rejections if r.get("refusal", {}).get("kind") == "which_one")
+    not_a_req = next(r for r in rejections if r.get("refusal", {}).get("kind") == "not_a_request")
+    two_reqs = next(r for r in rejections if r.get("refusal", {}).get("kind") == "two_requests")
     bad(reply, _with(understood, ["refusal"], _DROP), "an ambiguous_target refusal says its kind")
+    bad(reply, _with(not_a_req, ["refusal"], _DROP), "a not_one_request refusal says its kind")
+    bad(reply, _with(not_a_req, ["reason"], "ambiguous_target"), "not_a_request goes out as not_one_request")
+    bad(reply, _with(not_a_req, ["refusal", "said"], _DROP), "not_a_request quotes the word that stopped it")
+    bad(reply, _with(two_reqs, ["reason"], "ambiguous_target"), "two_requests goes out as not_one_request")
+    bad(reply, _with(two_reqs, ["refusal", "said"], "and"), "two_requests quotes nothing")
     bad(reply, _with(understood, ["refusal", "kind"], "not_heard"), "an unknown refusal kind")
     bad(reply, _with(understood, ["refusal", "kind"], _DROP), "a refusal has a kind")
     bad(reply, _with(understood, ["refusal"], None), "a refusal is absent, never null")

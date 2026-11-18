@@ -78,6 +78,23 @@
       "note": "A byte-identical copy of packages/contracts/src/data/letters-and-digits.json, which both answer contracts read and the web bundle carries. The ranges are Unicode 15.1.0's; differsFrom lists where 15.0.0, 16.0.0 and 17.0.0 differ from them."
     },
     {
+      "path": "lower-case.json",
+      "sha256": "e5b9acc4eb93c28f164527845b88e39b3f28f59b2988c9c1ce3f8cff89095f4f",
+      "sources": [
+        "unicode-ucd-15.1.0",
+        "unicode-ucd-15.0.0",
+        "unicode-ucd-16.0.0",
+        "unicode-ucd-17.0.0"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/generate_letters_and_digits.py",
+        "command": "uv run python scripts/generate_letters_and_digits.py <ucd>",
+        "changes": "Worked out from the Unicode Character Database, not copied: the simple one-to-one lower-case mapping of Unicode 15.1, as code-point pairs, with the code points where three other versions map otherwise."
+      },
+      "note": "A byte-identical copy of packages/contracts/src/data/lower-case.json, which both voice parsers read to lower a request and the web bundle carries. The pairs are Unicode 15.1.0's; differsFrom lists the code points whose mapping 15.0.0, 16.0.0 and 17.0.0 give otherwise."
+    },
+    {
       "path": "UNICODE-LICENSE.txt",
       "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
       "sources": [
