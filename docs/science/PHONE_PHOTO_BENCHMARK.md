@@ -7,7 +7,8 @@ are scored on false solves.
 
 Everything it renders is simulated (`evidenceClass: simulated`). A solve here measures how a solver
 behaves on modelled phone photos; it never shows that a real photo solves. Real frames are reported
-separately below, with no ground truth yet.
+separately below, with no ground truth yet. Real photos by third parties are measured through the
+upload path and judged by an independent solver in [REAL_PHOTO_BENCHMARK.md](REAL_PHOTO_BENCHMARK.md).
 
 Code: `research/benchmarks/phone_photos/`. Tests: `tests/science/test_phone_photo_*.py` and
 `tests/science/test_real_clip_baseline.py`.

@@ -2,6 +2,16 @@
 
     uv run python -m research.benchmarks.real_photos fetch
     uv run python -m research.benchmarks.real_photos status
+    uv run python -m research.benchmarks.real_photos oracle --label <label> [--photos <id> ...]
+    uv run python -m research.benchmarks.real_photos measure --label <label> [--workers 1] [--oracle-label <label>]
+        [--photos <id> ...] [--phases upload,oracle,diagnose,score]
+
+`oracle` runs the independent check (astrometry.net, research/benchmarks/real_photos/oracle.py) alone on each photo
+that has no check record yet under .cache/solver-bench/real-photos/<label>/oracle/, so later runs reuse them.
+`measure` sends each photo through the real upload path, runs the check where it has no record, runs the two
+diagnostics, judges every claim and writes frames.jsonl, summary.json and summary.md under
+.cache/solver-bench/real-photos/<label>/ (research/benchmarks/real_photos/measure.py). A photo already recorded is
+not run again, so a stopped run goes on where it stopped. Neither command makes a network request.
 
 `fetch` gets every corpus entry of data/downloads.json that is not yet in the shared .cache with its listed size
 and SHA-256, through scripts/fetch_download.py's own `fetch` (so a file is kept only once it matches its entry, and
@@ -247,10 +257,30 @@ def status(downloads: list[dict[str, Any]], root: Path = ROOT, out: Optional[Tex
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m research.benchmarks.real_photos", description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=("fetch", "status"), help="fetch the missing photos, or count the ones present")
+    parser.add_argument(
+        "command",
+        choices=("fetch", "status", "oracle", "measure"),
+        help="fetch the missing photos, count the ones present, run the independent check, or measure the upload path",
+    )
+    parser.add_argument("--label", help="the run's folder under .cache/solver-bench/real-photos/ (oracle and measure)")
+    parser.add_argument("--workers", type=int, default=1, help="photos measured at once (measure; default 1, at most 2)")
+    parser.add_argument("--oracle-label", help="reuse the check records of another run (measure; default: this run's)")
+    parser.add_argument("--photos", nargs="+", help="only these photo ids (oracle and measure)")
+    parser.add_argument("--phases", default="upload,oracle,diagnose,score", help="measure's phases, comma separated")
     args = parser.parse_args(argv)
-    downloads = corpus_downloads()
-    return fetch_all(downloads) if args.command == "fetch" else status(downloads)
+    if args.command in ("fetch", "status"):
+        downloads = corpus_downloads()
+        return fetch_all(downloads) if args.command == "fetch" else status(downloads)
+    if not args.label:
+        parser.error(f"{args.command} needs --label")
+    from research.benchmarks.real_photos import measure, oracle
+
+    # SIGTERM, SIGHUP and SIGINT are noted and read at chosen points, so a stopped run stops the check and cleans up as code
+    with oracle.stop_on_signals():
+        if args.command == "oracle":
+            return measure.run_oracle(args.label, args.photos)
+        phases = tuple(phase.strip() for phase in args.phases.split(",") if phase.strip())
+        return measure.run_measure(args.label, workers=args.workers, oracle_label=args.oracle_label, photo_ids=args.photos, phases=phases)
 
 
 if __name__ == "__main__":
