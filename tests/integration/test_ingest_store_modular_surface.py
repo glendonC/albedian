@@ -24,6 +24,7 @@ from pathlib import Path
 import re
 import tempfile
 import time
+import typing
 
 import pytest
 from hypothesis import example, given, settings
@@ -234,6 +235,32 @@ def test_ingest_store_method_signatures(method_name: str) -> None:
     assert actual == EXPECTED_INGEST_STORE_METHODS[method_name]
     if method_name == "receive":
         assert inspect.iscoroutinefunction(member)
+
+
+def test_type_hints_resolve_across_all_store_callables_and_classes() -> None:
+    modules = [store] + [
+        importlib.import_module(f"services.ingest.{p.stem}")
+        for p in sorted(INGEST_DIR.glob("store_*.py"))
+    ]
+    for mod in modules:
+        for name, obj in vars(mod).items():
+            if inspect.isfunction(obj):
+                hints = typing.get_type_hints(obj)
+                if obj.__module__.startswith("services.ingest."):
+                    assert "return" in hints, f"missing return hint on {mod.__name__}.{name}"
+            elif inspect.isclass(obj) and obj.__module__.startswith("services.ingest."):
+                typing.get_type_hints(obj)
+                for member_name, raw_member in vars(obj).items():
+                    if member_name.startswith("__") and member_name != "__init__":
+                        continue
+                    target = (
+                        raw_member.__func__
+                        if isinstance(raw_member, (classmethod, staticmethod))
+                        else raw_member
+                    )
+                    if inspect.isfunction(target):
+                        hints = typing.get_type_hints(target)
+                        assert "return" in hints, f"missing return hint on {mod.__name__}.{name}.{member_name}"
 
 
 def test_store_source_preserves_frontend_refusal_sentence_contract() -> None:
