@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 // Away from home the laptop may have no internet, or a link that never answers. A stylesheet from another
 // host in <head>, or an @import of one, holds the first paint until the browser gives up on it. Until web-fonts-1
 // the web fonts came from a font host through a link that started as media="print" and switched itself on when it
-// loaded, with a noscript copy. The app now serves its own faces (styles/fonts.css, public/fonts/geist), so the page
-// loads no stylesheet from another host at all, and each face is swapped in when it loads (font-display: swap), so
-// the first paint never waits on a font.
+// loaded, with a noscript copy. The app now serves its own faces (styles/fonts.css, public/fonts/geist), so
+// index.html links no stylesheet from another host and no stylesheet under src @imports one, and each face is swapped
+// in when it loads (font-display: swap), so the first paint never waits on a font.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, '../..');
@@ -59,12 +59,20 @@ describe('offline first paint', () => {
     }
   });
 
-  it('has no @import of another host in any stylesheet under apps/web/src', () => {
+  const OUTSIDE_IMPORT = /@import(?:\s|\/\*[\s\S]*?\*\/)*(?:url\((?:\s|\/\*[\s\S]*?\*\/)*)?['"]?(?:https?:)?\/\//i;
+
+  it('has no @import of another host in any stylesheet under apps/web/src, spaced, comment-separated or minified', () => {
     const files = cssFiles(srcRoot);
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       const css = fs.readFileSync(file, 'utf8');
-      expect(css, path.relative(webRoot, file)).not.toMatch(/@import\s+(url\(\s*)?['"]?(https?:)?\/\//i);
+      expect(css, path.relative(webRoot, file)).not.toMatch(OUTSIDE_IMPORT);
     }
+    expect('@import"https://example.com/a.css";').toMatch(OUTSIDE_IMPORT);
+    expect("@import'https://example.com/a.css';").toMatch(OUTSIDE_IMPORT);
+    expect('@import/*c*/"https://example.com/a.css";').toMatch(OUTSIDE_IMPORT);
+    expect('@import url(/*c*/"https://example.com/a.css");').toMatch(OUTSIDE_IMPORT);
+    expect('@import "//example.com/a.css";').toMatch(OUTSIDE_IMPORT);
+    expect("@import './hud-tokens.css';").not.toMatch(OUTSIDE_IMPORT);
   });
 });

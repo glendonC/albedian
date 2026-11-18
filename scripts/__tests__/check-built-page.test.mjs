@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { STYLE_HASHES, styleHash } from '../content-policy.mjs';
 import {
+  ADDRESS_ATTRIBUTES,
   builtOutsideAddresses,
   builtPolicyMisfits,
   decodeAttribute,
@@ -34,6 +35,17 @@ describe("the app's page and stylesheets name no outside address the check reads
     expect(pageOutsideAddresses(page)).toEqual([]);
     expect(page).not.toMatch(/preconnect/i);
     expect(page).not.toMatch(/fonts\.(googleapis|gstatic)\.com/i);
+    for (const spike of ['apps/web/spike/listening/render.mjs', 'apps/web/spike/music/render.mjs']) {
+      const source = fs.readFileSync(path.join(repoRoot, spike), 'utf8');
+      expect(source, spike).not.toMatch(/fonts\.(googleapis|gstatic)\.com/i);
+      expect(source, spike).not.toMatch(/rel\s*=\s*["']?preconnect/i);
+      const pageStyle = /const PAGE_STYLE = `([\s\S]*?)`;/.exec(source)?.[1];
+      const pageHead = /const html = `(<meta charset="utf-8">[\s\S]*?)<main>/.exec(source)?.[1];
+      expect(pageStyle, `${spike} PAGE_STYLE`).toBeDefined();
+      expect(pageHead, `${spike} writePage head`).toBeDefined();
+      expect(stylesheetOutsideAddresses(pageStyle), `${spike} PAGE_STYLE`).toEqual([]);
+      expect(pageOutsideAddresses(pageHead.replace('${PAGE_STYLE}', pageStyle)), `${spike} writePage`).toEqual([]);
+    }
   });
 
   it('names no outside address in any stylesheet it ships', () => {
@@ -80,12 +92,27 @@ describe('what counts as outside', () => {
     ['  https://example.com/x  ', true],
     // As a browser's URL parser reads it: controls and spaces at the ends dropped, tabs and line ends taken out, a
     // backslash read as a slash
+    ['\u0000https://example.com/0', true],
     ['\u0001https://example.com/c', true],
+    ['\u001fhttps://example.com/1f', true],
+    ['\u0020https://example.com/20', true],
+    ['\u0021https://example.com/21', false],
+    ['https://example.com/trail\u0000', true],
+    ['   ', false],
     ['ht\ttps://example.com/t', true],
     ['https:\n//example.com/n', true],
+    ['ht\rtps://example.com/r', true],
+    ['ht\u0008tps://example.com/b8', false],
+    ['ht\vtps://example.com/v', false],
+    ['ht\ftps://example.com/f', false],
+    ['ht\u000etps://example.com/e', false],
     ['/\\example.com/b', true],
     ['\\\\example.com/b', true],
     ['/fonts\\x.woff2', false],
+    ['/path?next=https://example.com', false],
+    ['custom+v1.0-x:foo', true],
+    ['1http://example.com/x', false],
+    ['a_b:foo', false],
   ];
   it.each(ROWS)('%j is outside: %s', (address, outside) => {
     expect(isOutside(address)).toBe(outside);
@@ -167,6 +194,8 @@ describe('each form the check reads, refused by its form and its address', () =>
     ['a meta refresh whose http-equiv holds a character reference', '<meta http-equiv="&#114;efresh" content="0; url=https://example.com/r">', [['meta refresh', 'https://example.com/r']]],
     ["a body's background", '<body background="https://example.com/b.png">', [['body background', 'https://example.com/b.png']]],
     ['a CSS image-set', '<style>.a { background-image: image-set("https://example.com/i.png" 1x, url(/x.png) 2x); }</style>', [['style image-set()', 'https://example.com/i.png']]],
+    ['a CSS image-set string with an escaped quote before ")"', '<style>.a { background-image: image-set("https://example.com/a\\"b)c.png" 1x); }</style>', [['style image-set()', 'https://example.com/a"b)c.png']]],
+    ['a CSS IMAGE-SET in capitals with single-quoted ")" and nested url() before a second string', "<style>.a { background-image: IMAGE-SET(url(/own.png) 1x, 'https://example.com/s\\'b)c.png' 2x); }</style>", [['style image-set()', "https://example.com/s'b)c.png"]]],
     ['a CSS image-set in a style attribute', '<div style="background: -webkit-image-set(\'https://example.com/w.png\' 1x)"></div>', [['div style -webkit-image-set()', 'https://example.com/w.png']]],
     ['a scheme written as a numeric reference', '<img src="https&#58;//example.com/e.png">', [['img src', 'https://example.com/e.png']]],
     ['a scheme written as a hex reference', '<img src="https&#x3A;//example.com/h.png">', [['img src', 'https://example.com/h.png']]],
@@ -174,51 +203,242 @@ describe('each form the check reads, refused by its form and its address', () =>
     ['a host after a slash and a backslash', '<img src="/\\example.com/b.png">', [['img src', '/\\example.com/b.png']]],
     ['a tab inside the scheme', '<img src="ht&Tab;tps://example.com/t.png">', [['img src', 'ht\ttps://example.com/t.png']]],
     ['a scheme written with a CSS escape', '<style>.a { background: url(https\\3a //example.com/c.png); }</style>', [['style url()', 'https://example.com/c.png']]],
-    ['a reference the check does not decode', '<img src="https&nope;//example.com/r.png">', [['img src, a character reference the check does not decode', 'https&nope;//example.com/r.png']]],
+    ['a scheme written with a CSS escape and CR LF', '<style>.a { background: url(https\\3a\r\n//example.com/crlf.png); }</style>', [['style url()', 'https://example.com/crlf.png']]],
+    ['a quoted CSS url continued across CR LF', '<style>.a { background: url("https:\\\r\n//example.com/cont.png"); }</style>', [['style url()', 'https://example.com/cont.png']]],
+    ['a CSS @import with no space before its quote', '<style>@import"https://example.com/tight.css";@import\'https://example.com/single.css\';</style>', [['style @import', 'https://example.com/tight.css'], ['style @import', 'https://example.com/single.css']]],
+    ['a CSS @import with a comment before its quote', '<style>@import/*c*/"https://example.com/c.css";</style>', [['style @import', 'https://example.com/c.css']]],
+    ['a CSS rule after strings holding comment-open characters', "<style>.a::before { content: \"/*\"; }\n.b { background: url(\"https://example.com/after-str.png\"); }\n/* end */\n.c::before { content: '/*'; }\n.d { background: url('https://example.com/after-single.png'); }\n/* end2 */</style>", [['style url()', 'https://example.com/after-str.png'], ['style url()', 'https://example.com/after-single.png']]],
+    ['a CSS unquoted url holding comment-open characters in lower and upper case, and a comment after a quoted url() string', '<style>.a { background: url(https://example.com/*p*/u.png); } .b { background: URL(https://example.com/*p*/upper.png); } /* end */ .c { background: url("https://example.com/q.png" /*c*/); } .d { background: url(https\\://example.com/a\\ b\\)c.png); }</style>', [['style url()', 'https://example.com/*p*/u.png'], ['style url()', 'https://example.com/*p*/upper.png'], ['style url()', 'https://example.com/q.png'], ['style url()', 'https://example.com/a b)c.png']]],
+    ['a noscript in the body holding an outside image', '<body><noscript><img src="https://example.com/noscript-body.png"></noscript></body>', [['img src', 'https://example.com/noscript-body.png']]],
+    ['a link after an inline script holding "<!--" and a later HTML comment', '<script>const s = "<!--";</script><link rel="stylesheet" href="https://example.com/after-script.css"><!-- footer -->', [['link href', 'https://example.com/after-script.css']]],
+    ['an unquoted meta refresh content holding "="', '<meta http-equiv=refresh content=0;url=https://example.com/u>', [['meta refresh', 'https://example.com/u']]],
+    ['a quoted meta refresh followed by a semicolon', '<meta http-equiv="refresh" content="0; url=\'https://example.com/semi\';">', [['meta refresh', 'https://example.com/semi']]],
+    ['an unquoted meta refresh address holding an apostrophe', "<meta http-equiv=\"refresh\" content=\"0; url=https://example.com/don't\">", [['meta refresh', "https://example.com/don't"]]],
+    ['a space-separated meta refresh with no semicolon', '<meta http-equiv="refresh" content="0 https://example.com/space">', [['meta refresh', 'https://example.com/space']]],
+    ['an unquoted srcset holding "=" and an encoded space', '<img srcset=/own.png?v=1,&#32;https://example.com/srcset.png>', [['img srcset', 'https://example.com/srcset.png']]],
+    ['an img with an apostrophe in an unquoted attribute before src', "<img alt=don't src='https://example.com/apos.png'>", [['img src', 'https://example.com/apos.png']]],
+    ['a style element whose attribute quotes ">" and "</style>"', '<style data-x="a>b</style>">body{background:url(https://example.com/in-style.png)}</style>', [['style url()', 'https://example.com/in-style.png']]],
+    ['a style element closed with an end-tag attribute, and an unclosed style at end', '<style>@import "https://example.com/s1.css";</style x><style>@import "https://example.com/s2.css";', [['style @import', 'https://example.com/s1.css'], ['style @import', 'https://example.com/s2.css']]],
+    ['an img after an abrupt HTML comment', '<!--><img src="https://example.com/abrupt1.png"><!---><img src="https://example.com/abrupt2.png">', [['img src', 'https://example.com/abrupt1.png'], ['img src', 'https://example.com/abrupt2.png']]],
+    ['an svg feImage with mixed-case localName, lower-cased in the reported form', '<svg><feImage href="https://example.com/fe.png"/></svg>', [['feimage href', 'https://example.com/fe.png']]],
+    ['an svg template element where content is undefined, holding an outside image', '<svg><template><image href="https://example.com/svgt.png"/></template></svg>', [['image href', 'https://example.com/svgt.png']]],
+    ['a style element carrying both a style attribute and CSS body, reported in order', '<style style="background: url(https://example.com/attr.png)">.a { background: url(https://example.com/body.png) }</style>', [['style style url()', 'https://example.com/attr.png'], ['style url()', 'https://example.com/body.png']]],
+    ['a meta refresh carrying a style attribute before content, both reported in order', '<meta style="background: url(https://example.com/ms.png)" http-equiv="  Refresh  " content="0; url=https://example.com/m">', [['meta style url()', 'https://example.com/ms.png'], ['meta refresh', 'https://example.com/m']]],
+    ['a template with a style attribute, an inside img, and a sibling img, in document order', '<template style="background: url(https://example.com/ts.png)"><img src="https://example.com/ti.png"></template><img src="https://example.com/after.png">', [['template style url()', 'https://example.com/ts.png'], ['img src', 'https://example.com/ti.png'], ['img src', 'https://example.com/after.png']]],
+    ["an object's archive list separated by a comma with no space", '<object archive="  /own.jar,https://example.com/a.jar  "></object>', [['object archive', 'https://example.com/a.jar']]],
     ["a link's ping list", '<a href="/b" ping="/own https://example.com/p">', [['a ping', 'https://example.com/p']]],
     ['an attribute holding ">" before the address', '<img alt="a > b" src="https://example.com/q.png">', [['img src', 'https://example.com/q.png']]],
     ['an element and an attribute in upper case', '<IMG SRC="https://example.com/u.png">', [['img src', 'https://example.com/u.png']]],
   ];
   it.each(FORMS)('%s', (_name, page, refused) => {
-    expect(pageOutsideAddresses(page), refused.map(([form, address]) => `${form}: ${address}`).join('; ')).toEqual(refused);
+    let got;
+    expect(() => {
+      got = pageOutsideAddresses(page);
+    }).not.toThrow();
+    expect(got, refused.map(([form, address]) => `${form}: ${address}`).join('; ')).toEqual(refused);
   });
 
   // The same forms holding the app's own addresses: none is refused
   const OWN = [
     ['an own base address', '<base href="/">'],
     ['a candidate list of own addresses and a data address with commas', '<img srcset="data:image/png;base64,AA,BB 1x, /b.png 2x, /c.png 100w">'],
-    ['a meta refresh to an own path, and one with no address', '<meta http-equiv="refresh" content="5; url=/next"><meta http-equiv="refresh" content="30">'],
-    ['an own query string holding "&" before "="', '<img src="/a.png?x=1&y=2">'],
+    ['a meta refresh to an own path, one with no address, and an unread attribute on a refresh meta', '<meta http-equiv="refresh" content="5; url=/next"><meta http-equiv="refresh" content="30" data-x="https://example.com/not-read">'],
+    ['a non-refresh meta or non-meta element with http-equiv and content', '<meta name="description" content="0; url=https://example.com/not-refresh"><div http-equiv="refresh" content="0; url=https://example.com/not-meta"></div>'],
+    ['an own query string holding "&" before "=", underscores and bare parameters', '<img src="/a.png?x=1&y=2"><img src="/api/media?x=1&asset_id=2"><img src="/api/media?x=1&raw"><img src="https&nope;//example.com/r.png">'],
     ['an attribute the check does not read', '<div data-src="https://example.com/x.png" title="See https://example.com"></div>'],
-    ['a style element and attribute with own addresses', '<style>.a { background: image-set("/a.png" 1x, url(/b.png) 2x) }</style><div style="background: url(/c.png)"></div>'],
+    ['a style element and attribute with own addresses and comment-split tokens', '<style>.a { background: image-set("/a.png" 1x, url(/b.png) 2x); x: ur/*c*/l("https://example.com/split.png"); }</style><div style="background: url(/c.png)"></div>'],
   ];
   it.each(OWN)('%s', (_name, page) => {
-    expect(pageOutsideAddresses(page)).toEqual([]);
+    let got;
+    expect(() => {
+      got = pageOutsideAddresses(page);
+    }).not.toThrow();
+    expect(got).toEqual([]);
   });
 
-  it('decodes the references a browser decodes in an attribute, and gives back none it does not read', () => {
+  it('handles CSS Syntax Level 3 token boundaries: C1-C5, bad-string/bad-url tokens, ident/at/hash/dimension boundaries, and EOF forms', () => {
+    // AUDIT F C1: custom function/hash/dimension/at-rule ending in url must not enter <url-token> mode
+    expect(
+      stylesheetOutsideAddresses('.a { --x: my-url(a/*); } "*/); }\n.b { content: "/*"; background: url("https://example.com/leak1.png"); }\n/* end */'),
+    ).toEqual([['url()', 'https://example.com/leak1.png']]);
+    for (const prefix of [
+      'aurl', 'zurl', 'Aurl', 'Zurl', '0url', '9url', '_url', '-url', '--url', '\u0080url', '\u0000url',
+      '@url', '#url', '#0url', '\\#url', '\\20 url', '10url', '1.5e+2url', 'url0', 'url9', 'url_a', 'URL_A',
+    ]) {
+      expect(stylesheetOutsideAddresses(`.a { --x: ${prefix}(https://example.com/not-url.png); }`), prefix).toEqual([]);
+      expect(
+        stylesheetOutsideAddresses(`.a { --x: ${prefix}(a /*); } "*/); }\n.b { content: "/*"; background: url("https://example.com/p.png"); }\n/* end */`),
+        `${prefix} comment`,
+      ).toEqual([['url()', 'https://example.com/p.png']]);
+    }
+    expect(stylesheetOutsideAddresses('.a { --x: \u007furl(https://example.com/del.png); }')).toEqual([
+      ['url()', 'https://example.com/del.png'],
+    ]);
+    expect(stylesheetOutsideAddresses('.a { --x: \\\nurl(https://example.com/after-bad-escape.png); }')).toEqual([
+      ['url()', 'https://example.com/after-bad-escape.png'],
+    ]);
+    expect(stylesheetOutsideAddresses('#import "https://example.com/not-import.css";')).toEqual([]);
+    expect(stylesheetOutsideAddresses('@IMPORT "https://example.com/upper-import.css";')).toEqual([
+      ['@import', 'https://example.com/upper-import.css'],
+    ]);
+    expect(stylesheetOutsideAddresses('@@import "https://example.com/double-at.css";')).toEqual([
+      ['@import', 'https://example.com/double-at.css'],
+    ]);
+    expect(stylesheetOutsideAddresses('/*/ url("https://example.com/inside-open-comment.png") */')).toEqual([]);
+    expect(stylesheetOutsideAddresses('/**/ @import "https://example.com/after-empty-comment.css";')).toEqual([
+      ['@import', 'https://example.com/after-empty-comment.css'],
+    ]);
+    // AUDIT F C2: unclosed string on line 1 (<bad-string-token> at unescaped newline, LF/CR/CRLF/FF) must not swallow subsequent lines or @import/image-set
+    for (const nl of ['\n', '\r', '\r\n', '\f']) {
+      expect(
+        stylesheetOutsideAddresses(`.a { content: "unclosed${nl}; }\n.b { content: "/*"; background: url("https://example.com/leak2.png"); }\n/* end */`),
+      ).toEqual([['url()', 'https://example.com/leak2.png']]);
+      expect(
+        stylesheetOutsideAddresses(`@import "unclosed${nl}; .b { background: url("https://example.com/after-bad-import.png"); }`),
+      ).toEqual([['url()', 'https://example.com/after-bad-import.png']]);
+    }
+    expect(
+      stylesheetOutsideAddresses('.a { background-image: image-set("unclosed\n, "https://example.com/after-bad-set.png" 1x); }'),
+    ).toEqual([['image-set()', 'https://example.com/after-bad-set.png']]);
+    // AUDIT F C3: <bad-url-token> holding /* and space/quote/( or escaped \) consumes remnants to unescaped ) without opening a comment or accepting the URL
+    expect(
+      stylesheetOutsideAddresses('.a { background: url(foo/*bar baz); }\n.b { background: url("https://example.com/leak3.png"); }\n/* end */'),
+    ).toEqual([['url()', 'https://example.com/leak3.png']]);
+    expect(
+      stylesheetOutsideAddresses('.a { background: url(foo bar\\)/*not-comment); }\n.b { background: url("https://example.com/leak3b.png"); }\n/* end */'),
+    ).toEqual([['url()', 'https://example.com/leak3b.png']]);
+    expect(
+      stylesheetOutsideAddresses('.a { background-image: image-set(url(foo "bar) 1x, "https://example.com/leak3c.png" 2x); }'),
+    ).toEqual([['image-set()', 'https://example.com/leak3c.png']]);
+    for (const badCh of ['"', "'", '(']) {
+      expect(stylesheetOutsideAddresses(`.a { background: url(https://example.com/a${badCh}b.png); }`), badCh).toEqual([]);
+      expect(
+        stylesheetOutsideAddresses(`.a { background: url(foo${badCh}/*bar); }\n.b { background: url("https://example.com/leak3q.png"); }\n/* end */`),
+        `${badCh} comment`,
+      ).toEqual([['url()', 'https://example.com/leak3q.png']]);
+    }
+    // AUDIT F C4 & C5: escaped \) and \" inside unquoted url() inside image-set(), plus nested non-url functions like type("...") and closed scopes
+    expect(
+      stylesheetOutsideAddresses('.a { background-image: image-set(url(/own\\)a.png) 1x, "https://example.com/leak4.png" 2x); }'),
+    ).toEqual([['image-set()', 'https://example.com/leak4.png']]);
+    expect(
+      stylesheetOutsideAddresses('.a { background-image: image-set(url(/own\\"a.png) 1x, "https://example.com/a)b.png" 2x); }'),
+    ).toEqual([['image-set()', 'https://example.com/a)b.png']]);
+    expect(
+      stylesheetOutsideAddresses('.a { background-image: image-set(url(/own.png) type("https://example.com/not-image-mime"), ("https://example.com/in-parens.png") 1x, "https://example.com/real.png" 2x); content: "https://example.com/after-closed-set.png"; }'),
+    ).toEqual([['image-set()', 'https://example.com/real.png']]);
+    // Raw CSS CR LF hex escapes, padded whitespace in unquoted url(), unclosed image-set/comments/strings/url( at EOF, escaped at-rule/function names (Not read)
+    expect(stylesheetOutsideAddresses('.a { background: url(  https\\3a\r\n//example.com/crlf.png  ); }')).toEqual([
+      ['url()', 'https://example.com/crlf.png'],
+    ]);
+    expect(stylesheetOutsideAddresses('.b { background-image: image-set("https://example.com/open-set.png" 1x')).toEqual([
+      ['image-set()', 'https://example.com/open-set.png'],
+    ]);
+    expect(stylesheetOutsideAddresses('.b { background-image: image-set("https://example.com/eof-str.png')).toEqual([
+      ['image-set()', 'https://example.com/eof-str.png'],
+    ]);
+    expect(stylesheetOutsideAddresses('.b { background-image: image-set("https://example.com/eof-bs\\')).toEqual([
+      ['image-set()', 'https://example.com/eof-bs'],
+    ]);
+    expect(stylesheetOutsideAddresses('@import "https://example.com/open-import.css')).toEqual([]);
+    expect(stylesheetOutsideAddresses('.a { background: url("https://example.com/open-q.png"')).toEqual([]);
+    expect(stylesheetOutsideAddresses('.a { background: url(https://example.com/open-u.png')).toEqual([]);
+    expect(stylesheetOutsideAddresses('@\\69 mport "https://example.com/escaped-import.css"; .a { background: u\\72 l("https://example.com/escaped-url.png"); }')).toEqual([]);
+    expect(stylesheetOutsideAddresses('.a { --x: my-url("https://example.com/custom-fn.png"); }')).toEqual([]);
+    expect(stylesheetOutsideAddresses('.a { color: red; } /* unclosed url(https://example.com/eof.png)')).toEqual([]);
+    expect(stylesheetOutsideAddresses('.a { w: url(/*c*/"https://example.com/bad-q.png"); y: url(https:\\\n//example.com/bad1.png); z: url(https:\\\r//example.com/bad2.png); u: url(https:\\\f//example.com/bad3.png); }')).toEqual([]);
+    expect(decodeCss('abc\\')).toBe('abc\uFFFD');
+    expect(decodeCss('a\u0000b\\\u0000')).toBe('a\uFFFDb\uFFFD');
+  });
+
+  it('reads every attribute listed in ADDRESS_ATTRIBUTES on any element', () => {
+    expect(ADDRESS_ATTRIBUTES).toHaveLength(21);
+    for (const attr of ADDRESS_ATTRIBUTES) {
+      expect(pageOutsideAddresses(`<x ${attr}="https://example.com/a"></x>`), attr).toEqual([[`x ${attr}`, 'https://example.com/a']]);
+    }
+  });
+
+  it('decodes attribute character references as HTML5 does, keeping query parameters with underscores or no "="', () => {
     expect(decodeAttribute('a&#58;b&#x2F;c&amp;d&colon;')).toBe('a:b/c&d:');
     expect(decodeAttribute('/a?x=1&y=2')).toBe('/a?x=1&y=2');
-    expect(decodeAttribute('&nope;')).toBeNull();
-    expect(decodeAttribute('x &amp y')).toBeNull();
+    expect(decodeAttribute('/api/media?x=1&asset_id=2')).toBe('/api/media?x=1&asset_id=2');
+    expect(decodeAttribute('/api/media?x=1&raw')).toBe('/api/media?x=1&raw');
+    expect(decodeAttribute('&nope;')).toBe('&nope;');
+    expect(decodeAttribute('x &amp y')).toBe('x & y');
+    expect(decodeAttribute('x &amp=1')).toBe('x &amp=1');
+    expect(decodeAttribute('a"b&colon;c')).toBe('a"b:c');
+    expect(decodeAttribute('a"b"c&colon;d')).toBe('a"b"c:d');
     expect(decodeAttribute('&#0;')).toBe('�');
   });
 
-  it('decodes CSS escapes: hex with its one white space, any other character, and a line end continued', () => {
+  it('decodes CSS escapes: hex with its one white space (CR LF included), lone surrogates and out-of-range to U+FFFD, and line ends continued', () => {
     expect(decodeCss('https\\3a //x')).toBe('https://x');
+    expect(decodeCss('https\\3a\t//x')).toBe('https://x');
+    expect(decodeCss('https\\3a\n//x')).toBe('https://x');
+    expect(decodeCss('https\\3a\r//x')).toBe('https://x');
+    expect(decodeCss('https\\3a\f//x')).toBe('https://x');
+    expect(decodeCss('https\\3a\r\n//x')).toBe('https://x');
+    expect(decodeCss('https\\3a  x')).toBe('https: x');
+    expect(decodeCss('https\\3a\r\n\nx')).toBe('https:\nx');
+    expect(decodeCss('https\\3a\vx')).toBe('https:\vx');
     expect(decodeCss('\\68 ttps:\\/\\/x')).toBe('https://x');
-    expect(decodeCss('a\\\nb')).toBe('ab');
+    expect(decodeCss('\\9 x\\00003a1\\09afAF ')).toBe('\tx:1' + String.fromCodePoint(0x09afaf));
+    expect(decodeCss('\\/ x\\: x\\` x\\g x\\@ x\\G x\\_ x\\z x')).toBe('/ x: x` xg x@ xG x_ xz x');
+    expect(decodeCss('a\\\nb\\\r\nc\\\rd\\\fe\\\tf\\\vg\\ h')).toBe('abcde\tf\vg h');
+    expect(decodeCss('\\0')).toBe('\uFFFD');
+    expect(decodeCss('\\1')).toBe('\u0001');
+    expect(decodeCss('\\d7ff')).toBe('\uD7FF');
+    expect(decodeCss('\\d800')).toBe('\uFFFD');
+    expect(decodeCss('\\dfff')).toBe('\uFFFD');
+    expect(decodeCss('\\e000')).toBe('\uE000');
+    expect(decodeCss('\\10ffff')).toBe(String.fromCodePoint(0x10ffff));
+    let outOfRange;
+    expect(() => {
+      outOfRange = decodeCss('\\110000');
+    }).not.toThrow();
+    expect(outOfRange).toBe('\uFFFD');
   });
 
   it('splits a candidate list as a browser does, and reads the address of a refresh', () => {
     expect(srcsetAddresses('/a.png 1x, /b.png 2x')).toEqual(['/a.png', '/b.png']);
     expect(srcsetAddresses('data:image/png;base64,AA,BB 1x,/c.png')).toEqual(['data:image/png;base64,AA,BB', '/c.png']);
     expect(srcsetAddresses('/a.png, /b.png')).toEqual(['/a.png', '/b.png']);
+    expect(srcsetAddresses('/a.png,, /b.png')).toEqual(['/a.png', '/b.png']);
     expect(srcsetAddresses('/a.png 1x (x, y), /b.png')).toEqual(['/a.png', '/b.png']);
+    expect(srcsetAddresses('/a.png 1x ), /b.png')).toEqual(['/a.png', '/b.png']);
     expect(refreshAddress('0; url=https://example.com/a')).toBe('https://example.com/a');
+    expect(refreshAddress('.5; url=https://example.com/dot')).toBe('https://example.com/dot');
     expect(refreshAddress("0;URL='https://example.com/b'")).toBe('https://example.com/b');
+    expect(refreshAddress("0; url='https://example.com/semi';")).toBe('https://example.com/semi');
+    expect(refreshAddress("0; url=\"https://example.com/a'b\";")).toBe("https://example.com/a'b");
+    expect(refreshAddress('0; "https://example.com/q"; extra')).toBe('https://example.com/q');
+    expect(refreshAddress('0 ; "https://example.com/sp"; extra')).toBe('https://example.com/sp');
+    expect(refreshAddress('0;"https://example.com/tight"; extra')).toBe('https://example.com/tight');
+    expect(refreshAddress('0; url = "https://example.com/eq"; extra')).toBe('https://example.com/eq');
+    expect(refreshAddress('0; url= "https://example.com/eq2"; extra')).toBe('https://example.com/eq2');
+    expect(refreshAddress('0; url="  https://example.com/lead"')).toBe('https://example.com/lead');
+    expect(refreshAddress('0; url=https://example.com/trail  ')).toBe('https://example.com/trail');
+    expect(refreshAddress('0; url="\vhttps://example.com/v"')).toBe('\vhttps://example.com/v');
+    expect(refreshAddress("0; url=https://example.com/don't")).toBe("https://example.com/don't");
+    expect(refreshAddress("0; url='https://example.com/open")).toBe('https://example.com/open');
     expect(refreshAddress('0, https://example.com/c')).toBe('https://example.com/c');
+    expect(refreshAddress('0 https://example.com/d')).toBe('https://example.com/d');
+    expect(refreshAddress('\t\n\f\r 0\t;\nurl\f=\rhttps://example.com/ws')).toBe('https://example.com/ws');
+    expect(refreshAddress('0\thttps://example.com/t')).toBe('https://example.com/t');
+    expect(refreshAddress('0\nhttps://example.com/n')).toBe('https://example.com/n');
+    expect(refreshAddress('0\fhttps://example.com/f')).toBe('https://example.com/f');
+    expect(refreshAddress('0\rhttps://example.com/r')).toBe('https://example.com/r');
+    expect(refreshAddress('0\vhttps://example.com/v')).toBeNull();
     expect(refreshAddress('30')).toBeNull();
+    expect(refreshAddress('30   ')).toBeNull();
+    expect(refreshAddress('30; url=')).toBeNull();
+    expect(refreshAddress('0; url=""; https://example.com/after')).toBeNull();
+    expect(refreshAddress('0; url="   "')).toBeNull();
+    expect(refreshAddress('; url=https://example.com/no-time')).toBeNull();
+    expect(refreshAddress('abc 0; url=https://example.com/prefix')).toBeNull();
+    expect(refreshAddress(' url/local')).toBeNull();
+    expect(refreshAddress('10px')).toBeNull();
+    expect(refreshAddress('url/local')).toBeNull();
   });
 });
 
@@ -322,6 +542,7 @@ describe('the command the web build runs', () => {
   it('fails a build with an outside address, naming file, form and address', () => {
     const r = run({ 'index.html': `<head>${OWN_STYLE}</head><img src="https://example.com/i.png">` });
     expect(r.status).toBe(1);
+    expect(r.out).toContain("[check-built-page] 1 address(es) the check reads in the built pages and stylesheets are outside the app's own origin:");
     expect(r.out).toContain('index.html: img src: https://example.com/i.png');
   });
 

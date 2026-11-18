@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { AssetProvenanceRecordSchema } from '@albedian/contracts';
+import { AssetProvenanceRecordSchema, SPDX_LICENSE_IDS } from '@albedian/contracts';
 
 // The app serves Geist itself (web-fonts-1): the release tag's own files byte for byte, pinned in the download registry,
 // recorded as downloaded as is, with the licence beside them, and drawn by the faces the app's stylesheets name.
@@ -74,5 +74,21 @@ describe("the app's own Geist", () => {
     expect(families('look-tokens.css', '--look-font-sans')).toBe('Geist');
     expect(families('hud-tokens.css', '--hud-font-sans')).toBe('Geist');
     expect(families('hud-tokens.css', '--hud-font-mono')).toBe('Geist Mono');
+  });
+
+  it('keeps the provenance record notes, ASSET_PROVENANCE.md and FIELD_USE.md aligned with self-hosted Geist', () => {
+    const files = new Map(record().files.map((f) => [f.path, f]));
+    expect(files.get('Geist-wght.woff2')?.note).toContain('the app uses 300 to 700');
+    expect(files.get('GeistMono-wght.woff2')?.note).toContain('the app uses 400 to 600');
+
+    const assetDoc = read(path.join(repoRoot, 'docs/architecture/ASSET_PROVENANCE.md'));
+    const listedSpdx = /\(`SPDX_LICENSE_IDS`:\s*([^)]+)\)/.exec(assetDoc)?.[1]?.split(/,\s*/).map((s) => s.trim());
+    expect(listedSpdx).toEqual([...SPDX_LICENSE_IDS]);
+    expect(assetDoc).toContain('fonts/geist/PROVENANCE.json');
+
+    const fieldDoc = read(path.join(repoRoot, 'docs/FIELD_USE.md'));
+    expect(fieldDoc).not.toMatch(/web fonts cached/i);
+    expect(fieldDoc).not.toMatch(/web fonts load only when the internet is there/i);
+    expect(fieldDoc).toContain('apps/web/public/fonts/geist/');
   });
 });

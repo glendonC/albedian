@@ -63,10 +63,10 @@ is treated as asking, so the web's Credits rows can show the changes line where 
 
 **Licences.** `spdx` is an identifier from the pinned SPDX License List subset
 (`SPDX_LICENSE_IDS`: CC-BY-4.0, CC-BY-SA-4.0, CC-BY-NC-4.0, CC-BY-NC-3.0-IGO, CC0-1.0,
-ODbL-1.0, MIT, Apache-2.0, BSD-3-Clause), or `LicenseRef-<name>` with a URL to the terms for
-anything the list lacks (NASA's media guidelines, for example), as SPDX itself prescribes. Add
-an identifier only after checking it at https://spdx.org/licenses/, on both sides of the
-contract, with the fixture regenerated.
+ODbL-1.0, MIT, Apache-2.0, BSD-3-Clause, OFL-1.1), or `LicenseRef-<name>` with a URL to the
+terms for anything the list lacks (NASA's media guidelines, for example), as SPDX itself
+prescribes. Add an identifier only after checking it at https://spdx.org/licenses/, on both
+sides of the contract, with the fixture regenerated.
 
 **Text.** No field starts or ends with whitespace or an invisible format character (the
 contract lists them, because JavaScript and Python regex engines disagree on some), lengths
@@ -99,6 +99,9 @@ next bake deletes it.
   NASA cloud layer, ETOPO 2022 height map and unshaded Blue Marble day map, whose entries
   `scripts/bake_earth_maps.py` rewrites on every bake. A script that changes one of these files
   must update its entry, or the check fails.
+- **`fonts/geist/PROVENANCE.json`** covers `Geist-wght.woff2`, `GeistMono-wght.woff2` and
+  `OFL.txt`, downloaded as is from Vercel's Geist release `v1.9.2` (`OFL-1.1`) and pinned in
+  `data/downloads.json`.
 
 NASA states its terms as media guidelines rather than a licence, so NASA sources carry
 `LicenseRef-NASA-Media-Guidelines` with the guidelines' URL. The IAU's star names file says

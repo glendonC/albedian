@@ -522,9 +522,6 @@ function writePage() {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Albedian Listening Session</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
 <style>${PAGE_STYLE}</style>
 <main>
 <header class="intro">

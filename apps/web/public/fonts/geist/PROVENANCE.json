@@ -28,7 +28,7 @@
       "producedBy": {
         "method": "downloaded-as-is"
       },
-      "note": "The tag's fonts/Geist/webfonts/Geist[wght].woff2, byte for byte: Geist, every weight (the app uses 300 to 600)."
+      "note": "The tag's fonts/Geist/webfonts/Geist[wght].woff2, byte for byte: Geist, every weight (the app uses 300 to 700)."
     },
     {
       "path": "GeistMono-wght.woff2",
@@ -39,7 +39,7 @@
       "producedBy": {
         "method": "downloaded-as-is"
       },
-      "note": "The tag's fonts/GeistMono/webfonts/GeistMono[wght].woff2, byte for byte: Geist Mono, every weight (the app uses 400 and 500)."
+      "note": "The tag's fonts/GeistMono/webfonts/GeistMono[wght].woff2, byte for byte: Geist Mono, every weight (the app uses 400 to 600)."
     },
     {
       "path": "OFL.txt",

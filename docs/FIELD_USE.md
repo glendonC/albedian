@@ -21,8 +21,8 @@ pnpm field --check
 Then:
 
 1. From the repository root, once: `pnpm install` and `uv sync`.
-2. Run `pnpm field` once and open the laptop address below, so the browser has the web fonts cached
-   [inference: the browser cache may keep them; without them the page uses system fonts].
+2. Run `pnpm field` once and open the laptop address below to check that the app and its local assets start on this
+   machine [proposed].
 3. If you will use a phone, run `pnpm field --lan` once on your home network to check that the build passes and
    the phone opens the app [proposed].
 4. The music needs its samples in `.cache/music/sources` of the checkout you run `pnpm field` from. `pnpm field`
@@ -111,8 +111,8 @@ The laptop at `http://localhost:5173` is the full experience.
 
 ## With no internet at all
 
-- Fonts: the page paints at once in system fonts; the web fonts load only when the internet is there
-  [tested: the font stylesheet no longer blocks the first paint].
+- Fonts: Geist and Geist Mono ship with the app under `apps/web/public/fonts/geist/` (`font-display: swap`), so the
+  first paint never blocks and the web fonts load from the laptop with no internet [tested].
 - Typed commands in the command bar always work offline. Spoken input depends on the browser's own speech
   recognition: Chrome's usually sends audio to a speech service, so it needs the internet [inference]. The
   preflight cannot see which the browser does.
