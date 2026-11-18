@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Coroutine, Mapping, Sequence
+from dataclasses import replace
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -30,6 +31,7 @@ from services.science.ephemeris import (
     require_ephemeris_range,
 )
 from services.science.stellar_parameters import gaia_stellar_parameters
+from services.science.detector import noise_limit_warnings
 from services.science.radiometry import compute_lunar_phase_and_illumination, predict_sky_brightness
 from services.science.solver import (
     SolveInputRefusal,
@@ -502,6 +504,13 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
         )
     except SolveInputRefusal as refusal:
         raise _refused(refusal) from None
+    # The frame's flags in plain words (detector.noise_limit_warnings), as the upload job gives them, where this route
+    # measured the frame itself (image_luma); detections a client gives carry no frame measures, so none (realsky-4)
+    measures = next((d.frame for d in parsed_dets if getattr(d, "frame", None) is not None), None)
+    if measures is not None:
+        extra = [words for words in noise_limit_warnings(measures) if words not in solution.warnings]
+        if extra:
+            solution = replace(solution, warnings=[*solution.warnings, *extra])
     payload = solution.to_contract_dict()
     payload["held_out_inliers"] = solution.held_out_inliers
     # Residuals the solution did not measure stay out, as in the contract's quality block

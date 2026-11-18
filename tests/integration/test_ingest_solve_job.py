@@ -33,7 +33,7 @@ from research.benchmarks.phone_photos import render as phone_render, stars as ph
 from services.ingest.jobs import job_id_for_sha256, run_solve_job
 from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
-from services.science.detector import _build_gaussian_psf_kernel, _to_luma_2d, matched_filter_noise
+from services.science.detector import NOISE_LIMIT_WORDS, _build_gaussian_psf_kernel, _to_luma_2d, matched_filter_noise
 from services.science.phone_photo_solver import PHONE_SOLVER_IDENTITY
 from services.science.solver import (
     SourceDetection,
@@ -88,7 +88,7 @@ def client(store: IngestStore) -> Iterator[TestClient]:
 
 def test_solve_and_verify_field_accepts_unknown_time_and_place_and_reports_candidate_denominators() -> None:
     frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
-    detections = detect_point_sources(frame, snr_threshold=4.0)
+    detections = detect_point_sources(frame)
     psf_count = sum(not d.is_hot_pixel_impulse for d in detections)
     expected_total = math.comb(min(psf_count, 14), 3)
     events: list[tuple[int, int]] = []
@@ -214,7 +214,7 @@ def test_ingest_solve_job_caps_its_candidates_at_the_14_brightest_detections(cli
     assert job["state"] == "succeeded"
     with Image.open(io.BytesIO(png_bytes)) as image:
         job_luma = _to_luma_2d(np.asarray(image.convert("RGB"), dtype=np.uint8).astype(np.float64))
-    psf_count = sum(not d.is_hot_pixel_impulse for d in detect_point_sources(job_luma, snr_threshold=4.0))
+    psf_count = sum(not d.is_hot_pixel_impulse for d in detect_point_sources(job_luma))
     assert psf_count >= 14, psf_count
     stages = {entry["stage"]: entry for entry in job["stages"]}
     assert stages["solve"]["total"] == math.comb(14, 3)
@@ -251,15 +251,19 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     assert stages["detect"] == {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
     assert stages["solve"]["unit"] == "candidates"
     # The triangle solver's candidates: every triple of the job's 14 brightest PSF detections, from the PNG as the job
-    # decodes it (RGB, then Rec. 709 luma) at its threshold of 4.0. The frame renders 11 stars; the detector finds
-    # all 11 and one point more (a noise peak 98 px from any star) since it divides by the noise of its own matched
-    # response (realsky-3), where the pixel noise gave 45 detections and so the 14 triples of 364 candidates
+    # decodes it (RGB, then Rec. 709 luma) at the detector's documented threshold, as the job calls it. The frame
+    # renders 11 stars; the detector finds all 11 and nothing else. It divides by the noise of its own matched response
+    # (realsky-3), where the pixel noise gave 45 detections and so the 14 triples of 364 candidates; the realsky-4 pair
+    # found one point more, a noise peak 107 px from any star, until this 8-bit frame's background and pixel noise were
+    # measured on its grid (realsky-4b). The whitened filter, built for the star its 11 stars measure (1.13 by 1.11 px),
+    # gains only 3 % over the kernel here, under CHOICE_GAIN_MARGIN, so the kernel scores this frame (realsky-4)
     with Image.open(io.BytesIO(png_bytes)) as image:
         job_luma = _to_luma_2d(np.asarray(image.convert("RGB"), dtype=np.uint8).astype(np.float64))
-    job_dets = [d for d in detect_point_sources(job_luma, snr_threshold=4.0) if not d.is_hot_pixel_impulse]
+    job_dets = [d for d in detect_point_sources(job_luma) if not d.is_hot_pixel_impulse]
     on_star = sum(min(math.hypot(d.x_px - x, d.y_px - y) for _, x, y in rendered) <= 3.0 for d in job_dets)
-    assert (len(job_dets), on_star, len(rendered)) == (12, 11, 11)
-    assert stages["solve"]["total"] == math.comb(12, 3)
+    assert (len(job_dets), on_star, len(rendered)) == (11, 11, 11)
+    assert job_dets[0].statistic == "matched"
+    assert stages["solve"]["total"] == math.comb(11, 3)
     assert 0 < stages["solve"]["done"] <= stages["solve"]["total"]
     assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
 
@@ -287,6 +291,10 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     assert solution["status"] == "calibrated"
     assert "observedAtUTC" not in solution
     assert "observerLocation" not in solution
+    # The frame is 8-bit with a read noise of 1.8 codes and a sky far above its lowest code: realsky-4 flagged it
+    # "quantised", a flag gone since realsky-4b measures such a frame's background and noise on its grid, so no flag's
+    # words are said
+    assert not any(words in solution["warnings"] for words in NOISE_LIMIT_WORDS.values())
 
 
 def test_ingest_solve_job_preserves_recorded_exif_time_and_gps_on_solution(client: TestClient) -> None:

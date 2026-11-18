@@ -1,8 +1,8 @@
 {
   "plate_too_few_sources": {
     "id": "sol-primary",
-    "sourceAssetId": "synthetic-afcd5d8209f1",
-    "sourceSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
+    "sourceAssetId": "synthetic-a31678e09036",
+    "sourceSha256": "a31678e090366250a32c1c36f7f49732cc5b369f35c696539ed5248ddeda9cfa",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -34,7 +34,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
+          "sourceAssetSha256": "a31678e090366250a32c1c36f7f49732cc5b369f35c696539ed5248ddeda9cfa",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -42,7 +42,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-afcd5d8209f1",
+          "assetId": "synthetic-a31678e09036",
           "frameTimeSec": 0.0,
           "xPx": 120.0,
           "yPx": 80.0,
@@ -62,7 +62,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
+          "sourceAssetSha256": "a31678e090366250a32c1c36f7f49732cc5b369f35c696539ed5248ddeda9cfa",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -70,7 +70,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-afcd5d8209f1",
+          "assetId": "synthetic-a31678e09036",
           "frameTimeSec": 0.0,
           "xPx": 480.5,
           "yPx": 260.25,
@@ -90,7 +90,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "afcd5d8209f1c25c364721b900299ecf57147e0b6899e540323877a5c296e7a8",
+          "sourceAssetSha256": "a31678e090366250a32c1c36f7f49732cc5b369f35c696539ed5248ddeda9cfa",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: too few point sources for a verified WCS to place it on the sky."
@@ -98,7 +98,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-afcd5d8209f1",
+          "assetId": "synthetic-a31678e09036",
           "frameTimeSec": 0.0,
           "xPx": 800.0,
           "yPx": 410.0,
@@ -115,8 +115,8 @@
   },
   "plate_wcs_failed_verification": {
     "id": "sol-primary",
-    "sourceAssetId": "synthetic-5d274af6b6c6",
-    "sourceSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
+    "sourceAssetId": "synthetic-97f1a174650c",
+    "sourceSha256": "97f1a174650c07978f3196ea3226693409c4929134710e0dd03e5b8912b73cad",
     "frameTimeSec": 0.0,
     "revision": 1,
     "status": "unresolved",
@@ -148,7 +148,7 @@
           "id": "ev-finding-obs-1",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
+          "sourceAssetSha256": "97f1a174650c07978f3196ea3226693409c4929134710e0dd03e5b8912b73cad",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -156,7 +156,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-5d274af6b6c6",
+          "assetId": "synthetic-97f1a174650c",
           "frameTimeSec": 0.0,
           "xPx": 101.0,
           "yPx": 87.0,
@@ -176,7 +176,7 @@
           "id": "ev-finding-obs-2",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
+          "sourceAssetSha256": "97f1a174650c07978f3196ea3226693409c4929134710e0dd03e5b8912b73cad",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -184,7 +184,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-5d274af6b6c6",
+          "assetId": "synthetic-97f1a174650c",
           "frameTimeSec": 0.0,
           "xPx": 412.5,
           "yPx": 300.2,
@@ -204,7 +204,7 @@
           "id": "ev-finding-obs-3",
           "evidenceClass": "observed",
           "verificationMethod": "Measured in the image's pixels",
-          "sourceAssetSha256": "5d274af6b6c6a966f62e77ebfb155483b3d3f282d88341f3bf3a629d0aab1524",
+          "sourceAssetSha256": "97f1a174650c07978f3196ea3226693409c4929134710e0dd03e5b8912b73cad",
           "wcsSolutionId": "sol-primary",
           "limitations": [
             "Pixel position only: the WCS fit failed held-out verification, so it places nothing on the sky."
@@ -212,7 +212,7 @@
           "verifiedByIndependentHoldout": false
         },
         "sourceDetection": {
-          "assetId": "synthetic-5d274af6b6c6",
+          "assetId": "synthetic-97f1a174650c",
           "frameTimeSec": 0.0,
           "xPx": 733.0,
           "yPx": 120.4,

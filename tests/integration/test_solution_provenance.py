@@ -115,7 +115,7 @@ def test_each_solution_names_its_own_solver_and_catalog() -> None:
     night = _night_frame(1792, 1344)
     horizon = solve_horizon_and_beacon_pose(night, **_sources(night), **MOON_MOMENT).to_contract_dict()
     frame, _, _ = render_synthetic_starfield(width=960, height=540, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
-    detections = detect_point_sources(frame, snr_threshold=4.0)
+    detections = detect_point_sources(frame)
     plate = solve_and_verify_field(detections, 960, 540, **_sources(frame), **MOMENT).to_contract_dict()
     assert plate["status"] == "calibrated"
     assert horizon["solver"]["name"] != plate["solver"]["name"]
@@ -126,7 +126,7 @@ def test_each_solution_names_its_own_solver_and_catalog() -> None:
 
 def test_no_solution_or_route_description_says_quad() -> None:
     frame, _, _ = render_synthetic_starfield(width=960, height=540, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
-    calibrated = solve_and_verify_field(detect_point_sources(frame, snr_threshold=4.0), 960, 540, **_sources(frame), **MOMENT)
+    calibrated = solve_and_verify_field(detect_point_sources(frame), 960, 540, **_sources(frame), **MOMENT)
     scattered = [
         SourceDetection(x_px=x, y_px=y, flux=5000.0, snr=25.0, fwhm_px=2.5, centroid_uncertainty_px=0.1)
         for x, y in [(101.0, 87.0), (412.5, 300.2), (733.0, 120.4), (250.0, 470.0),

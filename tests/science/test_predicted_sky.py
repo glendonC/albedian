@@ -241,7 +241,7 @@ def _calibrated() -> ObservationSolution:
     if not _CALIBRATED:
         frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
         solution = solve_and_verify_field(
-            detect_point_sources(frame, snr_threshold=4.0, asset_id=ASSET_ID), WIDTH, HEIGHT, **MOMENT,
+            detect_point_sources(frame, asset_id=ASSET_ID), WIDTH, HEIGHT, **MOMENT,
             source_asset_id=ASSET_ID, source_sha256=SHA, solution_id="sol_synthetic",
         )
         assert solution.status == "calibrated"

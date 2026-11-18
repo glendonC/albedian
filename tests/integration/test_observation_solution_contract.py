@@ -4158,7 +4158,18 @@ def test_a_solution_the_solve_job_stores_parses_as_it_was_stored(tmp_path: Path)
     app.dependency_overrides[ingest_router.get_ingest_store] = lambda: store
     try:
         client = TestClient(app)
-        frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
+        frame, wcs, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
+        # Plant one genuine uncatalogued Gaussian point source clear of catalog stars so stored findings include a real
+        # observed finding alongside catalog_matched and predicted without relying on 8-bit quantization noise peaks
+        catalog_px = [wcs.world_to_pixel(star.ra_deg, star.dec_deg) for star in get_catalog_stars()]
+        x0, y0 = next(
+            (float(x) + 0.3, float(y) - 0.2)
+            for y in range(60, HEIGHT - 59, 105)
+            for x in range(60, WIDTH - 59, 105)
+            if all(math.isnan(px) or math.hypot(x - px, y - py) >= 40.0 for px, py in catalog_px)
+        )
+        yy, xx = np.mgrid[0:HEIGHT, 0:WIDTH]
+        frame = frame + 80.0 * np.exp(-((xx - x0) ** 2 + (yy - y0) ** 2) / (2.0 * 1.15**2))
         receipt = client.post("/api/ingest", content=_png(frame), headers={"content-type": "image/png"})
         assert receipt.status_code == 201
         sha = receipt.json()["sourceAsset"]["sha256"]

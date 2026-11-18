@@ -17,7 +17,7 @@ Covers:
   measure (clipped flats, ground) takes that divider, so stars on a sky crushed to black are found as the parent found
   them, and dark 8-bit skies near the black clip give no more false detections than the parent.
 - The rules a mutant could break unseen: held at the outermost tile centre, the rounded tile count, the overlap, the
-  unsampled edge, and the 4.75 gate in detection and in forced photometry.
+  unsampled edge, and the threshold as the gate in detection and in forced photometry.
 - Two corpus photos (local_dataset): the map sees their correlated noise.
 All other frames here are simulated.
 """
@@ -137,14 +137,15 @@ def test_on_correlated_noise_the_map_is_the_measured_spread_of_the_response(targ
 
 @pytest.mark.parametrize("target", [None, *sorted(CORRELATION_SIGMA_PX)])
 def test_false_detections_on_pure_noise_stay_near_the_white_noise_rate(target: float | None) -> None:
-    # At the benchmark's frame size (3.05 megapixels) and the 4.75 gate every caller reaches, the lane measured 0.20
-    # (white) to 1.05 (correlated) false detections per megapixel over five seeds: about 3 per frame at most. The old
-    # divider gave 1.2 per megapixel on white noise and 790 to 2,350 on correlated noise. A count of 12 or more has a
+    # At the benchmark's frame size (3.05 megapixels) and the detector's default threshold, the map alone gave 0.20
+    # (white) to 1.05 (correlated) false detections per megapixel over five seeds, about 3 per frame at most, and
+    # the gates in matched noise give fewer (test_detector_gates.py holds the tighter bound). The pixel divider
+    # gave 1.2 per megapixel on white noise and 790 to 2,350 on correlated noise. A count of 12 or more has a
     # Poisson chance under 1e-4 at a mean of 3.2
     shape = (1512, 2016)
     for seed in (31, 32):
         frame = _white(shape, seed) if target is None else _correlated(shape, CORRELATION_SIGMA_PX[target], seed)
-        dets = detect_point_sources(frame, snr_threshold=3.5)
+        dets = detect_point_sources(frame)
         assert len(dets) < 12, (target, seed, len(dets))
 
 
@@ -255,8 +256,9 @@ def test_flat_and_quantised_frames_give_no_detection_and_no_error(
 
 
 def _parent_divider(frame: np.ndarray) -> float:
-    """The pixel noise the parent detector divided everything by on this frame."""
-    _, sigma_bg = detector._estimate_background_and_noise(np.asarray(frame, dtype=np.float64))
+    """The pixel noise the parent detector divided everything by on this frame, measured as the detector measures it
+    now (since realsky-4b, on a grid with the grouped background and the clipped spread)."""
+    _, sigma_bg = detector._estimate_background_and_noise(np.asarray(frame, dtype=np.float64), grouped=True)
     return detector._effective_sigma(sigma_bg, frame)
 
 
@@ -536,19 +538,19 @@ def test_the_tile_count_is_the_rounded_share_at_least_one(length: int, tile: int
     assert edges.size - 1 == tiles and edges[0] == 0 and edges[-1] == length
 
 
-def test_the_gate_is_4_75_noises_in_detection_and_in_forced_photometry() -> None:
-    # Stars from 4.0 to 5.5 matched noises on white noise, asked for at 3.5: no detection is under the gate of 4.75,
-    # some lie just above it, and forced photometry keeps those at the same value
+def test_the_threshold_is_the_gate_in_detection_and_in_forced_photometry() -> None:
+    # Stars from 2.5 to 4.0 matched noises on white noise, asked for at 3.0: no detection is under 3.0, some lie just
+    # above it, and forced photometry at the same threshold keeps those at the same value
     frame = _white((800, 1200), seed=44)
     noise = float(np.median(matched_filter_noise(frame)))
     rng = np.random.default_rng(45)
     for k, (x, y) in enumerate(zip(rng.uniform(20, 1180, 80), rng.uniform(20, 780, 80))):
-        _add_star(frame, float(x), float(y), _amplitude_for(4.0 + 1.5 * k / 79, noise))
-    dets = detect_point_sources(frame, snr_threshold=3.5)
-    assert dets and min(d.snr for d in dets) >= 4.75
-    near = [d for d in dets if d.snr < 5.0]
+        _add_star(frame, float(x), float(y), _amplitude_for(2.5 + 1.5 * k / 79, noise))
+    dets = detect_point_sources(frame, snr_threshold=3.0)
+    assert dets and min(d.snr for d in dets) >= 3.0
+    near = [d for d in dets if d.snr < 3.5]
     assert near
-    forced = detector.verify_candidates_on_original_pixels(frame, near, snr_threshold=3.5)
+    forced = detector.verify_candidates_on_original_pixels(frame, near, snr_threshold=3.0)
     assert len(forced) == len(near)
 
 
@@ -738,15 +740,33 @@ def test_between_a_measured_tile_and_an_unmeasured_one_the_map_runs_straight_to_
     assert float(segment[-1]) > 1.0 and float(nmap[400, 32]) == pytest.approx(1.0, rel=1e-12)
 
 
-def test_forced_photometry_returns_no_point_under_the_4_75_gate() -> None:
-    # 120 stars of 4.3 to 5.0 matched noises on white noise, each asked for by its position at 3.5: forced photometry
-    # returns none under 4.75 noises, though several peak between 4.5 and 4.75
+def test_forced_photometry_returns_no_point_under_the_threshold_it_is_given() -> None:
+    # 120 stars of 2.6 to 3.4 matched noises on white noise, each asked for by its position at 3.0: forced photometry
+    # returns none under 3.0 noises (the threshold acts as given, with no floor), though several peak just under it
     frame = _white((800, 1200), seed=60)
     noise = float(np.median(matched_filter_noise(frame)))
     rng = np.random.default_rng(61)
     positions = []
     for k, (x, y) in enumerate(zip(rng.uniform(20, 1180, 120), rng.uniform(20, 780, 120))):
-        _add_star(frame, float(x), float(y), _amplitude_for(4.3 + 0.7 * k / 119, noise))
+        _add_star(frame, float(x), float(y), _amplitude_for(2.6 + 0.8 * k / 119, noise))
         positions.append((float(x), float(y)))
-    forced = detector.verify_candidates_on_original_pixels(frame, positions, snr_threshold=3.5)
-    assert forced and min(d.snr for d in forced) >= 4.75
+    forced = detector.verify_candidates_on_original_pixels(frame, positions, snr_threshold=3.0)
+    assert forced and min(d.snr for d in forced) >= 3.0
+
+
+def test_forced_photometry_floors_its_map_at_the_noise_floor_its_caller_gives() -> None:
+    # An off-grid frame (0.5 + noise 0.05) whose caller states a rounding noise of 0.1, above the frame's own: forced
+    # photometry divides by the same map detection does, floored at that 0.1, so each verified star's snr is
+    # detection's (12 stars of peak 0.3: about 6.7 noises; over a map floored at the measured 0.05 they would read
+    # about 11.7), and at peak 0.15 none reaches 3.5 noises, though over the frame's own noise 7 of the 12 do
+    spots = [(40.0 + 70 * i, 60.0 + 80 * (i % 6)) for i in range(12)]
+    for peak, floored, own in ((0.3, 11, 12), (0.15, 0, 7)):
+        frame = 0.5 + np.random.default_rng(901).normal(0.0, 0.05, (600, 900))
+        for x, y in spots:
+            _add_star(frame, x, y, peak)
+        forced = detector.verify_candidates_on_original_pixels(frame, spots, snr_threshold=3.5, noise_floor=0.1)
+        assert len(forced) == floored
+        assert len(detector.verify_candidates_on_original_pixels(frame, spots, snr_threshold=3.5)) == own
+        detected = {(round(d.x_px, 6), round(d.y_px, 6)): d.snr for d in detect_point_sources(frame, snr_threshold=3.5, noise_floor=0.1)}
+        for d in forced:
+            assert d.snr == pytest.approx(detected[(round(d.x_px, 6), round(d.y_px, 6))], rel=1e-12)

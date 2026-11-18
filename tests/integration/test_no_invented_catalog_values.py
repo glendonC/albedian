@@ -391,13 +391,18 @@ def _julian_year(utc: str) -> float:
 
 
 def _carried(row: Row, years: float) -> tuple[float, float]:
-    """The row's direction moved by its own proper motion, to first order on the sphere (an independent check:
-    the second-order term is under 0.001 arcsec for these motions and spans)."""
-    pm_ra = row.pm_ra if math.isfinite(row.pm_ra) else 0.0
-    pm_dec = row.pm_dec if math.isfinite(row.pm_dec) else 0.0
-    dec = row.dec0 + pm_dec * years / 3.6e6
-    ra = row.ra0 + pm_ra * years / 3.6e6 / math.cos(math.radians(row.dec0))
-    return ra % 360.0, dec
+    """The row's direction moved by its own proper motion, to second order on the sphere with no radial velocity (an
+    independent check): d(dec) = mu_dec t - mu_ra*^2 t^2 tan(dec) / 2 and d(ra) cos(dec) = mu_ra* t + mu_ra* mu_dec t^2
+    tan(dec), in radians. The first order alone is off by 0.0064 arcsec for alpha Centauri A (HIP 71683, 3.7 arcsec a
+    year at -61 degrees), which these solves match since realsky-4 (an ordinary detection there, not a clipped core,
+    passes its gates at its threshold of 4.75); what is left at second order is under 0.00001 arcsec for it [tested]."""
+    mas = math.radians(1.0 / 3.6e6)
+    pm_ra = (row.pm_ra if math.isfinite(row.pm_ra) else 0.0) * mas
+    pm_dec = (row.pm_dec if math.isfinite(row.pm_dec) else 0.0) * mas
+    dec0 = math.radians(row.dec0)
+    dec = dec0 + pm_dec * years - 0.5 * pm_ra * pm_ra * years * years * math.tan(dec0)
+    ra = math.radians(row.ra0) + (pm_ra * years + pm_ra * pm_dec * years * years * math.tan(dec0)) / math.cos(dec0)
+    return math.degrees(ra) % 360.0, math.degrees(dec)
 
 
 @pytest.mark.parametrize("with_place", [True, False], ids=["time-and-place", "time-only"])

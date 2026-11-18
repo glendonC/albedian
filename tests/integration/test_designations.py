@@ -810,6 +810,7 @@ def _readers_old_record() -> dict[str, Any]:
     solver wrote it before catalog-2b ("HR 1713", a names file number) or in the short form ("bet Ori")."""
     fixture = json.loads((ROOT / "tests" / "fixtures" / "python_contract_solutions.json").read_text(encoding="utf-8"))
     solution = fixture["plate_calibrated"]
+    solution["findings"].sort(key=lambda f: f["id"] != "finding-star-rigel")
     refs = [f["catalogRef"] for f in solution["findings"] if f.get("catalogRef")]
     refs[0]["bayerDesignation"] = "HR 1713"
     for ref in refs[1:]:

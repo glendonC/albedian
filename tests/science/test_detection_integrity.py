@@ -72,7 +72,7 @@ def test_variant_only_candidates_are_rejected_and_photometry_is_measured_on_orig
             _add_gaussian_star(variant_frame, hx, hy, flux=850.0, sigma_px=1.15)
     assert len(hallucinated_coords) >= 6
 
-    variant_detections = detect_point_sources(variant_frame, snr_threshold=3.5, asset_id="variant_denoised")
+    variant_detections = detect_point_sources(variant_frame, asset_id="variant_denoised")
     # Confirm the variant detector actually picked up the hallucinated sparkles
     hallucinated_in_variant = [
         d for d in variant_detections if any(math.hypot(d.x_px - hx, d.y_px - hy) <= 2.0 for hx, hy in hallucinated_coords)
@@ -83,7 +83,6 @@ def test_variant_only_candidates_are_rejected_and_photometry_is_measured_on_orig
     verified = verify_candidates_on_original_pixels(
         orig_frame,
         [*variant_detections, *variant_detections[:3]],
-        snr_threshold=3.5,
         asset_id="src_original",
         frame_time_sec=1.25,
     )
@@ -97,7 +96,7 @@ def test_variant_only_candidates_are_rejected_and_photometry_is_measured_on_orig
             assert math.hypot(det.x_px - hx, det.y_px - hy) > 4.0
 
     # Compare against direct detection on original pixels: flux and SNR must match original pixels, not 3.5x variant
-    direct_orig = detect_point_sources(orig_frame, snr_threshold=3.5, asset_id="src_original", frame_time_sec=1.25)
+    direct_orig = detect_point_sources(orig_frame, asset_id="src_original", frame_time_sec=1.25)
     for v_det in verified:
         nearest_orig = min(direct_orig, key=lambda d: math.hypot(d.x_px - v_det.x_px, d.y_px - v_det.y_px))
         assert math.hypot(nearest_orig.x_px - v_det.x_px, nearest_orig.y_px - v_det.y_px) < 1e-6
@@ -112,7 +111,7 @@ def test_variant_only_candidates_are_rejected_and_photometry_is_measured_on_orig
     half_mask = np.zeros_like(orig_frame, dtype=bool)
     half_mask[:120, :] = True
     masked_verified = verify_candidates_on_original_pixels(
-        orig_frame, variant_detections, sky_mask=half_mask, snr_threshold=3.5, asset_id="src_original"
+        orig_frame, variant_detections, sky_mask=half_mask, asset_id="src_original"
     )
     assert len(masked_verified) < len(verified)
     assert all(d.y_px < 121.0 for d in masked_verified)
@@ -134,7 +133,6 @@ def test_injection_recovery_publishes_completeness_and_rejects_variant_artifacts
         variant_image=variant_frame,
         injected_snrs=(2.0, 5.5, 9.0, 15.0),
         n_per_snr=8,
-        snr_threshold=3.5,
         seed=77,
     )
     assert isinstance(report, InjectionRecoveryReport)
@@ -179,14 +177,13 @@ def test_real_clips_forced_photometry_rejects_variant_only_sources_and_measures_
             break
     assert len(quiet_coords) >= 3, "could not find quiet background patches in real clip crop"
 
-    verified = verify_candidates_on_original_pixels(crop, quiet_coords, snr_threshold=3.5, asset_id="src_real_clip")
+    verified = verify_candidates_on_original_pixels(crop, quiet_coords, asset_id="src_real_clip")
     assert verified == [], "variant-only sparkles on a real clip frame must never pass forced photometry"
 
     report = evaluate_injection_recovery(
         crop,
         injected_snrs=(3.0, 8.0, 14.0),
         n_per_snr=6,
-        snr_threshold=3.5,
         seed=42,
     )
     assert report.bins[-1].completeness >= 0.65
@@ -224,7 +221,7 @@ def test_pbt_variant_gain_and_hallucinations_never_corrupt_original_pixel_photom
             _add_gaussian_star(variant, hx, hy, flux=400.0 * variant_gain, sigma_px=1.15)
 
     proposals = [*real_coords, *hallucinated]
-    verified = verify_candidates_on_original_pixels(orig, proposals, snr_threshold=3.5, asset_id="src_pbt")
+    verified = verify_candidates_on_original_pixels(orig, proposals, asset_id="src_pbt")
     assert len(verified) == 2
     for det in verified:
         assert all(math.hypot(det.x_px - hx, det.y_px - hy) > 3.5 for hx, hy in hallucinated)
@@ -247,7 +244,7 @@ def test_pbt_variant_gain_and_hallucinations_never_corrupt_original_pixel_photom
         for cx, cy in proposals
     ]
     verified_from_dets = verify_candidates_on_original_pixels(
-        orig, scaled_det_proposals, snr_threshold=3.5, asset_id="src_pbt"
+        orig, scaled_det_proposals, asset_id="src_pbt"
     )
     assert len(verified_from_dets) == len(verified)
     for d1, d2 in zip(verified, verified_from_dets):

@@ -51,6 +51,7 @@ from services.ingest import router as ingest_router
 from services.ingest.store import IngestStore
 from services.science.catalog import get_catalog_stars
 from services.science.camera_profiles import META_RAY_BAN_DISPLAY_MODEL
+from services.science.detector import NOISE_LIMIT_WORDS
 from services.science.pose_estimate import NO_FRAMES, NO_PROFILE
 from services.science.predicted_sky import NO_PLACE, NO_TIME, OUT_OF_RANGE, frame_moment, sky_phase
 from services.science.solver import render_synthetic_starfield, triangle_solver_identity
@@ -86,6 +87,12 @@ def _few_stars(h: int = 120, w: int = 160, n: int = 5) -> np.ndarray:
         cx, cy = 14.0 + (idx * 37) % (w - 28), 12.0 + (idx * 23) % (h - 24)
         luma += 200.0 * np.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2.0 * 1.4**2))
     return luma
+
+
+# The five-star frame is noiseless and stored on whole steps: its sky's median is its lowest value, so the detector
+# flags it near_black_clip, and the solve job says so right after the solver's own warning (realsky-4 also flagged it
+# "quantised", a flag gone since realsky-4b)
+FEW_STARS_FLAGS = [NOISE_LIMIT_WORDS["near_black_clip"]]
 
 
 def _png(
@@ -162,8 +169,8 @@ def test_a_photo_whose_stars_do_not_solve_shows_the_sky_for_its_time_and_place(c
     # 02:00 UTC at 40 degrees west in midwinter: the Sun is down, and the last warning says where it was. Before
     # it, why the sky is not lined up over the photo: the file names no camera with a head-worn profile
     assert not any(f["id"] == "finding-predicted-sun" for f in predicted)
-    assert len(solution["warnings"]) == 3
-    assert solution["warnings"][1] == NO_PROFILE and "poseEstimate" not in solution
+    assert len(solution["warnings"]) == 4 and solution["warnings"][1:2] == FEW_STARS_FLAGS
+    assert solution["warnings"][2] == NO_PROFILE and "poseEstimate" not in solution
     assert "night" in solution["warnings"][-1] and "USNO" in solution["warnings"][-1]
     _assert_no_leak(solution, job)
 
@@ -234,7 +241,8 @@ def test_without_a_time_a_place_or_a_moment_in_range_the_solution_says_why(
     assert solution["status"] == "unresolved"
     assert not _by_class(solution, "predicted")
     assert ("observedAtUTC" in solution) == has_moment
-    assert solution["warnings"][-1] == reason and len(solution["warnings"]) == 2
+    assert solution["warnings"][-1] == reason and len(solution["warnings"]) == 3
+    assert solution["warnings"][1:2] == FEW_STARS_FLAGS
     _assert_no_leak(solution, job)
 
 
@@ -284,7 +292,7 @@ def test_a_failure_inside_the_predicted_sky_keeps_the_solvers_solution(
     assert solution["status"] == "unresolved"
     assert not _by_class(solution, "predicted")
     assert solution["warnings"][-1] == ingest_jobs.PREDICTED_SKY_FAILED == "The predicted sky could not be computed."
-    assert len(solution["warnings"]) == 2
+    assert len(solution["warnings"]) == 3 and solution["warnings"][1:2] == FEW_STARS_FLAGS
     assert "could not place" not in json.dumps(solution) and "could not place" not in json.dumps(job)
     _assert_no_leak(solution, job)
 

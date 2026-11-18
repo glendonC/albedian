@@ -34,8 +34,9 @@ OVERLAP_PX = 32
 # A median absolute deviation times this is a sigma for a normal distribution [verified: 1 / 0.6744897..., the
 # normal distribution's 75th percentile; tests/media/test_photo_path.py recomputes it with scipy]
 MAD_TO_SIGMA = 1.4826
-# The detector's own floor [verified: services/science/detector.py, `effective_snr_gate = max(snr_threshold, 4.75)`
-# in detect_point_sources and verify_candidates_on_original_pixels]
+# The detector's default threshold, which it takes as given [verified: services/science/detector.py,
+# DETECTION_THRESHOLD, the default of detect_point_sources and verify_candidates_on_original_pixels; the test holds
+# the two equal]
 CONFIRM_THRESHOLD_SNR = 4.75
 # A point is confirmed by a verified detection within this distance [proposed: design sections 3 and 7; the function
 # looks 2 px around a candidate, and half a pixel more is for the centroid]
@@ -176,7 +177,7 @@ def find_points(luma: np.ndarray, threshold_snr: float, clipped: np.ndarray,
     for index, tile in enumerate(tiles(*luma.shape)):
         part = luma[tile.y0:tile.y1, tile.x0:tile.x1]
         sigma = noises[index].matched
-        # The detector returns only peaks whose matched snr is at least the larger of threshold_snr and its floor
+        # The detector returns only peaks whose snr is at least threshold_snr, which it takes as given
         for detection in detect_point_sources(part, snr_threshold=threshold_snr, noise_floor=sigma):
             found.append(Point(detection.x_px + tile.x0, detection.y_px + tile.y0, float(detection.snr), index))
     points, left_out = [], 0
@@ -257,7 +258,7 @@ def footprint_map(shape: tuple[int, int], placed: tuple[Star, ...] | list[Star])
 
 def find_stars(codes: np.ndarray, peak: float) -> StarField:
     """The confirmed stars of an original frame from its stored codes (a luma plane, or RGB codes) and the peak code
-    of its range: points at the detector's own floor confirmed on the same pixels, clipped regions left out and
+    of its range: points at the detector's default threshold confirmed on the same pixels, clipped regions left out and
     counted, and each star's footprint from its own profile."""
     luma = luma_codes(codes)
     clipped = clipped_map(codes, peak)

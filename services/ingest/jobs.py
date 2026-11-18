@@ -35,7 +35,7 @@ from PIL import Image, UnidentifiedImageError
 
 from services.contracts.ingest import JOB_ID_PATTERN, SolveJob, format_utc
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
-from services.science.detector import _to_luma_2d, detect_point_sources, stack_video_frames_for_calibration
+from services.science.detector import _to_luma_2d, detect_point_sources, noise_limit_warnings, stack_video_frames_for_calibration
 from services.science.bounded_worker import BoundedWorker, WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.designations import upgrade_stored_solution
@@ -556,6 +556,13 @@ def _solve_chain(
             )
             if phone_sol.status == "calibrated" or phone_sol.status == "ambiguous":
                 solution = phone_sol
+    # The frame's flags in plain words (detector.noise_limit_warnings), whichever search made the solution: the phone
+    # solver adds them itself, the plate solver does not (realsky-4)
+    measures = next((d.frame for d in detections if getattr(d, "frame", None) is not None), None)
+    if measures is not None:
+        extra = [words for words in noise_limit_warnings(measures) if words not in solution.warnings]
+        if extra:
+            solution = replace(solution, warnings=[*solution.warnings, *extra])
     return solution
 
 
@@ -600,11 +607,11 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
 
     if frame_count > 1:
         composite = stack_video_frames_for_calibration(frames).composite_luma
-        detections = detect_point_sources(composite, snr_threshold=4.0, asset_id=asset["id"])
+        detections = detect_point_sources(composite, asset_id=asset["id"])
         solve_image: np.ndarray = composite
         ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
     else:
-        detections = detect_point_sources(frames[0], snr_threshold=4.0, asset_id=asset["id"])
+        detections = detect_point_sources(frames[0], asset_id=asset["id"])
         solve_image = rgb_u8 if rgb_u8 is not None else frames[0]
         ctx.report({"stage": "detect", "unit": "frames", "done": 1, "total": 1})
 

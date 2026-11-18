@@ -149,7 +149,7 @@ def test_no_pinned_gaia_id_points_away_from_its_star() -> None:
 def test_catalog_matches_describe_each_distance_by_its_own_source() -> None:
     frame, _, _ = render_synthetic_starfield(width=960, height=540, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
     sol = solve_and_verify_field(
-        detect_point_sources(frame, snr_threshold=4.0), 960, 540,
+        detect_point_sources(frame), 960, 540,
         obs_utc_iso="2001-01-01T00:00:00Z", observer_lat=12.5, observer_lon=45.25,
         source_asset_id="synthetic-field-42", source_sha256=hashlib.sha256(frame.tobytes()).hexdigest(),
     )

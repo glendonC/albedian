@@ -192,7 +192,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     )
     assert len(projected_stars) >= 11
 
-    detections = detect_point_sources(frame, snr_threshold=4.0)
+    detections = detect_point_sources(frame)
     assert len(detections) >= 10
 
     # Blind solve + held-out verification
@@ -225,7 +225,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
 
     # Negative Fixture 1: Near-black clipped frame
     black_frame = np.zeros((height, width), dtype=np.float64)
-    black_dets = detect_point_sources(black_frame, snr_threshold=3.5)
+    black_dets = detect_point_sources(black_frame)
     assert len(black_dets) == 0
     black_sol = solve_and_verify_field(black_dets, width=width, height=height, **PLATE_MOMENT, **_sources(black_frame))
     assert black_sol.status in ("predicted_only", "unresolved")
@@ -235,7 +235,7 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
     # Negative Fixture 2: Pure random Gaussian sensor noise frame
     rng = np.random.default_rng(999)
     noise_frame = rng.normal(loc=20.0, scale=3.0, size=(height, width))
-    noise_dets = detect_point_sources(noise_frame, snr_threshold=3.5)
+    noise_dets = detect_point_sources(noise_frame)
     noise_sol = solve_and_verify_field(noise_dets, width=width, height=height, **PLATE_MOMENT, **_sources(noise_frame))
     assert noise_sol.status in ("predicted_only", "unresolved")
     assert noise_sol.status != "calibrated"
@@ -285,8 +285,9 @@ def _on_a_rendered_star(dets, stars, radius_px: float = 3.0) -> list[bool]:
 
 def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     """EXP-02 on its own frames: 10 ultra-low-SNR shifted frames, where a single frame detects < 4 stars
-    (`unresolved`) and `stack_video_frames_for_calibration` boosts the pixel SNR by > 2.2x. The stack holds 9 stars
-    above the threshold, one short of a calibration, and the solve says so.
+    (`unresolved`) and `stack_video_frames_for_calibration` boosts the pixel SNR by > 2.2x. The stack holds 11 stars
+    above the threshold, every one of them rendered, and the solve calibrates on them, each finding named as the
+    rendered star at its place.
     """
     width, height = EXP02_SIZE
     frames, sky_mask, stars = _exp02_scene(92.0)
@@ -299,20 +300,29 @@ def test_exp02_low_light_video_temporal_stack_calibration() -> None:
     stack_result = stack_video_frames_for_calibration(frames, sky_mask=sky_mask)
     assert stack_result.snr_boost_factor > 2.2
 
-    # Before realsky-3 the detector divided by the pixel noise and this stack gave 25 detections: these 9 stars and
-    # 16 noise peaks (4.8 to 6.9 of the pixel noise), and its "calibrated" solve trained on one of the peaks, 72 px from
-    # any rendered star, as Elnath. Divided by the noise of its own matched response, the detector keeps the 9 stars,
-    # one fewer than EXP02_STARS_FOR_CALIBRATION, so the honest answer is no calibration. This guards against a
-    # calibration built on noise coming back
+    # Before realsky-3 the detector divided by the pixel noise and this stack gave 25 detections: 9 stars and 16 noise
+    # peaks (4.8 to 6.9 of the pixel noise), and its "calibrated" solve trained on one of the peaks, 72 px from any
+    # rendered star, as Elnath. Divided by the noise of its own matched response (realsky-3), the detector kept the 9
+    # stars, one short of EXP02_STARS_FOR_CALIBRATION. realsky-4's stack carries the mean of the frames' aligned
+    # backgrounds in place of frame 0's (stack_video_frames_for_calibration), and on that sky the detector keeps 2 more
+    # of the rendered stars (scored 6.2 and 5.1) and nothing else, and the stacked solve calibrates on them; with frame
+    # 0's sky put back it keeps the same 9 [tested, AUDIT M's probe_exp02.py, run on realsky-4's second version]. This
+    # guards against a calibration built on noise coming back: every detection is a rendered star and every
+    # catalog_matched finding names the rendered star at its place
     stacked_dets = detect_point_sources(stack_result.composite_luma, sky_mask=sky_mask, snr_threshold=EXP02_THRESHOLD)
-    assert len(stacked_dets) == EXP02_STARS_FOR_CALIBRATION - 1
+    assert len(stacked_dets) == EXP02_STARS_FOR_CALIBRATION + 1
     assert all(_on_a_rendered_star(stacked_dets, stars))
     stacked_sol = solve_and_verify_field(
         stacked_dets, width=width, height=height, **PLATE_MOMENT, **_sources(stack_result.composite_luma)
     )
-    assert stacked_sol.status == "ambiguous"
-    assert stacked_sol.held_out_inliers == MIN_HELD_OUT_INLIERS - 1
-    assert all(f.evidence_class != "catalog_matched" for f in stacked_sol.findings)
+    assert stacked_sol.status == "calibrated"
+    assert stacked_sol.held_out_inliers >= MIN_HELD_OUT_INLIERS
+    matched = [f for f in stacked_sol.findings if f.evidence_class == "catalog_matched"]
+    assert matched
+    for finding in matched:
+        det = finding.source_detection
+        star = min(stars, key=lambda s: math.hypot(det.x_px - s[1], det.y_px - s[2]))[0]
+        assert finding.catalog_star.id == star.id
 
 
 def test_exp02_stacking_reaches_a_calibration_that_one_frame_cannot() -> None:
@@ -410,7 +420,7 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
     for hx, hy in hot_pixel_coords:
         corrupted[hy, hx] += 220.0
 
-    detections = detect_point_sources(corrupted, snr_threshold=3.8)
+    detections = detect_point_sources(corrupted)
     solution = solve_and_verify_field(detections, width=width, height=height, **PLATE_MOMENT, **_sources(corrupted))
 
     assert solution.status == "calibrated"
@@ -449,7 +459,7 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
     clean_bg += rng_bg.normal(0.0, 0.2, size=clean_bg.shape)
     impulse_img = clean_bg.copy()
     impulse_img[32, 32] += 120.0
-    impulse_dets = detect_point_sources(impulse_img, snr_threshold=4.0)
+    impulse_dets = detect_point_sources(impulse_img)
     assert len(impulse_dets) == 1
     assert impulse_dets[0].fwhm_px < 0.55
 
@@ -458,7 +468,7 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
     wing_img[32, 32] += 200.0
     for dy, dx in ((-2, 0), (2, 0), (0, -2), (0, 2)):
         wing_img[32 + dy, 32 + dx] += 18.0
-    wing_dets = detect_point_sources(wing_img, snr_threshold=4.0)
+    wing_dets = detect_point_sources(wing_img)
     assert len(wing_dets) == 1
     assert wing_dets[0].peak_to_total_ratio > 0.68
     assert wing_dets[0].fwhm_px > 0.85

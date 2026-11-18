@@ -238,7 +238,7 @@ class MediaExperimentRuntime:
             fg_bool = ~sky_mask
 
         _, src_sigma_bg = _estimate_background_and_noise(ref_luma, sky_mask)
-        src_detections = detect_point_sources(ref_luma, sky_mask=sky_mask, snr_threshold=3.5)
+        src_detections = detect_point_sources(ref_luma, sky_mask=sky_mask)
 
         restored_frames: list[np.ndarray] = []
 
@@ -268,7 +268,7 @@ class MediaExperimentRuntime:
                 res = luma - bg
 
                 if preserve_stars:
-                    frame_dets = detect_point_sources(luma, sky_mask=sky_mask, snr_threshold=3.3)
+                    frame_dets = detect_point_sources(luma, sky_mask=sky_mask)
                     star_mask = _build_star_protection_mask(luma.shape, frame_dets, radius_scale=1.7)
                 else:
                     star_mask = np.zeros_like(luma)
@@ -301,7 +301,7 @@ class MediaExperimentRuntime:
             comp_bg, _ = _estimate_background_and_noise(composite, sky_mask)
             comp_res = composite - comp_bg
             comp_dets = (
-                detect_point_sources(composite, sky_mask=sky_mask, snr_threshold=3.3)
+                detect_point_sources(composite, sky_mask=sky_mask)
                 if preserve_stars
                 else []
             )
@@ -332,7 +332,7 @@ class MediaExperimentRuntime:
 
         out_luma = _to_luma_2d(restored_frames[0])
         out_bg, out_sigma_bg = _estimate_background_and_noise(out_luma, sky_mask)
-        out_detections = detect_point_sources(out_luma, sky_mask=sky_mask, snr_threshold=3.5)
+        out_detections = detect_point_sources(out_luma, sky_mask=sky_mask)
 
         sigma_in = max(src_sigma_bg, 1e-5)
         sigma_out = max(out_sigma_bg, 1e-5)
@@ -356,7 +356,6 @@ class MediaExperimentRuntime:
             comp_pool = detect_point_sources(
                 stack_video_frames_for_calibration(src_frames, sky_mask=sky_mask).composite_luma,
                 sky_mask=sky_mask,
-                snr_threshold=3.0,
             )
             ref_pool.extend(comp_pool)
 

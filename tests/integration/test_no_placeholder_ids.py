@@ -58,15 +58,15 @@ def _serialized_detections(payload: dict) -> list[dict]:
 
 def test_detections_carry_no_asset_id_unless_the_caller_names_the_recording() -> None:
     frame = _starfield()
-    unnamed = detect_point_sources(frame, snr_threshold=4.0)
-    named = detect_point_sources(frame, snr_threshold=4.0, asset_id="synthetic-field-42")
+    unnamed = detect_point_sources(frame)
+    named = detect_point_sources(frame, asset_id="synthetic-field-42")
     assert unnamed and all(det.asset_id is None for det in unnamed)
     assert [det.asset_id for det in named] == ["synthetic-field-42"] * len(unnamed)
 
 
 def test_a_solution_serializes_its_detections_under_its_own_id() -> None:
     calibrated = solve_and_verify_field(
-        detect_point_sources(_starfield(), snr_threshold=4.0), 960, 540, **MOMENT,
+        detect_point_sources(_starfield()), 960, 540, **MOMENT,
         source_asset_id="synthetic-field-42", source_sha256=SHA,
     )
     unresolved = solve_and_verify_field(FEW, 960, 540, **MOMENT, source_asset_id="synthetic-three", source_sha256=SHA)

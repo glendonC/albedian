@@ -70,6 +70,8 @@ from services.science.detector import (
     _estimate_background_and_noise,
     _to_luma_2d,
     detect_point_sources,
+    frame_measures,
+    noise_limit_warnings,
 )
 from services.science.wcs_models import (
     CelestialFindingRecord,
@@ -1111,7 +1113,12 @@ def _rank_stellar_candidates(
         iy = min(gh - 1, (y0 * gh) // h)
         ix = min(gw - 1, (x0 * gw) // w)
         noise_scale = max(1.0, local_sig[iy, ix] / max(med_sig, 1e-4))
-        adj_snr = d.snr / noise_scale
+        # Brightness over the local noise orders the pool, as the pattern search reads it against the catalog's
+        # magnitudes. Since realsky-3 a detection's snr counts its own tile's measured noise (and a clipped core's is
+        # capped), so it no longer orders stars by brightness: ranked by it, the public corpus's rp-b-01 found no
+        # consistent solution (80 of its 85 ranked detections on catalog stars), and ranked by flux it calibrated with
+        # 49 findings confirmed [tested, realsky-4 v2 report]
+        score = d.flux / noise_scale
 
         p = res[y0 - 2 : y0 + 3, x0 - 2 : x0 + 3]
         c = max(float(p[2, 2]), 1e-6)
@@ -1125,11 +1132,11 @@ def _rank_stellar_candidates(
             green_excess = float((dg - max(dr, db)) / c)
 
         if frac_center < 0.16 and ring2 / c < 0.048 and ((x0 + y0) % 2 == 1 or green_excess > 0.02):
-            adj_snr *= 0.005
+            score *= 0.005
         elif green_excess > 0.035 and ring2 / c < 0.055:
-            adj_snr *= 0.008
+            score *= 0.008
 
-        scored.append((adj_snr, d))
+        scored.append((score, d))
 
     scored.sort(key=lambda item: item[0], reverse=True)
     return ([d for _, d in scored[:max_pool]], sky_fraction)
@@ -1577,6 +1584,7 @@ def _build_unresolved(
     observer_lon: float | None,
     warning_msg: str,
     limitation: str,
+    extra_warnings: Sequence[str] = (),
 ) -> ObservationSolution:
     return ObservationSolution(
         id=solution_id,
@@ -1614,7 +1622,7 @@ def _build_unresolved(
             )
             for idx, det in enumerate(detections)
         ],
-        warnings=[warning_msg],
+        warnings=[warning_msg, *extra_warnings],
     )
 
 
@@ -1645,8 +1653,10 @@ def solve_phone_photo(
     bg, _ = _estimate_background_and_noise(luma)
     if detections is None:
         detections = detect_point_sources(
-            luma, snr_threshold=3.5, asset_id=source_asset_id, frame_time_sec=frame_time_sec
+            luma, asset_id=source_asset_id, frame_time_sec=frame_time_sec
         )
+    measures = next((d.frame for d in detections if d.frame is not None), None) or frame_measures(luma)
+    noise_warnings = noise_limit_warnings(measures)
 
     if len(detections) < 6:
         return _build_unresolved(
@@ -1660,6 +1670,7 @@ def solve_phone_photo(
             observer_lon,
             f"Insufficient point sources ({len(detections)} detected) for independent WCS calibration.",
             "Pixel position only: too few point sources for a verified WCS to place it on the sky.",
+            noise_warnings,
         )
 
     ranked_candidates, sky_fraction = _rank_stellar_candidates(image, luma, bg, detections, max_pool=85)
@@ -1744,6 +1755,7 @@ def solve_phone_photo(
             observer_lon,
             "Phone-photo pattern matching found no consistent WCS solution.",
             "Pixel position only: no catalog pattern matched, so no WCS places it on the sky.",
+            noise_warnings,
         )
 
     # Query verification catalog stars that project inside the initial frame
@@ -1788,6 +1800,7 @@ def solve_phone_photo(
             observer_lon,
             "Initial WCS hypothesis matched too few stars for refinement.",
             "Pixel position only: too few catalog matches to refine a verified WCS.",
+            noise_warnings,
         )
 
     # Select radially interleaved training pairs so both train and held-out span center to edge
@@ -1962,6 +1975,7 @@ def solve_phone_photo(
 
     if not passed_gate:
         warnings.append("WCS solution did not pass coincidence-weighed held-out and dual-path verification gate.")
+    warnings.extend(noise_warnings)
 
     return ObservationSolution(
         id=solution_id,

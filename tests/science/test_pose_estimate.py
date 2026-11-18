@@ -1967,7 +1967,7 @@ def test_a_calibrated_solution_never_takes_the_pose_path() -> None:
 
     frame, _, _ = render_synthetic_starfield(width=960, height=540, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
     calibrated = solve_and_verify_field(
-        detect_point_sources(frame, snr_threshold=4.0), 960, 540, obs_utc_iso=MOON_MOMENT, observer_lat=LAT,
+        detect_point_sources(frame), 960, 540, obs_utc_iso=MOON_MOMENT, observer_lat=LAT,
         observer_lon=LON, source_asset_id=ASSET_ID, source_sha256=SHA, solution_id="sol-calibrated",
     )
     assert calibrated.status == "calibrated"

@@ -139,7 +139,7 @@ def test_pbt_synthetic_starfields_place_detections_only_through_a_verified_wcs(
     frame, _, _ = render_synthetic_starfield(
         width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=flux_scale, seed=seed
     )
-    detections = detect_point_sources(frame, snr_threshold=4.0)
+    detections = detect_point_sources(frame)
     sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(frame))
     _assert_sky_positions_follow_verified_wcs(sol, detections)
 
@@ -759,7 +759,7 @@ def build_contract_samples() -> dict[str, dict]:
     # The starfield's float bytes differ by platform (trigonometry, exp and noise), so its hash is of
     # the call that makes it, which is the same everywhere.
     calibrated = solve_and_verify_field(
-        detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT,
+        detect_point_sources(frame), WIDTH, HEIGHT, **MOMENT,
         **_sources(
             ("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42,
              "planted", *PLANTED_LIGHT_XY, PLANTED_LIGHT_SNR)

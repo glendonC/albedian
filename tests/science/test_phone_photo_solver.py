@@ -29,6 +29,7 @@ import pytest
 
 from research.benchmarks.phone_photos import render, score, solvers, stars, suite
 from services.ingest.jobs import SOLVE_TIME_LIMIT_SEC
+from services.science import detector
 from services.science.phone_photo_solver import (
     PhoneCameraWCS,
     evaluate_coincidence_gate,
@@ -307,6 +308,36 @@ def test_solve_phone_photo_preserves_original_pixel_detections_and_contract_inva
     assert all(0 <= done <= total for done, total in events)
 
 
+def test_a_calibrated_phone_solution_says_its_frames_worded_flags_after_its_own_warnings(
+    ci00_frame: render.RenderedFrame,
+) -> None:
+    """The phone solver's own last path, which research/benchmarks/phone_photos/solvers.py reaches without the solve job
+    (the job adds a frame's worded flags only where a solution lacks them). ci-00 calibrates and raises no worded flag;
+    its own detections, each standing in for a flagged frame's (its FrameMeasures carrying both worded flags too), are
+    solved the same way and the solution ends with both flags' words."""
+    frame = ci00_frame
+    meta = frame.truth.metadata
+    raw = detector._to_luma_2d(frame.rgb)  # the luma solve_phone_photo detects on
+    luma = raw / 255.0 if (frame.rgb.dtype == np.uint8 or float(np.max(raw)) > 1.5) else raw
+    detections = detector.detect_point_sources(luma, asset_id="src_ci00")
+    assert detections and all(d.frame is not None for d in detections)
+    assert not any(flag in detector.NOISE_LIMIT_WORDS for d in detections for flag in d.noise_limits)
+    flags = tuple(detector.NOISE_LIMIT_WORDS)
+    flagged = [replace(d, frame=replace(d.frame, noise_limits=(*flags, *d.noise_limits))) for d in detections]
+
+    def solve(dets: list[SourceDetection]):
+        return solve_phone_photo(
+            frame.rgb, obs_utc_iso=meta["utc"], observer_lat=meta["latDeg"], observer_lon=meta["lonDeg"],
+            camera_label=meta["camera"], source_asset_id="src_ci00",
+            source_sha256=hashlib.sha256(frame.jpeg_bytes).hexdigest(), detections=dets,
+        )
+
+    plain, said = solve(detections), solve(flagged)
+    assert plain.status == said.status == "calibrated"
+    assert not any(words in plain.warnings for words in detector.NOISE_LIMIT_WORDS.values())
+    assert said.warnings == [*plain.warnings, *(detector.NOISE_LIMIT_WORDS[flag] for flag in flags)]
+
+
 def test_solve_phone_photo_solves_kannala_brandt_fisheye_ultrawide(
     ci_specs: list[suite.FrameSpec],
 ) -> None:
@@ -445,3 +476,40 @@ def test_pbt_phone_camera_wcs_round_trip_invertibility(
         assert math.isfinite(ra) and math.isfinite(dec)
         rx, ry = wcs.world_to_pixel(ra, dec)
         assert math.hypot(rx - x_px, ry - y_px) < 1e-3
+
+
+def test_too_few_sources_for_a_solution_still_says_the_frames_worded_flags(ci00_frame: render.RenderedFrame) -> None:
+    """The phone solver's first unresolved path (under 6 detections) gives the frame's flags in words too (AUDIT M's
+    mutant P2, that path's words taken away, lived): five of ci-00's detections, each standing in for a flagged frame's."""
+    frame = ci00_frame
+    meta = frame.truth.metadata
+    raw = detector._to_luma_2d(frame.rgb)
+    luma = raw / 255.0 if (frame.rgb.dtype == np.uint8 or float(np.max(raw)) > 1.5) else raw
+    flags = tuple(detector.NOISE_LIMIT_WORDS)
+    detections = [replace(d, frame=replace(d.frame, noise_limits=(*flags, *d.noise_limits)))
+                  for d in detector.detect_point_sources(luma, asset_id="src_ci00")[:5]]
+    solution = solve_phone_photo(
+        frame.rgb, obs_utc_iso=meta["utc"], observer_lat=meta["latDeg"], observer_lon=meta["lonDeg"],
+        camera_label=meta["camera"], source_asset_id="src_ci00",
+        source_sha256=hashlib.sha256(frame.jpeg_bytes).hexdigest(), detections=detections,
+    )
+    assert solution.status == "unresolved"
+    assert all(solution.warnings.count(detector.NOISE_LIMIT_WORDS[flag]) == 1 for flag in flags), solution.warnings
+
+
+def test_stellar_pool_ranks_by_flux_over_local_noise_not_tile_snr() -> None:
+    """_rank_stellar_candidates orders the pool by flux over local pixel noise, not by tile-divided snr (since realsky-3
+    each tile's snr divides by its own matched noise, and clipped cores cap theirs)."""
+    from services.science.phone_photo_solver import _rank_stellar_candidates
+
+    rng = np.random.default_rng(8101)
+    h, w = 240, 360
+    luma = 0.20 + rng.normal(0.0, 0.002, (h, w))
+    # Top-right 6 x 6 tile (rows 0..40, cols 300..360) has 4x the pixel MAD, so noise_scale is ~4 there and 1 elsewhere
+    luma[:40, 300:] = 0.20 + rng.normal(0.0, 0.008, (40, 60))
+    bg = np.full_like(luma, 0.20)
+    bright_low_snr = SourceDetection(x_px=30.3, y_px=20.3, flux=0.90, snr=6.0, fwhm_px=2.4, centroid_uncertainty_px=0.1)
+    same_flux_noisy_tile = SourceDetection(x_px=330.3, y_px=20.3, flux=0.90, snr=6.0, fwhm_px=2.4, centroid_uncertainty_px=0.1)
+    faint_high_snr = SourceDetection(x_px=90.3, y_px=20.3, flux=0.10, snr=30.0, fwhm_px=2.4, centroid_uncertainty_px=0.1)
+    ranked, _ = _rank_stellar_candidates(luma, luma, bg, [faint_high_snr, same_flux_noisy_tile, bright_low_snr], max_pool=10)
+    assert [(d.x_px, d.flux) for d in ranked] == [(30.3, 0.90), (330.3, 0.90), (90.3, 0.10)]

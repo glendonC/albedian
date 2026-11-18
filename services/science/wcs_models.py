@@ -162,6 +162,48 @@ VERIFICATION_METHODS = {
 
 
 @dataclass(frozen=True)
+class FrameMeasures:
+    """What the detector measured on the frame a detection came from, the same for every detection of that frame:
+    - `statistic`: what each `snr` counts, "matched" (the kernel's response over its noise map) or "whitened" (the
+      noise-whitened matched filter's, built for the frame's measured star);
+    - `expected_snr_matched`, `expected_snr_whitened`: each filter's response to the frame's model star over the median
+      of its own noise map (the whitened one None when it could not be built);
+    - `negative_matched`, `negative_whitened`: the detections each statistic makes on the frame's negative image at
+      the threshold (the luma negated: its noise kept, its stars made holes), away from its sources and scaled to
+      the whole frame, None where not built;
+    - `choice_p_value`: the exact test's p value that the whitened filter's negative-image rate is above the kernel's
+      (detector._choice_p_value), None where the whitened filter was not built;
+    - `negative_peaks`, `negative_peaks_spread`: the used statistic's negative-image figure (peaks of the negative image
+      above the threshold, scaled to the frame) and its counting spread. On built frames it equals the false detections
+      within that spread; on a real photo it also counts real dark structure and misses what lies near stars, so it
+      is not the photo's false detections;
+    - `profile_sigma_major_px`, `profile_sigma_minor_px`, `profile_angle_rad`, `profile_stars`: the star measured on the
+      frame's bright isolated unsaturated stars (an elliptical Gaussian), None when too few stars built it;
+    - `star_gain`, `stars_kept_matched`, `stars_kept_whitened`: what chose the statistic, measured on the frame's own
+      stars (detector.StarRating): the median whitened over kernel statistic on them, and how many of them each
+      filter's gates let through at the threshold's brightness; None where no whitened filter was built.
+    - `noise_limits`: the flags the frame raised (detector.NOISE_LIMIT_WORDS).
+    Not serialized into the contract (no contract field holds it yet)."""
+
+    statistic: str = "matched"
+    expected_snr_matched: float | None = None
+    expected_snr_whitened: float | None = None
+    negative_matched: float | None = None
+    negative_whitened: float | None = None
+    choice_p_value: float | None = None
+    negative_peaks: float | None = None
+    negative_peaks_spread: float | None = None
+    profile_sigma_major_px: float | None = None
+    profile_sigma_minor_px: float | None = None
+    profile_angle_rad: float | None = None
+    profile_stars: int = 0
+    star_gain: float | None = None
+    stars_kept_matched: int | None = None
+    stars_kept_whitened: int | None = None
+    noise_limits: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class SourceDetection:
     """Point source measured directly from original sensor pixels (`observed` class)."""
 
@@ -175,6 +217,23 @@ class SourceDetection:
     asset_id: str | None = None
     frame_time_sec: float = 0.0
     peak_to_total_ratio: float = 0.25
+    # A clipped core: connected pixels at the data's top code, reported as one source at their centre with their
+    # count. Its brightness is a lower bound and its `snr` is the matched response over the noise at its centre, which
+    # the clipping caps. Not serialized into the contract (no contract field holds it yet)
+    saturated: bool = False
+    saturated_area_px: int = 0
+    # What the detector measured on its frame (FrameMeasures), None for a detection not made by the detector
+    frame: FrameMeasures | None = None
+
+    @property
+    def statistic(self) -> str:
+        """What its `snr` counts: "matched" or "whitened" (FrameMeasures.statistic)."""
+        return self.frame.statistic if self.frame is not None else "matched"
+
+    @property
+    def noise_limits(self) -> tuple[str, ...]:
+        """The flags its frame raised (FrameMeasures.noise_limits)."""
+        return self.frame.noise_limits if self.frame is not None else ()
 
     def __post_init__(self) -> None:
         # The contract's bounds on a detection: a position and a width that are not negative, a flux, an SNR and a

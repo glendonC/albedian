@@ -9,10 +9,12 @@ Covers:
   0..1 and as grey RGB gives the same detections; a colour RGB frame's luma gets the weighted rounding noise.
 - A frame on no grid (a stack, a colour photo's luma on the 0..1 scale that solve_phone_photo hands the detector) keeps
   the old floor: never a lower noise and never more detections than the old rule gives.
-- Over generated dark integer frames on three scales, the noise the detector divides by is never below the parent
-  commit's rule (its MAD, else its interquartile range / 1.349, then at least 0.001), written out here. Since
-  realsky-3 that is the pixel noise of its shape gates; its matched response is divided by `matched_filter_noise`
-  (tests/science/test_matched_filter_noise.py).
+- Over generated dark integer frames on three scales, the noise the detector divides by is never below the rounding
+  floor, and is the noise-only sky's own spread as rounded, or that floor where it is the larger, within a measured
+  tolerance (realsky-4b; until then it was held never below the parent commit's rule, its MAD, else its
+  interquartile range / 1.349, which read high on such frames: 0.741 levels where the rounded sky's spread is 0.580).
+  Since realsky-3 that is the pixel noise of its shape gates; its matched response is divided by
+  `matched_filter_noise` (tests/science/test_matched_filter_noise.py).
 - Frame registration in stack_video_frames_for_calibration keeps the parent's noise estimate, so a stack's shifts do
   not change.
 - Forced photometry and injection recovery use the same floor.
@@ -108,12 +110,6 @@ def _parent_noise(residual: np.ndarray) -> float:
         q75, q25 = np.percentile(values, [75.0, 25.0])
         sigma = float((q75 - q25) / 1.349)
     return sigma
-
-
-def _parent_effective_sigma(image: np.ndarray) -> float:
-    """The noise the parent's detector divided by on a 2D frame: its noise estimate, at least 0.001."""
-    luma = np.asarray(image, dtype=np.float64)
-    return max(_parent_noise(luma - _parent_background(luma)), OLD_FLOOR)
 
 
 def _score(dets, truth: np.ndarray, scale_xy: float = 1.0) -> tuple[int, int]:
@@ -332,6 +328,10 @@ def test_solve_phone_photo_never_gets_a_lower_noise_or_more_detections_than_the_
     assert (sigmas[0] >= OLD_FLOOR, len(dets) <= len(old)) == (True, True), (label, sigmas[0], len(dets), len(old))
 
 
+# Over 216 such frames (backgrounds 0.6 to 3.0, read noises 0.2 to 0.6 with 0.3125 among them, three seeds) the noise
+# the detector divides by read 0.978 to 1.046 times the larger of the rounding floor and the rounded sky's own spread
+# [tested, realsky-4b report]; [proposed] 8 % leaves room over both ends
+ROUNDED_SKY_TOLERANCE = 0.08
 SCALES = {
     "0..255": lambda f: f.astype(np.float64),
     "0..1": lambda f: f.astype(np.float64) / 255.0,
@@ -347,16 +347,24 @@ SCALES = {
     scale=st.sampled_from(sorted(SCALES)),
 )
 # A sky at 1.3 with a read noise of 0.5 rounds 60 % to one level and 34 % to the next: the MAD is 0 and the
-# interquartile range one level, so the parent divided by 1 / 1.349 = 0.741 levels, while the spread of the residuals
-# without their top percent is 0.59 [tested]
+# interquartile range one level, so the parent divided by 1 / 1.349 = 0.741 levels, while the rounded sky's own spread
+# is 0.580 and realsky-4b divides by 0.576 [tested, realsky-4b report]
 @example(background=1.3, read_noise=0.5, noise_seed=6, scale="0..255")
 @example(background=1.3, read_noise=0.5, noise_seed=6, scale="0..1")
 @example(background=1.3, read_noise=0.5, noise_seed=6, scale="16-bit, x257")
-def test_pbt_the_noise_the_detector_divides_by_is_never_below_the_parents(
+# Under a third of a level of noise a clip at three kept spreads would take the neighbouring levels away whole (it read
+# 0.87 of the rounded sky's spread here, hypothesis's find); the clip is held at one and a half levels
+@example(background=1.0, read_noise=0.3125, noise_seed=0, scale="0..1")
+@example(background=1.0, read_noise=0.3, noise_seed=8, scale="0..255")
+def test_pbt_the_noise_the_detector_divides_by_is_the_rounded_skys_own_or_the_rounding_floor(
     background: float, read_noise: float, noise_seed: int, scale: str
 ) -> None:
     image = SCALES[scale](_dark_frame(noise_seed=noise_seed, background=background, read_noise=read_noise))
-    parent = _parent_effective_sigma(image)
+    level = {"0..255": 1.0, "0..1": 1.0 / 255.0, "16-bit, x257": 257.0}[scale]
+    floor = level / np.sqrt(12.0)
+    # The noise-only sky as rounded: the frame's own noise draw, without its stars
+    noise = np.random.default_rng(noise_seed).normal(0.0, read_noise, (HEIGHT, WIDTH))
+    spread = level * float(np.std(np.clip(np.rint(background + noise), 0, 255)))
     sigmas: list[float] = []
     real_sigma = detector._effective_sigma
 
@@ -370,7 +378,10 @@ def test_pbt_the_noise_the_detector_divides_by_is_never_below_the_parents(
         detector.verify_candidates_on_original_pixels(image, [(float(x), float(y)) for x, y in _stars()])
     # Detection and forced photometry each divide by one noise
     assert len(sigmas) == 2, sigmas
-    assert min(sigmas) >= parent * (1.0 - 1e-12), (scale, background, read_noise, noise_seed, parent, sigmas)
+    assert min(sigmas) >= floor * (1.0 - 1e-12), (scale, background, read_noise, noise_seed, floor, sigmas)
+    expected = max(floor, spread)
+    assert all(abs(s / expected - 1.0) <= ROUNDED_SKY_TOLERANCE for s in sigmas), (
+        scale, background, read_noise, noise_seed, expected, sigmas)
 
 
 # Where frame k's stars sit relative to frame 0, in pixels (y, x): sub-pixel and whole-pixel moves, within the
@@ -418,12 +429,13 @@ def test_frame_registration_in_the_stacker_keeps_the_parents_noise_estimate(
     assert stack.stacked_noise_sigma == pytest.approx(parent.stacked_noise_sigma, rel=1e-9, abs=1e-12), label
 
 
-@pytest.mark.parametrize(("threshold", "expected"), [(3.5, 165), (6.0, 0), (8.0, 0)])
+@pytest.mark.parametrize(("threshold", "expected"), [(3.5, 165), (6.0, 165), (8.0, 0)])
 def test_forced_photometry_measures_one_level_bumps_against_the_rounding_noise(threshold: float, expected: int) -> None:
     # A plus-shaped bump one level high on a flat 8-bit frame (MAD and spread 0): at the rounding noise its peak is
     # 1 / (1/sqrt(12)) = 3.46 sigma, its 3x3 sum 5 / (3/sqrt(12)) = 5.77 and its matched filter 6.4. A forced
-    # measurement at threshold T needs the peak at max(2.3, 0.58 T) and the sum at max(3.6, 0.92 T) sigma: all pass at
-    # 3.5, the peak (3.46 against 3.48) fails at 6, and all three fail at 8 (the matched gate is then 8). At a floor of
+    # measurement at threshold T needs the matched filter at T, the peak at PEAK_GATE_SHARE T (0.39 T) and the sum at
+    # BOX_GATE_SHARE T (0.88 T): the matched filter binds, so all pass at 3.5 and at 6 and none at 8 (realsky-4's shares,
+    # computed from the kernel and the model star; the parent's 0.58 T on the peak failed them at 6). At a floor of
     # 0.001 each bump would be 1,000 sigma
     frame = np.ones((HEIGHT, WIDTH), dtype=np.uint8)
     spots = [(x, y) for x in range(20, WIDTH - 20, 30) for y in range(20, HEIGHT - 20, 30)]
@@ -526,8 +538,9 @@ def test_injection_recovery_on_the_pairs_frame_reports_no_faint_star_and_nothing
 
 def test_forced_photometry_keeps_a_rounding_floor_it_is_handed() -> None:
     # The bump frame of the forced photometry test, moved off its grid by a ten-thousandth of a level: on its own it
-    # loses the rounding floor and every bump passes at threshold 6 against the 0.001 floor; handed the frame's
-    # rounding noise, as injection recovery does, none does (the bump's peak is 3.46 of it)
+    # loses the rounding floor and every bump passes at threshold 7 against the 0.001 floor; handed the frame's
+    # rounding noise, as injection recovery does, none does (the bump's matched response is 6.4 of it, and with
+    # realsky-4's computed shares the matched threshold is the gate that binds)
     frame = np.ones((HEIGHT, WIDTH), dtype=np.float64)
     spots = [(x, y) for x in range(20, WIDTH - 20, 30) for y in range(20, HEIGHT - 20, 30)]
     for x, y in spots:
@@ -536,8 +549,8 @@ def test_forced_photometry_keeps_a_rounding_floor_it_is_handed() -> None:
     frame += 1e-4 * np.random.default_rng(3).random(frame.shape)
     assert detector._value_step(frame) is None
     candidates = [(float(x), float(y)) for x, y in spots]
-    assert len(detector.verify_candidates_on_original_pixels(frame, candidates, snr_threshold=6.0)) == len(spots)
-    kept = detector.verify_candidates_on_original_pixels(frame, candidates, snr_threshold=6.0, noise_floor=ROUNDING_SIGMA)
+    assert len(detector.verify_candidates_on_original_pixels(frame, candidates, snr_threshold=7.0)) == len(spots)
+    kept = detector.verify_candidates_on_original_pixels(frame, candidates, snr_threshold=7.0, noise_floor=ROUNDING_SIGMA)
     assert kept == []
 
 

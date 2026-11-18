@@ -3,19 +3,17 @@ the gate will call: a frame's points, their confirmation on the original, and ap
 
 from __future__ import annotations
 
-import re
-
 import numpy as np
 import pytest
 from scipy import ndimage
 
-from photo_frames import LUMA, REPO_ROOT, star_field
+from photo_frames import LUMA, star_field
 from services.contracts import media as contracts
 from services.media import stars
 from services.science.detector import (
+    DETECTION_THRESHOLD,
     _build_gaussian_psf_kernel,
     _estimate_background_and_noise,
-    verify_candidates_on_original_pixels,
 )
 
 
@@ -258,11 +256,10 @@ def test_the_luma_is_the_detectors_weighting_of_the_codes() -> None:
     assert np.allclose(stars.luma_codes(with_fourth), codes @ LUMA)
 
 
-def test_the_confirmation_threshold_is_the_detectors_own_floor() -> None:
-    # The detector raises a threshold under its floor to it, in both its calls; the step records that floor as its own
-    source = (REPO_ROOT / "services/science/detector.py").read_text()
-    floors = {float(v) for v in re.findall(r"effective_snr_gate = max\(float\(snr_threshold\), ([0-9.]+)\)", source)}
-    assert floors == {stars.CONFIRM_THRESHOLD_SNR}
+def test_the_confirmation_threshold_is_the_detectors_default_threshold() -> None:
+    # The detector takes a threshold as given, DETECTION_THRESHOLD in both its calls unless the caller gives another;
+    # the step confirms at that default and records it as its own
+    assert stars.CONFIRM_THRESHOLD_SNR == DETECTION_THRESHOLD
     assert {p["name"]: p["value"] for p in stars.parameters()}["confirmThresholdSnr"] == stars.CONFIRM_THRESHOLD_SNR
 
 
@@ -354,12 +351,13 @@ def test_the_matched_noise_decides_the_confirmation_where_the_noise_is_shared_be
     points = [stars.Point(float(x), float(y), 0.0, 0) for y, x in strongest if 8 <= x < 248 and 8 <= y < 248]
     assert points
     assert stars.confirm(points, original) == [False] * len(points)
-    # The control: on the pixel sigma alone the detector verifies some of them
-    verified = verify_candidates_on_original_pixels(original, [(p.x_px, p.y_px) for p in points], noise_floor=0.0)
-    assert verified
+    # The control: on the pixel sigma alone some of them pass. This is the detector's statistic before it divided by
+    # its response's own noise: the unit-norm kernel's response over the pixel sigma, each point a peak of it
+    pixel_snr = response / noise.sigma
+    assert any(pixel_snr[int(p.y_px), int(p.x_px)] >= stars.CONFIRM_THRESHOLD_SNR for p in points)
 
 def test_every_point_found_meets_the_threshold_asked_for() -> None:
-    # The detector returns only peaks whose matched snr is at least max(threshold, its floor), so no second filter
+    # The detector returns only peaks whose snr is at least the threshold, taken as given, so no second filter
     scene = star_field(2, size=320, count=24, peaks=(0.02, 0.3))
     clipped = stars.clipped_map(scene.codes, scene.code_steps)
     for threshold in (stars.CONFIRM_THRESHOLD_SNR, 6.0, 12.0):
