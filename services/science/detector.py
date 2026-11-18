@@ -168,6 +168,197 @@ def _build_gaussian_psf_kernel(sigma_px: float = 1.15, radius: int = 3) -> np.nd
     return kernel / max(norm, 1e-12)
 
 
+# The noise of the matched response. The detector divides its matched response by the spread of that same response,
+# measured tile by tile, so the value it reports counts noises of the quantity it thresholds. That spread is not the
+# pixel noise: a developed photo's noise is shared between neighbouring pixels (demosaicing, denoising, JPEG), which
+# widens it to 1.9 to 3.7 times the pixel noise (restoration spec, M5), and the background the detector subtracts has
+# an error of its own that the kernel's sum passes on, 1.17 times the pixel noise on white noise [tested,
+# tests/science/test_matched_filter_noise.py].
+#
+# The tile follows the frame: NOISE_TILE_PX_AT_REFERENCE px, the restoration spec's tile, on a 4032 x 3024 frame
+# (diagonal NOISE_REFERENCE_DIAGONAL_PX, the commonest size in the real photo corpus), and the same share of the
+# diagonal on any other frame. On corpus photos of 1.7, 3.1, 12.2 and 50.1 megapixels, tiles of that share gave the
+# detections that smaller tiles agree on, and fixed 256 px tiles did so only from 12 megapixels up [tested on the
+# corpus outside the tests, realsky-3 report]
+NOISE_TILE_PX_AT_REFERENCE = 256
+NOISE_REFERENCE_DIAGONAL_PX = 5040.0
+# [proposed] The smallest tile: on those photos a 64 px tile's estimate differed by 4 to 6 % between the two halves of
+# its samples, against 1 to 1.5 % at 256 px
+NOISE_TILE_MIN_PX = 64
+# Each tile is measured over its own area and an eighth of a tile beyond each side: 32 px on a 256 px tile, the spec's
+NOISE_OVERLAP_SHARE = 0.125
+# [proposed] A tile is measured only when sky pixels fill at least this share of its area
+NOISE_MIN_SKY_SHARE = 0.25
+# No peak is taken within this many pixels of an edge, and the response there is not sampled for its noise
+EDGE_MARGIN_PX = 4
+
+
+def _noise_tile_px(height: int, width: int) -> int:
+    """The noise map's tile for a frame of this size, in pixels: NOISE_TILE_PX_AT_REFERENCE on a frame whose diagonal
+    is NOISE_REFERENCE_DIAGONAL_PX, the same share of the diagonal on any other, and never under NOISE_TILE_MIN_PX."""
+    share = math.hypot(float(height), float(width)) / NOISE_REFERENCE_DIAGONAL_PX
+    return max(NOISE_TILE_MIN_PX, int(round(NOISE_TILE_PX_AT_REFERENCE * share)))
+
+
+def _tile_edges(length: int, tile: int) -> np.ndarray:
+    """The edges of round(length / tile) equal tiles across `length` pixels, at least one tile."""
+    count = max(1, int(round(length / float(tile))))
+    return np.rint(np.linspace(0.0, float(length), count + 1)).astype(int)
+
+
+def _robust_sigma(samples: np.ndarray) -> float:
+    """1.4826 times the median absolute deviation: a normal distribution's sigma, unmoved by a few far samples."""
+    median = float(np.median(samples))
+    return 1.4826 * float(np.median(np.abs(samples - median)))
+
+
+def _linear_weights(length: int, centres: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """For each pixel along one axis: the tile centres on either side of it and its weight toward the second, held at
+    the outermost centre's value beyond it."""
+    pos = np.arange(length, dtype=np.float64)
+    if centres.size == 1:
+        zero = np.zeros(length, dtype=int)
+        return zero, zero, np.zeros(length)
+    lower = np.clip(np.searchsorted(centres, pos, side="right") - 1, 0, centres.size - 2)
+    weight = np.clip((pos - centres[lower]) / (centres[lower + 1] - centres[lower]), 0.0, 1.0)
+    return lower, lower + 1, weight
+
+
+def _matched_noise_map(
+    matched: np.ndarray,
+    sky_mask: np.ndarray | None,
+    *,
+    floor: float,
+    tile: int | None = None,
+    overlap: int | None = None,
+    clipped: np.ndarray | None = None,
+) -> np.ndarray:
+    """The spread of a matched response, tile by tile and interpolated between tile centres, never under `floor`.
+
+    Each tile's value is _robust_sigma of the response over the tile and `overlap` px beyond it, on the pixels that
+    are finite, in the sky mask when there is one, not `clipped` (_clipped_flats), and at least EDGE_MARGIN_PX from
+    an edge when the frame has any such pixel. A tile with fewer such pixels than NOISE_MIN_SKY_SHARE of its area is
+    not measured and takes the floor.
+    """
+    height, width = matched.shape
+    tile_px = _noise_tile_px(height, width) if tile is None else int(tile)
+    overlap_px = int(round(NOISE_OVERLAP_SHARE * tile_px)) if overlap is None else int(overlap)
+    if tile_px < 1 or overlap_px < 0:
+        raise ValueError(f"tile must be at least 1 px and overlap at least 0 px, got {tile_px} and {overlap_px}")
+    valid = np.isfinite(matched)
+    interior = np.zeros((height, width), dtype=bool)
+    interior[EDGE_MARGIN_PX : height - EDGE_MARGIN_PX, EDGE_MARGIN_PX : width - EDGE_MARGIN_PX] = True
+    if np.any(valid & interior):
+        valid &= interior
+    if sky_mask is not None:
+        valid &= np.asarray(sky_mask, dtype=bool)
+    if clipped is not None:
+        valid &= ~np.asarray(clipped, dtype=bool)
+
+    y_edges, x_edges = _tile_edges(height, tile_px), _tile_edges(width, tile_px)
+    values = np.full((y_edges.size - 1, x_edges.size - 1), np.nan)
+    for iy in range(y_edges.size - 1):
+        y0, y1 = max(0, int(y_edges[iy]) - overlap_px), min(height, int(y_edges[iy + 1]) + overlap_px)
+        for ix in range(x_edges.size - 1):
+            x0, x1 = max(0, int(x_edges[ix]) - overlap_px), min(width, int(x_edges[ix + 1]) + overlap_px)
+            window = valid[y0:y1, x0:x1]
+            count = int(np.count_nonzero(window))
+            if count > 0 and count >= NOISE_MIN_SKY_SHARE * window.size:
+                values[iy, ix] = _robust_sigma(matched[y0:y1, x0:x1][window])
+    values[~np.isfinite(values)] = float(floor)
+
+    y_low, y_high, y_weight = _linear_weights(height, 0.5 * (y_edges[:-1] + y_edges[1:]) - 0.5)
+    x_low, x_high, x_weight = _linear_weights(width, 0.5 * (x_edges[:-1] + x_edges[1:]) - 0.5)
+    rows = values[:, x_low] * (1.0 - x_weight) + values[:, x_high] * x_weight
+    noise = np.empty((height, width), dtype=np.float64)
+    for start in range(0, height, 1024):
+        stop = min(height, start + 1024)
+        weight = y_weight[start:stop, None]
+        noise[start:stop] = rows[y_low[start:stop]] * (1.0 - weight) + rows[y_high[start:stop]] * weight
+    np.maximum(noise, float(floor), out=noise)
+    return noise
+
+
+def _detector_noise_map(
+    luma: np.ndarray,
+    matched: np.ndarray,
+    sky_mask: np.ndarray | None,
+    sigma_eff: float,
+    tile: int | None = None,
+    overlap: int | None = None,
+) -> np.ndarray:
+    """What the detector divides its matched response by: the response's own spread, tile by tile, never under the
+    parent detector's divider for the frame, `sigma_eff` itself, the pixel noise it divided by (the kernel's gain on
+    white noise, its L2 norm, is 1 by construction; in floats it is 0.9999999999999998, so a product with it would sit
+    one last bit under that divider and move ties between neighbouring peaks [tested, realsky-3 report]).
+
+    So the map only ever raises the divider above the parent's, where the response is measured to be noisier
+    (correlated noise, structure), and never lowers it. Near a black clip the clip skews the response and its MAD
+    understates its own upper tail: dark 8-bit skies gave up to 1.7 times the parent's false detections with the map
+    alone [tested, realsky-3 audit]. A tile that cannot be measured (sky pixels outside clipped flats fill under a
+    quarter of it: a sky crushed to black, or ground) takes that divider, so a star on a crushed sky and a lamp on
+    black ground are scored as the parent scored them, never against a neighbour's noise or their own wings. Where a
+    tile's noise sits at the floor (a flat or quantised sky whose deviations are 0), the divider is the parent's,
+    itself never under the data's rounding noise, 0.001 or a caller's `noise_floor` (all in `sigma_eff`). The cost:
+    in a frame whose noise varies, the quieter parts are scored as the parent scored them, no better [tested]."""
+    return _matched_noise_map(
+        matched, sky_mask, floor=float(sigma_eff), tile=tile, overlap=overlap, clipped=_clipped_flats(luma)
+    )
+
+
+def _clipped_flats(luma: np.ndarray) -> np.ndarray:
+    """Pixels whose whole 3x3 neighbourhood sits at the frame's lowest value or at its highest: a black-clipped
+    foreground or a saturated core, where the data holds no noise to measure. Their response's deviation is 0, so a
+    tile made of them would read as noise-free and anything bright in it (a lamp on clipped ground) would score tens of
+    times its noise elsewhere. Relative to the frame's own range, so scaling the frame or adding to it changes nothing;
+    on a frame with one value everywhere every pixel is one."""
+    low, high = float(np.min(luma)), float(np.max(luma))
+    at_low = ndimage.maximum_filter(luma, size=3, mode="nearest") <= low
+    at_high = ndimage.minimum_filter(luma, size=3, mode="nearest") >= high
+    return at_low | at_high
+
+
+def matched_filter_noise(
+    luma: np.ndarray, *, sky_mask: np.ndarray | None = None, tile: int | None = None, overlap: int | None = None
+) -> np.ndarray:
+    """The noise of the detector's own matched response, measured tile by tile: a map the size of the frame.
+
+    What it measures: the detector subtracts its background from the luma (`_estimate_background_and_noise`) and
+    convolves the rest with its kernel (`_build_gaussian_psf_kernel(1.15, 3)`). In each tile, 1.4826 times the median
+    absolute deviation of that response over the tile's sky pixels is the noise there, so the stars in a tile barely
+    raise it; between tile centres the map is interpolated linearly. It is in the units of the luma it is given (codes,
+    or 0..1), and `detect_point_sources` divides its response by it, so a detection's `snr` counts these noises. It is
+    never below the parent detector's divider for the frame (`_detector_noise_map`): the frame's pixel noise as
+    `_effective_sigma` gives it (the kernel's gain on white noise is 1), itself never under the data's rounding noise
+    or 0.001.
+
+    The tile follows the frame (`_noise_tile_px`: 256 px on a 4032 x 3024 frame, at least 64 px) and the overlap is
+    an eighth of the tile; `tile` and `overlap` set them in pixels instead.
+
+    Where it is wrong:
+    - A tile full of structure (the Milky Way, a lit foreground, a cloud edge, a crowded star field) reads high, so
+      fewer and fainter-scored detections are made there.
+    - A tile whose sky pixels, outside clipped flats, fill under a quarter of it is not measured and takes the
+      parent's divider: so a star on a sky crushed to black, or a lamp on black ground, is scored as the parent
+      scored it, not against a neighbour's noise or its own wings.
+    - A frame smaller than a tile is one tile with one value, measured on as few pixels as the frame has.
+    - The tile follows the frame it is handed: for a crop, pass the tile of the frame it was cut from.
+    - On a quantised frame whose response is mostly exactly 0, the deviation is 0 and the parent's divider is the
+      value: there it is the data's rounding noise, the least the step allows.
+    - Near a black clip the clip skews the response and its MAD understates its own upper tail, so there the
+      parent's divider, the larger, is the value; and where a frame's noise varies, its quieter parts are scored as
+      the parent scored them, no better.
+    - Clipped flats (`_clipped_flats`: black-clipped ground, saturated cores) are not sampled.
+    """
+    luma_2d = _to_luma_2d(luma)
+    bg, sigma_bg = _estimate_background_and_noise(luma_2d, sky_mask)
+    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
+    residual = luma_2d - bg
+    matched = ndimage.convolve(residual, kernel, mode="nearest")
+    sigma_eff = _effective_sigma(sigma_bg, luma)
+    return _detector_noise_map(luma_2d, matched, sky_mask, sigma_eff, tile=tile, overlap=overlap)
+
+
 @dataclass(frozen=True)
 class InjectionRecoveryBin:
     """Completeness measured in one injected-SNR bin."""
@@ -289,9 +480,14 @@ def detect_point_sources(
 ) -> list[SourceDetection]:
     """Extract astronomical point sources above local sky background noise.
 
-    Performs local background subtraction, MAD noise estimation, matched Gaussian PSF
-    filtering, local peak extraction, anti-white-noise spatial coherence gating, and
-    sub-pixel centroid + FWHM measurement.
+    Performs local background subtraction, matched Gaussian PSF filtering, local peak extraction, anti-white-noise
+    spatial coherence gating, and sub-pixel centroid + FWHM measurement.
+
+    A detection's `snr` is its matched response over the noise of that response where it lies, measured tile by tile
+    (`matched_filter_noise`), and peaks are kept from max(`snr_threshold`, 4.75) of those noises. The pixel gates of
+    the shape test (peak, 3x3 sum, neighbours, centroid weights) count the pixel noise: the background residual's MAD,
+    never below the data's rounding noise or 0.001. `noise_floor` is a rounding noise in the frame's units handed in by
+    a caller that moved the frame off its grid: it floors the pixel noise, and so the map.
 
     Each detection carries `asset_id` when the caller names the recording it was measured in, and none
     otherwise: a solution serializes it under its own recording's id.
@@ -311,13 +507,13 @@ def detect_point_sources(
     sigma_eff = _effective_sigma(sigma_bg, image_luma, noise_floor)
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
     matched = ndimage.convolve(residual, kernel, mode="nearest")
-    snr_map = matched / sigma_eff
+    snr_map = matched / _detector_noise_map(luma, matched, sky_mask, sigma_eff)
 
     effective_snr_gate = max(float(snr_threshold), 4.75)
     local_max = ndimage.maximum_filter(snr_map, size=7, mode="nearest")
     is_peak = (snr_map == local_max) & (snr_map >= effective_snr_gate) & (residual > 0.0)
 
-    margin = 4
+    margin = EDGE_MARGIN_PX
     is_peak[:margin, :] = False
     is_peak[-margin:, :] = False
     is_peak[:, :margin] = False
@@ -370,7 +566,8 @@ def verify_candidates_on_original_pixels(
 
     A source seen only in a denoised or sharpened variant is rejected and never becomes `observed`.
     Every surviving `SourceDetection` takes its sub-pixel centroid, flux, FWHM, and SNR strictly from
-    `original_image`.
+    `original_image`, its SNR against the matched-filter noise of `original_image` as `detect_point_sources`
+    measures it.
     """
     luma = _to_luma_2d(original_image)
     h, w = luma.shape
@@ -386,13 +583,13 @@ def verify_candidates_on_original_pixels(
     sigma_eff = _effective_sigma(sigma_bg, original_image, noise_floor)
     kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
     matched = ndimage.convolve(residual, kernel, mode="nearest")
-    snr_map = matched / sigma_eff
+    snr_map = matched / _detector_noise_map(luma, matched, sky_mask, sigma_eff)
     effective_snr_gate = max(float(snr_threshold), 4.75)
 
     mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
     psf_core3 = kernel[2:5, 2:5]
     psf_core3_norm = float(np.linalg.norm(psf_core3))
-    margin = 4
+    margin = EDGE_MARGIN_PX
 
     seen_peaks: set[tuple[int, int]] = set()
     verified: list[SourceDetection] = []
@@ -682,6 +879,10 @@ def evaluate_injection_recovery(
 ) -> InjectionRecoveryReport:
     """Measure point-source completeness and false-positive rate via synthetic PSF injection-recovery.
 
+    An injected SNR counts noises of the detector's matched response at the star's pixel, the value a detection's
+    `snr` reports: a star of SNR s has a matched peak of s times the base frame's `matched_filter_noise` there when it
+    sits on a pixel centre.
+
     When `variant_image` is provided, candidates are proposed on the variant with injected sources and must
     pass `verify_candidates_on_original_pixels` on the original image with the same injected sources, so any
     variant-only artifact present only in `variant_image` is tested against forced photometry on the original.
@@ -689,12 +890,17 @@ def evaluate_injection_recovery(
     luma = _to_luma_2d(base_image)
     h, w = luma.shape
     bg, sigma_bg = _estimate_background_and_noise(luma, sky_mask)
-    # The stars are scaled to the noise the detector divides by on this 2D luma (a colour frame's luma sits on no
-    # grid, unlike its channels). Adding them moves pixels off the frame's grid, so the images they are added to
-    # are measured with the frame's own rounding noise as a floor, as the frame was
+    # Each star is scaled to the noise the detector divides its matched response by on this 2D luma, read at the
+    # star's pixel (a colour frame's luma sits on no grid, unlike its channels). Adding them moves pixels off the
+    # frame's grid, so the images they are added to are measured with the frame's own rounding noise as a floor, as
+    # the frame was. Quiet sites are judged against the pixel noise
     frame_rounding = _quantization_sigma(luma)
     sigma_eff = _effective_sigma(sigma_bg, luma)
     res_base = luma - bg
+    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
+    base_noise = _detector_noise_map(
+        luma, ndimage.convolve(res_base, kernel, mode="nearest"), sky_mask, sigma_eff
+    )
 
     baseline_dets = detect_point_sources(luma, sky_mask=sky_mask, snr_threshold=snr_threshold)
     mask_bool = np.asarray(sky_mask, dtype=bool) if sky_mask is not None else None
@@ -736,7 +942,6 @@ def evaluate_injection_recovery(
             continue
         chosen_sites.append((cx, cy))
 
-    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
     grid = np.arange(-3, 4, dtype=np.float64)
     gxx, gyy = np.meshgrid(grid, grid)
     unit_psf = np.exp(-(gxx * gxx + gyy * gyy) / (2.0 * psf_sigma_px * psf_sigma_px))
@@ -749,13 +954,13 @@ def evaluate_injection_recovery(
     injected_records: list[tuple[int, float, float, float]] = []
     site_idx = 0
     for bin_idx, snr_val in enumerate(injected_snrs):
-        star_flux = float(snr_val) * sigma_eff / coupling
         for _ in range(n_per_snr):
             if site_idx >= len(chosen_sites):
                 break
             sx, sy = chosen_sites[site_idx]
             site_idx += 1
             x0, y0 = int(round(sx)), int(round(sy))
+            star_flux = float(snr_val) * float(base_noise[y0, x0]) / coupling
             r_win = 6
             y_slice = slice(max(0, y0 - r_win), min(h, y0 + r_win + 1))
             x_slice = slice(max(0, x0 - r_win), min(w, x0 + r_win + 1))

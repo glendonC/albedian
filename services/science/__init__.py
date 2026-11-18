@@ -26,6 +26,7 @@ from services.science.coherent_stack import (
     integrate_wcs_coherent_star_trajectories,
     subtract_lunar_scattering_veil,
 )
+from services.science.detector import matched_filter_noise
 from services.science.ephemeris import (
     EphemerisFinding,
     compute_solar_system_ephemerides,
@@ -85,6 +86,7 @@ __all__ = [
     "get_star_by_name",
     "icrs_to_altaz",
     "integrate_wcs_coherent_star_trajectories",
+    "matched_filter_noise",
     "predict_sky_brightness",
     "propagate_star_epoch",
     "ra_dec_to_unit_vector",

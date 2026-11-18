@@ -609,6 +609,12 @@
       "call": null,
       "text": "git",
       "why": "an expected apt package name read from scripts/ci_linux/Dockerfile"
+    },
+    {
+      "file": "scripts/freeze_ci_detections.py",
+      "call": null,
+      "text": "git archive {commit} | tar -x -C <an empty folder>; uv run python scripts/freeze_ci_detections.py <that folder> {commit}",
+      "why": "the command text recorded in tests/fixtures/ci_frame_detections.json telling how the fixture was built; nothing in the script runs git"
     }
   ]
 }

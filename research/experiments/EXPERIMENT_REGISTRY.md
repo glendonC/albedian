@@ -24,7 +24,7 @@ Each unresolved technical question identified in the foundational research is tr
 ### What each relabelled test checks
 
 - **EXP-01:** the test renders the solver's own 18 stars at 960 x 540 through its own WCS, and the solver matches triplets, not quads; a calibration needs 4 training and 6 held-out matches, so 8 sources can never calibrate. Nothing is solved against Gaia DR3 or Hipparcos on a 1920 x 1080 consumer frame.
-- **EXP-02:** the frames get Gaussian read noise only (`services/science/detector.py`); there is no Poisson shot noise.
+- **EXP-02:** the frames get Gaussian read noise only (`services/science/detector.py`); there is no Poisson shot noise. On the experiment's own 10 frames the stack holds 9 stars above the threshold, one short of the 4 training and 6 held-out stars a calibration needs, and the solve says so; the calibrated result it gave before realsky-3 trained on a noise peak, which the detector stopped reporting once it divided by the noise of its own matched response. That stacking calibrates where one frame cannot is tested at a higher flux set by a stated rule, inside the area where every stacked frame is whole (`test_exp02_stacking_reaches_a_calibration_that_one_frame_cannot`).
 - **EXP-03:** the test injects 12 single hot pixels; there are no streaks and no magnitude check.
 - **EXP-05 and EXP-06:** `anchorDriftPx` is float rounding for any camera (`packages/camera-rig/src/projection3d.ts`), so a drift check passes whatever the rig does.
 - **EXP-07:** no WWT adapter or renderer runs; the test compares two computed drift values, and the recommended engine is a fixed string. The ADR it cites does not exist.
@@ -47,7 +47,7 @@ Each unresolved technical question identified in the foundational research is tr
 - **Hypothesis:** Aligning and median/mean-stacking $N = 8$ to $16$ low-SNR frames with sub-pixel translation/rotation registration increases point-source SNR by $\approx 2.2\times$ to $3.5\times$ over a single frame and enables valid WCS calibration where single frames fail.
 - **Fixtures:** Multi-frame synthetic consumer low-light video sequence with Poisson shot noise, read noise, and slight handheld drift + foreground horizon mask.
 - **Baseline:** Single highest-SNR frame star extraction.
-- **Status:** Synthetic only, narrower than stated (the frames receive Gaussian read noise only in `services/science/detector.py`, without Poisson shot noise). [tested]
+- **Status:** Synthetic only, narrower than stated (the frames receive Gaussian read noise only in `services/science/detector.py`, without Poisson shot noise; at the fixture's own flux the 10-frame stack does not calibrate, and the claim holds at a higher flux set by a stated rule). [tested]
 
 ### EXP-03: Catalog Alignment & False-Match Rejection
 - **Hypothesis:** Injecting 15 synthetic hot pixels / airplane streaks into a valid starfield does not corrupt the WCS solution or produce false `catalog_matched` labels when 3-sigma residual gating and magnitude consistency checks are enforced.

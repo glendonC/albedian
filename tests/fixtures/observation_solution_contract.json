@@ -2087,14 +2087,14 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0
+    1
    ]
   },
   "SourceDetection": {
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "sourceDetection"
    ]
   },
@@ -2102,7 +2102,7 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "skyPosition"
    ]
   },
@@ -2110,7 +2110,7 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "evidence"
    ]
   },
@@ -2118,7 +2118,7 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "inferredDistancePc"
    ]
   },
@@ -2126,7 +2126,7 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "catalogRef"
    ]
   },
@@ -2134,7 +2134,7 @@
    "sample": "calibrated",
    "path": [
     "findings",
-    0,
+    1,
     "catalogRef",
     "bailerJonesDistancePc"
    ]
@@ -2188,8 +2188,8 @@
  "valid": {
   "calibrated": {
    "id": "sol-primary",
-   "sourceAssetId": "synthetic-9782da890647",
-   "sourceSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+   "sourceAssetId": "synthetic-60ec5ffa64ba",
+   "sourceSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
    "frameTimeSec": 0.0,
    "revision": 1,
    "status": "calibrated",
@@ -2209,86 +2209,11 @@
     "heldOutPairCount": 7,
     "heldOutInliers": 7,
     "passedIndependentVerification": true,
-    "medianResidualPx": 0.11587721002381521,
-    "p95ResidualPx": 0.17208332897344245,
-    "medianResidualArcsec": 25.82685551751783
+    "medianResidualPx": 0.11587699847517496,
+    "p95ResidualPx": 0.17208253668254564,
+    "medianResidualArcsec": 25.826808406472708
    },
    "findings": [
-    {
-     "id": "finding-star-rigel",
-     "observationSolutionId": "sol-primary",
-     "evidenceClass": "catalog_matched",
-     "title": "Rigel",
-     "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
-     "skyPosition": {
-      "raDeg": 78.634467,
-      "decDeg": -8.201638,
-      "uncertaintyArcsec": 13.050233353953237,
-      "altDeg": 50.18778706912651,
-      "azDeg": 198.38741087613562
-     },
-     "evidence": {
-      "id": "ev-finding-star-rigel",
-      "evidenceClass": "catalog_matched",
-      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
-      "wcsSolutionId": "sol-primary",
-      "catalogReferenceId": "star-rigel",
-      "angularResidualArcsec": 13.050233353953237,
-      "pixelResidualPx": 0.0585524099203686,
-      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
-      "limitations": [
-       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
-      ],
-      "verifiedByIndependentHoldout": false
-     },
-     "sourceDetection": {
-      "assetId": "synthetic-9782da890647",
-      "frameTimeSec": 0.0,
-      "xPx": 586.3999745804418,
-      "yPx": 496.192205050709,
-      "flux": 1559.5250955064007,
-      "snr": 217.83736321927773,
-      "fwhmPx": 2.4316650204469092,
-      "centroidUncertaintyPx": 0.03
-     },
-     "catalogRef": {
-      "id": "star-rigel",
-      "provider": "Hipparcos",
-      "releaseVersion": "Hipparcos 2007",
-      "catalogSourceId": "HIP 24436",
-      "commonName": "Rigel",
-      "bayerDesignation": "Beta Orionis",
-      "constellation": "Orion",
-      "objectType": "star",
-      "coordinateEpoch": "J2000.0",
-      "raDeg": 78.634467,
-      "decDeg": -8.201638,
-      "apparentMagnitude": 0.13,
-      "properMotionRaMasYr": 1.31,
-      "properMotionDecMasYr": 0.5,
-      "bailerJonesDistancePc": {
-       "lower": 242.71844660194174,
-       "median": 264.55026455026456,
-       "upper": 290.69767441860466,
-       "method": "geometric_parallax"
-      },
-      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
-      "parallaxMas": 3.78,
-      "parallaxErrorMas": 0.34
-     },
-     "inferredDistancePc": {
-      "lower": 242.71844660194174,
-      "median": 264.55026455026456,
-      "upper": 290.69767441860466,
-      "method": "geometric_parallax"
-     },
-     "cartesianParsecICRS": [
-      51.60106686984617,
-      256.70968851076134,
-      -37.740007898999316
-     ]
-    },
     {
      "id": "finding-star-betelgeuse",
      "observationSolutionId": "sol-primary",
@@ -2298,7 +2223,7 @@
      "skyPosition": {
       "raDeg": 88.792939,
       "decDeg": 7.407064,
-      "uncertaintyArcsec": 29.15969756247523,
+      "uncertaintyArcsec": 29.15966773500778,
       "altDeg": 67.36139235228273,
       "azDeg": 184.04422995883968
      },
@@ -2306,11 +2231,11 @@
       "id": "ev-finding-star-betelgeuse",
       "evidenceClass": "catalog_matched",
       "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
       "wcsSolutionId": "sol-primary",
       "catalogReferenceId": "star-betelgeuse",
-      "angularResidualArcsec": 29.15969756247523,
-      "pixelResidualPx": 0.1308306540215864,
+      "angularResidualArcsec": 29.15966773500778,
+      "pixelResidualPx": 0.13083051999639556,
       "distanceUncertaintyNote": "Distance interval [135.5, 174.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
       "limitations": [
        "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
@@ -2318,13 +2243,13 @@
       "verifiedByIndependentHoldout": true
      },
      "sourceDetection": {
-      "assetId": "synthetic-9782da890647",
+      "assetId": "synthetic-60ec5ffa64ba",
       "frameTimeSec": 0.0,
-      "xPx": 401.63469878954527,
-      "yPx": 252.99501063221894,
-      "flux": 1426.2537312688178,
-      "snr": 202.35930030190187,
-      "fwhmPx": 2.431692600529923,
+      "xPx": 401.63469853678794,
+      "yPx": 252.99501055304617,
+      "flux": 1426.2524527686824,
+      "snr": 176.6592846279525,
+      "fwhmPx": 2.4316916939317097,
       "centroidUncertaintyPx": 0.03
      },
      "catalogRef": {
@@ -2365,6 +2290,81 @@
      ]
     },
     {
+     "id": "finding-star-rigel",
+     "observationSolutionId": "sol-primary",
+     "evidenceClass": "catalog_matched",
+     "title": "Rigel",
+     "subtitle": "Beta Orionis \u00b7 264.6 pc [242.7 to 290.7 pc]",
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "evidence": {
+      "id": "ev-finding-star-rigel",
+      "evidenceClass": "catalog_matched",
+      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
+      "wcsSolutionId": "sol-primary",
+      "catalogReferenceId": "star-rigel",
+      "angularResidualArcsec": 13.050116735294871,
+      "pixelResidualPx": 0.05855188659926055,
+      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
+      "limitations": [
+       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
+      ],
+      "verifiedByIndependentHoldout": false
+     },
+     "sourceDetection": {
+      "assetId": "synthetic-60ec5ffa64ba",
+      "frameTimeSec": 0.0,
+      "xPx": 586.3999749220043,
+      "yPx": 496.1922052148446,
+      "flux": 1559.5237637354267,
+      "snr": 175.58584725889742,
+      "fwhmPx": 2.4316640154751417,
+      "centroidUncertaintyPx": 0.03
+     },
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ]
+    },
+    {
      "id": "finding-star-aldebaran",
      "observationSolutionId": "sol-primary",
      "evidenceClass": "catalog_matched",
@@ -2373,7 +2373,7 @@
      "skyPosition": {
       "raDeg": 68.980163,
       "decDeg": 16.509302,
-      "uncertaintyArcsec": 5.4693991636297925,
+      "uncertaintyArcsec": 5.469360985633938,
       "altDeg": 66.29830612813342,
       "azDeg": 240.26777615689815
      },
@@ -2381,11 +2381,11 @@
       "id": "ev-finding-star-aldebaran",
       "evidenceClass": "catalog_matched",
       "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
       "wcsSolutionId": "sol-primary",
       "catalogReferenceId": "star-aldebaran",
-      "angularResidualArcsec": 5.4693991636297925,
-      "pixelResidualPx": 0.024539523023162053,
+      "angularResidualArcsec": 5.469360985633938,
+      "pixelResidualPx": 0.02453935169293505,
       "distanceUncertaintyNote": "Distance interval [20.1, 20.8] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
       "limitations": [
        "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
@@ -2393,13 +2393,13 @@
       "verifiedByIndependentHoldout": false
      },
      "sourceDetection": {
-      "assetId": "synthetic-9782da890647",
+      "assetId": "synthetic-60ec5ffa64ba",
       "frameTimeSec": 0.0,
-      "xPx": 705.8147634399265,
-      "yPx": 71.73707307698696,
-      "flux": 1228.0515118801814,
-      "snr": 175.55144716468962,
-      "fwhmPx": 2.440765196865329,
+      "xPx": 705.8147632390451,
+      "yPx": 71.73707279185331,
+      "flux": 1228.0501801092073,
+      "snr": 150.13762925812367,
+      "fwhmPx": 2.4407639928199187,
       "centroidUncertaintyPx": 0.03
      },
      "catalogRef": {
@@ -2444,17 +2444,17 @@
      "observationSolutionId": "sol-primary",
      "evidenceClass": "observed",
      "title": "Observed Point Source #12",
-     "subtitle": "Unmatched sensor detection at (602.1, 98.8) px",
+     "subtitle": "Unmatched sensor detection at (612.7, 301.1) px",
      "skyPosition": {
-      "raDeg": 75.46722171042907,
-      "decDeg": 15.738000097027232,
-      "uncertaintyArcsec": 98.24327365094196
+      "raDeg": 75.99770651024747,
+      "decDeg": 3.399927267154467,
+      "uncertaintyArcsec": 50.451266978283556
      },
      "evidence": {
       "id": "ev-finding-obs-12",
       "evidenceClass": "observed",
       "verificationMethod": "Measured in the image's pixels",
-      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
       "wcsSolutionId": "sol-primary",
       "limitations": [
        "No star of the 18-star catalog sits within 8 px of where the WCS puts one."
@@ -2462,14 +2462,14 @@
       "verifiedByIndependentHoldout": false
      },
      "sourceDetection": {
-      "assetId": "synthetic-9782da890647",
+      "assetId": "synthetic-60ec5ffa64ba",
       "frameTimeSec": 0.0,
-      "xPx": 602.084011134508,
-      "yPx": 98.81346119185388,
-      "flux": 21.201707755833688,
-      "snr": 5.533123386517967,
-      "fwhmPx": 2.3531466262708625,
-      "centroidUncertaintyPx": 0.4252835987725396
+      "xPx": 612.6632147381018,
+      "yPx": 301.1199909267462,
+      "flux": 74.69943459072265,
+      "snr": 11.296431111858528,
+      "fwhmPx": 2.196599918588441,
+      "centroidUncertaintyPx": 0.19445078687573641
      }
     },
     {
@@ -2487,7 +2487,7 @@
       "id": "ev-finding-openngc-NGC1976",
       "evidenceClass": "predicted",
       "verificationMethod": "OpenNGC catalog position projected through the solved WCS, which passed held-out verification; not measured in the image",
-      "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+      "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
       "wcsSolutionId": "sol-primary",
       "catalogReferenceId": "openngc-NGC1976",
       "limitations": [
@@ -2540,17 +2540,17 @@
    ],
    "wcs": {
     "projection": "TAN",
-    "crvalRaDeg": 84.00062398801474,
-    "crvalDecDeg": 6.000266124716505,
+    "crvalRaDeg": 84.00062397400546,
+    "crvalDecDeg": 6.000266120971371,
     "crpixX": 480.0,
     "crpixY": 270.0,
-    "scaleDegPerPx": 0.06191145378085482,
-    "rotationDeg": 4.49792204944997,
-    "radialDistortionK1": -0.07383922135184579,
-    "radialDistortionK2": 0.23999999999998664,
+    "scaleDegPerPx": 0.06191145387476854,
+    "rotationDeg": 4.497922056159356,
+    "radialDistortionK1": -0.07383919598279215,
+    "radialDistortionK2": 0.23999999998672913,
     "parity": -1,
-    "fovHorizontalDeg": 54.82866626746391,
-    "fovVerticalDeg": 32.52929988358449
+    "fovHorizontalDeg": 54.82866633850883,
+    "fovVerticalDeg": 32.52929993031985
    }
   },
   "calibrated_at_the_gate": {
@@ -2826,7 +2826,7 @@
      "skyPosition": {
       "raDeg": 78.634467,
       "decDeg": -8.201638,
-      "uncertaintyArcsec": 13.050233353953237,
+      "uncertaintyArcsec": 13.050116735294871,
       "altDeg": 50.18778706912651,
       "azDeg": 198.38741087613562
      },
@@ -4274,7 +4274,7 @@
        "skyPosition": {
         "raDeg": 78.634467,
         "decDeg": -8.201638,
-        "uncertaintyArcsec": 13.050233353953237,
+        "uncertaintyArcsec": 13.050116735294871,
         "altDeg": 50.18778706912651,
         "azDeg": 198.38741087613562
        },
@@ -4523,7 +4523,7 @@
       "skyPosition": {
        "raDeg": 78.634467,
        "decDeg": -8.201638,
-       "uncertaintyArcsec": 13.050233353953237,
+       "uncertaintyArcsec": 13.050116735294871,
        "altDeg": 50.18778706912651,
        "azDeg": 198.38741087613562
       },
@@ -4531,11 +4531,11 @@
        "id": "ev-finding-star-rigel",
        "evidenceClass": "catalog_matched",
        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-       "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+       "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
        "wcsSolutionId": "sol-primary",
        "catalogReferenceId": "star-rigel",
-       "angularResidualArcsec": 13.050233353953237,
-       "pixelResidualPx": 0.0585524099203686,
+       "angularResidualArcsec": 13.050116735294871,
+       "pixelResidualPx": 0.05855188659926055,
        "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
        "limitations": [
         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
@@ -4543,13 +4543,13 @@
        "verifiedByIndependentHoldout": false
       },
       "sourceDetection": {
-       "assetId": "synthetic-9782da890647",
+       "assetId": "synthetic-60ec5ffa64ba",
        "frameTimeSec": 0.0,
-       "xPx": 586.3999745804418,
-       "yPx": 496.192205050709,
-       "flux": 1559.5250955064007,
-       "snr": 217.83736321927773,
-       "fwhmPx": 2.4316650204469092,
+       "xPx": 586.3999749220043,
+       "yPx": 496.1922052148446,
+       "flux": 1559.5237637354267,
+       "snr": 175.58584725889742,
+       "fwhmPx": 2.4316640154751417,
        "centroidUncertaintyPx": 0.03
       },
       "catalogRef": {
@@ -4618,7 +4618,7 @@
       "skyPosition": {
        "raDeg": 78.634467,
        "decDeg": -8.201638,
-       "uncertaintyArcsec": 13.050233353953237,
+       "uncertaintyArcsec": 13.050116735294871,
        "altDeg": 50.18778706912651,
        "azDeg": 198.38741087613562
       },
@@ -4626,11 +4626,11 @@
        "id": "ev-finding-star-rigel",
        "evidenceClass": "catalog_matched",
        "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-       "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+       "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
        "wcsSolutionId": "sol-primary",
        "catalogReferenceId": "star-rigel",
-       "angularResidualArcsec": 13.050233353953237,
-       "pixelResidualPx": 0.0585524099203686,
+       "angularResidualArcsec": 13.050116735294871,
+       "pixelResidualPx": 0.05855188659926055,
        "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
        "limitations": [
         "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
@@ -4638,13 +4638,13 @@
        "verifiedByIndependentHoldout": false
       },
       "sourceDetection": {
-       "assetId": "synthetic-9782da890647",
+       "assetId": "synthetic-60ec5ffa64ba",
        "frameTimeSec": 0.0,
-       "xPx": 586.3999745804418,
-       "yPx": 496.192205050709,
-       "flux": 1559.5250955064007,
-       "snr": 217.83736321927773,
-       "fwhmPx": 2.4316650204469092,
+       "xPx": 586.3999749220043,
+       "yPx": 496.1922052148446,
+       "flux": 1559.5237637354267,
+       "snr": 175.58584725889742,
+       "fwhmPx": 2.4316640154751417,
        "centroidUncertaintyPx": 0.03
       },
       "catalogRef": {
@@ -4749,14 +4749,14 @@
      "op": "remove",
      "path": [
       "findings",
-      0,
+      1,
       "skyPosition"
      ]
     }
    ],
    "reason": "a catalog match with no sky position",
    "paths": [
-    "findings.0.skyPosition"
+    "findings.1.skyPosition"
    ],
    "messages": []
   },
@@ -4935,7 +4935,7 @@
      "op": "set",
      "path": [
       "findings",
-      0,
+      1,
       "catalogRef",
       "apparentMagnitude"
      ],
@@ -4946,7 +4946,7 @@
    ],
    "reason": "an infinite catalog magnitude",
    "paths": [
-    "findings.0.catalogRef.apparentMagnitude"
+    "findings.1.catalogRef.apparentMagnitude"
    ],
    "messages": []
   },
@@ -5013,7 +5013,7 @@
      "op": "set",
      "path": [
       "findings",
-      0,
+      1,
       "cartesianParsecICRS",
       0
      ],
@@ -5024,7 +5024,7 @@
    ],
    "reason": "an infinite x in a finding's position in space",
    "paths": [
-    "findings.0.cartesianParsecICRS.0"
+    "findings.1.cartesianParsecICRS.0"
    ],
    "messages": []
   },
@@ -5036,7 +5036,7 @@
      "op": "set",
      "path": [
       "findings",
-      0,
+      1,
       "cartesianParsecICRS",
       1
      ],
@@ -5047,7 +5047,7 @@
    ],
    "reason": "an infinite y in a finding's position in space",
    "paths": [
-    "findings.0.cartesianParsecICRS.1"
+    "findings.1.cartesianParsecICRS.1"
    ],
    "messages": []
   },
@@ -5059,7 +5059,7 @@
      "op": "set",
      "path": [
       "findings",
-      0,
+      1,
       "cartesianParsecICRS",
       2
      ],
@@ -5070,7 +5070,7 @@
    ],
    "reason": "an infinite z in a finding's position in space",
    "paths": [
-    "findings.0.cartesianParsecICRS.2"
+    "findings.1.cartesianParsecICRS.2"
    ],
    "messages": []
   },
@@ -5951,11 +5951,13 @@
     "findings.0.catalogRef",
     "findings.0.evidence.catalogReferenceId",
     "findings.0.evidence.distanceUncertaintyNote",
+    "findings.0.evidence.verifiedByIndependentHoldout",
     "findings.0.inferredDistancePc"
    ],
    "messages": [
     "An observed finding names no catalog entry: a finding matched to the catalog is catalog_matched.",
-    "An observed finding holds no catalog distance: a point measured in the pixels has none."
+    "An observed finding holds no catalog distance: a point measured in the pixels has none.",
+    "Only a catalog_matched finding is verified by independent held-out stars."
    ]
   },
   {
@@ -6244,7 +6246,7 @@
     "skyPosition": {
      "raDeg": 78.634467,
      "decDeg": -8.201638,
-     "uncertaintyArcsec": 13.050233353953237,
+     "uncertaintyArcsec": 13.050116735294871,
      "altDeg": 50.18778706912651,
      "azDeg": 198.38741087613562
     },
@@ -6326,7 +6328,7 @@
     "skyPosition": {
      "raDeg": 78.634467,
      "decDeg": -8.201638,
-     "uncertaintyArcsec": 13.050233353953237,
+     "uncertaintyArcsec": 13.050116735294871,
      "altDeg": 50.18778706912651,
      "azDeg": 198.38741087613562
     },
@@ -6334,11 +6336,11 @@
      "id": "ev-finding-star-rigel",
      "evidenceClass": "catalog_matched",
      "verificationMethod": "Triangle-matched WCS with held-out residual verification",
-     "sourceAssetSha256": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980",
+     "sourceAssetSha256": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6",
      "wcsSolutionId": "sol-primary",
      "catalogReferenceId": "star-rigel",
-     "angularResidualArcsec": 13.050233353953237,
-     "pixelResidualPx": 0.0585524099203686,
+     "angularResidualArcsec": 13.050116735294871,
+     "pixelResidualPx": 0.05855188659926055,
      "distanceUncertaintyNote": "Distance interval [242.7, 290.7] pc: 1000/parallax from Hipparcos 2007, with the interval from the parallax error",
      "limitations": [
       "Distance is 1000/parallax from Hipparcos 2007, with the interval from the parallax error, not measured from this image."
@@ -6346,13 +6348,13 @@
      "verifiedByIndependentHoldout": false
     },
     "sourceDetection": {
-     "assetId": "synthetic-9782da890647",
+     "assetId": "synthetic-60ec5ffa64ba",
      "frameTimeSec": 0.0,
-     "xPx": 586.3999745804418,
-     "yPx": 496.192205050709,
-     "flux": 1559.5250955064007,
-     "snr": 217.83736321927773,
-     "fwhmPx": 2.4316650204469092,
+     "xPx": 586.3999749220043,
+     "yPx": 496.1922052148446,
+     "flux": 1559.5237637354267,
+     "snr": 175.58584725889742,
+     "fwhmPx": 2.4316640154751417,
      "centroidUncertaintyPx": 0.03
     },
     "catalogRef": {
@@ -6423,7 +6425,7 @@
        "evidence",
        "pixelResidualPx"
       ],
-      "value": 0.0585524099203686
+      "value": 0.05855188659926055
      }
     ]
    },
@@ -6437,7 +6439,7 @@
        "evidence",
        "angularResidualArcsec"
       ],
-      "value": 13.050233353953237
+      "value": 13.050116735294871
      }
     ]
    },
@@ -6581,7 +6583,7 @@
        "evidence",
        "sourceAssetSha256"
       ],
-      "value": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980"
+      "value": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6"
      }
     ]
    },
@@ -6726,7 +6728,7 @@
        "evidence",
        "sourceAssetSha256"
       ],
-      "value": "9782da89064762fafe96df55f1f1977dcfb53d3a4d4d57f78898cc0b7d693980"
+      "value": "60ec5ffa64ba96c80c056a920bf150744f8207775ea0178853863ad5ff8d08d6"
      }
     ]
    },
@@ -7231,13 +7233,13 @@
        "sourceDetection"
       ],
       "value": {
-       "assetId": "synthetic-9782da890647",
+       "assetId": "synthetic-60ec5ffa64ba",
        "frameTimeSec": 0.0,
-       "xPx": 586.3999745804418,
-       "yPx": 496.192205050709,
-       "flux": 1559.5250955064007,
-       "snr": 217.83736321927773,
-       "fwhmPx": 2.4316650204469092,
+       "xPx": 586.3999749220043,
+       "yPx": 496.1922052148446,
+       "flux": 1559.5237637354267,
+       "snr": 175.58584725889742,
+       "fwhmPx": 2.4316640154751417,
        "centroidUncertaintyPx": 0.03
       }
      }
@@ -7260,7 +7262,7 @@
        "evidence",
        "pixelResidualPx"
       ],
-      "value": 0.0585524099203686
+      "value": 0.05855188659926055
      }
     ],
     "reason": "a predicted finding holding evidence.pixelResidualPx",
@@ -7281,7 +7283,7 @@
        "evidence",
        "angularResidualArcsec"
       ],
-      "value": 13.050233353953237
+      "value": 13.050116735294871
      }
     ],
     "reason": "a predicted finding holding evidence.angularResidualArcsec",
@@ -7365,13 +7367,13 @@
        "sourceDetection"
       ],
       "value": {
-       "assetId": "synthetic-9782da890647",
+       "assetId": "synthetic-60ec5ffa64ba",
        "frameTimeSec": 0.0,
-       "xPx": 586.3999745804418,
-       "yPx": 496.192205050709,
-       "flux": 1559.5250955064007,
-       "snr": 217.83736321927773,
-       "fwhmPx": 2.4316650204469092,
+       "xPx": 586.3999749220043,
+       "yPx": 496.1922052148446,
+       "flux": 1559.5237637354267,
+       "snr": 175.58584725889742,
+       "fwhmPx": 2.4316640154751417,
        "centroidUncertaintyPx": 0.03
       }
      }
@@ -7394,7 +7396,7 @@
        "evidence",
        "pixelResidualPx"
       ],
-      "value": 0.0585524099203686
+      "value": 0.05855188659926055
      }
     ],
     "reason": "a simulated finding holding evidence.pixelResidualPx",
@@ -7415,7 +7417,7 @@
        "evidence",
        "angularResidualArcsec"
       ],
-      "value": 13.050233353953237
+      "value": 13.050116735294871
      }
     ],
     "reason": "a simulated finding holding evidence.angularResidualArcsec",

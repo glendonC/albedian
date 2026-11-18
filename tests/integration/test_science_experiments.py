@@ -28,6 +28,7 @@ from fastapi.testclient import TestClient
 from hypothesis import given, settings, strategies as st
 import numpy as np
 import pytest
+from scipy import ndimage
 
 from services.api import app
 from services.media.runtime import MediaExperimentRuntime, compute_file_sha256
@@ -45,9 +46,12 @@ from services.science.catalog import (
     ra_dec_to_unit_vector,
     unit_vector_to_ra_dec,
 )
+from services.science.detector import matched_filter_noise
 from services.science.ephemeris import compute_solar_system_ephemerides
 from services.science.solver import (
+    MIN_HELD_OUT_INLIERS,
     WCSModel,
+    _build_gaussian_psf_kernel,
     detect_point_sources,
     render_synthetic_starfield,
     solve_and_verify_field,
@@ -243,69 +247,128 @@ def test_exp01_consumer_photo_plate_solving_and_negative_rejection() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_exp02_low_light_video_temporal_stack_calibration() -> None:
-    """EXP-02: Generate 10 ultra-low-SNR shifted video frames where any single frame
-    detects < 4 stars (`unresolved`), while `stack_video_frames_for_calibration` boosts
-    SNR by > 2.2x and achieves a verified `calibrated` WCS solution.
-    """
-    width, height = 640, 360
-    wcs = WCSModel(
-        crval_ra_deg=82.0,
-        crval_dec_deg=9.0,
-        crpix_x=width / 2.0,
-        crpix_y=height / 2.0,
-        scale_deg_per_px=0.118,
-        rotation_deg=2.0,
-        k1=-0.02,
-        k2=0.0,
-        parity=-1,
-        width=width,
-        height=height,
-    )
+EXP02_SIZE = (640, 360)
+EXP02_FRAMES = 10
+EXP02_THRESHOLD = 4.8
+# The triangle solver fits its WCS on 4 training stars (services/science/solver.py, solve_and_verify_field) and the
+# held-out gate needs MIN_HELD_OUT_INLIERS more, so a calibration needs this many detected catalog stars
+EXP02_STARS_FOR_CALIBRATION = 4 + MIN_HELD_OUT_INLIERS
+# The detector's background is a median of 7 samples taken every 4 px on a frame this size
+# (_estimate_background_and_noise)
+EXP02_BACKGROUND_WINDOW_PX = 28
 
-    # Foreground horizon mask along bottom 18 rows
+
+def _exp02_scene(flux_scale: float, read_noise_sigma: float = 5.4, frames: int = EXP02_FRAMES):
+    """EXP-02's frames: Orion through one fixed WCS, a foreground mask along the bottom 18 rows, and a drift of
+    (0.8, -1.1) px per frame. Returns the frames, the sky mask and the rendered stars of frame 0, where the stack is."""
+    width, height = EXP02_SIZE
+    wcs = WCSModel(
+        crval_ra_deg=82.0, crval_dec_deg=9.0, crpix_x=width / 2.0, crpix_y=height / 2.0, scale_deg_per_px=0.118,
+        rotation_deg=2.0, k1=-0.02, k2=0.0, parity=-1, width=width, height=height,
+    )
     sky_mask = np.ones((height, width), dtype=bool)
     sky_mask[-18:, :] = False
-
-    # Generate 10 drifted ultra-low-SNR frames where only 2-3 brightest stars exceed gate in 1 frame
-    frames: list[np.ndarray] = []
-    for idx in range(10):
-        dy = idx * 0.8
-        dx = -idx * 1.1
-        frame_i, _, _ = render_synthetic_starfield(
-            width=width,
-            height=height,
-            wcs=wcs,
-            psf_sigma_px=1.15,
-            background_level=30.0,
-            read_noise_sigma=5.4,
-            flux_scale=92.0,
-            seed=200 + idx,
-            sky_mask=sky_mask,
-            shift_yx=(dy, dx),
+    rendered = [
+        render_synthetic_starfield(
+            width=width, height=height, wcs=wcs, psf_sigma_px=1.15, background_level=30.0,
+            read_noise_sigma=read_noise_sigma, flux_scale=flux_scale, seed=200 + idx, sky_mask=sky_mask,
+            shift_yx=(idx * 0.8, -idx * 1.1),
         )
-        frames.append(frame_i)
+        for idx in range(frames)
+    ]
+    return [frame for frame, _, _ in rendered], sky_mask, rendered[0][2]
 
-    # Verify single frame detects < 4 stars and resolves to "unresolved"
-    single_dets = detect_point_sources(frames[0], sky_mask=sky_mask, snr_threshold=4.8)
+
+def _on_a_rendered_star(dets, stars, radius_px: float = 3.0) -> list[bool]:
+    return [min(math.hypot(d.x_px - x, d.y_px - y) for _, x, y in stars) <= radius_px for d in dets]
+
+
+def test_exp02_low_light_video_temporal_stack_calibration() -> None:
+    """EXP-02 on its own frames: 10 ultra-low-SNR shifted frames, where a single frame detects < 4 stars
+    (`unresolved`) and `stack_video_frames_for_calibration` boosts the pixel SNR by > 2.2x. The stack holds 9 stars
+    above the threshold, one short of a calibration, and the solve says so.
+    """
+    width, height = EXP02_SIZE
+    frames, sky_mask, stars = _exp02_scene(92.0)
+
+    single_dets = detect_point_sources(frames[0], sky_mask=sky_mask, snr_threshold=EXP02_THRESHOLD)
     assert len(single_dets) < 4
     single_sol = solve_and_verify_field(single_dets, width=width, height=height, **PLATE_MOMENT, **_sources(frames[0]))
     assert single_sol.status == "unresolved"
 
-    # Align and stack the 10 frames
     stack_result = stack_video_frames_for_calibration(frames, sky_mask=sky_mask)
     assert stack_result.snr_boost_factor > 2.2
 
-    stacked_dets = detect_point_sources(
-        stack_result.composite_luma, sky_mask=sky_mask, snr_threshold=4.8
+    # Before realsky-3 the detector divided by the pixel noise and this stack gave 25 detections: these 9 stars and
+    # 16 noise peaks (4.8 to 6.9 of the pixel noise), and its "calibrated" solve trained on one of the peaks, 72 px from
+    # any rendered star, as Elnath. Divided by the noise of its own matched response, the detector keeps the 9 stars,
+    # one fewer than EXP02_STARS_FOR_CALIBRATION, so the honest answer is no calibration. This guards against a
+    # calibration built on noise coming back
+    stacked_dets = detect_point_sources(stack_result.composite_luma, sky_mask=sky_mask, snr_threshold=EXP02_THRESHOLD)
+    assert len(stacked_dets) == EXP02_STARS_FOR_CALIBRATION - 1
+    assert all(_on_a_rendered_star(stacked_dets, stars))
+    stacked_sol = solve_and_verify_field(
+        stacked_dets, width=width, height=height, **PLATE_MOMENT, **_sources(stack_result.composite_luma)
     )
-    assert len(stacked_dets) >= 10
+    assert stacked_sol.status == "ambiguous"
+    assert stacked_sol.held_out_inliers == MIN_HELD_OUT_INLIERS - 1
+    assert all(f.evidence_class != "catalog_matched" for f in stacked_sol.findings)
 
+
+def test_exp02_stacking_reaches_a_calibration_that_one_frame_cannot() -> None:
+    """EXP-02's claim, at a flux set by a rule rather than tried until it passes: stacking 10 frames reaches a
+    verified calibration that one of them cannot, and every detection is a rendered star.
+
+    The rule, from the scene and the noise. The experiment's own 10 frames (flux 92) give the stack's shifts and its
+    matched-filter noise. The stack is judged where every frame and its own background are whole: the sky mask less
+    a band of the largest shift (rounded up) plus the detector's background window on every side, since each frame's
+    background is estimated to its own edges and the stacker moves those edges in by up to its shifts (a stack of
+    star-free frames made as the stacker makes it gave 2 false detections at 4.8 in that band and none inside it
+    [tested, realsky-3]). The flux
+    is then scaled so that the EXP02_STARS_FOR_CALIBRATION-th brightest rendered star inside that area has a
+    noise-free matched peak of threshold + 3 times that noise: 3 noises clear of the threshold for each star the
+    calibration needs.
+    """
+    width, height = EXP02_SIZE
+    base_frames, sky_mask, stars = _exp02_scene(92.0)
+    base = stack_video_frames_for_calibration(base_frames, sky_mask=sky_mask)
+    band = int(math.ceil(max(max(abs(dy), abs(dx)) for dy, dx in base.shifts_yx))) + EXP02_BACKGROUND_WINDOW_PX
+    inner = sky_mask.copy()
+    inner[:band, :] = False
+    inner[-band:, :] = False
+    inner[:, :band] = False
+    inner[:, -band:] = False
+    noise = float(np.median(matched_filter_noise(base.composite_luma, sky_mask=inner)[inner]))
+    clean = _exp02_scene(92.0, read_noise_sigma=0.0, frames=1)[0][0]
+    response = ndimage.convolve(clean - 30.0, _build_gaussian_psf_kernel(sigma_px=1.15, radius=3), mode="nearest")
+    peaks = sorted(
+        (
+            float(response[int(round(y)) - 2 : int(round(y)) + 3, int(round(x)) - 2 : int(round(x)) + 3].max())
+            for _, x, y in stars
+            if inner[int(round(y)), int(round(x))]
+        ),
+        reverse=True,
+    )
+    assert len(peaks) >= EXP02_STARS_FOR_CALIBRATION
+    flux = 92.0 * (EXP02_THRESHOLD + 3.0) * noise / peaks[EXP02_STARS_FOR_CALIBRATION - 1]
+    # The rule gave 142.5 on this platform [tested]; the bound only says it moved the flux up, not by how much
+    assert flux > 92.0
+
+    frames, _, stars = _exp02_scene(flux)
+    single_dets = detect_point_sources(frames[0], sky_mask=inner, snr_threshold=EXP02_THRESHOLD)
+    single_sol = solve_and_verify_field(single_dets, width=width, height=height, **PLATE_MOMENT, **_sources(frames[0]))
+    assert single_sol.status != "calibrated"
+    assert all(_on_a_rendered_star(single_dets, stars))
+
+    stack_result = stack_video_frames_for_calibration(frames, sky_mask=sky_mask)
+    stacked_dets = detect_point_sources(stack_result.composite_luma, sky_mask=inner, snr_threshold=EXP02_THRESHOLD)
+    assert len(stacked_dets) >= EXP02_STARS_FOR_CALIBRATION
+    assert all(_on_a_rendered_star(stacked_dets, stars))
     stacked_sol = solve_and_verify_field(
         stacked_dets, width=width, height=height, **PLATE_MOMENT, **_sources(stack_result.composite_luma)
     )
     assert stacked_sol.status == "calibrated"
-    assert stacked_sol.held_out_inliers >= 6
+    assert stacked_sol.held_out_inliers >= MIN_HELD_OUT_INLIERS
     assert stacked_sol.median_residual_px <= 2.0
 
 

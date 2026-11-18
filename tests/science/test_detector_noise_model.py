@@ -10,7 +10,9 @@ Covers:
 - A frame on no grid (a stack, a colour photo's luma on the 0..1 scale that solve_phone_photo hands the detector) keeps
   the old floor: never a lower noise and never more detections than the old rule gives.
 - Over generated dark integer frames on three scales, the noise the detector divides by is never below the parent
-  commit's rule (its MAD, else its interquartile range / 1.349, then at least 0.001), written out here.
+  commit's rule (its MAD, else its interquartile range / 1.349, then at least 0.001), written out here. Since
+  realsky-3 that is the pixel noise of its shape gates; its matched response is divided by `matched_filter_noise`
+  (tests/science/test_matched_filter_noise.py).
 - Frame registration in stack_video_frames_for_calibration keeps the parent's noise estimate, so a stack's shifts do
   not change.
 - Forced photometry and injection recovery use the same floor.
@@ -443,10 +445,12 @@ def test_injection_recovery_scales_its_stars_to_the_noise_the_detector_divides_b
     label: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # An injected SNR s star must be s noises in the detector's matched filter, where the noise is the one the
-    # detector divides by on the 2D luma it is handed. On the pairs frame the MAD and the spread are 0, so that is the
-    # rounding noise 1/sqrt(12), not the old 0.001 floor. On a colour frame each channel rounds on its own and the luma
-    # sits on no grid, so it is not the channels' weighted rounding noise either. A star at most half a pixel off a
-    # pixel centre in x and y keeps exp(-(0.5^2 + 0.5^2) / (4 x 1.15^2)) = 0.91 of its matched peak, and none exceeds it
+    # detector divides that response by on the 2D luma it is handed: its matched-filter noise map, read at the star
+    # (realsky-3; before it, the pixel noise). On the pairs frame the response's deviation is 0, so the map is the
+    # rounding noise 1/sqrt(12), not the old 0.001 floor. On a colour frame each channel
+    # rounds on its own and the luma sits on no grid, so it is not the channels' weighted rounding noise either. A star
+    # at most half a pixel off a pixel centre in x and y keeps exp(-(0.5^2 + 0.5^2) / (4 x 1.15^2)) = 0.91 of its
+    # matched peak, and none exceeds it. The pixel noise the shape gates use is pinned as before
     frame = {
         "pairs frame": _pairs_frame,
         "dark colour frame": _dark_colour_frame,
@@ -455,14 +459,22 @@ def test_injection_recovery_scales_its_stars_to_the_noise_the_detector_divides_b
     }[label]()
     images: list[np.ndarray] = []
     detector_sigmas: list[float] = []
+    detector_maps: list[np.ndarray] = []
     real_detect = detector.detect_point_sources
     real_sigma = detector._effective_sigma
+    real_map = detector._detector_noise_map
     inside_detect = [False]
 
     def recording_sigma(*args):
         value = float(real_sigma(*args))
         if inside_detect[0]:
             detector_sigmas.append(value)
+        return value
+
+    def recording_map(*args, **kwargs):
+        value = real_map(*args, **kwargs)
+        if inside_detect[0]:
+            detector_maps.append(value)
         return value
 
     def recording_detect(image, **kwargs):
@@ -474,6 +486,7 @@ def test_injection_recovery_scales_its_stars_to_the_noise_the_detector_divides_b
             inside_detect[0] = False
 
     monkeypatch.setattr(detector, "_effective_sigma", recording_sigma)
+    monkeypatch.setattr(detector, "_detector_noise_map", recording_map)
     monkeypatch.setattr(detector, "detect_point_sources", recording_detect)
     snrs = (6.0, 18.0)
     detector.evaluate_injection_recovery(frame, injected_snrs=snrs, n_per_snr=4)
@@ -481,13 +494,18 @@ def test_injection_recovery_scales_its_stars_to_the_noise_the_detector_divides_b
     # The noise the detector divided by on the baseline luma, the frame the stars were scaled from, and on the injected
     # luma, the call that finds them: adding the stars moves pixels off the frame's grid, so that call must keep the
     # base frame's rounding floor or its stars read many times brighter than injected
-    assert len(detector_sigmas) == 2, detector_sigmas
+    assert len(detector_sigmas) == 2 and len(detector_maps) == 2, (detector_sigmas, len(detector_maps))
     if label in ("pairs frame", "flat grey frame"):
         assert detector_sigmas[0] == pytest.approx(ROUNDING_SIGMA, rel=1e-9)
+    if label == "pairs frame":
+        assert np.allclose(detector_maps[0], ROUNDING_SIGMA, rtol=1e-9, atol=0.0)
     kernel = detector._build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
-    peak = float(ndimage.convolve(injected - baseline, kernel, mode="nearest").max())
-    for call, sigma in zip(("baseline", "injected"), detector_sigmas):
-        assert 0.85 * max(snrs) <= peak / sigma <= max(snrs) * (1.0 + 1e-9), (label, call, peak / sigma)
+    response = ndimage.convolve(injected - baseline, kernel, mode="nearest")
+    peak_y, peak_x = np.unravel_index(int(np.argmax(response)), response.shape)
+    peak = float(response[peak_y, peak_x])
+    for call, noise in zip(("baseline", "injected"), detector_maps):
+        ratio = peak / float(noise[peak_y, peak_x])
+        assert 0.85 * max(snrs) <= ratio <= max(snrs) * (1.0 + 1e-9), (label, call, ratio)
 
 
 @pytest.mark.parametrize("through_a_variant", [False, True])

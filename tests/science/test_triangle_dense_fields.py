@@ -324,16 +324,52 @@ def _solve_both_ways(detections, width: int, height: int, **kwargs) -> tuple[tup
     return fast, slow
 
 
-def _ci_frame(index: int):
+@lru_cache(maxsize=1)
+def _ci_fixture() -> dict:
+    from pathlib import Path
+
+    return json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "ci_frame_detections.json").read_text())
+
+
+def _frozen_ci_detections(frame_id: str, width: int, height: int) -> list[SourceDetection]:
+    """The detections the detector made on a ci frame at the commit tests/fixtures/ci_frame_detections.json names
+    (scripts/freeze_ci_detections.py wrote them): the input the characterization cases were chosen on."""
+    record = _ci_fixture()
+    frame = record["frames"][frame_id]
+    assert (frame["width"], frame["height"]) == (width, height), frame_id
+    return [SourceDetection(**dict(zip(record["fields"], row))) for row in frame["detections"]]
+
+
+def _ci_frame(index: int, *, frozen: bool = True):
     """(detections, width, height, moment) of the phone photo benchmark's ci frame, as its today-api adapter runs it
-    (solvers.py): luma, default detection, the frame's own time and place."""
+    (solvers.py): luma, default detection, the frame's own time and place. With `frozen`, as the cases that pin a
+    status read it, the detections are the ones the detector made at the commit the fixture names, so the status
+    stays a check of the search and not of the detector; without it, the ones the detector makes now."""
     from research.benchmarks.phone_photos import render, solvers, suite
 
-    frame = render.render_frame(suite.build_suite("ci")[index], TileCatalog())
+    spec = suite.build_suite("ci")[index]
+    frame = render.render_frame(spec, TileCatalog())
     luma = solvers._luma(frame.rgb)
     meta = frame.truth.metadata
     moment = {"obs_utc_iso": meta["utc"], "observer_lat": meta["latDeg"], "observer_lon": meta["lonDeg"]}
-    return detect_point_sources(luma), luma.shape[1], luma.shape[0], moment
+    width, height = luma.shape[1], luma.shape[0]
+    detections = _frozen_ci_detections(spec.frame_id, width, height) if frozen else detect_point_sources(luma)
+    return detections, width, height, moment
+
+
+@pytest.mark.parametrize("index", range(8), ids=lambda index: f"ci-{index:02d}")
+def test_on_the_detectors_own_detections_the_fast_search_gives_the_one_by_one_solution_on_every_ci_frame(index: int) -> None:
+    # Whatever the detector finds now, the fast search and the one-by-one rules reach the same status and the same
+    # solution on each of the ci suite's 8 frames, with the pinned catalog and with the 71-star list. No status is
+    # pinned here: the detector moves them (the cases below pin theirs on the frozen detections)
+    detections, width, height, moment = _ci_frame(index, frozen=False)
+    for catalog in (None, get_all_sky_catalog_stars()):
+        kwargs = dict(**moment, catalog_stars=catalog, **_sources(f"ci-{index:02d}"))
+        fast = solve_and_verify_field(list(detections), width, height, **kwargs)
+        with pytest.MonkeyPatch.context() as mp:
+            _use_one_by_one_rules(mp)
+            slow = solve_and_verify_field(list(detections), width, height, **kwargs)
+        assert fast.to_contract_dict() == slow.to_contract_dict(), (index, fast.status, slow.status)
 
 
 def _pinned_field():

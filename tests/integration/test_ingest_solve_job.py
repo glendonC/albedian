@@ -32,6 +32,8 @@ from services.ingest import router as ingest_router
 from research.benchmarks.phone_photos import render as phone_render, stars as phone_stars, suite as phone_suite
 from services.ingest.jobs import job_id_for_sha256, run_solve_job
 from services.ingest.store import IngestStore
+from services.science.catalog import get_catalog_stars
+from services.science.detector import _build_gaussian_psf_kernel, _to_luma_2d, matched_filter_noise
 from services.science.phone_photo_solver import PHONE_SOLVER_IDENTITY
 from services.science.solver import (
     SourceDetection,
@@ -180,10 +182,50 @@ def test_pbt_candidate_progress_denominators_match_combinatorial_pool(
         assert [done for done, _ in events] == list(range(expected_total + 1))
 
 
+def test_ingest_solve_job_caps_its_candidates_at_the_14_brightest_detections(client: TestClient) -> None:
+    # The starfield above with 6 lights in no catalog planted where no catalog star lies within 40 px (five of the
+    # solver's 8 px association radii), each at a matched SNR of 10 against the frame's own matched-filter noise: the
+    # job then finds at least 14 honest point sources, all real in the pixels, and the triangle solver's candidates are
+    # the triples of its 14 brightest. This keeps the cap reached by detections the detector really makes
+    frame, wcs, _ = render_synthetic_starfield(
+        width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42
+    )
+    catalog_px = [wcs.world_to_pixel(star.ra_deg, star.dec_deg) for star in get_catalog_stars()]
+    grid = [(float(x), float(y)) for y in range(60, HEIGHT - 59, 105) for x in range(60, WIDTH - 59, 105)]
+    sites = [
+        (x + 0.3, y - 0.2) for x, y in grid
+        if all(math.isnan(px) or math.hypot(x - px, y - py) >= 40.0 for px, py in catalog_px)
+    ][:6]
+    assert len(sites) == 6
+    kernel = _build_gaussian_psf_kernel(sigma_px=1.15, radius=3)
+    offsets = np.arange(-3, 4, dtype=np.float64)
+    gx, gy = np.meshgrid(offsets, offsets)
+    unit = np.exp(-(gx * gx + gy * gy) / (2.0 * 1.15**2))
+    coupling = float(np.sum(unit / unit.sum() * kernel))
+    noise = matched_filter_noise(np.clip(np.round(frame), 0.0, 255.0))
+    yy, xx = np.mgrid[0:HEIGHT, 0:WIDTH]
+    for x, y in sites:
+        psf = np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2.0 * 1.15**2))
+        frame = frame + 10.0 * float(noise[int(round(y)), int(round(x))]) / coupling * psf / psf.sum()
+    png_bytes = _png_bytes_from_luma(frame)
+    sha = hashlib.sha256(png_bytes).hexdigest()
+    assert client.post("/api/ingest", content=png_bytes, headers={"content-type": "image/png"}).status_code == 201
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert job["state"] == "succeeded"
+    with Image.open(io.BytesIO(png_bytes)) as image:
+        job_luma = _to_luma_2d(np.asarray(image.convert("RGB"), dtype=np.uint8).astype(np.float64))
+    psf_count = sum(not d.is_hot_pixel_impulse for d in detect_point_sources(job_luma, snr_threshold=4.0))
+    assert psf_count >= 14, psf_count
+    stages = {entry["stage"]: entry for entry in job["stages"]}
+    assert stages["solve"]["total"] == math.comb(14, 3)
+
+
 def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated_starfield(
     client: TestClient,
 ) -> None:
-    frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
+    frame, _, rendered = render_synthetic_starfield(
+        width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42
+    )
     png_bytes = _png_bytes_from_luma(frame)
     sha = hashlib.sha256(png_bytes).hexdigest()
 
@@ -208,7 +250,16 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     assert stages["decode"] == {"stage": "decode", "unit": "frames", "done": 1, "total": 1}
     assert stages["detect"] == {"stage": "detect", "unit": "frames", "done": 1, "total": 1}
     assert stages["solve"]["unit"] == "candidates"
-    assert stages["solve"]["total"] == math.comb(14, 3)
+    # The triangle solver's candidates: every triple of the job's 14 brightest PSF detections, from the PNG as the job
+    # decodes it (RGB, then Rec. 709 luma) at its threshold of 4.0. The frame renders 11 stars; the detector finds
+    # all 11 and one point more (a noise peak 98 px from any star) since it divides by the noise of its own matched
+    # response (realsky-3), where the pixel noise gave 45 detections and so the 14 triples of 364 candidates
+    with Image.open(io.BytesIO(png_bytes)) as image:
+        job_luma = _to_luma_2d(np.asarray(image.convert("RGB"), dtype=np.uint8).astype(np.float64))
+    job_dets = [d for d in detect_point_sources(job_luma, snr_threshold=4.0) if not d.is_hot_pixel_impulse]
+    on_star = sum(min(math.hypot(d.x_px - x, d.y_px - y) for _, x, y in rendered) <= 3.0 for d in job_dets)
+    assert (len(job_dets), on_star, len(rendered)) == (12, 11, 11)
+    assert stages["solve"]["total"] == math.comb(12, 3)
     assert 0 < stages["solve"]["done"] <= stages["solve"]["total"]
     assert stages["verify"] == {"stage": "verify", "unit": "steps", "done": 1, "total": 1}
 

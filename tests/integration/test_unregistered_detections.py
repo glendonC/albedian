@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 
 from scipy import optimize
+from services.science import detector
 from services.science.catalog import (
     _iso_to_julian_date,
     altaz_to_icrs,
@@ -36,6 +37,7 @@ from services.science.catalog import (
     icrs_to_altaz,
     propagate_star_epoch,
 )
+from services.science.detector import matched_filter_noise
 from services.science.ephemeris import compute_solar_system_ephemerides, moon_parallax_shift_arcsec
 from services.science.horizon_solver import PREDICTED_STAR_UNCERTAINTY_ARCSEC, solve_horizon_and_beacon_pose
 from services.science.solver import (
@@ -69,6 +71,13 @@ def _sources(data: object) -> dict[str, str]:
     digest = hashlib.sha256(raw).hexdigest()
     return {"source_asset_id": f"synthetic-{digest[:12]}", "source_sha256": digest}
 UPDATE_FIXTURE_ENV = "ALBEDIAN_UPDATE_CONTRACT_FIXTURE"
+# A light in no catalog, planted in the calibrated samples' starfield so they hold an unmatched observed point by
+# construction (the one they held before realsky-3 was a noise peak, SNR 5.53 of the pixel noise, which the detector's
+# honest value drops). It is a 1.15 px Gaussian at (612.5, 301.25) px, 86 px from the nearest of the 18 catalog stars
+# under the frame's WCS (at least five ASSOCIATION_RADIUS_PX of 8 px, so it can pair with none) and far from every
+# edge, scaled to a matched SNR of 12 against the frame's own matched-filter noise there
+PLANTED_LIGHT_XY = (612.5, 301.25)
+PLANTED_LIGHT_SNR = 12.0
 
 
 def _assert_sky_positions_follow_verified_wcs(
@@ -715,6 +724,21 @@ def _pose_moon_level_head_sample() -> ObservationSolution:
     )
 
 
+def _with_planted_light(frame: np.ndarray) -> np.ndarray:
+    """`frame` with PLANTED_LIGHT_XY's light added: its matched peak, on a pixel centre, is PLANTED_LIGHT_SNR times
+    the frame's matched-filter noise there."""
+    x, y = PLANTED_LIGHT_XY
+    grid = np.arange(-3, 4, dtype=np.float64)
+    gx, gy = np.meshgrid(grid, grid)
+    unit = np.exp(-(gx * gx + gy * gy) / (2.0 * 1.15**2))
+    unit /= unit.sum()
+    coupling = float(np.sum(unit * detector._build_gaussian_psf_kernel(sigma_px=1.15, radius=3)))
+    flux = PLANTED_LIGHT_SNR * float(matched_filter_noise(frame)[int(round(y)), int(round(x))]) / coupling
+    yy, xx = np.mgrid[0 : frame.shape[0], 0 : frame.shape[1]]
+    psf = np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2.0 * 1.15**2))
+    return frame + flux * psf / psf.sum()
+
+
 def build_contract_samples() -> dict[str, dict]:
     """Contract dicts for each solution shape Python produces. The TypeScript contract tests parse
     `CONTRACT_FIXTURE` with `ObservationSolutionSchema`; each sample but the pose sample keeps its first three
@@ -728,13 +752,18 @@ def build_contract_samples() -> dict[str, dict]:
         for x, y in [(101.0, 87.0), (412.5, 300.2), (733.0, 120.4), (250.0, 470.0),
                      (880.1, 444.4), (530.0, 60.0), (66.0, 333.0), (640.0, 255.0)]
     ]
-    frame, _, _ = render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)
+    frame = _with_planted_light(
+        render_synthetic_starfield(width=WIDTH, height=HEIGHT, read_noise_sigma=1.8, flux_scale=1100.0, seed=42)[0]
+    )
     moon_frame, no_moon_frame = _night_frame(1792, 1344, moon=True), _night_frame(1792, 1344, moon=False)
     # The starfield's float bytes differ by platform (trigonometry, exp and noise), so its hash is of
     # the call that makes it, which is the same everywhere.
     calibrated = solve_and_verify_field(
         detect_point_sources(frame, snr_threshold=4.0), WIDTH, HEIGHT, **MOMENT,
-        **_sources(("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42)),
+        **_sources(
+            ("render_synthetic_starfield", WIDTH, HEIGHT, 1.8, 1100.0, 42,
+             "planted", *PLANTED_LIGHT_XY, PLANTED_LIGHT_SNR)
+        ),
     )
     samples = {
         "plate_too_few_sources": solve_and_verify_field(too_few, WIDTH, HEIGHT, **MOMENT, **_sources(too_few)),
@@ -848,6 +877,23 @@ def test_fixture_text_matches_word_for_word_and_its_printed_decimals_within_one_
     assert not _matches("J2031.66", "J2031.67")
     assert not _matches("1.0.0", "1.0.1")
     assert not _matches("1.0.0", "1.1.0")
+
+
+def test_the_calibrated_samples_hold_the_planted_light_as_their_one_unmatched_point() -> None:
+    # The stored fixture's calibrated samples: the planted light is an observed point measured where it was planted, at
+    # about its stated SNR (the frame's own noise at the peak moves it by about one), placed on the sky by the verified
+    # WCS as every observed point is, and the one point of light no catalog star was matched to
+    stored = json.loads(CONTRACT_FIXTURE.read_text(encoding="utf-8"))
+    for name in ("plate_calibrated", "plate_calibrated_timeless"):
+        observed = [f for f in stored[name]["findings"] if f["evidenceClass"] == "observed"]
+        assert len(observed) == 1, name
+        det = observed[0]["sourceDetection"]
+        assert math.hypot(det["xPx"] - PLANTED_LIGHT_XY[0], det["yPx"] - PLANTED_LIGHT_XY[1]) < 0.5, name
+        assert PLANTED_LIGHT_SNR - 3.0 <= det["snr"] <= PLANTED_LIGHT_SNR + 3.0, (name, det["snr"])
+        assert observed[0].get("catalogRef") is None, name
+        assert stored[name]["warnings"] == [
+            "1 unmatched sensor detection(s): 1 with no star of the 18-star catalog within 8 px."
+        ], name
 
 
 def test_python_contract_fixture_is_current() -> None:
