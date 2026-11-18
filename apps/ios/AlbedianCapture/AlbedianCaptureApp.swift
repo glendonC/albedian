@@ -5,14 +5,25 @@ import SwiftUI
 @main
 struct AlbedianCaptureApp: App {
     #if DEBUG
-    @State private var samplePath: [Int] = ProcessInfo.processInfo.arguments.contains("-AlbedianOpenCheck") ? [0] : []
+    @State private var samplePath: [String] = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-AlbedianOpenControls") { return ["controls"] }
+        if args.contains("-AlbedianOpenCheck") { return ["check"] }
+        return []
+    }()
     #endif
 
     var body: some Scene {
         WindowGroup {
             #if DEBUG
             NavigationStack(path: $samplePath) {
-                rootList.navigationDestination(for: Int.self) { _ in CaptureCheckScreen() }
+                rootList.navigationDestination(for: String.self) { target in
+                    if target == "controls" {
+                        ControlsGallery()
+                    } else {
+                        CaptureCheckScreen()
+                    }
+                }
             }
             #else
             NavigationStack { rootList }
@@ -24,6 +35,9 @@ struct AlbedianCaptureApp: App {
         List {
             NavigationLink("Pipeline with sample values") { PipelineScreen() }
             NavigationLink("Sensors and camera") { CaptureCheckScreen() }
+            #if DEBUG
+            NavigationLink("Controls (debug only)") { ControlsGallery() }
+            #endif
         }
         .navigationTitle("Albedian Capture")
     }

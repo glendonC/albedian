@@ -74,8 +74,11 @@ allowed_plist=(
   LSRequiresIPhoneOS MinimumOSVersion NSAppTransportSecurity UIApplicationSceneManifest UIApplicationSupportsIndirectInputEvents
   UIDeviceFamily UILaunchScreen UISupportedInterfaceOrientations UIRequiredDeviceCapabilities
   NSLocalNetworkUsageDescription NSCameraUsageDescription NSMotionUsageDescription NSLocationWhenInUseUsageDescription
+  UIAppFonts
 )
 allowed_ats='{"NSAllowsLocalNetworking":true}'
+# The fonts the app registers: the two approved Geist files and nothing else
+allowed_fonts='["Geist-Regular.ttf","Geist-SemiBold.ttf"]'
 
 (( $# > 0 )) || { print -u2 "check-built: give it the built .app, object files or folders"; exit 2 }
 files=()
@@ -180,6 +183,10 @@ for given in "$@"; do
   done
   ats=$(plutil -extract NSAppTransportSecurity json -o - "$given/Info.plist" 2>/dev/null)
   [[ -z $ats || $ats == "$allowed_ats" ]] || findings+=("${given:t}: Info.plist's transport security is $ats, not local networking alone")
+  if plutil -extract UIAppFonts xml1 -o /dev/null "$given/Info.plist" 2>/dev/null; then
+    fonts=$(plutil -extract UIAppFonts json -o - "$given/Info.plist" 2>/dev/null)
+    [[ $fonts == "$allowed_fonts" ]] || findings+=("${given:t}: Info.plist's fonts are ${fonts:-not a list}, not the two approved files")
+  fi
 done
 
 print "check-built: read ${#macho} Mach-O files"

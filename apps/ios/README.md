@@ -8,7 +8,11 @@ Unit mobile-0 holds the project, the tested core and one plain screen. Unit mobi
 and Core Location read into the core, tested on the Mac with stand-in sources. Unit mobile-2 adds the camera, keeps
 each photo and its record on the phone until the laptop has them, and a check screen that shows what the sensors
 report and takes a photo; the permission texts for the camera, motion and location are in `AlbedianCapture-Info.plist`.
-Only the capture button follows the approved look; the rest of the check screen is the system's default style.
+Unit mobile-3 adds the approved iPhone controls and logo (`ControlStyle` in the core; `MainButton`, `IconButton`,
+`EvidenceTag`, `Logo` and a debug-only `ControlsGallery` in `UI/`), embeds the pinned Geist v1.9.2 static TrueType
+weights (`Geist-Regular.ttf`, `Geist-SemiBold.ttf`) and the four Phosphor 2.1.1 regular icons the approved screens use,
+and keeps their licence texts and `PROVENANCE.json` records under `apps/ios/notices/` (with both licence texts also
+bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for its own unit.
 
 ## Layout
 
@@ -38,13 +42,21 @@ Only the capture button follows the approved look; the rest of the check screen 
     newest headings and fixes) and at a photo hands the builder a `SensorCapture`: the window's samples, and the
     newest heading and fix not after the photo. `SensorMapping` carries each report onto the core's types as the
     device gave it. The sources are protocols (`SensorReadings.swift`), so the tests feed synthetic reports.
-- `AlbedianCapture/`: the app, two screens in the system's default style: the pipeline run by hand with sample values,
-  and the sensors and camera check (`CaptureCheckScreen`), with the capture button (`UI/CaptureButton.swift`,
-  Albedian's mark as its disc). `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device
+  - `ControlStyle` and `ShutterGeometry` hold the numbers of the approved iPhone controls (colours, 44 pt split main
+    action and icon button geometry, 1.2 s spring and 0.15 s / 0.2 s standard curves, the website logo's proportions,
+    and all four evidence classes' words, colours and tints), tested in `ControlStyleTests` and `ShutterGeometryTests`.
+- `AlbedianCapture/`: the app: two plain screens in the system's default style (the pipeline run by hand with sample
+  values, and `CaptureCheckScreen`), plus in `DEBUG` builds `ControlsGallery` showing the approved controls together.
+  `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`, `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds
+  `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`), `Assets.xcassets/` holds the four Phosphor 2.1.1
+  regular icons (`arrow-right`, `x`, `paper-plane-tilt`, `arrow-counter-clockwise`), and `Notices/` bundles
+  `Phosphor-LICENSE.txt`. `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device
   has it), `CoreLocationSource` (`CLLocationManager`, when in use only, best accuracy) and `CameraSession` (the back
   wide-angle camera, HEIC else JPEG, the bytes of `fileDataRepresentation()` as they are, content-aware distortion
   correction off). All three run only on an iPhone: the simulator has no motion sensors and no camera, and the check
   screen says so.
+- `notices/`: `geist/` (`OFL.txt`, `PROVENANCE.json`) and `phosphor/` (`LICENSE`, `PROVENANCE.json`, and the four
+  icon `.svg` files byte for byte from `@phosphor-icons/core` 2.1.1), verified in `ApprovedAssetsTests`.
 - `AlbedianCapture.xcodeproj`: the iPhone app target, using the package.
 
 ## Run the tests
@@ -127,8 +139,9 @@ address `pnpm field --lan` prints. The sample photo is a black image the app dra
 Two checks keep the one connection from drifting, each with its stated limit.
 
 - The source scan (`PrivacyScanTests`, run with the tests above) reads every regular file in the app's folder and the
-  core's sources with comments and literals taken out by reading the syntax; a file of a kind it cannot read, and
-  anything there that is neither a regular file nor a folder (a link), is a finding.
+  core's sources with comments and literals taken out by reading the syntax; a file of a kind it cannot read passes
+  only when `PrivacyScanTests.assetFiles` lists both its path under a built folder and its SHA-256, and anything there
+  that is neither a regular file nor a folder (a link) is a finding.
   Its first rule is a list of the forms that make an address, each refused outside the transport's own files
   (`LaptopConnection.swift`, `UploadClient.swift`): `URL(...)` with any first label but the two that take a file's path,
   URL components and the Objective-C URL, the initialisers that read an address (`.init(string:)` and the like), the
@@ -146,7 +159,7 @@ Two checks keep the one connection from drifting, each with its stated limit.
   names), the libraries it embeds and links by `@rpath/` or `@executable_path/` (none today: the core is linked into the
   executable), the entitlements it carries (the app's identifier, its team and `get-task-allow`: no iCloud container,
   shared group, keychain sharing or push), and its Info.plist's keys (no address scheme, background mode or document
-  type, and no transport exception beyond local networking). It cannot see what Apple's frameworks do inside. Build
+  type, `UIAppFonts` only as the two approved Geist files, and no transport exception beyond local networking). It cannot see what Apple's frameworks do inside. Build
   without Xcode's debug launcher, then check:
 
 ```bash

@@ -910,6 +910,36 @@
       "licence": "OFL-1.1",
       "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
       "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), OFL.txt, the release's licence text (the same bytes as in the release's zip asset): SIL Open Font License 1.1, copyright 2026 The Geist Project Authors, no Reserved Font Name declared. Served byte for byte beside the fonts as apps/web/public/fonts/geist/OFL.txt."
+    },
+    {
+      "path": ".cache/geist-font/v1.9.2/ttf/Geist-Regular.ttf",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/vercel/geist-font/ef2597cfc42f4797676df105517ccc0a1cfa6569/fonts/Geist/ttf/Geist-Regular.ttf",
+      "bytes": 126048,
+      "sha256": "85a1c6b18a6b0a06dfe9fd4f6d6a5d4979f74ec861eaef4bc7868b5492b8a117",
+      "licence": "OFL-1.1",
+      "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), fonts/Geist/ttf/Geist-Regular.ttf (git blob 71cb8160a35149c54c83f5ea92f034f3bae67e61), the static TrueType Regular weight, PostScript name Geist-Regular; its name table says Version 1.800. Embedded byte for byte in the iPhone app as apps/ios/AlbedianCapture/Fonts/Geist-Regular.ttf."
+    },
+    {
+      "path": ".cache/geist-font/v1.9.2/ttf/Geist-SemiBold.ttf",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/vercel/geist-font/ef2597cfc42f4797676df105517ccc0a1cfa6569/fonts/Geist/ttf/Geist-SemiBold.ttf",
+      "bytes": 127872,
+      "sha256": "b9f52322d6d20a7ff1e7fe1310ff12ec851aebb83d24f8b4f1d4149298f489b2",
+      "licence": "OFL-1.1",
+      "licenceUrl": "https://github.com/vercel/geist-font/blob/ef2597cfc42f4797676df105517ccc0a1cfa6569/OFL.txt",
+      "source": "Geist (github.com/vercel/geist-font, release v1.9.2, tag commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06), fonts/Geist/ttf/Geist-SemiBold.ttf (git blob 4e62f374c9cd9b5282a7ac25dab2d17c4ebf922e), the static TrueType SemiBold weight, PostScript name Geist-SemiBold; its name table says Version 1.800. Embedded byte for byte in the iPhone app as apps/ios/AlbedianCapture/Fonts/Geist-SemiBold.ttf."
+    },
+    {
+      "path": ".cache/phosphor-icons/core-2.1.1.tgz",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://registry.npmjs.org/@phosphor-icons/core/-/core-2.1.1.tgz",
+      "bytes": 1443064,
+      "sha256": "313332be6190b724da24107addd781799b48bf76b13963f24501112ffe1baadd",
+      "licence": "MIT",
+      "licenceUrl": "https://opensource.org/license/mit",
+      "source": "Phosphor Icons, @phosphor-icons/core 2.1.1 (npmjs.com/package/@phosphor-icons/core/v/2.1.1), the package as published; its npm sha512 integrity matched at the fetch. The iPhone app keeps four of its regular-weight files byte for byte (assets/regular/arrow-right.svg, x.svg, arrow-counter-clockwise.svg, paper-plane-tilt.svg) and its LICENSE, under apps/ios/notices/phosphor/; arrow-right.svg, x.svg and LICENSE are the same bytes as the web's copies in apps/web/public/notices/phosphor/."
     }
   ]
 }

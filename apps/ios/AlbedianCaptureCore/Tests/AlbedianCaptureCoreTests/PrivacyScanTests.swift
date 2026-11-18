@@ -1,10 +1,11 @@
+import CryptoKit
 import Foundation
 import XCTest
 
 /// REQ-IOS-6.1, the design's "the companion never sends the device's name", and mobile-0's one connection, checked on
 /// the code. The scan reads every regular file in the app's folder and in the core's sources (the app's folder is a
 /// synchronized group, so Xcode builds any file put there), walks into their folders, and refuses anything else there
-/// (a link, say) and a file of a kind it cannot read; in each file it
+/// (a link, say) and a file of a kind it cannot read, unless `assetFiles` lists its path and its bytes; in each file it
 /// takes out comments and the contents of literals by reading the syntax (`SourceReader`), and reads names as whole
 /// tokens. Its first rule is a list of the forms that make an address, each refused outside the transport's own files
 /// (`transportFiles`, `addressMaking`, `schemes`): `URL(...)` and `URL.init(...)` with any first label but the two file
@@ -72,6 +73,53 @@ final class PrivacyScanTests: XCTestCase {
          reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
     ]
 
+    typealias Asset = (path: String, sha256: String, reason: String)
+
+    /// The files the scan cannot read that the app is built with: each by its path under a built folder, its bytes'
+    /// sha256 and why. A file the scan cannot read passes only when both its path and its bytes are listed here.
+    static let assetFiles: [Asset] = [
+        (path: "Fonts/Geist-Regular.ttf", sha256: "85a1c6b18a6b0a06dfe9fd4f6d6a5d4979f74ec861eaef4bc7868b5492b8a117",
+         reason: "Geist v1.9.2, the approved type: a static TrueType file of the release's tag, byte for byte (SIL OFL 1.1, apps/ios/notices/geist, data/downloads.json)"),
+        (path: "Fonts/Geist-SemiBold.ttf", sha256: "b9f52322d6d20a7ff1e7fe1310ff12ec851aebb83d24f8b4f1d4149298f489b2",
+         reason: "Geist v1.9.2, the approved type: a static TrueType file of the release's tag, byte for byte (SIL OFL 1.1, apps/ios/notices/geist, data/downloads.json)"),
+        (path: "Fonts/OFL.txt", sha256: "021caa749f89fecd7c2e40a50499de29e84d2bc19251659b47d499c2fbfffc17",
+         reason: "Geist v1.9.2's SIL Open Font License 1.1 text, bundled beside the embedded fonts so the licence travels with every built copy (apps/ios/notices/geist/OFL.txt, data/downloads.json)"),
+        (path: "Notices/Phosphor-LICENSE.txt", sha256: "ddbe6082ec3cf979db47e5af549d2849c5d6182b3e005ef91ce1dbb9eb122f11",
+         reason: "Phosphor Icons 2.1.1's MIT copyright and permission notice, bundled so the notice travels with every built copy (apps/ios/notices/phosphor/LICENSE, data/downloads.json)"),
+        (path: "Assets.xcassets/Contents.json", sha256: "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/arrow-right.imageset/arrow-right.svg", sha256: "e45bc4a12592b8723110db42c6deffdf177e4fe7704cf50324963fa0a59b2d74",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/arrow-right.imageset/Contents.json", sha256: "37db3a9e43829b935a56492e19fc174cdc7819caa9d07cc518b2c08460e44b15",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/x.imageset/x.svg", sha256: "7397b15e1fa66eaf6ff9b59fe91d483cb5c3bcf75b2fe052097ab6f0593b513a",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/x.imageset/Contents.json", sha256: "3d768901fe385b8ae1bcca0c7fb6c85dba62453178251277d49cbebdb27e6275",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/paper-plane-tilt.imageset/paper-plane-tilt.svg", sha256: "0dbff2ada31c963dfd95bfe2ab2cb39a90fe7100eb7c1724577444a1d8a7c26d",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/paper-plane-tilt.imageset/Contents.json", sha256: "0653ef96a6beb15a46cc8a101b60b306d58ef9668b91a479e73637348e7295d1",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/arrow-counter-clockwise.imageset/arrow-counter-clockwise.svg", sha256: "4eb160d5ae781107c674481ac081962e6bce6281a646129e6c3f960b9dd5dac6",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/arrow-counter-clockwise.imageset/Contents.json", sha256: "9155f322a819068f24fecca253c61513b582a2e777e9158096f84e185bfb56e8",
+         reason: "the asset catalog's own description of its images, written for this app"),
+    ]
+
+    static func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
+
+    /// Whether `url`, found under `root`, is a listed asset: the same path under that folder and the same bytes.
+    static func isListed(_ url: URL, under root: URL, in assets: [Asset]) -> Bool {
+        // Both with their links resolved: a temporary folder is reached as /var and walked as /private/var
+        let rootPath = root.resolvingSymlinksInPath().path
+        let base = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        let full = url.resolvingSymlinksInPath().path
+        guard full.hasPrefix(base) else { return false }
+        let path = String(full.dropFirst(base.count))
+        guard let asset = assets.first(where: { $0.path == path }), let data = try? Data(contentsOf: url) else { return false }
+        return sha256(data) == asset.sha256
+    }
+
     /// The first labels of `URL(...)` the first rule lets through outside the transport: a file's address from a path.
     static let fileAddressLabels: Set<String> = ["fileURLWithPath", "filePath"]
 
@@ -111,7 +159,7 @@ final class PrivacyScanTests: XCTestCase {
     /// pattern, a sending name, a form of the first rule, a literal that holds a scheme, an address read outside a
     /// listed exception, and the connection type or a connection call outside the client file; plus how many times each
     /// connection call appears in it.
-    static func scan(_ roots: [URL], exceptions: [Exception] = exceptions) throws -> (findings: [Finding], inClient: [String: Int]) {
+    static func scan(_ roots: [URL], exceptions: [Exception] = exceptions, assets: [Asset] = assetFiles) throws -> (findings: [Finding], inClient: [String: Int]) {
         var findings: [Finding] = []
         var inClient: [String: Int] = [:]
         for root in roots {
@@ -127,7 +175,11 @@ final class PrivacyScanTests: XCTestCase {
                     findings.append(Finding(file: name, line: 0, what: "not a regular file or a folder")); continue
                 }
                 guard let language = SourceReader.language(of: url) else {
-                    findings.append(Finding(file: name, line: 0, what: "a kind of file the scan cannot read")); continue
+                    // A listed asset passes by its path under this folder and its bytes; any other such file is refused
+                    if !isListed(url, under: root, in: assets) {
+                        findings.append(Finding(file: name, line: 0, what: "a kind of file the scan cannot read"))
+                    }
+                    continue
                 }
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else {
                     findings.append(Finding(file: name, line: 0, what: "not UTF-8 text")); continue
@@ -263,6 +315,37 @@ final class PrivacyScanTests: XCTestCase {
         }
     }
 
+    func testPassesAFileItCannotReadOnlyWhenItsPathAndItsBytesAreListed() throws {
+        let bytes = "planted font bytes"
+        let listed: [Asset] = [(path: "Fonts/A.ttf", sha256: Self.sha256(Data(bytes.utf8)), reason: "a planted asset for this test")]
+        let refused = ["a kind of file the scan cannot read"]
+        // The listed path holding the listed bytes: passed
+        XCTAssertEqual(try scanPlanted(["Fonts/A.ttf": bytes], assets: listed), [])
+        // Other bytes at the listed path, the listed bytes at another path or name, and nothing listed: refused
+        XCTAssertEqual(try scanPlanted(["Fonts/A.ttf": bytes + " "], assets: listed).map(\.what), refused)
+        XCTAssertEqual(try scanPlanted(["Other/A.ttf": bytes], assets: listed).map(\.what), refused)
+        XCTAssertEqual(try scanPlanted(["A.ttf": bytes], assets: listed).map(\.what), refused)
+        XCTAssertEqual(try scanPlanted(["Fonts/B.ttf": bytes], assets: listed).map(\.what), refused)
+        XCTAssertEqual(try scanPlanted(["Fonts/A.ttf": bytes]).map(\.what), refused)
+        // A listed file the scan can read is still read: a listing never hides code
+        let code = "import Foundation\nprint(1)\n"
+        let listedCode: [Asset] = [(path: "Code.swift", sha256: Self.sha256(Data(code.utf8)), reason: "a planted listing of code")]
+        XCTAssertEqual(try scanPlanted(["Code.swift": code], assets: listedCode).map(\.what), ["print("])
+    }
+
+    func testListsEachAssetWithTheBytesItHolds() throws {
+        // An asset is listed by its path under a built folder and its bytes; if either changes, the listing no longer stands
+        for asset in Self.assetFiles {
+            let url = try XCTUnwrap(Self.builtRoots.lazy.map { $0.appendingPathComponent(asset.path) }.first {
+                FileManager.default.fileExists(atPath: $0.path)
+            }, asset.path)
+            XCTAssertEqual(Self.sha256(try Data(contentsOf: url)), asset.sha256, asset.path)
+            XCTAssertNil(SourceReader.language(of: url), "\(asset.path) is a file the scan reads, so it needs no listing")
+            XCTAssertFalse(asset.reason.isEmpty)
+        }
+        XCTAssertEqual(Set(Self.assetFiles.map(\.path)).count, Self.assetFiles.count, "each asset is listed once")
+    }
+
     func testOpensTheOneConnectionOnlyToTheEndpointTheGateApproved() throws {
         // The one place a connection opens takes the endpoint `permits` approved, the same value
         let uploader = try String(contentsOf: repositoryRoot.appendingPathComponent("apps/ios/AlbedianCaptureCore/Sources/AlbedianCaptureCore/UploadClient.swift"),
@@ -280,7 +363,7 @@ final class PrivacyScanTests: XCTestCase {
     }
 
     /// Writes `files` (name to text) into a fresh folder, scans it, and removes it.
-    private func scanPlanted(_ files: [String: String], exceptions: [Exception] = []) throws -> [Finding] {
+    private func scanPlanted(_ files: [String: String], exceptions: [Exception] = [], assets: [Asset] = []) throws -> [Finding] {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("albedian-scan-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -289,7 +372,7 @@ final class PrivacyScanTests: XCTestCase {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(text.utf8).write(to: url)
         }
-        return try Self.scan([folder], exceptions: exceptions).findings
+        return try Self.scan([folder], exceptions: exceptions, assets: assets).findings
     }
 
     func testSeesEachWayOutTheLastReadersWroteAndOneNameFromManyFamilies() throws {
@@ -355,7 +438,7 @@ final class PrivacyScanTests: XCTestCase {
         let quiet = try scanPlanted(["Quiet.swift": "// URLSession\n/* NWListener /* nested */ */\nlet a = \"URLSession and socket\"\nlet b = #\"\\(URLSession)\"#\n",
                                      "Quiet.m": "// NSURLSession \\n\n/* socket */ const char *s = \"connect\"; char c = '\\'';\n"])
         XCTAssertEqual(quiet, [])
-        // A file the scan cannot read is a finding, never passed over
+        // A file the scan cannot read, and not listed by its path and bytes, is a finding, never passed over
         let unreadable = try scanPlanted(["Notes.txt": "x", "Shader.swift": "let r = /a//; let s = URLSession.shared",
                                           "Open.swift": "let s = \"never closed\nlet t = 1", "Splice.c": "int URL\\\nSession;",
                                           "Regex.swift": "let r = #/a/#", "Interp.swift": "let s = \"\\(a\""])

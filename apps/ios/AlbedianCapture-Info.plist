@@ -15,5 +15,10 @@
 	<string>Albedian uses your location while you aim to find true north and the sky above you, and sends it only to your laptop.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Albedian sends your photo and where the phone pointed to your laptop on this network.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Geist-Regular.ttf</string>
+		<string>Geist-SemiBold.ttf</string>
+	</array>
 </dict>
 </plist>

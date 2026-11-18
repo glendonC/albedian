@@ -1,0 +1,35 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "geist-font-v1.9.2",
+      "title": "Geist static TrueType weights, release v1.9.2",
+      "url": "https://github.com/vercel/geist-font/releases/tag/v1.9.2",
+      "version": "v1.9.2 (git commit ef2597cfc42f4797676df105517ccc0a1cfa6569, 2026-11-06)",
+      "retrieved": "2026-11-13",
+      "license": {
+        "spdx": "OFL-1.1",
+        "name": "SIL Open Font License 1.1",
+        "url": "https://openfontlicense.org",
+        "conditions": "The fonts may be used, bundled, embedded and redistributed with the app, never sold by themselves; the copyright notice and the licence travel with every copy: OFL.txt sits here and is bundled inside AlbedianCapture.app as Fonts/OFL.txt. No Reserved Font Name is declared."
+      },
+      "credit": "Geist",
+      "note": "Copyright 2026 The Geist Project Authors (OFL.txt). Fetched from raw.githubusercontent.com at the v1.9.2 tag commit by scripts/fetch_download.py and pinned in data/downloads.json; embedded byte for byte in apps/ios/AlbedianCapture/Fonts/Geist-Regular.ttf (sha256 85a1c6b18a6b0a06dfe9fd4f6d6a5d4979f74ec861eaef4bc7868b5492b8a117) and Geist-SemiBold.ttf (sha256 b9f52322d6d20a7ff1e7fe1310ff12ec851aebb83d24f8b4f1d4149298f489b2)."
+    }
+  ],
+  "files": [
+    {
+      "path": "OFL.txt",
+      "sha256": "021caa749f89fecd7c2e40a50499de29e84d2bc19251659b47d499c2fbfffc17",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The release's licence text, byte for byte; also bundled with the fonts at apps/ios/AlbedianCapture/Fonts/OFL.txt."
+    }
+  ],
+  "fileSets": []
+}
