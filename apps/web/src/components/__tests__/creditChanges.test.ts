@@ -17,21 +17,25 @@ import {
   milkyWayCopyDrawn,
   panoramaGradeWords,
 } from '../../spatial/sky/panoramaGrade.js';
-import { FRAME_STEP_WORDS, WEBGL_FRAME, frameFinishingWords, saidAsList, type FrameSwitch } from '../../spatial/frameFinishing.js';
+import {
+  FRAME_STEP_WORDS,
+  LANDING_EXPOSURE,
+  WEBGL_EXPOSURE,
+  WEBGL_FRAME,
+  frameFinishingWords,
+  saidAsList,
+  webglFrameFinishingWords,
+  type FrameSwitch,
+} from '../../spatial/frameFinishing.js';
 import { DEFAULT_COSMOS_POST, type CosmosPostOptions } from '../../spatial/webgpu/postOptions.js';
 
 // An image the app shows changed says so, wherever it is shown changed: in the record's own words where the record
 // has them, else worded from the code that changes it, and tied to that code here so the words cannot outlive it.
 // Its limit, written down and not chased: the words are held to three things, the grade's one list
 // (sky/panoramaGrade.ts), the whole frame's list (the WebGPU post options, every key of it a worded step or a setting
-// of one, and the WebGL composer as the lines named here), and each file a script made, by its record's own sentence
-// shown whole; a step someone adds outside those is not seen by these tests.
-// One such step is known and not said on the Milky Way row: each renderer's tone-mapping exposure, which multiplies
-// the whole frame before its tone curve. In the WebGPU renderer it is LANDING_EXPOSURE, 3.0
-// (webgpu/cislunar/cislunarSceneNodes.ts), set by CislunarWebGpuRenderer.ts's
-// `host.renderer.toneMappingExposure = LANDING_EXPOSURE;`, so it multiplies the Milky Way copy after its gain of 0.3;
-// in the WebGL renderer it is SparkPortalRenderer.ts's `this.renderer.toneMappingExposure = 1.12;`. The last test of
-// the whole frame's describe holds those lines, so these words stay true while the limit stands.
+// of one, the WebGL composer, and each renderer's tone-mapping curve and exposure in spatial/frameFinishing.ts), and
+// each file a script made, by its record's own sentence shown whole; a step someone adds outside those is not seen by
+// these tests.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const web = path.resolve(here, '../../..');
@@ -50,13 +54,17 @@ const sourceFiles = (dir: string): string[] =>
 
 const HOME = homeBackdropChanges();
 const OPTICS = 'given the camera optics (colour fringes toward the edges, a horizontal streak from bright light and a vignette)';
+const TONE_MAP = 'tone-mapped (ACES at exposure 1.12 in the WebGL renderer, AgX at exposure 3 in the WebGPU renderer)';
+const WEBGL_TONE_MAP = 'tone-mapped (ACES at exposure 1.12)';
 const SKY =
   'In the 3D view it is placed on the sky through its registration, turned and moved a few pixels to meet the catalog ' +
   'stars, then darkened by a black level of 0.042, raised to the power 1.52, tinted warm (1.22, 1.04, 0.9 in red, green ' +
   'and blue), brightened 1.32 times and laid over a deep blue base (0.002, 0.003, 0.008); then the whole finished frame, ' +
-  `not this photograph alone, is bloomed, ${OPTICS}, tone-mapped and smoothed along its high-contrast edges (FXAA ` +
+  `not this photograph alone, is bloomed, ${OPTICS}, ${TONE_MAP} and smoothed along its high-contrast edges (FXAA ` +
   'anti-aliasing) in the WebGPU renderer only.';
-const COPY = "The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and then scaled to 0.3.";
+const COPY =
+  "The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and scaled by 0.3 " +
+  "before the frame's exposure of 3 (0.9 net before the AgX tone map).";
 
 describe('the Milky Way row states every change the app makes to the panorama, by kind', () => {
   it('says each change, where it is made: the home, the 3D view, and the copy the WebGPU renderer draws', () => {
@@ -98,9 +106,12 @@ describe('the Milky Way row states every change the app makes to the panorama, b
     }
   });
 
-  it('scales the WebGPU copy by the landing gain the words state, and draws each file the words say', () => {
+  it('scales the WebGPU copy by the landing gain and exposure the words state, with their net product, and draws each file the words say', () => {
     expect(String(LANDING_SKY_GAIN)).toBe('0.3');
-    expect(COPY).toContain(`then scaled to ${LANDING_SKY_GAIN}.`);
+    expect(String(LANDING_EXPOSURE)).toBe('3');
+    expect(COPY).toContain(`scaled by ${LANDING_SKY_GAIN} before the frame's exposure of ${LANDING_EXPOSURE} (0.9 net before the AgX tone map).`);
+    expect(milkyWayCopyDrawn(0.25, 2.5)).toContain("scaled by 0.25 before the frame's exposure of 2.5 (0.625 net before the AgX tone map).");
+    expect(milkyWayCopyDrawn(0.333, 3.0004)).toContain('(0.999 net before the AgX tone map).');
     const nodes = read('src/spatial/webgpu/cislunar/cislunarSceneNodes.ts');
     expect(nodes).toContain('createSkyBackgroundNode(milkyWay, registration, LANDING_SKY_GAIN)');
     expect(nodes).toContain("load('/textures/eso_milkyway_diffuse_6k.webp', SRGBColorSpace, true)");
@@ -143,9 +154,12 @@ describe("the whole finished frame's finishing is a list too, and the row words 
     // Said once to be the whole frame's, and not this photograph's alone
     expect(count(SKY, 'the whole finished frame, not this photograph alone, is')).toBe(1);
     // Other options give other words
-    expect(saidAsList(frameFinishingWords({ ...DEFAULT_COSMOS_POST, aa: 'none' }))).toBe(`bloomed, ${OPTICS} and tone-mapped`);
+    expect(saidAsList(frameFinishingWords({ ...DEFAULT_COSMOS_POST, aa: 'none' }))).toBe(`bloomed, ${OPTICS} and ${TONE_MAP}`);
     expect(frameFinishingWords({ ...DEFAULT_COSMOS_POST, aa: 'smaa' }).at(-1)).toBe('smoothed along its high-contrast edges (SMAA anti-aliasing) in the WebGPU renderer only');
     expect(frameFinishingWords({ ...DEFAULT_COSMOS_POST, bloom: false })[0]).toBe('bloomed in the WebGL renderer only');
+    expect(frameFinishingWords(DEFAULT_COSMOS_POST, WEBGL_FRAME, 2.5, 1.5)).toContain(
+      'tone-mapped (ACES at exposure 1.5 in the WebGL renderer, AgX at exposure 2.5 in the WebGPU renderer)'
+    );
   });
 
   // Each number of the post options is a setting of a worded switch's step, written out here with the switch it sets;
@@ -245,10 +259,10 @@ describe("the whole finished frame's finishing is a list too, and the row words 
     const allOff = Object.fromEntries(Object.entries(SWITCH_EDGES).map(([key, edge]) => [key, edge.off]));
     const gpuOff = { ...DEFAULT_COSMOS_POST, ...allOff } as CosmosPostOptions;
     const glOff = { ...WEBGL_FRAME, ...allOff } as typeof WEBGL_FRAME;
-    // Every switch off in both: the tone map alone, which both renderers always apply
-    expect(frameFinishingWords(gpuOff, glOff)).toEqual(['tone-mapped']);
+    // Every switch off in both: the tone map alone, which both renderers always apply with their curves and exposures
+    expect(frameFinishingWords(gpuOff, glOff)).toEqual([TONE_MAP]);
     const steps = (gpu: object, gl: object) =>
-      frameFinishingWords({ ...gpuOff, ...gpu }, { ...glOff, ...gl }).filter((word) => word !== 'tone-mapped');
+      frameFinishingWords({ ...gpuOff, ...gpu }, { ...glOff, ...gl }).filter((word) => word !== TONE_MAP);
     for (const [key, edge] of Object.entries(SWITCH_EDGES)) {
       for (const [value, words] of edge.on) {
         expect(steps({ [key]: value }, {}), key).toEqual([`${words} in the WebGPU renderer only`]);
@@ -300,12 +314,24 @@ describe("the whole finished frame's finishing is a list too, and the row words 
     expect(spark).not.toMatch(/FXAA|SMAA/);
   });
 
-  it("holds the one step known outside the lists where the file's written limit puts it: each renderer's tone-mapping exposure", () => {
-    expect(read('src/spatial/webgpu/cislunar/cislunarSceneNodes.ts')).toContain('export const LANDING_EXPOSURE = 3.0;');
+  it('holds each renderer to the tone curve and tone-mapping exposure the finishing words state', () => {
+    expect(WEBGL_EXPOSURE).toBe(1.12);
+    expect(LANDING_EXPOSURE).toBe(3.0);
+    expect(read('src/spatial/frameFinishing.ts')).toContain('export const WEBGL_EXPOSURE = 1.12;');
+    expect(read('src/spatial/frameFinishing.ts')).toContain('export const LANDING_EXPOSURE = 3.0;');
     expect(read('src/spatial/webgpu/CislunarWebGpuRenderer.ts')).toContain('host.renderer.toneMappingExposure = LANDING_EXPOSURE;');
-    expect(read('src/spatial/SparkPortalRenderer.ts')).toContain('this.renderer.toneMappingExposure = 1.12;');
-    // Unsaid, as the limit says: no line of the Milky Way row names an exposure
-    for (const line of [HOME, SKY, COPY]) expect(line).not.toMatch(/exposure/i);
+    expect(read('src/spatial/webgpu/WebGpuHost.ts')).toContain('renderer.toneMapping = AgXToneMapping;');
+    const spark = read('src/spatial/SparkPortalRenderer.ts');
+    expect(spark).toContain('this.renderer.toneMapping = THREE.ACESFilmicToneMapping;');
+    expect(spark).toContain('this.renderer.toneMappingExposure = WEBGL_EXPOSURE;');
+    expect(spark).not.toContain('1.12');
+    expect(webglFrameFinishingWords()).toEqual(['bloomed', OPTICS, WEBGL_TONE_MAP]);
+    expect(webglFrameFinishingWords({ aa: 'none', bloom: false, cinemaOptics: false }, 1.5)).toEqual(['tone-mapped (ACES at exposure 1.5)']);
+    expect(webglFrameFinishingWords({ aa: 'fxaa', bloom: false, cinemaOptics: true }, 1.12)).toEqual([
+      OPTICS,
+      WEBGL_TONE_MAP,
+      'smoothed along its high-contrast edges (FXAA anti-aliasing)',
+    ]);
   });
 });
 
@@ -384,7 +410,9 @@ describe('the Lupus 3 row states what the black-hole scene does to the photograp
   const WORDS =
     "In the 3D view's black-hole scene it is stretched around the whole sky, bent around the modelled black hole and " +
     'graded (black level 0.08, power 1.9, at 0.32 of its brightness and up to 2.85 times that near the photon ' +
-    'sphere), then dimmed behind the modelled disk, tone-mapped, vignetted and blended over the sky.';
+    'sphere), then dimmed behind the modelled disk, compressed by a Reinhard curve, vignetted and alpha-blended over ' +
+    'the sky dome and catalog stars by brightness times the vignette (dimming dark regions by the vignette squared and ' +
+    `letting the sky show through); then the whole finished frame is bloomed, ${OPTICS} and ${WEBGL_TONE_MAP}.`;
   const SCENE =
     'Over it the scene adds light of its own, a glow around the photon sphere and a horizontal flare, and it places ' +
     'the photograph turned by about 6 degrees and tilted by about 9.';
@@ -430,9 +458,12 @@ describe('the Lupus 3 row states what the black-hole scene does to the photograp
     // The most is said to three decimals at most
     expect(lupus3Changes({ ...LUPUS3_GRADE, ringBoost: 2.0004 })).toContain('up to 3 times that');
     expect(lupus3Changes({ ...LUPUS3_GRADE, ringBoost: 0.1 + 0.2 })).toContain('up to 1.3 times that');
+    expect(lupus3Changes(LUPUS3_GRADE, ['bloomed', 'tone-mapped (ACES at exposure 1.5)'])).toContain(
+      'then the whole finished frame is bloomed and tone-mapped (ACES at exposure 1.5).'
+    );
   });
 
-  it('draws it as the words say: each phrase stands for a line of the shader, written from the same numbers', () => {
+  it('draws it as the words say: each phrase stands for a line of the shader and the WebGL composer, written from the same numbers', () => {
     const shader = material().fragmentShader;
     const g = LUPUS3_GRADE;
     const lines: Array<[phrase: string, line: string]> = [
@@ -445,13 +476,19 @@ describe('the Lupus 3 row states what the black-hole scene does to the photograp
         `accumDisk += trans * pow(max(vec3(0.0), bgNeb - ${glslFloat(g.blackLevel)}), vec3(${glslFloat(g.power)})) * ${glslFloat(g.gain)} * ringBoost;`,
       ],
       ['dimmed behind the modelled disk', 'trans *= (1.0 - stepAlpha * 0.82);'],
-      ['tone-mapped', 'vec3 finalBh = accumDisk / (vec3(1.0) + accumDisk * 0.42);'],
+      ['compressed by a Reinhard curve', 'vec3 finalBh = accumDisk / (vec3(1.0) + accumDisk * 0.42);'],
+      ['vignetted', 'float vignette = smoothstep(1.45, 0.25, length(p * vec2(0.72, 0.95)));'],
       ['vignetted', 'gl_FragColor = vec4(finalBh * vignette, outAlpha);'],
+      [
+        'alpha-blended over the sky dome and catalog stars by brightness times the vignette (dimming dark regions by the vignette squared and letting the sky show through)',
+        'float outAlpha = clamp((captured ? 0.98 : length(finalBh) * 1.65) * vignette, 0.0, 0.98);',
+      ],
     ];
     for (const [phrase, line] of lines) {
       expect(lupus3Changes(), phrase).toContain(phrase);
       expect(shader, phrase).toContain(line);
     }
+    for (const step of webglFrameFinishingWords()) expect(lupus3Changes(), step).toContain(step);
     // The shader is the one written before the numbers moved, character for character on the grading lines
     expect(shader).toContain('accumDisk += trans * pow(max(vec3(0.0), bgNeb - 0.08), vec3(1.9)) * 0.32 * ringBoost;');
     expect(shader).toContain('float ringBoost = 1.0 + 1.85 * exp(-max(0.0, minR - 1.5 * rs) * 1.4);');

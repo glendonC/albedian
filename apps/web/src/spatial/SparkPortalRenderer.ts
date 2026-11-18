@@ -8,6 +8,7 @@ import { SparkControls, SparkRenderer, SparkXr, type SplatMesh } from '@sparkjsd
 import type { RenderLayerSet } from '@albedian/contracts';
 import { cameraSkyPose } from './cameraSkyPose.js';
 import type { CameraSkyPose, ShowcaseSceneKey } from './cosmosRenderer.js';
+import { WEBGL_EXPOSURE } from './frameFinishing.js';
 import { CatalogStarField, DEFAULT_LIMITING_MAGNITUDE, type CatalogStarFieldStats } from './catalogStars/index.js';
 import { webglRenderLayersFor } from './webglRenderLayers.js';
 import { ObserverSky, defaultObserverLook, localFrameQuaternionFor, observerHorizonVisible } from './observerPose.js';
@@ -138,7 +139,7 @@ export class SparkPortalRenderer {
       });
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.12;
+      this.renderer.toneMappingExposure = WEBGL_EXPOSURE;
       this.renderer.outputColorSpace = THREE.SRGBColorSpace;
       Object.assign(this.renderer.domElement.style, { width: '100%', height: '100%', display: 'block' });
       container.appendChild(this.renderer.domElement);

@@ -1,4 +1,4 @@
-import { frameFinishingWords, saidAsList } from '../frameFinishing.js';
+import { LANDING_EXPOSURE, frameFinishingWords, saidAsList } from '../frameFinishing.js';
 
 /**
  * How the 3D view grades ESO's Milky Way panorama (eso0932a), step by step, in one list: the WebGL sky dome
@@ -61,9 +61,14 @@ export function milkyWay3dChanges(grade: Readonly<PanoramaGrade> = PANORAMA_GRAD
 
 /**
  * The Milky Way row's line for what the WebGPU renderer does with the copy it draws in the photograph's place
- * [proposed]: the app's own steps only. How the copy differs from the photograph is its record's sentence, shown
- * whole beside this (creditRows.ts, recordChangeLines), with no words of the app's own.
+ * [proposed]: the app's own steps, naming both the sky gain and the whole frame's exposure that immediately scales it,
+ * with their net linear multiplier before the AgX tone map. How the copy differs from the photograph is its record's
+ * sentence, shown whole beside this (creditRows.ts, recordChangeLines), with no words of the app's own.
  */
-export function milkyWayCopyDrawn(gain = LANDING_SKY_GAIN): string {
-  return `The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and then scaled to ${gain}.`;
+export function milkyWayCopyDrawn(gain = LANDING_SKY_GAIN, exposure = LANDING_EXPOSURE): string {
+  const net = Math.round(gain * exposure * 1000) / 1000;
+  return (
+    `The 3D view's WebGPU renderer draws a copy made from it in its place, graded the same way and scaled by ${gain} ` +
+    `before the frame's exposure of ${exposure} (${net} net before the AgX tone map).`
+  );
 }

@@ -61,8 +61,10 @@ async function readRecords(): Promise<{ loaded: LoadedRecord[] } | { failures: s
 /**
  * The Credits page, laid out as the owner approved it for the iPhone: a back button, the title, then rows divided by
  * hairlines, each a small grey label over its lines as one block, with the small open-link icon at the right edge of a
- * credit whose source has a page. Every word in a row comes from a provenance record the app serves or from the audio
- * engine's credits. Until the records arrive the page shows only its title: no count, no spinner.
+ * credit whose source has a page. Each row groups sources under the page's row labels, drawing credits, licences,
+ * acknowledgements, citations and script-change sentences from the served provenance records (and Sound from the audio
+ * engine's credits), notice links for served notice files, and the app's own shader and backdrop change lines where a
+ * licence asks. Until the records arrive the page shows only its title: no count, no spinner.
  */
 export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [state, setState] = useState<CreditsState>({ kind: 'reading' });
@@ -124,7 +126,7 @@ export const CreditsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     {[
                       ...block.credits.map((line) => <React.Fragment key={`c:${line}`}>{line}</React.Fragment>),
                       ...block.licences.map((licence) => (
-                        <a key={`l:${licence.href}`} className="credits-licence" href={licence.href} target="_blank" rel="noopener noreferrer">
+                        <a key={`l:${licence.name}`} className="credits-licence" href={licence.href} target="_blank" rel="noopener noreferrer">
                           {licence.name}
                         </a>
                       )),

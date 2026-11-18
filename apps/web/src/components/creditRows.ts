@@ -259,6 +259,17 @@ export function creditRows(loaded: readonly LoadedRecord[], audio: readonly Audi
     for (const line of recordChangeLines(loaded, source.id)) pushOnce(block.changes, line);
     block.href ??= pageOf(source.url);
   }
+  for (const blocks of blocksByRow.values()) {
+    for (const block of blocks) {
+      if (block.notices.length <= 1) continue;
+      const fileNames = block.notices.map((n) => n.href.slice(n.href.lastIndexOf('/') + 1));
+      const uniqueFiles = new Set(fileNames).size === fileNames.length;
+      block.notices = block.notices.map((n, idx) => ({
+        name: `Notice (${uniqueFiles ? fileNames[idx] : n.href})`,
+        href: n.href,
+      }));
+    }
+  }
   if (audio.length > 0) blocksByRow.set('Sound', [soundBlock(audio)]);
   return CREDIT_ROWS.flatMap(({ name, approved }) => {
     const blocks = blocksByRow.get(name);

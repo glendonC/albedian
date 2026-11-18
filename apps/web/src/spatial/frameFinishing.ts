@@ -15,10 +15,13 @@ type Switches = Pick<CosmosPostOptions, FrameSwitch>;
 
 /**
  * The WebGL renderer's finishing, as its composer has it: a render pass, UnrealBloomPass, the cinema optics pass and
- * OutputPass with ACES, with the canvas's own antialias off and no anti-aliasing pass. Nothing reads this to draw;
- * creditChanges.test.ts holds it to those lines.
+ * OutputPass with ACES at WEBGL_EXPOSURE, with the canvas's own antialias off and no anti-aliasing pass.
+ * SparkPortalRenderer.ts and cislunarSceneNodes.ts read WEBGL_EXPOSURE and LANDING_EXPOSURE directly, and
+ * creditChanges.test.ts holds the composer and curves to those lines.
  */
 export const WEBGL_FRAME: Readonly<Switches> = { aa: 'none', bloom: true, cinemaOptics: true };
+export const WEBGL_EXPOSURE = 1.12;
+export const LANDING_EXPOSURE = 3.0;
 
 /** The words for each switch's step when it is on [proposed], null when it is off. */
 export const FRAME_STEP_WORDS: { readonly [K in FrameSwitch]: (value: Switches[K]) => string | null } = {
@@ -33,12 +36,15 @@ const ORDER: readonly (FrameSwitch | 'toneMap')[] = ['bloom', 'cinemaOptics', 't
 
 /**
  * Each step either renderer applies to the whole frame, in the chains' order, said once: plainly when both apply it,
- * with its renderer when one does.
+ * with its renderer when one does, and with each renderer's tone curve and exposure on the tone map.
  */
 export function frameFinishingWords(
   webgpu: Readonly<Switches> = DEFAULT_COSMOS_POST,
-  webgl: Readonly<Switches> = WEBGL_FRAME
+  webgl: Readonly<Switches> = WEBGL_FRAME,
+  webgpuExposure = LANDING_EXPOSURE,
+  webglExposure = WEBGL_EXPOSURE
 ): string[] {
+  const toneMap = `tone-mapped (ACES at exposure ${webglExposure} in the WebGL renderer, AgX at exposure ${webgpuExposure} in the WebGPU renderer)`;
   const words = <K extends FrameSwitch>(key: K): string | null => {
     const word = FRAME_STEP_WORDS[key] as (value: Switches[K]) => string | null;
     const gpu = word(webgpu[key]);
@@ -47,7 +53,21 @@ export function frameFinishingWords(
     if (gpu) return `${gpu} in the WebGPU renderer only`;
     return gl ? `${gl} in the WebGL renderer only` : null;
   };
-  return ORDER.map((key) => (key === 'toneMap' ? 'tone-mapped' : words(key))).filter((w): w is string => w !== null);
+  return ORDER.map((key) => (key === 'toneMap' ? toneMap : words(key))).filter((w): w is string => w !== null);
+}
+
+/**
+ * Each step the WebGL renderer's composer applies to a WebGL-only scene's finished frame, in the chain's order, with
+ * its ACES tone curve and exposure.
+ */
+export function webglFrameFinishingWords(
+  webgl: Readonly<Switches> = WEBGL_FRAME,
+  exposure = WEBGL_EXPOSURE
+): string[] {
+  const toneMap = `tone-mapped (ACES at exposure ${exposure})`;
+  const word = <K extends FrameSwitch>(key: K): string | null =>
+    (FRAME_STEP_WORDS[key] as (value: Switches[K]) => string | null)(webgl[key]);
+  return ORDER.map((key) => (key === 'toneMap' ? toneMap : word(key))).filter((w): w is string => w !== null);
 }
 
 /** A list said as English says it: commas, and "and" before the last. */

@@ -22,8 +22,9 @@ import {
 import { CREDITS_WAIT_MS, CreditsPage } from '../CreditsPage.js';
 
 // The Credits page as the owner approved it (credit-approved-2026-11-12): rows by what a person sees, the approved four
-// first; every word from a provenance record the app serves or from the audio engine's credits; each row carrying what
-// its licence asks (its page linked, an acknowledgement word for word, a change stated where one is owed).
+// first; credits, licences, acknowledgements, citations and script-change lines from the served provenance records (and
+// Sound from the audio engine's credits), notice links for served notices, and the app's own shader and backdrop change
+// lines where a licence asks.
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -100,9 +101,16 @@ describe('creditRows: rows by what a person sees, every source credited from the
     }
   });
 
-  it('shows no line twice in a credit: a licence once by name, an acknowledgement that is its credit not again', () => {
+  it('shows no line twice in a credit: a licence once by name, each notice distinct, an acknowledgement that is its credit not again', () => {
     for (const block of rows.flatMap((r) => r.blocks)) {
-      const lines = [...block.credits, ...block.licences.map((l) => l.name), ...block.acknowledgements, ...block.citations, ...block.changes];
+      const lines = [
+        ...block.credits,
+        ...block.licences.map((l) => l.name),
+        ...block.notices.map((n) => n.name),
+        ...block.acknowledgements,
+        ...block.citations,
+        ...block.changes,
+      ];
       expect(lines.length, block.key).toBe(new Set(lines).size);
     }
     // The eclipses' two sources share a credit, a licence by name and an acknowledgement that is the credit itself
@@ -112,9 +120,9 @@ describe('creditRows: rows by what a person sees, every source credited from the
     ]);
   });
 
-  it('lists each licence once in a credit, however many of its sources share it', () => {
+  it('lists each licence once by name in a credit, however many of its sources share it', () => {
     for (const block of rows.flatMap((r) => r.blocks)) {
-      expect(block.licences.length, block.key).toBe(new Set(block.licences.map((l) => l.href)).size);
+      expect(block.licences.length, block.key).toBe(new Set(block.licences.map((l) => l.name)).size);
     }
     // The Gaia credit's sources all share one licence, so it is listed once
     expect(rowNamed('Star catalogs')?.blocks.find((b) => b.credits[0] === 'ESA/Gaia/DPAC')?.licences).toHaveLength(1);
@@ -464,5 +472,123 @@ describe('CreditsPage: the approved layout, and every failure named', () => {
       if (colon > 0) found[raw.slice(0, colon).trim()] = raw.slice(colon + 1).trim().replace(/\s+/g, ' ');
     }
     for (const [prop, value] of Object.entries(expected)) expect(found[prop], `${selector} ${prop}`).toBe(value);
+  });
+
+  it('documents accurately where row labels, notice links and shader/backdrop change lines come from', () => {
+    const pageSource = fs.readFileSync(path.resolve(here, '../CreditsPage.tsx'), 'utf8');
+    expect(pageSource).not.toContain('Every word in a row comes from a provenance record');
+    expect(pageSource).toContain("the page's row labels");
+    expect(pageSource).toContain('notice links for served notice files');
+    expect(pageSource).toContain('shader and backdrop change lines');
+  });
+
+  it('keys licences by name so distinct licence names sharing one URL render without duplicate React keys, and disambiguates multiple notices on one credit', async () => {
+    const base = loaded.find((r) => r.url === '/notices/phosphor/PROVENANCE.json')!;
+    const sharedUrl = 'https://example.org/shared-terms';
+    const unicodeRec = loaded.find((r) => r.url === '/notices/unicode/PROVENANCE.json')!;
+    const recordSameRow = structuredClone(base.record);
+    recordSameRow.sources = [
+      {
+        ...base.record.sources[0]!,
+        id: 'unicode-ucd-15.0.0',
+        credit: 'Unicode Shared',
+        license: {
+          ...base.record.sources[0]!.license,
+          name: 'Terms A',
+          url: sharedUrl,
+          conditions: 'served with the app at /notices/unicode/LICENSE and served with the app at /notices/unicode/NOTICE.',
+        },
+      },
+      {
+        ...base.record.sources[0]!,
+        id: 'unicode-ucd-15.1.0',
+        credit: 'Unicode Shared',
+        license: {
+          ...base.record.sources[0]!.license,
+          name: 'Terms B',
+          url: sharedUrl,
+        },
+      },
+    ];
+    recordSameRow.files = [
+      { ...unicodeRec.record.files[0]!, path: 'LICENSE', sources: ['unicode-ucd-15.0.0'] },
+      { ...unicodeRec.record.files[0]!, path: 'NOTICE', sources: ['unicode-ucd-15.0.0'] },
+    ];
+    const built = creditRows([{ url: '/notices/unicode/PROVENANCE.json', record: recordSameRow }], []);
+    const block = built[0]!.blocks[0]!;
+    expect(block.licences).toEqual([
+      { name: 'Terms A', href: sharedUrl },
+      { name: 'Terms B', href: sharedUrl },
+    ]);
+    expect(block.notices).toEqual([
+      { name: 'Notice (LICENSE)', href: '/notices/unicode/LICENSE' },
+      { name: 'Notice (NOTICE)', href: '/notices/unicode/NOTICE' },
+    ]);
+
+    // Two notices with the same filename in two folders disambiguate by full path
+    const recordFolderB = structuredClone(base.record);
+    recordFolderB.sources = [
+      {
+        ...base.record.sources[0]!,
+        id: 'unicode-ucd-16.0.0',
+        credit: 'Unicode Shared',
+        license: {
+          ...base.record.sources[0]!.license,
+          name: 'Terms A',
+          url: sharedUrl,
+          conditions: 'served with the app at /notices/unicode-b/LICENSE.',
+        },
+      },
+    ];
+    recordFolderB.files = [{ ...unicodeRec.record.files[0]!, path: 'LICENSE', sources: ['unicode-ucd-16.0.0'] }];
+    const recordFolderA = structuredClone(recordSameRow);
+    recordFolderA.files = [{ ...unicodeRec.record.files[0]!, path: 'LICENSE', sources: ['unicode-ucd-15.0.0'] }];
+    recordFolderA.sources[0]!.license.conditions = 'served with the app at /notices/unicode/LICENSE.';
+    const sameBasename = creditRows(
+      [
+        { url: '/notices/unicode/PROVENANCE.json', record: recordFolderA },
+        { url: '/notices/unicode-b/PROVENANCE.json', record: recordFolderB },
+      ],
+      [],
+    );
+    expect(sameBasename[0]!.blocks[0]!.notices).toEqual([
+      { name: 'Notice (/notices/unicode/LICENSE)', href: '/notices/unicode/LICENSE' },
+      { name: 'Notice (/notices/unicode-b/LICENSE)', href: '/notices/unicode-b/LICENSE' },
+    ]);
+
+    // Render CreditsPage with distinct licence names sharing one URL + two notices, verifying zero React duplicate-key error
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      vi.stubGlobal(
+        'fetch',
+        serve({
+          '/notices/unicode/PROVENANCE.json': async () =>
+            new Response(
+              JSON.stringify({
+                ...unicodeRec.record,
+                sources: [
+                  ...recordSameRow.sources,
+                  ...unicodeRec.record.sources.filter((s) => s.id !== 'unicode-ucd-15.0.0' && s.id !== 'unicode-ucd-15.1.0'),
+                ],
+                files: [...unicodeRec.record.files, ...recordSameRow.files],
+              }),
+              { status: 200 },
+            ),
+        }),
+      );
+      await renderPage();
+      const errors = errorSpy.mock.calls.map((args) => args.map(String).join(' '));
+      expect(errors).toEqual([]);
+      const unicodeRow = [...container.querySelectorAll('.credits-row')].find(
+        (r) => r.querySelector('.credits-label')?.textContent === 'Unicode character data',
+      );
+      const links = [...(unicodeRow?.querySelectorAll('a.credits-licence') ?? [])].map((a) => [a.textContent, a.getAttribute('href')]);
+      expect(links).toContainEqual(['Terms A', sharedUrl]);
+      expect(links).toContainEqual(['Terms B', sharedUrl]);
+      expect(links).toContainEqual(['Notice (LICENSE)', '/notices/unicode/LICENSE']);
+      expect(links).toContainEqual(['Notice (NOTICE)', '/notices/unicode/NOTICE']);
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

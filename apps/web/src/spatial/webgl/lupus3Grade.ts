@@ -1,7 +1,10 @@
+import { saidAsList, webglFrameFinishingWords } from '../frameFinishing.js';
+
 /**
  * How the black-hole scene grades ESO's Lupus 3 photograph (eso1804a) where an escaping ray samples it, in one place:
  * deepSkyRegime.ts writes those lines of its shader from these numbers, and the Credits page words them
- * (lupus3Changes), so the words cannot outlive the treatment. No three.js here: the Credits page reads it.
+ * (lupus3Changes) together with the WebGL composer's frame finishing, so the words cannot outlive the treatment. No
+ * three.js here: the Credits page reads it.
  */
 export interface Lupus3Grade {
   /** Taken from each channel first, so the photograph's dark sky goes to black. */
@@ -36,16 +39,21 @@ export function glslFloat(value: number): string {
 }
 
 /**
- * What the black-hole scene does to the photograph, as the Credits page says it [proposed]: worded from the shader in
- * deepSkyRegime.ts, its numbers read from the grade. creditChanges.test.ts ties each phrase to the shader's line.
+ * What the black-hole scene and the WebGL composer do to the photograph, as the Credits page says it [proposed]:
+ * worded from the shader in deepSkyRegime.ts (its numbers read from the grade) and the WebGL composer's finishing
+ * (webglFrameFinishingWords). creditChanges.test.ts ties each phrase to the shader and composer lines.
  */
-export function lupus3Changes(grade: Readonly<Lupus3Grade> = LUPUS3_GRADE): string {
+export function lupus3Changes(
+  grade: Readonly<Lupus3Grade> = LUPUS3_GRADE,
+  frame: readonly string[] = webglFrameFinishingWords()
+): string {
   const most = Math.round((1 + grade.ringBoost) * 1000) / 1000;
   return (
     "In the 3D view's black-hole scene it is stretched around the whole sky, bent around the modelled black hole and " +
     `graded (black level ${grade.blackLevel}, power ${grade.power}, at ${grade.gain} of its brightness and up to ${most} ` +
-    'times that near the photon sphere), then dimmed behind the modelled disk, tone-mapped, vignetted and blended over ' +
-    'the sky.'
+    'times that near the photon sphere), then dimmed behind the modelled disk, compressed by a Reinhard curve, ' +
+    'vignetted and alpha-blended over the sky dome and catalog stars by brightness times the vignette (dimming dark ' +
+    `regions by the vignette squared and letting the sky show through); then the whole finished frame is ${saidAsList(frame)}.`
   );
 }
 
