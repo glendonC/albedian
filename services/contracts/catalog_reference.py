@@ -17,7 +17,18 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, Strict, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    Strict,
+    StringConstraints,
+    ValidationError,
+    ValidatorFunctionWrapHandler,
+    model_validator,
+)
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from services.contracts.designation import BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN
 from services.contracts.wire import wire_int
@@ -28,16 +39,28 @@ CATALOG_DISTANCE_METHODS = ("photogeometric_bailer_jones_edr3", "geometric_paral
 # The one object type whose reference may leave the magnitude out, and the provider that names only that type
 MAGNITUDE_OPTIONAL_OBJECT_TYPE = "deep_sky"
 DEEP_SKY_ONLY_PROVIDER = "OpenNGC"
+LEFT_OUT_NEVER_NULL = "No field is null: one with no value is left out."
+ONLY_DEEP_SKY_WITHOUT_MAGNITUDE = "Only a deep-sky object's reference may leave the apparent magnitude out."
+OPENNGC_IS_DEEP_SKY = "An OpenNGC reference is a deep-sky object."
 
 NonEmpty = Annotated[str, Strict(), StringConstraints(min_length=1)]
 Number = Annotated[float, Strict(), Field(allow_inf_nan=False)]
 Positive = Annotated[float, Strict(), Field(gt=0.0, allow_inf_nan=False)]
 
 
+def _refusal(title: str, issues: list[tuple[tuple[str | int, ...], str]]) -> ValidationError:
+    """The issues as one refusal at their own wire paths, keeping no input value."""
+    return ValidationError.from_exception_data(
+        title,
+        [InitErrorDetails(type=PydanticCustomError("contract_rule", message), loc=path, input=None) for path, message in issues],
+        hide_input=True,
+    )
+
+
 class CatalogDistance(BaseModel):
     """The catalog's distance interval for the object, in parsecs, and the method that gives it."""
 
-    model_config = ConfigDict(extra="ignore", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, hide_input_in_errors=True)
 
     lower: Positive
     median: Positive
@@ -49,7 +72,7 @@ class CatalogReference(BaseModel):
     """One catalog row a finding stands on, under the contract's wire names."""
 
     # Wire names only (catalogSourceId, apparentMagnitude), as the Zod schema reads them: no populate_by_name
-    model_config = ConfigDict(extra="ignore", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, hide_input_in_errors=True)
 
     id: NonEmpty
     provider: Literal[CATALOG_PROVIDERS]
@@ -82,22 +105,30 @@ class CatalogReference(BaseModel):
     bailer_jones_distance_pc: CatalogDistance | None = Field(default=None, alias="bailerJonesDistancePc")
     citation: NonEmpty
 
-    @model_validator(mode="before")
+    @model_validator(mode="wrap")
     @classmethod
-    def _no_explicit_nulls(cls, data: object) -> object:
-        # The Zod schema's optional fields take a value or no key: a null is refused, never read as absent. A key the
-        # contract does not name is dropped whatever it holds, as Zod drops it
-        if isinstance(data, dict):
-            wire_names = {field.alias or name for name, field in cls.model_fields.items()}
-            nulls = sorted(key for key, value in data.items() if value is None and key in wire_names)
-            if nulls:
-                raise ValueError(f"An optional field is left out, never null: {nulls}.")
-        return data
-
-    @model_validator(mode="after")
-    def _rules(self) -> CatalogReference:
-        if self.apparent_magnitude is None and self.object_type != MAGNITUDE_OPTIONAL_OBJECT_TYPE:
-            raise ValueError("Only a deep-sky object's reference may leave the apparent magnitude out.")
-        if self.provider == DEEP_SKY_ONLY_PROVIDER and self.object_type != MAGNITUDE_OPTIONAL_OBJECT_TYPE:
-            raise ValueError("An OpenNGC reference is a deep-sky object.")
-        return self
+    def _wire_object(cls, data: object, handler: ValidatorFunctionWrapHandler) -> CatalogReference:
+        # The Zod schema's optional fields take a value or no key: a null is refused at its own wire path, never read
+        # as absent, alongside any other field faults. A key the contract does not name is dropped whatever it holds.
+        if not isinstance(data, dict):
+            return handler(data)
+        optional = {str(field.alias) for field in cls.model_fields.values() if not field.is_required()}
+        nulls: list[tuple[tuple[str | int, ...], str]] = [
+            ((key,), LEFT_OUT_NEVER_NULL) for key, value in data.items() if value is None and key in optional
+        ]
+        if not nulls:
+            built = handler(data)
+            issues: list[tuple[tuple[str | int, ...], str]] = []
+            if built.apparent_magnitude is None and built.object_type != MAGNITUDE_OPTIONAL_OBJECT_TYPE:
+                issues.append((("apparentMagnitude",), ONLY_DEEP_SKY_WITHOUT_MAGNITUDE))
+            if built.provider == DEEP_SKY_ONLY_PROVIDER and built.object_type != MAGNITUDE_OPTIONAL_OBJECT_TYPE:
+                issues.append((("objectType",), OPENNGC_IS_DEEP_SKY))
+            if issues:
+                raise _refusal(cls.__name__, issues)
+            return built
+        try:
+            handler(data)
+        except ValidationError as exc:
+            prior = [(err["loc"], err["msg"]) for err in exc.errors()]
+            raise _refusal(cls.__name__, [*prior, *nulls]) from None
+        raise _refusal(cls.__name__, nulls)

@@ -9,12 +9,12 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 import numpy as np
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from services.contracts.astronomy import NUMBER, UTC_INSTANT, field_rule
 from services.contracts.media import MEDIA_ID_PATTERNS
-from services.contracts.wire import MAX_SAFE_INTEGER
+from services.contracts.wire import MAX_SAFE_INTEGER, wire_int
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
     CONSTELLATION_EDGES,
@@ -134,16 +134,17 @@ def _measured_in(frame: np.ndarray, asset_id: str) -> list[SourceDetection]:
 SOURCE_ASSET_ID_PATTERN = MEDIA_ID_PATTERNS["sourceAsset"]
 # The largest frame size taken: the largest whole number every reader of JSON holds exactly, 2**53 - 1
 LARGEST_SIZE_PX = MAX_SAFE_INTEGER
+SizeFromClient = Annotated[int, Field(gt=0, le=LARGEST_SIZE_PX), BeforeValidator(wire_int)]
 
 
 class SolveRequest(BaseModel):
     """Request payload for `POST /api/science/solve`."""
 
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    model_config = ConfigDict(extra="allow", populate_by_name=True, strict=True, hide_input_in_errors=True)
 
     # The image's size: taken from image_luma's own shape, and required with detections
-    width: int | None = Field(default=None, gt=0, le=LARGEST_SIZE_PX)
-    height: int | None = Field(default=None, gt=0, le=LARGEST_SIZE_PX)
+    width: SizeFromClient | None = None
+    height: SizeFromClient | None = None
     detections: list[dict[str, Any]] | None = None
     image_luma: list[list[float]] | None = None
     hint_ra_deg: HintRaFromClient | None = Field(default=None, alias="hintRaDeg")
@@ -312,6 +313,20 @@ def _measured(detection: dict[str, Any], *keys: str) -> Any:
     raise HTTPException(status_code=422, detail=f"Each detection needs a measured `{keys[-1]}`.")
 
 
+def _optional_ratio(detection: dict[str, Any]) -> dict[str, Any]:
+    """A detection's optional peak-to-total ratio, under either of its keys. Present, it must be a finite number
+    on every key sent, and when both keys are sent they must agree, so a null or a second key never hides the other."""
+    present = [detection[key] for key in ("peak_to_total_ratio", "peakToTotalRatio") if key in detection]
+    if not present:
+        return {}
+    for value in present:
+        require_contract_value(value, NUMBER, "A source detection's peak_to_total_ratio")
+    first, *rest = present
+    if rest and rest != [first]:
+        raise ContractRefusal("A source detection's peak_to_total_ratio and peakToTotalRatio disagree.")
+    return {"peak_to_total_ratio": first}
+
+
 @router.post("/api/science/sky-context")
 def post_science_sky_context(req: SkyContextRequest) -> dict[str, Any]:
     """Compute full 360-degree topocentric sky context for all 70+ navigational stars,
@@ -454,11 +469,7 @@ def post_science_solve(req: SolveRequest) -> dict[str, Any]:
                         centroid_uncertainty_px=_measured(d, "centroid_uncertainty_px", "centroidUncertaintyPx"),
                         asset_id=req.source_asset_id,
                         # Without a measured ratio only the FWHM half of the hot-pixel test applies
-                        **(
-                            {"peak_to_total_ratio": _measured(d, "peak_to_total_ratio", "peakToTotalRatio")}
-                            if d.get("peak_to_total_ratio", d.get("peakToTotalRatio")) is not None
-                            else {}
-                        ),
+                        **_optional_ratio(d),
                     )
                 )
             except ContractRefusal as refusal:

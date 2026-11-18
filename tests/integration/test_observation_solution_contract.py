@@ -221,6 +221,8 @@ SAYS = {
     "residual_reported": "Held-out stars were paired, so their residual is reported.",
     "no_residual": "No held-out star was paired, so there is no residual to report.",
     "inliers_are_pairs": "Held-out inliers are held-out pairs inside the inlier gate: there cannot be more of them than pairs.",
+    "catalog_needs_magnitude": "Only a deep-sky object's reference may leave the apparent magnitude out.",
+    "openngc_is_deep_sky": "An OpenNGC reference is a deep-sky object.",
     "passed_needs_wcs": "Held-out verification passes only with a WCS and the held-out residuals it was judged on.",
     "names_no_recording": "Only a pending solution with no findings names no recording.",
     "needs_time": "An approximate or predicted_only solution, or any solution with a predicted finding, needs observedAtUTC.",
@@ -524,6 +526,13 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
         put(["quality", "medianResidualPx"], {"$number": "NaN"}))
     bad("residual_infinite", unresolved, "an infinite residual", ["quality.p95ResidualPx"],
         put(["quality", "p95ResidualPx"], {"$number": "Infinity"}))
+    # Counts and revisions above MAX_SAFE_INTEGER (2**53 - 1), where JSON.parse rounds to IEEE-754 doubles
+    bad("revision_above_safe_integer", gate, "a revision at 2**53, past the largest safe integer", ["revision"],
+        put(["revision"], 2**53))
+    bad("quality_counts_above_safe_integer", unresolved, "quality counts at 2**53, past the largest safe integer",
+        ["quality.detectedCandidateCount", "quality.heldOutInliers", "quality.heldOutPairCount", "quality.matchedInlierCount"],
+        put(["quality", "detectedCandidateCount"], 2**53), put(["quality", "matchedInlierCount"], 2**53),
+        put(["quality", "heldOutPairCount"], 2**53), put(["quality", "heldOutInliers"], 2**53))
     # Status, recording, time and place
     bad("status_unknown", gate, "a status the contract does not name", ["status"], put(["status"], "Calibrated"))
     bad("status_missing", gate, "no status", ["status"], drop(["status"]))
@@ -599,6 +608,16 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     bad("catalog_magnitude_infinite", "calibrated", "an infinite catalog magnitude",
         [f"findings.{rigel_at}.catalogRef.apparentMagnitude"],
         put(["findings", rigel_at, "catalogRef", "apparentMagnitude"], {"$number": "Infinity"}))
+    bad("catalog_ref_openngc_star_without_magnitude", "calibrated",
+        "a star catalog reference naming OpenNGC and leaving its magnitude out: both field paths reported together",
+        [f"findings.{rigel_at}.catalogRef.apparentMagnitude", f"findings.{rigel_at}.catalogRef.objectType"],
+        put(["findings", rigel_at, "catalogRef", "provider"], "OpenNGC"),
+        drop(["findings", rigel_at, "catalogRef", "apparentMagnitude"]),
+        says=(SAYS["catalog_needs_magnitude"], SAYS["openngc_is_deep_sky"]))
+    bad("catalog_ref_optional_field_null", "calibrated",
+        "an optional catalog reference field given as null, refused at that field",
+        [f"findings.{rigel_at}.catalogRef.bayerDesignation"],
+        put(["findings", rigel_at, "catalogRef", "bayerDesignation"], None))
     for axis, name in enumerate(("x", "y", "z")):
         bad(f"position_{name}_infinite", "calibrated", f"an infinite {name} in a finding's position in space",
             [f"findings.{rigel_at}.cartesianParsecICRS.{axis}"],
@@ -1238,6 +1257,120 @@ def test_a_valid_sample_parses_and_comes_back_unchanged(name: str) -> None:
     sample = read_fixture()["valid"][name]
     parsed = contract.parse_observation_solution(sample)
     assert parsed.to_contract_dict() == sample
+
+
+def test_counts_and_revisions_are_held_to_safe_integers_so_json_never_splits_the_two_sides() -> None:
+    """Every count and revision stops at MAX_SAFE_INTEGER (2**53 - 1). Without that ceiling, raw JSON with
+    heldOutPairCount=9007199254740995 and heldOutInliers=9007199254740996 fails INLIERS_ARE_PAIRS in Python while
+    JSON.parse rounds both to 9007199254740996 in JavaScript, and revision=9007199254740993 silently mutates to
+    9007199254740992 on the JS side."""
+    safe = 2**53 - 1
+    assert contract.COUNT.le == safe and contract.POSITIVE_COUNT.le == safe
+    # Exact integer bounds in refusal sentences (never rounded scientific notation), while floats keep :g formatting
+    assert contract.COUNT.problem(safe + 1) == f"This number is above {safe}."
+    assert contract.NumberRule("safeLow", ge=-safe, integer=True).problem(-safe - 1) == f"This number is below {-safe}."
+    assert contract.NumberRule("safeExclusive", gt=safe - 1, le=safe, integer=True).problem(safe - 1) == (
+        f"This number is not above {safe - 1}."
+    )
+    assert contract.DISTORTION.problem(1.0) == "This number is above 0.25."
+    assert contract.DISTORTION.problem(-1.0) == "This number is below -0.25."
+
+    valid = read_fixture()["valid"]
+    pair_split_raw = json.dumps(
+        patched(
+            valid["unresolved_pixels_only"],
+            [
+                put(["quality", "heldOutPairCount"], 9007199254740995),
+                put(["quality", "heldOutInliers"], 9007199254740996),
+                put(["quality", "medianResidualPx"], 1.0),
+                put(["quality", "p95ResidualPx"], 2.0),
+                put(["quality", "medianResidualArcsec"], 10.0),
+            ],
+        )
+    )
+    pair_err = refusal(json.loads(pair_split_raw))
+    assert pair_err is not None
+    assert contract.issue_paths(pair_err) == ["quality.heldOutInliers", "quality.heldOutPairCount"]
+    assert contract.issue_messages(pair_err) == [f"This number is above {safe}.", f"This number is above {safe}."]
+
+    for unsafe_rev in (9007199254740992, 9007199254740993):
+        rev_raw = json.dumps(patched(valid["calibrated"], [put(["revision"], unsafe_rev)]))
+        rev_err = refusal(json.loads(rev_raw))
+        assert rev_err is not None
+        assert contract.issue_paths(rev_err) == ["revision"]
+        assert contract.issue_messages(rev_err) == [f"This number is above {safe}."]
+
+    at_ceiling = json.dumps(
+        patched(
+            valid["unresolved_pixels_only"],
+            [
+                put(["revision"], safe),
+                put(["quality", "detectedCandidateCount"], safe),
+                put(["quality", "matchedInlierCount"], safe),
+                put(["quality", "heldOutPairCount"], safe),
+                put(["quality", "heldOutInliers"], safe),
+            ],
+        )
+    )
+    parsed = contract.parse_observation_solution(json.loads(at_ceiling)).to_contract_dict()
+    assert parsed["revision"] == safe
+    for field in ("detectedCandidateCount", "matchedInlierCount", "heldOutPairCount", "heldOutInliers"):
+        assert parsed["quality"][field] == safe
+
+
+def test_a_catalog_refusal_inside_a_solution_or_finding_names_each_field_and_hides_inputs() -> None:
+    """When a finding's catalogRef fails inside parse_observation_solution or parse_celestial_finding, every issue sits
+    on its own field path without 'Value error, ' prefixes, both cross-field rules report together, and no raw input
+    value leaks in ValidationError."""
+    calibrated = read_fixture()["valid"]["calibrated"]
+    rigel_at = next(i for i, f in enumerate(calibrated["findings"]) if f["id"] == "finding-star-rigel")
+
+    both_broken = patched(
+        calibrated,
+        [
+            put(["findings", rigel_at, "catalogRef", "provider"], "OpenNGC"),
+            drop(["findings", rigel_at, "catalogRef", "apparentMagnitude"]),
+        ],
+    )
+    sol_err = refusal(both_broken)
+    assert sol_err is not None
+    assert contract.issue_paths(sol_err) == [
+        f"findings.{rigel_at}.catalogRef.apparentMagnitude",
+        f"findings.{rigel_at}.catalogRef.objectType",
+    ]
+    assert contract.issue_messages(sol_err) == [SAYS["catalog_needs_magnitude"], SAYS["openngc_is_deep_sky"]]
+
+    finding_err = refusal(both_broken["findings"][rigel_at], contract.parse_celestial_finding)
+    assert finding_err is not None
+    assert contract.issue_paths(finding_err) == ["catalogRef.apparentMagnitude", "catalogRef.objectType"]
+    assert contract.issue_messages(finding_err) == [SAYS["catalog_needs_magnitude"], SAYS["openngc_is_deep_sky"]]
+
+    null_field = patched(calibrated, [put(["findings", rigel_at, "catalogRef", "bayerDesignation"], None)])
+    null_err = refusal(null_field)
+    assert null_err is not None
+    assert contract.issue_paths(null_err) == [f"findings.{rigel_at}.catalogRef.bayerDesignation"]
+    assert contract.issue_messages(null_err) == [contract.LEFT_OUT_NEVER_NULL]
+
+    for steps, secrets in (
+        ([put(["findings", rigel_at, "catalogRef", "raDeg"], 400.0)], ("400",)),
+        (
+            [
+                put(["findings", rigel_at, "catalogRef", "citation"], ""),
+                put(["findings", rigel_at, "catalogRef", "commonName"], "secret-user-note"),
+            ],
+            ("secret-user-note",),
+        ),
+        ([put(["findings", rigel_at, "catalogRef", "commonName"], 12345)], ("12345",)),
+        ([put(["findings", rigel_at, "catalogRef", "bayerDesignation"], None)], ()),
+    ):
+        broken = patched(calibrated, steps)
+        for err in (refusal(broken), refusal(broken["findings"][rigel_at], contract.parse_celestial_finding)):
+            assert err is not None
+            serialized = json.dumps(err.errors(include_input=False), default=str)
+            for text in (str(err), repr(err), serialized):
+                assert "input_value" not in text and '"input"' not in text, text
+                for secret in secrets:
+                    assert secret not in text, (secret, text)
     assert json.loads(json.dumps(parsed.to_contract_dict(), allow_nan=False)) == sample
 
 
@@ -1616,6 +1749,8 @@ def one_fault(draw: st.DrawFn) -> tuple[str, list[Any], dict[str, Any]]:
 
 @settings(max_examples=300, deadline=None)
 @given(fault=one_fault())
+@example(fault=("calibrated", ["findings", 0, "catalogRef", "bayerDesignation"], put(["findings", 0, "catalogRef", "bayerDesignation"], None)))
+@example(fault=("calibrated_at_the_gate", ["quality", "heldOutPairCount"], put(["quality", "heldOutPairCount"], 2**53)))
 @example(fault=("calibrated_at_the_gate", ["quality", "medianResidualPx"], put(["quality", "medianResidualPx"], math.nan)))
 @example(fault=("calibrated_at_the_gate", ["wcs", "rotationDeg"], put(["wcs", "rotationDeg"], math.inf)))
 @example(fault=("calibrated_at_the_gate", ["status"], put(["status"], "Calibrated")))
@@ -1634,9 +1769,7 @@ def test_pbt_contract_2_one_field_outside_its_contract_is_refused_at_that_field(
     error = refusal(patched(BASES[base], [step]))
     assert error is not None
     paths = contract.issue_paths(error)
-    # The existing catalog reference mirror reports a null at the reference, not at its field
-    under_reference = "catalogRef" in where and step.get("value", 0) is None
-    assert dotted(where) in paths or (under_reference and dotted(where[: where.index("catalogRef") + 1]) in paths), paths
+    assert dotted(where) in paths, paths
 
 
 @st.composite
@@ -2107,6 +2240,27 @@ RECORD_BOUNDS: dict[str, tuple[Any, tuple[Any, ...], tuple[Any, ...], str]] = {
        for name in ("k1", "k2")},
     "quality_inliers_of_three_pairs": (lambda v: quality(held_out_pair_count=3, held_out_inliers=v, **RESIDUALS), (0, 3), (4,),
                                        "there cannot be more of them"),
+    **{f"quality_{name}": (
+        lambda v, n=name: quality(**{n: v}), (0, 2**53 - 1), (-1, 2**53), f"A solution's quality's {name} is outside the contract"
+    ) for name in ("detected_candidate_count", "matched_inlier_count")},
+    "quality_held_out_pair_count": (
+        lambda v: quality(held_out_pair_count=v, **(RESIDUALS if v > 0 else {})),
+        (0, 2**53 - 1),
+        (-1, 2**53),
+        "A solution's quality's held_out_pair_count is outside the contract",
+    ),
+    "quality_held_out_inliers": (
+        lambda v: quality(held_out_pair_count=2**53 - 1, held_out_inliers=v, **RESIDUALS),
+        (0, 2**53 - 1),
+        (-1, 2**53),
+        "A solution's quality's held_out_inliers is outside the contract",
+    ),
+    "solution_revision": (
+        lambda v: dataclass_solution("pending", revision=v),
+        (1, 2**53 - 1),
+        (0, 2**53),
+        "A solution's revision is outside the contract",
+    ),
     **{f"pose_{name}": (lambda v, n=name: pose(**{n: v}), (lo, hi), (math.nextafter(lo, -math.inf), math.nextafter(hi, math.inf)), f"A pose estimate's {name} lies in")
        for name, lo, hi in (("center_alt_deg", -90.0, 90.0), ("center_az_deg", 0.0, 360.0), ("roll_deg", -180.0, 180.0))},
     "pose_fov_diagonal_deg": (lambda v: pose(fov_diagonal_deg=v), (math.nextafter(0.0, math.inf), 175.0), (0.0, math.nextafter(175.0, math.inf)),
@@ -2685,7 +2839,7 @@ NAMED_IN_A_REFUSAL = {
 MINTED_ID_SENTENCE = "sourceAssetId must be a source asset's id as it is minted: src_ and 16 lowercase hex digits."
 # A size no frame has: not finite, not above 0, past the largest whole number every reader holds, or not whole
 NOT_A_FRAME_SIZE = st.one_of(
-    st.sampled_from([math.nan, math.inf, -math.inf, 0, -1, 2**53, 2**64, 10**400, 0.5, 960.25, "wide", [], {"px": 960}]),
+    st.sampled_from([math.nan, math.inf, -math.inf, 0, -0.0, -1, True, False, 2**53, 2**64, 10**400, 0.5, 960.25, "960", "wide", [], {"px": 960}]),
     st.integers(max_value=0),
     st.integers(min_value=2**53),
     st.floats(min_value=0.0, max_value=4096.0, allow_nan=False).filter(lambda size: not size.is_integer()),
@@ -2715,10 +2869,10 @@ NO_INSTANT = st.one_of(
 # and the frame's size and the recording's id, with values the request itself refuses
 REQUEST_FAULTS: dict[str, st.SearchStrategy[Any]] = {
     "observedAtUTC": NO_INSTANT,
-    "latDeg": _beyond(-90.0, 90.0),
-    "lonDeg": _beyond(-180.0, 180.0),
-    "hintRaDeg": NOT_FINITE_NUMBERS,
-    "hintDecDeg": NOT_FINITE_NUMBERS,
+    "latDeg": st.one_of(_beyond(-90.0, 90.0), NOT_A_NUMBER_IN_JSON),
+    "lonDeg": st.one_of(_beyond(-180.0, 180.0), NOT_A_NUMBER_IN_JSON),
+    "hintRaDeg": st.one_of(NOT_FINITE_NUMBERS, NOT_A_NUMBER_IN_JSON),
+    "hintDecDeg": st.one_of(NOT_FINITE_NUMBERS, NOT_A_NUMBER_IN_JSON),
     "sourceSha256": NOT_A_HASH,
     "width": NOT_A_FRAME_SIZE,
     "height": NOT_A_FRAME_SIZE,
@@ -2733,7 +2887,7 @@ DETECTION_FAULTS: dict[str, st.SearchStrategy[Any]] = {
     "snr": st.one_of(_beyond(5e-324), NOT_A_NUMBER_IN_JSON),
     "fwhmPx": st.one_of(_beyond(0.0), NOT_A_NUMBER_IN_JSON),
     "centroidUncertaintyPx": st.one_of(_beyond(5e-324), NOT_A_NUMBER_IN_JSON),
-    "peakToTotalRatio": st.one_of(NOT_FINITE_NUMBERS, NOT_A_NUMBER_IN_JSON),
+    "peakToTotalRatio": st.one_of(NOT_FINITE_NUMBERS, NOT_A_NUMBER_IN_JSON, st.just(None)),
 }
 
 
@@ -2756,6 +2910,9 @@ def request_faults(draw: st.DrawFn) -> tuple[str, list[tuple[str, Any]]]:
 @example(case=("/api/science/solve", [("detections.xPx", "12.5"), ("detections.flux", -math.inf)]))
 @example(case=("/api/science/solve-horizon", [("observedAtUTC", "2030-01-01T02:00:00"), ("sourceSha256", "0" * 64)]))
 @example(case=("/api/science/solve", [("detections.peakToTotalRatio", [1.5])]))
+@example(case=("/api/science/solve", [("detections.peakToTotalRatio", None)]))
+@example(case=("/api/science/solve", [("width", True)]))
+@example(case=("/api/science/solve-horizon", [("latDeg", "12.5")]))
 @example(case=("/api/science/solve", [("width", math.inf)]))
 @example(case=("/api/science/solve-horizon", [("height", math.nan), ("sourceAssetId", "\ud800")]))
 @example(case=("/api/science/solve", [("sourceAssetId", "src_1"), ("width", 2**53)]))
@@ -2917,7 +3074,10 @@ def test_a_bound_of_the_request_is_held_at_its_edges(field: str) -> None:
 
 
 # Values where a number goes, as JSON text
-NOT_A_SIZE = ["Infinity", "-Infinity", "NaN", "1e400", "-1e400", '"\\ud800"', '"abc"', "[]", "{}", "1" + "0" * 400, "-0.0", "false"]
+NOT_A_SIZE = [
+    "Infinity", "-Infinity", "NaN", "1e400", "-1e400", '"\\ud800"', '"abc"', '"960"', '"1"', "[]", "{}",
+    "1" + "0" * 400, "-0.0", "true", "false",
+]
 
 
 @pytest.mark.parametrize("route", sorted(SOLUTION_ROUTES))
@@ -2932,6 +3092,70 @@ def test_a_size_no_frame_has_is_refused_in_a_sentence(route: str) -> None:
             answer = _posted(client, route, _with_raw(body, [field], raw))
             assert _sentence(answer) == f"{field} must be {MUST_BE[field]}.", (field, raw)
             assert raw.strip('"') not in answer.text or len(raw) < 4, (field, raw)
+
+
+@pytest.mark.parametrize("route", sorted(SOLUTION_ROUTES))
+def test_a_solve_request_never_coerces_booleans_or_strings_into_numbers(route: str) -> None:
+    """SolveRequest runs in strict mode: booleans and numeric strings are refused on width, height, latDeg, lonDeg,
+    hintRaDeg, hintDecDeg, and image_luma pixels, while whole-number floats for sizes (960.0) and integer pixels still
+    pass, and SolveRequest.model_validate hides raw input values."""
+    client = TestClient(app, raise_server_exceptions=False)
+    body = _solve_bodies()[route]
+    for field in ("latDeg", "lonDeg", "hintRaDeg", "hintDecDeg"):
+        for wrong in (True, False, "30.5", "-110.2"):
+            assert _sentence(_sent(client, route, {**body, field: wrong})) == f"{field} must be {MUST_BE[field]}.", (
+                route, field, wrong,
+            )
+    frame_body = {k: v for k, v in body.items() if k not in ("detections", "width", "height")}
+    for bad_frame in ([[True, False], [False, True]], [["0.1", "0.2"], ["0.3", "0.4"]]):
+        assert _sentence(_sent(client, route, {**frame_body, "image_luma": bad_frame})) == (
+            f"image_luma must be {MUST_BE['image_luma']}."
+        ), (route, bad_frame)
+    # Whole-number floats for width/height (wire rules) and integer pixels in image_luma remain valid
+    assert _sent(client, route, {**frame_body, "image_luma": [[1, 2], [3, 4]], "width": 2.0, "height": 2.0}).status_code == 200
+    # Direct model validation also hides raw input values
+    with pytest.raises(ValidationError) as raised:
+        science_router.SolveRequest.model_validate({**body, "latDeg": "secret-lat-value"})
+    for text in (str(raised.value), repr(raised.value), json.dumps(raised.value.errors(include_input=False), default=str)):
+        assert "input_value" not in text and "secret-lat-value" not in text
+
+
+def test_an_optional_detection_ratio_refuses_null_and_never_masks_its_camel_case_twin() -> None:
+    """Explicit null on peak_to_total_ratio or peakToTotalRatio is refused with 422, never treated as omitted and never
+    masking a second key; when both keys are sent they must both be valid finite numbers and agree; and a measured
+    ratio above 0.68 reaches SourceDetection.is_hot_pixel_impulse."""
+    client = TestClient(app, raise_server_exceptions=False)
+    route = "/api/science/solve"
+    body = _solve_bodies()[route]
+
+    def with_ratio(extra: dict[str, Any]) -> dict[str, Any]:
+        detections = copy.deepcopy(body["detections"])
+        detections[0] = {k: v for k, v in detections[0].items() if k not in ("peak_to_total_ratio", "peakToTotalRatio")}
+        detections[0].update(extra)
+        return {**body, "detections": detections}
+
+    not_a_number = "A source detection's peak_to_total_ratio is outside the contract: this value is not a number."
+    not_finite = "A source detection's peak_to_total_ratio is outside the contract: this number is not finite."
+    disagree = "A source detection's peak_to_total_ratio and peakToTotalRatio disagree."
+    for extra, expected in (
+        ({"peakToTotalRatio": None}, not_a_number),
+        ({"peak_to_total_ratio": None}, not_a_number),
+        ({"peak_to_total_ratio": None, "peakToTotalRatio": "invalid"}, not_a_number),
+        ({"peak_to_total_ratio": None, "peakToTotalRatio": 0.95}, not_a_number),
+        ({"peak_to_total_ratio": 0.25, "peakToTotalRatio": "invalid"}, not_a_number),
+        ({"peak_to_total_ratio": 0.25, "peakToTotalRatio": None}, not_a_number),
+        ({"peak_to_total_ratio": 0.25, "peakToTotalRatio": math.inf}, not_finite),
+        ({"peak_to_total_ratio": 0.25, "peakToTotalRatio": 0.95}, disagree),
+    ):
+        assert _sentence(_sent(client, route, with_ratio(extra))) == expected, extra
+
+    assert _sent(client, route, with_ratio({"peak_to_total_ratio": 0.5, "peakToTotalRatio": 0.5})).status_code == 200
+    assert _sent(client, route, with_ratio({"peak_to_total_ratio": 0, "peakToTotalRatio": 0.0})).status_code == 200
+
+    for key in ("peakToTotalRatio", "peak_to_total_ratio"):
+        impulses = [{k: v for k, v in d.items() if k != "peakToTotalRatio"} | {key: 0.95} for d in _calibrating_field()]
+        answer = _sent(client, route, _field_request(impulses))
+        assert answer.status_code == 200 and answer.json()["status"] == "unresolved", key
 
 
 # Each free-form id the tests sent these routes before, and near misses of the minted form, as JSON text
@@ -3269,7 +3493,8 @@ def test_more_than_a_thousand_hostile_requests_are_answered_or_refused_in_a_sent
             assert not (token and token[0] not in '"c' and len(token) >= 4 and token in answer.text), name
             kind = "a sentence"
         kinds[kind] = kinds.get(kind, 0) + 1
-    assert "the solver's ten" not in kinds and kinds["a solution"] >= 600 and kinds["a sentence"] >= 800, kinds
+    # Strict SolveRequest refuses coerced booleans and numeric strings (moving 38 hostile cases from solutions to sentences)
+    assert "the solver's ten" not in kinds and kinds["a solution"] >= 550 and kinds["a sentence"] >= 1000, kinds
 
 
 # =============================================================================================

@@ -579,7 +579,7 @@ export const ObservationSolutionSchema = z
     // Absent only for a pending solution with no findings: nothing has been solved, so no recording is named
     sourceSha256: SourceSha256Schema.optional(),
     frameTimeSec: z.number().nonnegative().finite(),
-    revision: z.number().int().positive(),
+    revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     status: SolutionStatusSchema,
     // Present when the recording's capture time is known; required whenever a pose or finding is predicted from time and place
     // Zod's datetime takes year 0000, which is no year to Python's dates: the wire module's real day holds it to 1 to 9999
@@ -606,12 +606,12 @@ export const ObservationSolutionSchema = z
     // What the solver measured: required on a calibrated or approximate solution and absent on a pending
     // one, so no row of zeros ever stands in for a solve that did not happen
     quality: z.object({
-      detectedCandidateCount: z.number().int().nonnegative(),
-      matchedInlierCount: z.number().int().nonnegative(),
+      detectedCandidateCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      matchedInlierCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
       // Held-out detections paired with a catalog star under the fitted WCS (within the association radius), and
       // those of them inside the per-star inlier gate
-      heldOutPairCount: z.number().int().nonnegative(),
-      heldOutInliers: z.number().int().nonnegative(),
+      heldOutPairCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      heldOutInliers: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
       // Held-out residuals, over every held-out pair: present exactly when there is one, never a stand-in number
       medianResidualPx: z.number().nonnegative().finite().optional(),
       p95ResidualPx: z.number().nonnegative().finite().optional(),

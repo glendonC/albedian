@@ -34,15 +34,20 @@ from services.contracts.catalog_reference import (
     CATALOG_DISTANCE_METHODS,
     CATALOG_OBJECT_TYPES,
     CATALOG_PROVIDERS,
+    LEFT_OUT_NEVER_NULL,
+    ONLY_DEEP_SKY_WITHOUT_MAGNITUDE,
+    OPENNGC_IS_DEEP_SKY,
+    CatalogDistance,
     CatalogReference,
+    _refusal,
 )
+from services.contracts.designation import FLAMSTEED_NUMBER_MIN
 from services.contracts.designation_tables import (
     DESIGNATION_CONSTELLATIONS,
     DESIGNATION_INDICES,
     DESIGNATION_LETTERS,
     FLAMSTEED_NUMBER_MAX,
 )
-from services.contracts.designation import FLAMSTEED_NUMBER_MIN
 from services.science.catalog import ALL_SKY_CATALOG_STARS
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -111,21 +116,47 @@ def _distance_method(method: str) -> Callable[[dict[str, Any]], None]:
     return lambda reference: reference["bailerJonesDistancePc"].update(method=method)
 
 
-# Each rule, the valid sample it breaks, and how
-FAULTS: dict[str, tuple[str, Callable[[dict[str, Any]], None]]] = {
-    "a star without a magnitude": ("hipparcos", _drop_magnitude_as("star")),
-    "a planet without a magnitude": ("hipparcos", _drop_magnitude_as("planet")),
-    "an OpenNGC reference that is not a deep-sky object": ("openngc", _put(objectType="star")),
-    "a provider outside the list": ("hipparcos", _put(provider="NED")),
-    "an object type outside the list": ("openngc", _put(objectType="nebula")),
-    "a right ascension past 360": ("hipparcos", _put(raDeg=360.5)),
-    "a declination past -90": ("openngc_no_magnitude", _put(decDeg=-90.5)),
-    "an empty common name": ("gaia", _put(commonName="")),
-    "a negative parallax error": ("hipparcos", _put(parallaxErrorMas=-0.1)),
-    "a distance method outside the list": ("gaia", _distance_method("kinematic")),
-    "a magnitude given as null": ("openngc_no_magnitude", _put(apparentMagnitude=None)),
-    "a magnitude given as text": ("openngc", _put(apparentMagnitude="3.44")),
+# Each rule, the valid sample it breaks, how, where both sides report it, and the contract sentences it states
+FAULTS: dict[str, tuple[str, Callable[[dict[str, Any]], None], list[str], tuple[str, ...]]] = {
+    "a star without a magnitude": (
+        "hipparcos", _drop_magnitude_as("star"), ["apparentMagnitude"], (ONLY_DEEP_SKY_WITHOUT_MAGNITUDE,),
+    ),
+    "a planet without a magnitude": (
+        "hipparcos", _drop_magnitude_as("planet"), ["apparentMagnitude"], (ONLY_DEEP_SKY_WITHOUT_MAGNITUDE,),
+    ),
+    "an OpenNGC reference that is not a deep-sky object": (
+        "openngc", _put(objectType="star"), ["objectType"], (OPENNGC_IS_DEEP_SKY,),
+    ),
+    "an OpenNGC star without a magnitude": (
+        "openngc_no_magnitude",
+        _put(objectType="star"),
+        ["apparentMagnitude", "objectType"],
+        (ONLY_DEEP_SKY_WITHOUT_MAGNITUDE, OPENNGC_IS_DEEP_SKY),
+    ),
+    "a provider outside the list": ("hipparcos", _put(provider="NED"), ["provider"], ()),
+    "an object type outside the list": ("openngc", _put(objectType="nebula"), ["objectType"], ()),
+    "a right ascension past 360": ("hipparcos", _put(raDeg=360.5), ["raDeg"], ()),
+    "a declination past -90": ("openngc_no_magnitude", _put(decDeg=-90.5), ["decDeg"], ()),
+    "an empty common name": ("gaia", _put(commonName=""), ["commonName"], ()),
+    "a negative parallax error": ("hipparcos", _put(parallaxErrorMas=-0.1), ["parallaxErrorMas"], ()),
+    "a distance method outside the list": ("gaia", _distance_method("kinematic"), ["bailerJonesDistancePc.method"], ()),
+    "a magnitude given as null": ("openngc_no_magnitude", _put(apparentMagnitude=None), ["apparentMagnitude"], ()),
+    "two optional fields given as null": (
+        "hipparcos", _put(bayerDesignation=None, spectralType=None), ["bayerDesignation", "spectralType"], (),
+    ),
+    "an optional field given as null alongside an out-of-range angle": (
+        "hipparcos", _put(bayerDesignation=None, raDeg=360.5), ["bayerDesignation", "raDeg"], (),
+    ),
+    "a magnitude given as text": ("openngc", _put(apparentMagnitude="3.44"), ["apparentMagnitude"], ()),
 }
+
+
+def _issue_paths(error: ValidationError) -> list[str]:
+    return sorted({".".join(str(part) for part in issue["loc"]) for issue in error.errors(include_url=False, include_input=False)})
+
+
+def _issue_messages(error: ValidationError) -> list[str]:
+    return [issue["msg"] for issue in error.errors(include_url=False, include_input=False)]
 
 
 def designation_edges() -> list[dict[str, Any]]:
@@ -199,10 +230,10 @@ def integer_edge_table(bounds: dict[str, float]) -> dict[str, Any]:
 def build_catalog_reference_samples() -> dict[str, Any]:
     valid = valid_samples()
     invalid = []
-    for rule, (base, fault) in FAULTS.items():
+    for rule, (base, fault, paths, messages) in FAULTS.items():
         broken = copy.deepcopy(valid[base])
         fault(broken)
-        invalid.append({"rule": rule, "reference": broken})
+        invalid.append({"rule": rule, "reference": broken, "paths": paths, "messages": list(messages)})
     return {
         "providers": list(CATALOG_PROVIDERS),
         "objectTypes": list(CATALOG_OBJECT_TYPES),
@@ -234,15 +265,32 @@ def test_the_mirror_accepts_every_valid_sample_unchanged() -> None:
     for sample in valid_samples().values():
         parsed = CatalogReference.model_validate(sample)
         assert parsed.model_dump(by_alias=True, exclude_none=True) == sample
+    # Both models are frozen so no caller can mutate a validated reference or distance in place
+    meissa_parsed = CatalogReference.model_validate(valid_samples()["gaia"])
+    with pytest.raises(ValidationError):
+        meissa_parsed.common_name = "changed"  # type: ignore[misc]
+    assert meissa_parsed.bailer_jones_distance_pc is not None
+    with pytest.raises(ValidationError):
+        meissa_parsed.bailer_jones_distance_pc.median = 1.0  # type: ignore[misc]
 
 
 @pytest.mark.parametrize("rule", FAULTS)
 def test_the_mirror_refuses_every_fault(rule: str) -> None:
-    base, fault = FAULTS[rule]
+    base, fault, paths, messages = FAULTS[rule]
     broken = copy.deepcopy(valid_samples()[base])
     fault(broken)
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as raised:
         CatalogReference.model_validate(broken)
+    error = raised.value
+    assert _issue_paths(error) == paths
+    seen = _issue_messages(error)
+    assert [sentence for sentence in messages if sentence not in seen] == []
+    assert all(not message.startswith("Value error, ") for message in seen), seen
+    if rule in ("a magnitude given as null", "two optional fields given as null"):
+        assert seen == [LEFT_OUT_NEVER_NULL] * len(paths)
+    elif "null" in rule:
+        assert LEFT_OUT_NEVER_NULL in seen
+    assert "input_value" not in str(error)
 
 
 @pytest.mark.parametrize("edge", designation_edges(), ids=lambda e: f"{e['field']}={e['value']!r}")
@@ -258,8 +306,42 @@ def test_each_designation_bound_is_taken_or_refused_as_its_edge_table_row_says(e
 
 def test_a_key_the_contract_does_not_name_is_dropped_as_zod_drops_it() -> None:
     sample = valid_samples()["openngc"]
-    parsed = CatalogReference.model_validate({**sample, **UNNAMED_KEY})
-    assert parsed.model_dump(by_alias=True, exclude_none=True) == sample
+    for extra in (UNNAMED_KEY, {"emptyNote": None}):
+        parsed = CatalogReference.model_validate({**sample, **extra})
+        assert parsed.model_dump(by_alias=True, exclude_none=True) == sample
+
+
+def test_a_catalog_reference_or_distance_refusal_hides_every_input_value() -> None:
+    vega = valid_samples()["hipparcos"]
+    meissa = valid_samples()["gaia"]
+    direct = _refusal("CatalogReference", [(("raDeg",), "outside")])
+    assert "input_value" not in str(direct)
+    cases: list[tuple[Any, Any, tuple[str, ...]]] = [
+        (CatalogReference, {**vega, "raDeg": 400.0}, ("400",)),
+        (CatalogReference, {**vega, "citation": "", "commonName": "secret-user-note"}, ("secret-user-note",)),
+        (CatalogReference, {**vega, "commonName": 12345}, ("12345",)),
+        (CatalogReference, {**vega, "bayerDesignation": None}, ()),
+        (CatalogReference, {**vega, "constellation": None}, ()),
+        (CatalogReference, {**valid_samples()["openngc_no_magnitude"], "objectType": "star"}, ("star",)),
+        (CatalogReference, "secret-non-dict", ("secret-non-dict",)),
+        (CatalogDistance, {**meissa["bailerJonesDistancePc"], "lower": -5.25, "method": "secret-method"}, ("-5.25", "secret-method")),
+        (CatalogDistance, {**meissa["bailerJonesDistancePc"], "lower": "secret-lower"}, ("secret-lower",)),
+        (CatalogDistance, "secret-distance", ("secret-distance",)),
+    ]
+    for model, payload, secrets in cases:
+        with pytest.raises(ValidationError) as raised:
+            model.model_validate(payload)
+        error = raised.value
+        serialized = json.dumps(error.errors(include_input=False), default=str)
+        for text in (str(error), repr(error), serialized):
+            assert "input_value" not in text and '"input"' not in text, (model.__name__, text)
+            for secret in secrets:
+                assert secret not in text, (model.__name__, secret, text)
+    # A required field given as null fails its own type check at its field (never optional-null)
+    with pytest.raises(ValidationError) as null_constellation:
+        CatalogReference.model_validate({**vega, "constellation": None})
+    assert _issue_paths(null_constellation.value) == ["constellation"]
+    assert LEFT_OUT_NEVER_NULL not in _issue_messages(null_constellation.value)
 
 
 def test_every_pinned_star_reference_is_a_valid_reference() -> None:
@@ -281,6 +363,7 @@ def test_every_pinned_star_reference_is_a_valid_reference() -> None:
 )
 @example(object_type="deep_sky", provider="OpenNGC", with_magnitude=False)
 @example(object_type="star", provider="OpenNGC", with_magnitude=True)
+@example(object_type="star", provider="OpenNGC", with_magnitude=False)
 @example(object_type="star", provider="Hipparcos", with_magnitude=False)
 @example(object_type="deep_sky", provider="SIMBAD", with_magnitude=False)
 @example(object_type="moon", provider="JPL Horizons", with_magnitude=False)
@@ -291,30 +374,32 @@ def test_pbt_magnitude_and_openngc_belong_to_deep_sky_objects_only(
     reference.update(objectType=object_type, provider=provider)
     if not with_magnitude:
         reference.pop("apparentMagnitude")
-    allowed = (with_magnitude or object_type == "deep_sky") and (provider != "OpenNGC" or object_type == "deep_sky")
+    expected_paths = sorted(
+        (["apparentMagnitude"] if not (with_magnitude or object_type == "deep_sky") else [])
+        + (["objectType"] if provider == "OpenNGC" and object_type != "deep_sky" else [])
+    )
     try:
         CatalogReference.model_validate(reference)
-        accepted = True
-    except ValidationError:
-        accepted = False
-    assert accepted == allowed
+        paths: list[str] = []
+    except ValidationError as error:
+        paths = _issue_paths(error)
+    assert paths == expected_paths
 
 
 def test_the_solution_field_table_holds_the_flamsteed_numbers_own_edge_and_a_counts_largest_safe_integer() -> None:
-    # The table code on main gave every integer rule the largest safe integer as an accepted edge, right for a count
-    # with no upper bound and wrong for 1 to 140; with an upper bound the edge is the bound and one past it
+    # Both integer rules stop at their own ceiling: 140 for Flamsteed and 2**53 - 1 for counts
     table = json.loads((ROOT / "tests" / "fixtures" / "observation_solution_contract.json").read_text(encoding="utf-8"))
     flamsteed, count = table["rules"]["flamsteedNumber"], table["rules"]["count"]
     assert (flamsteed["ge"], flamsteed["le"], flamsteed["integer"]) == (FLAMSTEED_NUMBER_MIN, FLAMSTEED_NUMBER_MAX, True)
     assert FLAMSTEED_NUMBER_MAX in flamsteed["accept"] and 9007199254740991 not in flamsteed["accept"]
     assert FLAMSTEED_NUMBER_MAX + 1 in flamsteed["refuse"] and float(FLAMSTEED_NUMBER_MAX + 1) in flamsteed["refuse"]
-    assert 9007199254740991 in count["accept"] and "le" not in count
+    assert count["le"] == 9007199254740991
+    assert 9007199254740991 in count["accept"] and 9007199254740992 in count["refuse"]
     base = copy.deepcopy(next(iter(valid_samples().values())))
     CatalogReference.model_validate({**base, "flamsteedNumber": FLAMSTEED_NUMBER_MAX})
     for beyond in (FLAMSTEED_NUMBER_MAX + 1, float(FLAMSTEED_NUMBER_MAX + 1), 9007199254740991):
         with pytest.raises(ValidationError):
             CatalogReference.model_validate({**base, "flamsteedNumber": beyond})
-
 
 
 def _judged_alike(rule: NumberRule) -> None:
@@ -394,7 +479,7 @@ def test_pbt_an_integer_rules_edge_samples_are_what_its_own_judgment_says_for_an
 
 
 def test_the_counts_edge_samples_are_as_they_were() -> None:
-    # The counts' samples stay byte for byte (the fixture's rows on main): a lower bound alone keeps its old samples
+    # The counts' samples keep their lower-bound triples and stop at MAX_SAFE_INTEGER
     from services.contracts.astronomy import COUNT, POSITIVE_COUNT
 
     assert (COUNT.table_entry()["accept"][:3], COUNT.table_entry()["refuse"][:3]) == ([0, 2.0, 9007199254740991], [-1, 0.5, 1.5])

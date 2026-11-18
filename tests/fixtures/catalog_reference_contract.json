@@ -122,7 +122,13 @@
         "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
         "parallaxMas": 130.23,
         "parallaxErrorMas": 0.36
-      }
+      },
+      "paths": [
+        "apparentMagnitude"
+      ],
+      "messages": [
+        "Only a deep-sky object's reference may leave the apparent magnitude out."
+      ]
     },
     {
       "rule": "a planet without a magnitude",
@@ -149,7 +155,13 @@
         "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
         "parallaxMas": 130.23,
         "parallaxErrorMas": 0.36
-      }
+      },
+      "paths": [
+        "apparentMagnitude"
+      ],
+      "messages": [
+        "Only a deep-sky object's reference may leave the apparent magnitude out."
+      ]
     },
     {
       "rule": "an OpenNGC reference that is not a deep-sky object",
@@ -166,7 +178,37 @@
         "decDeg": 41.269056,
         "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
         "apparentMagnitude": 3.44
-      }
+      },
+      "paths": [
+        "objectType"
+      ],
+      "messages": [
+        "An OpenNGC reference is a deep-sky object."
+      ]
+    },
+    {
+      "rule": "an OpenNGC star without a magnitude",
+      "reference": {
+        "id": "openngc-IC0113",
+        "provider": "OpenNGC",
+        "releaseVersion": "OpenNGC v20260501",
+        "catalogSourceId": "IC0113",
+        "commonName": "IC0113",
+        "constellation": "Psc",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 21.60625,
+        "decDeg": 19.191972,
+        "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
+      },
+      "paths": [
+        "apparentMagnitude",
+        "objectType"
+      ],
+      "messages": [
+        "Only a deep-sky object's reference may leave the apparent magnitude out.",
+        "An OpenNGC reference is a deep-sky object."
+      ]
     },
     {
       "rule": "a provider outside the list",
@@ -194,7 +236,11 @@
         "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
         "parallaxMas": 130.23,
         "parallaxErrorMas": 0.36
-      }
+      },
+      "paths": [
+        "provider"
+      ],
+      "messages": []
     },
     {
       "rule": "an object type outside the list",
@@ -211,7 +257,11 @@
         "decDeg": 41.269056,
         "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
         "apparentMagnitude": 3.44
-      }
+      },
+      "paths": [
+        "objectType"
+      ],
+      "messages": []
     },
     {
       "rule": "a right ascension past 360",
@@ -239,7 +289,11 @@
         "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
         "parallaxMas": 130.23,
         "parallaxErrorMas": 0.36
-      }
+      },
+      "paths": [
+        "raDeg"
+      ],
+      "messages": []
     },
     {
       "rule": "a declination past -90",
@@ -255,7 +309,11 @@
         "raDeg": 21.60625,
         "decDeg": -90.5,
         "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0"
-      }
+      },
+      "paths": [
+        "decDeg"
+      ],
+      "messages": []
     },
     {
       "rule": "an empty common name",
@@ -282,7 +340,11 @@
         },
         "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
         "colorIndexBpRp": -0.14241743
-      }
+      },
+      "paths": [
+        "commonName"
+      ],
+      "messages": []
     },
     {
       "rule": "a negative parallax error",
@@ -310,7 +372,11 @@
         "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
         "parallaxMas": 130.23,
         "parallaxErrorMas": -0.1
-      }
+      },
+      "paths": [
+        "parallaxErrorMas"
+      ],
+      "messages": []
     },
     {
       "rule": "a distance method outside the list",
@@ -337,7 +403,11 @@
         },
         "citation": "Catalog id and color index (BP-RP): Gaia DR3, Gaia Collaboration (2023) A&A 674, A1. Distance: Bailer-Jones et al. (2021) AJ 161, 147, photogeometric.",
         "colorIndexBpRp": -0.14241743
-      }
+      },
+      "paths": [
+        "bailerJonesDistancePc.method"
+      ],
+      "messages": []
     },
     {
       "rule": "a magnitude given as null",
@@ -354,7 +424,78 @@
         "decDeg": 19.191972,
         "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
         "apparentMagnitude": null
-      }
+      },
+      "paths": [
+        "apparentMagnitude"
+      ],
+      "messages": []
+    },
+    {
+      "rule": "two optional fields given as null",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": null,
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 279.234735,
+        "decDeg": 38.783689,
+        "apparentMagnitude": 0.03,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36,
+        "spectralType": null
+      },
+      "paths": [
+        "bayerDesignation",
+        "spectralType"
+      ],
+      "messages": []
+    },
+    {
+      "rule": "an optional field given as null alongside an out-of-range angle",
+      "reference": {
+        "id": "star-vega",
+        "provider": "Hipparcos",
+        "releaseVersion": "Hipparcos 2007",
+        "catalogSourceId": "HIP 91262",
+        "commonName": "Vega",
+        "bayerDesignation": null,
+        "constellation": "Lyra",
+        "objectType": "star",
+        "coordinateEpoch": "J2000.0",
+        "raDeg": 360.5,
+        "decDeg": 38.783689,
+        "apparentMagnitude": 0.03,
+        "properMotionRaMasYr": 200.94,
+        "properMotionDecMasYr": 286.23,
+        "bailerJonesDistancePc": {
+          "lower": 7.657554177195803,
+          "median": 7.678722260615834,
+          "upper": 7.700007700007702,
+          "method": "geometric_parallax"
+        },
+        "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+        "parallaxMas": 130.23,
+        "parallaxErrorMas": 0.36
+      },
+      "paths": [
+        "bayerDesignation",
+        "raDeg"
+      ],
+      "messages": []
     },
     {
       "rule": "a magnitude given as text",
@@ -371,7 +512,11 @@
         "decDeg": 41.269056,
         "citation": "OpenNGC, Mattia Verga (github.com/mattiaverga/OpenNGC), CC BY-SA 4.0",
         "apparentMagnitude": "3.44"
-      }
+      },
+      "paths": [
+        "apparentMagnitude"
+      ],
+      "messages": []
     }
   ],
   "droppedKey": {

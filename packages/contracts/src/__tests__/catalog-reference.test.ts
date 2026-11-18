@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { CatalogReferenceSchema } from '../index.js';
 import { wireInt } from '../wire.js';
 
@@ -20,10 +21,15 @@ interface CatalogReferenceFixture {
   objectTypes: string[];
   distanceMethods: string[];
   valid: Reference[];
-  invalid: { rule: string; reference: Reference }[];
+  invalid: { rule: string; reference: Reference; paths: string[]; messages: string[] }[];
   designationEdges: { field: string; value: unknown; valid: boolean }[];
   droppedKey: { reference: Reference; parsed: Reference };
 }
+
+const issuePaths = (result: z.SafeParseReturnType<unknown, unknown>) =>
+  result.success ? [] : [...new Set(result.error.issues.map((issue) => issue.path.join('.')))].sort();
+const issueMessages = (result: z.SafeParseReturnType<unknown, unknown>) =>
+  result.success ? [] : result.error.issues.map((issue) => issue.message);
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
@@ -49,10 +55,13 @@ describe('@albedian/contracts: the catalog reference', () => {
     expect(fixture.valid.filter((r) => !('apparentMagnitude' in r)).map((r) => r.objectType)).toEqual(['deep_sky']);
   });
 
-  it('refuses every reference the Python side refuses', () => {
-    expect(fixture.invalid.length).toBeGreaterThanOrEqual(10);
-    for (const { rule, reference } of fixture.invalid) {
-      expect(CatalogReferenceSchema.safeParse(reference).success, rule).toBe(false);
+  it('refuses every reference the Python side refuses, at the same field paths and in the same words', () => {
+    expect(fixture.invalid.length).toBeGreaterThanOrEqual(15);
+    for (const { rule, reference, paths, messages } of fixture.invalid) {
+      const parsed = CatalogReferenceSchema.safeParse(reference);
+      expect(parsed.success, rule).toBe(false);
+      expect(issuePaths(parsed), rule).toEqual(paths);
+      expect(messages.filter((sentence) => !issueMessages(parsed).includes(sentence)), rule).toEqual([]);
     }
   });
 
@@ -66,10 +75,12 @@ describe('@albedian/contracts: the catalog reference', () => {
     }
   });
 
-  it('drops a key the contract does not name, as the Python side does, rather than refusing it', () => {
-    const parsed = CatalogReferenceSchema.safeParse(fixture.droppedKey.reference);
-    expect(parsed.success).toBe(true);
-    expect(parsed.data).toEqual(fixture.droppedKey.parsed);
+  it('drops a key the contract does not name, even when null, as the Python side does, rather than refusing it', () => {
+    for (const candidate of [fixture.droppedKey.reference, { ...fixture.droppedKey.reference, emptyNote: null }]) {
+      const parsed = CatalogReferenceSchema.safeParse(candidate);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data).toEqual(fixture.droppedKey.parsed);
+    }
   });
 
   it('PBT-CREF-1: a reference may leave its magnitude out, and name OpenNGC, only for a deep-sky object', () => {
@@ -83,9 +94,12 @@ describe('@albedian/contracts: the catalog reference', () => {
       fc.property(caseArb, ({ objectType, provider, withMagnitude }) => {
         const reference: Reference = { ...structuredClone(base), objectType, provider };
         if (!withMagnitude) delete reference.apparentMagnitude;
-        const allowed =
-          (withMagnitude || objectType === 'deep_sky') && (provider !== 'OpenNGC' || objectType === 'deep_sky');
-        expect(CatalogReferenceSchema.safeParse(reference).success).toBe(allowed);
+        const expectedPaths = [
+          ...(withMagnitude || objectType === 'deep_sky' ? [] : ['apparentMagnitude']),
+          ...(provider === 'OpenNGC' && objectType !== 'deep_sky' ? ['objectType'] : []),
+        ].sort();
+        const parsed = CatalogReferenceSchema.safeParse(reference);
+        expect(issuePaths(parsed)).toEqual(expectedPaths);
       }),
       {
         numRuns: 200,
@@ -93,6 +107,7 @@ describe('@albedian/contracts: the catalog reference', () => {
         examples: [
           [{ objectType: 'deep_sky', provider: 'OpenNGC', withMagnitude: false }],
           [{ objectType: 'star', provider: 'OpenNGC', withMagnitude: true }],
+          [{ objectType: 'star', provider: 'OpenNGC', withMagnitude: false }],
           [{ objectType: 'star', provider: 'Hipparcos', withMagnitude: false }],
           [{ objectType: 'deep_sky', provider: 'SIMBAD', withMagnitude: false }],
           [{ objectType: 'moon', provider: 'JPL Horizons', withMagnitude: false }],
@@ -102,8 +117,7 @@ describe('@albedian/contracts: the catalog reference', () => {
   });
 
   it('holds the Flamsteed number to its own edge in the solution field table, and a count to the largest safe integer', () => {
-    // The table code on main gave every integer rule the largest safe integer as an accepted edge, right for a count
-    // and wrong for 1 to 140; with an upper bound the edge is the bound and one past it
+    // Both integer rules stop at their own ceiling: 140 for Flamsteed and 2^53 - 1 for counts
     const table = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/observation_solution_contract.json'), 'utf8'),
     ) as { rules: Record<string, { accept: unknown[]; refuse: unknown[]; le?: number }> };
@@ -113,8 +127,9 @@ describe('@albedian/contracts: the catalog reference', () => {
     expect(flamsteed.accept).toContain(140);
     expect(flamsteed.accept).not.toContain(9007199254740991);
     expect(flamsteed.refuse).toContain(141);
+    expect(count.le).toBe(9007199254740991);
     expect(count.accept).toContain(9007199254740991);
-    expect(count.le).toBeUndefined();
+    expect(count.refuse).toContain(9007199254740992);
     const base = fixture.valid[0];
     expect(CatalogReferenceSchema.safeParse({ ...base, flamsteedNumber: 140 }).success).toBe(true);
     for (const beyond of [141, 141.0, 9007199254740991]) {

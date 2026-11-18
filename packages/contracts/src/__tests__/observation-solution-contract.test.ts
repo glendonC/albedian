@@ -384,6 +384,34 @@ describe('@albedian/contracts: the observation solution fixture both sides judge
     expect(parsed.data).toEqual(fixture.unnamedKeys.parsed);
   });
 
+  it('holds every count and revision to MAX_SAFE_INTEGER, refusing raw JSON integers above 2^53 - 1 that JSON.parse rounds', () => {
+    const unresolvedRaw = JSON.stringify(fixture.valid['unresolved_pixels_only']).replace(
+      /"heldOutPairCount":\d+,"heldOutInliers":\d+/,
+      '"heldOutPairCount":9007199254740995,"heldOutInliers":9007199254740996'
+    );
+    const pairSplit = ObservationSolutionSchema.safeParse(JSON.parse(unresolvedRaw));
+    expect(pairSplit.success).toBe(false);
+    expect(issuePaths(pairSplit)).toEqual(['quality.heldOutInliers', 'quality.heldOutPairCount']);
+
+    for (const unsafeLiteral of ['9007199254740992', '9007199254740993']) {
+      const revRaw = JSON.stringify(fixture.valid['calibrated']).replace(/"revision":\d+/, `"revision":${unsafeLiteral}`);
+      const parsedRev = ObservationSolutionSchema.safeParse(JSON.parse(revRaw));
+      expect(parsedRev.success, unsafeLiteral).toBe(false);
+      expect(issuePaths(parsedRev), unsafeLiteral).toEqual(['revision']);
+    }
+
+    const ceiling = patched(fixture.valid['unresolved_pixels_only'], [
+      put(['revision'], Number.MAX_SAFE_INTEGER),
+      put(['quality', 'detectedCandidateCount'], Number.MAX_SAFE_INTEGER),
+      put(['quality', 'matchedInlierCount'], Number.MAX_SAFE_INTEGER),
+      put(['quality', 'heldOutPairCount'], Number.MAX_SAFE_INTEGER),
+      put(['quality', 'heldOutInliers'], Number.MAX_SAFE_INTEGER),
+    ]);
+    const accepted = ObservationSolutionSchema.safeParse(JSON.parse(JSON.stringify(ceiling)));
+    expect(accepted.success).toBe(true);
+    expect(accepted.data).toEqual(ceiling);
+  });
+
   it('never reads an unknown key or a Python-named key, at any level of any record, as the Python parser never does', () => {
     // Generated from the field table, like key_cases in tests/integration/test_observation_solution_contract.py,
     // which wrote the counts this must match: every record at every level of every valid sample, the findings
@@ -675,6 +703,8 @@ describe('@albedian/contracts: properties of the observation solution contract',
         // The rare ones, every run: not a number, not finite, an unknown status, a fraction for a count, the
         // placeholder hash, a time with an offset, a flux of zero, a missing list
         examples: [
+          [{ base: 'calibrated', where: ['findings', 0, 'catalogRef', 'bayerDesignation'], step: put(['findings', 0, 'catalogRef', 'bayerDesignation'], null) }],
+          [{ base: 'calibrated_at_the_gate', where: ['quality', 'heldOutPairCount'], step: put(['quality', 'heldOutPairCount'], 2 ** 53) }],
           [{ base: 'calibrated_at_the_gate', where: ['quality', 'medianResidualPx'], step: put(['quality', 'medianResidualPx'], Number.NaN) }],
           [{ base: 'calibrated_at_the_gate', where: ['wcs', 'rotationDeg'], step: put(['wcs', 'rotationDeg'], Number.POSITIVE_INFINITY) }],
           [{ base: 'calibrated_at_the_gate', where: ['status'], step: put(['status'], 'Calibrated') }],

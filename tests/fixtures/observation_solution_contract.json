@@ -764,6 +764,7 @@
    "type": "number",
    "integer": true,
    "ge": 0.0,
+   "le": 9007199254740991,
    "accept": [
     0,
     2.0,
@@ -773,6 +774,8 @@
     -1,
     0.5,
     1.5,
+    9007199254740992,
+    9007199254740992.0,
     {
      "$number": "NaN"
     },
@@ -1234,6 +1237,7 @@
    "type": "number",
    "integer": true,
    "gt": 0.0,
+   "le": 9007199254740991,
    "accept": [
     1,
     3.0,
@@ -1243,6 +1247,8 @@
     0,
     1.5,
     2.5,
+    9007199254740992,
+    9007199254740992.0,
     {
      "$number": "NaN"
     },
@@ -3881,6 +3887,70 @@
    "messages": []
   },
   {
+   "name": "revision_above_safe_integer",
+   "base": "calibrated_at_the_gate",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "revision"
+     ],
+     "value": 9007199254740992
+    }
+   ],
+   "reason": "a revision at 2**53, past the largest safe integer",
+   "paths": [
+    "revision"
+   ],
+   "messages": []
+  },
+  {
+   "name": "quality_counts_above_safe_integer",
+   "base": "unresolved_pixels_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "detectedCandidateCount"
+     ],
+     "value": 9007199254740992
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "matchedInlierCount"
+     ],
+     "value": 9007199254740992
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutPairCount"
+     ],
+     "value": 9007199254740992
+    },
+    {
+     "op": "set",
+     "path": [
+      "quality",
+      "heldOutInliers"
+     ],
+     "value": 9007199254740992
+    }
+   ],
+   "reason": "quality counts at 2**53, past the largest safe integer",
+   "paths": [
+    "quality.detectedCandidateCount",
+    "quality.heldOutInliers",
+    "quality.heldOutPairCount",
+    "quality.matchedInlierCount"
+   ],
+   "messages": []
+  },
+  {
    "name": "status_unknown",
    "base": "calibrated_at_the_gate",
    "patch": [
@@ -4877,6 +4947,61 @@
    "reason": "an infinite catalog magnitude",
    "paths": [
     "findings.0.catalogRef.apparentMagnitude"
+   ],
+   "messages": []
+  },
+  {
+   "name": "catalog_ref_openngc_star_without_magnitude",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "catalogRef",
+      "provider"
+     ],
+     "value": "OpenNGC"
+    },
+    {
+     "op": "remove",
+     "path": [
+      "findings",
+      0,
+      "catalogRef",
+      "apparentMagnitude"
+     ]
+    }
+   ],
+   "reason": "a star catalog reference naming OpenNGC and leaving its magnitude out: both field paths reported together",
+   "paths": [
+    "findings.0.catalogRef.apparentMagnitude",
+    "findings.0.catalogRef.objectType"
+   ],
+   "messages": [
+    "Only a deep-sky object's reference may leave the apparent magnitude out.",
+    "An OpenNGC reference is a deep-sky object."
+   ]
+  },
+  {
+   "name": "catalog_ref_optional_field_null",
+   "base": "calibrated",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "findings",
+      0,
+      "catalogRef",
+      "bayerDesignation"
+     ],
+     "value": null
+    }
+   ],
+   "reason": "an optional catalog reference field given as null, refused at that field",
+   "paths": [
+    "findings.0.catalogRef.bayerDesignation"
    ],
    "messages": []
   },

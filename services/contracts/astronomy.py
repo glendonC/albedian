@@ -44,6 +44,7 @@ from services.contracts.catalog_reference import (
     CatalogReference,
 )
 from services.contracts.designation import BAYER_DESIGNATION_PATTERN, FLAMSTEED_NUMBER_MAX, FLAMSTEED_NUMBER_MIN
+from services.contracts.wire import MAX_SAFE_INTEGER
 from services.contracts.ingest import SHA256_HEX_PATTERN, ZOD_DATETIME_PATTERN
 from services.contracts.render_layer import EVIDENCE_CLASSES
 from services.contracts.wire import real_calendar_day
@@ -305,6 +306,10 @@ class _Rule:
         return core_schema.no_info_plain_validator_function(self.accepted)
 
 
+def _bound_text(bound: int | float) -> str:
+    return str(bound) if isinstance(bound, int) else f"{bound:g}"
+
+
 @dataclass(frozen=True)
 class NumberRule(_Rule):
     """A number as the contract's z.number() chain takes one from JSON: finite, inside its bounds, a whole number
@@ -331,11 +336,11 @@ class NumberRule(_Rule):
         if self.integer and not number.is_integer():
             return "This number is not a whole number."
         if self.ge is not None and not number >= self.ge:
-            return f"This number is below {self.ge:g}."
+            return f"This number is below {_bound_text(self.ge)}."
         if self.gt is not None and not number > self.gt:
-            return f"This number is not above {self.gt:g}."
+            return f"This number is not above {_bound_text(self.gt)}."
         if self.le is not None and not number <= self.le:
-            return f"This number is above {self.le:g}."
+            return f"This number is above {_bound_text(self.le)}."
         return None
 
     def accepted(self, value: Any) -> Any:
@@ -508,8 +513,8 @@ DEGREES_90 = NumberRule("degrees90", ge=-90.0, le=90.0)
 DEGREES_180 = NumberRule("degrees180", ge=-180.0, le=180.0)
 FIELD_OF_VIEW = NumberRule("fieldOfView", gt=0.0, le=175.0)
 DISTORTION = NumberRule("distortion", ge=-0.25, le=0.25)
-COUNT = NumberRule("count", ge=0.0, integer=True)
-POSITIVE_COUNT = NumberRule("positiveCount", gt=0.0, integer=True)
+COUNT = NumberRule("count", ge=0.0, le=MAX_SAFE_INTEGER, integer=True)
+POSITIVE_COUNT = NumberRule("positiveCount", gt=0.0, le=MAX_SAFE_INTEGER, integer=True)
 TEXT = TextRule("text")
 NON_EMPTY_TEXT = TextRule("nonEmptyText", min_length=1)
 SHA256 = TextRule(
