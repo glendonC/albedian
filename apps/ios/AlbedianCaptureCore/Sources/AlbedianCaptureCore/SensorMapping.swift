@@ -5,6 +5,26 @@ import Foundation
 public enum SensorMapping {
     /// One device-motion sample every 0.01 s, 100 Hz [proposed, tasks.md 7].
     public static let motionIntervalSec = 0.01
+    public static let trueNorthUnavailableErrorDomain = "CMErrorDomain"
+    public static let trueNorthUnavailableErrorCode = 104
+    public static let maxFixAgeSec: Double = 300
+    public static let maxHeadingAgeSec: Double = 60
+
+    /// When `.xTrueNorthZVertical` fails with `CMErrorTrueNorthNotAvailable` (`CMErrorDomain` code 104, verified in
+    /// `CMError.h`), falls back to `.xArbitraryZVertical` when available so `MotionRing` still receives attitude,
+    /// gravity and rotation-rate samples (`REQ-IOS-6.2`).
+    public static func fallbackFrame(
+        afterErrorDomain domain: String,
+        code: Int,
+        requested: AttitudeFrame,
+        available: Set<AttitudeFrame>
+    ) -> AttitudeFrame? {
+        guard requested == .xTrueNorthZVertical,
+              available.contains(.xArbitraryZVertical),
+              domain == trueNorthUnavailableErrorDomain,
+              code == trueNorthUnavailableErrorCode else { return nil }
+        return .xArbitraryZVertical
+    }
 
     /// The frame to start device motion in: true north when the device has it (the only frame that gives a heading),
     /// else the arbitrary frame, whose gravity and rotation rate are the same; nil when the device has neither.
@@ -114,12 +134,13 @@ public final class SensorRecorder: @unchecked Sendable {
     @MainActor
     @discardableResult
     public func start(interface: InterfaceOrientation) -> StartOutcome {
+        let available = motion.availableFrames
         let (current, started): (Int, Bool) = lock.withLock {
             if running { return (generation, false) }
             generation += 1
             running = true
             ring = MotionRing(capacity: ringCapacity)!
-            frame = SensorMapping.frameToRequest(available: motion.availableFrames)
+            frame = SensorMapping.frameToRequest(available: available)
             authorization = nil
             accuracy = nil
             headings = []
@@ -151,26 +172,61 @@ public final class SensorRecorder: @unchecked Sendable {
         place.stop()
     }
 
+    /// Switches device motion from `.xTrueNorthZVertical` to `.xArbitraryZVertical` without clearing buffered samples.
+    @MainActor
+    public func handleTrueNorthUnavailable() {
+        let available = motion.availableFrames
+        guard available.contains(.xArbitraryZVertical) else { return }
+        let current: Int? = lock.withLock {
+            guard running, frame == .xTrueNorthZVertical else { return nil }
+            frame = .xArbitraryZVertical
+            return generation
+        }
+        guard let current else { return }
+        motion.stop()
+        motion.start(frame: .xArbitraryZVertical, intervalSec: SensorMapping.motionIntervalSec) { [weak self] event in
+            self?.receive(event, generation: current)
+        }
+    }
+
+    /// Updates the measured heading axis on interface rotation without stopping or clearing `MotionRing`.
+    @MainActor
+    public func updateInterface(_ interface: InterfaceOrientation) {
+        guard lock.withLock({ running }), let headingOrientation = SensorMapping.headingOrientation(for: interface) else { return }
+        place.updateHeadingOrientation(headingOrientation)
+    }
+
     func receive(_ event: DeviceMotionEvent, generation from: Int) {
         lock.withLock {
             guard running, from == generation else { return }
+            frame = event.frame
             ring.append(SensorMapping.sample(event))
         }
     }
 
     func receive(_ event: PlaceEvent, generation from: Int) {
-        lock.withLock {
-            guard running, from == generation else { return }
+        let fallBack: Bool = lock.withLock {
+            guard running, from == generation else { return false }
             switch event {
             case .authorization(let status, let granted):
                 authorization = status
                 accuracy = granted
+                return status == .denied || status == .restricted
             case .heading(let heading):
                 headings.append(heading)
                 if headings.count > Self.keptEventCount { headings.removeFirst() }
+                return false
             case .location(let fix):
                 fixes.append(fix)
                 if fixes.count > Self.keptEventCount { fixes.removeFirst() }
+                return false
+            }
+        }
+        if fallBack {
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { self.handleTrueNorthUnavailable() }
+            } else {
+                Task { @MainActor [weak self] in self?.handleTrueNorthUnavailable() }
             }
         }
     }
@@ -190,8 +246,8 @@ public final class SensorRecorder: @unchecked Sendable {
     public func capture(photoSha256: String, photoBootClockSec: Double, photoDeviceClock: Date, device: DeviceLabels,
                         camera: CameraReading, windowStartOffsetSec: Double, windowEndOffsetSec: Double) -> SensorCapture {
         lock.withLock {
-            let heading = Self.newest(headings, notAfter: photoDeviceClock, time: \.timestamp)
-            let fix = Self.newest(fixes, notAfter: photoDeviceClock, time: \.timestamp)
+            let heading = Self.newest(headings, notAfter: photoDeviceClock, maxAgeSec: SensorMapping.maxHeadingAgeSec, time: \.timestamp)
+            let fix = Self.newest(fixes, notAfter: photoDeviceClock, maxAgeSec: SensorMapping.maxFixAgeSec, time: \.timestamp)
             return SensorCapture(
                 photoSha256: photoSha256, photoBootClockSec: photoBootClockSec, photoDeviceClock: photoDeviceClock, device: device,
                 camera: camera,
@@ -203,11 +259,14 @@ public final class SensorRecorder: @unchecked Sendable {
         }
     }
 
-    /// The report with the latest time not after `moment`; of several with that time, the last to arrive.
-    static func newest<Report>(_ reports: [Report], notAfter moment: Date, time: (Report) -> Date) -> Report? {
+    /// The report with the latest time in `[moment - maxAgeSec, moment]`; of several with that time, the last to arrive.
+    static func newest<Report>(_ reports: [Report], notAfter moment: Date, maxAgeSec: Double? = nil, time: (Report) -> Date) -> Report? {
         var best: Report?
-        for report in reports where time(report) <= moment {
-            if let current = best, time(report) < time(current) { continue }
+        for report in reports {
+            let reportTime = time(report)
+            guard reportTime <= moment else { continue }
+            if let maxAgeSec, moment.timeIntervalSince(reportTime) > maxAgeSec { continue }
+            if let current = best, reportTime < time(current) { continue }
             best = report
         }
         return best

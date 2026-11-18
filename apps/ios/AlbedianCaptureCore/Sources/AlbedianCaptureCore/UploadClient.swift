@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The laptop's address on the local network, as `pnpm field --lan` prints it (`http://<laptop address>:5173`), or
 /// the loopback address in the simulator. Only plain http to a local host is taken (REQ-IOS-4.1: the local network
@@ -19,7 +20,12 @@ public struct LaptopAddress: Equatable, Sendable, CustomStringConvertible {
               components.path.isEmpty || components.path == "/" else { return nil }
         let bracketed = given.hasPrefix("[") && given.hasSuffix("]")
         let host = bracketed ? String(given.dropFirst().dropLast()) : given
-        guard bracketed == host.contains(":"), !host.contains("%") || text.contains("%25") else { return nil }
+        let rawHost = components.percentEncodedHost ?? ""
+        let authority = text.dropFirst("http://".count).prefix { $0 != "/" }
+        let expectedPortSuffix = components.port.map { ":\($0)" } ?? ""
+        guard authority == Substring(rawHost + expectedPortSuffix),
+              rawHost.replacingOccurrences(of: "%25", with: "%") == given,
+              bracketed == host.contains(":"), !host.contains("%") || text.contains("%25") else { return nil }
         guard Self.isLocal(host), Self.zoneIsSound(host) else { return nil }
         let port = components.port ?? 80
         guard (1...65535).contains(port) else { return nil }
@@ -81,10 +87,13 @@ public struct LaptopAddress: Equatable, Sendable, CustomStringConvertible {
         let name = host.lowercased()
         if name == "localhost" { return true }
         if name.hasSuffix(".local") {
-            let labels = name.dropLast(".local".count).split(separator: ".", omittingEmptySubsequences: false)
-            return !labels.isEmpty && labels.allSatisfy { label in
-                !label.isEmpty && label.utf8.allSatisfy { (0x61...0x7A).contains($0) || (0x30...0x39).contains($0) || $0 == 0x2D }
-            }
+            // Single-label link-local mDNS name only (RFC 6762 section 3; RFC 1123 label of 1 to 63 letters, digits and interior hyphens)
+            let label = name.dropLast(".local".count)
+            let bytes = Array(label.utf8)
+            return (1...63).contains(bytes.count)
+                && bytes.first != 0x2D
+                && bytes.last != 0x2D
+                && bytes.allSatisfy { (0x61...0x7A).contains($0) || (0x30...0x39).contains($0) || $0 == 0x2D }
         }
         guard let bytes = addressBytes(name) else { return false }
         return isLocal(bytes: bytes)
@@ -180,12 +189,18 @@ public final class CaptureUploader: Sendable {
     /// How long one request may take, from connecting to the whole reply, unless told otherwise [proposed; whether the
     /// person sees it on a screen is the owner's].
     public static let defaultTimeoutSec: Double = 60
+    /// Upper bound on one request's timeout [proposed: 1 hour, preventing `DispatchTime` overflow or infinite hangs].
+    public static let maxTimeoutSec: Double = 3600
 
-    /// - Parameter timeoutSec: how long one request may take, from connecting to the whole reply.
+    public static func isValidTimeout(_ seconds: Double) -> Bool {
+        seconds > 0 && seconds <= maxTimeoutSec
+    }
+
+    /// - Parameter timeoutSec: how long one request may take, from connecting to the whole reply (`(0, maxTimeoutSec]`).
     public init(address: LaptopAddress, timeoutSec: Double = CaptureUploader.defaultTimeoutSec,
                 transport: any LaptopTransport = NetworkLaptopTransport()) {
         self.address = address
-        self.timeoutSec = timeoutSec
+        self.timeoutSec = Self.isValidTimeout(timeoutSec) ? timeoutSec : 0
         self.transport = transport
     }
 
@@ -280,6 +295,7 @@ public final class CaptureUploader: Sendable {
     /// One request on a connection of its own, and its final reply: a 2xx, or the failure that names what else came.
     private func exchange(method: String, path: String, contentType: String, body: Data, phase: UploadPhase,
                           onState: @escaping @Sendable (UploadState) -> Void) async -> Result<HTTPReply, UploadFailure> {
+        guard Self.isValidTimeout(timeoutSec) else { return .failure(.timedOut(phase: phase)) }
         guard let approved = Self.permits(method: method, path: path, to: address) else { return .failure(.notPermitted(phase: phase)) }
         let request = HTTPMessage.request(method: approved.method, path: approved.path, endpoint: approved.endpoint,
                                           contentType: contentType, body: body)
@@ -318,4 +334,40 @@ public final class CaptureUploader: Sendable {
 
     /// The laptop's own words for a refusal (FastAPI's `detail`), when it gave them as text.
     static func detail(_ body: Data) -> String? { (try? JSONText.read(body))?["detail"]?.stringValue }
+}
+
+/// Tracks one in-flight upload on the main actor so rebuilding or starting another cancels the prior task and ignores
+/// any late state callbacks from it.
+@MainActor
+@Observable
+public final class UploadCoordinator {
+    public private(set) var state: UploadState?
+    private var generation: UInt64 = 0
+    private var task: Task<Void, Never>?
+
+    public var isSending: Bool { if case .sending = state { true } else { state == .waiting } }
+
+    public init() {}
+
+    public func reset() {
+        generation &+= 1
+        task?.cancel()
+        task = nil
+        state = nil
+    }
+
+    public func start(photo: Data, contentType: PhotoContentType, record: PointingRecord?, uploader: CaptureUploader) {
+        generation &+= 1
+        task?.cancel()
+        let runGeneration = generation
+        state = .waiting
+        task = Task { @MainActor [weak self] in
+            _ = await uploader.send(photo: photo, contentType: contentType, record: record) { [weak self] next in
+                Task { @MainActor [weak self] in
+                    guard let self, self.generation == runGeneration else { return }
+                    self.state = next
+                }
+            }
+        }
+    }
 }

@@ -33,6 +33,7 @@ final class SensorRecorderTests: XCTestCase {
             self.deliver = deliver
             running = true
         }
+        func updateHeadingOrientation(_ headingOrientation: HeadingOrientation) {}
         func stop() { stops += 1; running = false }
     }
 
@@ -350,7 +351,7 @@ extension SensorRecorderTests {
         let url = repositoryRoot.appendingPathComponent("apps/ios/AlbedianCaptureCore/Sources/AlbedianCaptureCore/SensorMapping.swift")
         let lines = try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n")
         let recorder = try XCTUnwrap(lines.firstIndex { $0.hasPrefix("public final class SensorRecorder") })
-        for entry in ["public func start(", "public func stop("] {
+        for entry in ["public func start(", "public func stop(", "public func handleTrueNorthUnavailable(", "public func updateInterface("] {
             let at = try XCTUnwrap(lines[recorder...].firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix(entry) }, entry)
             var attributes: [String] = []
             var index = at - 1
@@ -360,11 +361,14 @@ extension SensorRecorderTests {
             }
             XCTAssertTrue(attributes.contains("@MainActor"), "\(entry) \(attributes)")
         }
-        // and no other way in starts a source: only start calls a source's start
+        // and no non-MainActor way in starts a source: only start (2 calls) and handleTrueNorthUnavailable (1 fallback call) call a source's start
         let starts = lines.enumerated().filter { $0.element.contains("motion.start(") || $0.element.contains("place.start(") }.map(\.offset)
         let startAt = try XCTUnwrap(lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("public func start(") })
         let stopAt = try XCTUnwrap(lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("public func stop(") })
-        XCTAssertEqual(starts.count, 2)
-        XCTAssertTrue(starts.allSatisfy { $0 > startAt && $0 < stopAt }, "\(starts)")
+        let fallbackAt = try XCTUnwrap(lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("public func handleTrueNorthUnavailable(") })
+        let updateAt = try XCTUnwrap(lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("public func updateInterface(") })
+        XCTAssertEqual(starts.count, 3)
+        XCTAssertEqual(starts.filter { $0 > startAt && $0 < stopAt }.count, 2, "\(starts)")
+        XCTAssertEqual(starts.filter { $0 > fallbackAt && $0 < updateAt }.count, 1, "\(starts)")
     }
 }

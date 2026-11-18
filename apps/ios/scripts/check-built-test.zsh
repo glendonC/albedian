@@ -107,14 +107,18 @@ read_word=(DataRead "makes an address from text" StringRead "reads an address" N
 for name in ${(k)reads}; do
   compile_swift "planted_$name" "${reads[$name]}" && expect refused "$name" "${read_word[$name]}" "$scratch/planted_$name.o"
 done
-# A listed exception: the store's read-back of a file it wrote passes in its own object, and nowhere else
+mkdir -p "$scratch/AlbedianCaptureCore.build" "$scratch/AlbedianCapture.build"
+# A listed exception: the store's read-back of a file it wrote passes in its own core object, and nowhere else
 readback='import Foundation
 public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }'
-compile_swift CaptureStore "$readback" && expect passes "the store's listed read-back" - "$scratch/CaptureStore.o"
+compile_swift AlbedianCaptureCore.build/CaptureStore "$readback" && expect passes "the store's listed read-back" - "$scratch/AlbedianCaptureCore.build/CaptureStore.o"
+compile_swift AlbedianCapture.build/CaptureStore "$readback" && expect refused "a file named CaptureStore in the app target" "reads an address" "$scratch/AlbedianCapture.build/CaptureStore.o"
 compile_swift Elsewhere "$readback" && expect refused "the same read in another object" "reads an address" "$scratch/Elsewhere.o"
-# The transport's own object may make an address from text
-compile_swift UploadClient 'import Foundation
-public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect passes "the transport making the paired address" - "$scratch/UploadClient.o"
+# The transport's own object may make an address from text, only inside AlbedianCaptureCore.build
+compile_swift AlbedianCaptureCore.build/UploadClient 'import Foundation
+public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect passes "the transport making the paired address" - "$scratch/AlbedianCaptureCore.build/UploadClient.o"
+compile_swift AlbedianCapture.build/UploadClient 'import Foundation
+public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect refused "a file named UploadClient in the app target" "makes an address from text" "$scratch/AlbedianCapture.build/UploadClient.o"
 
 # The closed lists, read from an app: a scratch .app of one executable and an Info.plist
 make_app() { # name, swift source, extra linker flags, Info.plist body (keys inside <dict>)
@@ -129,6 +133,16 @@ plain_main='import Foundation
 print(Date())'
 make_app CleanApp "$plain_main" "" "<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>" \
   && expect passes "an app on the lists" - "$scratch/CleanApp.app"
+make_app BadDataApp 'import Foundation
+_ = try? Data(contentsOf: URL(string: "https://example.com")!)' "" "" \
+  && expect refused "an app bundle reading a URL without object files" "makes an address from text" "$scratch/BadDataApp.app"
+make_app BadReadApp 'import Foundation
+_ = try? String(contentsOf: URL(fileURLWithPath: "/tmp/x"), encoding: .utf8)' "" "" \
+  && expect refused "an app bundle reading address contents without object files" "reads an address" "$scratch/BadReadApp.app"
+make_app BadConnApp 'import Network
+let c = NWConnection(host: "127.0.0.1", port: 8000, using: .tcp)
+_ = c' "" "" \
+  && expect refused "an app bundle creating NWConnection without object files" "creates a connection" "$scratch/BadConnApp.app"
 make_app LinkApp 'import LinkPresentation
 let p = LPMetadataProvider()' "" "" && expect refused "an app linking a framework off the list" "links /System/Library/Frameworks/LinkPresentation" "$scratch/LinkApp.app"
 make_app SchemeApp "$plain_main" "" "<key>CFBundleURLTypes</key><array/>" && expect refused "an address scheme in Info.plist" "CFBundleURLTypes" "$scratch/SchemeApp.app"
@@ -182,12 +196,15 @@ compile_swift planted_text 'import Foundation
 public let name = "NSURLSession"' && expect refused "a class named in text" NSURLSession "$scratch/planted_text.o"
 compile_objc planted_objc '#import <Foundation/Foundation.h>
 void f(void) { [[NSURLSession sharedSession] dataTaskWithURL:[NSURL URLWithString:@"x"]]; }' && expect refused "Objective-C" NSURLSession "$scratch/planted_objc.o"
-# The connection created outside its file, and from two files
+# The connection created outside its file, in the app target with the same basename, and from two files
 connection='import Network
 public func open() -> NWConnection { NWConnection(host: "127.0.0.1", port: 8000, using: .tcp) }'
-compile_swift LaptopConnection "$connection" && expect passes "the connection in its own file" - "$scratch/LaptopConnection.o"
-compile_swift Other "$connection" && expect refused "the connection created elsewhere" "outside LaptopConnection" "$scratch/Other.o"
-mkdir -p "$scratch/two" && cp "$scratch/LaptopConnection.o" "$scratch/two/LaptopConnection.o" && cp "$scratch/LaptopConnection.o" "$scratch/two/LaptopConnection2.o"
+compile_swift AlbedianCaptureCore.build/LaptopConnection "$connection" && expect passes "the connection in its own file" - "$scratch/AlbedianCaptureCore.build/LaptopConnection.o"
+compile_swift AlbedianCapture.build/LaptopConnection "$connection" && expect refused "a file named LaptopConnection in the app target" "outside" "$scratch/AlbedianCapture.build/LaptopConnection.o"
+compile_swift Other "$connection" && expect refused "the connection created elsewhere" "outside" "$scratch/Other.o"
+mkdir -p "$scratch/two/AlbedianCaptureCore.build" "$scratch/two/Other.build" \
+  && cp "$scratch/AlbedianCaptureCore.build/LaptopConnection.o" "$scratch/two/AlbedianCaptureCore.build/LaptopConnection.o" \
+  && cp "$scratch/AlbedianCaptureCore.build/LaptopConnection.o" "$scratch/two/Other.build/LaptopConnection2.o"
 expect refused "the connection created from two files" "2 object files" "$scratch/two"
 # Clean: what the app does use
 compile_swift clean 'import Foundation

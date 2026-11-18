@@ -21,12 +21,15 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     nothing guessed; it refuses, with a named reason, rather than round, clamp or fill in a value.
   - `PointingValidator` is a third reading of the contract (`packages/contracts/src/pointing.ts`,
     `services/contracts/pointing.py`), judged on the same fixture, `tests/fixtures/pointing_contract.json`.
-  - `JSONText` reads and writes JSON the way `JSON.parse` does (strings as UTF-16 units, numbers as the nearest
-    double), so a wire fault reads the same in all three languages.
+  - `JSONText` reads and writes JSON the way `JSON.parse` and `JSON.stringify` do (strings as UTF-16 units, numbers as
+    the nearest double formatted per ECMA-262 `Number::toString` and compared numerically), so a wire fault reads the
+    same in all three languages.
   - `CaptureUploader` sends the photo's bytes as given to `POST /api/ingest` (unchanged) and the record to
     `PUT /api/ingest/{sha256}/pointing` [proposed in the design; unit pointing-2 builds the route]. It writes each
-    request itself on a connection of its own to the paired address (`LaptopConnection.swift`); its states come from
-    what that connection reports; it takes only a local network address.
+    request itself on a connection of its own to the paired address (`LaptopConnection.swift`), prohibiting `.cellular`
+    and `.other` tunnel interfaces and keeping the connection alive in `.waiting` during iOS's Local Network permission
+    alert; its states come from what that connection reports; it takes only a canonical local network address (including
+    single-label `.local` mDNS names only).
   - `CaptureStore` keeps each photo as the bytes given, named by its SHA-256 and its type's extension, and its record
     beside it as the record's JSON bytes; a file counts as kept only once it has been read back and equals the bytes
     given, and a name holds no time, place or count. `CaptureUploader.send(photo:contentType:recordWire:)` sends a kept
@@ -39,22 +42,25 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     keeps and counts on the store's queue off the main actor.
   - `SampleCapture` holds synthetic readings (open ocean, the fixtures' synthetic moment) for tests and the screen.
   - `SensorRecorder` starts the two sensor sources, keeps their reports (device motion in a `MotionRing`, the
-    newest headings and fixes) and at a photo hands the builder a `SensorCapture`: the window's samples, and the
-    newest heading and fix not after the photo. `SensorMapping` carries each report onto the core's types as the
-    device gave it. The sources are protocols (`SensorReadings.swift`), so the tests feed synthetic reports.
+    newest headings within 60 s and fixes within 300 s of the photo on the device clock; since Core Location stamps
+    fixes and headings with `Date`, a backward wall-clock step before the shutter leaves a report after the photo and
+    records `no_fix` or `no_heading_event` rather than clamping) and at a photo hands the builder a `SensorCapture`.
+    `SensorMapping` carries each report onto the core's types as the device gave it. The sources are `@MainActor`
+    protocols (`SensorReadings.swift`), so the tests feed synthetic reports.
   - `ControlStyle` and `ShutterGeometry` hold the numbers of the approved iPhone controls (colours, 44 pt split main
     action and icon button geometry, 1.2 s spring and 0.15 s / 0.2 s standard curves, the website logo's proportions,
     and all four evidence classes' words, colours and tints), tested in `ControlStyleTests` and `ShutterGeometryTests`.
 - `AlbedianCapture/`: the app: two plain screens in the system's default style (the pipeline run by hand with sample
-  values, and `CaptureCheckScreen`), plus in `DEBUG` builds `ControlsGallery` showing the approved controls together.
-  `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`, `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds
-  `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`), `Assets.xcassets/` holds the four Phosphor 2.1.1
-  regular icons (`arrow-right`, `x`, `paper-plane-tilt`, `arrow-counter-clockwise`), and `Notices/` bundles
-  `Phosphor-LICENSE.txt`. `Sensors/`: `CoreMotionSource` (`CMMotionManager`, 100 Hz, true north when the device
-  has it), `CoreLocationSource` (`CLLocationManager`, when in use only, best accuracy) and `CameraSession` (the back
-  wide-angle camera, HEIC else JPEG, the bytes of `fileDataRepresentation()` as they are, content-aware distortion
-  correction off). All three run only on an iPhone: the simulator has no motion sensors and no camera, and the check
-  screen says so.
+  values, cancelling any in-flight upload when rebuilt, and `CaptureCheckScreen`), plus in `DEBUG` builds
+  `ControlsGallery` showing the approved controls together. `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,
+  `Logo`, `CaptureButton` and `Style`. `Fonts/` embeds `Geist-Regular.ttf` and `Geist-SemiBold.ttf` (with `OFL.txt`),
+  `Assets.xcassets/` holds the four Phosphor 2.1.1 regular icons (`arrow-right`, `x`, `paper-plane-tilt`,
+  `arrow-counter-clockwise`), and `Notices/` bundles `Phosphor-LICENSE.txt`. `Sensors/`: `@MainActor` `CoreMotionSource`
+  (`CMMotionManager`, 100 Hz, true north when available and falling back to `.xArbitraryZVertical` on
+  `CMErrorTrueNorthNotAvailable` when Location Services are off or denied), `@MainActor` `CoreLocationSource`
+  (`CLLocationManager`, when in use only, best accuracy) and `CameraSession` (the back wide-angle camera, HEIC else JPEG,
+  the bytes of `fileDataRepresentation()` as they are, content-aware distortion correction off). All three run only on an
+  iPhone: the simulator has no motion sensors and no camera, and the check screen says so.
 - `notices/`: `geist/` (`OFL.txt`, `PROVENANCE.json`) and `phosphor/` (`LICENSE`, `PROVENANCE.json`, and the four
   icon `.svg` files byte for byte from `@phosphor-icons/core` 2.1.1), verified in `ApprovedAssetsTests`.
 - `AlbedianCapture.xcodeproj`: the iPhone app target, using the package.
@@ -142,8 +148,9 @@ Two checks keep the one connection from drifting, each with its stated limit.
   core's sources with comments and literals taken out by reading the syntax; a file of a kind it cannot read passes
   only when `PrivacyScanTests.assetFiles` lists both its path under a built folder and its SHA-256, and anything there
   that is neither a regular file nor a folder (a link) is a finding.
-  Its first rule is a list of the forms that make an address, each refused outside the transport's own files
-  (`LaptopConnection.swift`, `UploadClient.swift`): `URL(...)` with any first label but the two that take a file's path,
+  Its first rule is a list of the forms that make an address, each refused outside the transport's own core paths
+  (`AlbedianCaptureCore/Sources/AlbedianCaptureCore/LaptopConnection.swift` and `UploadClient.swift`, never by basename
+  alone): `URL(...)` with any first label but the two that take a file's path,
   URL components and the Objective-C URL, the initialisers that read an address (`.init(string:)` and the like), the
   `#URL` macro, a decodable type beside an address, and a literal that holds a scheme. Named calls are a second list
   (with the standard types' readers of an address, allowed only where the scan's list of exceptions gives the file,
@@ -153,8 +160,9 @@ Two checks keep the one connection from drifting, each with its stated limit.
   outside these files.
 - The check of what was built reads the compiled app and core: the system symbols and classes they import, demangled,
   and their strings. It refuses each named family, a run-time lookup function, an address made from text or an
-  address's contents read in any object but the transport's (or a listed exception), and the connection's creating
-  call in any object but `LaptopConnection`'s. From the app itself it reads four closed lists, each allowing what is
+  address's contents read in any object but the core transport's (`AlbedianCaptureCore.build/{LaptopConnection,UploadClient}.o`,
+  or a listed exception, and refused in any linked `.app` when no single-file objects were given to account for them),
+  and the connection's creating call in any object but `AlbedianCaptureCore.build/LaptopConnection.o`. From the app itself it reads four closed lists, each allowing what is
   listed and refusing the rest: the system frameworks and libraries its executables link (those the companion's design
   names), the libraries it embeds and links by `@rpath/` or `@executable_path/` (none today: the core is linked into the
   executable), the entitlements it carries (the app's identifier, its team and `get-task-allow`: no iCloud container,

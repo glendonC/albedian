@@ -36,14 +36,16 @@ families_demangled='(^|[^A-Za-z0-9_])(NSURLSession|NSURLSessionConfiguration|NSU
 families_c='^_(socket|connect|sendto|sendmsg|getaddrinfo|gethostbyname|gethostbyname2|res_query|dlsym|dlopen|NSClassFromString|NSSelectorFromString|objc_getClass|objc_lookUpClass|objc_getRequiredClass|CFHTTP.*|CFStream.*|CFReadStream.*|CFWriteStream.*|CFSocket.*|CFNetService.*|CFHost.*|nw_connection.*|nw_listener.*|nw_browser.*|DNSService.*|SCNetworkReachability.*|objc_msgSend\$openURL.*|objc_msgSend\$getStreamsToHost.*)$'
 families_strings='(^|[^A-Za-z0-9_])(NSURLSession|NSURLConnection|NSURLRequest|NSURLDownload|NSInputStream|NSOutputStream|NSNetService|WKWebView|SFSafariViewController|ASWebAuthenticationSession|UIActivityViewController|MFMailComposeViewController|MFMessageComposeViewController|UIPasteboard|MCSession|CKContainer|CLGeocoder|getStreamsToHost|openURL:options:completionHandler:|CFStreamCreatePairWithSocketToHost|nw_connection_create|dataWithContentsOfURL|initWithContentsOfURL|stringWithContentsOfURL|NSXMLParser|LPMetadataProvider|PHPhotoLibrary)([^A-Za-z0-9_]|$)'
 creating='(^|[^A-Za-z0-9_])NWConnection\.(__allocating_init|init)\('
-client_object='LaptopConnection'
+client_object='AlbedianCaptureCore.build/LaptopConnection.o'
 # Rule 1 in the built code: an address made from text, and the standard types' readers of an address, only in the
-# transport's objects (or where `exceptions` lists the object and the call, with its reason in the README)
+# core transport's objects (by target folder, never by basename alone; or where `exceptions` lists the object and the
+# call, with its reason in the README), and refused in any linked .app when no single-file objects were given to prove
+# which object imported them.
 address_making='(^|[^A-Za-z0-9_])(URL\.init\(string:|URL\.init\(dataRepresentation:|URL\.init\(resolvingBookmarkData:|URLComponents|NSURL[^A-Za-z]|objc class NSURL$)'
 address_reading='(^|[^A-Za-z0-9_])(Data\.init\(contentsOf:|String\.init\(contentsOf:|NSData|NSString\.init\(contentsOf)'
-transport_objects=(LaptopConnection.o UploadClient.o)
+transport_objects=(AlbedianCaptureCore.build/LaptopConnection.o AlbedianCaptureCore.build/UploadClient.o)
 # CaptureStore reads back each file it has just written (P3): a file's address in the app's own folder
-exceptions=(CaptureStore.o:Data.init)
+exceptions=(AlbedianCaptureCore.build/CaptureStore.o:Data.init)
 # The four closed lists, read from the .app
 allowed_links=(
   /System/Library/Frameworks/Foundation.framework/Foundation /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
@@ -98,6 +100,14 @@ for f in $files; do file -b "$f" | grep -q 'Mach-O' && macho+=("$f"); done
 # One source file's object: an object file that is not a module's combined object (Xcode puts those under Binary/
 # and in Build/Products); the app, a dylib and a combined object hold every file
 single_object() { [[ $1 == *.o && $1 != */Binary/* && $1 != */Build/Products/* ]] }
+object_id() {
+  if [[ $1 == */*.build/* ]]; then
+    local prefix=${1%.build/*}
+    print -r -- "${prefix:t}.build/${1:t}"
+  else
+    print -r -- "${1:t}"
+  fi
+}
 findings=()
 creators=()
 all_symbols=()
@@ -128,17 +138,23 @@ for f in $macho; do
     [[ $s =~ $families_c ]] && findings+=("${f:t}: imports $s")
   done
   for s in ${(f)"$(print -l -- $demangled | grep -E "$families_demangled")"}; do findings+=("${f:t}: refers to $s"); done
-  # Only a single file's object counts for where the connection is created, and for rule 1
-  if single_object "$f" && (( ${transport_objects[(Ie)${f:t}]} == 0 )); then
-    for s in ${(f)"$(print -l -- $demangled | grep -E "$address_making")"}; do findings+=("${f:t}: makes an address from text: $s"); done
-    for s in ${(f)"$(print -l -- $demangled | grep -E "$address_reading")"}; do
-      call=${s%%\(*}
-      (( ${exceptions[(Ie)${f:t}:$call]} )) || findings+=("${f:t}: reads an address's contents: $s")
-    done
-  fi
+  # Rule 1 and connection creation: checked per target-scoped object file, and also on any linked binary (.app / .dylib)
+  # when no single-file objects were passed to account for the import.
   if single_object "$f"; then
-    print -l -- $demangled | grep -Eq "$creating" && creators+=("${f:t}")
-    for s in $raw; do [[ $s == _nw_connection_create* ]] && creators+=("${f:t}"); done
+    oid=$(object_id "$f")
+    if (( ${transport_objects[(Ie)$oid]} == 0 )); then
+      for s in ${(f)"$(print -l -- $demangled | grep -E "$address_making")"}; do findings+=("$oid: makes an address from text: $s"); done
+      for s in ${(f)"$(print -l -- $demangled | grep -E "$address_reading")"}; do
+        call=${s%%\(*}
+        (( ${exceptions[(Ie)$oid:$call]} )) || findings+=("$oid: reads an address's contents: $s")
+      done
+    fi
+    print -l -- $demangled | grep -Eq "$creating" && creators+=("$oid")
+    for s in $raw; do [[ $s == _nw_connection_create* ]] && creators+=("$oid"); done
+  elif (( objects_read == 0 )); then
+    for s in ${(f)"$(print -l -- $demangled | grep -E "$address_making")"}; do findings+=("${f:t}: makes an address from text (give object files too): $s"); done
+    for s in ${(f)"$(print -l -- $demangled | grep -E "$address_reading")"}; do findings+=("${f:t}: reads an address's contents (give object files too): $s"); done
+    if print -l -- $demangled | grep -Eq "$creating"; then findings+=("${f:t}: creates a connection with no object files to show where"); fi
   fi
   for word in ${(f)"$(strings -a "$f" 2>/dev/null | grep -Eo "$families_strings" | tr -cd 'A-Za-z0-9_:\n' | sort -u)"}; do
     findings+=("${f:t}: holds the text $word")
@@ -146,7 +162,7 @@ for f in $macho; do
 done
 creators=(${(u)creators})
 for c in $creators; do
-  [[ $c == ${client_object}* ]] || findings+=("$c: creates a connection outside $client_object")
+  [[ $c == "$client_object" ]] || findings+=("$c: creates a connection outside $client_object")
 done
 objects_creating=(${(M)creators:#*.o})
 (( ${#objects_creating} > 1 )) && findings+=("the connection is created from ${#objects_creating} object files: ${objects_creating[*]}")

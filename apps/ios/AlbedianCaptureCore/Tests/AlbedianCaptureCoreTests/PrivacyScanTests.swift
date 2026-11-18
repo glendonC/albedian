@@ -63,9 +63,12 @@ final class PrivacyScanTests: XCTestCase {
     /// each allowed only where `exceptions` lists it.
     static let addressReads = ["Data(contentsOf:", "Data.init(contentsOf:", "String(contentsOf:", "String.init(contentsOf:"]
 
-    /// The transport's own files: the only ones where the first rule lets an address that is not a file's be made (the
-    /// paired laptop's, from the text a person types, and the request's Host line).
-    static let transportFiles: Set<String> = ["LaptopConnection.swift", "UploadClient.swift"]
+    /// The transport's own files, by path under `apps/ios`: the only ones where the first rule lets an address that is
+    /// not a file's be made (a file sharing the basename elsewhere, such as `AlbedianCapture/UploadClient.swift`, is refused).
+    static let transportPaths: Set<String> = [
+        "AlbedianCaptureCore/Sources/AlbedianCaptureCore/LaptopConnection.swift",
+        "AlbedianCaptureCore/Sources/AlbedianCaptureCore/UploadClient.swift",
+    ]
 
     /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
     static let exceptions: [Exception] = [
@@ -128,8 +131,8 @@ final class PrivacyScanTests: XCTestCase {
     static let sendingPrefixes = ["CFHTTP", "CFStream", "CFReadStream", "CFWriteStream", "CFSocket", "CFNetService", "CFHost", "nw_",
                                   "DNSService", "SCNetworkReachability", "NSURLSession", "URLSession"]
 
-    /// The one connection type, and the calls that open, write and read it: each only in LaptopConnection.swift.
-    static let clientFile = "LaptopConnection.swift"
+    /// The one connection type, and the calls that open, write and read it: each only at `clientPath`.
+    static let clientPath = "AlbedianCaptureCore/Sources/AlbedianCaptureCore/LaptopConnection.swift"
     static let connectionType = "NWConnection"
     static let connectionCalls = ["NWConnection(", ".send(content:", ".receive(minimumIncompleteLength:"]
 
@@ -162,12 +165,18 @@ final class PrivacyScanTests: XCTestCase {
     static func scan(_ roots: [URL], exceptions: [Exception] = exceptions, assets: [Asset] = assetFiles) throws -> (findings: [Finding], inClient: [String: Int]) {
         var findings: [Finding] = []
         var inClient: [String: Int] = [:]
+        let iosPrefix = repositoryRoot.appendingPathComponent("apps/ios").resolvingSymlinksInPath().path + "/"
         for root in roots {
+            let rootPrefix = root.resolvingSymlinksInPath().path + "/"
             guard let walker = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey]) else {
                 findings.append(Finding(file: root.lastPathComponent, line: 0, what: "a folder the scan cannot open")); continue
             }
             for case let url as URL in walker {
                 let name = url.lastPathComponent
+                let resolved = url.resolvingSymlinksInPath().path
+                let relPath = resolved.hasPrefix(iosPrefix)
+                    ? String(resolved.dropFirst(iosPrefix.count))
+                    : (resolved.hasPrefix(rootPrefix) ? String(resolved.dropFirst(rootPrefix.count)) : name)
                 // A folder is walked into; anything else that is not a regular file (a link, say) is not read through
                 let kind = try? url.resourceValues(forKeys: [.isRegularFileKey, .isDirectoryKey])
                 if kind?.isDirectory == true { continue }
@@ -197,14 +206,15 @@ final class PrivacyScanTests: XCTestCase {
                 let exempted: (Int) -> Bool = { line in
                     exempt(name, line, line >= 1 && line <= sourceLines.count ? sourceLines[line - 1] : "", in: exceptions)
                 }
-                findings += addressMaking(tokens, file: name, exempted: exempted)
+                let isTransport = transportPaths.contains(relPath)
+                findings += addressMaking(tokens, file: name, isTransport: isTransport, exempted: exempted)
                 if let literals = try? SourceReader.split(text, language).literals {
-                    findings += schemes(in: literals, file: name, exempted: exempted)
+                    findings += schemes(in: literals, file: name, isTransport: isTransport, exempted: exempted)
                 }
                 for pattern in addressReads {
                     for line in lines(of: pattern, in: tokens) where !exempted(line) { findings.append(Finding(file: name, line: line, what: pattern)) }
                 }
-                if name == clientFile {
+                if relPath == clientPath {
                     for call in connectionCalls { inClient[call, default: 0] += lines(of: call, in: tokens).count }
                     for line in lines(of: "NWConnection.init", in: tokens) { findings.append(Finding(file: name, line: line, what: "NWConnection.init")) }
                 } else {
@@ -227,8 +237,8 @@ final class PrivacyScanTests: XCTestCase {
     /// The first rule's forms in code, each refused outside the transport's files: a URL made other than from a path,
     /// URL components, the Objective-C URL, `.init(...)` with a label from `reads` below, the `#URL` macro, and a
     /// decodable type in a file that names an address. A form not on this list is not seen.
-    static func addressMaking(_ tokens: [SourceReader.Token], file: String, exempted: (Int) -> Bool) -> [Finding] {
-        guard !transportFiles.contains(file) else { return [] }
+    static func addressMaking(_ tokens: [SourceReader.Token], file: String, isTransport: Bool = false, exempted: (Int) -> Bool) -> [Finding] {
+        guard !isTransport else { return [] }
         var found: [Finding] = []
         func text(_ k: Int) -> String? { k < tokens.count ? tokens[k].text : nil }
         for (index, token) in tokens.enumerated() {
@@ -262,8 +272,8 @@ final class PrivacyScanTests: XCTestCase {
 
     /// A literal that holds a scheme (`name://`, or one of the address schemes that need no slashes), outside the
     /// transport's files. Escapes are read as the characters they stand for.
-    static func schemes(in literals: String, file: String, exempted: (Int) -> Bool) -> [Finding] {
-        guard !transportFiles.contains(file) else { return [] }
+    static func schemes(in literals: String, file: String, isTransport: Bool = false, exempted: (Int) -> Bool) -> [Finding] {
+        guard !isTransport else { return [] }
         let pattern = try! NSRegularExpression(pattern: "[A-Za-z][A-Za-z0-9+.-]*://|\\b(https?|ftp|wss?|mailto|tel|sms|facetime|maps|data|javascript|itms[a-z-]*):",
                                                options: [.caseInsensitive])
         var found: [Finding] = []
@@ -444,9 +454,13 @@ final class PrivacyScanTests: XCTestCase {
                                           "Regex.swift": "let r = #/a/#", "Interp.swift": "let s = \"\\(a\""])
         XCTAssertEqual(Set(unreadable.map(\.file)), ["Notes.txt", "Shader.swift", "Open.swift", "Splice.c", "Regex.swift", "Interp.swift"])
         XCTAssertTrue(unreadable.allSatisfy { $0.what.hasPrefix("unreadable") || $0.what == "a kind of file the scan cannot read" }, "\(unreadable)")
-        // The connection's calls outside the client file
+        // The connection's calls outside the client file, and files sharing the transport basenames outside their core paths
         let outside = try scanPlanted(["Other.swift": "func f(c: NWConnection) { c.send (content: d, completion: .idempotent) }"])
         XCTAssertEqual(outside.map(\.what), ["NWConnection", ".send(content:"])
+        let spoofedUpload = try scanPlanted(["AlbedianCapture/UploadClient.swift": "import Foundation\nlet u = URL(string: \"https://example.com\")\n"])
+        XCTAssertEqual(spoofedUpload.map(\.what), ["URL(string", "a literal that holds a scheme"])
+        let spoofedClient = try scanPlanted(["AlbedianCapture/LaptopConnection.swift": "let c = NWConnection(host: h, port: p, using: .tcp)\n"])
+        XCTAssertEqual(spoofedClient.map(\.what), ["NWConnection"])
     }
 
     func testFindsWhatIsNeitherARegularFileNorAFolder() throws {

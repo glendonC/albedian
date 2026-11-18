@@ -222,15 +222,42 @@ public struct NetworkLaptopTransport: LaptopTransport {
 
     init(peerCheck: @escaping @Sendable (NWEndpoint?, LaptopEndpoint) -> Bool) { self.peerCheck = peerCheck }
 
+    /// TCP parameters prohibiting cellular and non-LAN tunnel interfaces [proposed: Wi-Fi, Ethernet and loopback only].
+    public static func tcpParameters() -> NWParameters {
+        let parameters = NWParameters.tcp
+        parameters.preferNoProxies = true
+        parameters.prohibitedInterfaceTypes = [.cellular, .other]
+        return parameters
+    }
+
+    /// Refuses paths routed over cellular data or a non-LAN `.other` tunnel interface before a byte is sent.
+    public static func allowsLocalInterface(usesCellular: Bool, usesOther: Bool) -> Bool {
+        !usesCellular && !usesOther
+    }
+
+    /// Keeps `NWConnection` alive in `.waiting` during iOS's first-run Local Network permission alert (TN3179), Wi-Fi
+    /// bring-up or Bonjour resolution, while failing at once when the peer actively rejected TCP (`ECONNREFUSED`,
+    /// `ECONNRESET`, `ECONNABORTED`).
+    public static func shouldKeepWaiting(_ error: NWError) -> Bool {
+        if case .posix(let code) = error,
+           code == .ECONNREFUSED || code == .ECONNRESET || code == .ECONNABORTED {
+            return false
+        }
+        return true
+    }
+
     public func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double,
                          onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure> {
         guard let port = NWEndpoint.Port(rawValue: endpoint.port) else { return .failure(.notThePairedPeer) }
-        let parameters = NWParameters.tcp
-        parameters.preferNoProxies = true
+        let parameters = Self.tcpParameters()
         let connection = NWConnection(host: NWEndpoint.Host(endpoint.host), port: port, using: parameters)
-        let exchange = Exchange(connection: connection, request: request, endpoint: endpoint, peerCheck: peerCheck, onSent: onSent)
-        return await withCheckedContinuation { continuation in
-            exchange.run(timeoutSec: timeoutSec) { continuation.resume(returning: $0) }
+        let exchange = Exchange(driver: NWConnectionDriver(connection), request: request, endpoint: endpoint, peerCheck: peerCheck, onSent: onSent)
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                exchange.run(timeoutSec: timeoutSec) { continuation.resume(returning: $0) }
+            }
+        } onCancel: {
+            exchange.cancel()
         }
     }
 
@@ -252,24 +279,55 @@ public struct NetworkLaptopTransport: LaptopTransport {
     }
 }
 
-/// One exchange's state, behind one lock: it ends exactly once.
-private final class Exchange: @unchecked Sendable {
+protocol ConnectionDriver: AnyObject, Sendable {
+    var remoteEndpoint: NWEndpoint? { get }
+    var usesCellular: Bool { get }
+    var usesOther: Bool { get }
+    func setStateHandler(_ handler: (@Sendable (NWConnection.State) -> Void)?)
+    func start(queue: DispatchQueue)
+    func writeChunk(_ chunk: Data, completion: @escaping @Sendable (NWError?) -> Void)
+    func readChunk(maxBytes: Int, completion: @escaping @Sendable (Data?, Bool, NWError?) -> Void)
+    func cancel()
+}
+
+final class NWConnectionDriver: ConnectionDriver {
     private let connection: NWConnection
+    init(_ connection: NWConnection) { self.connection = connection }
+    var remoteEndpoint: NWEndpoint? { connection.currentPath?.remoteEndpoint }
+    var usesCellular: Bool { connection.currentPath?.usesInterfaceType(.cellular) ?? false }
+    var usesOther: Bool { connection.currentPath?.usesInterfaceType(.other) ?? false }
+    func setStateHandler(_ handler: (@Sendable (NWConnection.State) -> Void)?) { connection.stateUpdateHandler = handler }
+    func start(queue: DispatchQueue) { connection.start(queue: queue) }
+    func writeChunk(_ chunk: Data, completion: @escaping @Sendable (NWError?) -> Void) {
+        connection.send(content: chunk, completion: .contentProcessed(completion))
+    }
+    func readChunk(maxBytes: Int, completion: @escaping @Sendable (Data?, Bool, NWError?) -> Void) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: maxBytes) { data, _, isComplete, error in
+            completion(data, isComplete, error)
+        }
+    }
+    func cancel() { connection.cancel() }
+}
+
+/// One exchange's state, behind one lock: it ends exactly once.
+final class Exchange: @unchecked Sendable {
+    private let driver: any ConnectionDriver
     private let request: Data
     private let endpoint: LaptopEndpoint
     private let onSent: @Sendable (Int64) -> Void
     private let peerCheck: @Sendable (NWEndpoint?, LaptopEndpoint) -> Bool
     private let queue = DispatchQueue(label: "Albedian laptop connection")
     private let lock = NSLock()
+    private var activeSelf: Exchange?
     private var done: ((Result<HTTPReply, ExchangeFailure>) -> Void)?
     private var received = Data()
     private var sentAll = false
     private var finalReply: HTTPReply?
     private var started = false
 
-    init(connection: NWConnection, request: Data, endpoint: LaptopEndpoint, peerCheck: @escaping @Sendable (NWEndpoint?, LaptopEndpoint) -> Bool,
+    init(driver: any ConnectionDriver, request: Data, endpoint: LaptopEndpoint, peerCheck: @escaping @Sendable (NWEndpoint?, LaptopEndpoint) -> Bool,
          onSent: @escaping @Sendable (Int64) -> Void) {
-        self.connection = connection
+        self.driver = driver
         self.peerCheck = peerCheck
         self.request = request
         self.endpoint = endpoint
@@ -277,10 +335,25 @@ private final class Exchange: @unchecked Sendable {
     }
 
     func run(timeoutSec: Double, done: @escaping (Result<HTTPReply, ExchangeFailure>) -> Void) {
-        lock.withLock { self.done = done }
-        connection.stateUpdateHandler = { [weak self] state in self?.changed(state) }
-        connection.start(queue: queue)
+        guard CaptureUploader.isValidTimeout(timeoutSec) else {
+            done(.failure(.timedOut))
+            return
+        }
+        lock.withLock {
+            self.activeSelf = self
+            self.done = done
+        }
+        if Task.isCancelled {
+            finish(.failure(.closed))
+            return
+        }
+        driver.setStateHandler { [weak self] state in self?.changed(state) }
+        driver.start(queue: queue)
         queue.asyncAfter(deadline: .now() + timeoutSec) { [weak self] in self?.finish(.failure(.timedOut)) }
+    }
+
+    func cancel() {
+        finish(.failure(.closed))
     }
 
     private func changed(_ state: NWConnection.State) {
@@ -291,12 +364,16 @@ private final class Exchange: @unchecked Sendable {
                 return !started
             }
             guard first else { return }
-            guard peerCheck(connection.currentPath?.remoteEndpoint, endpoint) else {
+            guard NetworkLaptopTransport.allowsLocalInterface(usesCellular: driver.usesCellular, usesOther: driver.usesOther),
+                  peerCheck(driver.remoteEndpoint, endpoint) else {
                 return finish(.failure(.notThePairedPeer))
             }
             receive()
             send(from: 0)
-        case .failed(let error), .waiting(let error):
+        case .waiting(let error):
+            guard !NetworkLaptopTransport.shouldKeepWaiting(error) else { return }
+            if case .posix(let code) = error { finish(.failure(.network(posixCode: code.rawValue))) } else { finish(.failure(.network(posixCode: nil))) }
+        case .failed(let error):
             if case .posix(let code) = error { finish(.failure(.network(posixCode: code.rawValue))) } else { finish(.failure(.network(posixCode: nil))) }
         case .cancelled:
             finish(.failure(.closed))
@@ -308,7 +385,7 @@ private final class Exchange: @unchecked Sendable {
     private func send(from offset: Int) {
         let end = min(offset + NetworkLaptopTransport.chunkBytes, request.count)
         let chunk = request.subdata(in: offset..<end)
-        connection.send(content: chunk, completion: .contentProcessed { [weak self] error in
+        driver.writeChunk(chunk) { [weak self] error in
             guard let self else { return }
             if error != nil { return self.finish(.failure(.closed)) }
             self.onSent(Int64(end))
@@ -318,11 +395,11 @@ private final class Exchange: @unchecked Sendable {
                 return self.finalReply
             }
             if let reply { self.finish(.success(reply)) }
-        })
+        }
     }
 
     private func receive() {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
+        driver.readChunk(maxBytes: 65536) { [weak self] data, isComplete, error in
             guard let self else { return }
             let buffer: Data = self.lock.withLock {
                 if let data { self.received.append(data) }
@@ -351,12 +428,15 @@ private final class Exchange: @unchecked Sendable {
 
     private func finish(_ result: Result<HTTPReply, ExchangeFailure>) {
         let callback = lock.withLock { () -> ((Result<HTTPReply, ExchangeFailure>) -> Void)? in
-            defer { done = nil }
+            defer {
+                done = nil
+                activeSelf = nil
+            }
             return done
         }
         guard let callback else { return }
-        connection.stateUpdateHandler = nil
-        connection.cancel()
+        driver.setStateHandler(nil)
+        driver.cancel()
         callback(result)
     }
 }

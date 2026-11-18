@@ -6,11 +6,12 @@ import XCTest
 /// 2xx, against a server on 127.0.0.1 that each test starts and stops.
 final class LaptopAddressEdgeTests: XCTestCase {
     func testTakesALocalNameOnlyOfLettersDigitsAndHyphens() {
-        for name in ["laptop.local", "a.local", "z.local", "0.local", "9.local", "a-b.local", "a.b.local", "z9-0a.local",
+        for name in ["laptop.local", "a.local", "z.local", "0.local", "9.local", "a-b.local", "z9-0a.local",
                      "LAPTOP.LOCAL", "localhost", "LocalHost"] {
             XCTAssertTrue(LaptopAddress.isLocal(name), name)
         }
-        for name in [".local", "a..local", ".a.local", "a.local.", "a_b.local", "a,b.local", "a`.local", "a{.local", "a/.local",
+        for name in [".local", "a..local", ".a.local", "a.local.", "a.b.local", "-.local", "-a.local", "a-.local",
+                     "a_b.local", "a,b.local", "a`.local", "a{.local", "a/.local",
                      "a@.local", "a.b..local", "local", "a.localx", "localhost.", "xlocalhost"] {
             XCTAssertFalse(LaptopAddress.isLocal(name), name)
         }

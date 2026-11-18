@@ -129,6 +129,7 @@ final class OffMainActorTests: XCTestCase {
         func start(headingOrientation: HeadingOrientation, deliver: @escaping @Sendable (PlaceEvent) -> Void) {
             deliver(.authorization(.authorizedWhenInUse, .full))
         }
+        func updateHeadingOrientation(_ headingOrientation: HeadingOrientation) {}
         func stop() {}
     }
 

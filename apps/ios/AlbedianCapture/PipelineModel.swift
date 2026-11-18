@@ -17,18 +17,20 @@ final class PipelineModel {
     private(set) var issues: [PointingIssue] = []
     private(set) var json = ""
     var address = ""
-    private(set) var upload: UploadState?
+    private let coordinator = UploadCoordinator()
+
+    var upload: UploadState? { coordinator.state }
 
     var laptop: LaptopAddress? { LaptopAddress(address.trimmingCharacters(in: .whitespaces)) }
 
-    var isSending: Bool { if case .sending = upload { true } else { upload == .waiting } }
+    var isSending: Bool { coordinator.isSending }
 
     func build() {
         let photo = SamplePhoto.png()
         let sha256 = PhotoHash.sha256Hex(photo)
         self.photo = photo
         self.photoSha256 = sha256
-        upload = nil
+        coordinator.reset()
         let capture = SampleCapture.capture(photoSha256: sha256, photoWidthPx: SamplePhoto.widthPx, photoHeightPx: SamplePhoto.heightPx,
                                             options: options)
         do throws(PointingBuildError) {
@@ -48,14 +50,7 @@ final class PipelineModel {
 
     func send() {
         guard let photo, let laptop else { return }
-        let record = record
-        upload = .waiting
-        let uploader = CaptureUploader(address: laptop)
-        Task {
-            _ = await uploader.send(photo: photo, contentType: .png, record: record) { [weak self] state in
-                DispatchQueue.main.async { MainActor.assumeIsolated { self?.upload = state } }
-            }
-        }
+        coordinator.start(photo: photo, contentType: .png, record: record, uploader: CaptureUploader(address: laptop))
     }
 }
 

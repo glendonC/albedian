@@ -3,15 +3,15 @@ import CoreLocation
 import Foundation
 
 /// Place and heading from `CLLocationManager`, each report copied field by field into the core's `PlaceEvent`
-/// (unit mobile-1). It asks for when-in-use authorization only, and the best accuracy; it never turns a place into an
-/// address. Create it, start it and stop it on the main thread: the manager then reports on the main thread too
-/// (`corelocation/cllocationmanager`: delegate calls come on the thread the manager was created on).
-final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManagerDelegate, @unchecked Sendable {
+/// (unit mobile-1). Isolated to `@MainActor` (no `@unchecked Sendable`) so `manager`, `deliver` and `orientation` are
+/// mutated and read on the main actor only; stale cached fixes and headings older than `SensorMapping`'s age bounds
+/// are dropped on arrival.
+@MainActor
+final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManagerDelegate {
     private let manager: CLLocationManager
     private var deliver: (@Sendable (PlaceEvent) -> Void)?
     private var orientation: HeadingOrientation = .portrait
 
-    @MainActor
     override init() {
         manager = CLLocationManager()
         super.init()
@@ -23,10 +23,15 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
         orientation = headingOrientation
         manager.headingOrientation = Self.device(headingOrientation)
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        report(manager)
+        reportAuthorization()
         if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
         manager.startUpdatingLocation()
         if CLLocationManager.headingAvailable() { manager.startUpdatingHeading() }
+    }
+
+    func updateHeadingOrientation(_ headingOrientation: HeadingOrientation) {
+        orientation = headingOrientation
+        manager.headingOrientation = Self.device(headingOrientation)
     }
 
     func stop() {
@@ -35,19 +40,25 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
         deliver = nil
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        report(manager)
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { self.reportAuthorization() }
+        } else {
+            Task { @MainActor [weak self] in self?.reportAuthorization() }
+        }
     }
 
-    /// A status or accuracy this code does not know is not reported, so no place is taken under it.
-    private func report(_ manager: CLLocationManager) {
-        guard let status = Self.authorization(manager.authorizationStatus), let accuracy = Self.accuracy(manager.accuracyAuthorization) else { return }
+    private func reportAuthorization() {
+        guard let status = Self.authorization(manager.authorizationStatus),
+              let accuracy = Self.accuracy(manager.accuracyAuthorization) else { return }
         deliver?(.authorization(status, accuracy))
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        for location in locations {
-            deliver?(.location(LocationEvent(
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let now = Date()
+        let freshEvents: [LocationEvent] = locations.compactMap { location in
+            guard now.timeIntervalSince(location.timestamp) <= SensorMapping.maxFixAgeSec else { return nil }
+            return LocationEvent(
                 latDeg: location.coordinate.latitude,
                 lonDeg: location.coordinate.longitude,
                 horizontalAccuracyM: location.horizontalAccuracy,
@@ -56,20 +67,41 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
                 verticalAccuracyM: location.verticalAccuracy,
                 timestamp: location.timestamp,
                 isSimulatedBySoftware: location.sourceInformation?.isSimulatedBySoftware
-            )))
+            )
+        }
+        guard !freshEvents.isEmpty else { return }
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                for event in freshEvents { self.deliver?(.location(event)) }
+            }
+        } else {
+            Task { @MainActor [weak self] in
+                for event in freshEvents { self?.deliver?(.location(event)) }
+            }
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        deliver?(.heading(HeadingEvent(trueHeadingDeg: newHeading.trueHeading, headingAccuracyDeg: newHeading.headingAccuracy,
-                                       timestamp: newHeading.timestamp, orientation: orientation)))
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        let now = Date()
+        guard now.timeIntervalSince(newHeading.timestamp) <= SensorMapping.maxHeadingAgeSec else { return }
+        let trueDeg = newHeading.trueHeading
+        let accDeg = newHeading.headingAccuracy
+        let ts = newHeading.timestamp
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                self.deliver?(.heading(HeadingEvent(trueHeadingDeg: trueDeg, headingAccuracyDeg: accDeg, timestamp: ts, orientation: self.orientation)))
+            }
+        } else {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.deliver?(.heading(HeadingEvent(trueHeadingDeg: trueDeg, headingAccuracyDeg: accDeg, timestamp: ts, orientation: self.orientation)))
+            }
+        }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
-        // No report to pass on: the last fix and heading stay as they were, and a capture uses only those
-    }
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {}
 
-    static func device(_ orientation: HeadingOrientation) -> CLDeviceOrientation {
+    nonisolated static func device(_ orientation: HeadingOrientation) -> CLDeviceOrientation {
         switch orientation {
         case .portrait: .portrait
         case .portraitUpsideDown: .portraitUpsideDown
@@ -78,7 +110,7 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
         }
     }
 
-    static func authorization(_ status: CLAuthorizationStatus) -> LocationAuthorization? {
+    nonisolated static func authorization(_ status: CLAuthorizationStatus) -> LocationAuthorization? {
         switch status {
         case .notDetermined: .notDetermined
         case .restricted: .restricted
@@ -89,7 +121,7 @@ final class CoreLocationSource: NSObject, PlaceAndHeadingSource, CLLocationManag
         }
     }
 
-    static func accuracy(_ accuracy: CLAccuracyAuthorization) -> AccuracyAuthorization? {
+    nonisolated static func accuracy(_ accuracy: CLAccuracyAuthorization) -> AccuracyAuthorization? {
         switch accuracy {
         case .fullAccuracy: .full
         case .reducedAccuracy: .reduced

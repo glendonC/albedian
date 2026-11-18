@@ -52,19 +52,52 @@ public struct JSONNumber: Equatable, Sendable, CustomStringConvertible {
         self.value = Double(literal) ?? .nan
     }
 
-    /// A number written from a finite double: a whole number up to 2^53 as an integer, anything else in the
-    /// shortest form that reads back as the same double; minus zero is written as 0. Nil for an infinite or
-    /// not-a-number value, which JSON cannot hold.
+    /// A number written from a finite double as ECMA-262 `Number::toString(x, 10)` (`JSON.stringify`) writes it:
+    /// shortest round-trip decimal digits, fixed form on `[1e-6, 1e21)`, exponential form with no leading zero on the
+    /// exponent outside that range, and minus zero written as `0`. Nil for an infinite or not-a-number value.
     public init?(_ value: Double) {
         guard value.isFinite else { return nil }
         self.value = value == 0 ? 0 : value
-        if value == 0 {
-            self.literal = "0"
-        } else if value == value.rounded(), abs(value) <= 9_007_199_254_740_992 {
-            self.literal = String(Int64(value))
+        self.literal = Self.ecmaLiteral(self.value)
+    }
+
+    static func ecmaLiteral(_ value: Double) -> String {
+        if value == 0 { return "0" }
+        let negative = value < 0
+        let rawText = abs(value).description.lowercased()
+        let digits: [Character]
+        let n: Int
+        if let eIndex = rawText.firstIndex(of: "e") {
+            let mantissa = rawText[..<eIndex].filter { $0 != "." }
+            let exp = Int(rawText[rawText.index(after: eIndex)...])!
+            digits = Array(mantissa)
+            n = exp + 1
         } else {
-            self.literal = value.description
+            let parts = rawText.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+            let intPart = Array(parts[0])
+            let fracPart = Array(parts[1])
+            let combined = intPart + fracPart
+            let firstNZ = combined.firstIndex(where: { $0 != "0" })!
+            n = intPart.count - firstNZ
+            var trimmed = Array(combined[firstNZ...])
+            while trimmed.last == "0" { trimmed.removeLast() }
+            digits = trimmed
         }
+        let k = digits.count
+        let body: String
+        if k <= n && n <= 21 {
+            body = String(digits) + String(repeating: "0", count: n - k)
+        } else if 0 < n && n <= 21 {
+            body = String(digits[..<n]) + "." + String(digits[n...])
+        } else if -5 <= n && n <= 0 {
+            body = "0." + String(repeating: "0", count: -n) + String(digits)
+        } else {
+            let exp = n - 1
+            let sign = exp >= 0 ? "+" : "-"
+            let mant = k == 1 ? String(digits) : String(digits[0]) + "." + String(digits[1...])
+            body = "\(mant)e\(sign)\(abs(exp))"
+        }
+        return negative ? "-" + body : body
     }
 
     public init(_ value: Int) {
@@ -72,7 +105,7 @@ public struct JSONNumber: Equatable, Sendable, CustomStringConvertible {
         self.literal = String(value)
     }
 
-    public static func == (lhs: JSONNumber, rhs: JSONNumber) -> Bool { lhs.literal == rhs.literal }
+    public static func == (lhs: JSONNumber, rhs: JSONNumber) -> Bool { lhs.value == rhs.value }
 
     public var description: String { literal }
 }

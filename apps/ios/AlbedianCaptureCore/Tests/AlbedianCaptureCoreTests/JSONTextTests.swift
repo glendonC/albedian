@@ -68,7 +68,7 @@ final class JSONTextTests: XCTestCase {
         let value: JSONValue = .object(JSONObject(["b": .int(1), "a": .array([.bool(true), .null, .string("q\"\\\n\u{1}\u{E9}")]),
                                                    "c": .double(0.05), "d": .double(-0.0), "e": .double(4032), "f": .double(1e-6)]))
         let text = String(decoding: JSONText.units(value), as: UTF16.self)
-        XCTAssertEqual(text, "{\"b\":1,\"a\":[true,null,\"q\\\"\\\\\\n\\u0001\u{E9}\"],\"c\":0.05,\"d\":0,\"e\":4032,\"f\":1e-06}")
+        XCTAssertEqual(text, "{\"b\":1,\"a\":[true,null,\"q\\\"\\\\\\n\\u0001\u{E9}\"],\"c\":0.05,\"d\":0,\"e\":4032,\"f\":0.000001}")
         XCTAssertEqual(try JSONText.read(units: JSONText.units(value)), value)
         XCTAssertEqual(try JSONText.read(JSONText.data(value)), value)
         let lone: JSONValue = .string(JSONString(units: [0xD800]))
@@ -83,8 +83,9 @@ final class JSONTextTests: XCTestCase {
         XCTAssertNil(JSONNumber(.nan))
         XCTAssertEqual(JSONNumber(-0.0)?.literal, "0")
         XCTAssertEqual(JSONNumber(9_007_199_254_740_992)?.literal, "9007199254740992")
-        // Past 2^53 a whole number is written in the shortest form that reads back the same
-        XCTAssertEqual(JSONNumber(1e16)?.literal, "1e+16")
+        // Up to 1e21 a whole number is written out as digits, and from 1e21 in exponential form, as JSON.stringify writes it
+        XCTAssertEqual(JSONNumber(1e16)?.literal, "10000000000000000")
+        XCTAssertEqual(JSONNumber(1e21)?.literal, "1e+21")
         XCTAssertEqual(JSONNumber(1e300)?.literal, "1e+300")
     }
 }

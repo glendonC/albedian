@@ -118,16 +118,18 @@ public enum InterfaceOrientation: CaseIterable, Sendable {
 /// A device-motion stream: `CMMotionManager` on the phone, a stand-in in the tests.
 public protocol DeviceMotionSource: AnyObject, Sendable {
     /// `CMMotionManager.availableAttitudeReferenceFrames()`; empty when device motion is not available.
-    var availableFrames: Set<AttitudeFrame> { get }
+    @MainActor var availableFrames: Set<AttitudeFrame> { get }
     /// Starts device-motion updates in `frame`, one every `intervalSec`, each passed to `deliver`.
-    func start(frame: AttitudeFrame, intervalSec: Double, deliver: @escaping @Sendable (DeviceMotionEvent) -> Void)
-    func stop()
+    @MainActor func start(frame: AttitudeFrame, intervalSec: Double, deliver: @escaping @Sendable (DeviceMotionEvent) -> Void)
+    @MainActor func stop()
 }
 
 /// Location and heading updates: `CLLocationManager` on the phone, a stand-in in the tests.
 public protocol PlaceAndHeadingSource: AnyObject, Sendable {
     /// Asks for when-in-use authorization if it is not determined, sets `headingOrientation`, starts location and
     /// heading updates, and passes every report to `deliver`.
-    func start(headingOrientation: HeadingOrientation, deliver: @escaping @Sendable (PlaceEvent) -> Void)
-    func stop()
+    @MainActor func start(headingOrientation: HeadingOrientation, deliver: @escaping @Sendable (PlaceEvent) -> Void)
+    /// Updates the device axis `CLHeading` is measured along without restarting location updates.
+    @MainActor func updateHeadingOrientation(_ headingOrientation: HeadingOrientation)
+    @MainActor func stop()
 }
