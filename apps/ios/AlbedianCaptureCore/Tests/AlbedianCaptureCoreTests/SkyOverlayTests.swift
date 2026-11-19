@@ -166,6 +166,9 @@ final class SkyOverlayTests: XCTestCase {
         XCTAssertNil(SkyProjection.point(altDeg: 0, azDeg: 90, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 50))
         XCTAssertNil(SkyProjection.point(altDeg: 0, azDeg: 26, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 50))
         XCTAssertNotNil(SkyProjection.point(altDeg: 0, azDeg: 26, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 50, marginPt: 12))
+        // A negative margin keeps a mark only where a ring of that radius is wholly inside (the overlay passes the ring's)
+        XCTAssertNotNil(SkyProjection.point(altDeg: 0, azDeg: 24, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 50, marginPt: -6.5))
+        XCTAssertNil(SkyProjection.point(altDeg: 0, azDeg: 24.8, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 50, marginPt: -6.5))
         XCTAssertNil(SkyProjection.point(altDeg: 0, azDeg: 0, attitude: PointingRecord.Quaternion(x: 0, y: 0, z: 0, w: 0), widthPt: 390,
                                          heightPt: 520, acrossFovDeg: 50))
         XCTAssertNil(SkyProjection.point(altDeg: 0, azDeg: 0, attitude: q, widthPt: 390, heightPt: 520, acrossFovDeg: 0))

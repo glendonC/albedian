@@ -11,13 +11,14 @@ struct SkyOverlayView: View {
     let width: Double
     let height: Double
 
-    /// The marks on the preview now, with where each falls.
+    /// The marks on the preview now, with where each falls: only where the whole ring is inside the preview, as the
+    /// record draws every ring (a mark at the edge was drawn half outside it, cut with its name: the drift pass of 19 Nov).
     static func placed(_ marks: [SkyMark], attitude: PointingRecord.Quaternion?, acrossFovDeg: Double?, width: Double,
                        height: Double) -> [(SkyMark, CGPoint)] {
         guard let attitude, let acrossFovDeg else { return [] }
         return marks.compactMap { mark in
             SkyProjection.point(altDeg: mark.altDeg, azDeg: mark.azDeg, attitude: attitude, widthPt: width, heightPt: height,
-                                acrossFovDeg: acrossFovDeg).map { (mark, CGPoint(x: $0.x, y: $0.y)) }
+                                acrossFovDeg: acrossFovDeg, marginPt: -SkyOverlayStyle.ringRadiusPt).map { (mark, CGPoint(x: $0.x, y: $0.y)) }
         }
     }
 
