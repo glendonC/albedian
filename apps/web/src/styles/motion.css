@@ -209,6 +209,11 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 
+/* Fly on your own is offered only once the flight has arrived, so it words in as it mounts, with Back to Moment */
+.ask-bar__fly {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* The status line: each moment (your photo, Real sky, there, nothing matched) is its own element, so a view change
    brings the new line in at the words' delay, 120 ms after the old one went. While the reveal arrives it waits for the
    marks' span instead; there, it comes in between the flight's two halves, with the readout. */

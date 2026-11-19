@@ -441,3 +441,20 @@ describe('at Go there, Ask out loud leaves and comes back as the motion record s
     });
   });
 });
+
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)" step 5 and "Anything else": words in): Fly on your own is
+// offered only once the flight has arrived (the viewport passes it at at_space), so it words in as it mounts, with no
+// delay of its own, as Back to Moment finishes waiting for the camera.
+describe('Fly on your own arrives as the motion record says', () => {
+  it('words in on the words-in time as it is offered, with no delay of its own', () => {
+    let found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar__fly' && rule.parent?.type === 'root') {
+        rule.walkDecls((decl) => {
+          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      }
+    });
+    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+  });
+});
