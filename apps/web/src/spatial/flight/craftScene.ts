@@ -48,6 +48,19 @@ export function phoneCraftFraming(viewportWidthPx: number, readoutTopPx: number)
   };
 }
 
+/**
+ * How wide a craft looks from behind at rest, in its model's units: the larger of its bounding box's extents along the
+ * model's own up and right (forward x up), the box's size along each model axis given. A long part (Voyager's boom)
+ * makes the bounding sphere far wider than the craft looks, so the framing's "across" (D26 item 2, D30 item 1) is this.
+ */
+export function restExtentM(craft: Craft, boxSize: Vec3): number {
+  const f = craft.modelForward;
+  const u = craft.modelUp;
+  const r: Vec3 = [f[1] * u[2] - f[2] * u[1], f[2] * u[0] - f[0] * u[2], f[0] * u[1] - f[1] * u[0]];
+  const along = (a: Vec3) => Math.abs(a[0]) * boxSize[0] + Math.abs(a[1]) * boxSize[1] + Math.abs(a[2]) * boxSize[2];
+  return Math.max(along(u), along(r));
+}
+
 export interface CraftScene {
   /** Model space to camera-relative ICRS metres, column-major 4 by 4 (three.js Matrix4.fromArray). */
   readonly modelMatrix: number[];
@@ -74,7 +87,9 @@ export function craftSceneOf(
    */
   steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows },
   /** Where the screen frames the craft; the laptop's by default. */
-  framing: CraftFraming = laptopCraftFraming(camera)
+  framing: CraftFraming = laptopCraftFraming(camera),
+  /** Half of how wide the craft looks from behind (`restExtentM` / 2), framed at the screen's size; the sphere's by default. */
+  frameRadiusM: number = modelRadius
 ): CraftScene | null {
   const o = steer ? steer.positionPc : camera.observerPc;
   let heading: Vec3;
@@ -95,8 +110,9 @@ export function craftSceneOf(
     framePin,
     { xPx: framing.xPx, yPx: framing.yPx },
     framing.diameterPx,
-    modelRadius,
-    heading
+    frameRadiusM,
+    heading,
+    frameRadiusM !== modelRadius
   );
   const r = modelToIcrs(craft, placed.right, placed.up, placed.forward);
   const c = placed.centreFromCameraM;

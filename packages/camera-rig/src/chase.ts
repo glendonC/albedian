@@ -78,14 +78,17 @@ export interface CraftPlacement {
 
 /**
  * The craft of bounding radius `radiusM` placed so its centre lands on `screen` and its bounding sphere is about
- * `diameterPx` across there, facing `heading` (the direction toward the star it flies to).
+ * `diameterPx` across there, facing `heading` (the direction toward the star it flies to). With `flat`, `radiusM` is
+ * half of a flat extent square to the line of sight (how wide the craft looks from behind), which then spans
+ * `diameterPx`.
  */
 export function craftPlacementInView(
   pin: PhotoPinhole,
   screen: { xPx: number; yPx: number },
   diameterPx: number,
   radiusM: number,
-  heading: Vec3
+  heading: Vec3,
+  flat = false
 ): CraftPlacement {
   const ray = rayThrough(pin, screen);
   // The window's pixels per radian across the ray at that point, measured by a small step along the photo's up
@@ -96,7 +99,7 @@ export function craftPlacementInView(
   const pxPerRad = Math.hypot(off.xPx - at.xPx, off.yPx - at.yPx) / step;
   // Angular radius tan(alpha) = (diameter / 2) / pxPerRad; the centre sits R / sin(alpha) away
   const alpha = Math.atan(diameterPx / 2 / pxPerRad);
-  const distanceM = radiusM / Math.sin(alpha);
+  const distanceM = flat ? radiusM / Math.tan(alpha) : radiusM / Math.sin(alpha);
   const forward = unit(heading);
   let up: Vec3 = [pin.rows.y[0] - dot(pin.rows.y, forward) * forward[0], pin.rows.y[1] - dot(pin.rows.y, forward) * forward[1], pin.rows.y[2] - dot(pin.rows.y, forward) * forward[2]];
   if (Math.hypot(up[0], up[1], up[2]) < 1e-9) up = pin.rows.x;

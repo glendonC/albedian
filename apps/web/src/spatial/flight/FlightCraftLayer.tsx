@@ -7,7 +7,7 @@ import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import type { Craft } from './crafts.js';
-import { craftSceneOf, type CraftFraming } from './craftScene.js';
+import { craftSceneOf, restExtentM, type CraftFraming } from './craftScene.js';
 
 /**
  * pilot-1: a NASA model drawn in the photo's own view during the flight through the stars, a few metres ahead of the
@@ -40,10 +40,12 @@ interface CraftGpu {
   sun: THREE.DirectionalLight;
   centre: [number, number, number];
   radius: number;
+  /** Half of how wide the craft looks from behind, framed at the screen's size. */
+  frameRadius: number;
 }
 
 function drawCraft(gpu: CraftGpu, camera: FlightCamera, craft: Craft, steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }, framing?: CraftFraming): boolean {
-  const scene = craftSceneOf(camera, craft, gpu.centre, gpu.radius, steer, framing);
+  const scene = craftSceneOf(camera, craft, gpu.centre, gpu.radius, steer, framing, gpu.frameRadius);
   if (!scene) return false;
   gpu.holder.matrix.fromArray(scene.modelMatrix);
   gpu.holder.matrixWorldNeedsUpdate = true;
@@ -110,7 +112,9 @@ export const FlightCraftLayer: React.FC<{
         const box = new THREE.Box3().setFromObject(model);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         holder.add(model);
-        gpu.current = { renderer, scene, camera: cam, holder, sun, centre: [sphere.center.x, sphere.center.y, sphere.center.z], radius: sphere.radius };
+        const size = box.getSize(new THREE.Vector3());
+        const frameRadius = restExtentM(craft, [size.x, size.y, size.z]) / 2 || sphere.radius;
+        gpu.current = { renderer, scene, camera: cam, holder, sun, centre: [sphere.center.x, sphere.center.y, sphere.center.z], radius: sphere.radius, frameRadius };
         setState(drawCraft(gpu.current, cameraRef.current, craft, steerRef.current ?? undefined, framingRef.current) ? 'drawn' : 'failed');
       },
       () => {

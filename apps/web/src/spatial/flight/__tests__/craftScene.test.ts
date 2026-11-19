@@ -6,7 +6,7 @@ import { createSyntheticCalibratedSession } from '@albedian/observation/testing'
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
 import { CRAFTS, CRAFT_FRAMING, craftFromSearch } from '../crafts.js';
-import { craftSceneOf, photoPinholeOf } from '../craftScene.js';
+import { craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
 const H = 900;
@@ -162,5 +162,36 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const edge = at([centre[0] + r[0] * 10 * (d / Math.sqrt(d * d - 100)), centre[1] + r[1] * 10 * (d / Math.sqrt(d * d - 100)), centre[2] + r[2] * 10 * (d / Math.sqrt(d * d - 100))]);
     expect(Math.hypot(edge.xPx - s.xPx, edge.yPx - s.yPx)).toBeGreaterThan(92 * 0.9);
     expect(Math.hypot(edge.xPx - s.xPx, edge.yPx - s.yPx)).toBeLessThan(92 * 1.1);
+  });
+
+  it('measures a craft at rest by its extent across its own right and up, not its bounding sphere (D30 item 1)', () => {
+    // A model 1 m wide, 10 m tall and 2 m deep along its own forward (-y here is forward, z up): seen from behind,
+    // the widest it looks is its height along z
+    const craft = { ...CRAFTS['voyager-1'], modelForward: [0, -1, 0] as Vec3, modelUp: [0, 0, 1] as Vec3 };
+    expect(restExtentM(craft, [1, 2, 10])).toBeCloseTo(10, 12);
+    expect(restExtentM(craft, [12, 2, 3])).toBeCloseTo(12, 12);
+    // Its depth along forward never counts
+    expect(restExtentM(craft, [1, 50, 3])).toBeCloseTo(3, 12);
+  });
+
+  it('frames that extent, not the sphere, at the screen\'s size: a 10 m mast inside a 20 m sphere spans the 184 px', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 390, 844)!;
+    const framing = { xPx: 195, yPx: 298, diameterPx: 184 };
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1'], [0, 0, 0], 10, undefined, framing, 5)!;
+    const centre = apply(scene.modelMatrix, [0, 0, 0]);
+    const at = (p: Vec3) => {
+      const c = apply(scene.clipMatrix, p);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 390, yPx: ((1 - c[1] / c[3]) / 2) * 844 };
+    };
+    const pin = photoPinholeOf(camera);
+    const u = pin.rows.y;
+    const top = at([centre[0] + u[0] * 5, centre[1] + u[1] * 5, centre[2] + u[2] * 5]);
+    const foot = at([centre[0] - u[0] * 5, centre[1] - u[1] * 5, centre[2] - u[2] * 5]);
+    // "About 184 px": the mast stands along the photo's up, a little foreshortened off the photo's axis (172 px here)
+    expect(Math.hypot(top.xPx - foot.xPx, top.yPx - foot.yPx)).toBeGreaterThan(184 * 0.9);
+    expect(Math.hypot(top.xPx - foot.xPx, top.yPx - foot.yPx)).toBeLessThan(184 * 1.1);
+    // The near plane still clears the whole sphere
+    expect(scene.near).toBeLessThan(Math.hypot(centre[0], centre[1], centre[2]) - 10);
   });
 });
