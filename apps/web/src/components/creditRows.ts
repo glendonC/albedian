@@ -91,6 +91,8 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
   'nasa-3d-resources-voyager-probe-b': 'Spacecraft and spacesuit',
   'nasa-3d-resources-james-webb-space-telescope-a': 'Spacecraft and spacesuit',
   'nasa-3d-resources-astronaut': 'Spacecraft and spacesuit',
+  'nasa-3d-resources': 'Spacecraft and spacesuit',
+  'nasa-science-mission-pages': 'Spacecraft and spacesuit',
   'unicode-ucd-15.1.0': 'Unicode character data',
   'unicode-ucd-15.0.0': 'Unicode character data',
   'unicode-ucd-16.0.0': 'Unicode character data',
