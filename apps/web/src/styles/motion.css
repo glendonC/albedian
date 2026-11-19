@@ -87,6 +87,17 @@
   animation: look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
+/* Released, the marks come back together on the words-in time, 120 ms after the release (as a status line after a view
+   change), with no rise: not one by one, brightest first, as on the reveal's first arrival; the rings come with them */
+.reveal-marks.is-back {
+  animation: look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.reveal-marks.is-back .reveal-mark,
+.reveal-marks.is-back .reveal-mark__may-be-off {
+  animation: none;
+}
+
 .reveal-leader path {
   stroke-dasharray: 1;
   animation: look-mo-line-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;

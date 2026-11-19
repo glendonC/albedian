@@ -997,7 +997,8 @@ describe('the status line comes in at its moment\'s time', () => {
 
 // The motion record (MOTION-READY-web.md, row "Original pixels (A6)" and "Your photo and Real sky"): pressing Original
 // pixels, the marks go on the words-out timing (100 ms; a fade, no sinking: they are marks, not words); released, they
-// come back as they arrive.
+// come back on the words-in timing (300 ms, 120 ms after the release, as a status line after a view change), all
+// together: not one by one as they first arrived.
 describe('pressing Original pixels, the marks leave as the motion record says', () => {
   it('keeps the marks for the words-out time, leaving and inert, then removes them', () => {
     vi.useFakeTimers();
@@ -1044,6 +1045,56 @@ describe('pressing Original pixels, the marks leave as the motion record says', 
       });
     });
     expect(rules['.reveal-marks.is-leaving']).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+
+  it('marks them as coming back once released, and not on their first arrival', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-back')).toBe(false);
+      show(calibrated(), { originalPixels: true });
+      expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-back')).toBe(false);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
+      show(calibrated());
+      const back = q('[data-testid="reveal-marks"]')!;
+      expect(back.classList.contains('is-back')).toBe(true);
+      expect(back.classList.contains('is-leaving')).toBe(false);
+      expect(back.hasAttribute('inert')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('takes them back as coming back when released while they still leave', () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated());
+      show(calibrated(), { originalPixels: true });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      show(calibrated());
+      const back = q('[data-testid="reveal-marks"]')!;
+      expect(back.classList.contains('is-back')).toBe(true);
+      expect(back.classList.contains('is-leaving')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fades them back in motion.css on the words-in time, all together, no rise, the ring with them', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-marks.is-back']).toEqual({
+      animation: 'look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both',
+    });
+    expect(rules['.reveal-marks.is-back .reveal-mark, .reveal-marks.is-back .reveal-mark__may-be-off']).toEqual({ animation: 'none' });
+    const order = Object.keys(rules);
+    expect(order.indexOf('.reveal-marks.is-back .reveal-mark, .reveal-marks.is-back .reveal-mark__may-be-off')).toBeGreaterThan(order.indexOf('.reveal-marks .reveal-mark__may-be-off'));
   });
 });
 

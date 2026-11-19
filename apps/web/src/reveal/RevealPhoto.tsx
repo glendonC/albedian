@@ -419,6 +419,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // the browser turned wrongly drops them at once (a correction, not a press)
   const marksLayer = useLeaving(!bareFrame, leaveMotion.wordsOutMs);
   const marksShown = marksLayer.mounted && !frameMismatch;
+  // Released, they come back on the words-in time, all together, not one by one as they first arrived
+  const [marksBack, setMarksBack] = useState(false);
+  useEffect(() => {
+    if (originalPixels) setMarksBack(true);
+  }, [originalPixels]);
+  const marksClass = marksLayer.leaving ? 'reveal-marks is-leaving' : marksBack ? 'reveal-marks is-back' : 'reveal-marks';
   // At Go there, In this photo leaves: its rows last first, then its title (the motion record)
   const legend = useLeaving(!phone && !there && counts.length > 0, linesLeaveMs(counts.length + 1, leaveMotion));
   // The status line for this moment (each moment its own element, keyed: motion-14)
@@ -631,7 +637,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {marksShown && !earthOnly && !(compareShown && compareZoomed) && (
-      <div className={marksLayer.leaving ? 'reveal-marks is-leaving' : 'reveal-marks'} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
+      <div className={marksClass} data-testid="reveal-marks" inert={marksLayer.leaving} style={{ '--mark-n': arrivingMarks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg
