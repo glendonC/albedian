@@ -4,7 +4,8 @@ import { getMarkerVisualSpec } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo } from '../look/index.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
-import { revealMarks, type RevealMark } from './revealMarks.js';
+import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
+import { StarCard } from './StarCard.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -17,6 +18,13 @@ export interface RevealPhotoProps {
   onHome: () => void;
   /** No corners and no marks: the browser turned the photo differently from its tag, so their places would be wrong. */
   frameMismatch?: boolean;
+  /** Original pixels is pressed (original, decided 2026-11-12): no corners and no marks; the words and the card stay. */
+  originalPixels?: boolean;
+  onToggleOriginalPixels?: () => void;
+  /** Go there on the picked star's card. */
+  onGoThere?: (findingId: string) => void;
+  /** The card's close button, Esc, or a tap on empty sky. */
+  onCloseCard?: () => void;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -57,11 +65,25 @@ const MarkGlyph: React.FC<{ mark: RevealMark }> = ({ mark }) => (
  * estimate's disclosure and the solve's warnings sit in the status block (estimate and cautions, decided the same
  * night). Every word and number comes from the solution (revealStatus.ts, revealMarks.ts).
  */
-export const RevealPhoto: React.FC<RevealPhotoProps> = ({ session, onSelectFinding, onHome, frameMismatch = false, viewportWidthPx, viewportHeightPx }) => {
+export const RevealPhoto: React.FC<RevealPhotoProps> = ({
+  session,
+  onSelectFinding,
+  onHome,
+  frameMismatch = false,
+  originalPixels = false,
+  onToggleOriginalPixels,
+  onGoThere,
+  onCloseCard,
+  viewportWidthPx,
+  viewportHeightPx,
+}) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
   const viewH = viewportHeightPx ?? windowSize.heightPx;
-  const rect = frameMismatch ? null : sessionPhotoRect(session, viewW, viewH);
+  // The photo alone: a frame the browser turned wrongly, or Original pixels pressed
+  const bareFrame = frameMismatch || originalPixels;
+  const rect = bareFrame ? null : sessionPhotoRect(session, viewW, viewH);
+  const picked = session.observationSolution?.findings.find((finding) => finding.id === session.selectedFindingId) ?? null;
   const marks = revealMarks(session, viewW, viewH);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
@@ -70,7 +92,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({ session, onSelectFindi
     <div className="reveal-photo" data-testid="reveal-photo" data-hud-interactive="true">
       {rect && <PhotoCorners rect={rect} />}
 
-      {!frameMismatch && (
+      {!bareFrame && picked && marks.some((mark) => mark.picked) && (
+        <svg className="reveal-leader" data-testid="reveal-leader" aria-hidden="true" focusable="false">
+          <path d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
+        </svg>
+      )}
+
+      {!bareFrame && (
       <div className="reveal-marks" data-testid="reveal-marks">
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
@@ -126,6 +154,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({ session, onSelectFindi
           </p>
         ))}
       </div>
+
+      {picked && (
+        <StarCard
+          key={picked.id}
+          finding={picked}
+          originalPixels={originalPixels}
+          onToggleOriginalPixels={() => onToggleOriginalPixels?.()}
+          onGoThere={() => onGoThere?.(picked.id)}
+          onClose={() => onCloseCard?.()}
+        />
+      )}
 
       {counts.length > 0 && (
         <div className="reveal-legend" data-testid="reveal-legend">

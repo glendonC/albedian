@@ -32,6 +32,29 @@ export interface RevealMark {
 export const NAME_GAP_PX = 19;
 const NAME_PX_PER_CHAR = 7.2;
 
+/** Where the picked star's card sits in a window this wide (32 px from the right edge, 320 wide), and its top. */
+export const CARD_WIDTH_PX = 320;
+export const CARD_RIGHT_PX = 32;
+export const CARD_TOP_PX = 118;
+/** A picked name's start past its mark's centre and its width per character at 15 px, as the approved page sets them. */
+const PICKED_NAME_GAP_PX = 25;
+const PICKED_NAME_PX_PER_CHAR = 8.75;
+
+/**
+ * The thin line from the picked star's name to its card, as the approved page draws it for Vega
+ * ("M876.3 91.5H1048L1078 132" in a 1440 wide window): level from 20 px past the name to 40 px short of the card,
+ * then down to 10 px short of its corner, 14 px below its top. From the mark's outer ring when the name is on the
+ * left, and straight to the card when the mark is already past the turn.
+ */
+export function leaderPath(mark: RevealMark, viewportWidthPx: number): string {
+  const cardLeft = viewportWidthPx - CARD_RIGHT_PX - CARD_WIDTH_PX;
+  const start = mark.nameOnLeft || mark.name === null ? mark.xPx + 28 : mark.xPx + PICKED_NAME_GAP_PX + PICKED_NAME_PX_PER_CHAR * mark.name.length + 20;
+  const end = `L${cardLeft - 10} ${CARD_TOP_PX + 14}`;
+  const turn = cardLeft - 40;
+  const from = `M${Number(start.toFixed(1))} ${mark.yPx}`;
+  return start < turn ? `${from}H${turn}${end}` : `${from}${end}`;
+}
+
 export function revealMarks(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number): RevealMark[] {
   const solution = session.observationSolution;
   const rect = sessionPhotoRect(session, viewportWidthPx, viewportHeightPx);

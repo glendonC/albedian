@@ -324,3 +324,79 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
     expect(q(REVEAL)).not.toBeNull();
   });
 });
+
+describe('the viewport shows the approved star card over the photo, above phone width (unit 1e)', () => {
+  const CARD = '[data-testid="star-card"]';
+  const OLD_CARD = '[data-testid="celestial-target-card"]';
+  const mask = () => {
+    const img = q(`${STAGE} img`) as HTMLImageElement;
+    return img.style.maskImage || img.style.getPropertyValue('-webkit-mask-image');
+  };
+  const pickedSession = (): ObservationSession => {
+    const base = storedPhoto();
+    return { ...base, selectedFindingId: base.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched')!.id } as ObservationSession;
+  };
+  function open(session: ObservationSession, extra: Record<string, unknown> = {}) {
+    const selectedFinding = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId) ?? null;
+    renderViewport(session, { uploadedMediaUrl: null, selectedFinding, ...extra });
+    choosePhotoOnHome(container);
+    renderViewport(session, { selectedFinding, ...extra });
+  }
+  const press = (label: string) => act(() => ([...container.querySelectorAll(`${CARD} button`)].find((b) => (b.textContent || b.getAttribute('aria-label')) === label) as HTMLButtonElement).click());
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>).matchMedia;
+  });
+
+  it('draws the approved card for the picked star, and not the old card', () => {
+    open(pickedSession());
+    expect(q(CARD)).not.toBeNull();
+    expect(q(OLD_CARD)).toBeNull();
+    expect(q(`${CARD} h1`)!.textContent).toBe(pickedSession().observationSolution!.findings.find((f) => f.id === pickedSession().selectedFindingId)!.title);
+  });
+
+  it('keeps the old card on a phone and in the sky and 3D views', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(pickedSession());
+    expect(q(CARD)).toBeNull();
+    expect(q(OLD_CARD)).not.toBeNull();
+  });
+
+  it('shows the photo whole while Original pixels is pressed, and faded with its marks again once pressed again', () => {
+    open(pickedSession());
+    expect(mask()).toContain('56px');
+    press('Original pixels');
+    expect(mask()).toBe('');
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    expect(q('svg.photo-corners')).toBeNull();
+    expect(q(CARD)).not.toBeNull();
+    press('Original pixels');
+    expect(mask()).toContain('56px');
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+  });
+
+  it('lets Original pixels last only while the card is open: closing the card brings the fade and the marks back', () => {
+    const session = pickedSession();
+    open(session);
+    press('Original pixels');
+    expect(mask()).toBe('');
+    // The card closes: the session no longer has a picked star
+    renderViewport({ ...session, selectedFindingId: null } as ObservationSession, { selectedFinding: null });
+    expect(q(CARD)).toBeNull();
+    expect(mask()).toContain('56px');
+    renderViewport(session, { selectedFinding: session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId) });
+    expect(q('.reveal-card__acts .look-second')!.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('runs Go there as the words "Take me to" the star, once per press, and clears the picked star on Close', () => {
+    const onRunUtterance = vi.fn();
+    const sessions: ObservationSession[] = [];
+    const session = pickedSession();
+    const title = session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId)!.title;
+    open(session, { onRunUtterance, setSession: (update: (prev: ObservationSession) => ObservationSession) => sessions.push(update(session)) });
+    press('Go there');
+    expect(onRunUtterance).toHaveBeenCalledTimes(1);
+    expect(onRunUtterance).toHaveBeenCalledWith(`Take me to ${title}`, 'pointer');
+    press('Close');
+    expect(sessions.at(-1)!.selectedFindingId).toBeNull();
+  });
+});

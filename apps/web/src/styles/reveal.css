@@ -380,3 +380,172 @@
   stroke-width: 1;
   stroke-dasharray: 2 4;
 }
+
+/* A star picked (approved 2026-11-12, laptop screen 3): a thin line from its name to its card in the right column */
+.reveal-leader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(244, 243, 239, 0.35);
+  stroke-width: 1;
+}
+
+.reveal-card {
+  position: absolute;
+  right: 32px;
+  top: 118px;
+  width: 320px;
+  pointer-events: auto;
+  animation:
+    reveal-card-fade 500ms var(--look-ease-standard) both,
+    reveal-card-rise 900ms var(--look-ease-spring) both;
+}
+
+@keyframes reveal-card-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reveal-card-rise {
+  from {
+    transform: translateY(14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-card {
+    animation: none;
+  }
+}
+
+.reveal-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* The close button's x is drawn at 15 px */
+.reveal-card__top .look-icon {
+  --look-ic: 15px;
+}
+
+.reveal-card__name {
+  margin: 22px 0 0;
+  font: 400 66px / 1 var(--look-font-sans);
+  letter-spacing: -0.05em;
+  overflow-wrap: anywhere;
+}
+
+.reveal-card__sub {
+  margin: 10px 0 0;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--look-ink-2);
+}
+
+.reveal-card__numbers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--look-hair);
+}
+
+.reveal-card__number b {
+  display: block;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal-card__number b small {
+  margin-left: 3px;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--look-ink-2);
+}
+
+/* Each number's words lead with the glyph of the number's own class, in that class's colour (numberglyph, decided) */
+.reveal-card__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--look-ink-3);
+}
+
+.reveal-card__label .look-glyph {
+  width: 12px;
+  height: 12px;
+}
+
+.reveal-card__number[data-evidence-class='observed'] .look-glyph {
+  color: var(--look-ev-observed);
+}
+
+.reveal-card__number[data-evidence-class='catalog_matched'] .look-glyph {
+  color: var(--look-ev-catalog);
+}
+
+.reveal-card__number[data-evidence-class='predicted'] .look-glyph {
+  color: var(--look-ev-predicted);
+}
+
+.reveal-card__number[data-evidence-class='simulated'] .look-glyph {
+  color: var(--look-ev-simulated);
+}
+
+.reveal-card__source {
+  margin: 20px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--look-hair);
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  color: var(--look-ink-3);
+}
+
+.reveal-card__acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* Original pixels stays filled while it is pressed (original, decided 2026-11-12) */
+.reveal-card__acts .look-second[aria-pressed='true'] {
+  background: var(--look-ink);
+  border-color: var(--look-ink);
+  color: var(--look-night);
+}
+
+/* The star's limitations and any catalog caution (cautions, decided): at the card's foot, always in view */
+.reveal-card__notes {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--look-hair);
+  list-style: none;
+}
+
+.reveal-card__notes li {
+  --look-ic: 13px;
+  display: flex;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--look-ink-3);
+}
+
+.reveal-card__notes .look-i {
+  flex: none;
+  margin-top: 2px;
+}

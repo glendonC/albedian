@@ -554,6 +554,8 @@ describe('SpatialObservatoryViewport wiring (hud-5)', () => {
       ...base,
       selectedFindingId: betelgeuse.id,
       sourceAsset: { ...base.sourceAsset!, mediaKind: 'image', width: 480, height: 360 },
+      // In the sky view: over the photo the approved card (reveal/StarCard.tsx) has taken this card's place
+      spatialView: { ...base.spatialView, mode: 'registered_sky' },
     };
     const onRunUtterance = vi.fn();
     const noop = () => {};
@@ -621,7 +623,7 @@ describe('closing from the viewport (hud-5b)', () => {
   it('clears the session selection when the sheet is closed', () => {
     const base = createSyntheticCalibratedSession();
     const betelgeuse = betelgeuseIn(base);
-    const session: ObservationSession = { ...base, selectedFindingId: betelgeuse.id };
+    const session: ObservationSession = { ...base, selectedFindingId: betelgeuse.id, spatialView: { ...base.spatialView, mode: 'registered_sky' } };
     const setSession = vi.fn();
     const noop = () => {};
     act(() => {
@@ -661,7 +663,7 @@ describe('landing overlay (hud-5)', () => {
     act(() => {
       root.render(
         createElement(SpatialObservatoryViewport, {
-          session: { ...base, selectedFindingId: betelgeuseIn(base).id },
+          session: { ...base, selectedFindingId: betelgeuseIn(base).id, spatialView: { ...base.spatialView, mode: 'registered_sky' } },
           setSession: noop,
           selectedFinding: betelgeuseIn(base),
           discoveredMedia: [],

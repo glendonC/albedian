@@ -154,6 +154,13 @@ export const SpatialObservatoryViewport: React.FC<
   // The approved laptop reveal shows over the photo, above phone width; the phone keeps its sheets until its own unit
   const phone = usePhoneLayout();
   const revealShown = !phone && isSourcePhotoShown(session);
+  // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
+  // only while that card is open
+  const [originalPixels, setOriginalPixels] = useState(false);
+  const cardOpen = revealShown && session.selectedFindingId != null;
+  useEffect(() => {
+    if (!cardOpen) setOriginalPixels(false);
+  }, [cardOpen]);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<CosmosRenderer | null>(null);
   const [rendererChoice] = useState<RendererChoice>(readRendererChoice);
@@ -532,13 +539,20 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && !arrival && (
         <>
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown} />
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} />
           {revealShown && (
             <RevealPhoto
               session={session}
               onSelectFinding={onSelectFinding}
               onHome={() => setEntryStageActive(true)}
               frameMismatch={photoFrameMismatch}
+              originalPixels={originalPixels}
+              onToggleOriginalPixels={() => setOriginalPixels((on) => !on)}
+              onGoThere={(findingId) => {
+                const title = session.observationSolution?.findings.find((finding) => finding.id === findingId)?.title;
+                if (title) onRunUtterance(`Take me to ${title}`, 'pointer');
+              }}
+              onCloseCard={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
             />
           )}
           {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
@@ -548,6 +562,7 @@ export const SpatialObservatoryViewport: React.FC<
               onSelectFinding={onSelectFinding}
             />
           )}
+          {!revealShown && (
           <CelestialTargetCard
             session={session}
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
@@ -556,6 +571,7 @@ export const SpatialObservatoryViewport: React.FC<
             sourceImageUrl={uploadedMediaUrl}
             onClose={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
           />
+          )}
           <FlightAndRestoreHud
             session={session}
             setSession={setSession}
