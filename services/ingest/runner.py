@@ -878,24 +878,22 @@ _SLOT_WORKERS: dict[str, SlotWorker] = {group: SlotWorker() for group in GROUPS}
 
 
 def count_stale(uploads: IngestStore, kind: str, producer: Producer) -> dict[str, int]:
-    """The uploads whose newest succeeded job of `kind` the producer made at its revision or later (`current`), at an
-    older revision or by another producer (`stale`), or that names no producer, today's records (`no_producer`).
-    Counts only (unit 10i's report); an upload with no succeeded job of the kind is not counted."""
+    """The uploads whose served job of `kind` the producer made at its revision or later (`current`), at an older
+    revision or by another producer (`stale`), or that names no producer, today's records (`no_producer`). For the
+    solve the served job is the one whose solution the upload serves (`JobStore.served_solve`, align-2v: never an
+    aligned solve that did not calibrate over a calibrated one, today's `job.json` among them); for a media kind the
+    newest succeeded. Counts only (unit 10i's report); an upload with no succeeded job of the kind is not counted."""
     store = JobStore(uploads)
     counts = {"current": 0, "stale": 0, "no_producer": 0}
     for sha256 in store.upload_hashes():
-        succeeded = [r for r in store.jobs_of(sha256) if r["kind"] == kind and r["state"] == "succeeded"]
         if kind == "solve":
-            try:
-                legacy = store.legacy_solve_job(sha256)
-            except Unreadable:
-                legacy = None
-            if legacy is not None and legacy["state"] == "succeeded":
-                succeeded.append(legacy)
-        if not succeeded:
+            served = store.served_solve(sha256)
+        else:
+            succeeded = [r for r in store.jobs_of(sha256) if r["kind"] == kind and r["state"] == "succeeded"]
+            served = max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]), default=None)
+        if served is None:
             continue
-        newest = max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
-        key = "no_producer" if "producer" not in newest else "current" if producer.made(newest) else "stale"
+        key = "no_producer" if "producer" not in served else "current" if producer.made(served) else "stale"
         counts[key] += 1
     return counts
 

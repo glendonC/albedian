@@ -1142,6 +1142,25 @@ def test_the_store_counts_the_uploads_whose_newest_solve_is_current_stale_or_fro
         "current": 2, "stale": 0, "no_producer": 1}
 
 
+def test_the_count_judges_the_solve_an_upload_serves_not_a_newer_aligned_one_that_did_not_calibrate(
+        world: dict[str, Any]) -> None:
+    """platform-12, with align-2v's served solve: a plain solve that calibrated at revision 1, then a solve from a
+    person's alignment at revision 2 whose gate refused. The upload serves the plain one, so a count for revision 2
+    calls the upload stale, as a re-solve would change what it serves; the newest succeeded solve would say current."""
+    from tests.integration.test_aligned_solution_served import ALIGNMENT, _publishing  # noqa: PLC0415
+
+    sha = world["shas"][0]
+    kind = solve_kind(Script(), _publishing(["calibrated", "predicted_only_with_a_persons_alignment"]))
+    for revision, request in ((1, None), (2, {**ALIGNMENT})):
+        world["kinds"]["solve"] = JobKind(**{**kind.__dict__, "producer": Producer(kind.producer.name, revision)})
+        job, created = world["runner"]().start(sha, "solve", request)
+        assert created and world["runner"]().wait(job["id"], BOUND_S)["state"] == "succeeded"
+    served = world["store"].served_solve(sha)
+    assert served["producer"]["revision"] == 1 and served.get("request") is None
+    assert job_runner.count_stale(world["uploads"], "solve", Producer(kind.producer.name, 2)) == {
+        "current": 0, "stale": 1, "no_producer": 0}
+
+
 def test_while_a_newer_solve_runs_the_last_good_solution_is_still_served(world: dict[str, Any]) -> None:
     script = Script()
     kind = solve_kind(script)
