@@ -629,9 +629,11 @@ table at the pixel's own smoothed intensity, `e = max(D2 - v, 0)`, and the weigh
   noise unit of the merged frame into it in every trial; at 3.5 sigmas the point was kept out in 39 of 40 seeds (36
   of 40 at a threshold of 4). Fainter, it is not always kept out: at 2, 2.5 and 3 sigmas with every neighbour
   carrying it, it brought a noise unit or more in 18, 6 and 3 of 24 trials. Near frame `k`'s own noise such a point
-  cannot be told from it: that is the faint star of section 7, which guard 1 judges at the gate. The cost on steady
-  synthetic skies: fine noise left 0.274 of the frame's (median of 12 seeds), against 0.267 for the pairwise
-  weight alone.
+  cannot be told from it: that is the faint star of section 7, which guard 1 judges at the gate. The cost, on the
+  steady sky of `tests/media/test_temporal.py` (stars, no clouds, a pan of 6 to 19 px per frame, every neighbour
+  registered and moved as the job moves it): fine noise left 0.274 of the frame's, against 0.267 for the pairwise
+  weight alone (medians of 12 seeds). An earlier probe of restore-6 on a scene that did not move, with the point test's
+  noise taken from the whole frame, gave 0.395 against 0.380; it is not the merge as built.
 
 **Per frame, after the merge:** the stars of that frame, confirmed on the original frame alone or on its original
 frames together (sections 3 and 7), the spatial filter (section 5), the dissolve passes (section 7), then the
@@ -693,9 +695,10 @@ is the video stream's presentation end (its start plus its duration) minus its l
 every frame the input's frame duration and the muxer keeps the last one's, so the piped input's rate is one over
 the original's last frame duration. That came back exact for every last duration of 1 to 60 ticks of 1/600 on
 regular frame time lists, in mov and mp4 (360 of 360), and on the owner's three clips. Where the gaps vary at
-random by up to 5 ticks, the encoder's decode order moved the end by 1 to 6 ticks in 5 of 16 lists, and the stream
-copy that turns a clip moved it by 3 ticks on the test clip: every frame time stays the original's there, so the
-check records the duration and does not refuse it [proposed].
+random by up to 5 ticks, the encoder's decode order moved the end by 1 to 7 ticks: in 5 of 16 lists encoded
+directly (restore-5b's run, 1 to 6 ticks) and in 5 of 8 lists copied by `copy_clip` (its reader's run, 2 to 7
+ticks). The stream copy that turns a clip moved it by 3 ticks on the test clip. Every frame time stays the
+original's there, so the check records the duration and does not refuse it [proposed].
 
 **Checks on the stored clip, before the gate:** the video packet times equal the source's list exactly; each
 audio stream's packet hash (`ffmpeg -map 0:<index> -c copy -f hash -hash sha256`, as
