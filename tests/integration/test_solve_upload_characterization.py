@@ -11,8 +11,9 @@ every number, floats compared within `REL_TOL` and `ABS_TOL` by `math.isclose`, 
 solution takes from the upload (its capture time and place) is compared with what the case sent, field by field,
 and pinned only as the name of what it must equal. The test owns the clock: each `datetime.now` the job reads
 answers the next of the case's own instants, and each stamp is pinned as the read that made it (`<now 0>` is the
-first read). The clip case leaves out its solution's floats: CI decodes it with two ffmpeg versions, and a lossy
-clip may decode to slightly different pixels in each; its job, transitions and every other value stay pinned.
+first read). The clip cases leave out their decoded measurements and pin `heldOutInliers` to stay under the six-inlier
+verification gate: CI encodes and decodes with lossy `libx264` across platforms and two ffmpeg versions, which may
+shift decoded pixels slightly; their jobs, transitions and every other value stay pinned.
 """
 
 from __future__ import annotations
@@ -477,10 +478,22 @@ def _bytes_against_upload(value: Any, sent: int | None, name: str) -> None:
 
 
 def _drop_floats(value: Any) -> Any:
-    """A clip case's record without its decoded measurements: each float, and each number with a fraction that a
-    text spells out (a finding's "Measured at (x, y) px" says the same measurement)."""
+    """A clip case's record without its decoded measurements: each float, each number with a fraction that a text
+    spells out (a finding's "Measured at (x, y) px" says the same measurement), and `heldOutInliers` checked to stay
+    an int in `0 <= v < 6` and recorded as `"<under 6>"` (lossy `libx264` across platforms and ffmpeg builds can shift
+    a faint centroid across the three-pixel inlier gate while keeping the solution below the six-inlier verification
+    gate)."""
     if isinstance(value, dict):
-        return {k: _drop_floats(v) for k, v in value.items()}
+        out: dict[str, Any] = {}
+        for k, v in value.items():
+            if k == "heldOutInliers":
+                assert isinstance(v, int) and not isinstance(v, bool) and 0 <= v < 6, (
+                    f"expected heldOutInliers int in 0 <= v < 6, got {v!r}"
+                )
+                out[k] = "<under 6>"
+            else:
+                out[k] = _drop_floats(v)
+        return out
     if isinstance(value, list):
         return [_drop_floats(v) for v in value]
     if isinstance(value, str):
@@ -661,6 +674,14 @@ def test_the_context_a_kind_is_given_cannot_be_changed() -> None:
                                        time_limit_s=None)
     with pytest.raises(dataclasses.FrozenInstanceError):
         context.time_limit_s = 1.0  # type: ignore[misc]
+
+
+def test_drop_floats_keeps_held_out_inliers_under_six() -> None:
+    for count in range(6):
+        assert _drop_floats({"quality": {"heldOutInliers": count}}) == {"quality": {"heldOutInliers": "<under 6>"}}
+    for bad in (-1, 6, 7, True, False, float(1), "0"):
+        with pytest.raises(AssertionError, match="heldOutInliers"):
+            _drop_floats({"quality": {"heldOutInliers": bad}})
 
 
 def test_every_case_is_pinned_and_every_pin_is_a_case() -> None:

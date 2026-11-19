@@ -5161,7 +5161,7 @@
       "detectedCandidateCount": 9,
       "matchedInlierCount": 0,
       "heldOutPairCount": 0,
-      "heldOutInliers": 0,
+      "heldOutInliers": "<under 6>",
       "passedIndependentVerification": false
      },
      "findings": [
@@ -20969,7 +20969,7 @@
       "detectedCandidateCount": 13,
       "matchedInlierCount": 0,
       "heldOutPairCount": 2,
-      "heldOutInliers": 0,
+      "heldOutInliers": "<under 6>",
       "passedIndependentVerification": false,
       "medianResidualPx": "<float>",
       "p95ResidualPx": "<float>",
@@ -34428,7 +34428,7 @@
       "detectedCandidateCount": 13,
       "matchedInlierCount": 0,
       "heldOutPairCount": 0,
-      "heldOutInliers": 0,
+      "heldOutInliers": "<under 6>",
       "passedIndependentVerification": false
      },
      "findings": [
