@@ -73,6 +73,10 @@ export interface RevealPhotoProps {
   flight?: FlightReadout | null;
   /** Whether the frame's corners are drawn: a clip filling the width has none (INTERIM: UIUX-clip-QUESTION.md). */
   corners?: boolean;
+  /** pilot-1f (D26 item 6): flying on one's own after "Fly on your own", with no star ahead. */
+  freeFlight?: boolean;
+  /** A press on the sky during free flight hands the camera back: the flight ends. */
+  onEndFreeFlight?: () => void;
   /** At phone width (reveal, approved, iPhone 1): smaller marks, the counts under the photo, no logo, status or corners. */
   phone?: boolean;
   viewportWidthPx?: number;
@@ -142,6 +146,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   realSky = false,
   flight = null,
   corners = true,
+  freeFlight = false,
+  onEndFreeFlight,
   phone = false,
   viewportWidthPx,
   viewportHeightPx,
@@ -196,11 +202,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     if (!there || cone) setSteeringAsked(false);
   }, [there, cone]);
-  const steering = there && !cone && !phone && steeringAsked;
+  const steering = there && !cone && !phone && (steeringAsked || freeFlight);
   const [steered, setSteered] = useState<{ fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null>(null);
   // What is only true from Earth (the panorama, the photo-frame marks) leaves in the cone view and while steering
   const earthOnly = cone || steering;
-  const shownFlight = flight && steering && steered ? { ...flight, toStarLy: flight.toStarLy === null ? null : steered.toStarPc * 3.261563777, fromEarthLy: steered.fromEarthPc * 3.261563777 } : flight;
+  // Free flight has no star ahead, so the readout keeps "from Earth" only (D26 item 6)
+  const shownFlight =
+    flight && steering && steered
+      ? { ...flight, toStarLy: freeFlight || flight.toStarLy === null ? null : steered.toStarPc * 3.261563777, fromEarthLy: steered.fromEarthPc * 3.261563777 }
+      : flight;
   const coneGeometry = cone ? coneGeometryOf(session) : null;
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
@@ -222,7 +232,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => setSteeringAsked((on) => !on)} onSteer={setSteered} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && !earthOnly && picked && marks.some((mark) => mark.picked) && (
@@ -382,7 +392,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <span>from Earth</span>
             </div>
           </div>
-          {!phone && craft && picked && placeFinding(picked).kind === 'at_distance' && (
+          {!phone && !freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
             <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} />
           )}
         </section>

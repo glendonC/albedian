@@ -535,6 +535,22 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
   });
 
+  it('flies on one\'s own with no star ahead: from Earth only, no trip, and a press on the sky ends it (pilot-1f)', () => {
+    const { session } = rigelPicked();
+    const onEndFreeFlight = vi.fn();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, freeFlight: true, onEndFreeFlight });
+    expect(all('[data-testid="steer-line"]')).toHaveLength(4);
+    expect(q(READOUT)!.textContent).toContain('from Earth');
+    expect(q(READOUT)!.textContent).not.toContain('to Rigel');
+    expect(q('[data-testid="pilot-trip"]')).toBeNull();
+    const sky = q('[data-testid="flight-sky"]')!;
+    act(() => {
+      sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 400, clientY: 300 }));
+      sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 400, clientY: 300 }));
+    });
+    expect(onEndFreeFlight).toHaveBeenCalledTimes(1);
+  });
+
   it('does not take the press on the phone, where steering waits for its own screen', () => {
     const { session } = rigelPicked();
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true });

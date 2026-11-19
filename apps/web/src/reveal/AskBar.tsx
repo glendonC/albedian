@@ -20,6 +20,8 @@ export interface AskBarProps {
   onBack?: () => void;
   /** At phone width (ask, approved 2026-11-12, iPhone; #p-answer): Ask out loud alone at the phone's size, under the counts. */
   phone?: boolean;
+  /** There after arrival: "Fly on your own", outlined, beside Back to Moment (D26 item 6, pilot-1f; laptop only). */
+  onFlyOnYourOwn?: () => void;
 }
 
 /** Whether a key belongs to a field, a button or editable text rather than to the bar's keys. */
@@ -53,7 +55,7 @@ function heardLabel(words: HeardWords): React.ReactNode {
  * as they are heard. The keyboard button or "/" turns the ask button into the field in place; Enter or the arrow
  * sends, Esc closes. Nothing on screen names Space or "/".
  */
-export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack, phone = false }) => {
+export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack, phone = false, onFlyOnYourOwn }) => {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -93,6 +95,7 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   return (
     <div className={phone ? 'ask-bar is-phone' : 'ask-bar'} data-hud-interactive="true" data-testid="ask-bar">
       {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" onClick={() => onBack()} />}
+      {onBack && !phone && onFlyOnYourOwn && <SecondAction part="ask-bar__fly" label="Fly on your own" size="home" onClick={() => onFlyOnYourOwn()} />}
       {/* There on the phone, Back to Moment alone (fly, approved, iPhone; #p-there .bar) */}
       {phone && onBack ? null : typing ? (
         <form className="ask-bar__field" onSubmit={send}>

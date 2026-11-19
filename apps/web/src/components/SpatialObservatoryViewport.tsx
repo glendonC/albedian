@@ -189,6 +189,13 @@ export const SpatialObservatoryViewport: React.FC<
   const realSkyShown = isRealSkyShown(session);
   // There, after Go there (fly, approved 2026-11-12): the same panorama in the photo's place, the readout in the card's
   const flightShown = isFlightShown(session);
+  // pilot-1f (D26 item 6): "Fly on your own" after arrival hands the camera to the person with no star ahead; leaving
+  // there ends it
+  const [freeFlight, setFreeFlight] = useState(false);
+  useEffect(() => {
+    if (!flightShown) setFreeFlight(false);
+  }, [flightShown]);
+  const arrived = flightShown && session.spatialView?.transitionPhase === 'at_space';
   const skyOver = realSkyShown || flightShown;
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
@@ -720,6 +727,8 @@ export const SpatialObservatoryViewport: React.FC<
               onCloseAnswer={onCloseAnswer}
               realSky={realSkyShown}
               flight={flightShown ? flightReadout(session) : null}
+              freeFlight={freeFlight}
+              onEndFreeFlight={() => setFreeFlight(false)}
               corners={!clipShaded}
             />
           )}
@@ -772,6 +781,7 @@ export const SpatialObservatoryViewport: React.FC<
               onSend={(text) => onRunUtterance(text, 'text')}
               onBack={flightShown ? backToMoment : undefined}
               phone={phoneReveal}
+              onFlyOnYourOwn={arrived && !freeFlight ? () => setFreeFlight(true) : undefined}
             />
           ) : (
           <VoiceCommandHud

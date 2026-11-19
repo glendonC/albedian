@@ -529,6 +529,46 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
+  it('does not offer "Fly on your own" while the flight is still flying', async () => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
+      // The second half of the flight: there, Back to Moment shown, the camera still travelling
+      await waitUntil(() => expect(q('[data-testid="flight-readout"]')).not.toBeNull());
+      expect(q('.ask-bar__fly')).toBeNull();
+      await waitUntil(() => expect(q('.ask-bar__fly')).not.toBeNull());
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
+  });
+
+  it('offers "Fly on your own" once arrived, and hands the camera to the person with no star ahead (pilot-1f)', async () => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      expect(q('.ask-bar__fly')).toBeNull();
+      await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
+      await waitUntil(() => expect(q('.ask-bar__fly')).not.toBeNull());
+      await act(async () => (q('.ask-bar__fly') as HTMLButtonElement).click());
+      expect([...container.querySelectorAll('[data-testid="steer-line"]')].map((p) => p.textContent)).toContain('Press the sky: autopilot again');
+      expect(q('[data-testid="flight-readout"]')!.textContent).not.toContain('to Rigel');
+      expect(q('.ask-bar__fly')).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it("shows answers over Real sky too, the photo's frame still the reveal's", async () => {
     (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
     try {

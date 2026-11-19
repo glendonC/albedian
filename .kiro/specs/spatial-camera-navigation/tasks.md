@@ -28,3 +28,5 @@
   - Traced to: `apps/web/src/spatial/flight/__tests__/coneView.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
 - [x] 14. Hand the flight's camera to the person on a press on the sky and take it back on another (pilot-1e, D26 item 6 with the lead's answer of 08:55): W and S for speed, arrows and a drag to turn with k10's slowing after release, the craft flying where they look, the readout's numbers from their own camera, D26's lines and the flight's own speed; the panorama and the photo-frame marks leave while they steer.
   - Traced to: `apps/web/src/spatial/flight/__tests__/steering.test.ts`, `craftScene.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
+- [x] 15. "Fly on your own" after arrival (pilot-1f, D26 item 6, the lead's yes of 09:48): an outlined pill beside Back to Moment on the laptop hands the camera to the person with no star ahead; the readout keeps "from Earth" only and the craft's trip leaves; a press on the sky ends it.
+  - Traced to: `apps/web/src/reveal/__tests__/askBar.test.tsx`, `revealPhoto.test.tsx`; `apps/web/src/__tests__/askApp.test.tsx`

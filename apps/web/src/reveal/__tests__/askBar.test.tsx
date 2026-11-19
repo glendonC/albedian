@@ -138,6 +138,23 @@ describe('AskBar: Back to Moment, there (fly, approved 2026-11-12)', () => {
   });
 });
 
+describe('AskBar: Fly on your own, there after arrival (D26 item 6, pilot-1f)', () => {
+  it('puts the outlined "Fly on your own" right after Back to Moment, once per press, and not on the phone', () => {
+    const onFlyOnYourOwn = vi.fn();
+    show({ onBack: noop, onFlyOnYourOwn });
+    const fly = q('.ask-bar__fly') as HTMLButtonElement;
+    expect(fly.textContent).toBe('Fly on your own');
+    expect([...q('.ask-bar')!.children].map((c) => c.className.split(' ')[0])).toEqual(['look-main', 'look-second', 'look-second', 'look-icon']);
+    expect(q('.ask-bar')!.children[1]).toBe(fly);
+    act(() => fly.click());
+    expect(onFlyOnYourOwn).toHaveBeenCalledTimes(1);
+    show({ onBack: noop, onFlyOnYourOwn, phone: true });
+    expect(q('.ask-bar__fly')).toBeNull();
+    show({ onFlyOnYourOwn });
+    expect(q('.ask-bar__fly')).toBeNull();
+  });
+});
+
 describe('AskBar: typing a question', () => {
   it('turns the ask button into the field in place, focused, from the keyboard button or "/"', () => {
     show();
