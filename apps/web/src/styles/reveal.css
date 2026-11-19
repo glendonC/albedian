@@ -1306,12 +1306,20 @@
 }
 
 /* There at phone width: the readout under the photo, its Simulated tag above the two distances and no name (fly,
-   approved 2026-11-12, iPhone; #p-there .ro) */
+   approved 2026-11-12, iPhone; #p-there .ro); it ends where the approved readout ends (709 px) and grows upward with
+   the view's disclosure under the tag (the lead's answer 00:32; its place is proposed, no record draws it) */
 .flight-readout.is-phone {
   left: 24px;
   right: 24px;
-  top: 604px;
+  top: auto;
+  bottom: calc(100% - 709px);
   width: auto;
+}
+.flight-readout__note {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--look-ink-2);
 }
 .flight-readout.is-phone h1 {
   display: none;

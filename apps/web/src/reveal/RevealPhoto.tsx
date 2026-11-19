@@ -271,6 +271,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {!answer && flight && (
         <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={flight.name}>
           <EvidenceTag evidenceClass="simulated" />
+          {/* On the phone, where no status line shows, the readout says what the view is (AGENTS.md 1.2) */}
+          {phone && <p className="flight-readout__note">{THERE_DISCLOSURE}</p>}
           <h1>{flight.name}</h1>
           <div className="flight-readout__stats">
             {flight.toStarLy !== null && (

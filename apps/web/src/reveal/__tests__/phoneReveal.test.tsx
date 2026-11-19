@@ -165,6 +165,10 @@ describe('there at phone width (fly, approved 2026-11-12, iPhone; #p-there)', ()
     const readout = q('[data-testid="flight-readout"]')!;
     expect(readout.className).toBe('flight-readout is-phone');
     expect(readout.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    // The view says what it is, its sources and its limit, as on the laptop (AGENTS.md 1.2; the lead's answer 00:32)
+    expect(readout.querySelector('.flight-readout__note')!.textContent).toBe(
+      'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.'
+    );
     expect(all('.flight-readout__stat span').map((s) => s.textContent)).toEqual(['to Rigel', 'from Earth']);
     expect(sky.phone).toBe(true);
     expect(sky.there).toBe(true);
@@ -315,7 +319,9 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the readout there as #p-there does', () => {
-    expect(declarationsOf('.flight-readout.is-phone')).toEqual({ left: '24px', right: '24px', top: '604px', width: 'auto' });
+    // It ends where the approved readout ends (709 px) and grows upward with the disclosure, clear of Back to Moment
+    expect(declarationsOf('.flight-readout.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 709px)', width: 'auto' });
+    expect(declarationsOf('.flight-readout__note')).toEqual({ margin: '0 0 14px', 'font-size': '13px', 'line-height': '1.5', color: 'var(--look-ink-2)' });
     expect(declarationsOf('.flight-readout.is-phone h1')).toEqual({ display: 'none' });
     expect(declarationsOf('.flight-readout.is-phone .look-tag')).toEqual({ 'margin-bottom': '14px' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stats')).toEqual({ gap: '12px', 'margin-top': '0', 'padding-top': '0', 'border-top': '0' });

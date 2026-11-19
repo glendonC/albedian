@@ -478,6 +478,8 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('svg.photo-corners')).toBeNull();
     expect(q('[data-testid="star-card"]')).toBeNull();
     expect(q('[data-testid="reveal-legend"]')).toBeNull();
+    // On the laptop the sentence is the status line's, not the readout's
+    expect(q('.flight-readout__note')).toBeNull();
   });
 
   it('says what the view is: the Simulated tag and the spec\'s sentence with the layer\'s sources, word for word', () => {
