@@ -57,7 +57,7 @@ from services.science.phone_photo_solver import (
 )
 from services.science.catalog import altaz_to_icrs
 from services.science.predicted_sky import LentMoment, _place as _recorded_place, complete_sky
-from services.science.record_hint import RecordHint, record_hint
+from services.science.record_hint import RecordAttitude, RecordHint, record_attitude, record_hint
 from services.science.solver import angular_separation_deg
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
 from services.science.wcs_models import ObservationSolution, PointingHint
@@ -590,14 +590,16 @@ def _solve_chain_once(
 class RecordMoment:
     """What a photo's stored pointing record lends its solve (pointing-moment): the phone's capture time by its own
     clock and, when the person allowed one, the place as latitude and longitude in degrees, with the horizontal
-    accuracy the phone stated in metres and the accuracy the person allowed ("full" or "reduced"). Never logged, and
-    no value of it but the place's accuracy is written into a warning."""
+    accuracy the phone stated in metres and the accuracy the person allowed ("full" or "reduced"); with a measured
+    heading, the search hint (pointing-4) and what a pose from the record needs (pointing-5). Never logged, and no
+    value of it but the place's accuracy and the heading's is written into a warning."""
 
     captured_at_utc: str
     place: tuple[float, float] | None
     place_accuracy_m: float | None = None
     accuracy_authorization: str | None = None
     hint: RecordHint | None = None
+    attitude: RecordAttitude | None = None
 
 
 @dataclass(frozen=True)
@@ -644,7 +646,7 @@ def read_record_moment(original: Path, sha256: str) -> tuple[RecordMoment | None
     place = (float(location.lat_deg), float(location.lon_deg))
     return RecordMoment(
         record.captured_at_device_clock_utc, place, float(location.horizontal_accuracy_m), str(location.accuracy_authorization),
-        record_hint(record),
+        record_hint(record), record_attitude(record),
     ), False
 
 
@@ -950,10 +952,16 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     try:
         # The lent moment only when there is one, so a file's own solve calls the predicted sky as before
         lent = lent_moment(moment_hint, ctx.record_moment)
-        solution = complete_sky(solution, asset, frames=pose_frames, **({} if lent is None else {"lent": lent}))
+        # The record's attitude lines up a photo the stars did not solve (pointing-5); the sky then states the
+        # pointing hint itself, the record as its pose
+        attitude = None if ctx.record_moment is None else ctx.record_moment.attitude
+        solution = complete_sky(
+            solution, asset, frames=pose_frames, **({} if lent is None else {"lent": lent}),
+            **({} if attitude is None else {"attitude": attitude, "hint": pointing_hint}),
+        )
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
-    if pointing_hint is not None:
+    if pointing_hint is not None and solution.pointing_hint is None:
         solution = replace(solution, pointing_hint=pointing_hint)
     return solution
 
@@ -1056,8 +1064,9 @@ SOLVE_PRODUCER_FILES = (
 # words (C16); 11, a pointing record's time and place where the file holds none (pointing-moment v2), which give a sky,
 # named as the record's and with its place's accuracy, to photos that had none; 12, a pointing record's heading as a
 # search hint (pointing-4, whose record_hint.py joins the files), which narrows the searches of photos with a record and
-# states the hint in their solutions
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 12, SOLVE_PRODUCER_FILES)
+# states the hint in their solutions; 13, a pointing record's attitude as an approximate pose when the stars do not
+# solve (pointing-5), which lines up photos with a record that were predicted only
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 13, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

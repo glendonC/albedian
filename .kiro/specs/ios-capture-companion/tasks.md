@@ -60,9 +60,15 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     outside its uncertainty, with the warning (REQ-IOS-2.2).
   - _Requirements: REQ-IOS-2.1, 2.2, 2.3_
 
-- [ ] 5. pointing-5: a pose from the record when stars do not solve (design component 6)
+- [x] 5. pointing-5: a pose from the record when stars do not solve (design component 6)
   - `complete_sky` with a stored record: an `approximate` solution with a `device_attitude` pose swept over the
     heading accuracy, field of view, zoom and roll, widened by the motion window; no sensor pose without a heading.
+  - As built (2026-11-19): before any Moon pose (the lead's answer of 12:20), 21 swept WCS (the heading and the tilt
+    at once to four corners, the roll either way, the record's field of view at its zoom 5 percent either way
+    [proposed]); no pose for the front camera, a mirrored frame, a stored frame of another size than the record's
+    photo, or no field of view; the stored axes of a back-camera photo [open] until mobile-2's check
+    (`services/science/record_hint.py`, `services/science/predicted_sky.py`, `tests/science/test_record_pose.py`).
+    Unsolved on real data: no photo with a pointing record is stored yet.
   - _Requirements: REQ-IOS-2.3; spec `predicted-sky-for-every-upload` REQ-SKY-3 to 6_
 
 - [x] 6. mobile-0: the app's project, these mobile tasks and the tested core

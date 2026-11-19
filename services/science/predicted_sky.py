@@ -79,13 +79,16 @@ from services.science.pose_estimate import (
     pose_from_frames,
     sun_is_up,
 )
+from services.science.record_hint import NO_RECORD_SIZE, RecordAttitude, RecordPose, TILT_ERROR_DEG, record_pose
 from services.science.wcs_models import (
     CelestialFindingRecord,
     ObservationSolution,
+    PointingHint,
     SolutionQuality,
     SolverIdentity,
     SourceDetection,
 )
+from services.contracts.astronomy import POINTING_USES
 
 # The bound the synthetic pose sample (tests/integration/test_unregistered_detections.py) still states for its 71
 # pinned stars, set when the transform left out nutation and annual aberration; neither the predicted sky nor the
@@ -690,6 +693,14 @@ HORIZON_POSE_SOLVER = SolverIdentity(
         "the field of view fitted from the two"
     ),
 )
+RECORD_POSE_SOLVER = SolverIdentity(
+    name="AlbedianDeviceAttitudePose",
+    version="1.0.0",
+    catalog_release=(
+        "The phone's pointing record (its attitude, the heading accuracy it stated and its camera's reported field of "
+        "view) and ERFA's frame rotation at the photo's moment"
+    ),
+)
 INSIDE_THE_FRAME = " · Inside the frame (lined up, approximate)"
 OUTSIDE_THE_FRAME = " · Outside the frame"
 LINED_UP_LIMITATION = (
@@ -699,6 +710,10 @@ LINED_UP_LIMITATION = (
 HORIZON_LINED_UP_LIMITATION = (
     "Placed in the frame only through the approximate pose lined up by taking the frame's bright spot to be the Moon "
     "and its skyline to be level ground, with the field of view fitted from them; not checked against stars."
+)
+RECORD_LINED_UP_LIMITATION = (
+    "Placed in the frame only through the approximate pose from the phone's pointing record, its compass heading, tilt "
+    "and field of view; not checked against stars."
 )
 # Two frame times are the same frame within a microsecond: the pose's frame carries its own presentation time as the
 # job decodes it, and the detector's findings carry 0.0, the start of the stack they were found in
@@ -876,24 +891,14 @@ def _lined_up(
         source_sha256=solution.source_sha256,
     )
     time_sec = _worked_out_time_sec(asset)
-    predicted = []
-    for finding in predicted_sky_findings(
-        pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
-        time_uncertainty_sec=time_sec, lent=lent,
-    ):
-        x, y = wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
-        inside = math.isfinite(x) and math.isfinite(y) and 0.0 <= x < wcs.width and 0.0 <= y < wcs.height
-        predicted.append(
-            replace(
-                finding,
-                subtitle=finding.subtitle + (INSIDE_THE_FRAME if inside else OUTSIDE_THE_FRAME),
-                limitations=(
-                    (*finding.limitations, LINED_UP_LIMITATION if head_worn else HORIZON_LINED_UP_LIMITATION)
-                    if inside
-                    else finding.limitations
-                ),
-            )
-        )
+    predicted = _placed(
+        predicted_sky_findings(
+            pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
+            time_uncertainty_sec=time_sec, lent=lent,
+        ),
+        wcs,
+        LINED_UP_LIMITATION if head_worn else HORIZON_LINED_UP_LIMITATION,
+    )
     if not head_worn:
         # The horizon solver's own order, kept for its callers: what lies inside the frame first (bodies, then stars
         # brightest first, as the predicted sky lists them), then the rest above the horizon
@@ -958,9 +963,126 @@ def _lined_up(
     )
 
 
+def _placed(
+    findings: Sequence[CelestialFindingRecord], wcs: Any, limitation: str
+) -> list[CelestialFindingRecord]:
+    """The predicted findings, each saying whether the nominal WCS puts it inside the frame, and those inside it
+    carrying `limitation`."""
+    placed = []
+    for finding in findings:
+        x, y = wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
+        inside = math.isfinite(x) and math.isfinite(y) and 0.0 <= x < wcs.width and 0.0 <= y < wcs.height
+        placed.append(
+            replace(
+                finding,
+                subtitle=finding.subtitle + (INSIDE_THE_FRAME if inside else OUTSIDE_THE_FRAME),
+                limitations=(*finding.limitations, limitation) if inside else finding.limitations,
+            )
+        )
+    return placed
+
+
+def _record_hint_with_pose(
+    solution: ObservationSolution, attitude: RecordAttitude, hint: PointingHint | None, lent: LentMoment | None
+) -> PointingHint:
+    """The solution's pointing hint once the record is its pose: `hint` (the searches' own) with `pose_estimate`
+    added, or, with none, a new one that says the record was the pose and, where it lent the time or the place, the
+    moment; the centre and uncertainty are the record's in both."""
+    time_from, place_from = ("file", "file") if lent is None else (lent.time_from, lent.place_from)
+    uses = {"pose_estimate", *(hint.used_as if hint is not None else ())}
+    if hint is None and "record" in (time_from, place_from):
+        uses.add("moment")
+    if hint is not None:
+        time_from, place_from = hint.time_from, hint.place_from
+    centre = attitude.hint
+    return PointingHint(
+        source_asset_sha256=solution.source_sha256,
+        used_as=tuple(use for use in POINTING_USES if use in uses),
+        time_from=time_from,
+        place_from=place_from,
+        center_alt_deg=centre.center_alt_deg,
+        center_az_deg=centre.center_az_deg,
+        uncertainty_deg=centre.uncertainty_deg,
+    )
+
+
+def _record_lined_up(
+    solution: ObservationSolution, asset: Mapping[str, Any], pose: RecordPose, attitude: RecordAttitude,
+    moment: str, lat: float, lon: float, lent: LentMoment | None, hint: PointingHint | None,
+) -> ObservationSolution:
+    """The approximate solution of a pose from the phone's record (pointing-5): the nominal WCS and its device
+    attitude pose, the detector's pixel-only findings as measured, and the predicted sky for the moment, each saying
+    whether the nominal WCS puts it inside the frame; the pointing hint says the record was the pose."""
+    kept = [f for f in solution.findings if f.evidence_class == "observed" and f.source_detection is not None]
+    time_sec = _worked_out_time_sec(asset)
+    predicted = _placed(
+        predicted_sky_findings(
+            moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
+            time_uncertainty_sec=time_sec, lent=lent,
+        ),
+        pose.wcs,
+        RECORD_LINED_UP_LIMITATION,
+    )
+    estimate = pose.estimate
+    # The bound counts the frame term and, for a time zone worked out from the GPS position and time stamp, how far
+    # the sky turns in the time's uncertainty, and the lent place's stated accuracy
+    time_deg = (0.0 if time_sec is None else sky_turn_deg(time_sec)) + _lent_place_arcsec(lent) / 3600.0
+    within = math.ceil(estimate.max_center_offset_deg + pose.frame_term_arcsec / 3600.0 + time_deg)
+    lined_up = (
+        f"Lined up from the phone's pointing record: its compass heading within {attitude.heading_accuracy_deg:g} "
+        f"degrees, its tilt within {TILT_ERROR_DEG:g} degrees, the phone turning at most {attitude.turned_deg:.1f} "
+        f"degrees around the shot, and the field of view it reported ({estimate.fov_diagonal_deg:.0f} degrees across "
+        f"the diagonal): within about {within} degrees of the frame's centre, more toward the edges; not checked "
+        "against stars."
+    )
+    (sun,) = compute_solar_system_ephemerides(moment, lat, lon, bodies=("Sun",))
+    detected = (
+        solution.quality.detected_candidate_count
+        if solution.quality is not None
+        else len(kept)
+    )
+    return replace(
+        solution,
+        status="approximate",
+        wcs=pose.wcs,
+        # Nothing was matched to a catalog: the record only says where the phone pointed, and no star was held out
+        quality=SolutionQuality(
+            detected_candidate_count=detected,
+            matched_inlier_count=0,
+            held_out_pair_count=0,
+            held_out_inliers=0,
+            median_residual_px=None,
+            p95_residual_px=None,
+            median_residual_arcsec=None,
+            passed_independent_verification=False,
+        ),
+        solver=RECORD_POSE_SOLVER,
+        observed_at_utc=moment,
+        observer_lat=lat,
+        observer_lon=lon,
+        findings=[*kept, *predicted],
+        warnings=[
+            *solution.warnings,
+            lined_up,
+            *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            *(() if lent is None else (lent_moment_sentence(lent),)),
+            sky_phase(sun.alt_deg).sentence,
+        ],
+        pose_estimate=estimate,
+        pointing_hint=_record_hint_with_pose(solution, attitude, hint, lent),
+    )
+
+
+def _stored_size(asset: Mapping[str, Any]) -> tuple[int, int] | None:
+    width, height = asset.get("width"), asset.get("height")
+    if not all(isinstance(v, int) and not isinstance(v, bool) and v > 0 for v in (width, height)):
+        return None
+    return int(width), int(height)
+
+
 def complete_sky(
     solution: ObservationSolution, asset: Mapping[str, Any], *, frames: FramesForPose | None = None,
-    lent: LentMoment | None = None,
+    lent: LentMoment | None = None, attitude: RecordAttitude | None = None, hint: PointingHint | None = None,
 ) -> ObservationSolution:
     """A plate solver's outcome completed with the sky predicted for the recording's own capture time and place
     (`asset` is its SourceAsset): a new solution, the solver's left as it was.
@@ -970,6 +1092,11 @@ def complete_sky(
     - Calibrated: status, WCS, quality and every finding stay; the deep-sky objects inside the frame that its keep
       rules hold for are added through the verified WCS (`predict_deep_sky_findings`), then the predicted objects not
       already catalog_matched (same catalog id) or already present (same finding id).
+    - Unresolved or ambiguous, given `attitude` (the phone's pointing record with a measured heading, pointing-5), a
+      back-camera photo stored at the record's photo size and a field of view the record gives: approximate, lined
+      up from the record (`record_pose`, `_record_lined_up`), before any Moon pose, and the frames are not read;
+      the solution's pointing hint is `hint` (the searches' own, or a new one) with `pose_estimate` added.
+      A refused record pose adds its reason to the warnings below, and the Moon poses follow.
     - Unresolved or ambiguous, given `frames`, with a head-worn camera profile, the predicted Moon more than 5 degrees
       up, the Sun down, and one frame whose bright spot passes the Moon test and fits exactly one level pose at each
       swept value: approximate, lined up from that frame (`_lined_up`).
@@ -1007,6 +1134,19 @@ def complete_sky(
         return replace(solution, warnings=[*solution.warnings, OUT_OF_RANGE])
     lat, lon = place
     no_pose: list[str] = []
+    if solution.status != "calibrated" and attitude is not None:
+        size = _stored_size(asset)
+        sensor = (
+            Refusal("record_size", "")
+            if size is None
+            else record_pose(
+                attitude, width=size[0], height=size[1], orientation=asset.get("displayOrientation"), moment=moment,
+                lat=lat, lon=lon,
+            )
+        )
+        if isinstance(sensor, RecordPose):
+            return _record_lined_up(solution, asset, sensor, attitude, moment, lat, lon, lent, hint)
+        no_pose.append(sensor.reason or NO_RECORD_SIZE)
     if solution.status != "calibrated" and frames is not None:
         read = _read_once(frames)
         pose = _head_worn_pose(asset, read, captured, moment, lat, lon)
