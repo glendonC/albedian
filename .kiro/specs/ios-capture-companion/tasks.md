@@ -38,6 +38,14 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     record, so a record with a place and no heading can still say it lent the photo its time and place.
     v2: the hinted centre and its uncertainty are given exactly when the hint was a search hint or the pose, and
     the verified centre's offset from it exactly on a calibrated solution whose hint gives one.
+  - pointing-moment (2026-11-19): the solve reads the stored record at its start (`services/ingest/jobs.py`); where
+    the file holds no recorded time it takes the record's, where it holds no place the record's allowed place, for
+    the searches and the predicted sky, and the hint says `moment` with `timeFrom` and `placeFrom`; the record
+    lends nothing when the solution would still have no place; a record that is not this photo's is not used, with
+    one warning. Tests: `tests/integration/test_pointing_moment.py`.
+  - pointing-moment v2 (2026-11-19, after the read): each predicted item names the phone's pointing record for a
+    lent time or place (`services/science/predicted_sky.py`), one warning says so, and the record place's stated
+    accuracy, full or reduced, joins every stated uncertainty (its words [proposed] for the design lane).
   - _Requirements: REQ-IOS-2.2, REQ-IOS-6.2_
 
 - [ ] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)

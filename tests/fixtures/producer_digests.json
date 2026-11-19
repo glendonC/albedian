@@ -23,7 +23,7 @@
   "digest": "10c57ba10c23bc3537ad8873985b628260448668d6834c9d099fad6e41b6c3f3"
  },
  "albedian.solve_chain": {
-  "revision": 10,
+  "revision": 11,
   "files": [
    "services/ingest/jobs.py",
    "services/science/detector.py",
@@ -66,6 +66,6 @@
    "apps/web/public/catalog/constellations/bounds.json",
    "apps/web/public/catalog/deepsky/openngc.json"
   ],
-  "digest": "8d8b6a2ae958e6e43b270ac64882b22749aa3d2daa83b7f7afac49e9c0d2cb34"
+  "digest": "478d313224c7c856dd4b702d8ad801ab99c48c959cdc0f90ff217fb5d1da78df"
  }
 }

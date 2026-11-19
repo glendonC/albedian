@@ -8,7 +8,8 @@ job store and never written again.
 Every stage reports a real denominator (`bytes` stored, `frames` decoded and detected, `candidates` evaluated
 in the triplet pool or `steps` when too few detections exist for triplet search, and `steps` for held-out
 verification). After the solve, the solution is completed with the sky predicted for the upload's own recorded time
-and place (`services/science/predicted_sky.py`), with no stage of its own; for a camera with a head-worn profile it
+and place (`services/science/predicted_sky.py`), with no stage of its own; where the file holds no recorded time or
+no place, a stored pointing record lends its own, and the solution's `pointingHint` says so (pointing-moment); for a camera with a head-worn profile it
 is lined up by taking one frame's bright spot to be the Moon, searched among up to 16 of a clip's own frames spread
 over it, each at its own presentation time (`_decode_spread_frames`).
 """
@@ -35,9 +36,11 @@ from PIL import Image, UnidentifiedImageError
 
 from services.contracts.astronomy import parse_observation_solution
 from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
+from services.contracts.pointing import PointingRecord
 from services.ingest.job_store import JobStore
 from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, NoUpload, Producer, runner_for
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
+from services.ingest.store_pointing import PointingUnreadable, read_stored_pointing
 from services.science.detector import (
     _to_luma_2d,
     detect_point_sources,
@@ -52,9 +55,9 @@ from services.science.phone_photo_solver import (
     camera_fov_hint_deg,
     solve_phone_photo,
 )
-from services.science.predicted_sky import complete_sky
+from services.science.predicted_sky import LentMoment, _place as _recorded_place, complete_sky
 from services.science.solver import _build_unresolved_solution, solve_and_verify_field, triangle_solver_identity
-from services.science.wcs_models import ObservationSolution
+from services.science.wcs_models import ObservationSolution, PointingHint
 
 MAX_VIDEO_SOLVE_FRAMES = 8
 # The frames of a clip the head-worn Moon pose searches, spread over the whole clip (design component 6)
@@ -73,6 +76,9 @@ class SolveJobError(Exception):
 UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
 # Generic, so no capture value an error message might hold is stored
 PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
+# The one sentence for a stored pointing record the solve did not use; it holds none of the record's values
+# [proposed: worded like the solve's other sentences, for UIUX's review]
+RECORD_NOT_USED = "The photo's stored pointing record is not a record of this photo, so the solve did not use it."
 def job_id_for_sha256(sha256: str) -> str:
     """The 16-character job id today's solve records carry for a stored upload's SHA-256 (`job.json`)."""
     if not re.fullmatch(r"^[0-9a-f]{64}$", sha256):
@@ -532,6 +538,92 @@ def _solve_chain(
 
 
 @dataclass(frozen=True)
+class RecordMoment:
+    """What a photo's stored pointing record lends its solve (pointing-moment): the phone's capture time by its own
+    clock and, when the person allowed one, the place as latitude and longitude in degrees, with the horizontal
+    accuracy the phone stated in metres and the accuracy the person allowed ("full" or "reduced"). Never logged, and
+    no value of it but the place's accuracy is written into a warning."""
+
+    captured_at_utc: str
+    place: tuple[float, float] | None
+    place_accuracy_m: float | None = None
+    accuracy_authorization: str | None = None
+
+
+def _no_constant(_token: str) -> Any:
+    raise ValueError("not JSON text")
+
+
+def read_record_moment(original: Path, sha256: str) -> tuple[RecordMoment | None, bool]:
+    """The moment the photo's stored pointing record lends its solve, and whether a record is held that the solve
+    cannot use: something other than a regular file in its place, bytes that are not JSON text or not a record by
+    its contract, or a record of another photo. Read beside the stored original at the solve's start; the route
+    refuses a record sent once a solve has started, so every run of the solve reads the same one."""
+    folder = original.parent
+    if folder.name != sha256 or folder.parent.name != sha256[:2]:
+        return None, True
+    try:
+        body = read_stored_pointing(folder.parent.parent, sha256)
+    except (PointingUnreadable, OSError):
+        return None, True
+    if body is None:
+        return None, False
+    try:
+        record = PointingRecord.model_validate(json.loads(body.decode("utf-8"), parse_constant=_no_constant))
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        # A contract refusal is a ValueError too; none of these is raised on with a byte of the record
+        return None, True
+    if record.source_asset_sha256 != sha256:
+        return None, True
+    location = record.location
+    if location.state != "allowed":
+        return RecordMoment(record.captured_at_device_clock_utc, None), False
+    place = (float(location.lat_deg), float(location.lon_deg))
+    return RecordMoment(
+        record.captured_at_device_clock_utc, place, float(location.horizontal_accuracy_m), str(location.accuracy_authorization)
+    ), False
+
+
+def lent_moment(moment_hint: PointingHint | None, moment: RecordMoment | None) -> LentMoment | None:
+    """What the predicted sky says of a moment the record lent: where the time and the place came from, and for the
+    record's place its stated accuracy, carried into every stated uncertainty (pointing-moment v2)."""
+    if moment_hint is None or moment is None:
+        return None
+    from_record = moment_hint.place_from == "record"
+    return LentMoment(
+        moment_hint.time_from,
+        moment_hint.place_from,
+        moment.place_accuracy_m if from_record else None,
+        moment.accuracy_authorization if from_record else None,
+    )
+
+
+def lend_record_moment(
+    asset: Mapping[str, Any], moment: RecordMoment | None, sha256: str
+) -> tuple[Mapping[str, Any], PointingHint | None]:
+    """The asset the searches and the predicted sky read: the record's time where the file holds no recorded time,
+    its allowed place where the file holds no place, and the hint that says which came from where. The asset as it
+    is and no hint when the record lends nothing, or when the solution would still have no place: a time alone
+    gives no sky, and a solution with a hint has both a time and a place (pointing-3b). The record is used for its
+    moment only, so the hint gives no centre (pointing-4 and pointing-5 add the search hint and the pose)."""
+    if moment is None:
+        return asset, None
+    captured = asset.get("capturedAtUTC")
+    time_from = "file" if isinstance(captured, str) and captured != "" else "record"
+    place_from = "file" if _recorded_place(asset) is not None else ("record" if moment.place is not None else None)
+    if place_from is None or (time_from, place_from) == ("file", "file"):
+        return asset, None
+    lent = dict(asset)
+    if time_from == "record":
+        # The receipt names a time's source only beside the time (router `_asset`), so none is left to describe it
+        lent["capturedAtUTC"] = moment.captured_at_utc
+    if place_from == "record" and moment.place is not None:
+        lent["observerLocation"] = {"latDeg": moment.place[0], "lonDeg": moment.place[1]}
+    hint = PointingHint(source_asset_sha256=sha256, used_as=("moment",), time_from=time_from, place_from=place_from)
+    return lent, hint
+
+
+@dataclass(frozen=True)
 class SolveContext:
     """What the solve chain needs from the job around it: the stored upload, a way to report a stage's progress, and
     the search's time bound (`None` for `SOLVE_TIME_LIMIT_SEC`).
@@ -545,6 +637,9 @@ class SolveContext:
     slot's worker and `stop` its job's stop event; `on_pass(stage, number, label)` is told each search as it starts,
     `on_span(first, count, start_sec, end_sec)` a clip's decoded frames, `check_cancel()` is asked between steps, and
     `remaining_s()` bounds the search, and `on_predicted_sky(solution)` is given the sky a pose places before it.
+
+    `record_moment` is what the photo's stored pointing record lends (`read_record_moment`), and `record_unusable`
+    says a record is held that the solve did not use.
     """
 
     sha256: str
@@ -564,6 +659,8 @@ class SolveContext:
     remaining_s: Optional[Callable[[], float]] = None
     # Told the sky predicted from a pose known before the search, as a contract dict (the lock-on, platform-10c)
     on_predicted_sky: Optional[Callable[[dict[str, Any]], None]] = None
+    record_moment: Optional[RecordMoment] = None
+    record_unusable: bool = False
 
 
 def solve_upload(ctx: SolveContext) -> ObservationSolution:
@@ -574,8 +671,11 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     job around it (`run_solve_job`) records the stages it reports, writes the solution and the job, and fails the job
     on any error.
     """
-    original, asset, sha256 = ctx.original, ctx.asset, ctx.sha256
+    original, sha256 = ctx.original, ctx.sha256
     width, height, media_kind = ctx.width, ctx.height, ctx.media_kind
+    # Where the file holds no recorded time or no place, the stored record's stand in for the searches and the
+    # predicted sky, and the hint says so; the receipt keeps the file's own
+    asset, moment_hint = lend_record_moment(ctx.asset, ctx.record_moment, sha256)
 
     def on_decode_progress(done: int, total: int | None) -> None:
         ctx.report({"stage": "decode", "unit": "frames", "done": done, "total": total}, persist=done == total)
@@ -704,13 +804,20 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         # Recorded only when a held-out star was compared; a solve that stopped earlier ran no verification
         ctx.report({"stage": "verify", "unit": "steps", "done": 1, "total": 1})
 
+    if ctx.record_unusable:
+        solution = replace(solution, warnings=[*solution.warnings, RECORD_NOT_USED])
+
     # The sky predicted for the file's own recorded time and place, after the solve or its time limit, lined up
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
     # one generic warning
     try:
-        solution = complete_sky(solution, asset, frames=pose_frames)
+        # The lent moment only when there is one, so a file's own solve calls the predicted sky as before
+        lent = lent_moment(moment_hint, ctx.record_moment)
+        solution = complete_sky(solution, asset, frames=pose_frames, **({} if lent is None else {"lent": lent}))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
+    if moment_hint is not None:
+        solution = replace(solution, pointing_hint=moment_hint)
     return solution
 
 
@@ -803,13 +910,14 @@ SOLVE_PRODUCER_FILES = (
 # 4, a clip's stack detected with its frames' rounding noise as the floor, which changes its detections, the searches
 # they feed and the job's noise words (field-8); 5, the blind search over the whole sky's brightest stars
 # (solve-search-2) and the horizon search at any roll (the high-pointing prior), which calibrate photos that were
-# unresolved; 6, a still's 35 mm hint scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that
-# were unresolved; 7, the phone solver's refinement trained on half its tight pairs, which matches photos it did not
-# (refine-1); 8, the words when a floor set a frame's noise, once beside the near-black warning (field-8b); 9, a
-# stored pointing hint names its source, the phone's record or a person (align-1b), so a hint stored without one
-# is solved again rather than refused when read; 10, the solvers' refused-gate and too-few-stars warnings in the
-# design lane's words (C16)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 10, SOLVE_PRODUCER_FILES)
+# unresolved; 6, a still's 35 mm hint scaled to its stored frame (fov-1), which calibrates 16:9 phone photos that were
+# unresolved; 7, the phone solver's refinement trained on half its tight pairs, which matches photos it did not
+# (refine-1); 8, the words when a floor set a frame's noise, once beside the near-black warning (field-8b); 9, a stored
+# pointing hint names its source, the phone's record or a person (align-1b), so a hint stored without one is solved
+# again rather than refused when read; 10, the solvers' refused-gate and too-few-stars warnings in the design lane's
+# words (C16); 11, a pointing record's time and place where the file holds none (pointing-moment v2), which give a sky,
+# named as the record's and with its place's accuracy, to photos that had none
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 11, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at
@@ -905,6 +1013,7 @@ def run_solve_kind(ctx: JobContext) -> KindResult:
     passes, frame span, cancel and child, then the solution checked by its contract, written as a partial and
     published as `solutions/<job_id>.json` before the commit (REQ-JOB-5.2, 5.4)."""
     asset = ctx.asset
+    record_moment, record_unusable = read_record_moment(ctx.original, ctx.sha256)
 
     def report(stage: dict[str, Any], *, persist: bool = True, announce: bool = True) -> None:
         ctx.progress(stage["stage"], stage["unit"], stage["done"], stage["total"])
@@ -926,6 +1035,8 @@ def run_solve_kind(ctx: JobContext) -> KindResult:
         check_cancel=ctx.check_cancel,
         remaining_s=ctx.remaining_s,
         on_predicted_sky=ctx.predicted_sky,
+        record_moment=record_moment,
+        record_unusable=record_unusable,
     )
     try:
         solution = solve_upload(solve_ctx)

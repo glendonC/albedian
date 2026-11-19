@@ -180,6 +180,80 @@ def time_zone_from_gps(uncertainty_sec: float) -> str:
     )
 
 
+# A time or a place a phone's pointing record lent the solve (pointing-moment v2) [proposed: for the design lane]
+RECORD_TIME_WORDS = "the capture time in the phone's pointing record"
+RECORD_PLACE_WORDS = "the place in the phone's pointing record"
+# [inference] The Earth's mean radius and the Moon's nearest distance: a place off by d metres tilts the local vertical,
+# and so every apparent altitude and azimuth, by d over the Earth's radius, and moves the Moon's direction by d over its
+# distance at most
+EARTH_MEAN_RADIUS_M = 6_371_000.0
+MOON_NEAREST_M = 356_400_000.0
+ARCSEC_PER_RAD = 180.0 * 3600.0 / math.pi
+
+
+@dataclass(frozen=True)
+class LentMoment:
+    """Where the solve's time and place came from when a phone's pointing record lent either: "file" or "record"
+    for each; for the record's place, the horizontal accuracy the phone stated in metres and the accuracy the person
+    allowed ("full" or "reduced")."""
+
+    time_from: str
+    place_from: str
+    place_accuracy_m: float | None = None
+    accuracy_authorization: str | None = None
+
+
+def place_uncertainty_arcsec(accuracy_m: float) -> float:
+    """How far a place `accuracy_m` metres off can move a predicted direction: the local vertical's tilt, and the
+    Moon's parallax at its nearest added for every object, so the bound holds for each."""
+    return float(accuracy_m) * (1.0 / EARTH_MEAN_RADIUS_M + 1.0 / MOON_NEAREST_M) * ARCSEC_PER_RAD
+
+
+def _lent_place_arcsec(lent: LentMoment | None) -> float:
+    if lent is None or lent.place_from != "record" or lent.place_accuracy_m is None:
+        return 0.0
+    return place_uncertainty_arcsec(lent.place_accuracy_m)
+
+
+def lent_moment_sentence(lent: LentMoment) -> str:
+    """The sentence for a predicted sky whose time or place a phone's pointing record lent. It names no time and no
+    place; for the place it gives the accuracy the phone stated and how far that can move the predicted sky."""
+    place = ""
+    if lent.place_from == "record":
+        allowed = ", the approximate location the person allowed" if lent.accuracy_authorization == "reduced" else ""
+        within = "with no stated accuracy" if lent.place_accuracy_m is None else f"within {lent.place_accuracy_m:g} m"
+        place = (
+            f"{RECORD_PLACE_WORDS}, {within}{allowed}, which can move the predicted sky by up to "
+            f"{_lent_place_arcsec(lent):.1f} arcsec"
+        )
+    time = f"{RECORD_TIME_WORDS}, by the phone's own clock" if lent.time_from == "record" else ""
+    if time and place:
+        return f"The file holds no capture time and no place: the sky is predicted for {time}, and {place}."
+    if time:
+        return f"The file holds no capture time: the sky is predicted for {time}."
+    return f"The file holds no place: the sky is predicted for {place}."
+
+
+def _moment_said(time_said: str, lent: LentMoment | None) -> str:
+    """The time and place a predicted item is placed for, in its first limitation's words."""
+    if lent is not None and lent.time_from == "record":
+        time_said = RECORD_TIME_WORDS
+    if lent is None or lent.place_from != "record":
+        return f"{time_said} and place"
+    within = "" if lent.place_accuracy_m is None else f" (within {lent.place_accuracy_m:g} m)"
+    return f"{time_said} and {RECORD_PLACE_WORDS}{within}"
+
+
+def _star_position_limitation(lent: LentMoment | None) -> str:
+    if lent is None or lent.place_from != "record":
+        return STAR_POSITION_LIMITATION
+    lent_text = STAR_POSITION_LIMITATION.replace(
+        "for the recorded place at sea level", f"for {RECORD_PLACE_WORDS}, at sea level"
+    )
+    assert lent_text != STAR_POSITION_LIMITATION
+    return lent_text
+
+
 STAR_POSITION_LIMITATION = (
     "Placed by ERFA's apparent place for the recorded place at sea level (catalog.py icrs_to_altaz). Its stated "
     "uncertainty adds UT1 - UTC (up to 13.5 arcsec), polar motion, its own parallax, which is left out, the stored "
@@ -417,16 +491,16 @@ def _star_subtitle(star: CatalogStar, designation: str | None, alt: float, az: f
 
 
 def _star_limitations(
-    star: CatalogStar, catalog_epoch: float, time_said: str
+    star: CatalogStar, catalog_epoch: float, moment_said: str, lent: LentMoment | None = None
 ) -> tuple[str, ...]:
     moved = star.pm_ra_mas_yr is not None and star.pm_dec_mas_yr is not None
     return (
         f"Predicted from its {star.release_version} catalog row (epoch J{catalog_epoch:.1f}), "
         + ("moved by its proper motion to the date" if moved else "not moved, since the row has no proper motion")
-        + f", for {time_said} and place; not measured in the recording.",
+        + f", for {moment_said}; not measured in the recording.",
         f"Apparent magnitude is {star.magnitude_band}, not Johnson V.",
         *(() if star.has_distance else ("Its catalog row gives no distance, so none is shown.",)),
-        STAR_POSITION_LIMITATION,
+        _star_position_limitation(lent),
     )
 
 
@@ -439,6 +513,7 @@ def predicted_sky_findings(
     source_sha256: str,
     exclude_ids: frozenset[str] = frozenset(),
     time_uncertainty_sec: float | None = None,
+    lent: LentMoment | None = None,
 ) -> list[CelestialFindingRecord]:
     """The Sun, the Moon, the five planets and the catalog tile stars to PREDICTED_STAR_DEPTH_V or named (stars
     carried to the date by their proper motion) above the horizon at `moment` from (`lat_deg`, `lon_deg`), as
@@ -449,7 +524,9 @@ def predicted_sky_findings(
 
     Above the horizon means a geometric (airless) altitude above 0. `exclude_ids` names catalog stars to leave
     out, by catalog id. `time_uncertainty_sec`, for a capture time whose time zone was worked out from the GPS position
-    and time stamp, is added to each uncertainty as the sky's turn in that time and named in each limitation. Raises
+    and time stamp, is added to each uncertainty as the sky's turn in that time and named in each limitation. `lent`,
+    when a phone's pointing record lent the time or the place (pointing-moment), names the record in each limitation
+    in their place and adds its place's stated accuracy to each uncertainty (`place_uncertainty_arcsec`). Raises
     EphemerisOutOfRange outside 1800 to 2050."""
     lat_deg, lon_deg = require_place(lat_deg, lon_deg)
     require_ephemeris_range(moment)
@@ -460,6 +537,8 @@ def predicted_sky_findings(
         if time_uncertainty_sec is None
         else "the recorded capture time, its time zone taken from the GPS position and agreeing with the GPS time stamp,"
     )
+    moment_said = _moment_said(time_said, lent)
+    time_arcsec += _lent_place_arcsec(lent)
     for body in compute_solar_system_ephemerides(
         moment, lat_deg, lon_deg, bodies=PREDICTED_BODIES, observation_solution_id=solution_id
     ):
@@ -479,7 +558,7 @@ def predicted_sky_findings(
                 uncertainty_arcsec=body.uncertainty_arcsec + time_arcsec,
                 verified_by_holdout=False,
                 limitations=(
-                    f"Predicted with {body.method}, for {time_said} and place; not measured in the recording.",
+                    f"Predicted with {body.method}, for {moment_said}; not measured in the recording.",
                     *body.limitations[1:],
                 ),
                 source_sha256=source_sha256,
@@ -517,13 +596,13 @@ def predicted_sky_findings(
                 uncertainty_arcsec=float(uncertainty[k]) + time_arcsec,
                 catalog_star=star,
                 verified_by_holdout=False,
-                limitations=_star_limitations(star, index.epoch_jyear, time_said),
+                limitations=_star_limitations(star, index.epoch_jyear, moment_said, lent),
                 source_sha256=source_sha256,
             )
         )
     findings += _deep_sky_above_horizon(
         moment, lat_deg, lon_deg, solution_id=solution_id, source_sha256=source_sha256, time_arcsec=time_arcsec,
-        time_said=time_said,
+        moment_said=moment_said, lent=lent,
     )
     return findings
 
@@ -539,7 +618,7 @@ def _sky_deep_sky_rows() -> tuple[list[Any], ...]:
 
 def _deep_sky_above_horizon(
     moment: str, lat_deg: float, lon_deg: float, *, solution_id: str, source_sha256: str, time_arcsec: float,
-    time_said: str,
+    moment_said: str, lent: LentMoment | None = None,
 ) -> list[CelestialFindingRecord]:
     """The OpenNGC objects `sky_reason` keeps that are above the horizon (geometric altitude above 0) at `moment`, as
     predicted findings placed from their J2000 catalog centres, brightest first (FIELD field-6)."""
@@ -567,10 +646,14 @@ def _deep_sky_above_horizon(
                 az_deg=float(az[k]),
                 uncertainty_arcsec=POSITION_PRECISION_ARCSEC + time_arcsec,
                 deep_sky_reference=reference,
-                verification_method=SKY_VERIFICATION_METHOD,
+                verification_method=(
+                    SKY_VERIFICATION_METHOD
+                    if lent is None
+                    else f"OpenNGC catalog position placed for {moment_said} by the predicted sky; not measured in the image"
+                ),
                 verified_by_holdout=False,
                 limitations=(
-                    f"Placed from its OpenNGC catalog centre ({table['release']}, J2000) for {time_said} and place; "
+                    f"Placed from its OpenNGC catalog centre ({table['release']}, J2000) for {moment_said}; "
                     "not measured in the recording.",
                     *DEEP_SKY_LIMITATIONS[1:],
                 ),
@@ -731,7 +814,8 @@ def _horizon_pose(
 
 
 def _lined_up(
-    solution: ObservationSolution, asset: Mapping[str, Any], pose: PoseResult, lat: float, lon: float
+    solution: ObservationSolution, asset: Mapping[str, Any], pose: PoseResult, lat: float, lon: float,
+    lent: LentMoment | None = None,
 ) -> ObservationSolution:
     """The approximate solution of a pose: the nominal WCS and its pose estimate, the frame's time and moment, the
     detector's pixel-only findings minus those on the spot in the same frame, the observed bright spot taken to be the
@@ -795,7 +879,7 @@ def _lined_up(
     predicted = []
     for finding in predicted_sky_findings(
         pose.moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256,
-        time_uncertainty_sec=time_sec,
+        time_uncertainty_sec=time_sec, lent=lent,
     ):
         x, y = wcs.world_to_pixel(finding.ra_deg, finding.dec_deg)
         inside = math.isfinite(x) and math.isfinite(y) and 0.0 <= x < wcs.width and 0.0 <= y < wcs.height
@@ -817,7 +901,7 @@ def _lined_up(
     estimate = pose.pose_estimate
     # The bound counts the beacon term: where the spot's light sits on the Moon's disk and where the Moon itself is
     # and, for a time zone worked out from the GPS position and time stamp, how far the sky turns in the time's uncertainty
-    time_deg = 0.0 if time_sec is None else sky_turn_deg(time_sec)
+    time_deg = (0.0 if time_sec is None else sky_turn_deg(time_sec)) + _lent_place_arcsec(lent) / 3600.0
     within = math.ceil(estimate.max_center_offset_deg + estimate.beacon_centroid_uncertainty_deg + time_deg)
     if head_worn:
         low, high = pose.profile.fov_diagonal_deg_range
@@ -867,6 +951,7 @@ def _lined_up(
             *solution.warnings,
             lined_up,
             *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            *(() if lent is None else (lent_moment_sentence(lent),)),
             sky_phase(sun.alt_deg).sentence,
         ],
         pose_estimate=estimate,
@@ -874,7 +959,8 @@ def _lined_up(
 
 
 def complete_sky(
-    solution: ObservationSolution, asset: Mapping[str, Any], *, frames: FramesForPose | None = None
+    solution: ObservationSolution, asset: Mapping[str, Any], *, frames: FramesForPose | None = None,
+    lent: LentMoment | None = None,
 ) -> ObservationSolution:
     """A plate solver's outcome completed with the sky predicted for the recording's own capture time and place
     (`asset` is its SourceAsset): a new solution, the solver's left as it was.
@@ -897,7 +983,11 @@ def complete_sky(
       each pose tried found none (the head-worn one's unless the camera has no profile, the horizon one's unless
       after a head-worn refusal it found no skyline).
     The moment is the solution's frame (`capturedAtUTC` plus `frameTimeSec`), written as `observedAtUTC`, and the
-    last warning says where the Sun was. No warning holds the capture time, the place or the file name."""
+    last warning says where the Sun was. No warning holds the capture time, the place or the file name.
+
+    `lent` says when the asset's time or place is a phone's pointing record's (the job lends them where the file
+    holds none, pointing-moment): each predicted item then names the record, its place's stated accuracy joins
+    each uncertainty, and the warning before the last says so (`lent_moment_sentence`)."""
     if solution.status not in COMPLETED_STATUSES:
         raise ValueError(
             f"Only a plate solver's outcome is completed with the predicted sky, not a {solution.status} one."
@@ -921,13 +1011,13 @@ def complete_sky(
         read = _read_once(frames)
         pose = _head_worn_pose(asset, read, captured, moment, lat, lon)
         if isinstance(pose, PoseResult):
-            return _lined_up(solution, asset, pose, lat, lon)
+            return _lined_up(solution, asset, pose, lat, lon, lent)
         if pose.kind != "no_profile":
             no_pose.append(pose.reason)
         if pose.kind in HORIZON_AFTER:
             horizon = _horizon_pose(asset, read, captured, moment, lat, lon)
             if isinstance(horizon, PoseResult):
-                return _lined_up(solution, asset, horizon, lat, lon)
+                return _lined_up(solution, asset, horizon, lat, lon, lent)
             # After a head-worn refusal, a frame with no skyline adds nothing to say
             if pose.kind == "no_profile" or horizon.kind != "no_skyline":
                 no_pose.append(horizon.reason)
@@ -947,7 +1037,7 @@ def complete_sky(
         f
         for f in predicted_sky_findings(
             moment, lat, lon, solution_id=solution.id, source_sha256=solution.source_sha256, exclude_ids=matched,
-            time_uncertainty_sec=time_sec,
+            time_uncertainty_sec=time_sec, lent=lent,
         )
         if f.id not in present
     ]
@@ -963,6 +1053,7 @@ def complete_sky(
             *solution.warnings,
             *no_pose,
             *(() if time_sec is None else (time_zone_from_gps(time_sec),)),
+            *(() if lent is None else (lent_moment_sentence(lent),)),
             sky_phase(sun.alt_deg).sentence,
         ],
     )
