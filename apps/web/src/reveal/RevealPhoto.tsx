@@ -8,6 +8,7 @@ import { leaderPath, markArrivalRanks, revealMarks, type RevealMark } from './re
 import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
+import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
 
@@ -172,6 +173,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (

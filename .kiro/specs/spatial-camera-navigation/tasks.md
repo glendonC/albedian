@@ -10,3 +10,5 @@
   - Traced to: `packages/camera-rig/src/__tests__/experiments.test.ts`: `EXP-07 & EXP-11`
 - [x] 5. Add southern-hemisphere circumpolar coverage (`decDeg ∈ [-90, -75]`) and multi-step `history.back` partial-fraction chaining regression tests.
   - Traced to: `packages/camera-rig/src/__tests__/camera-rig.test.ts`: `PBT-COORD-1-SOUTH`, `PBT-CAM-2-SOUTH`; `packages/observation/src/__tests__/observation.test.ts`: `PBT-NAV-HISTBACK-CHAIN`
+- [x] 6. Fly through the catalog star field after Go there (REQ-SCN-2): each star at its catalog distance or kept on the sky sphere when it has no usable one, the photo's own WCS as the camera at any place in space, brightness by the inverse square law, positions rebased in float64 on the star flown to (flight-1).
+  - Traced to: `packages/camera-rig/src/__tests__/flight3d.test.ts`; `apps/web/src/spatial/flight/__tests__/flightFrame.test.ts`, `flightStarsLayer.test.tsx`
