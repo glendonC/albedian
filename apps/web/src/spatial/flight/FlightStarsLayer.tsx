@@ -9,6 +9,7 @@ import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
 import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf, flightViewCone } from './flightFrame.js';
 import { FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
 import { FlightCraftLayer } from './FlightCraftLayer.js';
+import type { CraftFraming } from './craftScene.js';
 import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
@@ -175,6 +176,8 @@ export const FlightStarsLayer: React.FC<{
   onNoDistanceCount?: (count: number) => void;
   /** At phone width the rings are 6 px across the radius (D27 item 1). */
   phone?: boolean;
+  /** Where the screen frames the craft; the laptop's (D26 item 2) by default, the phone's sky band (D30 item 1). */
+  craftFraming?: CraftFraming;
   /** pilot-1e: whether the person steers (a press on the sky hands over and takes back the steering). */
   steering?: boolean;
   /** Told of a press on the sky (a click or tap that is not a drag), in the flight view. */
@@ -190,6 +193,7 @@ export const FlightStarsLayer: React.FC<{
   cone = false,
   onNoDistanceCount,
   phone = false,
+  craftFraming,
   steering = false,
   onPressSky,
   onSteer,
@@ -455,7 +459,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && onPressSky && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
+    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} framing={craftFraming} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
     </>
   );
 };

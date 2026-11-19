@@ -140,4 +140,27 @@ describe('craftFromSearch: the interim choice by page address', () => {
     expect(CRAFTS.jwst.speed).toBeNull();
     expect(CRAFTS.astronaut.speed).toBeNull();
   });
+
+  it('frames the craft at the point and size a screen gives it, its bounding sphere that many pixels across', () => {
+    const session = there();
+    const camera = flightCameraOf(session, 390, 844)!;
+    const framing = { xPx: 195, yPx: 298, diameterPx: 184 };
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1'], [0, 0, 0], 10, undefined, framing)!;
+    const centre = apply(scene.modelMatrix, [0, 0, 0]);
+    const at = (p: Vec3) => {
+      const c = apply(scene.clipMatrix, p);
+      return { xPx: ((c[0] / c[3] + 1) / 2) * 390, yPx: ((1 - c[1] / c[3]) / 2) * 844 };
+    };
+    const s = at([centre[0], centre[1], centre[2]]);
+    expect(Math.abs(s.xPx - 195)).toBeLessThan(1e-6);
+    expect(Math.abs(s.yPx - 298)).toBeLessThan(1e-6);
+    // The sphere's edge seen square to the line of sight is half the diameter from the centre on screen (within the
+    // pinhole's small off-axis stretch)
+    const d = Math.hypot(centre[0], centre[1], centre[2]);
+    const pin = photoPinholeOf(camera);
+    const r = pin.rows.x;
+    const edge = at([centre[0] + r[0] * 10 * (d / Math.sqrt(d * d - 100)), centre[1] + r[1] * 10 * (d / Math.sqrt(d * d - 100)), centre[2] + r[2] * 10 * (d / Math.sqrt(d * d - 100))]);
+    expect(Math.hypot(edge.xPx - s.xPx, edge.yPx - s.yPx)).toBeGreaterThan(92 * 0.9);
+    expect(Math.hypot(edge.xPx - s.xPx, edge.yPx - s.yPx)).toBeLessThan(92 * 1.1);
+  });
 });

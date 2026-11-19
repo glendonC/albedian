@@ -21,6 +21,33 @@ export function photoPinholeOf(camera: FlightCamera): PhotoPinhole {
   };
 }
 
+/** Where a screen frames the craft: its centre in window pixels and its bounding sphere's diameter across. */
+export interface CraftFraming {
+  readonly xPx: number;
+  readonly yPx: number;
+  readonly diameterPx: number;
+}
+
+/** D26 item 2 on the laptop: centred across, its middle at 62 percent of the window's height, 320 px across. */
+export function laptopCraftFraming(camera: FlightCamera): CraftFraming {
+  return { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx, diameterPx: CRAFT_FRAMING.diameterPx };
+}
+
+/**
+ * D30 item 1 at phone width: the sky's height is the band from the top bar's foot to the readout's top, as NASA's Eyes
+ * frames the craft it follows inside its own band; the craft centred across, its middle at 62 percent of that band
+ * (D26's 62 percent), 184 px across.
+ */
+export const PHONE_SKY_TOP_PX = 104;
+export const PHONE_CRAFT_DIAMETER_PX = 184;
+export function phoneCraftFraming(viewportWidthPx: number, readoutTopPx: number): CraftFraming {
+  return {
+    xPx: viewportWidthPx / 2,
+    yPx: PHONE_SKY_TOP_PX + CRAFT_FRAMING.yFraction * (readoutTopPx - PHONE_SKY_TOP_PX),
+    diameterPx: PHONE_CRAFT_DIAMETER_PX,
+  };
+}
+
 export interface CraftScene {
   /** Model space to camera-relative ICRS metres, column-major 4 by 4 (three.js Matrix4.fromArray). */
   readonly modelMatrix: number[];
@@ -45,7 +72,9 @@ export function craftSceneOf(
    * While the person steers (pilot-1e): where the camera stands and its axes, and the craft's own axes when the chase
    * camera's look lags behind them (MOTION k13); the craft flies along its own heading, framed as at rest from its axes.
    */
-  steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }
+  steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows },
+  /** Where the screen frames the craft; the laptop's by default. */
+  framing: CraftFraming = laptopCraftFraming(camera)
 ): CraftScene | null {
   const o = steer ? steer.positionPc : camera.observerPc;
   let heading: Vec3;
@@ -64,8 +93,8 @@ export function craftSceneOf(
   const framePin = steer?.craftRows ? { ...pin, rows: steer.craftRows } : pin;
   const placed = craftPlacementInView(
     framePin,
-    { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx },
-    CRAFT_FRAMING.diameterPx,
+    { xPx: framing.xPx, yPx: framing.yPx },
+    framing.diameterPx,
     modelRadius,
     heading
   );

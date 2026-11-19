@@ -51,6 +51,8 @@ export interface PilotReadout {
   readonly lines: readonly string[];
   /** Item 5's sentence for a craft with no real travel time. */
   readonly none: string | null;
+  /** The speed's source line (the last of `lines`); none without a speed. On the phone it sits in the details (D30 item 5). */
+  readonly source: string | null;
 }
 
 /**
@@ -60,14 +62,20 @@ export interface PilotReadout {
 export function pilotReadout(craft: Craft, starName: string, starDistancePc: number, flightSeconds: number | null): PilotReadout {
   const name = CRAFT_NAMES[craft.id];
   const years = craft.speed ? realTravelYears(starDistancePc, craft.speed.kmS) : null;
-  if (!craft.speed || years === null) return { name, trip: null, lines: [], none: NO_TRAVEL[craft.id] ?? null };
+  if (!craft.speed || years === null) return { name, trip: null, lines: [], none: NO_TRAVEL[craft.id] ?? null, source: null };
   const speed = speedText(craft.speed.kmS);
   const lines = [`to ${starName} at its real speed, ${speed}`];
   if (flightSeconds !== null && flightSeconds > 0) {
     lines.push(`Shown here in ${flightSeconds.toFixed(1)} s: about ${threeFigureYears(years / flightSeconds).value} years each second.`);
   }
-  lines.push(`Speed: NASA, ${speed} relative to the Sun (${monthOf(craft.speed.asOf)}).`);
-  return { name, trip: threeFigureYears(years), lines, none: null };
+  const source = craftSpeedSource(craft)!;
+  lines.push(source);
+  return { name, trip: threeFigureYears(years), lines, none: null, source };
+}
+
+/** Where the craft's speed comes from (D26 item 4), none for a craft with no speed between stars. */
+export function craftSpeedSource(craft: Craft): string | null {
+  return craft.speed ? `Speed: NASA, ${speedText(craft.speed.kmS)} relative to the Sun (${monthOf(craft.speed.asOf)}).` : null;
 }
 
 export interface CraftChoice {

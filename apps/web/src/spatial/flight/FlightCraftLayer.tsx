@@ -7,7 +7,7 @@ import dracoWasmUrl from 'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm?
 import type { Vec3, WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import type { Craft } from './crafts.js';
-import { craftSceneOf } from './craftScene.js';
+import { craftSceneOf, type CraftFraming } from './craftScene.js';
 
 /**
  * pilot-1: a NASA model drawn in the photo's own view during the flight through the stars, a few metres ahead of the
@@ -42,8 +42,8 @@ interface CraftGpu {
   radius: number;
 }
 
-function drawCraft(gpu: CraftGpu, camera: FlightCamera, craft: Craft, steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }): boolean {
-  const scene = craftSceneOf(camera, craft, gpu.centre, gpu.radius, steer);
+function drawCraft(gpu: CraftGpu, camera: FlightCamera, craft: Craft, steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }, framing?: CraftFraming): boolean {
+  const scene = craftSceneOf(camera, craft, gpu.centre, gpu.radius, steer, framing);
   if (!scene) return false;
   gpu.holder.matrix.fromArray(scene.modelMatrix);
   gpu.holder.matrixWorldNeedsUpdate = true;
@@ -65,13 +65,17 @@ export const FlightCraftLayer: React.FC<{
   load?: (url: string) => Promise<THREE.Group>;
   /** While the person steers: the camera they turn and move. */
   steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows } | null;
-}> = ({ camera, craft, load = loadModel, steer = null }) => {
+  /** Where the screen frames the craft; the laptop's (D26 item 2) by default. */
+  framing?: CraftFraming;
+}> = ({ camera, craft, load = loadModel, steer = null, framing }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<CraftGpu | null>(null);
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
   const steerRef = useRef(steer);
   steerRef.current = steer;
+  const framingRef = useRef(framing);
+  framingRef.current = framing;
   const [state, setState] = useState<CraftState>('loading');
   const dpr = typeof window === 'undefined' ? 1 : Math.min(2, window.devicePixelRatio || 1);
 
@@ -107,7 +111,7 @@ export const FlightCraftLayer: React.FC<{
         const sphere = box.getBoundingSphere(new THREE.Sphere());
         holder.add(model);
         gpu.current = { renderer, scene, camera: cam, holder, sun, centre: [sphere.center.x, sphere.center.y, sphere.center.z], radius: sphere.radius };
-        setState(drawCraft(gpu.current, cameraRef.current, craft, steerRef.current ?? undefined) ? 'drawn' : 'failed');
+        setState(drawCraft(gpu.current, cameraRef.current, craft, steerRef.current ?? undefined, framingRef.current) ? 'drawn' : 'failed');
       },
       () => {
         if (current) setState('failed');
@@ -125,8 +129,8 @@ export const FlightCraftLayer: React.FC<{
     const g = gpu.current;
     if (!g) return;
     g.renderer.setSize(camera.viewportWidthPx, camera.viewportHeightPx, false);
-    drawCraft(g, camera, craft, steer ?? undefined);
-  }, [camera, craft, steer]);
+    drawCraft(g, camera, craft, steer ?? undefined, framing);
+  }, [camera, craft, steer, framing?.xPx, framing?.yPx, framing?.diameterPx]);
 
   return (
     <div className="flight-craft" data-testid="flight-craft" data-craft={craft.id} data-state={state} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>

@@ -165,10 +165,9 @@ describe('there at phone width (fly, approved 2026-11-12, iPhone; #p-there)', ()
     const readout = q('[data-testid="flight-readout"]')!;
     expect(readout.className).toBe('flight-readout is-phone');
     expect(readout.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
-    // The view says what it is, its sources and its limit, as on the laptop (AGENTS.md 1.2; the lead's answer 00:32)
-    expect(readout.querySelector('.flight-readout__note')!.textContent).toBe(
-      'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.'
-    );
+    // The view says what it is (AGENTS.md 1.2): D27's first sentence in view, the sources behind the circle (D30)
+    expect(readout.querySelector('.flight-readout__note')!.textContent).toBe('Drawn or computed by the app; not measured in the source recording.');
+    expect(readout.querySelector('[data-testid="details-circle"]')!.getAttribute('aria-label')).toBe('More details');
     expect(all('.flight-readout__stat span').map((s) => s.textContent)).toEqual(['to Rigel', 'from Earth']);
     expect(sky.phone).toBe(true);
     expect(sky.there).toBe(true);
@@ -352,11 +351,11 @@ describe("the phone reveal's rules are the approved page's", () => {
   });
 
   it('sets the readout there as #p-there does', () => {
-    // It ends where the approved readout ends (709 px) and grows upward with the disclosure, clear of Back to Moment
-    expect(declarationsOf('.flight-readout.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 709px)', width: 'auto' });
-    expect(declarationsOf('.flight-readout__note')).toEqual({ margin: '0 0 14px', 'font-size': '13px', 'line-height': '1.5', color: 'var(--look-ink-2)' });
+    // Anchored by its foot at bottom 148, above D30's pill row, growing upward; D27's first sentence under the tag row
+    expect(declarationsOf('.flight-readout.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: '148px', width: 'auto' });
+    expect(declarationsOf('.flight-readout__note')).toEqual({ margin: '8px 0 14px', 'max-width': '330px', 'font-size': '13px', 'line-height': '1.45', color: 'var(--look-ink-3)' });
     expect(declarationsOf('.flight-readout.is-phone h1')).toEqual({ display: 'none' });
-    expect(declarationsOf('.flight-readout.is-phone .look-tag')).toEqual({ 'margin-bottom': '14px' });
+    expect(declarationsOf('.flight-readout.is-phone .look-tag')).toEqual({ 'margin-bottom': '0' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stats')).toEqual({ gap: '12px', 'margin-top': '0', 'padding-top': '0', 'border-top': '0' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat b')).toEqual({ 'font-weight': '300', 'font-size': '40px' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat small')).toEqual({ 'font-size': '15px' });

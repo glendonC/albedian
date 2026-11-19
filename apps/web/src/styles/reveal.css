@@ -1326,26 +1326,27 @@
 }
 
 /* There at phone width: the readout under the photo, its Simulated tag above the two distances and no name (fly,
-   approved 2026-11-12, iPhone; #p-there .ro); it ends where the approved readout ends (709 px) and grows upward with
-   the view's disclosure under the tag (the lead's answer 00:32; its place is proposed, no record draws it) */
+   approved 2026-11-12, iPhone; #p-there .ro); anchored by its foot at bottom 148, above D30's pill row (top 712), it
+   grows upward; under the tag row D27's first sentence, 13 px at ink 44 percent (D30 items 2 and 2b) */
 .flight-readout.is-phone {
   left: 24px;
   right: 24px;
   top: auto;
-  bottom: calc(100% - 709px);
+  bottom: 148px;
   width: auto;
 }
 .flight-readout__note {
-  margin: 0 0 14px;
+  margin: 8px 0 14px;
+  max-width: 330px;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--look-ink-2);
+  line-height: 1.45;
+  color: var(--look-ink-3);
 }
 .flight-readout.is-phone h1 {
   display: none;
 }
 .flight-readout.is-phone .look-tag {
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 .flight-readout.is-phone .flight-readout__stats {
   gap: 12px;

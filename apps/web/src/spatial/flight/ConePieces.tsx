@@ -11,19 +11,25 @@ import { coneReadout, type ConeGeometry } from './coneView.js';
 const INK = 'var(--look-ink, #f4f3ef)';
 
 /** The bottom left row: the craft pill (none in the cone view) and the pill into your photo's view. */
-export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; onCone: () => void }> = ({ craftPill, cone, onCone }) => (
-  <div className="flight-pills" data-testid="flight-pills" data-hud-interactive="true" style={{ position: 'absolute', left: 36, bottom: 32, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}>
+export const FlightPills: React.FC<{ craftPill: React.ReactNode; cone: boolean; onCone: () => void; phone?: boolean; showCone?: boolean }> = ({ craftPill, cone, onCone, phone = false, showCone = true }) => (
+  <div
+    className={phone ? 'flight-pills is-phone' : 'flight-pills'}
+    data-testid="flight-pills"
+    data-hud-interactive="true"
+    // D30 item 3 on the phone: one row at top 712, left 24, 10 apart, 44 px high
+    style={phone ? { position: 'absolute', left: 24, right: 24, top: 712, display: 'flex', gap: 10, pointerEvents: 'auto' } : { position: 'absolute', left: 36, bottom: 32, display: 'flex', alignItems: 'flex-end', gap: 10, pointerEvents: 'auto' }}
+  >
     {!cone && craftPill}
-    <button
+    {showCone && <button
       type="button"
-      className="look-second look-size-compact"
+      className={phone ? 'look-second look-size-phone' : 'look-second look-size-compact'}
       data-testid="cone-pill"
       aria-pressed={cone}
       onClick={onCone}
       style={cone ? { background: INK, color: '#000', borderColor: INK } : undefined}
     >
       Your photo&apos;s view
-    </button>
+    </button>}
   </div>
 );
 

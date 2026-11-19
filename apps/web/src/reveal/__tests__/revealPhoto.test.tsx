@@ -509,8 +509,9 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     act(() => pill.click());
     act(() => (q('[role="option"][data-craft="voyager-1"]') as HTMLButtonElement).click());
     expect(q('[data-testid="pilot-trip"]')!.textContent).toContain('to Rigel at its real speed, 17.0 km/s');
+    // At phone width the pill row is D30's (phone-1a: phoneFlight.test.tsx)
     show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true });
-    expect(q('[data-testid="craft-picker"]')).toBeNull();
+    expect(q('[data-testid="flight-pills"]')!.className).toBe('flight-pills is-phone');
   });
 
   it('hands the camera to the person on a press on the sky, with D26\'s lines, and takes it back on another (pilot-1e)', () => {

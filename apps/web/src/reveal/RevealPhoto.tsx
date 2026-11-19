@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { earlyPoseOf } from './earlyPose.js';
@@ -19,7 +19,9 @@ import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
 import { FlightStarsLayer } from '../spatial/flight/FlightStarsLayer.js';
-import { CraftPicker, PilotTrip } from '../spatial/flight/PilotPieces.js';
+import { CraftPicker, DetailsSheet, PhoneTagRow, PilotTrip } from '../spatial/flight/PilotPieces.js';
+import { phoneCraftFraming } from '../spatial/flight/craftScene.js';
+import { CRAFT_PICKER_FOOT, craftSpeedSource } from '../spatial/flight/pilotReadout.js';
 import { FlightClock } from '../spatial/flight/pilotReadout.js';
 import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
@@ -55,9 +57,8 @@ const LockOnMark: React.FC<{ className: string; xPx: number; yPx: number; name: 
   </div>
 );
 
-/** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
-const THERE_DISCLOSURE =
-  'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.';
+/** The phone readout's foot, from the window's bottom (D30 item 2: anchored by its foot so it grows upward). */
+const PHONE_READOUT_FOOT_PX = 148;
 
 /**
  * There on the laptop, in the flight through the stars (D27, UIUX-flight-READY.md item 4), word for word and in order:
@@ -276,6 +277,20 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (!there) setConeAsked(false);
   }, [there]);
   const cone = there && coneAsked;
+  // D30 item 5: on the phone the caret circle opens the whole disclosure as a sheet; leaving there closes it
+  const [details, setDetails] = useState(false);
+  useEffect(() => {
+    if (!there) setDetails(false);
+  }, [there]);
+  // D30 item 1: the phone's sky band ends at the readout's top, which moves as the readout's lines grow; unmeasured, at
+  // its foot
+  const readoutRef = useRef<HTMLElement>(null);
+  const [readoutTopPx, setReadoutTopPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const box = readoutRef.current?.getBoundingClientRect();
+    const top = box && box.height > 0 ? box.top : null;
+    if (top !== readoutTopPx) setReadoutTopPx(top);
+  });
   // pilot-1e: a press on the sky hands the flight's camera to the person and takes it back; leaving there, or the cone
   // view, ends it. While they steer, the readout's numbers are their camera's own
   const [steeringAsked, setSteeringAsked] = useState(false);
@@ -369,7 +384,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   return (
     <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onSteer={setSteered} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && !earthOnly && picked && marks.some((mark) => mark.picked) && (
@@ -597,16 +612,23 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
       {!answer && shownFlight && !cone && (
-        <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={shownFlight.name}>
-          <EvidenceTag evidenceClass="simulated" />
+        <section
+          ref={readoutRef}
+          className={phone ? 'flight-readout is-phone' : 'flight-readout'}
+          data-testid="flight-readout"
+          aria-label={shownFlight.name}
+          style={phone && details ? { visibility: 'hidden' } : undefined}
+        >
+          {phone ? <PhoneTagRow open={false} onToggle={() => setDetails(true)} /> : <EvidenceTag evidenceClass="simulated" />}
           {/* D26 item 7: while the person steers, the flight's own speed under the Simulated tag */}
           {steering && steered && (
             <p data-testid="steer-speed" style={{ margin: '10px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
               {steeringSpeedLine(steered.speedPcPerS)}
             </p>
           )}
-          {/* On the phone, where no status line shows, the readout says what the view is (AGENTS.md 1.2) */}
-          {phone && <p className="flight-readout__note">{THERE_DISCLOSURE}</p>}
+          {/* On the phone, where no status line shows, the readout keeps D27's first sentence in view and the rest one
+              press away behind the circle (D30 items 2b and 5; AGENTS.md 1.2) */}
+          {phone && <p className="flight-readout__note">{FLIGHT_LINES.spec}</p>}
           <h1>{shownFlight.name}</h1>
           <div className="flight-readout__stats">
             {shownFlight.toStarLy !== null && (
@@ -626,14 +648,29 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <span>from Earth</span>
             </div>
           </div>
-          {!phone && !freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
-            <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} />
+          {!freeFlight && craft && picked && placeFinding(picked).kind === 'at_distance' && (
+            <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} phone={phone} />
           )}
         </section>
       )}
 
-      {there && !phone && (
-        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} />} cone={cone} onCone={() => setConeAsked((on) => !on)} />
+      {there && (
+        // On the phone "Your photo's view" waits for its phone readout (D30 item 7, phone-1c)
+        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} phone={phone} />} cone={cone} onCone={() => setConeAsked((on) => !on)} phone={phone} showCone={!phone} />
+      )}
+      {phone && there && !cone && details && (
+        <DetailsSheet
+          lines={[
+            FLIGHT_LINES.spec,
+            FLIGHT_LINES.stars,
+            FLIGHT_LINES.rings,
+            ...(noDistanceSentence(noDistance) ? [noDistanceSentence(noDistance)!] : []),
+            ...(steering ? [] : [FLIGHT_LINES.milkyWay]),
+            ...(craft && craftSpeedSource(craft) ? [craftSpeedSource(craft)!] : []),
+            ...(craft ? [CRAFT_PICKER_FOOT] : []),
+          ]}
+          onClose={() => setDetails(false)}
+        />
       )}
       {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} />}
 
