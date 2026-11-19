@@ -377,6 +377,8 @@ export const App: React.FC = () => {
     const url = URL.createObjectURL(file);
     latestChoiceRef.current = file;
     inFlightRef.current = { file, url, receipt: null };
+    solveHereAgainRef.current = null;
+    ++solveHereRef.current;
     setUploadRefusal(null);
     setActiveDiscoveredId(null);
     setUploadedMediaUrl(url);
@@ -406,37 +408,48 @@ export const App: React.FC = () => {
     setArrival((prev) => arrivalAfter(prev, event));
   };
 
-  // Try again: the same solve of the stored file, or the same file sent again when it never reached the server
   // D24's Solve from here: the stored upload solved again from the person's alignment, its own job on the server. The
   // working screen shows the sent state with the rings at their pose (placed now, from the sky on screen), then the
-  // reveal of what the solve found
+  // reveal of what the solve found. A Solve from here that stops is the solve Try again repeats, alignment and all,
+  // until another file is chosen
   const solveHereRef = useRef(0);
+  const solveHereAgainRef = useRef<(() => void) | null>(null);
   const [alignedFrom, setAlignedFrom] = useState<{ sha256: string; pose: AlignPose; from: AlignStart } | null>(null);
   const handleSolveFromHere = (alignment: PersonAlignment, pose: AlignPose, from: AlignStart) => {
     const asset = session.sourceAsset;
     if (!asset) return;
     // Kept for what follows: a refusal draws it again, a match names it (D24 steps 4 and 5)
     setAlignedFrom({ sha256: asset.sha256, pose, from });
-    const token = ++solveHereRef.current;
-    latestChoiceRef.current = null;
     const kept = inFlightRef.current?.receipt;
     const receipt: IngestReceipt = kept && kept.sourceAsset.sha256 === asset.sha256 ? kept : ({ sourceAsset: asset, hints: {}, alreadyStored: true } as IngestReceipt);
     const shown = orientedSize(asset.width, asset.height, asset.displayOrientation);
     const aligned = placedAtPose(alignTargets(session.observationSolution), pose);
-    setArrival({ fileName: asset.title, byteSize: asset.byteSize ?? 0, stored: true, widthPx: shown.widthPx, heightPx: shown.heightPx, job: null, failure: null, aligned });
-    void solveStoredUpload(receipt, {
-      alignment,
-      localObjectUrl: uploadedMediaUrl ?? undefined,
-      onSessionUpdate: (next) => {
-        if (solveHereRef.current === token) setSession(next);
-      },
-      onEvent: (event) => {
-        if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
-      },
-    });
+    const localObjectUrl = uploadedMediaUrl ?? undefined;
+    const send = () => {
+      const token = ++solveHereRef.current;
+      latestChoiceRef.current = null;
+      setArrival({ fileName: asset.title, byteSize: asset.byteSize ?? 0, stored: true, widthPx: shown.widthPx, heightPx: shown.heightPx, job: null, failure: null, aligned });
+      void solveStoredUpload(receipt, {
+        alignment,
+        localObjectUrl,
+        onSessionUpdate: (next) => {
+          if (solveHereRef.current === token) setSession(next);
+        },
+        onEvent: (event) => {
+          if (solveHereRef.current === token) setArrival((prev) => arrivalAfter(prev, event));
+        },
+      });
+    };
+    solveHereAgainRef.current = send;
+    send();
   };
 
+  // Try again: the same solve of the stored file, or the same file sent again when it never reached the server
   const handleTryAgain = () => {
+    if (solveHereAgainRef.current) {
+      solveHereAgainRef.current();
+      return;
+    }
     const inFlight = inFlightRef.current;
     if (!inFlight) return;
     const { file, url, receipt } = inFlight;
