@@ -391,6 +391,8 @@ import struct  # noqa: E402
 # The fixed text of the two text tags a profile keeps [proposed: plain words for the lead or the design lane to change;
 # no reader of the app shows them]
 PROFILE_DESCRIPTION = "Colour profile of the original"
+# A restoration's refusal of a photo whose profile the rebuild cannot carry (review row C20, decided 2026-11-19)
+PROFILE_NOT_CARRIED = "Your photo's colour profile cannot be carried into a restored copy, so it was not restored."
 PROFILE_TEXT = "Text removed by Albedian"
 # The header's bytes, the tag count after them [tested: Little CMS's sRGB and Apple's Display P3 read whole so]
 _ICC_HEADER = 128

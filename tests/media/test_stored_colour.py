@@ -24,10 +24,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
+from PIL import Image, ImageCms
 
 import icc_profiles as icc
 from photo_frames import star_field
+from services.contracts import media as media_contract
 from services.media import decode, jobs as media_jobs, photo, png16, variants
 
 JOB_ID = "job_" + "d" * 16
@@ -115,14 +116,73 @@ def test_a_display_copy_names_the_profile_in_its_own_file_and_its_attempt_the_or
     assert copy.attempt["measured"]["colour"]["iccProfileSha256"] == sha(PLANTED)
 
 
-def test_a_display_copy_of_a_profile_it_cannot_rebuild_fails_and_stores_nothing(tmp_path: Path) -> None:
-    rgb = np.random.default_rng(4).integers(0, 256, size=(3, 3, 3), dtype=np.uint8)
-    root, folder, original, digest = stored_original(tmp_path, png_with_profile(rgb, lab_connected(PLANTED)))
-    assert decode.decode_still(original).icc_profile == lab_connected(PLANTED)
+# restore-8e, as the lead decided at 13:04 with review row C20's words: a profile the rebuild cannot carry
+def without_tag(profile: bytes, sig: bytes) -> bytes:
+    return icc.assemble(profile, [(s, body) for s, body in icc.tag_data(profile).items() if s != sig], with_id=True)
+
+
+# Little CMS still converts through a profile missing its white point, and refuses one missing a primary [tested]
+READABLE = without_tag(PLANTED, b"wtpt")
+UNREADABLE = without_tag(PLANTED, b"rXYZ")
+SRGB_REBUILT = photo.profile_without_text(icc.srgb())
+
+
+def converted_by_little_cms(rgb8: np.ndarray, profile: bytes) -> np.ndarray:
+    """The test's own conversion: Pillow's Little CMS from the profile to its own sRGB, perceptual (the profile's
+    intent), independent of services/media."""
+    transform = ImageCms.buildTransform(ImageCms.ImageCmsProfile(io.BytesIO(profile)),
+                                        ImageCms.ImageCmsProfile(io.BytesIO(SRGB_REBUILT)), "RGB", "RGB", renderingIntent=0)
+    return np.asarray(ImageCms.applyTransform(Image.fromarray(rgb8, "RGB"), transform))
+
+
+def samples_of(path: Path) -> np.ndarray:
+    with Image.open(path) as image:
+        return np.asarray(image.convert("RGB"))
+
+
+@pytest.mark.parametrize("bits", [8, 16])
+def test_a_display_copy_of_a_profile_little_cms_reads_is_converted_to_srgb_through_it(tmp_path: Path, bits: int) -> None:
+    assert photo.profile_without_text(READABLE) is None
+    rgb = np.random.default_rng(bits).integers(0, 2**bits, size=(4, 5, 3)).astype(np.uint16 if bits == 16 else np.uint8)
+    root, folder, original, digest = stored_original(tmp_path, png_with_profile(rgb, READABLE))
     copy = variants.make_display_copy(root, folder, original, source_sha256=digest, job_id=JOB_ID, now=fixed_clock())
-    assert copy.status == "failed" and copy.variant is None
-    assert copy.attempt["failureReason"] == decode.UNDECODABLE
-    assert not (folder / "variants").exists()
+    assert copy.status == "ready", copy.attempt
+    graph = json.loads((copy.folder / "graph.json").read_text())
+    assert [step["kind"] for step in graph["steps"]] == ["decode", "convert_colour", "encode"]
+    assert graph["steps"][1]["parameters"] == [{"name": "renderingIntent", "value": "perceptual", "origin": "measured",
+                                                "basis": "Read from the file's ICC profile."}]
+    # The copy is 8 bit: from the original's own depth for an 8 bit photo, by design for a 16 bit one
+    encode = {parameter["name"]: parameter for parameter in graph["steps"][2]["parameters"]}
+    assert encode["bitDepth"]["value"] == 8 and encode["pixelFormat"]["value"] == "rgb24"
+    assert encode["bitDepth"]["origin"] == ("default" if bits == 16 else "measured")
+    assert copy.variant["disclosure"] == media_contract.CONVERTED_DISCLOSURES[1 if bits == 16 else 0]
+    kept = profile_in(copy.folder / "variant.png")
+    assert kept == SRGB_REBUILT
+    assert copy.variant["colour"]["iccProfileSha256"] == sha(kept) and copy.variant["colour"]["bitDepth"] == 8
+    assert copy.variant["colour"]["primaries"] == "icc" and copy.attempt["measured"]["colour"]["iccProfileSha256"] == sha(READABLE)
+    rgb8 = rgb if bits == 8 else ((rgb.astype(np.uint32) * 255 + 32767) // 65535).astype(np.uint8)
+    assert np.array_equal(samples_of(copy.folder / "variant.png"), converted_by_little_cms(rgb8, READABLE))
+    manifest = variants.export_manifest(copy.variant, graph, copy.attempt, None)
+    assert manifest["disclosure"] == copy.variant["disclosure"]
+
+
+def test_a_display_copy_of_a_profile_nothing_reads_keeps_its_samples_untagged_with_the_assumption(tmp_path: Path) -> None:
+    rgb = np.random.default_rng(6).integers(0, 256, size=(4, 5, 3), dtype=np.uint8)
+    root, folder, original, digest = stored_original(tmp_path, png_with_profile(rgb, UNREADABLE))
+    copy = variants.make_display_copy(root, folder, original, source_sha256=digest, job_id=JOB_ID, now=fixed_clock())
+    assert copy.status == "ready", copy.attempt
+    graph = json.loads((copy.folder / "graph.json").read_text())
+    assert [step["kind"] for step in graph["steps"]] == ["decode", "encode"]
+    assert copy.variant["disclosure"] == media_contract.DISCLOSURES["display_copy"]
+    with Image.open(copy.folder / "variant.png") as image:
+        assert "icc_profile" not in image.info
+    assert np.array_equal(samples_of(copy.folder / "variant.png"), rgb)
+    colour = copy.variant["colour"]
+    reason = "The file's ICC profile could not be read, so sRGB is assumed."
+    assert colour["transfer"] == "srgb" and colour["primaries"] == "bt709" and "iccProfileSha256" not in colour
+    assert {"field": "transfer", "assumed": "srgb", "reason": reason} in colour["assumptions"]
+    assert {"field": "primaries", "assumed": "bt709", "reason": reason} in colour["assumptions"]
+    assert copy.attempt["measured"]["colour"]["iccProfileSha256"] == sha(UNREADABLE)
 
 
 def no_progress(*args) -> None:
@@ -142,15 +202,18 @@ def test_a_restoration_names_the_profile_in_its_own_file_and_its_attempt_the_ori
     assert json.loads((stored / "attempt.json").read_text())["measured"]["colour"]["iccProfileSha256"] == sha(PLANTED)
 
 
-def test_a_restoration_of_a_profile_it_cannot_rebuild_fails_before_restoring(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("which", ["readable", "unreadable"])
+def test_a_restoration_of_a_profile_it_cannot_rebuild_is_refused_with_its_own_sentence(tmp_path: Path, monkeypatch, which) -> None:
     scene = star_field(11, size=96, count=6, noise_sigma=0.0015, peaks=(0.01, 0.2))
-    lab = lab_connected(PLANTED)
+    lab = READABLE if which == "readable" else UNREADABLE
     root, folder, original, digest = stored_original(tmp_path, png16.write_png16(scene.codes.astype(np.uint16), lab))
     calls = []
     monkeypatch.setattr(photo, "restore_still", lambda *args, **kwargs: calls.append(args))
     out = media_jobs.restoration_in_child(str(root), str(folder), str(original), digest, JOB_ID, {"kind": "restoration"},
                                           None, no_progress)
-    assert out["status"] == "failed" and out["failureReason"] == decode.UNDECODABLE, out
+    assert out["status"] == "failed", out
+    assert out["failureReason"] == "Your photo's colour profile cannot be carried into a restored copy, so it was not restored."
+    assert out["failureReason"] in media_contract.FAILURE_SENTENCES
     assert calls == []
     assert not (folder / "variants").exists()
 

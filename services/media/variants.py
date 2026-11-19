@@ -29,24 +29,27 @@ import secrets
 import shutil
 import time
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageCms
 
 from services.contracts.ingest import format_utc
-from services.contracts.media import DISCLOSURES, MediaVariant, ProcessingAttempt, ProcessingGraph, variant_uri
-from services.media import decode, photo, png16
+from services.contracts.media import (
+    ASSUMPTION_REASONS, CONVERTED_DISCLOSURES, DISCLOSURES, RENDERING_INTENTS, MediaVariant, ProcessingAttempt,
+    ProcessingGraph, variant_uri,
+)
+from services.media import colour as colour_math, decode, photo, png16
 
 # Raised by any unit that changes pixels (design section 9): 1.<revision>.0 of the restoration producer
 # (services/media/jobs.py MEDIA_PRODUCER, held to it by tests/media/test_jobs.py), so the unit that raises the
 # revision raises this too. Every graph and variant id hashes it: under one version for every revision, a photo
 # restored under revision 2 could not be restored again under 3, since the write refuses an id it holds (FIELD's
 # finding of 2026-11-19). Revisions 1 and 2 stored their variants under 1.0.0.
-PIPELINE_VERSION = "1.3.0"
+PIPELINE_VERSION = "1.4.0"
 # The version of each step this module writes [proposed: a step's own version, raised when what it does changes]
 STEP_VERSION = "1.0.0"
 # [decided 2026-11-11: REQ-RST-1.3, private files 0400 and folders 0700, matching services/ingest/store.py]
@@ -228,23 +231,28 @@ def encode_png(still: decode.DecodedStill) -> bytes:
     return out.getvalue()
 
 
-def display_copy_graph(source_sha256: str, still: decode.DecodedStill) -> dict[str, Any]:
-    """The two steps, decode and encode, each parameter with its origin and basis (REQ-RST-2.3, design section 13)."""
+def display_copy_graph(source_sha256: str, still: decode.DecodedStill, intent: Optional[str] = None) -> dict[str, Any]:
+    """The two steps, decode and encode, each parameter with its origin and basis (REQ-RST-2.3, design section 13);
+    with `intent`, a conversion to sRGB through the photo's own profile between them, whose copy is 8 bit (restore-8e)."""
     request = {"kind": "display_copy"}
-    bits = 16 if still.samples.dtype == np.uint16 else 8
+    bits = 16 if still.samples.dtype == np.uint16 and intent is None else 8
+    basis = FROM_ORIGINAL if intent is None or still.samples.dtype == np.uint8 else DEFAULT_BASIS_8
+    origin = "measured" if basis == FROM_ORIGINAL else "default"
     encode = [
         {"name": "container", "value": "png", "origin": "default", "basis": DEFAULT_BASIS_8},
-        {"name": "bitDepth", "value": bits, "origin": "measured", "basis": FROM_ORIGINAL},
-        {"name": "pixelFormat", "value": "rgb48le" if bits == 16 else "rgb24", "origin": "measured", "basis": FROM_ORIGINAL},
+        {"name": "bitDepth", "value": bits, "origin": origin, "basis": basis},
+        {"name": "pixelFormat", "value": "rgb48le" if bits == 16 else "rgb24", "origin": origin, "basis": basis},
         {"name": "zlibLevel", "value": ZLIB_LEVEL, "origin": "default", "basis": DEFAULT_BASIS_8},
     ]
+    convert = [{"kind": "convert_colour", "version": STEP_VERSION, "parameters": [
+        {"name": "renderingIntent", "value": intent, "origin": "measured", "basis": decode.MEASURED_FROM_ICC}]}] if intent else []
     graph = {
         "id": graph_id(source_sha256, "display_copy", request),
         "sourceSha256": source_sha256,
         "kind": "display_copy",
         "pipelineVersion": PIPELINE_VERSION,
         "request": request,
-        "steps": [{"kind": "decode", "version": STEP_VERSION, "parameters": still.parameters},
+        "steps": [{"kind": "decode", "version": STEP_VERSION, "parameters": still.parameters}, *convert,
                   {"kind": "encode", "version": STEP_VERSION, "parameters": encode}],
     }
     ProcessingGraph.model_validate(graph)
@@ -282,13 +290,12 @@ def make_display_copy(store_root: Path, source_folder: Path, original: Path, *, 
 
     try:
         still = decode.decode_still(original)
-        # The record names the profile the copy holds; one that cannot be rebuilt leaves no true description (restore-8d)
-        colour = photo.stored_colour(still.colour, still.icc_profile)
-        if colour is None:
-            raise decode.DecodeRefusal(decode.UNDECODABLE)
-        graph = display_copy_graph(source_sha256, still)
-        data = encode_png(still)
-        verified = verify_copy(data, still.samples)
+        # The record names the profile the copy holds (restore-8d); a profile the rebuild cannot carry is converted
+        # through, or, where nothing reads it, left off with its assumption recorded (restore-8e, review row C20)
+        colour, copy, intent, disclosure = _copy_of(still)
+        graph = display_copy_graph(source_sha256, still, intent)
+        data = encode_png(copy)
+        verified = verify_copy(data, copy.samples)
     except decode.DecodeRefusal as refusal:
         record = attempt("failed", failureReason=refusal.sentence)
         keep_attempt(source_folder, record)
@@ -307,7 +314,7 @@ def make_display_copy(store_root: Path, source_folder: Path, original: Path, *, 
         "graphId": graph_ref, "attemptId": att, "sha256": hashlib.sha256(data).hexdigest(),
         "uri": variant_uri(source_sha256, vid), "byteSize": len(data), "mimeType": "image/png", "width": width,
         "height": height, "durationMs": 0, "frameCount": 1, "audioStreams": [], "colour": colour,
-        "disclosure": DISCLOSURES["display_copy"], "createdAtUTC": record["finishedAtUTC"],
+        "disclosure": disclosure, "createdAtUTC": record["finishedAtUTC"],
     }
     if display_orientation is not None:
         variant["displayOrientation"] = display_orientation
@@ -315,6 +322,58 @@ def make_display_copy(store_root: Path, source_folder: Path, original: Path, *, 
     stored = publish_variant(store_root, source_folder, data, {"variant": variant, "graph": graph, "attempt": record})
     keep_attempt(source_folder, record)
     return DisplayCopy("ready", record, graph, variant, stored.folder)
+
+
+# Little CMS's own sRGB, rebuilt as every stored profile is: the profile of a converted copy (restore-8e)
+SRGB_PROFILE = photo.profile_without_text(ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes())
+# The assumption of a copy kept without a profile nothing reads (review row C20, decided by the lead on 2026-11-19)
+UNREAD_PROFILE_REASON = "The file's ICC profile could not be read, so sRGB is assumed."
+UNREAD_PROFILE_ASSUMPTIONS = [entry for entry in ASSUMPTION_REASONS if entry["reason"] == UNREAD_PROFILE_REASON]
+
+
+def convert_through_profile(still: decode.DecodedStill) -> Optional[tuple[np.ndarray, str]]:
+    """The photo's pixels converted to sRGB through its own whole profile by Little CMS at the profile's own rendering
+    intent, 8 bit (Pillow's Little CMS converts 8 bit R'G'B' only [tested: Pillow 13.0.0, Little CMS 2.19]; a 16 bit
+    photo is rounded to 8 bits first), and the intent's name. None when Little CMS cannot read the profile or convert
+    through it."""
+    profile = still.icc_profile
+    if not profile or len(profile) < 68 or still.samples.ndim != 3:
+        return None
+    code = int.from_bytes(profile[64:68], "big")
+    intent = code if code < len(RENDERING_INTENTS) else 0
+    samples = still.samples
+    if samples.dtype == np.uint16:
+        samples = ((samples.astype(np.uint32) * 255 + 32767) // 65535).astype(np.uint8)
+    try:
+        transform = ImageCms.buildTransform(ImageCms.ImageCmsProfile(io.BytesIO(profile)),
+                                            ImageCms.ImageCmsProfile(io.BytesIO(SRGB_PROFILE)), "RGB", "RGB",
+                                            renderingIntent=intent)
+        out = ImageCms.applyTransform(Image.fromarray(samples, "RGB"), transform)
+    except (ImageCms.PyCMSError, OSError, ValueError):
+        return None
+    return np.asarray(out, dtype=np.uint8), RENDERING_INTENTS[intent]
+
+
+def _copy_of(still: decode.DecodedStill) -> tuple[dict[str, Any], decode.DecodedStill, Optional[str], str]:
+    """The display copy's colour description, the still it is encoded from, the conversion's intent (None when not
+    converted) and its disclosure: the original's samples with the rebuilt profile; where the rebuild cannot carry the
+    profile, the samples converted through it to sRGB (restore-8e, option 2); where nothing reads it, the samples kept
+    without a profile, the copy described as sRGB with that assumption recorded (option 3)."""
+    colour = photo.stored_colour(still.colour, still.icc_profile)
+    if colour is not None:
+        return colour, still, None, DISCLOSURES["display_copy"]
+    others = [entry for entry in still.colour.get("assumptions", []) if entry["field"] not in ("transfer", "primaries")]
+    plain = {key: value for key, value in still.colour.items() if key != "iccProfileSha256"}
+    converted = convert_through_profile(still)
+    if converted is None:
+        colour = {**plain, "transfer": "srgb", "primaries": "bt709", "assumptions": others + UNREAD_PROFILE_ASSUMPTIONS}
+        return colour, replace(still, icc_profile=None), None, DISCLOSURES["display_copy"]
+    samples, intent = converted
+    kind, _ = colour_math.icc_tone_curves(SRGB_PROFILE)
+    colour = {**plain, "bitDepth": 8, "transfer": kind, "primaries": "icc", "assumptions": others,
+              "iccProfileSha256": hashlib.sha256(SRGB_PROFILE).hexdigest()}
+    disclosure = CONVERTED_DISCLOSURES[1 if still.samples.dtype == np.uint16 else 0]
+    return colour, replace(still, samples=samples, icc_profile=SRGB_PROFILE), intent, disclosure
 
 
 def png_intact(data: bytes) -> bool:

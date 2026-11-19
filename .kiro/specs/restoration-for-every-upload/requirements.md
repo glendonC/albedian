@@ -358,9 +358,12 @@ made.
      header bytes, other tags, another space's tags, padding) SHALL reach the export [decided
      2026-11-19 by the lead at 07:31 and 08:34: the colour data stays, nothing else does]. THE stored still's variant
      record SHALL name the rebuilt profile by its hash, and its attempt's measured colour the original's [decided by
-     the lead later the same day: a record describes the bytes it ships]; a profile that cannot be rebuilt so SHALL
-     fail the attempt with the sentence for a file that could not be decoded, since no description is true of the
-     file without it [proposed, restore-8d].
+     the lead later the same day: a record describes the bytes it ships]. A damaged optional colour tag SHALL be
+     left out alone. Where the profile still cannot be rebuilt, the display copy SHALL be the photo converted to sRGB
+     through its own profile by Little CMS, saying so in its disclosure, or, where nothing reads the profile, the
+     photo's samples without a profile, described as sRGB with that assumption recorded and shown as a caution; the
+     restoration SHALL be refused with its own sentence [decided by the lead the same afternoon, review row C20's
+     words; restore-8e].
   5. A still SHALL be exported as the PNG that is the variant.
   6. A `rejected` or `failed` attempt SHALL have nothing to export (404).
   7. THE manifest SHALL parse under `ExportManifestSchema` in both languages, and its variant hash SHALL equal the

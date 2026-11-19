@@ -56,8 +56,9 @@ MEDIA_PRODUCER_FILES = (
 # Revisions: 1, the first (restore-2b); 2, kept edges stored as the gate computes them and samples raised over both
 # their surroundings and the original's own dissolved by the passes (restore-4f); 3, a stored still's colour
 # profile keeps its colour data and loses its text (restore-8b). restore-7 keeps 3: it changes no result a
-# still's job stored, and a clip had none before it
-MEDIA_PRODUCER = Producer("albedian.restore", 3, MEDIA_PRODUCER_FILES)
+# still's job stored, and a clip had none before it; 4, a stored still's record names the profile its own file holds,
+# and a photo whose profile cannot be rebuilt gets a converted or untagged display copy (restore-8d, 8e)
+MEDIA_PRODUCER = Producer("albedian.restore", 4, MEDIA_PRODUCER_FILES)
 # The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
 # public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
 # so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
@@ -230,10 +231,10 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
     except decode.DecodeRefusal as refusal:
         return failed(refusal.sentence)
     # The record names the profile the stored file holds; one that cannot be rebuilt leaves no true description, so
-    # the attempt fails before any restoring (restore-8d)
+    # the attempt is refused before any restoring, in its own words (restore-8d; review row C20, restore-8e)
     colour = photo.stored_colour(still.colour, still.icc_profile)
     if colour is None:
-        return failed(decode.UNDECODABLE)
+        return failed(photo.PROFILE_NOT_CARRIED)
     progress("decode", "frames", 1, 1)
     progress("measure", "frames", 0, 1)
     try:
