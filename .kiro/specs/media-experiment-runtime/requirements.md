@@ -1,5 +1,7 @@
 # Requirements: Media Experiment Runtime
 
+> Superseded (restore-9, 2026-11-19): the runtime this spec describes (`services/media/runtime.py`) was removed; restoration and export are specified in `.kiro/specs/restoration-for-every-upload/`. This file is kept as history.
+
 ## Introduction
 Defines the content-addressed `MediaExperimentRuntime` that executes, evaluates, compares, and exports real low-light photo and video restoration attempts without inventing stars or corrupting original audio.
 

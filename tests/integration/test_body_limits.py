@@ -57,7 +57,6 @@ MEASURED_LARGEST_BODY = {
     "/api/science/solve": 4_287_844,
     "/api/science/solve-horizon": 922_519,
     "/api/science/ephemeris": 130,
-    "/api/media/restore": 1_072_159,
     VOICE_PATH: 5_154,
     # The question at one past its 500 unit cap, which the contract refuses (test_voice_answer_route.py)
     ANSWER_PATH: 516,

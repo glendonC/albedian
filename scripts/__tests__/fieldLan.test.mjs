@@ -86,7 +86,7 @@ describe('the /api proxy guard', () => {
   });
 
   it('lets a network peer reach every other API route', () => {
-    for (const url of ['/api/health', '/api/ingest', '/api/ingest/ab12/solve', '/api/media/restore', '/api/voice/command']) {
+    for (const url of ['/api/health', '/api/ingest', '/api/ingest/ab12/solve', '/api/media/ab12/restore', '/api/voice/command']) {
       expect(refuseOnNetwork(fromNetwork(url)), url).toBeUndefined();
     }
   });

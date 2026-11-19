@@ -254,47 +254,6 @@
           }
         }
       },
-      "/api/media/restore": {
-        "post": {
-          "summary": "Post Media Restore",
-          "description": "Execute an astronomy-aware media restoration branch and return honest signal metrics.",
-          "operationId": "post_media_restore_api_media_restore_post",
-          "requestBody": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RestoreRequest"
-                }
-              }
-            },
-            "required": true
-          },
-          "responses": {
-            "200": {
-              "description": "Successful Response",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "additionalProperties": true,
-                    "type": "object",
-                    "title": "Response Post Media Restore Api Media Restore Post"
-                  }
-                }
-              }
-            },
-            "422": {
-              "description": "Validation Error",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
       "/api/media/{sha256}/restore": {
         "post": {
           "summary": "Start Restoration Job",
@@ -1249,69 +1208,6 @@
           "title": "RadiometryAuditRequest",
           "description": "Request payload for `POST /api/science/radiometry-audit`: a time and place, and the target asked about."
         },
-        "RestoreRequest": {
-          "properties": {
-            "profile": {
-              "type": "string",
-              "title": "Profile",
-              "default": "star_protected"
-            },
-            "preserveStars": {
-              "type": "boolean",
-              "title": "Preservestars",
-              "default": true
-            },
-            "frames": {
-              "anyOf": [
-                {
-                  "items": {
-                    "items": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "type": "array"
-                    },
-                    "type": "array"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Frames"
-            },
-            "image_luma": {
-              "anyOf": [
-                {
-                  "items": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "type": "array"
-                  },
-                  "type": "array"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Image Luma"
-            },
-            "sourceAssetId": {
-              "type": "string",
-              "minLength": 1,
-              "title": "Sourceassetid"
-            }
-          },
-          "additionalProperties": true,
-          "type": "object",
-          "required": [
-            "sourceAssetId"
-          ],
-          "title": "RestoreRequest",
-          "description": "Request payload for `POST /api/media/restore`."
-        },
         "SkyContextRequest": {
           "properties": {
             "observedAtUTC": {
@@ -1686,15 +1582,6 @@
       "includeInSchema": true
     },
     {
-      "path": "/api/media/restore",
-      "methods": [
-        "POST"
-      ],
-      "name": "post_media_restore",
-      "responseModel": "dict[str, typing.Any]",
-      "includeInSchema": true
-    },
-    {
       "path": "/api/media/{sha256}/restore",
       "methods": [
         "POST"
@@ -1914,7 +1801,6 @@
           "/api/science/solve-horizon": 4194304,
           "/api/science/ephemeris": 65536,
           "/api/media/discover": 0,
-          "/api/media/restore": 5242880,
           "/api/media/{sha256}/restore": 65536,
           "/api/media/{sha256}/variants": 0,
           "/api/media/{sha256}/variants/{variant_id}": 0,
@@ -1965,26 +1851,6 @@
       },
       "body": {
         "detail": "sourceAssetId is missing: send a source asset's id as it is minted: src_ and 16 lowercase hex digits. sourceSha256 is missing: send the source asset's SHA-256 as 64 lowercase hex digits."
-      }
-    },
-    "restore without frames or image": {
-      "request": "POST /api/media/restore",
-      "status": 422,
-      "headers": {
-        "vary": "Origin"
-      },
-      "body": {
-        "detail": [
-          {
-            "type": "missing",
-            "loc": [
-              "body",
-              "sourceAssetId"
-            ],
-            "msg": "Field required",
-            "input": {}
-          }
-        ]
       }
     },
     "unknown path": {

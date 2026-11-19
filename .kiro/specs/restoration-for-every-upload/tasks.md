@@ -228,7 +228,7 @@ pictures under `.cache/restore-review/<unit>/`.
     [open].
   - _Requirements: REQ-RST-9.1 to 9.7_
 
-- [ ] 9. restore-9: the corrections of old code (REQ-RST-11)
+- [x] 9. restore-9: the corrections of old code (REQ-RST-11)
   - Removed: `POST /api/media/restore` with arrays, `execute_restoration_branch`,
     `export_video_with_audio_remux`, `RestorationMetrics`, `RestorationBranchResult`, `ExportRemuxResult` and the
     tests that only cover them (`tests/integration/test_media_measures_what_it_reports.py`, EXP-04 and EXP-10 and
@@ -241,6 +241,11 @@ pictures under `.cache/restore-review/<unit>/`.
     reason it describes something that no longer exists.
   - Done when: each row of `design.md` section 15 is cut or made real, and a search for the removed names finds
     none.
+  - As built: both scripts removed rather than rewritten, since `scripts/restore_review.py` is the job's caller for
+    a person's review; `models.py` keeps only `compute_file_sha256` (discovery's). The search for the removed names
+    is a kept test, `tests/media/test_old_runtime_removed.py`, with the old route answering 404 and its old body
+    refused by the unrouted body limit. `services/media/stars.py`'s docstring still names the old runtime: it is a
+    producer file, so its fix waits for the next unit that changes it [decided 2026-11-19: the digest chain].
   - _Requirements: REQ-RST-11.1 to 11.3_
 
 ## Open, not scheduled

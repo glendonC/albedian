@@ -205,8 +205,6 @@ BODY_LIMITS: dict[str, int | None] = {
     # Largest measured body 130 bytes
     "/api/science/ephemeris": BODY_LIMIT_FLOOR,
     "/api/media/discover": 0,
-    # Largest measured body 1,072,159 bytes (frames as JSON); 4 times is 4,288,636
-    "/api/media/restore": 5 * MIB,
     # A RestoreRequest: its kind and an exposure, under 64 bytes of JSON (services/contracts/media.py)
     "/api/media/{sha256}/restore": BODY_LIMIT_FLOOR,
     "/api/media/{sha256}/variants": 0,

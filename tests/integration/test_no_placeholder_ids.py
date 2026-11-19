@@ -2,17 +2,15 @@
 
 A detection measured without its recording's id carries none, where it used to read "asset-0". A solution
 serializes its detections under its own recording's id, since they were measured in it, and refuses one measured
-in another recording; a detection or finding serialized on its own needs that id. The restore and export
-manifests take the ids only their caller knows, and an export manifest cites the catalogs of what it shows, which
-for a remux of restored frames is nothing.
+in another recording; a detection or finding serialized on its own needs that id. (The old runtime's restore and
+export manifests, tested here before, went with it in restore-9: a restoration's attempt and variant carry their
+source's hash by the contract, tests/media/test_jobs.py and services/contracts/media.py.)
 
 Covers:
 - detect_point_sources gives detections no asset id unless the caller names the recording
 - A calibrated and an unresolved plate solve serialize every detection under the solution's own id
 - A detection or finding serialized alone, with no recording id known, is refused
 - A solution refuses a detection measured in another recording
-- The restore and export manifests refuse to serialize without their ids and use the ones given
-- An export manifest cites nothing it does not show
 - Real data (owner_media): the decoded frames of the owner's clips, solved, carry their own id on every detection
 """
 
@@ -27,8 +25,6 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from services.media.models import ExportRemuxResult
-from services.media.runtime import MediaExperimentRuntime
 from services.science.solver import (
     SourceDetection,
     detect_point_sources,
@@ -102,45 +98,6 @@ def test_a_solution_refuses_a_detection_from_another_recording() -> None:
     named = [replace(det, asset_id="synthetic-three") for det in FEW]
     solution = solve_and_verify_field(named, 960, 540, **MOMENT, source_asset_id="synthetic-three", source_sha256=SHA)
     assert {det["assetId"] for det in _serialized_detections(solution.to_contract_dict())} == {"synthetic-three"}
-
-
-def test_the_restore_manifest_needs_its_asset_id() -> None:
-    frame, _, _ = render_synthetic_starfield(width=320, height=180, read_noise_sigma=1.8, flux_scale=1100.0, seed=7)
-    result = MediaExperimentRuntime().execute_restoration_branch([frame], profile="star_protected", preserve_stars=True)
-    with pytest.raises(TypeError):
-        result.to_contract_dict()
-    with pytest.raises(TypeError):
-        result.to_contract_dict("synthetic-small")
-    assert result.to_contract_dict(source_asset_id="synthetic-small")["sourceAssetId"] == "synthetic-small"
-
-
-def test_the_export_manifest_needs_its_ids_and_cites_only_what_it_shows(tmp_path) -> None:
-    manifest = ExportRemuxResult(
-        id="export-synthetic", output_path=str(tmp_path / "restored.mp4"), output_sha256="ab" * 32,
-        source_sha256="cd" * 32, video_codec="h264", audio_preserved=True, audio_codec="aac",
-        video_duration_sec=2.0, audio_duration_sec=2.0, duration_drift_ms=0.0, audio_sync_offset_ms=0.0,
-        stream_types=["video", "audio"], frame_count=48, fps=24,
-    )
-    ids = {
-        "session_id": "session-synthetic", "source_asset_id": "synthetic-field-42",
-        "variant_id": "variant-restored", "graph_id": "graph-temporal",
-    }
-    with pytest.raises(TypeError):
-        manifest.to_contract_dict()
-    for missing in [*ids, "catalog_citations"]:
-        given = {**ids, "catalog_citations": ()}
-        del given[missing]
-        with pytest.raises(TypeError):
-            manifest.to_contract_dict(**given)
-    payload = manifest.to_contract_dict(**ids, catalog_citations=())
-    assert [payload[key] for key in ("sessionId", "sourceAssetId", "exportedVariantId", "processingGraphId")] == [
-        *ids.values()
-    ]
-    # A remux of restored frames shows no catalog content, so it cites no catalog
-    assert payload["catalogCitations"] == []
-    assert "Gaia" not in json.dumps(payload) and "Bailer-Jones" not in json.dumps(payload)
-    cited = manifest.to_contract_dict(**ids, catalog_citations=["Gaia Collaboration (2023) Gaia DR3"])
-    assert cited["catalogCitations"] == ["Gaia Collaboration (2023) Gaia DR3"]
 
 
 @pytest.mark.owner_media("data/artifacts")

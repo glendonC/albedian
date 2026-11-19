@@ -4,7 +4,7 @@ stand-in residual.
 Covers:
 - The solvers and finding records take the source asset's id and SHA-256 with no default, and refuse the
   all-zero placeholder
-- The solve routes require sourceAssetId and a 64-hex sourceSha256; the restore route requires sourceAssetId
+- The solve routes require sourceAssetId and a 64-hex sourceSha256
 - A prediction names a recording's SHA-256 only when one stands behind it: discovery's ephemerides carry their
   clip's, and /api/science/ephemeris and /api/science/sky-context, which answer for a time and place, send none
 - /api/science/solve takes an image's size from its pixels and refuses a different one; detections need both
@@ -82,7 +82,6 @@ def test_routes_require_the_asset_id_and_its_hash() -> None:
     for not_a_hash in ("0" * 64, "AB" * 32, "ab" * 31 + "a", "ab" * 31 + "zz"):
         rejected = client.post("/api/science/solve", json={**body, "sourceAssetId": "src_abababababababab", "sourceSha256": not_a_hash})
         assert rejected.status_code == 422, not_a_hash
-    assert client.post("/api/media/restore", json={"image_luma": [[0.1] * 8] * 8}).status_code == 422
 
 
 def test_a_prediction_names_a_recording_only_when_one_stands_behind_it() -> None:

@@ -48,7 +48,6 @@ PINNED_REQUESTS: list[tuple[str, str, str, dict[str, Any], int]] = [
     ("solve without detections or image", "POST", "/api/science/solve", {"json": {"width": 960, "height": 540, **MOMENT}}, 422),
     ("solve with an unmeasured detection", "POST", "/api/science/solve", {"json": {**MOMENT, "detections": [{"xPx": 12.5}]}}, 422),
     ("horizon solve without image", "POST", "/api/science/solve-horizon", {"json": MOMENT}, 422),
-    ("restore without frames or image", "POST", "/api/media/restore", {"json": {}}, 422),
     ("unknown path", "GET", "/api/unknown", {}, 404),
     ("GET on a POST route", "GET", "/api/science/solve", {}, 405),
     ("POST on a GET route", "POST", "/api/health", {}, 405),

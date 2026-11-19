@@ -1,6 +1,6 @@
 """Integration and Hypothesis property-based verification suite for Albedian's
-scientific astrometry, plate solver, proper-motion propagation, astronomy-aware
-media restoration runtime, FFmpeg audio-preserving export, and FastAPI service.
+scientific astrometry, plate solver, proper-motion propagation and FastAPI service. A restoration is tested
+through its job (tests/media/test_jobs.py), which replaced the old runtime's EXP-04 and EXP-10.
 
 Covers:
 - PBT Suite #7 (`test_pbt_scientific_coordinates_and_distances`), and a broken catalog distance refused in
@@ -8,9 +8,7 @@ Covers:
 - EXP-01 (`test_exp01_consumer_photo_plate_solving_and_negative_rejection`)
 - EXP-02 (`test_exp02_low_light_video_temporal_stack_calibration`)
 - EXP-03 (`test_exp03_catalog_alignment_and_false_artifact_rejection`)
-- EXP-04 (`test_exp04_astronomy_aware_point_protection_vs_conventional_denoise`)
 - EXP-08 (`test_exp08_proper_motion_and_historical_epoch_1026ce`)
-- EXP-10 (`test_exp10_video_restoration_and_ffmpeg_audio_preserving_export`)
 - FastAPI service endpoints (`test_fastapi_endpoints`), and media discovery over the owner's clips
   (`test_media_discovery_reads_the_owners_clips_without_hardcoded_filenames`, marked owner_media)
 """
@@ -19,10 +17,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
-import json
 import math
-from pathlib import Path
-import subprocess
 
 from fastapi.testclient import TestClient
 from hypothesis import given, settings, strategies as st
@@ -31,7 +26,6 @@ import pytest
 from scipy import ndimage
 
 from services.api import app
-from services.media.runtime import MediaExperimentRuntime, compute_file_sha256
 from services.science.catalog import (
     ALL_SKY_CATALOG_STARS,
     CONSTELLATION_EDGES,
@@ -489,50 +483,6 @@ def test_exp03_catalog_alignment_and_false_artifact_rejection() -> None:
 
 
 # ---------------------------------------------------------------------------
-# EXP-04: Astronomy-Aware Point Protection vs. Conventional Denoise
-# ---------------------------------------------------------------------------
-
-
-def test_exp04_astronomy_aware_point_protection_vs_conventional_denoise() -> None:
-    """EXP-04: Verify that `star_protected` restoration retains >= 0.90 of faint star
-    peak flux while `conventional_denoise` attenuates faint stars significantly, and
-    neither invents synthetic catalog stars.
-    """
-    width, height = 640, 360
-    noisy_frame, _, _ = render_synthetic_starfield(
-        width=width,
-        height=height,
-        read_noise_sigma=3.8,
-        flux_scale=620.0,
-        seed=404,
-    )
-    fg_mask = np.zeros((height, width), dtype=bool)
-    fg_mask[-40:, 180:460] = True
-
-    runtime = MediaExperimentRuntime()
-    conv_res = runtime.execute_restoration_branch(
-        [noisy_frame],
-        profile="conventional_denoise",
-        preserve_stars=False,
-        foreground_mask=fg_mask,
-    )
-    star_res = runtime.execute_restoration_branch(
-        [noisy_frame],
-        profile="star_protected",
-        preserve_stars=True,
-        foreground_mask=fg_mask,
-    )
-
-    assert star_res.point_source_retention_ratio >= 0.90
-    assert conv_res.point_source_retention_ratio < 0.55
-    assert star_res.point_source_retention_ratio > conv_res.point_source_retention_ratio + 0.35
-    assert star_res.shadow_snr_gain_db > 4.0
-    assert star_res.false_point_artifact_count == 0
-    assert conv_res.false_point_artifact_count == 0
-    assert star_res.allow_synthetic_sky is False
-
-
-# ---------------------------------------------------------------------------
 # EXP-08: Proper Motion & Historical Epoch Propagation (1026 CE)
 # ---------------------------------------------------------------------------
 
@@ -577,118 +527,13 @@ def test_exp08_proper_motion_and_historical_epoch_1026ce() -> None:
 
 
 # ---------------------------------------------------------------------------
-# EXP-10: Video Restoration & FFmpeg Audio-Preserving Remux Export
-# ---------------------------------------------------------------------------
-
-
-def test_exp10_video_restoration_and_ffmpeg_audio_preserving_export(tmp_path: Path) -> None:
-    """EXP-10: Synthesize a test dark video clip with an AAC audio tone track via ffmpeg,
-    run temporal restoration, export via `export_video_with_audio_remux`, probe with
-    `ffprobe`, and verify video + audio streams, duration drift <= 35 ms, and SHA-256 manifest.
-    """
-    fps = 12
-    num_frames = 12  # 1.000 second clip
-    duration_sec = num_frames / float(fps)
-    source_mp4 = tmp_path / "source_dark_with_audio.mp4"
-    exported_mp4 = tmp_path / "restored_star_protected.mp4"
-
-    # Synthesize source MP4 with a 440 Hz sine audio stream using ffmpeg
-    gen_cmd = [
-        "ffmpeg",
-        "-y",
-        "-f",
-        "lavfi",
-        "-i",
-        f"color=c=black:s=320x180:r={fps}:d={duration_sec}",
-        "-f",
-        "lavfi",
-        "-i",
-        f"sine=frequency=440:sample_rate=48000:duration={duration_sec}",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-shortest",
-        str(source_mp4),
-    ]
-    subprocess.run(gen_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    source_sha_before = compute_file_sha256(source_mp4)
-
-    # Generate 12 low-light starfield frames and restore with temporal star protection
-    raw_frames = [
-        render_synthetic_starfield(
-            width=320,
-            height=180,
-            read_noise_sigma=3.5,
-            flux_scale=750.0,
-            seed=500 + i,
-            shift_yx=(i * 0.4, -i * 0.5),
-        )[0]
-        for i in range(num_frames)
-    ]
-
-    runtime = MediaExperimentRuntime()
-    restored = runtime.execute_restoration_branch(
-        raw_frames, profile="temporal", preserve_stars=True
-    )
-    assert restored.point_source_retention_ratio >= 0.90
-    assert restored.shadow_snr_gain_db > 3.0
-
-    export_manifest = runtime.export_video_with_audio_remux(
-        frames=restored.restored_frames,
-        fps=fps,
-        output_path=exported_mp4,
-        audio_source_path=source_mp4,
-    )
-
-    # Source file must remain completely untouched (SourceAsset immutability)
-    assert compute_file_sha256(source_mp4) == source_sha_before
-    assert export_manifest.source_sha256 == source_sha_before
-    assert Path(export_manifest.output_path).exists()
-    assert len(export_manifest.output_sha256) == 64
-    assert export_manifest.audio_preserved is True
-    assert "video" in export_manifest.stream_types
-    assert "audio" in export_manifest.stream_types
-    assert export_manifest.duration_drift_ms is not None and export_manifest.duration_drift_ms <= 35.0
-    assert export_manifest.audio_sync_offset_ms is not None and export_manifest.audio_sync_offset_ms < 1.0
-
-    # Independently verify the exported MP4 with ffprobe
-    probe_out = subprocess.run(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "stream=codec_type,codec_name,duration",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "json",
-            str(exported_mp4),
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    probe_json = json.loads(probe_out.stdout.decode("utf-8"))
-    codec_types = {s["codec_type"] for s in probe_json["streams"]}
-    assert {"video", "audio"}.issubset(codec_types)
-
-
-# ---------------------------------------------------------------------------
 # FastAPI Service Endpoints Verification
 # ---------------------------------------------------------------------------
 
 
 def test_fastapi_endpoints() -> None:
-    """Verify `/api/health`, `/api/science/solve`, `/api/science/ephemeris`,
-    `/api/media/restore`, and `/api/voice/command` via FastAPI TestClient.
+    """Verify `/api/health`, `/api/science/solve`, `/api/science/ephemeris` and `/api/voice/command` via
+    FastAPI TestClient.
     """
     client = TestClient(app)
 
@@ -744,25 +589,7 @@ def test_fastapi_endpoints() -> None:
     assert -90.0 <= alt_deg <= 90.0
     assert 0.0 <= az_deg < 360.0
 
-    # 4. POST /api/media/restore (explicit synthetic frame; the API no longer makes one up)
-    assert client.post(
-        "/api/media/restore", json={"profile": "star_protected", "preserveStars": True, "sourceAssetId": "synthetic-restore"}
-    ).status_code == 422
-    restore_frame, _, _ = render_synthetic_starfield(width=320, height=180, read_noise_sigma=3.2, seed=101)
-    r_restore = client.post(
-        "/api/media/restore",
-        json={
-            "profile": "star_protected", "preserveStars": True, "image_luma": restore_frame.tolist(),
-            "sourceAssetId": "synthetic-restore",
-        },
-    )
-    assert r_restore.status_code == 200
-    m_data = r_restore.json()
-    assert m_data["status"] == "ready"
-    assert m_data["allowSyntheticSky"] is False
-    assert m_data["point_source_retention_ratio"] >= 0.90
-
-    # 5. POST /api/voice/command (valid command, stale revision, and unsafe synthetic rejection)
+    # 4. POST /api/voice/command (valid command, stale revision, and unsafe synthetic rejection)
     r_voice_ok = client.post(
         "/api/voice/command",
         json={
@@ -799,7 +626,7 @@ def test_fastapi_endpoints() -> None:
     assert r_voice_stale.json()["status"] == "rejected"
     assert r_voice_stale.json()["reason"] == "stale_revision"
 
-    # 6. POST /api/science/sky-context (All-Sky 70+ stars, ephemerides, and constellation edges)
+    # 5. POST /api/science/sky-context (All-Sky 70+ stars, ephemerides, and constellation edges)
     assert len(ALL_SKY_CATALOG_STARS) >= 65
     for st_entry in ALL_SKY_CATALOG_STARS:
         assert 0.0 < st_entry.lower_pc <= st_entry.median_pc <= st_entry.upper_pc
@@ -821,7 +648,7 @@ def test_fastapi_endpoints() -> None:
     assert all("lightTravel" in s for s in sky_data["stars"])
     assert all(e["evidenceClass"] == "predicted" for e in sky_data["ephemerides"])
 
-    # 7. POST /api/science/solve-horizon. The test draws its own narrow portrait frame (Moon blob
+    # 6. POST /api/science/solve-horizon. The test draws its own narrow portrait frame (Moon blob
     # above a foreground at 55% height) so the Moon's height above the horizon implies a lens
     # scale inside the solver's range, and a Moon 14 px across, near its predicted size at that scale (sky-4: the
     # Moon test refuses a spot much smaller than the Moon); the API no longer plants a Moon in a blank frame.
@@ -845,7 +672,7 @@ def test_fastapi_endpoints() -> None:
     assert h_sol["quality"]["passedIndependentVerification"] is False
     assert len(h_sol["findings"]) >= 10
 
-    # 8. Expanded All-Sky Voice Commands & Scientific Explanation
+    # 7. Expanded All-Sky Voice Commands & Scientific Explanation
     for utterance_text, expected_type, expected_target_substr in [
         ("Take me to Fomalhaut", "space.enter", "fomalhaut"),
         ("Select the Moon", "finding.select", "moon"),
