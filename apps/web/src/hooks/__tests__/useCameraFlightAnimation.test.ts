@@ -20,6 +20,18 @@ import { FLIGHT_HALF_MS, flightEase, useCameraFlightAnimation } from '../useCame
 type Update = ObservationSession | ((prev: ObservationSession) => ObservationSession);
 
 /**
+ * The clock the flight starts from, held still: the hook reads performance.now() once when a flight starts and each
+ * frame is called at this start plus its offset, so a frame is exactly that far into the flight however busy the
+ * machine is. Read again after the hook, the clock had moved on under load, and a progress compared to three decimals
+ * came out 0.0006 off.
+ */
+const FLIGHT_START_MS = 1_000;
+function holdClock(): number {
+  vi.spyOn(performance, 'now').mockReturnValue(FLIGHT_START_MS);
+  return FLIGHT_START_MS;
+}
+
+/**
  * Flies to a finding and returns the session after each update the flight made, in order. The
  * hook flies from the session it rendered with; its updates apply to `appliedTo`, the state the
  * app holds when the flight starts (by default the same session).
@@ -40,9 +52,9 @@ function flyThrough(
     return null;
   };
   renderToString(createElement(Probe));
+  const start = holdClock();
   fly!(findingId);
   // Run the queued animation frames: one in each phase, then past the flight's end
-  const start = performance.now();
   const times = offsets.map((ms) => start + ms);
   while (frames.length > 0) frames.shift()!(times.shift() ?? start + 60_000);
   const states: ObservationSession[] = [];
@@ -214,8 +226,8 @@ describe('Back to Moment flies the flight backwards, then restores the checkpoin
       return null;
     };
     renderToString(createElement(Probe));
+    const start = holdClock();
     for (let i = 0; i < calls; i++) back!(() => restored.push(updates.length));
-    const start = performance.now();
     const seen: Array<{ states: ObservationSession[]; restored: number }> = [];
     const apply = () => {
       const states: ObservationSession[] = [];
