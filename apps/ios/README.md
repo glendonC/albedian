@@ -40,6 +40,8 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     Receipts and jobs are read within 64 kB (`HTTPReplyLimits`); the solution alone within 64 MiB
     (`SolveClient.solutionMaxBytes`), since a photo with a time and place solves to about 1.3 MB and a 12 MP night photo
     to 35 MB; the connection reads a reply's bytes once, when its stated length has arrived (`HTTPMessage.wholeLength`).
+  - `SendLedger` keeps each capture's send state across launches (task 9, mobile-3p): one JSON file per photo hash in
+    its own folder, "sent" or "not_sent" with the failure's name; no time, place, address or value from the photo.
   - `CaptureStore` keeps each photo as the bytes given, named by its SHA-256 and its type's extension, and its record
     beside it as the record's JSON bytes; a file counts as kept only once it has been read back and equals the bytes
     given, and a name holds no time, place or count. `CaptureUploader.send(photo:contentType:recordWire:)` sends a kept

@@ -31,6 +31,8 @@ final class CompanionModel {
     let camera = CameraSession()
     private var recorder: SensorRecorder?
     private let store: CaptureStore
+    /// Each capture's send state, kept across launches (task 9).
+    private let ledger: SendLedger
     private let pairing: PairingKeeper
     private let uploads = UploadCoordinator()
     private let solver = SolveCoordinator()
@@ -48,6 +50,7 @@ final class CompanionModel {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         store = CaptureStore(folder: support.appendingPathComponent("Captures"))
+        ledger = SendLedger(folder: support.appendingPathComponent("Sends"))
         self.pairing = pairing
         typedAddress = pairing.kept.map { String($0.description.dropFirst(PairingKeeper.fixedScheme.count)) } ?? ""
     }
@@ -199,6 +202,7 @@ final class CompanionModel {
         uploads.start(photo: shot.photo, contentType: shot.contentType, recordWire: shot.recordWire,
                       uploader: CaptureUploader(address: address)) { [weak self] last in
             guard let self else { return }
+            self.ledger.record(last, for: shot.sha256)
             switch SendEnd.after(last) {
             case .solve(let sha256)?:
                 self.pairing.keep(address)

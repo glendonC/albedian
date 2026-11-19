@@ -105,6 +105,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     approved controls, logo, Geist and Phosphor icons) is not this task. Missing: the address is not kept on the
     phone (`apps/ios/AlbedianCapture/PipelineModel.swift` starts it empty each launch), and no screen sends the
     stored captures, keeps each one's state with its reason, or retries on the person's request.
+  - Built (mobile-6 and mobile-3p, 2026-11-18): the address typed once and kept, the send with its states, can't reach
+    the laptop with Try again, each capture's send state kept with its reason (`SendLedger`). Not built: seeing and
+    sending again captures kept from earlier sessions, which has no design record (asked of the lead).
   - _Requirements: REQ-IOS-4.1, 4.2 (upload), 4.3_
 
 - [ ] 10. mobile-4: the solve and the result
