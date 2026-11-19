@@ -232,4 +232,10 @@ export const LOOK_DECLARATIONS: ReadonlyArray<LookDeclaration> = [
   ['look.css', '.look-logo__mark', 'margin-left', 'calc(var(--look-logo-fs) * var(--look-logo-mark-left))'],
   ['look.css', '.look-logo__mark', 'margin-top', 'calc(var(--look-logo-fs) * var(--look-logo-mark-up))'],
   ['look.css', '@media (prefers-reduced-motion: reduce) .look-main, .look-main *, .look-small-main, .look-small-main *, .look-second, .look-second *, .look-icon, .look-views__item, .look-turn', 'transition', 'none !important'],
+  ['look.css', '@keyframes look-mo-frame-in from', 'opacity', '0'],
+  ['look.css', '@keyframes look-mo-words-in from', 'opacity', '0'],
+  ['look.css', '@keyframes look-mo-words-in from', 'translate', '0 var(--look-mo-rise)'],
+  ['look.css', '@keyframes look-mo-frame-out to', 'opacity', '0'],
+  ['look.css', '@keyframes look-mo-words-out to', 'opacity', '0'],
+  ['look.css', '@keyframes look-mo-words-out to', 'translate', '0 var(--look-mo-rise)'],
 ];

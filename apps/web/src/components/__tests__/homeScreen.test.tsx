@@ -243,9 +243,18 @@ describe('the home backdrop: the panorama the app ships, framed as the mockup fr
     expect(homeBackdropChanges(HOME_BACKDROP, [[0.3, 0], [0.7, 20], [0, 60]])).toContain('up to 70 percent black');
   });
 
-  it('moves nothing of its own: no animation, keyframes or transition in its stylesheet', () => {
+  it('moves nothing of its own: the backdrop has no animation, and the stylesheet moves only by the motion record', () => {
     const css = homeCss.replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(css).not.toMatch(/\banimation\b|@keyframes|\btransition\b/);
+    // no keyframes and no transition of its own: no scene cycle, no warp, no drift behind the home
+    expect(css).not.toMatch(/@keyframes|\btransition\b/);
+    for (const selector of ['.home-screen', '.home-sky', '.home-shade']) {
+      const body = new RegExp(`(?:^|\\})\\s*\\${selector}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
+      expect(body, selector).not.toMatch(/\banimation\b/);
+    }
+    // every animation it has is one of the shared arrival keyframes of the MOTION record (look.css)
+    const names = [...css.matchAll(/\banimation:\s*([\w-]+)/g)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(name).toMatch(/^look-mo-(?:frame|words)-(?:in|out)$/);
   });
 
   it("keeps the browser's own file field out of sight: Upload is the only way to it", () => {

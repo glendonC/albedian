@@ -302,3 +302,32 @@
     transition: none !important;
   }
 }
+
+/* How things arrive and leave (the MOTION record, decided by the lead 2026-11-19; .lead/uiux/motion/MOTION-READY-web.md):
+   a frame fades in, its words fade in rising by --look-mo-rise; leaving is the same reversed. The durations, curves
+   and the delay come from the --look-mo-* tokens, which turn every one into the 270 ms dissolve under reduced motion. */
+@keyframes look-mo-frame-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes look-mo-words-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--look-mo-rise);
+  }
+}
+
+@keyframes look-mo-frame-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes look-mo-words-out {
+  to {
+    opacity: 0;
+    translate: 0 var(--look-mo-rise);
+  }
+}

@@ -84,6 +84,7 @@
   width: max-content;
   max-width: min(420px, calc(100vw - 100% - 22px - 48px - 32px));
   overflow-x: clip;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
 
 .home-refusal__file {
@@ -155,7 +156,8 @@
 
 /* A photo dragged onto the window (arrive, approved 2026-11-12, screen 2): the home dims and blurs behind a 1 px
    rounded frame 20 px inside the window, with a 112 px filled circle holding the upload icon and the words under it.
-   Every value is the approved page's. It appears and goes at once, as the page shows it: no transition. */
+   Every value is the approved page's. Its frame fades in, then its words 120 ms later (the MOTION record); it goes at
+   once, with the home, when the photo is dropped. */
 .home-drop {
   position: absolute;
   inset: 0;
@@ -164,6 +166,7 @@
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   pointer-events: none;
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
 }
 
 .home-drop__frame {
@@ -181,6 +184,7 @@
   display: grid;
   justify-items: center;
   gap: 22px;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
 }
 
 .home-drop__circle {

@@ -232,6 +232,7 @@ describe("the overlay's rules are the approved page's", () => {
       '-webkit-backdrop-filter': 'blur(8px)',
       'backdrop-filter': 'blur(8px)',
       'pointer-events': 'none',
+      animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both',
     });
   });
 
@@ -253,6 +254,7 @@ describe("the overlay's rules are the approved page's", () => {
       display: 'grid',
       'justify-items': 'center',
       gap: '22px',
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both',
     });
     expect(declarationsOf('.home-drop__circle')).toEqual({
       '--look-ic': '36px',
@@ -270,11 +272,11 @@ describe("the overlay's rules are the approved page's", () => {
     });
   });
 
-  it('moves nothing: the overlay has no transition and no animation', () => {
+  it('moves as the motion record says: the frame in first, its words 120 ms later; nothing else moves', () => {
     const rules = homeCss.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.home-drop[^{]*\{[^}]*\}/g) ?? [];
     expect(rules).toHaveLength(5);
-    for (const rule of rules) {
-      expect(rule).not.toMatch(/transition|animation/);
-    }
+    const moving = rules.filter((rule) => /animation/.test(rule)).map((rule) => rule.slice(0, rule.indexOf('{')).trim());
+    expect(moving).toEqual(['.home-drop', '.home-drop__mid']);
+    for (const rule of rules) expect(rule).not.toMatch(/transition/);
   });
 });

@@ -333,6 +333,8 @@ describe('the home shows a refused upload beside Upload', () => {
       width: 'max-content',
       'max-width': 'min(420px, calc(100vw - 100% - 22px - 48px - 32px))',
       'overflow-x': 'clip',
+      // its words arrive as every line does (the motion record); it has no frame of its own, so no delay
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both',
     });
     expect(declarationsFor(homeCss, '.home-refusal__file {')).toMatchObject({
       display: 'flex',
