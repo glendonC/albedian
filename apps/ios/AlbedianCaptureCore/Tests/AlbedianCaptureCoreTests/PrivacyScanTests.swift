@@ -77,7 +77,7 @@ final class PrivacyScanTests: XCTestCase {
 
     /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
     static let exceptions: [Exception] = [
-        (file: "CaptureStore.swift", line: 98, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
+        (file: "CaptureStore.swift", line: 104, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
          reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
         (file: "OutsidePages.swift", line: 18, code: "case .milkyWayPhotograph: URL(string: \"https://www.eso.org/public/images/eso0932a/\")!",
          reason: "one of the two fixed credit pages (UIUX-credit-APPROVED); only handed to the system's Safari view after SafariViewGate, so Safari makes the request, not the app"),

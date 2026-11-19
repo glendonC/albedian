@@ -54,6 +54,7 @@ struct CompanionRoot: View {
             case .waiting: WaitingScreen(model: model)
             case .stopped: StoppedScreen(model: model)
             case .result: ResultScreen(model: model)
+            case .kept: KeptScreen(model: model)
             }
         }
         .preferredColorScheme(.dark)
@@ -80,12 +81,19 @@ struct HomeScreen: View {
                 OutlinePill(title: "Credits", height: 36, fontSize: 15, action: model.showCredits)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     .padding(.top, CGFloat(Arrive.topControls)).padding(.trailing, CGFloat(Arrive.edge))
+                // D13, INTERIM (ik-home): only while photos are kept that were never sent, a pill opposite "Credits"
+                if !model.keptNotSent.isEmpty {
+                    OutlinePill(title: KeptWords.pill(model.keptNotSent.count), height: 36, fontSize: 15, action: model.openKept)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .padding(.top, CGFloat(Arrive.topControls)).padding(.leading, CGFloat(Arrive.edge))
+                }
                 // The logo row's top at 574 on the 844 point screen
                 Logo(size: 52).atBottom(0).padding(.bottom, CGFloat(Arrive.referenceHeight - 574) - 62)
                 MainButton(title: "Start", icon: .arrow, action: model.startAiming).atBottom(Arrive.mainBottomGap)
             }
         }
         .ignoresSafeArea()
+        .onAppear { model.refreshKept() }
     }
 }
 

@@ -76,3 +76,47 @@ struct StoppedScreen: View {
         .ignoresSafeArea()
     }
 }
+
+/// D13, INTERIM (UIUX-iphone-kept-QUESTION; mockups ik-send and ik-going): the after-the-shot screen on the oldest
+/// photo kept and never sent, with a back circle, "3 photos not sent" under the photo (12 pt, quiet ink) and "Send";
+/// while they go, in the button's place the wait's row: "Sending", photos sent of photos kept, and the line they fill.
+struct KeptScreen: View {
+    let model: CompanionModel
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = Double(geometry.size.width)
+            ZStack {
+                ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
+                IconButton(icon: .back, label: "Back", action: model.showHome)
+                    .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                if let sending = model.keptSending {
+                    VStack(spacing: 12) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(KeptWords.sending).font(AlbedianFont.light(28)).tracking(-0.035 * 28).foregroundStyle(Color(ControlStyle.ink))
+                            Spacer(minLength: 12)
+                            Text(KeptWords.count(sent: sending.sent, of: sending.total)).font(AlbedianFont.regular(15).monospacedDigit())
+                                .tracking(-0.01 * 15).foregroundStyle(Color(ControlStyle.inkSecondary))
+                        }
+                        GeometryReader { line in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(Color(ControlStyle.hairline))
+                                Rectangle().fill(Color(ControlStyle.ink))
+                                    .frame(width: line.size.width * CGFloat(KeptWords.fraction(sent: sending.sent, of: sending.total)))
+                            }
+                        }
+                        .frame(height: 2)
+                    }
+                    .padding(.horizontal, CGFloat(Arrive.side))
+                    .atTop(668)
+                } else {
+                    Text(KeptWords.line(model.keptNotSent.count)).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
+                        .foregroundStyle(Color(ControlStyle.inkQuiet))
+                        .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                    MainButton(title: "Send", icon: .send, action: model.sendKept).atBottom(Arrive.mainBottomGap)
+                }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}

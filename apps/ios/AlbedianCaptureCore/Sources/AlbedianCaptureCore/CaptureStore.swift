@@ -81,6 +81,12 @@ public protocol CaptureFiles: Sendable {
     func remove(_ url: URL) throws
     func names(in folder: URL) throws -> [String]
     func makeFolder(_ url: URL) throws
+    /// When a file was last written, or nil when the files cannot say (D13, oldest kept photo first).
+    func modified(_ url: URL) -> Date?
+}
+
+extension CaptureFiles {
+    public func modified(_ url: URL) -> Date? { nil }
 }
 
 /// The system's files: each write atomic (to a temporary file, then moved into place), and on an iPhone readable
@@ -98,6 +104,9 @@ public struct SystemCaptureFiles: CaptureFiles {
     public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }
     public func remove(_ url: URL) throws { try FileManager.default.removeItem(at: url) }
     public func names(in folder: URL) throws -> [String] { try FileManager.default.contentsOfDirectory(atPath: folder.path) }
+    public func modified(_ url: URL) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+    }
     public func makeFolder(_ url: URL) throws { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
 }
 
@@ -357,5 +366,22 @@ public final class CaptureStore: Sendable {
             try? files.remove(target)
             throw .readBackDiffers(file: name)
         }
+    }
+}
+
+extension CaptureStore {
+    /// D13, INTERIM: every capture kept, oldest first by when its photo's file was written; captures whose time the
+    /// files cannot give keep the store's own order (by SHA-256) after those that have one.
+    public func keptOldestFirst() throws(CaptureStoreError) -> [StoredCapture] {
+        let all = try kept()
+        let timed = all.map { capture in (capture, files.modified(url(photoName(capture.sha256, capture.contentType)))) }
+        return timed.enumerated().sorted { a, b in
+            switch (a.element.1, b.element.1) {
+            case let (x?, y?) where x != y: return x < y
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return a.offset < b.offset
+            }
+        }.map(\.element.0)
     }
 }

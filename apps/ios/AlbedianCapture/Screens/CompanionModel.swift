@@ -18,7 +18,7 @@ struct KeptShot: Equatable {
 @MainActor
 @Observable
 final class CompanionModel {
-    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, waiting, stopped, result }
+    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, waiting, stopped, result, kept }
 
     private(set) var screen: Screen = .home
     private(set) var shot: KeptShot?
@@ -55,6 +55,11 @@ final class CompanionModel {
     private(set) var exposureBegan: Date?
     private(set) var startAttitude: PointingRecord.Quaternion?
     private var stopRequested = false
+    /// D13, INTERIM (UIUX-iphone-kept-QUESTION): photos kept from earlier sessions and never sent, oldest first, and while
+    /// they go, how many of them have been sent.
+    private(set) var keptNotSent: [String] = []
+    private(set) var keptSending: (sent: Int, total: Int)?
+    private var keptMode = false
     /// Debug builds only: the stand-in's fixed time into the exposure, so its capture holds still.
     private(set) var standInElapsedSec: Double?
 
@@ -217,6 +222,7 @@ final class CompanionModel {
             addressRefused = true
             return
         }
+        if connectsForKept { return sendKept(to: address) }
         screen = .afterShot
         send(to: address)
     }
@@ -316,6 +322,24 @@ final class CompanionModel {
         if let index = args.firstIndex(of: "-AlbedianOpen"), args.indices.contains(index + 1) {
             screen = args[index + 1] == "credits" ? .credits : args[index + 1] == "pairing" ? .pairing : screen
         }
+        // `-AlbedianKeepFile <path>` (any number of times) keeps a file from the Mac in the store as a capture the camera
+        // could have written, with no record, so the kept photos can be seen in the simulator
+        for (index, flag) in args.enumerated() where flag == "-AlbedianKeepFile" && args.indices.contains(index + 1) {
+            guard let photo = FileManager.default.contents(atPath: args[index + 1]) else { continue }
+            let name = args[index + 1].lowercased()
+            let type: PhotoContentType = name.hasSuffix(".heic") ? .heic : name.hasSuffix(".png") ? .png : .jpeg
+            do throws(CaptureStoreFailure) { _ = try store.keep(photo: photo, contentType: type, recordWire: nil) } catch {}
+        }
+        if args.contains("-AlbedianKeepFile") { refreshKept() }
+        // The sending row's layout with the mockup's own numbers (1 of 3), for the owner's look at it: on the Mac's own
+        // loopback the photos go too fast to see it. A stand-in, never a send
+        if args.contains("-AlbedianKeptSendingLayout"), let path = args.firstIndex(of: "-AlbedianShotFile").map({ args[$0 + 1] }),
+           let photo = FileManager.default.contents(atPath: path) {
+            shot = KeptShot(photo: photo, contentType: .jpeg, recordWire: nil, sha256: PhotoHash.sha256Hex(photo))
+            keptSending = (1, 3)
+            screen = .kept
+            return
+        }
         // `-AlbedianTypeAddress <text>` types into the connect screen's field and presses Connect, as a person would
         if let index = args.firstIndex(of: "-AlbedianTypeAddress"), args.indices.contains(index + 1) {
             typedAddress = args[index + 1]
@@ -329,4 +353,98 @@ final class CompanionModel {
         if args.contains("-AlbedianSendShot") { send() }
     }
     #endif
+}
+
+// MARK: D13, INTERIM: photos kept from earlier sessions and never sent
+
+extension CompanionModel {
+    /// Reads which kept photos the laptop is not known to hold, oldest first (`CaptureStore.keptOldestFirst`, `SendLedger`).
+    func refreshKept() {
+        let store = store
+        let ledger = ledger
+        Task { @MainActor [weak self] in
+            let hashes: [String] = await store.offMain { store in
+                do throws(CaptureStoreError) { return ledger.notSent(among: try store.keptOldestFirst().map(\.sha256)) } catch { return [] }
+            }
+            self?.keptNotSent = hashes
+        }
+    }
+
+    /// The home's pill: the after-the-shot screen on the oldest kept photo.
+    func openKept() {
+        guard let oldest = keptNotSent.first, let kept = load(oldest) else { return }
+        shot = kept
+        unreachable = false
+        keptSending = nil
+        screen = .kept
+    }
+
+    /// Send: every kept photo, oldest first, to the kept laptop; the first time, the connect screen first.
+    func sendKept() {
+        guard keptSending == nil, !isBusy else { return }
+        guard let address = pairing.kept else {
+            keptMode = true
+            screen = .pairing
+            return
+        }
+        sendKept(to: address)
+    }
+
+    func sendKept(to address: LaptopAddress) {
+        keptMode = false
+        screen = .kept
+        let queue = keptNotSent
+        keptSending = (0, queue.count)
+        sendNextKept(queue, index: 0, address: address)
+    }
+
+    private func sendNextKept(_ queue: [String], index: Int, address: LaptopAddress) {
+        guard index < queue.count else {
+            keptSending = nil
+            keptNotSent = []
+            refreshKept()
+            showHome()
+            return
+        }
+        guard let kept = load(queue[index]) else { return sendNextKept(queue, index: index + 1, address: address) }
+        uploads.start(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire,
+                      uploader: CaptureUploader(address: address)) { [weak self] last in
+            guard let self else { return }
+            self.ledger.record(last, for: kept.sha256)
+            switch SendEnd.after(last) {
+            case .solve?:
+                self.pairing.keep(address)
+                self.keptSending = (index + 1, queue.count)
+                self.sendNextKept(queue, index: index + 1, address: address)
+            case .unreachable?:
+                // The approved "Can't reach the laptop" on the photo that did not go; it stays kept
+                self.keptSending = nil
+                self.shot = kept
+                self.unreachable = true
+                self.screen = .afterShot
+            case .notSent?:
+                self.keptSending = nil
+                self.shot = kept
+                if case .failed(.refused(.photo, _, let detail?)) = last {
+                    self.stop(detail, sha256: kept.sha256, address: address, solveOnly: false)
+                } else {
+                    self.screen = .afterShot
+                }
+            case nil:
+                break
+            }
+        }
+    }
+
+    /// Whether the connect screen was opened by the kept photos' Send.
+    var connectsForKept: Bool { keptMode }
+
+    private func load(_ sha256: String) -> KeptShot? {
+        do throws(CaptureStoreError) {
+            let kept = try store.load(sha256)
+            return KeptShot(photo: kept.photo, contentType: kept.contentType, recordWire: kept.recordWire, sha256: sha256)
+        } catch {
+            return nil
+        }
+    }
 }
