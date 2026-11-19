@@ -321,7 +321,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
       if (url === '/api/ingest' && init?.method === 'POST') {
         return new Response(JSON.stringify(receipt), { status: 201 });
       }
-      if (url === `/api/ingest/${sha256}/solve` && init?.method === 'POST') {
+      if (url === `/api/ingest/${sha256}/solve?wait=false` && init?.method === 'POST') {
         return new Response(JSON.stringify(job), { status: 201 });
       }
       if (url === `/api/ingest/${sha256}/solution`) {
@@ -421,7 +421,7 @@ describe('@albedian/web: End-to-End Observation-to-Space Journey & Audio/Voice I
     const failFetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url === '/api/ingest') return new Response(JSON.stringify(receipt), { status: 201 });
-      if (url === `/api/ingest/${sha256}/solve`) return new Response(JSON.stringify(failedJob), { status: 201 });
+      if (url === `/api/ingest/${sha256}/solve?wait=false`) return new Response(JSON.stringify(failedJob), { status: 201 });
       return new Response('Not found', { status: 404 });
     });
     try {
@@ -630,7 +630,7 @@ describe('upload refusals and the state before the receipt (experience-9d)', () 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = typeof input === 'string' ? input : input.toString();
       if (url === '/api/ingest') return new Response(JSON.stringify(receipt), { status: 201 });
-      if (url === `/api/ingest/${sha256}/solve`) return new Response(JSON.stringify(job), { status: 201 });
+      if (url === `/api/ingest/${sha256}/solve?wait=false`) return new Response(JSON.stringify(job), { status: 201 });
       return new Response(JSON.stringify({ detail: 'no solution is stored for that file' }), { status: 404 });
     });
     try {

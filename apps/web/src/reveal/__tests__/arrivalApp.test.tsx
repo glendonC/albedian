@@ -158,7 +158,7 @@ async function renderApp(routes: { ingest: Array<() => Promise<Response>>; solve
       const url = String(input);
       if (url === '/api/media/discover') return json({ items: [] });
       calls.push(`${init?.method ?? 'GET'} ${url}`);
-      const queue = url === '/api/ingest' ? routes.ingest : url.endsWith('/solve') ? routes.solve : url.endsWith('/solution') ? routes.solution : undefined;
+      const queue = url === '/api/ingest' ? routes.ingest : url.endsWith('/solve?wait=false') ? routes.solve : url.endsWith('/solution') ? routes.solution : undefined;
       const next = queue?.shift();
       if (!next) throw new Error(`no answer planned for ${url}`);
       return next();
@@ -270,7 +270,7 @@ describe('the app follows an upload on the working screen', () => {
     await waitUntil(() => expect(q(WORKING)).toBeNull());
     expect(q('[data-testid="source-photo-stage"] img')!.getAttribute('src')).toBe('blob:arrival-1');
     expect(q('.alb-lusion-header')).not.toBeNull();
-    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve`, `GET /api/ingest/${sha256}/solution`]);
+    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/ingest/${sha256}/solution`]);
   });
 
   it("shows a failed job's own sentence and stage, and Try again runs the same solve without sending the file again", async () => {
@@ -295,8 +295,8 @@ describe('the app follows an upload on the working screen', () => {
     await waitUntil(() => expect(q(WORKING)).toBeNull());
     expect(calls).toEqual([
       'POST /api/ingest',
-      `POST /api/ingest/${sha256}/solve`,
-      `POST /api/ingest/${sha256}/solve`,
+      `POST /api/ingest/${sha256}/solve?wait=false`,
+      `POST /api/ingest/${sha256}/solve?wait=false`,
       `GET /api/ingest/${sha256}/solution`,
     ]);
   });

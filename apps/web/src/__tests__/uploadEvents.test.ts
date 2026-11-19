@@ -83,7 +83,7 @@ function server(routes: { ingest?: Answer; solve?: Answer; solution?: Answer }) 
     const url = typeof input === 'string' ? input : input.toString();
     calls.push(`${init?.method ?? 'GET'} ${url}`);
     if (url === '/api/ingest') return (routes.ingest ?? (() => json(receipt, 201)))();
-    if (url === `/api/ingest/${sha256}/solve`) return (routes.solve ?? (() => json(succeeded, 201)))();
+    if (url === `/api/ingest/${sha256}/solve?wait=false`) return (routes.solve ?? (() => json(succeeded, 201)))();
     if (url === `/api/ingest/${sha256}/solution`) return (routes.solution ?? (() => json(solution)))();
     return new Response('Not found', { status: 404 });
   });
@@ -104,7 +104,7 @@ describe('uploadAndSolveMedia tells its listener what happened, as it happens', 
     expect(events[0]).toEqual({ kind: 'stored', receipt });
     expect(events[1]).toEqual({ kind: 'job', job: succeeded });
     expect(events[2]).toEqual({ kind: 'solved', job: succeeded });
-    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve`, `GET /api/ingest/${sha256}/solution`]);
+    expect(calls).toEqual(['POST /api/ingest', `POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/ingest/${sha256}/solution`]);
   });
 
   it('reports the receipt before the solve is asked for, so the file is known to be stored while the solve runs', async () => {
@@ -178,7 +178,7 @@ describe('solveStoredUpload starts the solve of a stored file again', () => {
       onEvent: (event) => events.push(event),
       onSessionUpdate: (s) => updates.push(s.machines.calibration),
     });
-    expect(calls).toEqual([`POST /api/ingest/${sha256}/solve`, `GET /api/ingest/${sha256}/solution`]);
+    expect(calls).toEqual([`POST /api/ingest/${sha256}/solve?wait=false`, `GET /api/ingest/${sha256}/solution`]);
     expect(kinds(events)).toEqual(['job', 'solved']);
     expect(updates).toEqual(['solving', 'calibrated']);
     expect(session.sourceAsset!.uri).toBe('blob:again');

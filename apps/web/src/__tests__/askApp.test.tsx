@@ -314,7 +314,7 @@ describe('asking about the photo on the laptop reveal', () => {
       other: (url) =>
         url === '/api/ingest'
           ? json({ ...otherReceipt, alreadyStored: false }, 201)
-          : url === `/api/ingest/${other}/solve`
+          : url === `/api/ingest/${other}/solve?wait=false`
             ? json(job, 201)
             : url === `/api/ingest/${other}/solution`
               ? json(otherSolution)

@@ -10,6 +10,8 @@ import {
   SolutionStatus,
   SolveJob,
   SolveJobSchema,
+  UploadJob,
+  UploadJobSchema,
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
 import { raDecToUnitVector } from '@albedian/camera-rig';
@@ -301,6 +303,28 @@ export interface SolvedSky extends StarSearchFacts {
 }
 
 /**
+ * A solve job's record as the server answers it: today's `SolveJob`, or the runner's `UploadJob` of the solve kind
+ * (upload jobs design 3.8), which adds the queue, the cancel time and the interrupted state.
+ */
+export type FollowedJob = SolveJob | UploadJob;
+
+/** Reads a solve job's record of either form; a job of another kind, or a record of neither, is refused. */
+export function parseFollowedJob(body: unknown): FollowedJob {
+  if (body !== null && typeof body === 'object' && 'kind' in body) {
+    const job = UploadJobSchema.parse(body);
+    if (job.kind !== 'solve') throw new Error(`a ${job.kind} job is not a solve job`);
+    return job;
+  }
+  return SolveJobSchema.parse(body);
+}
+
+/** How long the web waits between two reads of a job it follows (upload jobs design 3.9: once a second). */
+export const JOB_POLL_MS = 1000;
+
+/** Job states that end a job with no sky; each says why in the job's own words. */
+const STOPPED_WITH_REASON: ReadonlySet<string> = new Set(['failed', 'interrupted']);
+
+/**
  * Format a `SolveJob`'s stage progress using its real work denominators (`done/total unit`),
  * or elapsed state when `total` is `null`, without inventing percentages. Once the job ends, the
  * banner says in plain words which layer the sky is, or why there is none (skyLayerWords.ts),
@@ -309,18 +333,18 @@ export interface SolvedSky extends StarSearchFacts {
  */
 export function formatSolveJobProgressBanner(
   filename: string,
-  job: SolveJob,
+  job: FollowedJob,
   solved?: SolvedSky,
   asset?: SkyAssetFacts
 ): string {
-  const parsedJob = SolveJobSchema.parse(job);
+  const parsedJob = parseFollowedJob(job);
   const stageParts = parsedJob.stages.map((entry) =>
     entry.total !== null
       ? `${entry.stage}: ${entry.done}/${entry.total} ${entry.unit}`
       : `${entry.stage}: ${entry.done} ${entry.unit} (elapsed)`
   );
   const stageSummary = stageParts.join(' · ');
-  if (parsedJob.state === 'failed') {
+  if (STOPPED_WITH_REASON.has(parsedJob.state)) {
     const stopped = solveStoppedSentence(asset).replace(/\.$/, '');
     const reason = (parsedJob.error ?? 'the server gave no reason').replace(/\.$/, '');
     return `Stored "${filename}" (${parsedJob.id}, ${stageSummary}). ${stopped}: ${reason}.`;
@@ -339,7 +363,7 @@ export function buildSessionFromIngestReceipt(
   receipt: IngestReceipt,
   options?: {
     localObjectUrl?: string;
-    job?: SolveJob;
+    job?: FollowedJob;
     solution?: ObservationSolution;
   }
 ): ObservationSession {
@@ -349,9 +373,9 @@ export function buildSessionFromIngestReceipt(
     uri: options?.localObjectUrl ?? parsedReceipt.sourceAsset.uri,
   };
   const baseSession = createSessionForSourceAsset(asset, 'ready');
-  const parsedJob = options?.job ? SolveJobSchema.parse(options.job) : undefined;
+  const parsedJob = options?.job ? parseFollowedJob(options.job) : undefined;
 
-  if (parsedJob?.state === 'failed') {
+  if (parsedJob !== undefined && STOPPED_WITH_REASON.has(parsedJob.state)) {
     return ObservationSessionSchema.parse({
       ...baseSession,
       machines: { ...baseSession.machines, media: 'ready', calibration: 'unresolved' },
@@ -487,14 +511,30 @@ async function fetchAnswer(input: string, init?: RequestInit): Promise<Response>
  */
 export type UploadEvent =
   | { kind: 'stored'; receipt: IngestReceipt }
-  | { kind: 'job'; job: SolveJob }
-  | { kind: 'solved'; job: SolveJob }
-  | { kind: 'failed'; sentence: string; job: SolveJob | null };
+  | { kind: 'job'; job: FollowedJob }
+  | { kind: 'solved'; job: FollowedJob }
+  | { kind: 'failed'; sentence: string; job: FollowedJob | null };
 
 export interface SolveOptions {
   localObjectUrl?: string;
   onSessionUpdate?: (session: ObservationSession) => void;
   onEvent?: (event: UploadEvent) => void;
+  /** The wait between two reads of the job; JOB_POLL_MS unless a test says otherwise. */
+  pollMs?: number;
+}
+
+/** The word a canceled job shows, alone: the state's own name (UIUX-jobs-QUESTION.md, D2). */
+export const CANCELED_WORD = 'Canceled';
+
+/**
+ * Asks the server to cancel a job (`POST /api/ingest/jobs/{id}/cancel`, upload jobs design 3.6): a queued job ends
+ * canceled at once, a running one records when the cancel was asked and ends once its work stops. Throws with the
+ * server's reason when it refuses.
+ */
+export async function cancelJob(jobId: string): Promise<FollowedJob> {
+  const res = await fetchAnswer(`/api/ingest/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+  if (!res.ok) throw new Error(await serverReason(res));
+  return parseFollowedJob(await res.json());
 }
 
 /**
@@ -523,9 +563,11 @@ export async function uploadAndSolveMedia(file: Blob, filename: string, options?
 }
 
 /**
- * Solve a stored upload: run `POST /api/ingest/{sha256}/solve` and load `GET /api/ingest/{sha256}/solution` into a
- * contract-validated `ObservationSession`. The same call starts the solve again after one that failed. It never
- * throws: a solve that does not finish returns the stored session with the reason.
+ * Solve a stored upload: start `POST /api/ingest/{sha256}/solve?wait=false`, read `GET /api/ingest/jobs/{id}` once a
+ * second while the job is queued or running (upload jobs design 3.9), reporting every record, and load
+ * `GET /api/ingest/{sha256}/solution` into a contract-validated `ObservationSession` once it succeeded. A server
+ * that answers the start with a job already ended is followed no further. The same call starts the solve again after
+ * one that stopped. It never throws: a solve that does not finish returns the stored session with the reason.
  */
 export async function solveStoredUpload(
   receipt: IngestReceipt,
@@ -539,7 +581,7 @@ export async function solveStoredUpload(
   options?.onSessionUpdate?.(ingestedSession);
 
   // Stored from here on: a solve that does not finish keeps the file on screen and says why
-  const solveDidNotFinish = (err: unknown, job: SolveJob | null): ObservationSession => {
+  const solveDidNotFinish = (err: unknown, job: FollowedJob | null): ObservationSession => {
     const stored = ObservationSessionSchema.parse({
       ...ingestedSession,
       machines: { ...ingestedSession.machines, calibration: 'not_requested' },
@@ -551,16 +593,38 @@ export async function solveStoredUpload(
   };
 
   const sha256 = receipt.sourceAsset.sha256;
-  let job: SolveJob;
+  let job: FollowedJob;
   try {
-    const solveRes = await fetchAnswer(`/api/ingest/${sha256}/solve`, { method: 'POST' });
+    const solveRes = await fetchAnswer(`/api/ingest/${sha256}/solve?wait=false`, { method: 'POST' });
     if (!solveRes.ok) throw new Error(await serverReason(solveRes));
-    job = SolveJobSchema.parse(await solveRes.json());
+    job = parseFollowedJob(await solveRes.json());
   } catch (err) {
     return solveDidNotFinish(err, null);
   }
   options?.onEvent?.({ kind: 'job', job });
-  if (job.state === 'failed') {
+  const pollMs = options?.pollMs ?? JOB_POLL_MS;
+  while (job.state === 'queued' || job.state === 'running') {
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    try {
+      const jobRes = await fetchAnswer(`/api/ingest/jobs/${encodeURIComponent(job.id)}`);
+      if (!jobRes.ok) throw new Error(await serverReason(jobRes));
+      job = parseFollowedJob(await jobRes.json());
+    } catch (err) {
+      return solveDidNotFinish(err, job);
+    }
+    options?.onEvent?.({ kind: 'job', job });
+  }
+  if (job.state === 'canceled') {
+    const stored = ObservationSessionSchema.parse({
+      ...ingestedSession,
+      machines: { ...ingestedSession.machines, calibration: 'not_requested' },
+      lastStatusBanner: `Stored "${filename}", but the sky solve did not finish: canceled.`,
+    });
+    options?.onSessionUpdate?.(stored);
+    options?.onEvent?.({ kind: 'failed', sentence: CANCELED_WORD, job });
+    return stored;
+  }
+  if (STOPPED_WITH_REASON.has(job.state)) {
     const failedSession = buildSessionFromIngestReceipt(receipt, {
       localObjectUrl: options?.localObjectUrl,
       job,
