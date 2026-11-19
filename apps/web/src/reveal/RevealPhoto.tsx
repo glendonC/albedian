@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { alignReadout, alignStartWords, alignTargets, startPose, type AlignPose, type AlignStart } from './alignPose.js';
 import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
-import { earlyPoseOf } from './earlyPose.js';
+import { EARLY_SOURCE_WORDS, earlyPoseOf } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
 import type { ObservationSolution } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
@@ -378,6 +378,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const alignAllowed = !there && !skyShown && !compareShown && status.kind === 'unmatched' && frame !== null && !bareFrame;
   const aligning = alignAllowed ? aligningState : null;
   const alignOffered = alignAllowed && alignStart !== null && restoration?.phase !== 'working';
+  // Refused after an early pose (D25 point 5): its marks stay over the no-match reveal
+  const earlyKept = early !== null && frame !== null && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame;
+  // Predicted rings drawn on the photo: the status column leads with the Predicted tag, and the column has no entrance,
+  // so the tag is there from the rings' first frame (the lead's 17:38 rule; its four places decided 17:56,
+  // WEB-UX-refused-tag-QUESTION.md). The laptop's column only: the phone's aligning and no-match screens are their own,
+  // and no record places it there
+  const ringsTagged = aligning !== null || earlyKept;
   useEffect(() => {
     setAligning(null);
   }, [session.sourceAsset?.sha256, cancelAligningToken]);
@@ -516,7 +523,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
         </div>
       ) : status.kind === 'unmatched' ? (
-        <div key="unmatched" className="reveal-status is-unmatched" data-testid="reveal-status" data-moment="unmatched" role="status">
+        <div key="unmatched" className={ringsTagged ? 'reveal-status is-unmatched has-predicted' : 'reveal-status is-unmatched'} data-testid="reveal-status" data-moment="unmatched" role="status">
+          {ringsTagged && <EvidenceTag evidenceClass="predicted" />}
           {compareShown ? (
             // Restored here too: the fixed sentence leads; the warnings stay under it
             <>
@@ -552,6 +560,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
                   {line}
                 </p>
               ))}
+              {/* D25 item 5 under the tag rule (UIUX-tagplaces-DECIDED-BY-LEAD.md place 4): the early marks' source line kept */}
+              {earlyKept && <p className="reveal-status__from">{EARLY_SOURCE_WORDS[early!.source]}</p>}
               {status.predictedSky && <MainAction label="Show predicted sky" onClick={() => onShowPredictedSky?.()} />}
               {/* Line it up yourself 16 px under Show predicted sky (D24), Restore 10 px under it (D10; the lead, 06:39) */}
               {(alignOffered || restoreOffered) && (
@@ -574,7 +584,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           )}
         </div>
       ) : (
-      <div key="photo" className="reveal-status" data-testid="reveal-status" data-moment="photo" role="status">
+      <div key="photo" className={status.kind === 'estimate' ? 'reveal-status has-predicted' : 'reveal-status'} data-testid="reveal-status" data-moment="photo" role="status">
         {compareShown ? (
           // Once restored, the status place holds the fixed sentence (REQ-RST-9.3), verbatim
           <>
@@ -666,7 +676,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* Refused after an early pose (D25 point 5): the early marks stay still and amber where the pose put them */}
-      {early && frame && status.kind === 'unmatched' && !aligning && !skyShown && !compareShown && !bareFrame && <StillAlignMarks rect={frame} placed={early.marks} />}
+      {earlyKept && <StillAlignMarks rect={frame!} placed={early!.marks} />}
 
       {/* The lock-on (D25 point 2): each early mark travels from its pose place to its solve place, together; those the
           solve does not place leave. Drawn as the early marks were, amber and dashed, taking no pointer */}

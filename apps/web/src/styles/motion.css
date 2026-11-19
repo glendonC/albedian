@@ -383,3 +383,11 @@
 .predsky .reveal-status {
   animation: none;
 }
+
+/* A status column over predicted rings on the photo (the estimate reveal, aligning, refused after an early pose) leads
+   with its Predicted tag and has no entrance, arriving or not: the tag is fully visible from the rings' first frame
+   (the lead's 17:38 rule; its places decided 17:56, WEB-UX-refused-tag-QUESTION.md). Leaving, it keeps its words out */
+.reveal-status.has-predicted:not(.is-leaving),
+[data-arriving] .reveal-status.has-predicted:not(.is-leaving) {
+  animation: none;
+}

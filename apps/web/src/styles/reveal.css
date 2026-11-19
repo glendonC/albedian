@@ -1890,3 +1890,13 @@
 .restore-compare.is-clip .restore-compare__label.is-right {
   right: 400px;
 }
+
+/* The early marks' source line kept over the no-match reveal (D25 item 5, UIUX-tagplaces-DECIDED-BY-LEAD.md place 4):
+   the working screen's early source line (lk-early: 13 px, ink 66 percent, 8 px under the lead), kept as it was */
+.reveal-status__from {
+  margin: -10px 0 18px;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
