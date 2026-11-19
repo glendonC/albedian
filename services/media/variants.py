@@ -426,9 +426,9 @@ import struct  # noqa: E402
 
 from services.contracts.media import EXPORT_MANIFEST_FORMAT, EXPORT_MANIFEST_FORMAT_VERSION, ExportManifest  # noqa: E402
 
-# A variant's export name by its type: a still is exported as the PNG that is the variant (REQ-RST-9.5). A clip's
-# rows come with its stored file (restore-7) [open: until then a clip has no export]
-EXPORT_EXTENSIONS = {"image/png": "png"}
+# A variant's export name by its type: a still is exported as the PNG that is the variant (REQ-RST-9.5), a clip as
+# the file restore-7 stored, losslessly, in its own container (restore-8c's second half)
+EXPORT_EXTENSIONS = {"image/png": "png", "video/quicktime": "mov", "video/mp4": "mp4"}
 
 
 def export_manifest(variant: dict[str, Any], graph: dict[str, Any], attempt: dict[str, Any],

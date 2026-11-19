@@ -13,8 +13,11 @@ Covers, through the API on a store of its own:
   chunks; the profile's colour data is kept byte for byte and its text tags hold only the fixed text (REQ-RST-9.4).
 - A rejected attempt has nothing to export, nor a variant whose attempt is not ready (REQ-RST-9.6); a malformed id is
   422; an unknown one, a folder or file reached through a link, a folder missing a record or naming another variant
-  404; a type with no export yet (a clip) 501; a stored file that no longer hashes to its record is never served,
+  404; a record naming a type the export has no row for 500; a stored file that no longer hashes to its record is
+  never served,
   and an entry that changes while it is sent stops the zip before its directory.
+- A restored clip, QuickTime and MP4, exports the same way: `<variant id>.mov` or `.mp4`, its stored file byte for
+  byte (lossless, restore-7), with `<variant id>.mov.json` or `.mp4.json`, its manifest (restore-8c's second half).
 - The builder, given the contract fixture's own parts, writes the fixture's manifests key for key (the Vitest parity
   suite parses those under ExportManifestSchema, so the builder's shape parses in both languages), and refuses a
   manifest of a rejected attempt.
@@ -61,6 +64,7 @@ MEDIA_CONTRACT = ROOT / "tests" / "fixtures" / "media_contract.json"
 POLL_S = 0.1
 JOB_BOUND_S = 240.0
 REQUEST = {"kind": "restoration"}
+RECORDS_REFUSED = "the stored records do not make a manifest the contract takes"
 
 # What the synthetic upload is planted with; none of it may reach the export
 PLANTED_NAME = "planted-name-c41e9b.png"
@@ -171,6 +175,50 @@ def restored(tmp_path_factory):
         assert job["state"] == "succeeded", job
         client.store_root = store_root
         yield client, sha, store_root / sha[:2] / sha, job
+
+
+# A clip for the clips' export: a dark sky with noise of its own in every frame, a tone for its sound (synthetic)
+CLIP_SKY = "color=c=0x181818:s=96x64:r=30:d=0.5,noise=alls=14:allf=t"
+CLIP_TYPES = {"mov": "video/quicktime", "mp4": "video/mp4"}
+# Planted into each clip (synthetic): a place far from anyone's, a time, a title, a comment and a stream's handler
+CLIP_PLANTED_PLACE = "+10.1234+020.5678/"
+CLIP_PLANTED_HANDLER = "planted handler 9a41c2"
+CLIP_PLANTED = (PLANTED_TITLE, PLANTED_COMMENT, CLIP_PLANTED_PLACE, CLIP_PLANTED_HANDLER, "2021-03-04T03:06:07")
+
+
+@pytest.fixture(scope="module")
+def restored_clips(tmp_path_factory):
+    """One store with a QuickTime clip and an MP4 clip each restored ready: the client, and for each extension the
+    upload's hash, its folder and the job."""
+    import subprocess
+
+    base = tmp_path_factory.mktemp("export-clips")
+    store_root = base / "store"
+    uploads = IngestStore(store_root, max_bytes=200_000_000)
+    app = create_app()
+    app.dependency_overrides[ingest_router.get_ingest_store] = lambda: uploads
+    done = {}
+    with TestClient(app) as client:
+        for extension, mime in CLIP_TYPES.items():
+            source = base / f"clip.{extension}"
+            made = subprocess.run(["ffmpeg", "-y", "-hide_banner", "-v", "error", "-f", "lavfi", "-i", CLIP_SKY, "-f", "lavfi",
+                                   "-i", "sine=frequency=440:duration=0.5", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a",
+                                   "aac", "-shortest", "-movflags", "use_metadata_tags", "-metadata", f"title={PLANTED_TITLE}",
+                                   "-metadata", f"comment={PLANTED_COMMENT}", "-metadata", f"location={CLIP_PLANTED_PLACE}",
+                                   "-metadata", "creation_time=2021-03-04T03:06:07Z", "-metadata:s:v:0",
+                                   f"handler_name={CLIP_PLANTED_HANDLER}", "-metadata:s:a:0",
+                                   f"handler_name={CLIP_PLANTED_HANDLER}", str(source)],
+                                  capture_output=True, stdin=subprocess.DEVNULL)
+            assert made.returncode == 0, made.stderr.decode("utf-8", "replace")[-600:]
+            # The upload holds every planted value, so their absence from the export is the restoration's doing
+            assert all(value.encode("utf-8") in source.read_bytes() for value in CLIP_PLANTED), extension
+            answer = client.post("/api/ingest", content=source.read_bytes(), headers={"content-type": mime})
+            assert answer.status_code in (200, 201), answer.text
+            sha = answer.json()["sourceAsset"]["sha256"]
+            job = finished(client, client.post(f"/api/media/{sha}/restore", json=REQUEST).json())
+            assert job["state"] == "succeeded", job
+            done[extension] = (sha, store_root / sha[:2] / sha, job)
+        yield client, done
 
 
 def unzip(content: bytes) -> tuple[zipfile.ZipFile, list[zipfile.ZipInfo]]:
@@ -450,17 +498,52 @@ def test_a_folder_or_file_reached_through_a_link_or_naming_another_variant_expor
                 shutil.rmtree(path)
 
 
-def test_a_variant_of_a_type_with_no_export_is_501_until_a_clips_file_is_stored(restored) -> None:
+def test_a_variant_record_naming_a_type_with_no_export_row_is_refused_as_a_record(restored) -> None:
     client, sha, folder, job = restored
     path = folder / "variants" / job["variantId"] / "variant.json"
     record = json.loads(path.read_text())
-    before = rewrite(path, json.dumps({**record, "mimeType": "video/mp4"}).encode("utf-8"))
+    before = rewrite(path, json.dumps({**record, "mimeType": "image/heic"}).encode("utf-8"))
     try:
         for name in ("export", "manifest"):
             answer = client.get(f"/api/media/{sha}/variants/{job['variantId']}/{name}")
-            assert answer.status_code == 501 and answer.json()["detail"] == "Exporting a clip is not built yet.", name
+            assert answer.status_code == 500 and answer.json()["detail"] == RECORDS_REFUSED, name
     finally:
         rewrite(path, before)
+
+
+@pytest.mark.parametrize("extension", sorted(CLIP_TYPES))
+def test_a_clips_export_is_one_stored_zip_of_its_stored_file_byte_for_byte_and_its_manifest(restored_clips,
+                                                                                             extension: str) -> None:
+    client, done = restored_clips
+    sha, folder, job = done[extension]
+    vid = job["variantId"]
+    answer = client.get(f"/api/media/{sha}/variants/{vid}/export")
+    assert answer.status_code == 200, answer.text
+    assert answer.headers["content-type"] == "application/zip"
+    assert answer.headers["content-disposition"] == f'attachment; filename="{vid}.zip"'
+    assert int(answer.headers["content-length"]) == len(answer.content)
+    archive, entries = unzip(answer.content)
+    assert [entry.filename for entry in entries] == [f"{vid}.{extension}", f"{vid}.{extension}.json"]
+    assert all(entry.compress_type == zipfile.ZIP_STORED for entry in entries)
+    stored = (folder / "variants" / vid / f"variant.{extension}").read_bytes()
+    exported = archive.read(f"{vid}.{extension}")
+    assert exported == stored == client.get(f"/api/media/{sha}/variants/{vid}/file").content
+    sidecar = archive.read(f"{vid}.{extension}.json")
+    manifest = json.loads(sidecar.decode("utf-8"))
+    # P-RST-21: the manifest parses and its variant hash is the SHA-256 of the exported bytes
+    contracts.ExportManifest.model_validate(manifest)
+    assert manifest["variant"]["mimeType"] == CLIP_TYPES[extension] and manifest["attempt"]["status"] == "ready"
+    assert manifest["variant"]["sha256"] == hashlib.sha256(exported).hexdigest()
+    assert manifest["variant"]["byteSize"] == len(exported)
+    records = client.get(f"/api/media/{sha}/variants/{vid}").json()
+    assert (manifest["variant"], manifest["graph"], manifest["attempt"]) == (records["variant"], records["graph"], records["attempt"])
+    alone = client.get(f"/api/media/{sha}/variants/{vid}/manifest")
+    assert alone.status_code == 200 and alone.content == sidecar
+    assert alone.headers["content-disposition"] == f'attachment; filename="{vid}.{extension}.json"'
+    assert client.get(f"/api/media/{sha}/variants/{vid}/export").content == answer.content
+    # No planted title, comment, place, time or stream tag goes out, in the clip or in its manifest
+    for value in CLIP_PLANTED:
+        assert value.encode("utf-8") not in answer.content, value
 
 
 @pytest.mark.parametrize(("path", "status"), [

@@ -228,8 +228,10 @@ pictures under `.cache/restore-review/<unit>/`.
     restore-8e leaves a damaged optional tag out alone, converts a display copy through a profile the rebuild cannot
     carry or keeps its samples untagged with the assumption recorded, and refuses the restoration in review row C20's
     words (`tests/media/test_stored_colour.py`). restore-8c writes zip64 past 2 GiB, as Python's zipfile
-    does, so a long clip fits. A clip's export waits for restore-7's stored file and its export row (501 until then)
-    [open].
+    does, so a long clip fits. Done 2026-11-19 for clips by restore-8c's second half [tested:
+    `tests/media/test_export.py`]: a restored QuickTime or MP4 clip exports as `<variantId>.mov` or `.mp4`, the file
+    restore-7 stored losslessly, byte for byte, with `<variantId>.mov.json` or `.mp4.json`; a record naming a type
+    with no export row is refused as a record (500).
   - _Requirements: REQ-RST-9.1 to 9.7_
 
 - [x] 9. restore-9: the corrections of old code (REQ-RST-11)

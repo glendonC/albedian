@@ -175,7 +175,6 @@ from services.media import variants  # noqa: E402
 # Built on request from the stored records and the solution id named at that moment, so never kept by a cache
 EXPORT_HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
 VARIANT_RECORDS = ("variant.json", "graph.json", "attempt.json")
-CLIP_EXPORT_NOT_BUILT = "Exporting a clip is not built yet."
 RECORDS_REFUSED = "the stored records do not make a manifest the contract takes"
 FILE_CHANGED = "the stored file does not match its record"
 READ_BLOCK = 1 << 20
@@ -196,8 +195,9 @@ def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[P
         raise HTTPException(status_code=404, detail=NO_VARIANT) from None
     if attempt.get("status") != "ready" or variant.get("id") != variant_id:
         raise HTTPException(status_code=404, detail=NO_VARIANT)
+    # Every type the contract serves has an export row; a record naming another is not a record the manifest takes
     if variant.get("mimeType") not in variants.EXPORT_EXTENSIONS:
-        raise HTTPException(status_code=501, detail=CLIP_EXPORT_NOT_BUILT)
+        raise HTTPException(status_code=500, detail=RECORDS_REFUSED)
     try:
         manifest = variants.export_manifest(variant, graph, attempt, JobStore(store).newest_solution_id(sha256))
     except ValidationError:
@@ -238,8 +238,9 @@ def get_variant_export(
     folder, manifest, variant = _export_records(store, sha256, variant_id)
     name = _export_name(variant)
     try:
-        # A still's stored file, the only type EXPORT_EXTENSIONS names until a clip's file is stored (restore-7)
-        fd = _open_unlinked(folder / "variant.png")
+        # The variant's own file: a still's PNG, or a clip's `.mov` or `.mp4` as restore-7 stored it, exported as
+        # `<variantId>.mov` or `.mp4` beside its `.mov.json` or `.mp4.json` (EXPORT_EXTENSIONS)
+        fd = _open_unlinked(folder / variants.variant_file_name(variant["mimeType"]))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=NO_VARIANT) from None
     handle = os.fdopen(fd, "rb")
