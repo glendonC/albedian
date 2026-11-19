@@ -347,6 +347,14 @@ def _true_altitude_deg(apparent_alt_deg: np.ndarray) -> np.ndarray:
     return np.where(below, a - floor_shift, h)
 
 
+# The warnings a person reads under a result, in the design lane's words (C16, decided 2026-11-19 12:45:
+# .lead/uiux/UIUX-solvewords-READY.md); the no-match result shows them verbatim
+GATE_REFUSED_WARNING = (
+    "A possible match was found, but the stars held back to check it did not land where it put them, so it was not kept."
+)
+TOO_FEW_STARS_WARNING = "The first possible match held too few stars to be checked."
+
+
 @dataclass(frozen=True)
 class _ApparentSkyFrame:
     """Invertible transformation between ICRS directions of date and refracted (east, north, up) vectors."""
@@ -2301,7 +2309,7 @@ def _solve_phone_photo_with(
             obs_utc_iso,
             observer_lat,
             observer_lon,
-            "Initial WCS hypothesis matched too few stars for refinement.",
+            TOO_FEW_STARS_WARNING,
             "Pixel position only: too few catalog matches to refine a verified WCS.",
             noise_warnings,
         )
@@ -2499,7 +2507,7 @@ def _solve_phone_photo_with(
             )
 
     if not passed_gate:
-        warnings.append("WCS solution did not pass coincidence-weighed held-out and dual-path verification gate.")
+        warnings.append(GATE_REFUSED_WARNING)
     warnings.extend(noise_warnings)
 
     return ObservationSolution(

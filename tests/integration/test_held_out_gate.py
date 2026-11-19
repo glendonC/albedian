@@ -172,7 +172,8 @@ def test_a_fit_with_nothing_held_out_reports_no_residual() -> None:
         for x, y in ((60.0, 60.0), (1860.0, 1020.0))
     ]
     sol = solve_and_verify_field(detections, WIDTH, HEIGHT, **MOMENT, **_sources(detections))
-    assert "WCS solution did not pass independent held-out calibration gate." in sol.warnings
+    assert ("A possible match was found, but the stars held back to check it did not land where it put them, so it "
+            "was not kept.") in sol.warnings
     assert (sol.quality.held_out_pair_count, sol.quality.held_out_inliers) == (0, 0) and sol.status != "calibrated"
     quality = sol.quality
     assert (quality.median_residual_px, quality.p95_residual_px, quality.median_residual_arcsec) == (None, None, None)

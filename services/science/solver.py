@@ -694,6 +694,13 @@ def _build_unresolved_solution(
     )
 
 
+# The warnings a person reads under a result, in the design lane's words (C16, decided 2026-11-19 12:45:
+# .lead/uiux/UIUX-solvewords-READY.md); the no-match result shows them verbatim
+GATE_REFUSED_WARNING = (
+    "A possible match was found, but the stars held back to check it did not land where it put them, so it was not kept."
+)
+
+
 def solve_and_verify_field(
     detections: list[SourceDetection],
     width: int,
@@ -968,7 +975,7 @@ def solve_and_verify_field(
             )
         warnings.append(f"{unmatched_total} unmatched sensor detection(s): {', '.join(unmatched_parts)}.")
     if not passed_verification:
-        warnings.append("WCS solution did not pass independent held-out calibration gate.")
+        warnings.append(GATE_REFUSED_WARNING)
 
     return ObservationSolution(
         id=solution_id, source_asset_id=source_asset_id, source_sha256=source_sha256,
