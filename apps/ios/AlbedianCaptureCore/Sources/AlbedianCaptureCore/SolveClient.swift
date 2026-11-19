@@ -146,6 +146,19 @@ public final class SolveClient: Sendable {
         }
     }
 
+    /// The lock-on's early sky (lockon-m5): once the running job's record names when it published the sky predicted
+    /// from an early pose, that sky (`GET /api/ingest/jobs/{id}/predicted-sky`) and the stored frame its places are in
+    /// (the receipt); nil when either is not served (the route answers 404 before and after the run) or not in its
+    /// contract's form. Every place in it is predicted.
+    public func earlySky(jobId: String, sha256: String) async -> (sky: PredictedEarlySky, frame: StoredFrame)? {
+        guard case .success(let receipt) = await exchange("GET", "/api/ingest/\(sha256)", timeoutSec: readTimeoutSec),
+              let value = try? JSONText.read(receipt.body), let stored = StoredReceiptReader.read(value, sha256: sha256),
+              case .success(let reply) = await exchange("GET", "/api/ingest/jobs/\(jobId)/predicted-sky", timeoutSec: readTimeoutSec,
+                                                        bodyMaxBytes: Self.solutionMaxBytes),
+              let body = try? JSONText.read(reply.body), let sky = PredictedEarlySky.read(body, sha256: sha256) else { return nil }
+        return (sky, stored.frame)
+    }
+
     private static func read<T>(_ body: Data, _ reader: (JSONValue) -> Result<T, SolveReadRefusal>) -> Result<T, SolveFailure> {
         guard let value = try? JSONText.read(body) else { return .failure(.unreadableReply(nil)) }
         return reader(value).mapError { .unreadableReply($0) }
@@ -211,8 +224,11 @@ public final class SolveCoordinator {
         startedAt = nil
     }
 
-    /// - Parameter then: called on the main actor with the solve's last state, unless another start or a reset came first.
-    public func start(sha256: String, client: SolveClient, then: (@MainActor (SolveState) -> Void)? = nil) {
+    /// - Parameter then: called on the main actor with the solve's last state, unless another start or a reset came first
+    ///   (first, so a trailing closure is still `then`).
+    /// - Parameter each: called on the main actor with every state as it is shown (the lock-on watches the running job).
+    public func start(sha256: String, client: SolveClient, then: (@MainActor (SolveState) -> Void)? = nil,
+                      each: (@MainActor (SolveState) -> Void)? = nil) {
         generation &+= 1
         task?.cancel()
         let runGeneration = generation
@@ -223,6 +239,7 @@ public final class SolveCoordinator {
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == runGeneration else { return }
                     self.state = next
+                    each?(next)
                 }
             }
             guard let self, self.generation == runGeneration else { return }

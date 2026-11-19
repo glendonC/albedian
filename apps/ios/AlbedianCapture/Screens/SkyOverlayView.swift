@@ -24,10 +24,22 @@ struct SkyOverlayView: View {
     }
 
     var body: some View {
+        PlacedSkyOverlay(placed: Self.placed(marks, attitude: attitude, acrossFovDeg: acrossFovDeg, width: width, height: height),
+                         width: width, height: height)
+    }
+}
+
+/// D20's rings and names for marks already placed on a `width` by `height` frame: from the phone's projection
+/// (`SkyOverlayView`) or from the laptop's early sky (lockon-m5). Every mark is `predicted`.
+struct PlacedSkyOverlay: View {
+    let placed: [(SkyMark, CGPoint)]
+    let width: Double
+    let height: Double
+
+    var body: some View {
         Canvas { context, _ in
             let amber = Color(ControlStyle.Evidence.predicted.colour)
             let ring = StrokeStyle(lineWidth: CGFloat(SkyOverlayStyle.ringLineWidthPt), dash: SkyOverlayStyle.ringDash.map { CGFloat($0) })
-            let placed = Self.placed(marks, attitude: attitude, acrossFovDeg: acrossFovDeg, width: width, height: height)
             // D20 (`SkyOverlayNames`): every ring stays; names only for named stars brighter than 3.2 that fit
             let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width, heightPt: height)
             for (mark, at) in placed {

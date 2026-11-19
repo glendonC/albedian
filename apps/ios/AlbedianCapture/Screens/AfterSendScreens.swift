@@ -16,26 +16,22 @@ struct WaitingScreen: View {
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
-            // D31: the early rings that fall inside the photo; the source sentence stands only beside at least one
-            let earlyDrawn = model.earlyPose.map {
-                !SkyOverlayView.placed(model.earlyMarks, attitude: $0.attitude, acrossFovDeg: $0.acrossPortraitWidthDeg, width: width,
-                                       height: width * 4 / 3).isEmpty
-            } ?? false
+            // D31: the early rings that fall inside the photo: the laptop's early sky when its job serves one (lockon-m5),
+            // else the phone's own projection of its record; the source sentence stands only beside at least one
+            let early = earlyPlaced(width: width, height: width * 4 / 3)
+            let earlyDrawn = !early.isEmpty
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
-                if let pose = model.earlyPose, earlyDrawn {
+                if earlyDrawn {
                     if let pass = model.lockOnPass {
-                        LockOnLayer(placed: SkyOverlayView.placed(model.earlyMarks, attitude: pose.attitude,
-                                                                  acrossFovDeg: pose.acrossPortraitWidthDeg, width: width,
-                                                                  height: width * 4 / 3),
-                                    targets: LockOnTravel.targets(early: model.earlyMarks, readout: pass.readout, frame: pass.frame,
+                        LockOnLayer(placed: early,
+                                    targets: LockOnTravel.targets(early: early.map(\.0), readout: pass.readout, frame: pass.frame,
                                                                   widthPt: width, heightPt: width * 4 / 3),
                                     settled: model.lockOnSettled, width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
                     } else {
-                        SkyOverlayView(marks: model.earlyMarks, attitude: pose.attitude, acrossFovDeg: pose.acrossPortraitWidthDeg,
-                                       width: width, height: width * 4 / 3)
+                        PlacedSkyOverlay(placed: early, width: width, height: width * 4 / 3)
                             .atTop(Arrive.photoTop)
                     }
                 }
@@ -48,7 +44,7 @@ struct WaitingScreen: View {
                         VStack(alignment: .leading, spacing: 14) {
                             StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
                                 .id(row.stage)
-                            EarlySource(shown: earlyDrawn)
+                            EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil)
                         }
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
@@ -56,7 +52,7 @@ struct WaitingScreen: View {
                 } else if let queued = model.queuedRow {
                     VStack(alignment: .leading, spacing: 14) {
                         StepRow(name: QueuedRow.word, count: queued.aheadWords, fraction: nil)
-                        EarlySource(shown: earlyDrawn)
+                        EarlySource(sentence: earlyDrawn ? (model.laptopEarly?.sky.sentence ?? EarlyPose.sourceSentence) : nil)
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
                 }
@@ -65,6 +61,16 @@ struct WaitingScreen: View {
         .ignoresSafeArea()
         .onChange(of: model.waitRow) { _, row in if let row { lastRow = row } }
         .onAppear { lastRow = model.waitRow }
+    }
+
+    /// The early marks on the photo's frame: the laptop's early sky when served, else the phone's own projection.
+    private func earlyPlaced(width: Double, height: Double) -> [(SkyMark, CGPoint)] {
+        if let laptop = model.laptopEarly {
+            return laptop.sky.placed(frame: laptop.frame, widthPt: width, heightPt: height).map { ($0.mark, CGPoint(x: $0.x, y: $0.y)) }
+        }
+        guard let pose = model.earlyPose, !model.earlyMarks.isEmpty else { return [] }
+        return SkyOverlayView.placed(model.earlyMarks, attitude: pose.attitude, acrossFovDeg: pose.acrossPortraitWidthDeg,
+                                     width: width, height: height)
     }
 }
 
@@ -135,11 +141,12 @@ private struct MatchedMark: View {
 /// D31 item 2: C13's source sentence 14 pt under the step row's line, 24 pt in from each side, 12 pt at ink 44 percent,
 /// line height 1.4; nothing when no early mark is drawn.
 private struct EarlySource: View {
-    let shown: Bool
+    /// The early sky's source sentence (C13 for the iPhone's record, D25's for the Moon or the Sun), or none.
+    let sentence: String?
 
     var body: some View {
-        if shown {
-            Text(EarlyPose.sourceSentence).font(AlbedianFont.regular(12)).lineSpacing(12 * 0.2)
+        if let sentence {
+            Text(sentence).font(AlbedianFont.regular(12)).lineSpacing(12 * 0.2)
                 .foregroundStyle(Color(ControlStyle.inkQuiet))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, CGFloat(Arrive.side))

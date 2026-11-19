@@ -54,6 +54,34 @@ final class PredictedEarlySkyTests: XCTestCase {
         XCTAssertTrue(read.targets.allSatisfy { $0.evidence == .predicted })
     }
 
+    /// The targets as marks on the wait's 390 by 520 photo: placed where the oriented photo covering that frame puts
+    /// their stored pixel, none off the cut; a catalogue-numbered star carries its id as its name, so D20 never draws it.
+    func testTheTargetsBecomeMarksPlacedOnTheWaitsPhoto() throws {
+        let (value, wcs) = try sky([])
+        var withFindings = value
+        withFindings["findings"] = .array([
+            finding("f-rigel", title: "Rigel", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg, type: "star", mag: 0.13, source: "HIP 24436"),
+            finding("f-gaia", title: "Gaia DR3 1", ra: wcs.crvalRaDeg + 0.2, dec: wcs.crvalDecDeg, type: "star", mag: 2, source: "Gaia DR3 1"),
+            finding("f-mars", title: "Mars (Predicted Ephemeris)", ra: wcs.crvalRaDeg, dec: wcs.crvalDecDeg + 0.2, type: "planet", mag: nil, source: "Mars"),
+        ])
+        let sky = try XCTUnwrap(PredictedEarlySky.read(withFindings, sha256: sha))
+        let frame = StoredFrame(widthPx: Int(wcs.crpixX * 2), heightPx: Int(wcs.crpixY * 2) + 1, orientation: .upright)
+        let placed = sky.placed(frame: frame, widthPt: 390, heightPt: 520)
+        let rigel = try XCTUnwrap(placed.first { $0.mark.id == "f-rigel" })
+        let target = try XCTUnwrap(sky.targets.first { $0.id == "f-rigel" })
+        let at = frame.placeCovering(xPx: target.xPx, yPx: target.yPx, onWidth: 390, height: 520)
+        XCTAssertEqual(rigel.x, at.x, accuracy: 1e-9)
+        XCTAssertEqual(rigel.y, at.y, accuracy: 1e-9)
+        XCTAssertEqual(rigel.mark.name, "Rigel")
+        XCTAssertEqual(rigel.mark.catalogSourceId, "HIP 24436")
+        XCTAssertEqual(placed.first { $0.mark.id == "f-gaia" }?.mark.name, "Gaia DR3 1")
+        XCTAssertEqual(placed.first { $0.mark.id == "f-mars" }?.mark.source, .ephemeris)
+        XCTAssertTrue(placed.allSatisfy { $0.mark.evidence == .predicted })
+        // A frame whose 3:4 cut leaves the targets off: none placed
+        let wide = StoredFrame(widthPx: 100_000, heightPx: 400, orientation: .upright)
+        XCTAssertTrue(sky.placed(frame: wide, widthPt: 390, heightPt: 520).isEmpty)
+    }
+
     func testEachPoseNamesItsSourceInItsDecidedSentence() throws {
         let cases: [(String, PredictedEarlySky.Source, String)] = [
             ("moon_camera_profile_level_head", .moon, "Placed from the Moon: predicted until matched."),

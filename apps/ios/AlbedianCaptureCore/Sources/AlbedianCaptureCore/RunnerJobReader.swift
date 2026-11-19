@@ -232,9 +232,11 @@ extension SolveJobReader {
             default: break
             }
         }
-        return .success(SolveJob(id: id, sourceAssetSha256: sha, state: state, createdAtUTC: created, startedAtUTC: startedAt,
-                                 finishedAtUTC: finishedAt, stages: stages, solutionId: solutionId, error: error, kind: kind,
-                                 producer: producer, queueAhead: queueAhead, inputSpan: inputSpan,
-                                 cancelRequestedAtUTC: instants["cancelRequestedAtUTC"]))
+        var job = SolveJob(id: id, sourceAssetSha256: sha, state: state, createdAtUTC: created, startedAtUTC: startedAt,
+                           finishedAtUTC: finishedAt, stages: stages, solutionId: solutionId, error: error, kind: kind,
+                           producer: producer, queueAhead: queueAhead, inputSpan: inputSpan,
+                           cancelRequestedAtUTC: instants["cancelRequestedAtUTC"])
+        job.predictedSkyAtUTC = instants["predictedSkyAtUTC"]
+        return .success(job)
     }
 }

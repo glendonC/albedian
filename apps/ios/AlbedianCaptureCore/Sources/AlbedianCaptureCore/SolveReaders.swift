@@ -65,6 +65,8 @@ public struct SolveJob: Equatable, Sendable {
     public var queueAhead: Int?
     public var inputSpan: InputSpan?
     public var cancelRequestedAtUTC: String?
+    /// When the solve published the sky predicted from an early pose (platform-10a), so the phone may ask for it.
+    public var predictedSkyAtUTC: String?
 
     /// Whether the job has ended, one way or another.
     public var hasEnded: Bool { state == .succeeded || state == .failed || state == .canceled || state == .interrupted }

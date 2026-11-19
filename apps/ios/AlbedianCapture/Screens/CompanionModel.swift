@@ -219,6 +219,8 @@ final class CompanionModel {
         earlyMarks = []
         lockOnPass = nil
         lockOnSettled = false
+        laptopEarly = nil
+        laptopEarlyAsked = false
         unreachable = false
         shot = nil
         result = nil
@@ -394,6 +396,12 @@ final class CompanionModel {
     /// D31 item 3: the calibrated solution the early rings travel to on the wait, and whether they have come to rest
     /// (the class change follows the travel).
     private(set) var lockOnPass: (readout: SolutionReadout, frame: StoredFrame)?
+    /// lockon-m5: the early sky the laptop's running solve predicted (platform-10b), asked once when the job's record
+    /// says it published one; while it is here the wait draws it instead of the phone's own projection.
+    private(set) var laptopEarly: (sky: PredictedEarlySky, frame: StoredFrame)?
+    private var laptopEarlyAsked = false
+    /// Whether early marks stand over the photo, from either source.
+    var hasEarlyMarks: Bool { laptopEarly != nil || (earlyPose != nil && !earlyMarks.isEmpty) }
     private(set) var lockOnSettled = false
     private var earlyTask: Task<Void, Never>?
 
@@ -402,6 +410,8 @@ final class CompanionModel {
         earlyMarks = []
         lockOnPass = nil
         lockOnSettled = false
+        laptopEarly = nil
+        laptopEarlyAsked = false
         earlyPose = shot?.recordWire.flatMap { EarlyPose.read(recordWire: $0) }
         guard let pose = earlyPose else { return }
         let client = SkyContextClient(address: address)
@@ -416,7 +426,21 @@ final class CompanionModel {
         stoppedSentence = nil
         screen = .waiting
         startEarlySky(address: address)
-        solver.start(sha256: sha256, client: SolveClient(address: address)) { [weak self] end in self?.solved(end, sha256: sha256, address: address) }
+        solver.start(sha256: sha256, client: SolveClient(address: address),
+                     then: { [weak self] end in self?.solved(end, sha256: sha256, address: address) },
+                     each: { [weak self] state in self?.watchEarlySky(state, sha256: sha256, address: address) })
+    }
+
+    /// The first running record that names the predicted sky's time asks the laptop for that sky, once.
+    private func watchEarlySky(_ state: SolveState, sha256: String, address: LaptopAddress) {
+        guard case .running(let job) = state, job.predictedSkyAtUTC != nil, !laptopEarlyAsked else { return }
+        laptopEarlyAsked = true
+        let client = SolveClient(address: address)
+        Task { @MainActor [weak self] in
+            let early = await client.earlySky(jobId: job.id, sha256: sha256)
+            guard let self, self.laptopEarlyAsked, self.lockOnPass == nil else { return }
+            self.laptopEarly = early
+        }
     }
 
     private func solved(_ end: SolveState, sha256: String, address: LaptopAddress) {
@@ -425,7 +449,7 @@ final class CompanionModel {
             result = (readout, frame, facts)
             // D31 item 3: a calibrated solve with early rings drawn passes on the wait first (the travel, then the class
             // change at rest, MOTION-READY-iphone section 5), then the result; anything else goes straight there
-            guard readout.status == .calibrated, readout.hasWCS, earlyPose != nil, !earlyMarks.isEmpty else {
+            guard readout.status == .calibrated, readout.hasWCS, hasEarlyMarks else {
                 screen = .result
                 return
             }

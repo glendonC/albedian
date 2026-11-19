@@ -294,6 +294,8 @@ public final class CaptureUploader: Sendable {
         case "GET":
             allowed = (ofPhoto && (parts.count == 4 || (parts.count == 5 && parts[4] == "solution")))
                 || (underIngest && parts.count == 5 && parts[3] == "jobs" && Wire.isJobId(String(parts[4])))
+                // The sky a running solve predicted from an early pose (platform-10b), for the lock-on (lockon-m5)
+                || (underIngest && parts.count == 6 && parts[3] == "jobs" && Wire.isJobId(String(parts[4])) && parts[5] == "predicted-sky")
         default:
             allowed = false
         }

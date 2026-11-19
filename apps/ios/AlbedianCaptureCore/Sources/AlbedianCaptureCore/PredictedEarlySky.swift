@@ -19,6 +19,8 @@ public struct PredictedEarlySky: Equatable, Sendable {
         /// Its place in the stored frame, pixel centres at whole numbers.
         public let xPx: Double
         public let yPx: Double
+        /// A planet, which the ring drawing names by the body rule (D20).
+        public var isPlanet = false
         public var evidence: EvidenceClass { .predicted }
     }
 
@@ -59,13 +61,31 @@ public struct PredictedEarlySky: Equatable, Sendable {
                   let at = wcs.pixel(raDeg: ra, decDeg: dec) else { return nil }
             let title = (finding["title"]?.stringValue ?? "").replacingOccurrences(of: " (Predicted Ephemeris)", with: "")
             return Target(id: id, name: properName(title) ?? "", magnitude: magnitude,
-                          catalogSourceId: finding["catalogRef"]?["catalogSourceId"]?.stringValue, xPx: at.x, yPx: at.y)
+                          catalogSourceId: finding["catalogRef"]?["catalogSourceId"]?.stringValue, xPx: at.x, yPx: at.y,
+                          isPlanet: kind == "planet")
         }
         let sorted = targets.enumerated().sorted { a, b in
             let (ma, mb) = (a.element.magnitude ?? -1, b.element.magnitude ?? -1)
             return ma == mb ? a.offset < b.offset : ma < mb
         }.map(\.element)
         return PredictedEarlySky(source: source, targets: sorted)
+    }
+
+    /// Each target as a mark with its place on the `widthPt` by `heightPt` frame the oriented photo covers (the wait's
+    /// photo), for D20's ring drawing; none for a target the photo's cut leaves off. A star with no name of its own
+    /// carries its catalogue id as its name, which D20 never draws. The marks' altitude and azimuth are unused here: the
+    /// laptop's pose placed them.
+    public func placed(frame: StoredFrame, widthPt: Double, heightPt: Double) -> [(mark: SkyMark, x: Double, y: Double)] {
+        targets.compactMap { target in
+            guard frame.isOnCard(xPx: target.xPx, yPx: target.yPx, width: widthPt, height: heightPt) else { return nil }
+            let at = frame.placeCovering(xPx: target.xPx, yPx: target.yPx, onWidth: widthPt, height: heightPt)
+            let name = target.name.isEmpty ? (target.catalogSourceId ?? target.id) : target.name
+            var mark = SkyMark(id: target.id, name: name, altDeg: 0, azDeg: 0,
+                               source: target.isPlanet ? .ephemeris : .catalog(release: ""))
+            mark.mag = target.magnitude
+            mark.catalogSourceId = target.isPlanet ? nil : (target.catalogSourceId ?? name)
+            return (mark, at.x, at.y)
+        }
     }
 
     /// A name, or nil for a catalogue number (predictedSkyMarks.ts `properName`): Gaia, HIP, HD, HR or TYC and a number,
