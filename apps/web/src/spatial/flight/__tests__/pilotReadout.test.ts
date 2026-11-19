@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CRAFTS, HANGAR_CRAFTS } from '../crafts.js';
-import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups } from '../pilotReadout.js';
+import { CRAFT_CHOICES, pilotReadout, threeFigureYears, CRAFT_GROUPS, craftSpeedSource, craftGroups, noTravelSentence } from '../pilotReadout.js';
 
 const LY_PER_PC = 3.261563777;
 
@@ -52,6 +52,19 @@ describe('pilotReadout: the craft\'s real trip under the two distances (D26 item
     expect(pilotReadout(CRAFTS.hubble!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: Hubble Space Telescope stays near Earth.');
     expect(pilotReadout(CRAFTS.iss!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: International Space Station stays near Earth.');
     expect(pilotReadout(CRAFTS['apollo-lm']!, 'Acrux', 98.7, 1.5).none).toBe('No real travel time: the Lunar Module flew between Earth and the Moon.');
+    // The 17:24 ruling's sentences, word for word
+    const none = (id: string) => pilotReadout(CRAFTS[id]!, 'Acrux', 98.7, 1.5).none;
+    expect(['juno', 'dawn', 'messenger', 'spitzer', 'osiris-rex', 'mro'].map(none)).toEqual([
+      'No real travel time: Juno orbits Jupiter.',
+      'No real travel time: Dawn flew to Vesta and then Ceres, within the Solar System.',
+      'No real travel time: MESSENGER flew to Mercury and ended on its surface in 2015.',
+      'No real travel time: Spitzer orbits the Sun, trailing Earth.',
+      'No real travel time: OSIRIS-REx flew to the asteroid Bennu, within the Solar System.',
+      'No real travel time: the Mars Reconnaissance Orbiter orbits Mars.',
+    ]);
+    // No craft of the hangar is left with neither a speed nor a sentence
+    expect(HANGAR_CRAFTS.filter((c) => !c.speed && !noTravelSentence(c)).map((c) => c.id)).toEqual([]);
+    expect(HANGAR_CRAFTS.filter((c) => c.kind === 'craft' && !c.speed && CRAFT_CHOICES.find((x) => x.id === c.id)!.detail === '').map((c) => c.id)).toEqual([]);
   });
 
   it('keeps Parker Solar Probe, which orbits the Sun, from any trip, with D35\'s place and sentence (its hangar entry)', () => {
@@ -92,6 +105,8 @@ describe('CRAFT_CHOICES: the picker\'s rows (D26 item 3, D35 items 1 and 2)', ()
     const detail = (id: string) => CRAFT_CHOICES.find((c) => c.id === id)!.detail;
     expect(['jwst', 'hubble', 'iss', 'shuttle', 'gemini'].map(detail)).toEqual(['near Earth', 'near Earth', 'near Earth', 'near Earth', 'near Earth']);
     expect([detail('apollo-lm'), detail('parker-solar-probe')]).toEqual(['to the Moon', 'around the Sun']);
+    // The 17:24 ruling (UIUX-hangarpick-READY.md): the six more craft, each from its NASA facts in the hangar's record
+    expect(['juno', 'dawn', 'messenger', 'spitzer', 'osiris-rex', 'mro'].map(detail)).toEqual(['around Jupiter', 'to Vesta and Ceres', 'to Mercury', 'around the Sun', 'to Bennu', 'around Mars']);
 
   });
 });

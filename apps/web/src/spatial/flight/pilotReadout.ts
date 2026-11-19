@@ -7,8 +7,11 @@ import { HANGAR_CRAFTS, type Craft, type CraftId } from './crafts.js';
  * the craft's NASA-sourced speed; the pace is that over the flight's own measured travel time.
  */
 
-/** D35 item 2: where a craft that never travels between stars flies, by the hangar's entry (D26's "near Earth"). */
-const WHERE_IT_FLIES: Readonly<Record<CraftId, 'near Earth' | 'to the Moon' | 'around the Sun'>> = {
+/**
+ * D35 item 2: where a craft that never travels between stars flies, by the hangar's entry (D26's "near Earth"); the six
+ * more craft as the design lane ruled at 17:24 (UIUX-hangarpick-READY.md), each from its NASA facts in the hangar.
+ */
+const WHERE_IT_FLIES: Readonly<Record<CraftId, string>> = {
   jwst: 'near Earth',
   hubble: 'near Earth',
   iss: 'near Earth',
@@ -17,15 +20,32 @@ const WHERE_IT_FLIES: Readonly<Record<CraftId, 'near Earth' | 'to the Moon' | 'a
   'apollo-lm': 'to the Moon',
   // Its 194.4 km/s at closest approach is a speed around the Sun, never toward a star (D35 item 5; ASSETS keeps it as a fact)
   'parker-solar-probe': 'around the Sun',
+  juno: 'around Jupiter',
+  dawn: 'to Vesta and Ceres',
+  messenger: 'to Mercury',
+  spitzer: 'around the Sun',
+  'osiris-rex': 'to Bennu',
+  mro: 'around Mars',
+};
+
+/** D35 item 5 and the 17:24 ruling: each named craft's sentence in place of a trip time, word for word. */
+const NO_TRAVEL_SENTENCES: Readonly<Record<CraftId, string>> = {
+  jwst: 'No real travel time: Webb stays near Earth, at the Sun-Earth L2 point.',
+  'apollo-lm': 'No real travel time: the Lunar Module flew between Earth and the Moon.',
+  'parker-solar-probe': 'No real travel time: Parker Solar Probe orbits the Sun; 194 km/s is its speed at its closest pass.',
+  juno: 'No real travel time: Juno orbits Jupiter.',
+  dawn: 'No real travel time: Dawn flew to Vesta and then Ceres, within the Solar System.',
+  messenger: 'No real travel time: MESSENGER flew to Mercury and ended on its surface in 2015.',
+  spitzer: 'No real travel time: Spitzer orbits the Sun, trailing Earth.',
+  'osiris-rex': 'No real travel time: OSIRIS-REx flew to the asteroid Bennu, within the Solar System.',
+  mro: 'No real travel time: the Mars Reconnaissance Orbiter orbits Mars.',
 };
 
 /** D26 item 5 and D35 item 5: a craft or suit that never travels between stars shows its sentence instead of a number. */
 export function noTravelSentence(craft: Craft): string | null {
   if (craft.speed) return null;
   if (craft.kind === 'suit') return 'No real travel time: a spacesuit is worn near a spacecraft, never flown between stars.';
-  if (craft.id === 'jwst') return 'No real travel time: Webb stays near Earth, at the Sun-Earth L2 point.';
-  if (WHERE_IT_FLIES[craft.id] === 'to the Moon') return 'No real travel time: the Lunar Module flew between Earth and the Moon.';
-  if (WHERE_IT_FLIES[craft.id] === 'around the Sun') return 'No real travel time: Parker Solar Probe orbits the Sun; 194 km/s is its speed at its closest pass.';
+  if (NO_TRAVEL_SENTENCES[craft.id]) return NO_TRAVEL_SENTENCES[craft.id]!;
   if (WHERE_IT_FLIES[craft.id] === 'near Earth') return `No real travel time: ${craft.name} stays near Earth.`;
   return null;
 }
