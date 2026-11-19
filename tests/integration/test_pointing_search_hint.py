@@ -119,6 +119,7 @@ from services.ingest import jobs as ingest_jobs  # noqa: E402
 from services.ingest import router as ingest_router  # noqa: E402
 from services.ingest.store import IngestStore  # noqa: E402
 from services.science.record_hint import record_hint  # noqa: E402
+from services.science.wcs_models import PointingHint  # noqa: E402
 
 POINTING_SAMPLE = json.loads(
     (Path(__file__).resolve().parents[1] / "fixtures" / "pointing_contract.json").read_text(encoding="utf-8")
@@ -364,7 +365,8 @@ def test_a_lent_moment_never_costs_the_blind_solve(monkeypatch: pytest.MonkeyPat
     # time and no place (the whole-sky blind search), kept only when they calibrate
     calls: list[tuple[Any, Any]] = []
     Outcome = dataclasses.make_dataclass(
-        "Outcome", ["status", ("observed_at_utc", Any, None), ("observer_lat", Any, None), ("observer_lon", Any, None)]
+        "Outcome", ["status", ("observed_at_utc", Any, None), ("observer_lat", Any, None), ("observer_lon", Any, None),
+                    ("warnings", Any, ())]
     )
 
     def once(statuses: list[str]):
@@ -376,12 +378,12 @@ def test_a_lent_moment_never_costs_the_blind_solve(monkeypatch: pytest.MonkeyPat
     moment = dict(obs_utc_iso="2030-01-01T00:00:00Z", lat_deg=10.0, lon_deg=20.0)
     hinted = dict(hint_ra_deg=10.0, hint_dec_deg=20.0, hint_radius_deg=5.0, triangle_radius_deg=40.0)
     for kwargs, statuses, expected_calls, expected_status in (
-        ({**moment, **hinted, "moment_lent": True}, ["unresolved", "unresolved", "calibrated"],
+        ({**moment, **hinted, "moment_lent": "both"}, ["unresolved", "unresolved", "calibrated"],
          [(10.0, moment["obs_utc_iso"]), (None, moment["obs_utc_iso"]), (None, None)], "calibrated"),
-        ({**moment, "moment_lent": True}, ["unresolved", "calibrated"], [(None, moment["obs_utc_iso"]), (None, None)], "calibrated"),
-        ({**moment, "moment_lent": True}, ["ambiguous", "unresolved"], [(None, moment["obs_utc_iso"]), (None, None)], "ambiguous"),
-        ({**moment, "moment_lent": True}, ["calibrated"], [(None, moment["obs_utc_iso"])], "calibrated"),
-        ({**moment, "moment_lent": False}, ["unresolved"], [(None, moment["obs_utc_iso"])], "unresolved"),
+        ({**moment, "moment_lent": "both"}, ["unresolved", "calibrated"], [(None, moment["obs_utc_iso"]), (None, None)], "calibrated"),
+        ({**moment, "moment_lent": "both"}, ["ambiguous", "unresolved"], [(None, moment["obs_utc_iso"]), (None, None)], "ambiguous"),
+        ({**moment, "moment_lent": "both"}, ["calibrated"], [(None, moment["obs_utc_iso"])], "calibrated"),
+        ({**moment, "moment_lent": None}, ["unresolved"], [(None, moment["obs_utc_iso"])], "unresolved"),
     ):
         calls.clear()
         monkeypatch.setattr(ingest_jobs, "_solve_chain_once", once(statuses))
@@ -392,6 +394,21 @@ def test_a_lent_moment_never_costs_the_blind_solve(monkeypatch: pytest.MonkeyPat
             assert (result.observed_at_utc, result.observer_lat, result.observer_lon) == (
                 moment["obs_utc_iso"], moment["lat_deg"], moment["lon_deg"]
             )
+            # C22: the stars alone lined it up, and what is predicted is drawn for the lent moment
+            assert list(result.warnings) == [ingest_jobs.BLIND_LENT_WORDS["both"]]
+        else:
+            assert not any(w in ingest_jobs.BLIND_LENT_WORDS.values() for w in result.warnings)
+
+
+@pytest.mark.parametrize(("lent", "first"), [
+    ("time", "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded, which the stars do not confirm."),
+    ("place", "The stars alone lined this photo up; what is predicted on it is drawn for where your iPhone was, which the stars do not confirm."),
+    ("both", "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded and where it was, which the stars do not confirm."),
+])
+def test_the_blind_solve_s_words_are_c22_s(lent: str, first: str) -> None:
+    # C22 (.lead/uiux/UIUX-blindwords-READY.md, decided 17:08): the first sentence shown, the second kept in the record
+    second = "A search at that moment matched nothing, so it may be off; the stars were matched without it."
+    assert ingest_jobs.BLIND_LENT_WORDS[lent] == f"{first} {second}"
 
 
 def _timeless_png() -> bytes:
@@ -429,3 +446,13 @@ def test_a_photo_whose_lent_moment_is_wrong_still_gets_the_solve_its_stars_give(
     assert [f for f in solution["findings"] if f["evidenceClass"] == "catalog_matched"]
     hint = solution["pointingHint"]
     assert hint["usedAs"] == ["moment"] and (hint["timeFrom"], hint["placeFrom"]) == ("record", "record")
+    assert ingest_jobs.BLIND_LENT_WORDS["both"] in solution["warnings"]
+
+
+@pytest.mark.parametrize(("time_from", "place_from", "lent"), [
+    ("record", "record", "both"), ("record", "file", "time"), ("file", "record", "place"),
+])
+def test_what_the_record_lent_names_the_blind_solve_s_words(time_from: str, place_from: str, lent: str) -> None:
+    hint = PointingHint(source_asset_sha256="e" * 64, used_as=("moment",), time_from=time_from, place_from=place_from)
+    assert ingest_jobs._what_was_lent(hint) == lent
+    assert ingest_jobs._what_was_lent(None) is None

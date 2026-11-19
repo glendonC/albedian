@@ -81,6 +81,17 @@ UNEXPECTED_ERROR_REASON = "The solve stopped on an internal error."
 PREDICTED_SKY_FAILED = "The predicted sky could not be computed."
 # The one sentence for a stored pointing record the solve did not use; it holds none of the record's values
 # [proposed: worded like the solve's other sentences, for UIUX's review]
+# C22 (.lead/uiux/UIUX-blindwords-READY.md, decided 2026-11-19 17:08): when only the blind run calibrated, the stars
+# placed the photo and the lent moment was not confirmed; by what the record lent. The first sentence is shown (C5)
+_BLIND_SECOND = "A search at that moment matched nothing, so it may be off; the stars were matched without it."
+BLIND_LENT_WORDS = {
+    "time": "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded, "
+    "which the stars do not confirm. " + _BLIND_SECOND,
+    "place": "The stars alone lined this photo up; what is predicted on it is drawn for where your iPhone was, which "
+    "the stars do not confirm. " + _BLIND_SECOND,
+    "both": "The stars alone lined this photo up; what is predicted on it is drawn for the time your iPhone recorded "
+    "and where it was, which the stars do not confirm. " + _BLIND_SECOND,
+}
 RECORD_NOT_USED = "The photo's stored pointing record is not a record of this photo, so the solve did not use it."
 # The warning when the verified calibration's centre lies outside the hint's stated uncertainty: the WCS wins
 # (design component 5, REQ-IOS-2.2) [proposed: for UIUX's review]
@@ -448,7 +459,7 @@ def _solve_chain(
     hint_dec_deg: float | None = None,
     hint_radius_deg: float | None = None,
     triangle_radius_deg: float | None = None,
-    moment_lent: bool = False,
+    moment_lent: str | None = None,
     **chain: Any,
 ):
     """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
@@ -457,7 +468,8 @@ def _solve_chain(
     `pointing_hint_for` then records as a warning; pointing-4 v2, AUDIT's read of 2026-11-19). A hint can narrow the
     searches, never stand between a photo and the solve it gets without one; the held-out gate is the same in both.
 
-    When the record lent the time or the place (`moment_lent`) and still nothing calibrated, the searches once more
+    When the record lent the time, the place or both (`moment_lent`: "time", "place", "both", or None) and still
+    nothing calibrated, the searches once more
     with no time and no place, so the phone solver's whole-sky blind search runs as it would for the photo alone, its
     solution kept only when it calibrates (the lead's answer of 2026-11-19 13:20: a lent moment must never cost a photo
     a solve it gets alone). The predicted sky still uses the lent moment."""
@@ -481,7 +493,7 @@ def _solve_chain(
             # would, so the predicted sky and the pointing hint read the same moment
             return replace(
                 blind, observed_at_utc=chain.get("obs_utc_iso"), observer_lat=chain.get("lat_deg"),
-                observer_lon=chain.get("lon_deg"),
+                observer_lon=chain.get("lon_deg"), warnings=[*blind.warnings, BLIND_LENT_WORDS[moment_lent]],
             )
     return solution
 
@@ -740,6 +752,14 @@ def record_search_hint(asset: Mapping[str, Any], moment: RecordMoment | None) ->
     return SearchHint(hint.center_alt_deg, hint.center_az_deg, ra, dec, hint.uncertainty_deg, hint.fov_diagonal_deg)
 
 
+def _what_was_lent(moment_hint: PointingHint | None) -> str | None:
+    """What the record lent the solve, for the blind run's words: "time", "place", "both", or None."""
+    if moment_hint is None:
+        return None
+    time_lent, place_lent = moment_hint.time_from == "record", moment_hint.place_from == "record"
+    return "both" if time_lent and place_lent else ("time" if time_lent else ("place" if place_lent else None))
+
+
 def triangle_hint_radius_deg(search: SearchHint) -> float | None:
     """The plate solver's catalog cut around the hint: the hint's uncertainty and the frame's half diagonal when the
     record gives its field of view (design component 5 [proposed]); None keeps the solver's own 68 deg."""
@@ -915,7 +935,7 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         hint_radius_deg=None if search is None else search.uncertainty_deg,
         triangle_radius_deg=None if search is None else triangle_hint_radius_deg(search),
         # The record lent the time or the place: the blind search stays open to the photo (the lead, 13:20)
-        moment_lent=moment_hint is not None,
+        moment_lent=_what_was_lent(moment_hint),
     )
     read_for_pose: list[list[tuple[float, np.ndarray]]] = []
 
