@@ -454,7 +454,7 @@ def test_after_a_solve_the_same_record_is_still_a_receipt_and_a_different_one_is
     sha = _upload(client, _png(12, 48, 32))
     body = _body(_record(sha))
     assert _put(client, sha, body).status_code == 201
-    assert client.post(f"/api/ingest/{sha}/solve").status_code in (200, 201)
+    assert client.post(f"/api/ingest/{sha}/solve").status_code in (200, 202)
     again = _put(client, sha, body)
     assert again.status_code == 200 and again.json()["alreadyStored"] is True
     other = _put(client, sha, _body(_record(sha, 5)))
@@ -475,7 +475,7 @@ def _job_record(sha: str, kind: str) -> dict[str, Any]:
 def test_a_first_record_sent_once_a_solve_job_exists_is_refused_409(client: TestClient, store: IngestStore, job: str) -> None:
     sha = _upload(client, _png(18, 48, 32))
     if job == "a solve run":
-        assert client.post(f"/api/ingest/{sha}/solve").status_code in (200, 201)
+        assert client.post(f"/api/ingest/{sha}/solve").status_code in (200, 202)
     elif job == "a solve job in the job store":
         JobStore(store).write_record(_job_record(sha, "solve"))
     else:

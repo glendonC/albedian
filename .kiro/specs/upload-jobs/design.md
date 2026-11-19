@@ -355,6 +355,15 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
 | `GET /api/ingest/{sha256}/solution` | reads `solution.json` unchecked (:262-272) | the newest `succeeded` solve's solution, checked; 404 none; 409 "The stored solution could not be read." |
 | `GET /api/ingest/{sha256}` | `solveJobId` from `job.json` | `solveJobId` = the newest solve attempt, active or not |
 
+As built in platform-7 [tested]: the solve start takes no `wait`; it answers at once, 202 with a new job and 200
+with the active job it joined or the current succeeded one (a `wait` sent by an older caller is ignored, as any
+unknown query is). Every caller follows the job on `GET /api/ingest/jobs/{job_id}`: the web (WEB-UX unit-jobs-1),
+the iPhone (MOBILE mobile-9, which lands first), the tests and `research/benchmarks/real_photos/measure.py`;
+`run_solve_job` still waits, for scripts that solve in their own process. Following the job showed that the live
+record of 5a could read `succeeded` before that record was on disk, so a reader could then find no solution;
+since platform-7 a job's ending record is written, the commit point, before the live record shows it, and a
+canceled queued job's likewise [tested].
+
 The restoration's start route (`POST /api/media/{sha256}/restore`, REQ-RST-1.1) stays in `services/media/router.py`
 and calls `runner.start`. [proposed: POST for cancel because the API allows only GET and POST across origins
 (`services/api.py:200`); 409 for an unreadable stored result because the request is sound and the stored state is

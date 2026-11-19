@@ -13,6 +13,7 @@ Covers:
 
 from __future__ import annotations
 
+import time
 import hashlib
 import io
 import math
@@ -188,7 +189,7 @@ def _upload_and_solve(client: TestClient, png: bytes) -> dict[str, Any]:
     sha = hashlib.sha256(png).hexdigest()
     resp = client.post("/api/ingest", content=png, headers={"content-type": "image/png", "x-albedian-filename": "frame.png"})
     assert resp.status_code == 201, resp.text
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     assert job["state"] == "succeeded"
     return client.get(f"/api/ingest/{sha}/solution").json()
 
@@ -257,3 +258,15 @@ def test_real_clips_decode_unchanged_since_none_carries_a_display_rotation() -> 
         assert float(np.max(np.abs(stored - default.astype(np.float64)))) <= 1.0, "decode changed"
         checked += 1
     assert checked == len(clips)
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

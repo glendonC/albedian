@@ -8,6 +8,7 @@ and to end; one that is still alive then is killed after the assertion has faile
 
 from __future__ import annotations
 
+import time
 import copy
 import dataclasses
 from datetime import datetime, timezone
@@ -1616,8 +1617,7 @@ def test_misfiled_records_and_python_named_legacy_keys_are_refused_everywhere(
         reupload = client.post("/api/ingest", content=png_a, headers={"content-type": "image/png"})
         assert reupload.status_code == 200 and reupload.json()["solveJobId"] == own_2["id"]
         ran.clear()
-        started = client.post(f"/api/ingest/{sha_a}/solve")
-        assert started.status_code == 201 and ran == [sha_a]
+        assert _solved(client, sha_a)[0] == 202 and ran == [sha_a]
 
 
 def test_partial_and_publish_refuse_traversal_outside_paths_and_the_upload_folder_itself(tree: Any) -> None:
@@ -1755,8 +1755,7 @@ def test_unreadable_buckets_and_non_utf8_records_answer_409_and_never_500(
         assert receipt.status_code == 200 and "solveJobId" not in receipt.json()
         reupload = client.post("/api/ingest", content=png, headers={"content-type": "image/png"})
         assert reupload.status_code == 200 and "solveJobId" not in reupload.json()
-        started = client.post(f"/api/ingest/{sha}/solve")
-        assert started.status_code == 201 and ran == [sha]
+        assert _solved(client, sha)[0] == 202 and ran == [sha]
     assert str(jobs.root) not in caplog.text
 
     # Mode-000 jobs/ folder on jobs_of, and mode-000 bucket on both id lengths
@@ -1851,7 +1850,7 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
 
     ran = fake_solve_kind(monkeypatch, publish)
     (folder / "job.json").write_text(json.dumps(succeeded), encoding="utf-8")
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha], "no solution: run again"
+    assert _solved(client, sha)[0] == 202 and ran == [sha], "no solution: run again"
     ingest_jobs._write_json(
         folder,
         "solution.json",
@@ -1860,7 +1859,7 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
     )
     assert client.get(f"/api/ingest/{sha}/solution").status_code == 409, "the newest succeeded solve's is refused"
     write_new_solution[0] = True
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha, sha], "refused solution: run again"
+    assert _solved(client, sha)[0] == 202 and ran == [sha, sha], "refused solution: run again"
     served = client.get(f"/api/ingest/{sha}/solution")
     assert (served.status_code, served.json()) == (200, valid_sol)
     current = jobs.newest_solve(sha)
@@ -1869,9 +1868,9 @@ def test_a_start_runs_the_solve_again_unless_a_checked_job_succeeded_with_its_so
     assert (answer.status_code, answer.json(), ran) == (200, current, [sha, sha])
     write_new_solution[0] = False
     (folder / "solutions" / f"{current['id']}.json").unlink()
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 3, "result gone: run again"
+    assert _solved(client, sha)[0] == 202 and ran == [sha] * 3, "result gone: run again"
     (folder / "job.json").write_text(json.dumps({**succeeded, "state": "finished"}), encoding="utf-8")
-    assert client.post(f"/api/ingest/{sha}/solve").status_code == 201 and ran == [sha] * 4, "unreadable: run again"
+    assert _solved(client, sha)[0] == 202 and ran == [sha] * 4, "unreadable: run again"
     assert original_path.read_bytes() == original_before
     assert (folder / "record.json").read_bytes() == record_before
 
@@ -1971,3 +1970,15 @@ def test_todays_succeeded_job_names_its_solution_and_a_solution_with_no_job_name
     assert jobs.newest_solution_id(sha) == f"sol_{sha[:16]}"
     assert jobs.newest_solution_id(SHAS[1]) is None, "an upload never stored names none, and nothing is made"
     assert not jobs.upload_folder(SHAS[1]).exists()
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

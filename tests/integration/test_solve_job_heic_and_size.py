@@ -21,6 +21,7 @@ Covers, with the sips-made HEIC fixtures in tests/fixtures/ingest (see its READM
 
 from __future__ import annotations
 
+import time
 import hashlib
 from pathlib import Path
 import shutil
@@ -118,7 +119,7 @@ def test_a_tile_grid_heic_decodes_at_its_stored_size_through_the_api(
     assert (asset["width"], asset["height"]) == (width, height)
     sha = hashlib.sha256(body).hexdigest()
 
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     UploadJob.model_validate(job)
     if not GRIDS:
         _assert_refused(job)
@@ -141,7 +142,7 @@ def test_a_grid_heic_irot_stays_display_metadata_and_the_stored_pixels_decode(
     assert asset["displayOrientation"] == {"quarterTurnsClockwise": clockwise, "mirrored": False}
     sha = hashlib.sha256(body).hexdigest()
 
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     UploadJob.model_validate(job)
     if not GRIDS:
         _assert_refused(job)
@@ -260,7 +261,7 @@ def test_a_single_image_heic_with_irot_decodes_its_stored_pixels(client: TestCli
     asset = _upload(client, body)
     assert asset["displayOrientation"] == {"quarterTurnsClockwise": 3, "mirrored": False}
     sha = hashlib.sha256(body).hexdigest()
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     if not GRIDS:
         _assert_refused(job)
         return
@@ -275,7 +276,7 @@ def test_a_tile_grid_heic_of_the_simulated_ci00_frame_calibrates_through_the_api
     _upload(client, body)
     sha = hashlib.sha256(body).hexdigest()
     # The fixture carries no time or place, so the solve is blind, as for a HEIC stripped of its metadata
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     if not GRIDS:
         _assert_refused(job)
         return
@@ -324,3 +325,15 @@ def test_pgm_frames_parse_with_their_own_sizes() -> None:
     # A 16-bit frame's header is refused even when the byte count would fit an 8-bit frame
     with pytest.raises(ingest_jobs.SolveJobError, match="maximum value 65535"):
         ingest_jobs._parse_pgm_frames(b"P5\n4 3\n65535\n" + a.tobytes())
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

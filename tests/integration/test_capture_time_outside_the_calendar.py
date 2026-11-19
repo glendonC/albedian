@@ -171,7 +171,7 @@ def test_no_sentence_states_a_time_for_an_offset_not_applied(
     body = photo(local, offset, gps=True) if reader == "photo" else clip(tmp_path, local, offset)
     receipt = upload(client, body, "image/jpeg" if reader == "photo" else "video/quicktime")
     sha = hashlib.sha256(body).hexdigest()
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     assert job["state"] == "succeeded", job
     solution = client.get(f"/api/ingest/{sha}/solution").json()
     assert "observedAtUTC" not in solution and solution["warnings"][-1] == NO_TIME
@@ -942,3 +942,15 @@ def test_a_test_that_gives_up_on_the_route_ends_what_it_started_and_its_process_
     assert len(logged(calls, "met")) == (case == "a child that never answers")
     assert len(logged(calls, "kid")) == (case == "a child that never answers")
     assert left_running(calls) == []
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

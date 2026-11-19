@@ -1871,6 +1871,44 @@ def test_the_upload_path_records_a_refusal_a_failed_job_and_a_solution(tmp_path:
     assert "2031" not in json.dumps(record) and "30.0" not in json.dumps(record["asset"])
 
 
+class FollowingClient(FakeClient):
+    """A laptop whose solve start answers at once with a queued job, then serves the job's later reads in turn."""
+
+    def __init__(self, ingest: FakeResponse, started: dict[str, Any], reads: list[dict[str, Any]],
+                 solution: dict[str, Any]) -> None:
+        super().__init__(ingest, started, solution)
+        self.reads = list(reads)
+
+    def post(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.calls.append(("post", url))
+        return self.ingest if url == "/api/ingest" else FakeResponse(202, self.job)
+
+    def get(self, url: str) -> FakeResponse:
+        self.calls.append(("get", url))
+        return FakeResponse(200, self.reads.pop(0)) if url.startswith("/api/ingest/jobs/") else FakeResponse(200, self.solution)
+
+
+def test_the_upload_path_follows_a_job_the_start_answers_at_once_to_its_end(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The start answers at once (upload jobs REQ-JOB-7.5): the job is read on its route until it ends, and only
+    then is the solution read."""
+    monkeypatch.setattr(measure, "SOLVE_POLL_SEC", 0.0)
+    photo = next(p for p in load_corpus().photos if p.id == "rp-b-01")
+    path = made_up_jpeg(tmp_path / "photo.jpg")
+    asset = {**MADE_UP_ASSET, "sha256": "a" * 64}
+    stages = [{"stage": "store", "unit": "bytes", "done": 1, "total": 1}]
+    job_id = "job_" + "a" * 32
+    client = FollowingClient(FakeResponse(201, {"sourceAsset": asset, "hints": MADE_UP_HINTS}),
+                             {"id": job_id, "state": "queued", "stages": stages},
+                             [{"id": job_id, "state": "running", "stages": stages},
+                              {"id": job_id, "state": "succeeded", "stages": stages}], made_up_solution())
+    record = measure._upload_and_solve(client, path, photo, {})
+    assert "error" not in record and record["job"]["state"] == "succeeded"
+    assert client.calls == [("post", "/api/ingest"), ("post", f"/api/ingest/{'a' * 64}/solve"),
+                            ("get", f"/api/ingest/jobs/{job_id}"), ("get", f"/api/ingest/jobs/{job_id}"),
+                            ("get", f"/api/ingest/{'a' * 64}/solution")]
+
+
 def test_measure_upload_runs_in_a_store_it_mints_and_removes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     photo = next(p for p in load_corpus().photos if p.id == "rp-b-01")
     (tmp_path / photo.downloadPath).parent.mkdir(parents=True)

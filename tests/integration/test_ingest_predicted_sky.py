@@ -28,6 +28,7 @@ solver fixtures use:
 
 from __future__ import annotations
 
+import time
 from fractions import Fraction
 import hashlib
 import io
@@ -125,7 +126,7 @@ def _upload(client: TestClient, body: bytes, content_type: str = "image/png") ->
 
 
 def _solve(client: TestClient, sha: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     UploadJob.model_validate(job)
     assert job["state"] == "succeeded", job
     assert "error" not in job
@@ -804,3 +805,15 @@ def test_a_photo_from_the_glasses_with_the_moon_is_lined_up_from_its_own_frame(c
     for warning in solution["warnings"]:
         for value in MOON_LEAKS:
             assert value not in warning, (value, warning)
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

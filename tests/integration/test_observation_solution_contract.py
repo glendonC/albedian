@@ -55,6 +55,7 @@ Covers:
 
 from __future__ import annotations
 
+import time
 import copy
 import hashlib
 import io
@@ -3824,7 +3825,7 @@ def test_a_photo_whose_moon_is_one_lit_pixel_keeps_its_predicted_sky(tmp_path: P
                 assert asset["capturedAtUTC"] == MOON_MOMENT and asset["cameraMetadata"]["model"] == META_RAY_BAN_DISPLAY_MODEL
                 # What the upload route mints is what the solve routes take, and nothing else
                 assert re.fullmatch(science_router.SOURCE_ASSET_ID_PATTERN, asset["id"]) and asset["id"] == f"src_{asset['sha256'][:16]}"
-                assert client.post(f"/api/ingest/{asset['sha256']}/solve").json()["state"] == "succeeded"
+                assert _solved(client, asset["sha256"])[1]["state"] == "succeeded"
                 solution = read_solution(store, asset["sha256"])
                 assert solution is not None
                 stored[(width, height, spot)] = solution
@@ -4202,7 +4203,7 @@ def test_a_solution_the_solve_job_stores_parses_as_it_was_stored(tmp_path: Path)
         receipt = client.post("/api/ingest", content=_png(frame), headers={"content-type": "image/png"})
         assert receipt.status_code == 201
         sha = receipt.json()["sourceAsset"]["sha256"]
-        assert client.post(f"/api/ingest/{sha}/solve").json()["state"] == "succeeded"
+        assert _solved(client, sha)[1]["state"] == "succeeded"
         stored = read_solution(store, sha)
     finally:
         app.dependency_overrides.pop(ingest_router.get_ingest_store, None)
@@ -4210,3 +4211,15 @@ def test_a_solution_the_solve_job_stores_parses_as_it_was_stored(tmp_path: Path)
     parsed = contract.parse_observation_solution(stored)
     assert parsed.to_contract_dict() == stored
     assert {f["evidenceClass"] for f in stored["findings"]} == {"observed", "catalog_matched", "predicted"}
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

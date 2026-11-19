@@ -76,7 +76,7 @@ numbers refer to `design.md`. "Beside" names what can run at the same time witho
   - After task 5. The restoration's producer joins the guard when its kinds land.
   - _Requirements: REQ-JOB-6.1 to 6.5_
 
-- [ ] 7. platform-7: the start no longer waits (REQ-JOB-7.5)
+- [x] 7. platform-7: the start no longer waits (REQ-JOB-7.5)
   - Remove the waiting form of the solve start and update the tests that used it.
   - After the web's own lane changes the two calls of `design.md` 3.9.
   - _Requirements: REQ-JOB-7.5_

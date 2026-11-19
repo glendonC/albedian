@@ -136,13 +136,13 @@ def test_a_start_without_waiting_answers_202_then_joins_with_200_and_the_job_is_
     assert fake.runs == [job["id"]]
 
 
-def test_a_start_that_waits_answers_201_with_the_ended_job_and_200_with_the_current_one(setup: dict[str, Any]) -> None:
+def test_a_start_followed_to_its_end_then_answers_200_with_the_current_job(setup: dict[str, Any]) -> None:
     client, sha, fake = setup["client"], setup["shas"][0], setup["fake"]
     fake.release.set()
-    ran = client.post(f"/api/ingest/{sha}/solve")
-    assert ran.status_code == 201 and ran.json()["state"] == "succeeded"
+    status, ran = _solved(client, sha)
+    assert status == 202 and ran["state"] == "succeeded"
     again = client.post(f"/api/ingest/{sha}/solve")
-    assert (again.status_code, again.json()) == (200, ran.json())
+    assert (again.status_code, again.json()) == (200, ran)
 
 
 def test_a_start_for_a_file_never_stored_is_404_and_makes_no_job(setup: dict[str, Any]) -> None:
@@ -316,7 +316,7 @@ def test_a_decoder_failure_is_stored_as_the_kinds_fixed_sentence(
         raise ingest_jobs.SolveJobError(f"The decoder could not read the file: {original}: Invalid data")
 
     monkeypatch.setattr(ingest_jobs, "_decode_luma_frames", decode_fails)
-    ended = client.post(f"/api/ingest/{sha}/solve").json()
+    ended = _solved(client, sha)[1]
     assert (ended["state"], ended["error"]) == ("failed", "The decoder could not read the file.")
     assert original not in json.dumps(ended)
 
@@ -328,7 +328,7 @@ def test_a_solve_past_its_whole_bound_says_it_stopped_at_its_time_limit(
     client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
     sha = hashlib.sha256(body).hexdigest()
     monkeypatch.setattr(ingest_jobs, "SOLVE_JOB_TIME_LIMIT_SEC", 0.0)
-    ended = client.post(f"/api/ingest/{sha}/solve").json()
+    ended = _solved(client, sha)[1]
     assert (ended["state"], ended["error"]) == ("failed", "The solve stopped at its time limit.")
     assert client.get(f"/api/ingest/{sha}/solution").status_code == 404
 
@@ -345,7 +345,7 @@ def test_a_solution_that_cannot_be_written_says_the_result_could_not_be_stored_a
         raise OSError(28, "No space left on device")
 
     monkeypatch.setattr(ingest_jobs, "_write_partial", full_disk)
-    ended = client.post(f"/api/ingest/{sha}/solve").json()
+    ended = _solved(client, sha)[1]
     assert (ended["state"], ended["error"]) == ("failed", "The job's result could not be stored.")
     assert not (store.folder(sha) / "solutions" / f"{ended['id']}.json").exists()
     assert [p.name for p in (Path(store.root) / ".partial").iterdir() if p.name.startswith(ended["id"])] == []
@@ -396,7 +396,7 @@ def test_only_the_first_phone_search_of_a_tagged_upload_with_a_35mm_focal_length
     monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
     monkeypatch.setattr(ingest_jobs, "_solve_chain", three_searches)
     monkeypatch.setattr(job_runner.JobContext, "pass_", spy)
-    ended = client.post(f"/api/ingest/{sha}/solve").json()
+    ended = _solved(client, sha)[1]
     assert ended["state"] == "succeeded", ended.get("error")
     assert told == list(enumerate(labels, start=1))
 
@@ -417,24 +417,9 @@ def test_the_search_keeps_its_own_bound_and_never_runs_past_what_is_left_of_its_
 
     monkeypatch.setattr(ingest_jobs, "SOLVE_JOB_TIME_LIMIT_SEC", job_bound)
     monkeypatch.setattr(job_runner.SlotWorker, "call", spy)
-    assert client.post(f"/api/ingest/{sha}/solve").json()["state"] == "succeeded"
+    assert _solved(client, sha)[1]["state"] == "succeeded"
     (timeout,) = asked
     assert search_bound - 30.0 < timeout <= search_bound
-
-
-def test_a_start_that_waits_and_joins_an_active_job_waits_for_it(setup: dict[str, Any]) -> None:
-    client, sha, fake = setup["client"], setup["shas"][0], setup["fake"]
-    first = client.post(f"/api/ingest/{sha}/solve?wait=false").json()
-    assert fake.entered.wait(BOUND_S)
-    answers: list[Any] = []
-    waiter = threading.Thread(target=lambda: answers.append(client.post(f"/api/ingest/{sha}/solve")))
-    waiter.start()
-    waiter.join(0.5)
-    assert waiter.is_alive() and answers == [], "the waiting start waits for the job it joined"
-    fake.release.set()
-    waiter.join(BOUND_S)
-    (answer,) = answers
-    assert answer.status_code == 201 and answer.json()["id"] == first["id"] and answer.json()["state"] == "succeeded"
 
 
 # ---- platform-5b: the solve job's whole bound, from measured real cases ----
@@ -495,3 +480,41 @@ def test_an_on_transition_that_raises_never_stops_the_job_and_its_error_reaches_
         ingest_jobs.run_solve_job(store, sha, on_transition=refuse)
     ended = JobStore(store).newest_solve(sha)
     assert ended["state"] == "succeeded", "the job itself ran to its end"
+
+
+# ---- platform-7: the start no longer waits (REQ-JOB-7.5) ----
+
+
+def test_a_start_answers_at_once_however_it_is_asked(setup: dict[str, Any]) -> None:
+    client, (sha_a, sha_b), fake = setup["client"], setup["shas"], setup["fake"]
+    for query in ("", "?wait=true", "?wait=false"):
+        sha = sha_a if query != "?wait=true" else sha_b
+        answers: list[Any] = []
+        start = threading.Thread(target=lambda: answers.append(client.post(f"/api/ingest/{sha}/solve{query}")),
+                                 daemon=True)
+        start.start()
+        start.join(5.0)
+        waited = start.is_alive()
+        if waited:
+            fake.release.set()  # let the held start end, so the test fails by its assertion and does not hang
+            start.join(BOUND_S)
+        assert not waited, f"the start {query or '(no query)'} waited for the job"
+        (answer,) = answers
+        assert answer.status_code in (200, 202) and answer.json()["state"] in ("queued", "running"), (query, answer.text)
+    assert fake.entered.wait(BOUND_S), "the work runs on after the answer"
+    openapi = client.get("/openapi.json").json()
+    parameters = openapi["paths"]["/api/ingest/{sha256}/solve"]["post"].get("parameters", [])
+    assert [p["name"] for p in parameters] == ["sha256"], "the start takes no wait"
+    fake.release.set()
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

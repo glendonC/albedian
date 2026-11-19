@@ -480,11 +480,15 @@ class Runner:
         had ended (unchanged), "elsewhere" for one another process runs; None when no such job is stored."""
         with self._cond:
             job = self._jobs.get(job_id)
-            if job is not None and job.record["state"] == "queued":
+            if job is not None and job.record["state"] == "queued" and not job.stop.is_set():
                 queue = self._queues[job.kind.group]
                 if job in queue:
                     queue.remove(job)
-                job.record = {**job.record, "state": "canceled", "finishedAtUTC": _later(job.record["createdAtUTC"])}
+                # The slot never runs it now; its record is written before it is served (_end)
+                job.stop_cause = "cancel"
+                job.stop.set()
+                canceled = {k: v for k, v in job.record.items() if k != "queueAhead"}
+                canceled = {**canceled, "state": "canceled", "finishedAtUTC": _later(job.record["createdAtUTC"])}
                 canceled_queued = True
             elif job is not None and job.record["state"] == "running":
                 canceled_queued = False
@@ -496,13 +500,13 @@ class Runner:
             elif job is not None:
                 # Ended in this process a moment ago, its last write on its way
                 return self._served(job), "finished"
-            if job is not None:
+            if job is not None and not canceled_queued:
                 answer = self._served(job)
         if job is not None:
             if canceled_queued:
-                self._write(job, force=True)
+                self._end(job, canceled)
                 self._finish(job)
-                return answer, "canceled"
+                return self._served(job), "canceled"
             self._write(job, force=True, quiet=True)
             return answer, "requested"
         stored = self._stored(job_id)
@@ -545,7 +549,7 @@ class Runner:
     def _run(self, job: _Job) -> None:
         kind = job.kind
         with self._cond:
-            if job.record["state"] != "queued":
+            if job.record["state"] != "queued" or job.stop.is_set():
                 return
             job.record = {**job.record, "state": "running", "startedAtUTC": _later(job.record["createdAtUTC"]),
                           "producer": kind.producer.as_record()}
@@ -571,22 +575,31 @@ class Runner:
             # The server is stopping: the record stays as it was, and the next start's sweep says it was interrupted
             self._finish(job, keep_results=False)
             return
-        with self._cond:
-            before, job.record = job.record, final
         try:
-            self._write(job, force=True)
+            self._end(job, final)
         except (OSError, ValidationError, ValueError):
             LOG.error("job record could not be written")
             if final["state"] in ("succeeded", "rejected"):
-                with self._cond:
-                    # From the record as it ran: an ending that names no result
-                    job.record = before
-                    job.record = self._failed(job, kind.store_failure_reason)
+                # From the record as it ran, which the live one still is: an ending that names no result
                 try:
-                    self._write(job, force=True)
+                    self._end(job, self._failed(job, kind.store_failure_reason))
                 except (OSError, ValidationError, ValueError):
                     LOG.error("job record could not be written")
         self._finish(job, keep_results=job.record["state"] in ("succeeded", "rejected"))
+
+    def _end(self, job: _Job, record: dict[str, Any]) -> None:
+        """Writes the record a job ends with, then serves it: the write is the commit point, so a reader served an
+        ended record finds what it names already stored (design 3.1). A record already ended is never replaced."""
+        with job.write_lock:
+            try:
+                self.store.write_record(record)
+            except Ended:
+                pass
+            with self._cond:
+                job.record = record
+                told = self._served(job) if job.listeners else None
+                for listener in job.listeners:
+                    _tell(listener, told)
 
     def _deadline_passed(self, job: _Job) -> None:
         with self._cond:

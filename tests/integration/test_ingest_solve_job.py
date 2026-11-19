@@ -13,6 +13,7 @@ Covers:
 
 from __future__ import annotations
 
+import time
 import hashlib
 import io
 import math
@@ -212,7 +213,7 @@ def test_ingest_solve_job_caps_its_candidates_at_the_14_brightest_detections(cli
     png_bytes = _png_bytes_from_luma(frame)
     sha = hashlib.sha256(png_bytes).hexdigest()
     assert client.post("/api/ingest", content=png_bytes, headers={"content-type": "image/png"}).status_code == 201
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     assert job["state"] == "succeeded"
     with Image.open(io.BytesIO(png_bytes)) as image:
         job_luma = _to_luma_2d(np.asarray(image.convert("RGB"), dtype=np.uint8).astype(np.float64))
@@ -237,9 +238,8 @@ def test_ingest_solve_job_runs_all_stages_with_real_denominators_on_a_calibrated
     assert "solveJobId" not in receipt
     assert client.get(f"/api/ingest/{sha}/solution").status_code == 404
 
-    solve_resp = client.post(f"/api/ingest/{sha}/solve")
-    assert solve_resp.status_code == 201, solve_resp.text
-    job = solve_resp.json()
+    status, job = _solved(client, sha)
+    assert status == 202, job
     UploadJob.model_validate(job)
     # The runner's own id: the hash's first 16 hex characters, then 16 of its own
     assert job["id"].startswith(job_id_for_sha256(sha)) and len(job["id"]) == len("job_") + 32
@@ -309,8 +309,8 @@ def test_ingest_solve_job_preserves_recorded_exif_time_and_gps_on_solution(clien
     upload_resp = client.post("/api/ingest", content=png_bytes, headers={"content-type": "image/png"})
     assert upload_resp.status_code == 201, upload_resp.text
 
-    solve_resp = client.post(f"/api/ingest/{sha}/solve")
-    assert solve_resp.status_code == 201, solve_resp.text
+    status, _ = _solved(client, sha)
+    assert status == 202
     solution = client.get(f"/api/ingest/{sha}/solution").json()
     assert solution["status"] == "calibrated"
     assert solution["observedAtUTC"] == "2030-01-01T02:00:00Z"
@@ -324,9 +324,8 @@ def test_ingest_solve_job_handles_too_few_sources_and_missing_hashes_honestly(cl
     sha = hashlib.sha256(blank).hexdigest()
     assert client.post("/api/ingest", content=blank, headers={"content-type": "image/png"}).status_code == 201
 
-    solve_resp = client.post(f"/api/ingest/{sha}/solve")
-    assert solve_resp.status_code == 201
-    job = solve_resp.json()
+    status, job = _solved(client, sha)
+    assert status == 202
     UploadJob.model_validate(job)
     stages = {entry["stage"]: entry for entry in job["stages"]}
     # Too few sources for a triplet: the plate solver's one step, in its own pass
@@ -441,9 +440,8 @@ def test_ingest_solve_job_calibrates_uploaded_phone_photo_against_g12_tiles(
     IngestReceipt.model_validate(receipt)
     assert ("cameraMetadata" in receipt["sourceAsset"]) == include_camera_exif
 
-    solve_resp = client.post(f"/api/ingest/{sha}/solve")
-    assert solve_resp.status_code == 201, solve_resp.text
-    job = solve_resp.json()
+    status, job = _solved(client, sha)
+    assert status == 202, job
     UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
 
@@ -511,9 +509,8 @@ def test_pbt_solve_job_with_or_without_camera_metadata_preserves_stage_denominat
             assert resp.status_code == 201
             receipt = resp.json()
             assert ("cameraMetadata" in receipt["sourceAsset"]) == has_camera_meta
-            solve_resp = test_client.post(f"/api/ingest/{sha}/solve")
-            assert solve_resp.status_code == 201
-            job = solve_resp.json()
+            status, job = _solved(test_client, sha)
+            assert status == 202
             UploadJob.model_validate(job)
             stages = {s["stage"]: s for s in job["stages"]}
             sol = test_client.get(f"/api/ingest/{sha}/solution").json()
@@ -534,3 +531,13 @@ def test_pbt_solve_job_with_or_without_camera_metadata_preserves_stage_denominat
             app.dependency_overrides.pop(ingest_router.get_ingest_store, None)
 
 
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

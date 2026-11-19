@@ -18,7 +18,7 @@ only the contract's closed sentences and the record's own keys, never a value of
 record. `GET` of the same path returns the stored bytes, once checked against the contract and the address.
 
 The solve is a job of the upload job runner (services/ingest/runner.py): `POST /api/ingest/{sha256}/solve`
-starts, joins or answers it (at once with `wait=false`), `GET /api/ingest/jobs/{job_id}` serves any job, live while
+starts, joins or answers it at once, `GET /api/ingest/jobs/{job_id}` serves any job, live while
 this server runs it, and `POST /api/ingest/jobs/{job_id}/cancel` stops one. Job records are read through the job
 store (services/ingest/job_store.py), checked against the contract: a stored record that fails it is never served,
 and the job route answers 409 with one plain sentence. A receipt names the newest solve attempt it can read. The
@@ -36,7 +36,7 @@ import re
 from typing import Any, Optional
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
@@ -307,27 +307,18 @@ def get_ingest_original(sha256: str = _sha256_path(), store: IngestStore = Depen
     )
 
 
-@router.post("/api/ingest/{sha256}/solve", status_code=201)
-async def start_ingest_solve_job(
-    sha256: str = _sha256_path(),
-    wait: bool = Query(True, description="false: answer at once with the job (202 new, 200 joined or current)"),
-    store: IngestStore = Depends(get_ingest_store),
+@router.post("/api/ingest/{sha256}/solve", status_code=202)
+def start_ingest_solve_job(
+    sha256: str = _sha256_path(), store: IngestStore = Depends(get_ingest_store)
 ) -> JSONResponse:
     """Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate
-    denominators. With `wait=false` it answers at once: 202 with a new job, 200 with the active job it joined or
-    the current succeeded one. Without it, it waits for the job to end and answers 201, or 200 with the current
-    succeeded job (until the web follows jobs). Leaving early never cancels the job."""
-    runner = runner_for(store)
+    denominators. It answers at once: 202 with a new job, 200 with the active job it joined or the current succeeded
+    one. Follow the job at `GET /api/ingest/jobs/{job_id}`."""
     try:
-        job, created = runner.start(sha256, "solve")
+        job, created = runner_for(store).start(sha256, "solve")
     except NoUpload:
         raise HTTPException(status_code=404, detail="no file with that hash is stored") from None
-    if not wait:
-        return JSONResponse(job, status_code=202 if created else 200)
-    if not created and job["state"] not in ("queued", "running"):
-        return JSONResponse(job, status_code=200)
-    ended = await run_in_threadpool(runner.wait, job["id"])
-    return JSONResponse(ended, status_code=201)
+    return JSONResponse(job, status_code=202 if created else 200)
 
 
 def _job_or_404(store: IngestStore, job_id: str, read: Any) -> Any:

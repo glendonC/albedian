@@ -28,6 +28,7 @@ at run time from the point under the Moon (never written):
 
 from __future__ import annotations
 
+import time
 from dataclasses import FrozenInstanceError, dataclass, replace
 import hashlib
 import math
@@ -1256,7 +1257,7 @@ def test_an_uploaded_photo_of_the_moon_over_a_skyline_is_lined_up_through_the_jo
                            headers={"content-type": "image/png", "x-albedian-filename": "synthetic-horizon.png"})
         assert resp.status_code == 201, resp.text
         sha = hashlib.sha256(body).hexdigest()
-        job = client.post(f"/api/ingest/{sha}/solve").json()
+        job = _solved(client, sha)[1]
         assert job["state"] == "succeeded", job
         assert [stage["stage"] for stage in job["stages"]][:4] == ["store", "decode", "detect", "solve"]
         solution = client.get(f"/api/ingest/{sha}/solution").json()
@@ -1428,3 +1429,14 @@ def test_every_horizon_door_checks_its_place_at_each_edge(door: str, lat: float,
         return
     call(lat, lon)
 
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

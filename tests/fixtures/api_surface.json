@@ -573,7 +573,7 @@
       "/api/ingest/{sha256}/solve": {
         "post": {
           "summary": "Start Ingest Solve Job",
-          "description": "Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate\ndenominators. With `wait=false` it answers at once: 202 with a new job, 200 with the active job it joined or\nthe current succeeded one. Without it, it waits for the job to end and answers 201, or 200 with the current\nsucceeded job (until the web follows jobs). Leaving early never cancels the job.",
+          "description": "Start, join or return the solve job of a stored upload, which reports real byte, frame and candidate\ndenominators. It answers at once: 202 with a new job, 200 with the active job it joined or the current succeeded\none. Follow the job at `GET /api/ingest/jobs/{job_id}`.",
           "operationId": "start_ingest_solve_job_api_ingest__sha256__solve_post",
           "parameters": [
             {
@@ -587,22 +587,10 @@
                 "title": "Sha256"
               },
               "description": "The file's SHA-256, 64 lowercase hex characters"
-            },
-            {
-              "name": "wait",
-              "in": "query",
-              "required": false,
-              "schema": {
-                "type": "boolean",
-                "description": "false: answer at once with the job (202 new, 200 joined or current)",
-                "default": true,
-                "title": "Wait"
-              },
-              "description": "false: answer at once with the job (202 new, 200 joined or current)"
             }
           ],
           "responses": {
-            "201": {
+            "202": {
               "description": "Successful Response",
               "content": {
                 "application/json": {

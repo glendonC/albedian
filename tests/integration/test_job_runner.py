@@ -1127,3 +1127,39 @@ def test_while_a_newer_solve_runs_the_last_good_solution_is_still_served(world: 
     script.release.set()
     assert runner.wait(newer["id"], BOUND_S)["state"] == "succeeded"
     assert store.newest_solve(sha)["id"] == newer["id"]
+
+
+# ---- platform-7 found: the live record ended before its commit was on disk ----
+
+
+def test_a_read_never_serves_an_ended_record_before_it_is_written(
+        world: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """The commit point is the write of the ending record: a reader that is served `succeeded` and then reads the
+    solution must find it, so the live record ends only once the store has it. The ending write is slowed here so
+    any earlier serving of it is seen."""
+    script = Script()
+    script.release.set()
+    world["kinds"]["solve"] = solve_kind(script)
+    real = JobStore.write_record
+    writing = threading.Event()
+
+    def slow_ending(store: JobStore, payload: dict[str, Any]) -> dict[str, Any]:
+        if payload["state"] not in ("queued", "running"):
+            writing.set()
+            time.sleep(0.5)
+        return real(store, payload)
+
+    monkeypatch.setattr(JobStore, "write_record", slow_ending)
+    runner, sha = world["runner"](), world["shas"][0]
+    record, _ = runner.start(sha, "solve")
+    assert writing.wait(BOUND_S)
+    deadline = time.monotonic() + BOUND_S
+    while time.monotonic() < deadline:
+        served = runner.get(record["id"])
+        if served["state"] == "succeeded":
+            assert world["store"].read_solution(sha) is not None, "succeeded was served before its commit was on disk"
+            assert world["store"].read_job(record["id"])["state"] == "succeeded"
+            break
+        time.sleep(0.01)
+    else:
+        raise AssertionError("the job never ended")

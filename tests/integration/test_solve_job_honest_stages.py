@@ -16,6 +16,7 @@ Covers:
 
 from __future__ import annotations
 
+import time
 import hashlib
 import io
 import json
@@ -77,7 +78,7 @@ def _upload(client: TestClient, body: bytes, content_type: str) -> str:
 
 def test_black_frame_records_no_verify_step(client: TestClient) -> None:
     sha = _upload(client, _png(np.zeros((48, 64))), "image/png")
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     UploadJob.model_validate(job)
     assert job["state"] == "succeeded"
     stages = {entry["stage"]: entry for entry in job["stages"]}
@@ -164,7 +165,7 @@ def test_a_decoder_message_is_stored_as_its_fixed_sentence_without_the_path(
 
 def test_job_and_solution_files_are_owner_only(client: TestClient, store: IngestStore) -> None:
     sha = _upload(client, _png(_starfield()), "image/png")
-    job = client.post(f"/api/ingest/{sha}/solve").json()
+    job = _solved(client, sha)[1]
     assert job["state"] == "succeeded"
     folder = store.folder(sha)
     # The runner's records: read-only once the job has ended, as its solution is
@@ -173,3 +174,15 @@ def test_job_and_solution_files_are_owner_only(client: TestClient, store: Ingest
     # Today's two files are never written: run_solve_job is the runner's own job, and answers the current one
     assert ingest_jobs.run_solve_job(store, sha) == job
     assert not (folder / "job.json").exists() and not (folder / "solution.json").exists()
+
+
+def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
+    """Starts the solve of `sha` as the web does and follows its job route until the job ends (the start no longer
+    waits, upload jobs REQ-JOB-7.5): the start's status and the job as it ended."""
+    started = client.post(f"/api/ingest/{sha}/solve")
+    job = started.json()
+    deadline = time.monotonic() + 300.0
+    while isinstance(job, dict) and job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    return started.status_code, job

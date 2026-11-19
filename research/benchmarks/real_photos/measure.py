@@ -1,8 +1,9 @@
 """Every corpus photo through the real upload path, judged against the independent check, with two diagnostics.
 
 The product path, for each photo: `POST /api/ingest` with the file's bytes on a TestClient of `services.api.app`, with
-a temporary `IngestStore` under this run's folder (never `data/`), then `POST /api/ingest/{sha256}/solve` and
-`GET /api/ingest/{sha256}/solution`, exactly as an upload in the app goes (and as the lead's `real_case.py` runs one
+a temporary `IngestStore` under this run's folder (never `data/`), then `POST /api/ingest/{sha256}/solve`, which
+answers at once, `GET /api/ingest/jobs/{id}` until the job ends, and `GET /api/ingest/{sha256}/solution`, exactly as an
+upload in the app goes (and as the lead's `real_case.py` runs one
 file). The record keeps what the asset carries as booleans and labels (never a time, an offset or a place), the
 job's state, stages and seconds, the solution's status, findings per evidence class, quality numbers, solver and
 warnings, and for each catalog_matched finding its measured pixel and the star it names, so the claim can be judged.
@@ -65,6 +66,10 @@ RANKING_V_LIMIT = 8.0
 RANKING_EPOCH_JYEAR = 2026.0
 RANKING_POOL, RANKED_KEPT = 65, 85  # solve_phone_photo: max_pool=85, then the first 65 for the search
 BRIGHTEST_SHOWN = 10
+# How often a solve job is read while it runs, and for how long at most: past the solve job's own whole bound
+# (services/ingest/jobs.py SOLVE_JOB_TIME_LIMIT_SEC, 420 s) with room for the queue ahead of it [proposed]
+SOLVE_POLL_SEC = 0.05
+SOLVE_FOLLOW_BOUND_SEC = 1800.0
 
 
 def run_folder(label: str) -> Path:
@@ -289,6 +294,11 @@ def _upload_and_solve(client: Any, path: Path, photo: Photo, record: dict[str, A
     sha = asset["sha256"]
     solve_started = time.monotonic()
     job = client.post(f"/api/ingest/{sha}/solve").json()
+    # The start answers at once (upload jobs REQ-JOB-7.5): the job is read on its route until it ends
+    follow_until = solve_started + SOLVE_FOLLOW_BOUND_SEC
+    while job.get("state") in ("queued", "running") and time.monotonic() < follow_until:
+        time.sleep(SOLVE_POLL_SEC)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
     solve_s = time.monotonic() - solve_started
     record["job"] = {
         "state": job.get("state"),
