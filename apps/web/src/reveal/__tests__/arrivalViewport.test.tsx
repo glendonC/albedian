@@ -74,6 +74,20 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
 });
+/** Animation frames queued instead of run, so a test flies the flight when it says (the hook's own tests time it). */
+function queueFrames(): FrameRequestCallback[] {
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => (frames.push(cb), frames.length));
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  return frames;
+}
+/** Runs the queued frames past the flight's end. */
+function flyAll(frames: FrameRequestCallback[]) {
+  act(() => {
+    while (frames.length > 0) frames.shift()!(performance.now() + 60_000);
+  });
+}
+
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
@@ -462,7 +476,11 @@ describe('the viewport shows the approved star card over the photo, above phone 
     const bar = q('[data-testid="ask-bar"]')!;
     expect(bar.className).toBe('ask-bar is-phone');
     expect([...bar.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Back to Moment']);
+    const frames = queueFrames();
     act(() => (bar.querySelector('button') as HTMLButtonElement).click());
+    // The flight flies back first (the motion record), then the moment is restored
+    expect(sessions.at(-1)!.spatialView?.mode).not.toBe('source_2d');
+    flyAll(frames);
     expect(sessions.at(-1)!.spatialView?.mode).toBe('source_2d');
   });
 
@@ -575,11 +593,15 @@ describe('the viewport shows the approved star card over the photo, above phone 
         current = update(current);
       };
       open(current, { setSession });
+      const frames = queueFrames();
       if (way === 'button') act(() => (q('.ask-bar > button.look-main') as HTMLButtonElement).click());
       if (way === 'esc') act(() => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
       });
       if (way === 'pill') act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === 'Your photo')!).click());
+      // The flight flies back first (the motion record), then the exact moment
+      expect(current.spatialView.mode, way).not.toBe('source_2d');
+      flyAll(frames);
       expect(current.spatialView.mode, way).toBe('source_2d');
       expect(current.selectedFindingId, way).toBe(picked.selectedFindingId);
       expect(current.lastStatusBanner, way).toMatch(/^Returned to Moment/);

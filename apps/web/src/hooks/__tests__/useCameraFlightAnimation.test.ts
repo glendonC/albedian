@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import type { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { executeVoiceOrTextCommand } from '@albedian/observation';
+import { dispatchAlbedianAction, executeVoiceOrTextCommand, returnCheckpointOf } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FlightAndRestoreHud } from '../../components/FlightAndRestoreHud.js';
@@ -183,5 +183,121 @@ describe('the flight keeps the motion record: two halves of 750 ms on NASA\'s Ey
     const states = flyThrough(base, target.id, queueFrames(), base, [375, 1125, 60_000]);
     expect(states[1]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
     expect(states[2]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Go there (A = 0)", Back to Moment): the second half reversed (750 ms, the
+// camera from where it is back to where the flight began), then the first half reversed (750 ms, the registered sky
+// back to the photo), each on the flight's own ease-out quart, and only then the reducer's restore of the
+// CameraCheckpoint, unchanged; under reduced motion the restore at once, with no travel.
+describe('Back to Moment flies the flight backwards, then restores the checkpoint', () => {
+  /** There after Go there, through the reducer (space.enter saves the moment first). */
+  const thereSession = (reducedMotion: boolean): ObservationSession => {
+    const picked = { ...base, reducedMotion, selectedFindingId: target.id } as ObservationSession;
+    const out = dispatchAlbedianAction(picked, {
+      type: 'space.enter',
+      requestId: 'test-go-there',
+      expectedViewRevision: picked.viewRevision,
+      findingId: target.id,
+      distancePolicy: 'measured_or_estimated',
+    });
+    expect(out.outcome.status).toBe('completed');
+    return { ...out.session, spatialView: { ...out.session.spatialView, lockedAnchorNdc: [0.2, -0.1] } } as ObservationSession;
+  };
+
+  function returnThrough(session: ObservationSession, frames: FrameRequestCallback[], offsets: number[], calls = 1) {
+    const updates: Update[] = [];
+    const restored: number[] = [];
+    let back: ((restore: () => void) => void) | null = null;
+    const Probe = () => {
+      back = useCameraFlightAnimation(session, ((u: Update) => updates.push(u)) as React.Dispatch<React.SetStateAction<ObservationSession>>).animateReturnToMoment;
+      return null;
+    };
+    renderToString(createElement(Probe));
+    for (let i = 0; i < calls; i++) back!(() => restored.push(updates.length));
+    const start = performance.now();
+    const seen: Array<{ states: ObservationSession[]; restored: number }> = [];
+    const apply = () => {
+      const states: ObservationSession[] = [];
+      updates.reduce<ObservationSession>((s, u) => {
+        const next = typeof u === 'function' ? u(s) : u;
+        states.push(next);
+        return next;
+      }, session);
+      return states;
+    };
+    seen.push({ states: apply(), restored: restored.length });
+    for (const ms of offsets) {
+      const next = frames.shift();
+      if (next) next(start + ms);
+      seen.push({ states: apply(), restored: restored.length });
+    }
+    return { seen, restored, frames };
+  }
+
+  it('restores at once under reduced motion, with no travel', () => {
+    const frames = queueFrames();
+    const { seen, restored } = returnThrough(thereSession(true), frames, []);
+    expect(restored).toEqual([0]);
+    expect(seen[0]!.states).toHaveLength(0);
+    expect(frames).toHaveLength(0);
+  });
+
+  it('flies the second half back, then the first, and restores only at the end, once', () => {
+    const there = thereSession(false);
+    const home = returnCheckpointOf(there)!.spatialView.observerOriginParsec;
+    const from = there.spatialView.observerOriginParsec;
+    const { seen, restored } = returnThrough(there, queueFrames(), [300, 1200, 1499, 1500]);
+    // The first frame at once: the second half at its start, the camera where it is
+    const first = seen[0]!.states.at(-1)!;
+    expect(first.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
+    expect(first.spatialView.transitionProgress).toBe(1);
+    expect(first.spatialView.observerOriginParsec).toEqual(from);
+    // 300 ms: the camera on its way back, eased
+    const b = seen[1]!.states.at(-1)!;
+    expect(b.spatialView.transitionPhase).toBe('phase_b_sky_to_space');
+    expect(b.machines.navigation).toBe('space');
+    expect(b.spatialView.transitionProgress).toBeCloseTo(1 - flightEase(300 / FLIGHT_HALF_MS), 3);
+    const share = distancePc(from, b.spatialView.observerOriginParsec) / distancePc(from, home);
+    expect(share).toBeCloseTo(flightEase(300 / FLIGHT_HALF_MS), 3);
+    // 1200 ms: back at the flight's start, the registered sky going back to the photo
+    const a = seen[2]!.states.at(-1)!;
+    expect(a.spatialView.transitionPhase).toBe('phase_a_photo_to_sky');
+    expect(a.spatialView.mode).toBe('registered_sky');
+    expect(a.machines.navigation).toBe('sky_registered');
+    expect(a.spatialView.observerOriginParsec).toEqual(home);
+    expect(a.spatialView.lockedAnchorNdc).toEqual([0.2, -0.1]);
+    expect(a.spatialView.transitionProgress).toBeCloseTo(1 - flightEase((1200 - FLIGHT_HALF_MS) / FLIGHT_HALF_MS), 3);
+    // Not restored before both halves; restored once at 1500 ms
+    expect(seen.slice(0, 4).map((x) => x.restored)).toEqual([0, 0, 0, 0]);
+    expect(seen[4]!.restored).toBe(1);
+    expect(restored).toHaveLength(1);
+  });
+
+  it('ignores a second press while it flies back', () => {
+    const frames = queueFrames();
+    const { seen, restored } = returnThrough(thereSession(false), frames, [300, 1200, 1500], 2);
+    // The second press made no frame of its own
+    expect(seen[0]!.states).toHaveLength(1);
+    expect(restored).toHaveLength(1);
+  });
+
+  it('stops a flight still on its way there before flying back', () => {
+    const frames = queueFrames();
+    const cancel = vi.mocked(window.cancelAnimationFrame);
+    let fly: ((id: string) => void) | null = null;
+    const There = () => {
+      fly = useCameraFlightAnimation({ ...base, reducedMotion: false }, (() => {}) as React.Dispatch<React.SetStateAction<ObservationSession>>)
+        .animatePhaseAToPhaseBSpaceFlight;
+      return null;
+    };
+    renderToString(createElement(There));
+    fly!(target.id);
+    const pending = frames.length;
+    expect(pending).toBeGreaterThan(0);
+    const back = returnThrough(thereSession(false), frames, []);
+    expect(cancel).toHaveBeenCalledWith(pending);
+    while (back.frames.length > 0) back.frames.shift()!(performance.now() + 60_000);
+    expect(back.restored).toHaveLength(1);
   });
 });

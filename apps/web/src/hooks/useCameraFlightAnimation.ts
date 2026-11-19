@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { ObservationSession } from '@albedian/contracts';
 import { resolveFindingParsecPosition } from '@albedian/camera-rig';
-import { arrivalDistanceText, computeStarAnchorNdc, flightEndOrigin } from '@albedian/observation';
+import { arrivalDistanceText, computeStarAnchorNdc, flightEndOrigin, returnCheckpointOf } from '@albedian/observation';
 import { MOTION_TOKENS } from '@albedian/design-system';
 
 /**
@@ -13,6 +13,12 @@ export const FLIGHT_HALF_MS = MOTION_TOKENS.cameraHalfMs;
 
 /** Both halves ease as NASA's Eyes' camera does: 1 - (1 - t)^4, an ease-out quart, clamped to the half. */
 export const flightEase = (t: number): number => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
+
+/**
+ * The one camera flight on screen, there or back, whichever hook started it: the app's flight there and the reveal's
+ * return share the camera, so a new one stops the one before (a press of Back to Moment while still flying there).
+ */
+const camera: { raf: number | null; returning: boolean } = { raf: null, returning: false };
 
 /**
  * Smooth 60fps `requestAnimationFrame` camera flight hook for Phase A (off-axis anchor lock)
@@ -28,9 +34,17 @@ export function useCameraFlightAnimation(
     return () => {
       if (flightRafRef.current) {
         window.cancelAnimationFrame(flightRafRef.current);
+        if (camera.raf === flightRafRef.current) {
+          camera.raf = null;
+          camera.returning = false;
+        }
       }
     };
   }, []);
+  const frame = (step: FrameRequestCallback) => {
+    flightRafRef.current = window.requestAnimationFrame(step);
+    camera.raf = flightRafRef.current;
+  };
 
   const animatePhaseAToPhaseBSpaceFlight = useCallback(
     (targetFindingId: string) => {
@@ -43,9 +57,9 @@ export function useCameraFlightAnimation(
       const targetParsec = resolveFindingParsecPosition(target);
       if (!targetParsec) return;
 
-      if (flightRafRef.current) {
-        window.cancelAnimationFrame(flightRafRef.current);
-      }
+      if (camera.raf) window.cancelAnimationFrame(camera.raf);
+      camera.raf = null;
+      camera.returning = false;
 
       // One light year short of the star, on the line from where the camera is now
       const startOrigin = [...session.spatialView.observerOriginParsec] as [number, number, number];
@@ -107,7 +121,7 @@ export function useCameraFlightAnimation(
             },
             lastStatusBanner: `Phase A: registering ${target.title} against the calibrated sky…`,
           }));
-          flightRafRef.current = window.requestAnimationFrame(step);
+          frame(step);
         } else if (elapsed < totalDurationMs) {
           const pB = Math.min(1, (elapsed - phaseADurationMs) / phaseBDurationMs);
           const easeB = flightEase(pB);
@@ -140,7 +154,7 @@ export function useCameraFlightAnimation(
             },
             lastStatusBanner: `Phase B: flying toward ${target.title} through catalog geometry…`,
           }));
-          flightRafRef.current = window.requestAnimationFrame(step);
+          frame(step);
         } else {
           setSession((prev) => ({
             ...prev,
@@ -158,6 +172,7 @@ export function useCameraFlightAnimation(
             lastStatusBanner: `Catalog Geometry · Distance Estimates: ${arrival} from ${target.title}.`,
           }));
           flightRafRef.current = null;
+          camera.raf = null;
         }
       };
 
@@ -168,5 +183,76 @@ export function useCameraFlightAnimation(
     [session, setSession]
   );
 
-  return { animatePhaseAToPhaseBSpaceFlight };
+  /**
+   * Back to Moment (the motion record, "Go there", Back to Moment): the second half backwards, the camera from where it
+   * is to where the flight began (the moment's own camera), then the first half backwards, the registered sky back to
+   * the photo, each for the camera half on the same ease-out quart; then `restore`, the reducer's source.return, which
+   * restores the CameraCheckpoint exactly as before. Reduced motion: `restore` at once, nothing travels. A press while
+   * it flies back does nothing.
+   */
+  const animateReturnToMoment = useCallback(
+    (restore: () => void) => {
+      if (camera.returning) return;
+      if (camera.raf) window.cancelAnimationFrame(camera.raf);
+      camera.raf = null;
+      if (session.reducedMotion) {
+        restore();
+        return;
+      }
+      camera.returning = true;
+      const from = [...session.spatialView.observerOriginParsec] as [number, number, number];
+      const home = [...(returnCheckpointOf(session)?.spatialView.observerOriginParsec ?? from)] as [number, number, number];
+      const anchorNdc = (session.spatialView.lockedAnchorNdc ?? [0, 0]) as [number, number];
+      const startTime = performance.now();
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        if (elapsed < FLIGHT_HALF_MS) {
+          const e = flightEase(elapsed / FLIGHT_HALF_MS);
+          const origin: [number, number, number] = [
+            Number((from[0] + (home[0] - from[0]) * e).toFixed(3)),
+            Number((from[1] + (home[1] - from[1]) * e).toFixed(3)),
+            Number((from[2] + (home[2] - from[2]) * e).toFixed(3)),
+          ];
+          setSession((prev) => ({
+            ...prev,
+            machines: { ...prev.machines, navigation: 'space', exploration: 'space_3d' },
+            spatialView: {
+              ...prev.spatialView,
+              mode: 'catalog_3d',
+              transitionPhase: 'phase_b_sky_to_space',
+              transitionProgress: Number((1 - e).toFixed(3)),
+              observerOriginParsec: e === 0 ? from : origin,
+              fovVerticalDeg: Number((45.0 + (37.8 - 45.0) * e).toFixed(2)),
+              frustumShiftNdc: [Number((anchorNdc[0] * e * 0.25).toFixed(4)), Number((anchorNdc[1] * e * 0.25).toFixed(4))],
+            },
+          }));
+          frame(step);
+        } else if (elapsed < 2 * FLIGHT_HALF_MS) {
+          const e = flightEase((elapsed - FLIGHT_HALF_MS) / FLIGHT_HALF_MS);
+          setSession((prev) => ({
+            ...prev,
+            machines: { ...prev.machines, navigation: 'sky_registered', exploration: 'calibrated_sky' },
+            spatialView: {
+              ...prev.spatialView,
+              mode: 'registered_sky',
+              transitionPhase: 'phase_a_photo_to_sky',
+              transitionProgress: Number((1 - e).toFixed(3)),
+              lockedAnchorNdc: anchorNdc,
+              observerOriginParsec: home,
+            },
+          }));
+          frame(step);
+        } else {
+          flightRafRef.current = null;
+          camera.raf = null;
+          camera.returning = false;
+          restore();
+        }
+      };
+      step(startTime);
+    },
+    [session, setSession]
+  );
+
+  return { animatePhaseAToPhaseBSpaceFlight, animateReturnToMoment };
 }

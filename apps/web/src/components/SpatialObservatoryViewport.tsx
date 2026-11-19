@@ -8,6 +8,7 @@ import {
 } from '../services/apiClient.js';
 import { hasVerifiedWcs, type ObservationSolution, type RenderLayerSet } from '@albedian/contracts';
 import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
+import { useCameraFlightAnimation } from '../hooks/useCameraFlightAnimation.js';
 import { IconButton, ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
 import {
@@ -631,8 +632,10 @@ export const SpatialObservatoryViewport: React.FC<
     return phoneEndsMask(sourcePhotoDisplayRect(shown.widthPx, shown.heightPx, windowSize.widthPx, windowSize.heightPx, slotted.cropTransform));
   })();
 
-  // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer
-  const backToMoment = () =>
+  // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer; from there,
+  // after the flight flown backwards (the motion record; at once under reduced motion); from Real sky, at once
+  const { animateReturnToMoment } = useCameraFlightAnimation(session, setSession);
+  const restoreMoment = () =>
     setSession((cur) =>
       dispatchAlbedianAction(cur, {
         type: 'source.return',
@@ -642,6 +645,7 @@ export const SpatialObservatoryViewport: React.FC<
         restoreAudio: true,
       }).session
     );
+  const backToMoment = () => (flightShown ? animateReturnToMoment(restoreMoment) : restoreMoment());
   const back = useRef(backToMoment);
   back.current = backToMoment;
 
