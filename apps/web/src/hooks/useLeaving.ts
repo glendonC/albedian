@@ -16,6 +16,13 @@ export function blockLeaveMs(lines: number, m: MotionTokens): number {
 }
 
 /**
+ * How long lines with no frame of their own take to leave (a legend): last first, one stagger apart, in words out.
+ */
+export function linesLeaveMs(lines: number, m: MotionTokens): number {
+  return m.staggerMs * Math.max(0, lines - 1) + m.wordsOutMs;
+}
+
+/**
  * Keeps a block mounted while it leaves: open, it is mounted at once; closed, it stays mounted and leaving for leaveMs,
  * then unmounts. Opened again while leaving, it is taken back without unmounting.
  */

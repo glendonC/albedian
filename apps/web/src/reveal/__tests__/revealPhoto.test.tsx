@@ -15,6 +15,7 @@ import { leaderPath, revealMarks } from '../revealMarks.js';
 import { REAL_SKY_FADE_MS, REVEAL_ARRIVAL_MS, RevealPhoto } from '../RevealPhoto.js';
 import { markArrivalRanks, revealMarks as marksOf } from '../revealMarks.js';
 import { MOTION_TOKENS } from '@albedian/design-system';
+import { linesLeaveMs } from '../../hooks/useLeaving.js';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
 const sky = vi.hoisted(() => ({ drawn: true }));
@@ -1043,5 +1044,52 @@ describe('pressing Original pixels, the marks leave as the motion record says', 
       });
     });
     expect(rules['.reveal-marks.is-leaving']).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Reveal parts ... words out (Go there)"): at Go there In this photo's rows
+// go last first, 20 ms apart, then its title; it has no frame, so it is gone after 20 ms x rows + 100 ms.
+describe('at Go there, In this photo leaves as the motion record says', () => {
+  const thereOn = () => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    return { ...session, selectedFindingId: rigel.id } as ObservationSession;
+  };
+  it('numbers its rows, then leaves for its lines\' time once the flight starts, then is gone', () => {
+    vi.useFakeTimers();
+    try {
+      const session = thereOn();
+      show(session);
+      const legend = q('.reveal-legend') as HTMLElement;
+      const rows = all('.reveal-legend__row') as HTMLElement[];
+      expect(legend.style.getPropertyValue('--legend-n')).toBe(String(rows.length));
+      rows.forEach((row, i) => expect(row.style.getPropertyValue('--legend-i')).toBe(String(i)));
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+      expect(q('.reveal-legend')!.classList.contains('is-leaving')).toBe(true);
+      const ms = linesLeaveMs(rows.length + 1, MOTION_TOKENS);
+      act(() => vi.advanceTimersByTime(ms - 1));
+      expect(q('.reveal-legend')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.reveal-legend')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('times the leaving in motion.css: the rows last first, then the title', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-legend.is-leaving .reveal-legend__row']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * (var(--legend-n) - 1 - var(--legend-i))) both',
+    });
+    expect(rules['.reveal-legend.is-leaving .reveal-legend__title']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--legend-n)) both',
+    });
   });
 });

@@ -8,7 +8,7 @@ import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type Celesti
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { saveFromServer, variantExportUrl } from '../services/apiClient.js';
 import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
-import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
+import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
 import { RestoreCompare, RestoreSteps, RestoreWhy } from './RestoreParts.js';
@@ -419,6 +419,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   // the browser turned wrongly drops them at once (a correction, not a press)
   const marksLayer = useLeaving(!bareFrame, leaveMotion.wordsOutMs);
   const marksShown = marksLayer.mounted && !frameMismatch;
+  // At Go there, In this photo leaves: its rows last first, then its title (the motion record)
+  const legend = useLeaving(!phone && !there && counts.length > 0, linesLeaveMs(counts.length + 1, leaveMotion));
 
   return (
     <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
@@ -783,12 +785,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </>
       )}
 
-      {!phone && !there && !restoring && counts.length > 0 && (
-        <div className="reveal-legend" data-testid="reveal-legend">
+      {!phone && !restoring && legend.mounted && counts.length > 0 && (
+        <div className={legend.leaving ? 'reveal-legend is-leaving' : 'reveal-legend'} data-testid="reveal-legend" style={{ '--legend-n': counts.length } as React.CSSProperties}>
           {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
           <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>
-          {counts.map((row) => (
-            <p key={row.evidenceClass} className="reveal-legend__row">
+          {counts.map((row, i) => (
+            <p key={row.evidenceClass} className="reveal-legend__row" style={{ '--legend-i': i } as React.CSSProperties}>
               <span className="reveal-legend__count">{row.text}</span>
               <EvidenceTag evidenceClass={row.evidenceClass} />
             </p>

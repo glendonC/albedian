@@ -3,7 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
-import { blockLeaveMs, reducedMotion, useLeaving } from '../useLeaving.js';
+import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../useLeaving.js';
 
 // The motion record (MOTION-READY-web.md, "Any card or block"): a block's lines leave last first, 20 ms apart, in
 // words out, and its frame leaves with the last line in frame out; so a block of n lines is gone after
@@ -17,6 +17,15 @@ describe('blockLeaveMs', () => {
   it('is the one dissolve under reduced motion, however many lines', () => {
     expect(blockLeaveMs(8, resolveMotionTokens(true))).toBe(MOTION_TOKENS.dissolveMs);
     expect(blockLeaveMs(1, resolveMotionTokens(true))).toBe(MOTION_TOKENS.dissolveMs);
+  });
+});
+
+// Lines with no frame of their own (a legend): only the lines, last first, so gone after 20 ms x (n - 1) + 100 ms.
+describe('linesLeaveMs', () => {
+  it('is the stagger for every line after the first, then the words out', () => {
+    expect(linesLeaveMs(4, MOTION_TOKENS)).toBe(20 * 3 + 100);
+    expect(linesLeaveMs(1, MOTION_TOKENS)).toBe(100);
+    expect(linesLeaveMs(4, resolveMotionTokens(true))).toBe(MOTION_TOKENS.dissolveMs);
   });
 });
 

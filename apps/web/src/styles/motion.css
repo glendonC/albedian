@@ -194,6 +194,15 @@
 
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this
    photo 20 ms later, then Ask out loud 20 ms after that. */
+/* At Go there, In this photo leaves: its rows last first, 20 ms apart, then its title (it has no frame) */
+.reveal-legend.is-leaving .reveal-legend__row {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * (var(--legend-n) - 1 - var(--legend-i))) both;
+}
+
+.reveal-legend.is-leaving .reveal-legend__title {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--legend-n)) both;
+}
+
 .reveal-legend {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
 }
