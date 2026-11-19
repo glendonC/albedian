@@ -18,6 +18,9 @@ final class LoopbackHTTPServer: @unchecked Sendable {
         let body: Data
         /// Header lines beyond the fixed ones (a redirect's Location, an authentication challenge).
         var headers: [(name: String, value: String)] = []
+        /// How long to hold this answer, in place of the server's own delay (a solve the laptop holds while the client reads
+        /// its job beside it).
+        var delaySec: Double? = nil
         static func json(_ status: Int, _ text: String) -> Response { Response(status: status, body: Data(text.utf8)) }
     }
 
@@ -74,7 +77,7 @@ final class LoopbackHTTPServer: @unchecked Sendable {
             if let request = Self.parse(buffer) {
                 self.lock.withLock { self.received.append(request) }
                 let response = self.responder(request)
-                self.queue.asyncAfter(deadline: .now() + self.answerDelaySec) { self.answer(connection, response) }
+                self.queue.asyncAfter(deadline: .now() + (response.delaySec ?? self.answerDelaySec)) { self.answer(connection, response) }
             } else if isComplete || error != nil {
                 connection.cancel()
             } else {

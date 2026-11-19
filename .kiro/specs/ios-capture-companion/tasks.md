@@ -111,6 +111,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - `POST /api/ingest/{sha256}/solve`, the job's progress from its own denominators or elapsed time, the status and
     the counts by evidence class as the server reports them, the reveal opened in the web app. Swift readers only for
     the job and solution fields shown, judged on the existing contract fixtures as a further reading.
+  - Built: the solve, its job read beside it, the status and counts by evidence class, on the plain pipeline screen.
+    Not built: opening the reveal, which needs an address of the web app for one upload and a change to the
+    built-code check (both asked of the lead on 2026-11-18); the box is ticked once that lands.
   - Needs first: mobile-3; pointing-3 if the result shows the pointing hint.
   - Only on an iPhone: nothing beyond mobile-3's network path.
   - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1, 5.2_

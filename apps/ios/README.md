@@ -30,6 +30,16 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
     and `.other` tunnel interfaces and keeping the connection alive in `.waiting` during iOS's Local Network permission
     alert; its states come from what that connection reports; it takes only a canonical local network address (including
     single-label `.local` mDNS names only).
+  - `SolveClient` asks the laptop to solve a stored photo (`POST /api/ingest/{sha256}/solve`, which the laptop holds until
+    the solve ends) and, beside it, reads the receipt for the job's id and the job itself, so each stage shows with the
+    counts the job wrote; then the solution. `SolveJobReader` is a further reading of `SolveJobSchema` on
+    `tests/fixtures/ingest_contract.json`; `SolutionReader` reads only the status, the findings counted by evidence
+    class and the catalog matched marks (drawn only on a calibrated solution whose WCS passed held-out verification),
+    on `tests/fixtures/observation_solution_contract.json`; `StoredFrame` places a detection on the photo as the web
+    app does. The gate (`CaptureUploader.permits`) lets through the solve's four requests and no other.
+    Receipts and jobs are read within 64 kB (`HTTPReplyLimits`); the solution alone within 64 MiB
+    (`SolveClient.solutionMaxBytes`), since a photo with a time and place solves to about 1.3 MB and a 12 MP night photo
+    to 35 MB; the connection reads a reply's bytes once, when its stated length has arrived (`HTTPMessage.wholeLength`).
   - `CaptureStore` keeps each photo as the bytes given, named by its SHA-256 and its type's extension, and its record
     beside it as the record's JSON bytes; a file counts as kept only once it has been read back and equals the bytes
     given, and a name holds no time, place or count. `CaptureUploader.send(photo:contentType:recordWire:)` sends a kept

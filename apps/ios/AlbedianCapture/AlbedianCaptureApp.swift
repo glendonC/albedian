@@ -9,6 +9,7 @@ struct AlbedianCaptureApp: App {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-AlbedianOpenControls") { return ["controls"] }
         if args.contains("-AlbedianOpenCheck") { return ["check"] }
+        if args.contains("-AlbedianOpenPipeline") { return ["pipeline"] }
         return []
     }()
     #endif
@@ -20,6 +21,8 @@ struct AlbedianCaptureApp: App {
                 rootList.navigationDestination(for: String.self) { target in
                     if target == "controls" {
                         ControlsGallery()
+                    } else if target == "pipeline" {
+                        PipelineScreen()
                     } else {
                         CaptureCheckScreen()
                     }

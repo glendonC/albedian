@@ -45,14 +45,14 @@ public struct HTTPReply: Equatable, Sendable {
 /// Writes the two requests and reads replies, exactly and nothing more (RFC 9112's message syntax, narrowed).
 public enum HTTPMessage {
     /// The request's bytes: request line, Host, User-Agent, Content-Type, Content-Length, Connection: close, the body.
-    public static func request(method: String, path: String, endpoint: LaptopEndpoint, contentType: String, body: Data) -> Data {
+    public static func request(method: String, path: String, endpoint: LaptopEndpoint, contentType: String?, body: Data) -> Data {
         // An IPv6 zone names one of the phone's own interfaces and is not sent (RFC 9844, section 6)
         let bare = String(endpoint.host.split(separator: "%", maxSplits: 1, omittingEmptySubsequences: false)[0])
         let host = bare.contains(":") ? "[\(bare)]" : bare
         var head = "\(method) \(path) HTTP/1.1\r\n"
         head += "Host: \(host):\(endpoint.port)\r\n"
         head += "User-Agent: \(CaptureUploader.userAgent)\r\n"
-        head += "Content-Type: \(contentType)\r\n"
+        if let contentType { head += "Content-Type: \(contentType)\r\n" }
         head += "Content-Length: \(body.count)\r\n"
         head += "Connection: close\r\n\r\n"
         return Data(head.utf8) + body
@@ -68,8 +68,9 @@ public enum HTTPMessage {
     }
 
     /// Reads the bytes received so far: any interim (1xx) replies are read past, their headers never acted on, then
-    /// one final reply with a Content-Length body. A 3xx's body is not needed: its status is the answer.
-    public static func read(_ bytes: Data) -> ReadOutcome {
+    /// one final reply with a Content-Length body of at most `bodyMaxBytes`. A 3xx's body is not needed: its status is
+    /// the answer.
+    public static func read(_ bytes: Data, bodyMaxBytes: Int = HTTPReplyLimits.bodyMaxBytes) -> ReadOutcome {
         let units = [UInt8](bytes)
         var index = 0
         var interim = 0
@@ -94,10 +95,35 @@ public enum HTTPMessage {
                       text.utf8.allSatisfy({ (0x30...0x39).contains($0) }), let length = Int(text) else {
                     return .unreadable("the reply states no single length")
                 }
-                guard length <= HTTPReplyLimits.bodyMaxBytes else { return .unreadable("the body is longer than read") }
+                guard length <= bodyMaxBytes else { return .unreadable("the body is longer than read") }
                 guard units.count - end >= length else { return .needMore }
                 return .reply(HTTPReply(status: status, headers: headers, body: Data(units[end..<(end + length)])))
             }
+        }
+    }
+
+    /// The whole reply's length in bytes (any interim replies, the final head and the body it states), once the final
+    /// head is whole and states one length within `bodyMaxBytes`; nil while it is not, and for every reply `read`
+    /// would answer at once (a redirect, a transfer coding, a fault), which `read` then decides. Only the bytes a head
+    /// can take are looked at, so the body is never read again for it.
+    public static func wholeLength(_ bytes: Data, bodyMaxBytes: Int = HTTPReplyLimits.bodyMaxBytes) -> Int? {
+        let headMax = HTTPReplyLimits.statusLineMaxBytes + HTTPReplyLimits.headerBlockMaxBytes + 4
+        let units = [UInt8](bytes.prefix(headMax * (HTTPReplyLimits.interimRepliesMax + 1)))
+        var index = 0
+        var interim = 0
+        while true {
+            guard case .head(let status, let headers, let end) = head(units, from: index) else { return nil }
+            if (100...199).contains(status) {
+                interim += 1
+                guard status != 101, interim <= HTTPReplyLimits.interimRepliesMax else { return nil }
+                index = end
+                continue
+            }
+            guard !(300...399).contains(status), !headers.contains(where: { $0.name == "transfer-encoding" }) else { return nil }
+            let lengths = headers.filter { $0.name == "content-length" }.map(\.value)
+            guard lengths.count == 1, let text = lengths.first, !text.isEmpty, text.count <= 9,
+                  text.utf8.allSatisfy({ (0x30...0x39).contains($0) }), let length = Int(text), length <= bodyMaxBytes else { return nil }
+            return end + length
         }
     }
 
@@ -200,9 +226,27 @@ public enum ExchangeFailure: Error, Equatable, Sendable {
 /// One request to the paired laptop and its reply. The app's transport is `NetworkLaptopTransport`.
 public protocol LaptopTransport: Sendable {
     /// Connects to `endpoint` only, writes `request`, reports the bytes the connection has taken, and reads one reply.
-    /// A final 2xx counts only once the whole request was taken.
+    /// A final 2xx counts only once the whole request was taken. The reply's body is read within the receipts' bound
+    /// (`HTTPReplyLimits.bodyMaxBytes`).
     func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double,
                   onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure>
+    /// The same, with the reply's body read up to `bodyMaxBytes` (the solution's read, `SolveClient.solutionMaxBytes`).
+    func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double, bodyMaxBytes: Int,
+                  onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure>
+}
+
+/// Each form by the other, so a transport gives one: the app's gives the bounded one; a stand-in in the tests may give
+/// the plain one, whose bound is then its own.
+extension LaptopTransport {
+    public func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double,
+                         onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure> {
+        await exchange(request, to: endpoint, timeoutSec: timeoutSec, bodyMaxBytes: HTTPReplyLimits.bodyMaxBytes, onSent: onSent)
+    }
+
+    public func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double, bodyMaxBytes: Int,
+                         onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure> {
+        await exchange(request, to: endpoint, timeoutSec: timeoutSec, onSent: onSent)
+    }
 }
 
 /// The transport on the platform's own connection layer: `NWConnection` over TCP to the paired endpoint, proxies not
@@ -246,12 +290,13 @@ public struct NetworkLaptopTransport: LaptopTransport {
         return true
     }
 
-    public func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double,
+    public func exchange(_ request: Data, to endpoint: LaptopEndpoint, timeoutSec: Double, bodyMaxBytes: Int,
                          onSent: @escaping @Sendable (Int64) -> Void) async -> Result<HTTPReply, ExchangeFailure> {
         guard let port = NWEndpoint.Port(rawValue: endpoint.port) else { return .failure(.notThePairedPeer) }
         let parameters = Self.tcpParameters()
         let connection = NWConnection(host: NWEndpoint.Host(endpoint.host), port: port, using: parameters)
-        let exchange = Exchange(driver: NWConnectionDriver(connection), request: request, endpoint: endpoint, peerCheck: peerCheck, onSent: onSent)
+        let exchange = Exchange(driver: NWConnectionDriver(connection), request: request, endpoint: endpoint, peerCheck: peerCheck,
+                                bodyMaxBytes: bodyMaxBytes, onSent: onSent)
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 exchange.run(timeoutSec: timeoutSec) { continuation.resume(returning: $0) }
@@ -321,13 +366,17 @@ final class Exchange: @unchecked Sendable {
     private var activeSelf: Exchange?
     private var done: ((Result<HTTPReply, ExchangeFailure>) -> Void)?
     private var received = Data()
+    /// The reply's whole length once its head is read, so later pieces are only counted until the body is all here.
+    private var wholeLength: Int?
+    private let bodyMaxBytes: Int
     private var sentAll = false
     private var finalReply: HTTPReply?
     private var started = false
 
     init(driver: any ConnectionDriver, request: Data, endpoint: LaptopEndpoint, peerCheck: @escaping @Sendable (NWEndpoint?, LaptopEndpoint) -> Bool,
-         onSent: @escaping @Sendable (Int64) -> Void) {
+         bodyMaxBytes: Int = HTTPReplyLimits.bodyMaxBytes, onSent: @escaping @Sendable (Int64) -> Void) {
         self.driver = driver
+        self.bodyMaxBytes = bodyMaxBytes
         self.peerCheck = peerCheck
         self.request = request
         self.endpoint = endpoint
@@ -401,11 +450,17 @@ final class Exchange: @unchecked Sendable {
     private func receive() {
         driver.readChunk(maxBytes: 65536) { [weak self] data, isComplete, error in
             guard let self else { return }
-            let buffer: Data = self.lock.withLock {
+            let (buffer, known): (Data, Int?) = self.lock.withLock {
                 if let data { self.received.append(data) }
-                return self.received
+                if self.wholeLength == nil { self.wholeLength = HTTPMessage.wholeLength(self.received, bodyMaxBytes: self.bodyMaxBytes) }
+                return (self.received, self.wholeLength)
             }
-            switch HTTPMessage.read(buffer) {
+            // Once the length is known, a piece short of it is only counted: the bytes are read once, when all are here
+            if let known, buffer.count < known {
+                if isComplete || error != nil { return self.finish(.failure(.closed)) }
+                return self.receive()
+            }
+            switch HTTPMessage.read(buffer, bodyMaxBytes: self.bodyMaxBytes) {
             case .reply(let reply):
                 // A final 2xx counts only for the whole request; any other answer ends the exchange at once
                 if (200...299).contains(reply.status) {

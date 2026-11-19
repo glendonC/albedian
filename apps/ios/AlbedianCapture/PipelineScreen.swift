@@ -54,9 +54,15 @@ struct PipelineScreen: View {
                             }
                         }
                     }
+                    if let solve = model.solve {
+                        SolveSection(state: solve, startedAt: model.solveStartedAt)
+                    }
                 }
             }
             .navigationTitle("Pipeline with sample values")
+            #if DEBUG
+            .task { model.runFromLaunchArguments() }
+            #endif
     }
 
     private func degrees(_ value: Double) -> String { value.formatted(.number.precision(.fractionLength(0...2))) + "\u{B0}" }

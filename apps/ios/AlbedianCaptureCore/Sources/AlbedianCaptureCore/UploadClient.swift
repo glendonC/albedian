@@ -274,18 +274,24 @@ public final class CaptureUploader: Sendable {
         return state
     }
 
-    /// The one decision on whether and where a request may go: only this uploader's two requests (`POST
-    /// /api/ingest`, and `PUT /api/ingest/{sha256}/pointing` for a contract SHA-256), and only to the endpoint the
-    /// paired address holds, the same value. The connection is opened to the endpoint it returns.
+    /// The one decision on whether and where a request may go: only the app's six requests, each for a contract
+    /// SHA-256 or job id, and only to the endpoint the paired address holds, the same value. The connection is opened to
+    /// the endpoint it returns. The uploader's two: `POST /api/ingest` and `PUT /api/ingest/{sha256}/pointing`. The
+    /// solve's four (`SolveClient`): `POST /api/ingest/{sha256}/solve`, `GET /api/ingest/{sha256}` (the receipt),
+    /// `GET /api/ingest/{sha256}/solution` and `GET /api/ingest/jobs/{id}` (`JOB_ID_PATTERN`).
     static func permits(method: String, path: String, to address: LaptopAddress) -> ApprovedRequest? {
         let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        let underIngest = parts.count >= 3 && parts[0] == "" && parts[1] == "api" && parts[2] == "ingest"
+        let ofPhoto = underIngest && parts.count >= 4 && PhotoHash.isContractHash(String(parts[3]))
         let allowed: Bool
         switch method {
         case "POST":
-            allowed = parts == ["", "api", "ingest"]
+            allowed = parts == ["", "api", "ingest"] || (ofPhoto && parts.count == 5 && parts[4] == "solve")
         case "PUT":
-            allowed = parts.count == 5 && parts[0] == "" && parts[1] == "api" && parts[2] == "ingest"
-                && PhotoHash.isContractHash(String(parts[3])) && parts[4] == "pointing"
+            allowed = ofPhoto && parts.count == 5 && parts[4] == "pointing"
+        case "GET":
+            allowed = (ofPhoto && (parts.count == 4 || (parts.count == 5 && parts[4] == "solution")))
+                || (underIngest && parts.count == 5 && parts[3] == "jobs" && Wire.isJobId(String(parts[4])))
         default:
             allowed = false
         }
@@ -356,18 +362,22 @@ public final class UploadCoordinator {
         state = nil
     }
 
-    public func start(photo: Data, contentType: PhotoContentType, record: PointingRecord?, uploader: CaptureUploader) {
+    /// - Parameter then: called on the main actor with the upload's last state, unless another start or a reset came first.
+    public func start(photo: Data, contentType: PhotoContentType, record: PointingRecord?, uploader: CaptureUploader,
+                      then: (@MainActor (UploadState) -> Void)? = nil) {
         generation &+= 1
         task?.cancel()
         let runGeneration = generation
         state = .waiting
         task = Task { @MainActor [weak self] in
-            _ = await uploader.send(photo: photo, contentType: contentType, record: record) { [weak self] next in
+            let last = await uploader.send(photo: photo, contentType: contentType, record: record) { [weak self] next in
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == runGeneration else { return }
                     self.state = next
                 }
             }
+            guard let self, self.generation == runGeneration else { return }
+            then?(last)
         }
     }
 }
