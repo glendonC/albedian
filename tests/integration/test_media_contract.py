@@ -600,13 +600,15 @@ def test_pbt_rst_20_an_attempt_is_accepted_exactly_when_its_fields_fit_its_statu
     outside=st.integers(0, 3),
     # 3.0 is the tolerance itself, which a star's change may reach and stay within
     worst=st.sampled_from([None, 1.0, 3.0, 5.0]),
-    median=st.sampled_from([None, 0.99]),
+    # a star that lost all its light has a ratio of 0 or below
+    median=st.sampled_from([None, 0.99, 0.0, -0.3]),
     passed=st.booleans(),
 )
 @example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=0, worst=1.0, median=0.99, passed=True)
 @example(variant_points=3, unconfirmed=2, frames_checked=2, frames_with=2, stars=2, outside=0, worst=1.0, median=0.99, passed=False)
 @example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=1, worst=5.0, median=0.99, passed=False)
 @example(variant_points=0, unconfirmed=0, frames_checked=1, frames_with=0, stars=0, outside=0, worst=None, median=None, passed=True)
+@example(variant_points=3, unconfirmed=0, frames_checked=1, frames_with=0, stars=2, outside=2, worst=40.0, median=-0.3, passed=False)
 def test_pbt_rst_20_a_gate_result_is_accepted_exactly_when_its_counts_add_up(
     variant_points: int, unconfirmed: int, frames_checked: int, frames_with: int, stars: int, outside: int,
     worst: float | None, median: float | None, passed: bool,

@@ -1122,7 +1122,7 @@ export const IntegrityGateResultSchema = z
     starsOutsideFluxTolerance: z.number().int().nonnegative(),
     fluxToleranceSigma: z.number().positive(),
     worstFluxChangeSigma: z.number().nonnegative().optional(), // absent when no star was measured
-    medianFluxRatio: z.number().positive().optional(),
+    medianFluxRatio: z.number().optional(),   // 0 or below when every measured star lost its light
     passed: z.boolean(),
   })
   .strict(); // refined: passed exactly when both counts of failures are 0; unconfirmed <= variantPointCount;

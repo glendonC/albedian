@@ -798,7 +798,8 @@ class IntegrityGateResult(_Record):
     flux_tolerance_sigma: PositiveNumber
     # Absent when no star was measured
     worst_flux_change_sigma: Optional[NonNegative] = None
-    median_flux_ratio: Optional[PositiveNumber] = None
+    # Any finite number: a star that lost all its light has a ratio of 0 or below, and the gate still counts it
+    median_flux_ratio: Optional[WireNumber] = None
     passed: StrictBool
 
     @model_validator(mode="after")
@@ -1773,7 +1774,7 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
         ("IntegrityGateResult", gate, ["matchRadiusPx"], 0), ("IntegrityGateResult", gate, ["fluxToleranceSigma"], 0),
         # A gate that measured no flux, so only the bound refuses a zero tolerance
         ("IntegrityGateResult", valid["IntegrityGateResult"][3], ["fluxToleranceSigma"], 0),
-        ("IntegrityGateResult", gate, ["worstFluxChangeSigma"], -0.5), ("IntegrityGateResult", gate, ["medianFluxRatio"], 0),
+        ("IntegrityGateResult", gate, ["worstFluxChangeSigma"], -0.5),
         ("NoiseTable", noise, ["intensities", 0], -0.001), ("NoiseTable", noise, ["sigma", "r", 0], -0.001),
         ("NoiseTable", noise, ["sigma", "g", 0], -0.001), ("NoiseTable", noise, ["sigma", "b", 0], -0.001),
         ("RestorationMeasurements", measured, ["fineNoiseLeft"], -0.01), ("RestorationMeasurements", measured, ["stars", "found"], -1),

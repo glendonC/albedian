@@ -399,7 +399,7 @@
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "1e400", "python": "refused"},
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "a 401 digit integer", "python": "refused"},
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "2^53 + 1", "python": "accepted"},
-    {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "minus zero", "python": "refused"},
+    {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "minus zero", "python": "accepted"},
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "true", "python": "refused"},
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/medianFluxRatio", "fault": "text", "python": "refused"},
     {"sample": "/valid/ProcessingAttempt/14", "pointer": "/gate/passed", "fault": "1", "python": "refused"},

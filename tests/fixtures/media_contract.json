@@ -19250,29 +19250,6 @@
       "message": null
     },
     {
-      "schema": "IntegrityGateResult",
-      "sample": {
-        "statistic": "detector_local_background_removed",
-        "variantThresholdSnr": 6,
-        "confirmThresholdSnr": 4.75,
-        "tilePx": 256,
-        "matchRadiusPx": 1.5,
-        "framesChecked": 1,
-        "variantPointCount": 37,
-        "unconfirmedPointCount": 0,
-        "framesWithUnconfirmed": 0,
-        "clippedPointsLeftOut": 2,
-        "starsMeasured": 37,
-        "starsOutsideFluxTolerance": 0,
-        "fluxToleranceSigma": 3,
-        "worstFluxChangeSigma": 1.8,
-        "medianFluxRatio": 0,
-        "passed": true
-      },
-      "reason": "medianFluxRatio of 0, past its bound",
-      "message": null
-    },
-    {
       "schema": "NoiseTable",
       "sample": {
         "intensities": [

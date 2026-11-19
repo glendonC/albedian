@@ -587,7 +587,8 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
         fc.integer({ min: 0, max: 3 }),
         // 3.0 is the tolerance itself, which a star's change may reach and stay within
         fc.constantFrom<number | null>(null, 1.0, 3.0, 5.0),
-        fc.constantFrom<number | null>(null, 0.99),
+        // a star that lost all its light has a ratio of 0 or below
+        fc.constantFrom<number | null>(null, 0.99, 0, -0.3),
         fc.boolean(),
         (variantPoints, unconfirmed, framesChecked, framesWith, stars, outside, worst, median, passed) => {
           const gate: Rec = {

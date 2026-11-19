@@ -975,7 +975,8 @@ export const IntegrityGateResultSchema = z
     fluxToleranceSigma: wireNumber().positive(),
     // Absent when no star was measured
     worstFluxChangeSigma: wireNumber().nonnegative().optional(),
-    medianFluxRatio: wireNumber().positive().optional(),
+    // Any finite number: a star that lost all its light has a ratio of 0 or below, and the gate still counts it
+    medianFluxRatio: wireNumber().optional(),
     passed: z.boolean(),
   })
   .strict()
