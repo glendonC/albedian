@@ -285,7 +285,20 @@ describe("the phone reveal's rules are the approved page's", () => {
   it('sets the phone answer as #p-answer does, and Ask out loud alone at the phone size at 772', () => {
     // A longer answer grows upward from where the picture's one-line answer ends, 764 px down, so it never runs under
     // Ask out loud at 772 (the lead's answer 23:50 to WEB-UX-unit-phone-1-QUESTION.md, option A, INTERIM)
-    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 764px)', width: 'auto' });
+    // D19, decided by the lead (UIUX-phoneanswer-DECIDED-BY-LEAD.md): its foot 16 pt above Ask out loud, at y 756; a longer
+    // answer rises over the photo's lower edge, which darkens behind it to 82 percent black over 44 pt
+    expect(declarationsOf('.reveal-answer.is-phone')).toEqual({ left: '24px', right: '24px', top: 'auto', bottom: 'calc(100% - 756px)', width: 'auto' });
+    expect(declarationsOf('.reveal-answer.is-phone::before')).toEqual({
+      content: "''",
+      position: 'absolute',
+      left: '-24px',
+      right: '-24px',
+      top: '-44px',
+      bottom: '0',
+      'z-index': '-1',
+      background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px)',
+      'pointer-events': 'none',
+    });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__q')).toEqual({ 'font-size': '13px', margin: '0 0 8px' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__s')).toEqual({ font: '300 22px / 1.15 var(--look-font-sans)', 'letter-spacing': '-0.03em' });
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__st')).toEqual({ display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center', gap: '8px', 'margin-top': '12px', 'padding-top': '0', 'border-top': '0' });

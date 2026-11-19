@@ -1189,15 +1189,27 @@
   margin-right: 8px;
 }
 
-/* The answer at phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer): it ends
-   where the picture's one-line answer ends, 764 px down, and a longer one grows upward from there, clear of Ask out loud
-   at 772 (the lead's answer 23:50, option A, INTERIM) */
+/* The answer at phone width, under the photo in the counts' place (ask, approved 2026-11-12, iPhone; #p-answer); a
+   longer one grows upward from its foot (D19, UIUX-phoneanswer-DECIDED-BY-LEAD.md) */
 .reveal-answer.is-phone {
   left: 24px;
   right: 24px;
   top: auto;
-  bottom: calc(100% - 764px);
+  bottom: calc(100% - 756px);
   width: auto;
+}
+/* D19, decided by the lead: the foot 16 pt above Ask out loud; over the photo's lower edge it darkens behind the words to
+   82 percent black over 44 pt */
+.reveal-answer.is-phone::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  right: -24px;
+  top: -44px;
+  bottom: 0;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0.82) 44px);
+  pointer-events: none;
 }
 .reveal-answer.is-phone .reveal-answer__q {
   font-size: 13px;
