@@ -3,9 +3,9 @@ section 3; REQ-RST-6.1, 6.2), and what the integrity gate calls on top of them (
 by the same tiles and rule, their confirmation on the original's pixels, and aperture flux against empty apertures.
 
 The detector is the repository's own (`services/science/detector.py`). Its matched-filter noise per tile is built
-here from two private helpers of that module, as `services/media/runtime.py` imports private names today, until
-unit realsky-3 lands the shared `matched_filter_noise` [decided 2026-11-11: design section 3]. Pure functions on
-arrays: no file, no job.
+here from two private helpers of that module [decided 2026-11-11: design section 3]; the detector's shared
+`matched_filter_noise` (unit realsky-3) is not used here yet [open: switching to it is its own unit]. Pure
+functions on arrays: no file, no job.
 """
 
 from __future__ import annotations

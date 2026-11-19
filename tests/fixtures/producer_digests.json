@@ -20,7 +20,7 @@
    "services/media/frame_pool.py",
    "services/media/temporal.py"
   ],
-  "digest": "7be0e37926767a01ece87c41633ae44365c9f27777cd1bf4156348a7fd8fc7af"
+  "digest": "10c57ba10c23bc3537ad8873985b628260448668d6834c9d099fad6e41b6c3f3"
  },
  "albedian.solve_chain": {
   "revision": 10,
