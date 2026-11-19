@@ -17,7 +17,8 @@ Covers, on Little CMS's own sRGB:
 - Property: the result is a function of the colour data alone (seeds 1 to 20).
 - restore-8d, AUDIT-B's hand-built carriers (verdicts/restore-8b-v3.md): another space's tags (a grey curve on an RGB
   profile, primaries, RGB curves and chromaticities on a grey one) and the luminance are left behind; chromaticities
-  of other than the space's channels are not rebuilt.
+  of other than the space's channels are left out alone, as is any damaged optional tag (chad, bkpt, chrm, cicp),
+  while a damaged needed tag still leaves no profile.
 """
 
 from __future__ import annotations
@@ -229,10 +230,41 @@ def test_primaries_and_chromaticities_on_a_grey_profile_are_left_behind(base) ->
     assert MARKER[:12] not in out and set(icc.tag_data(out)) == {b"desc", b"cprt", b"wtpt", b"kTRC"}
 
 
+def rebuilt_without(base: bytes, sig: bytes) -> bytes:
+    return photo.profile_without_text(icc.assemble(base, [(s, body) for s, body in icc.tag_data(base).items() if s != sig]))
+
+
 @pytest.mark.parametrize("channels", [0, 1, 2, 4, 20])
-def test_chromaticities_of_other_than_the_spaces_channels_are_not_rebuilt(base, channels: int) -> None:
+def test_chromaticities_of_other_than_the_spaces_channels_are_left_out_alone(base, channels: int) -> None:
     chrm = b"chrm" + bytes(4) + struct.pack(">HH", channels, 0) + (MARKER[:8] * max(channels, 1))[:8 * channels]
     table = [(sig, chrm if sig == b"chrm" else body) for sig, body in icc.tag_data(base).items()]
+    out = photo.profile_without_text(icc.assemble(base, table))
+    assert out is not None and out == rebuilt_without(base, b"chrm")
+    assert b"chrm" not in out and MARKER[:8] not in out
+
+
+# restore-8d (1), proposed to the lead at 13:05: a damaged optional tag (cut short, of a type it may not have, a
+# function or count it cannot hold) is left out alone and the rest rebuilds [tested: leaving chad or bkpt out changes
+# 0 codes on the 28 real profiles of this laptop that carry one]; a damaged needed tag still leaves no profile
+OPTIONAL_DAMAGE = {
+    b"chad": [b"sf32" + bytes(4) + bytes(20), b"XYZ " + bytes(16)],
+    b"bkpt": [b"XYZ " + bytes(8), b"curv" + bytes(8)],
+    b"chrm": [b"chrm" + bytes(4) + struct.pack(">HH", 3, 0) + bytes(8)],
+    b"cicp": [b"cicp" + bytes(6), b"text" + bytes(4) + b"x\x00"],
+}
+
+
+@pytest.mark.parametrize(("sig", "damage"), [(sig, damage) for sig, damages in OPTIONAL_DAMAGE.items() for damage in damages])
+def test_a_damaged_optional_tag_is_left_out_alone_and_the_rest_rebuilds(base, sig: bytes, damage: bytes) -> None:
+    table = [(s, body) for s, body in icc.tag_data(base).items() if s != sig] + [(sig, damage)]
+    out = photo.profile_without_text(icc.assemble(base, table))
+    assert out is not None and out == rebuilt_without(base, sig)
+    assert sig not in {s for s, _, _ in icc.tags(out)}
+
+
+@pytest.mark.parametrize("sig", [b"wtpt", b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC"])
+def test_a_damaged_needed_tag_still_leaves_no_profile(base, sig: bytes) -> None:
+    table = [(s, b"XYZ " + bytes(8) if s == sig else body) for s, body in icc.tag_data(base).items()]
     assert photo.profile_without_text(icc.assemble(base, table)) is None
 
 

@@ -477,7 +477,7 @@ def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
     at the length its type defines, identical ones shared. Every other byte of the original is left behind: its
     header's maker, model, dates, illuminant and reserved bytes, its other tags (another space's among them), the
     padding inside and between tags. None when there is no profile or one it cannot rebuild so (not RGB or grey, not
-    XYZ connected, a needed tag missing or cut short, chromaticities not of its channels): `stored_colour` then has no
+    XYZ connected, a needed tag missing or damaged; a damaged optional tag is left out alone): `stored_colour` then has no
     description to give and the stored still is not made [decided 2026-11-19 by the lead at 07:31 and 08:34: the
     colour data stays, nothing else does; restore-8d]."""
     if not profile or len(profile) < _ICC_HEADER + 4:
@@ -501,9 +501,11 @@ def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
         if body is None or sig not in _ICC_SPACE_TAGS[space]:
             continue
         written = _colour_tag(body[:4], body, _ICC_CHANNELS[space]) if body[:4] in kinds else None
-        if written is None:
-            return None
-        tags.append((sig, written))
+        # A damaged tag, or one of a type it may not have, is left out alone, and a needed one so left out leaves no
+        # profile just below [tested: leaving an optional chad or bkpt out changes 0 codes on the 28 real profiles of
+        # this laptop that carry one, perceptual and relative] (restore-8d, after the lead's hold of 12:57)
+        if written is not None:
+            tags.append((sig, written))
     if not all(sig in dict(tags) for sig in _ICC_NEEDED[space]):
         return None
     start = 132 + 12 * len(tags)
