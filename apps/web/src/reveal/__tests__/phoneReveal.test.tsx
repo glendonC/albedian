@@ -182,6 +182,53 @@ describe('there at phone width (fly, approved 2026-11-12, iPhone; #p-there)', ()
   });
 });
 
+// The no-match reveal at phone width (no-match, approved 2026-11-18, iPhone; #ump-photo), its warnings in one list
+// under Show predicted sky, reached by scrolling the whole screen (the lead's answer 23:50, INTERIM)
+describe('the no-match reveal at phone width', () => {
+  const unmatched = () => {
+    const base = sample('horizon_predicted_only');
+    return poseSession({ ...base, warnings: ['First warning.', 'Second warning.'], quality: { ...base.quality!, detectedCandidateCount: 31371 } } as ObservationSolution);
+  };
+  afterEach(() => {
+    delete document.documentElement.dataset.phoneScroll;
+    document.documentElement.style.removeProperty('--phone-scroll');
+  });
+
+  it('puts the sentence, Show predicted sky at the phone size, then the warnings, in one scrolling screen with no counts', () => {
+    let opened = 0;
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: unmatched(), onSelectFinding: () => {}, onHome: () => {}, phone: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, onShowPredictedSky: () => (opened += 1) }));
+    });
+    const screen = q('[data-testid="reveal-phone-scroll"]')!;
+    const status = screen.querySelector('[data-testid="reveal-status"]')!;
+    expect(status.className).toBe('reveal-status is-unmatched is-phone');
+    expect(status.querySelector('.reveal-phone-lead .reveal-status__lead')!.textContent).toBe('Found 31,371 points of light, but could not match them to stars for sure.');
+    const button = status.querySelector('.reveal-phone-go button.look-main') as HTMLButtonElement;
+    expect(button.textContent).toBe('Show predicted sky');
+    expect(button.className).toContain('look-size-phone');
+    expect([...status.querySelectorAll('.reveal-status__warns li')].map((li) => li.textContent)).toEqual(['First warning.', 'Second warning.']);
+    expect(q('.reveal-phone-counts')).toBeNull();
+    act(() => button.click());
+    expect(opened).toBe(1);
+  });
+
+  it('moves the photo with the screen as it scrolls, and lets it go when the screen leaves', () => {
+    act(() => {
+      root.render(createElement(RevealPhoto, { session: unmatched(), onSelectFinding: () => {}, onHome: () => {}, phone: true, viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h }));
+    });
+    expect(document.documentElement.dataset.phoneScroll).toBe('');
+    const screen = q('[data-testid="reveal-phone-scroll"]') as HTMLElement;
+    screen.scrollTop = 120;
+    act(() => {
+      screen.dispatchEvent(new Event('scroll'));
+    });
+    expect(document.documentElement.style.getPropertyValue('--phone-scroll')).toBe('120px');
+    act(() => root.render(createElement('div')));
+    expect(document.documentElement.dataset.phoneScroll).toBeUndefined();
+    expect(document.documentElement.style.getPropertyValue('--phone-scroll')).toBe('');
+  });
+});
+
 describe('RevealPhoto at phone width', () => {
   it('draws each mark smaller, the approved phone ring with its ticks, and no logo, status, corners or line', () => {
     show(calibrated());
@@ -275,6 +322,16 @@ describe("the phone reveal's rules are the approved page's", () => {
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat b')).toEqual({ 'font-weight': '300', 'font-size': '40px' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat small')).toEqual({ 'font-size': '15px' });
     expect(declarationsOf('.flight-readout.is-phone .flight-readout__stat span')).toEqual({ 'margin-top': '6px' });
+  });
+
+  it('sets the no-match screen as #ump-photo does, its warnings under the button, the photo moving with it', () => {
+    expect(declarationsOf('.reveal-phone-scroll')).toEqual({ position: 'fixed', inset: '0', 'overflow-y': 'auto', 'overscroll-behavior': 'contain', 'pointer-events': 'auto' });
+    expect(declarationsOf('.reveal-status.is-unmatched.is-phone')).toEqual({ position: 'relative', left: 'auto', right: 'auto', top: 'auto', width: 'auto', padding: '654px 24px 40px' });
+    expect(declarationsOf('.reveal-phone-lead')).toEqual({ 'min-height': '118px' });
+    expect(declarationsOf('.reveal-status.is-phone .reveal-status__lead')).toEqual({ margin: '0', font: '300 22px / 1.2 var(--look-font-sans)' });
+    expect(declarationsOf('.reveal-phone-go')).toEqual({ display: 'flex', 'justify-content': 'center' });
+    expect(declarationsOf('.reveal-status.is-phone .reveal-status__warns')).toEqual({ margin: '24px 0 0' });
+    expect(declarationsOf(':root[data-phone-scroll] .alb-source-stage > img, :root[data-phone-scroll] .alb-source-stage > video')).toEqual({ translate: '0 calc(-1 * var(--phone-scroll, 0px))' });
   });
 
   it('puts the close circle and the views in the top row, 20 px in, 60 px down', () => {

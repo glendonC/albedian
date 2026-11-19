@@ -1335,3 +1335,40 @@
 .flight-readout.is-phone .flight-readout__stat span {
   margin-top: 6px;
 }
+
+/* The no-match reveal at phone width (no-match, approved 2026-11-18, iPhone; #ump-photo): the sentence at 654 in 22 px,
+   Show predicted sky centred at 772, then the warnings 24 px under it, reached by scrolling the whole screen, the photo
+   moving up with it (the lead's answer 23:50, INTERIM) */
+.reveal-phone-scroll {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+}
+.reveal-status.is-unmatched.is-phone {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  width: auto;
+  padding: 654px 24px 40px;
+}
+.reveal-phone-lead {
+  min-height: 118px;
+}
+.reveal-status.is-phone .reveal-status__lead {
+  margin: 0;
+  font: 300 22px / 1.2 var(--look-font-sans);
+}
+.reveal-phone-go {
+  display: flex;
+  justify-content: center;
+}
+.reveal-status.is-phone .reveal-status__warns {
+  margin: 24px 0 0;
+}
+:root[data-phone-scroll] .alb-source-stage > img,
+:root[data-phone-scroll] .alb-source-stage > video {
+  translate: 0 calc(-1 * var(--phone-scroll, 0px));
+}

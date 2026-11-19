@@ -1,5 +1,6 @@
 import { hasVerifiedWcs, type ObservationSession } from '@albedian/contracts';
 import { fitSourceToViewport, isSourcePhotoShown, type PhotoCrop, type PhotoRect } from '../components/sourcePhotoRect.js';
+import { revealStatus } from './revealStatus.js';
 
 /**
  * The reveal at phone width (reveal, approved 2026-11-12, iPhone 1; #p-photo in .cache/uiux/reveal/index.html): the
@@ -14,6 +15,11 @@ export const PHONE_SLOT = { topPx: 118, heightPx: 520 };
 export function isPhoneRevealShown(session: ObservationSession): boolean {
   const solution = session.observationSolution;
   return isSourcePhotoShown(session) && solution !== undefined && solution.status === 'calibrated' && hasVerifiedWcs(solution);
+}
+
+/** Whether the phone's no-match reveal shows (on a phone): over the photo when the solve matched no star. */
+export function isPhoneNoMatchShown(session: ObservationSession): boolean {
+  return isSourcePhotoShown(session) && session.observationSolution !== undefined && revealStatus(session).kind === 'unmatched';
 }
 
 /** How far the slot's top and bottom fade, in CSS px. */

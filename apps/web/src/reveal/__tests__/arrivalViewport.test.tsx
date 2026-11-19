@@ -340,12 +340,14 @@ describe('the viewport shows the approved reveal over the photo, above phone wid
     expect(q('[data-testid="voice-command-hud"]')).toBeNull();
   });
 
-  it('keeps the old sheets on a phone over a photo no star was matched in, until the phone no-match unit', () => {
+  it('shows the phone no-match reveal, never matched marks, over a solve that failed its check on a phone', () => {
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
     const base = storedPhoto();
     open({ ...base, observationSolution: { ...base.observationSolution!, quality: { ...base.observationSolution!.quality!, passedIndependentVerification: false } } } as ObservationSession);
-    expect(q(REVEAL)).toBeNull();
-    expect(q('.reveal-phone-top')).toBeNull();
+    expect(q(REVEAL)!.className).toBe('reveal-photo is-phone');
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+    expect(q('button.reveal-mark.is-catalog')).toBeNull();
+    delete document.documentElement.dataset.phoneScroll;
   });
 
   it('is not shown in the sky and 3D views, which keep their own pieces until their units', () => {
@@ -814,6 +816,20 @@ describe('the viewport shows the approved star card over the photo, above phone 
     act(() => pill('3D').click());
     expect(onRunUtterance).toHaveBeenCalledTimes(1);
     expect(onRunUtterance).toHaveBeenCalledWith(`Take me to ${title}`, 'pointer');
+  });
+
+  it('shows the phone no-match reveal on a phone: the views with Real sky and 3D not pressable, no ask button, no old pieces (INTERIM)', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    const base = storedPhoto();
+    open({ ...base, observationSolution: { ...PREDICTED_ONLY, poseEstimate: undefined }, selectedFindingId: null } as ObservationSession);
+    expect(q('[data-testid="reveal-photo"]')!.className).toBe('reveal-photo is-phone');
+    expect(q('[data-testid="reveal-phone-scroll"]')).not.toBeNull();
+    const pills = [...q('.reveal-phone-top')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')];
+    expect(pills.map((b) => b.disabled)).toEqual([false, true, true]);
+    for (const gone of ['[data-testid="ask-bar"]', '[data-testid="voice-command-hud"]', '[data-testid="celestial-target-card"]', '.alb-lusion-header']) {
+      expect(q(gone), gone).toBeNull();
+    }
+    delete document.documentElement.dataset.phoneScroll;
   });
 
   it('keeps Real sky and 3D in place at 60 percent and not pressable when no star was matched, and opens the predicted sky from Show predicted sky', () => {

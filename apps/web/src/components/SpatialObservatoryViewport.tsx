@@ -52,7 +52,7 @@ import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
 import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
-import { isPhoneRevealShown, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { isPhoneNoMatchShown, isPhoneRevealShown, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
 import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
@@ -190,7 +190,9 @@ export const SpatialObservatoryViewport: React.FC<
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
   // pieces until their own units
-  const phoneReveal = phone && (isPhoneRevealShown(session) || realSkyShown || flightShown);
+  // The phone's no-match reveal (no-match, approved, iPhone), with no ask button: its one main button takes that place
+  const phoneNoMatch = phone && isPhoneNoMatchShown(session);
+  const phoneReveal = phone && (isPhoneRevealShown(session) || realSkyShown || flightShown || phoneNoMatch);
   const revealShown = (!phone && (isSourcePhotoShown(session) || skyOver)) || phoneReveal;
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
@@ -757,7 +759,7 @@ export const SpatialObservatoryViewport: React.FC<
               bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
           {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
           {/* Nor over Real sky on the phone, as #p-real draws it */}
-          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown) ? null : revealShown ? (
+          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch) ? null : revealShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}

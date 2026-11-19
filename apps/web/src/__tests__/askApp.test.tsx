@@ -438,8 +438,8 @@ describe('asking about the photo on the laptop reveal', () => {
   });
 
   it('keeps a refusal given where the reveal is not shown from showing when the reveal comes back', async () => {
-    // A phone's window over a photo with no match, where the old bar asks until the phone's no-match unit; then a
-    // laptop's, where the no-match reveal shows
+    // A phone's window over a sky lined up by an estimate, where the old bar asks until the phone's unit for it; then a
+    // laptop's, where the reveal shows
     let phone = true;
     const listeners: Array<() => void> = [];
     (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
@@ -449,7 +449,7 @@ describe('asking about the photo on the laptop reveal', () => {
       addEventListener: (_: string, listener: () => void) => listeners.push(listener),
       removeEventListener: () => {},
     });
-    const unmatched = { ...samples['plate_too_few_sources']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
+    const unmatched = { ...samples['horizon_approximate']!, id: solutionId, sourceAssetId: assetId, sourceSha256: sha256 } as ObservationSolution;
     try {
       await openAppAt(`/?upload=${sha256}`, { solution: () => json(unmatched) });
       await waitUntil(() => expect(q('[data-testid="voice-command-hud"]')).not.toBeNull());

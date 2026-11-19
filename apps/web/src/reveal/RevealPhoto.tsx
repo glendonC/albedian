@@ -9,6 +9,7 @@ import { StarCard } from './StarCard.js';
 import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { RealSkyLayer } from './RealSkyLayer.js';
 import { phoneSlotRect } from './phoneSlot.js';
+import { PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** Real sky's cross-fade with the photo (reveal, approved: 0.9 s). */
 const REAL_SKY_FADE_MS = 900;
@@ -214,7 +215,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
-      {phone && (!skyOnScreen || there) ? null : there && skyOnScreen ? (
+      {phone && !skyOnScreen && status.kind === 'unmatched' ? (
+        <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} />
+      ) : phone && (!skyOnScreen || there) ? null : there && skyOnScreen ? (
         <div className="reveal-status" data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
@@ -302,7 +305,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {phone && !answer && !picked && !skyShown && counts.length > 0 && (
+      {phone && !answer && !picked && !skyShown && status.kind !== 'unmatched' && counts.length > 0 && (
         // Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs;
         // an answer takes their place (ask, approved, iPhone; #p-answer)
         <div className="reveal-phone-counts" data-testid="reveal-legend">
