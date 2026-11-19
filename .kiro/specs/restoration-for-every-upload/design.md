@@ -591,6 +591,17 @@ window would leave little overlap].
    weights are never negative, so REQ-RST-5.2 holds; cubic has negative lobes].
 A whole-frame shift is exact only for a small turn of the camera. It is the first version; see section 18.
 
+What restore-6 measured and built [tested: `tests/media/test_temporal.py`, synthetic clips, restore-6 report]:
+- The cross power is divided by its magnitude to the power 0.5, not 1 (`crossPowerExponent`). On noisy pairs shifted
+  up to 19 px, the full division missed the true shift by up to 0.23 px (93 pairs) and the square root by 0.049 px at
+  the 99th percentile and 0.108 px at worst (401 pairs); a second pass on the shift that is left gained nothing.
+- A consecutive pair holds when every triple of the window that contains it closes; with no triple (a window of two
+  frames) nothing holds. Closure measures whether the shifts agree, not whether the frames do: through a frame of
+  another scene the correlation peaks still add up, so such a frame passes closure and the frame after it is
+  registered through it. The block residuals refuse that frame.
+- A block with no detail does not hold, and a sample read from outside the neighbour's frame once moved is not used.
+  A neighbour left with no usable sample is not used at all.
+
 **Merge, only where frames agree.** For frame `F` and each registered neighbour `N_j`, per pixel:
 `D2 = mean over a 5 by 5 window [proposed] and the three channels of (N_j - F)^2`, `v = 2 sigma^2` with `sigma` from the noise
 table at the pixel's own smoothed intensity, `e = max(D2 - v, 0)`, and the weight `a_j = v / (e + v)`. Then
@@ -605,6 +616,22 @@ table at the pixel's own smoothed intensity, `e = max(D2 - v, 0)`, and the weigh
   half a pixel. Measured share of exact repeats on the owner's clips: 37 to 96 percent (M16).
 - The frame's own weight is 1 and no `a_j` exceeds 1, so the frame's own sample always weighs most (REQ-RST-7.4).
 - When the noise could not be measured there is no merge.
+- The pairwise weight alone does not keep out a point that frame `k` contradicts [tested: restore-6]: with every
+  neighbour carrying a point that frame `k` lacks, the detector found it in the merged frame in 10 of 10 trials at
+  every peak from 3 to 30 noise sigmas, since each weight falls only as one over the squared difference and six
+  neighbours add up. So the merge also gives a neighbour no weight wherever its luminance difference from the frame,
+  through the detector's own kernel, exceeds 3 times that response's noise (`disagreementZ`), nor within 3 px of such
+  a sample (`disagreementReachPx`) [proposed: restore-6]. The response's noise is taken tile by tile as the smaller
+  of 1.4826 x MAD of the response over the usable samples and the two frames' own `sigma_m` added in quadrature:
+  each frame's `sigma_m` alone was 1.8 times too large on structured synthetic skies, since the scene cancels in
+  the difference, and the frames' own keeps a difference that covers a tile from widening the test.
+- With it, a point of 4 to 200 noise sigmas drawn into all, some or one of the neighbours carried less than one
+  noise unit of the merged frame into it in every trial; at 3.5 sigmas the point was kept out in 39 of 40 seeds (36
+  of 40 at a threshold of 4). Fainter, it is not always kept out: at 2, 2.5 and 3 sigmas with every neighbour
+  carrying it, it brought a noise unit or more in 18, 6 and 3 of 24 trials. Near frame `k`'s own noise such a point
+  cannot be told from it: that is the faint star of section 7, which guard 1 judges at the gate. The cost on steady
+  synthetic skies: fine noise left 0.274 of the frame's (median of 12 seeds), against 0.267 for the pairwise
+  weight alone.
 
 **Per frame, after the merge:** the stars of that frame, confirmed on the original frame alone or on its original
 frames together (sections 3 and 7), the spatial filter (section 5), the dissolve passes (section 7), then the
@@ -661,11 +688,23 @@ ffmpeg -y -v error -copyts
   reader (`display_matrix_hint`, `services/ingest/metadata.py`) return the original's `displayOrientation`; a test
   tries all eight orientations.
 
+**The last frame's duration** [tested: restore-5b, `tests/media/test_clip_io.py`]. How long the last frame is shown
+is the video stream's presentation end (its start plus its duration) minus its last frame time. The encoder gives
+every frame the input's frame duration and the muxer keeps the last one's, so the piped input's rate is one over
+the original's last frame duration. That came back exact for every last duration of 1 to 60 ticks of 1/600 on
+regular frame time lists, in mov and mp4 (360 of 360), and on the owner's three clips. Where the gaps vary at
+random by up to 5 ticks, the encoder's decode order moved the end by 1 to 6 ticks in 5 of 16 lists, and the stream
+copy that turns a clip moved it by 3 ticks on the test clip: every frame time stays the original's there, so the
+check records the duration and does not refuse it [proposed].
+
 **Checks on the stored clip, before the gate:** the video packet times equal the source's list exactly; each
 audio stream's packet hash (`ffmpeg -map 0:<index> -c copy -f hash -hash sha256`, as
 `services/ingest/probe.py:195-196` computes it) equals the one stored at ingest and its packet times equal the
 source's; the display orientation reads back the same. Any difference is `rejected` with `frame_times_differ` or
 `audio_differs`.
+
+As built [tested: restore-5b], the check also records whether the last frame is shown as long as the original's
+(above).
 
 **The gate on a clip:** the variant and the original are decoded side by side, and section 7 runs on each pair of
 frames. The gate holds the same window of original frames as the merge and registers them again by the same rule,
@@ -676,10 +715,21 @@ from the pipeline.
 For the largest of the owner's clips that is about 32 MB per frame. The child and each worker record their peak
 resident size (`resource.getrusage`), and P-RST-17 holds the bound.
 
+**The frames together and the unshifted mean, as built** [tested: restore-6, `services/media/temporal.py`]: `J_k`
+takes, at each pixel, frame `k` and the samples each neighbour may give there (inside its frame once moved, in a
+block that held, not a codec copy); `U_k` takes the same frames at each pixel, unmoved. A codec copy carries the
+previous frame's light, not this frame's, so it is left out of both, as the merge leaves it out.
+
 **What to expect on the owner's clips** [tested, M16]. Two of three are recorded almost entirely at black, with
 nothing measurable to reduce and one code step above black to lift; their honest result is a nearly unchanged clip
 and a plain note saying why. The third has structure, and the temporal step gains less than independent frames
 would. A unit that cannot show an improvement there says "unsolved on real data".
+- Measured by restore-6 on 13 frames from the middle of each clip, whole frames [tested, counts only]: on all three
+  more than half of the luma's fine detail is exactly zero (0.60, 0.91 and 0.97, medians of 9 frames), so by
+  REQ-RST-4.3 no noise is measured and no merge runs. Registration held for none of 21 frames: the scene moves a
+  median of 9 to 54 px per frame there, closure errors have medians of 0.85 to 2.9 px, and with closure set aside
+  the 128 px blocks keep 0.6 to 1.5 percent of a neighbour's samples. Unsolved on real data: block-wise or flow
+  registration (section 18) is the next thing to measure.
 
 ### 11. The job (`services/media/jobs.py`)
 
