@@ -13,6 +13,8 @@ import {
 
 /** The reveal's edge fade: clear at each side edge, whole from 56 px in. */
 export const SIDE_FADE = 'linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%)';
+/** The fade's size with Original pixels pressed: its two 56 px edges outside the photo, so none of it shows. */
+const SIDE_FADE_OPEN = 'calc(100% + 112px) 100%';
 
 export interface SourcePhotoStageProps {
   session: ObservationSession;
@@ -26,6 +28,11 @@ export interface SourcePhotoStageProps {
   dimmed?: boolean;
   /** The photo's left and right edges fade into the black over 56 px (reveal, approved 2026-11-12); the pixels between are untouched. */
   fadeSides?: boolean;
+  /**
+   * Original pixels pressed (the motion record): the fade's transparent edges move 56 px past each side, so the photo is
+   * whole, on the words-out time; released, they come back on the words-in time. The fade's own string is unchanged.
+   */
+  fadeOpen?: boolean;
   /** Real sky is drawn over the photo: the photo stays beneath it. */
   underSky?: boolean;
   /** Told the clip's element as it mounts and unmounts, for the clip's player (INTERIM: UIUX-clip-QUESTION.md). */
@@ -55,6 +62,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   bare = false,
   dimmed = false,
   fadeSides = false,
+  fadeOpen = false,
   underSky = false,
   onVideo,
   endsMask,
@@ -117,7 +125,21 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     // The browser turns the photo by its tag; set here so no stylesheet can switch that off
     imageOrientation: 'from-image',
     ...(dimmed ? { opacity: 0.55 } : {}),
-    ...(fadeSides ? { maskImage: SIDE_FADE, WebkitMaskImage: SIDE_FADE } : {}),
+    ...(fadeSides
+      ? {
+          maskImage: SIDE_FADE,
+          WebkitMaskImage: SIDE_FADE,
+          maskSize: fadeOpen ? SIDE_FADE_OPEN : '100% 100%',
+          WebkitMaskSize: fadeOpen ? SIDE_FADE_OPEN : '100% 100%',
+          maskPosition: 'center',
+          WebkitMaskPosition: 'center',
+          maskRepeat: 'no-repeat',
+          WebkitMaskRepeat: 'no-repeat',
+          transition: fadeOpen
+            ? 'mask-size var(--look-mo-dur-words-out) var(--look-mo-ease-std)'
+            : 'mask-size var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in)',
+        }
+      : {}),
     ...(endsMask ? { maskImage: endsMask, WebkitMaskImage: endsMask } : {}),
   };
   const failed = failedUri === asset.uri;

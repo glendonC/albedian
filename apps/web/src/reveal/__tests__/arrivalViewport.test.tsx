@@ -802,13 +802,16 @@ describe('the viewport shows the approved star card over the photo, above phone 
     open(pickedSession());
     expect(mask()).toContain('56px');
     press('Original pixels');
-    expect(mask()).toBe('');
+    // The fade's edges move past the photo on the words-out time (motion-21): the photo whole, the fade's string kept
+    expect(mask()).toContain('56px');
+    expect((q(`${STAGE} img`) as HTMLElement & { style: Record<string, string> }).style.maskSize).toBe('calc(100% + 112px) 100%');
     // The marks leave on the words-out time as the motion record says (motion-19), taking no input meanwhile
     expect(q('[data-testid="reveal-marks"]')!.classList.contains('is-leaving')).toBe(true);
     expect(q('svg.photo-corners')).toBeNull();
     expect(q(CARD)).not.toBeNull();
     press('Original pixels');
     expect(mask()).toContain('56px');
+    expect((q(`${STAGE} img`) as HTMLElement & { style: Record<string, string> }).style.maskSize).toBe('100% 100%');
     expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
   });
 
@@ -816,7 +819,7 @@ describe('the viewport shows the approved star card over the photo, above phone 
     const session = pickedSession();
     open(session);
     press('Original pixels');
-    expect(mask()).toBe('');
+    expect((q(`${STAGE} img`) as HTMLElement & { style: Record<string, string> }).style.maskSize).toBe('calc(100% + 112px) 100%');
     // The card closes: the session no longer has a picked star
     renderViewport({ ...session, selectedFindingId: null } as ObservationSession, { selectedFinding: null });
     // It leaves as the motion record says (motion-17): its lines go, inert, while the fade and the marks are back

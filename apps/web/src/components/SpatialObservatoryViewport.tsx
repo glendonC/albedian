@@ -734,7 +734,8 @@ export const SpatialObservatoryViewport: React.FC<
             session={slotted}
             onFrameMismatch={setPhotoFrameMismatch}
             bare={revealShown}
-            fadeSides={revealShown && !phoneReveal && !originalPixels}
+            fadeSides={revealShown && !phoneReveal}
+            fadeOpen={originalPixels}
             endsMask={slotMask}
             underSky={skyOver}
             onVideo={setClipVideo}

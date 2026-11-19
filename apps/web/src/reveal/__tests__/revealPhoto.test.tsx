@@ -725,6 +725,26 @@ describe("the photo's side edges fade, and nothing else of it changes", () => {
     expect(plain.style.maskImage).toBe('');
     expect(plain.style.getPropertyValue('-webkit-mask-image')).toBe('');
   });
+
+  // The motion record (MOTION-READY-web.md, "Your photo and Real sky": "Original pixels: marks and edge fade
+  // --mo-words-out timing (100ms) on press, back with --mo-words-in on release"): the fade's string stays; its
+  // transparent edges move 56 px past each side of the photo, so the photo is whole, and back
+  it('opens its edges past the photo for Original pixels on the words-out time, and brings them back on words in', () => {
+    const stage = (fadeOpen: boolean) => {
+      act(() => root.render(createElement(SourcePhotoStage, { session: calibrated(), viewportWidthPx: VIEW.w, viewportHeightPx: VIEW.h, bare: true, fadeSides: true, fadeOpen })));
+      return q('[data-testid="source-photo-stage"] img') as HTMLImageElement & { style: Record<string, string> };
+    };
+    const closed = stage(false);
+    expect(closed.style.maskImage || closed.style.getPropertyValue('-webkit-mask-image')).toContain('56px');
+    expect(closed.style.maskSize).toBe('100% 100%');
+    expect(closed.style.maskPosition).toBe('center');
+    expect(closed.style.maskRepeat).toBe('no-repeat');
+    expect(closed.style.transition).toBe('mask-size var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in)');
+    const open = stage(true);
+    expect(open.style.maskImage || open.style.getPropertyValue('-webkit-mask-image')).toContain('56px');
+    expect(open.style.maskSize).toBe('calc(100% + 112px) 100%');
+    expect(open.style.transition).toBe('mask-size var(--look-mo-dur-words-out) var(--look-mo-ease-std)');
+  });
 });
 
 describe("the reveal's rules are the approved pages'", () => {
