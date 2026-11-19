@@ -93,8 +93,9 @@ M_PASS_KIND = "only a solve stage reports a pass"
 M_CANCEL = "a cancel time lies within the job's run"
 M_FAILURE = "a failure is one of the fixed sentences its kind and state allow"
 M_INTERRUPTED = "an interrupted job says the server stopped"
+M_PREDICTED_SKY = "a predicted sky time lies within the job's run"
 JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, M_STAGE_ORDER, M_STAGE_UNIT, M_PASS_KIND,
-                M_CANCEL, M_FAILURE, M_INTERRUPTED)
+                M_CANCEL, M_FAILURE, M_INTERRUPTED, M_PREDICTED_SKY)
 
 # What each state may and must hold, for each group of kinds, read from the requirements: a job is queued until it gets
 # a slot and started from then (REQ-JOB-2.1), with a queue count only while queued (2.2); a stage that did not run is
@@ -114,27 +115,28 @@ JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, 
 # kind's failures but the interrupted one, or the interrupted one alone. A group with no row for a state cannot be in it.
 JOB_PRE_RUN_STAGES: dict[str, tuple[str, ...]] = {"solve": ("store",), "display_copy": (), "restoration": ()}
 JOB_STATE_FIELDS = ("startedAtUTC", "finishedAtUTC", "error", "solutionId", "attemptId", "variantId", "inputSpan",
-                    "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages")
+                    "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages",
+                    "predictedSkyAtUTC")
 _RULES = {"R": "required", "F": "forbidden", "E": "either", "S": "started", "A": "with_start"}
-#                     start fin  err  sol  att  var  span cancel queue prod req graph work  errors
+#                     start fin  err  sol  att  var  span cancel queue prod req graph work sky  errors
 _STATE_ROWS: dict[str, dict[str, Optional[tuple[str, str]]]] = {
     "solve": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    F   F     F", "none"),
-        "running":     ("R    F    F    F    F    F    E    S      F     A    F   F     E", "none"),
-        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    F   F     E", "none"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    F   F     F    F", "none"),
+        "running":     ("R    F    F    F    F    F    E    S      F     A    F   F     E    S", "none"),
+        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    F   F     E    S", "none"),
         "rejected":    None,
-        "failed":      ("R    R    R    F    F    F    E    S      F     A    F   F     E", "failure"),
-        "canceled":    ("E    R    F    F    F    F    S    A      F     A    F   F     S", "none"),
-        "interrupted": ("R    R    R    F    F    F    E    S      F     A    F   F     E", "interrupted"),
+        "failed":      ("R    R    R    F    F    F    E    S      F     A    F   F     E    S", "failure"),
+        "canceled":    ("E    R    F    F    F    F    S    A      F     A    F   F     S    S", "none"),
+        "interrupted": ("R    R    R    F    F    F    E    S      F     A    F   F     E    S", "interrupted"),
     },
     "media": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   R     F", "none"),
-        "running":     ("R    F    F    F    F    F    F    S      F     A    R   R     E", "none"),
-        "succeeded":   ("R    R    F    F    R    R    F    S      F     A    R   R     E", "none"),
-        "rejected":    ("R    R    F    F    R    F    F    S      F     A    R   R     E", "none"),
-        "failed":      ("R    R    R    F    E    F    F    S      F     A    R   R     E", "failure"),
-        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   R     S", "none"),
-        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   R     E", "interrupted"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    R   R     F    F", "none"),
+        "running":     ("R    F    F    F    F    F    F    S      F     A    R   R     E    F", "none"),
+        "succeeded":   ("R    R    F    F    R    R    F    S      F     A    R   R     E    F", "none"),
+        "rejected":    ("R    R    F    F    R    F    F    S      F     A    R   R     E    F", "none"),
+        "failed":      ("R    R    R    F    E    F    F    S      F     A    R   R     E    F", "failure"),
+        "canceled":    ("E    R    F    F    F    F    F    A      F     A    R   R     S    F", "none"),
+        "interrupted": ("R    R    R    F    F    F    F    S      F     A    R   R     E    F", "interrupted"),
     },
 }
 
@@ -237,6 +239,10 @@ class UploadJob(WireModel):
     input_span: Optional[JobInputSpan] = None
     cancel_requested_at_utc: Optional[UtcInstant] = Field(default=None, alias="cancelRequestedAtUTC")
     queue_ahead: Optional[SafeCount] = None
+    # When a solve published the sky predicted from a pose known before its search ended (a partial result: the
+    # lock-on, platform-10a); the solve job's predicted-sky route serves it as an approximate ObservationSolution
+    # with its poseEstimate [proposed]
+    predicted_sky_at_utc: Optional[UtcInstant] = Field(default=None, alias="predictedSkyAtUTC")
 
     @model_validator(mode="after")
     def _fits_its_state_and_kind(self) -> "UploadJob":
@@ -268,6 +274,9 @@ class UploadJob(WireModel):
         cancel = _instant(self.cancel_requested_at_utc)
         if cancel is not None and start is not None and (cancel < start or (end is not None and cancel > end)):
             failures.append(M_CANCEL)
+        sky = _instant(self.predicted_sky_at_utc)
+        if sky is not None and start is not None and (sky < start or (end is not None and sky > end)):
+            failures.append(M_PREDICTED_SKY)
         allowed = None if row is None else row["errors"]
         if self.error is not None and allowed == "interrupted" and self.error != INTERRUPTED_SENTENCE:
             failures.append(M_INTERRUPTED)
@@ -289,6 +298,7 @@ PYTHON_NAMES = {
     "variantId": "variant_id", "inputSpan": "input_span", "cancelRequestedAtUTC": "cancel_requested_at_utc",
     "queueAhead": "queue_ahead", "firstFrameIndex": "first_frame_index", "frameCount": "frame_count",
     "startSec": "start_sec", "endSec": "end_sec", "exposureEv": "exposure_ev", "pass": "pass_",
+    "predictedSkyAtUTC": "predicted_sky_at_utc",
 }
 
 
@@ -388,8 +398,13 @@ def build_job_samples() -> dict[str, Any]:
     # A cancel asked of a running job stays when the server then stops, or the restoration's check refuses
     interrupted_after_cancel = {**solve["interrupted"], "cancelRequestedAtUTC": "2031-05-02T19:20:04Z"}
     rejected_after_cancel = {**media["rejected"], "cancelRequestedAtUTC": "2031-05-02T19:20:04Z"}
+    # A solve that published the sky predicted from an early pose while it ran, and kept saying so when it ended
+    sky_at = "2031-05-02T19:20:20Z"
+    running_with_sky = {**solve["running"], "predictedSkyAtUTC": sky_at}
+    succeeded_with_sky = {**solve["succeeded"], "predictedSkyAtUTC": sky_at}
     valid = [*solve.values(), *media.values(), display, interrupted_media, canceled_queued_solve,
-             canceled_queued_media, interrupted_after_cancel, rejected_after_cancel]
+             canceled_queued_media, interrupted_after_cancel, rejected_after_cancel, running_with_sky,
+             succeeded_with_sky]
 
     invalid: list[dict[str, Any]] = []
 
@@ -464,6 +479,11 @@ def build_job_samples() -> dict[str, Any]:
     bad(_with(media["failed"], ["error"], "The decoder could not read the file."), "a solve sentence on a media job", M_FAILURE)
     bad(_with(media["failed"], ["error"], "This kind of file is not supported yet: a gif."), "a format outside the list", M_FAILURE)
     bad(_with(solve["interrupted"], ["error"], "The decoder could not read the file."), "an interrupted job says the server stopped", M_INTERRUPTED)
+    bad(_with(solve["queued"], ["predictedSkyAtUTC"], created), "a predicted sky on a queued solve", M_STATE)
+    bad(_with(canceled_queued_solve, ["predictedSkyAtUTC"], created), "a predicted sky on a solve that never started", M_STATE)
+    bad(_with(media["succeeded"], ["predictedSkyAtUTC"], sky_at), "a predicted sky on a media job", M_STATE)
+    bad(_with(running_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:01Z"), "a predicted sky before the start", M_PREDICTED_SKY)
+    bad(_with(succeeded_with_sky, ["predictedSkyAtUTC"], "2031-05-02T19:20:42Z"), "a predicted sky after the finish", M_PREDICTED_SKY)
 
     # Edge samples: each bound, pattern and closed list just inside (valid) and just outside (refused), from one table
     def nudge_down(value: float) -> float:
@@ -510,6 +530,8 @@ def build_job_samples() -> dict[str, Any]:
         ("finish at creation", canceled_queued_solve, ["finishedAtUTC"], [created], ["2031-05-02T19:19:59.999Z"]),
         ("cancel within the run", solve["canceled"], ["cancelRequestedAtUTC"], [started, "2031-05-02T19:20:05Z"],
          ["2031-05-02T19:20:01.249Z", "2031-05-02T19:20:05.001Z", "2031-05-02T19:20:04+00:00"]),
+        ("predicted sky within the run", succeeded_with_sky, ["predictedSkyAtUTC"], [started, finished],
+         ["2031-05-02T19:20:01.249Z", "2031-05-02T19:20:41.001Z", "2031-05-02T19:20:20+00:00"]),
         ("created", solve["queued"], ["createdAtUTC"], ["2031-05-02T19:20:00Z", "2028-02-29T00:00:00.000Z", "0001-01-01T00:00:00Z"],
          ["2031-02-29T00:00:00Z", "0000-01-01T00:00:00Z", "2031-05-02T19:20:00+00:00", "2031-05-02T19:20:00.12Z", "2031-05-02 19:20:00Z"]),
         ("solve failure", solve["failed"], ["error"], [x for x in SOLVE_FAILURE_SENTENCES if x != INTERRUPTED_SENTENCE],
@@ -553,7 +575,7 @@ def build_job_samples() -> dict[str, Any]:
         values = {"startedAtUTC": started, "finishedAtUTC": finished, "error": sentence,
                   "solutionId": "sol_0a1b2c3d4e5f6071", "attemptId": "att_7e6f5a4b3c2d1e0f",
                   "variantId": "var_7e6f5a4b3c2d1e0f", "inputSpan": span, "cancelRequestedAtUTC": "2031-05-02T19:20:04Z",
-                  "queueAhead": 0, "producer": producer,
+                  "queueAhead": 0, "producer": producer, "predictedSkyAtUTC": "2031-05-02T19:20:20Z",
                   "request": {"kind": "restoration", "exposureEv": 1.5} if kind != "display_copy" else {"kind": kind},
                   "graphId": "graph_7e6f5a4b3c2d1e0f"}
         for field in JOB_STATE_FIELDS:

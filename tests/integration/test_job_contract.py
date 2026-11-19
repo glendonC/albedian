@@ -341,6 +341,13 @@ READING: list[tuple[list[tuple[str, str]], Any]] = [
      lambda g, st, has: "inputSpan" not in has or "startedAtUTC" in has),
     ([("REQ-JOB-2.3", "A stage that did not run SHALL be absent.")],  # no work stage runs before the start
      lambda g, st, has: "workStages" not in has or "startedAtUTC" in has),
+    ([("REQ-JOB-2.7", "WHEN a solve knows a pose before its search ends, THE job SHALL publish the sky predicted "
+                      "from that pose as a partial result, labelled predicted, and its record SHALL say when "
+                      "(`predictedSkyAtUTC`) [proposed in platform-10a for the lock-on, part B of the lead's "
+                      "ALIGN-LOCKON brief; the publishing is the next unit]."),
+      ("design 3.8", "`predictedSkyAtUTC` only on a solve that started, kept once recorded, not before "
+                     "`startedAtUTC` nor after `finishedAtUTC` (REQ-JOB-2.7, platform-10a).")],
+     lambda g, st, has: "predictedSkyAtUTC" not in has or (g == "solve" and "startedAtUTC" in has)),
     ([S_CANCEL,
       ("REQ-JOB-4.1", "A cancel of a `queued` job SHALL make it `canceled` at once."),
       ("REQ-JOB-4.2", "A cancel of a `running` job SHALL record when it was asked, stop the work at the next point the "

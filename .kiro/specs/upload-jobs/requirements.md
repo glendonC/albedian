@@ -91,6 +91,9 @@ along it is, without any number that was not counted.
      written to disk.
   6. FOR a clip, THE solve job SHALL record which frames it decoded (first frame index, frame count, and their times
      in seconds into the clip).
+  7. WHEN a solve knows a pose before its search ends, THE job SHALL publish the sky predicted from that pose as a
+     partial result, labelled predicted, and its record SHALL say when (`predictedSkyAtUTC`) [proposed in
+     platform-10a for the lock-on, part B of the lead's ALIGN-LOCKON brief; the publishing is the next unit].
 
 ### REQ-JOB-3: Every job ends, and a restart says what happened
 **User Story:** As someone whose laptop restarted the server mid-job, I want the job to say it was interrupted, not

@@ -459,6 +459,12 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   job that started, and on a job canceled after it started always [decided 2026-11-12: a record never drops a true
   thing it recorded, REQ-JOB-4.2 and 4.3, so a cancel asked of a running job stays when it then succeeds, fails, is
   refused or is interrupted], not before `startedAtUTC` nor after `finishedAtUTC`.
+- `predictedSkyAtUTC` only on a solve that started, kept once recorded, not before `startedAtUTC` nor after
+  `finishedAtUTC` (REQ-JOB-2.7, platform-10a). The partial it names is the solve job's own predicted sky: an
+  `ObservationSolution` with status `approximate`, its nominal WCS and its `poseEstimate` (the only status a pose
+  belongs to), its stars and planets `predicted` and placed through that pose, served by
+  the job's predicted-sky route while the job runs [proposed: the route and its life after the job ends are the
+  publishing unit's; the record holds a time, not the sky, so each read of the job stays small].
 - `producer` is required on a job that started and absent on one that never did, as design 4 writes it with the
   start [decided 2026-11-13]; a record today's code wrote has none and could not have had one, so the store judges
   it by `SolveJob` and never gives it one (3.1). `error` keeps its 2000 character bound.
