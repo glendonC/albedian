@@ -1230,6 +1230,76 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Gemini: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/mercury-suit/Mercury Spacesuit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.glb",
+      "bytes": 513884,
+      "sha256": "406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Mercury spacesuit: NASA's own model (https://science.nasa.gov/3d-resources/mercury-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/mercury-suit/Mercury Spacesuit.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mercury%20Spacesuit/Mercury%20Spacesuit.png",
+      "bytes": 180249,
+      "sha256": "7e04bf7624c5f95090a4d0a42eeee3630e40d47f2ba3f25b3a70e2b544aef13a",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Mercury spacesuit: NASA's own render of the model (https://science.nasa.gov/3d-resources/mercury-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/mark3/Mark III Spacesuit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb",
+      "bytes": 894092,
+      "sha256": "885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Mark III spacesuit: NASA's own model (https://science.nasa.gov/3d-resources/mark-iii-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/aces/Advanced Crew Escape Suit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.glb",
+      "bytes": 858408,
+      "sha256": "6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Advanced Crew Escape Suit: NASA's own model (https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/aces/Advanced Crew Escape Suit.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Advanced%20Crew%20Escape%20Suit/Advanced%20Crew%20Escape%20Suit.png",
+      "bytes": 1063336,
+      "sha256": "f28f8d53377124e7e62c73f8bd90a0efcdee8a5a7955ce591c4ef676d0f22d66",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Advanced Crew Escape Suit: NASA's own render of the model (https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/gemini-suit/Gemini Spacesuit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.glb",
+      "bytes": 2876516,
+      "sha256": "972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Gemini spacesuit: NASA's own model (https://science.nasa.gov/3d-resources/gemini-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/gemini-suit/Gemini Spacesuit.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini%20Spacesuit/Gemini%20Spacesuit.png",
+      "bytes": 207773,
+      "sha256": "cc7a7d556a4f58026be956a92ab1b786c05336a8ab58d8f1b40a1b26794627b7",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Gemini spacesuit: NASA's own render of the model (https://science.nasa.gov/3d-resources/gemini-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

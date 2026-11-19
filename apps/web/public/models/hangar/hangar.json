@@ -525,6 +525,230 @@
         "quote": "304.8 cm in diameter at the base",
         "quotedCm": 304.8
       }
+    },
+    "mercury_suit": {
+      "title": "Mercury spacesuit",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "mercury_suit/mercury_suit_lod0.glb",
+          "bytes": 1255552,
+          "triangles": 46310,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "mercury_suit/mercury_suit_lod1.glb",
+          "bytes": 448424,
+          "triangles": 15436,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "mercury_suit/mercury_suit_lod2.glb",
+          "bytes": 173728,
+          "triangles": 5142,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "mercury_suit/mercury_suit_picker.webp",
+          "bytes": 2488,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.497,
+          -1.0,
+          -0.236
+        ],
+        "max": [
+          0.497,
+          1.0,
+          0.236
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 0.45,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
+        "quote": "NASA's first spacesuits were developed for the Mercury program."
+      }
+    },
+    "mark3": {
+      "title": "Mark III spacesuit",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "mark3/mark3_lod0.glb",
+          "bytes": 840140,
+          "triangles": 30522,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "mark3/mark3_lod1.glb",
+          "bytes": 300248,
+          "triangles": 10173,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "mark3/mark3_lod2.glb",
+          "bytes": 119048,
+          "triangles": 3390,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "mark3/mark3_picker.webp",
+          "bytes": 2916,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.557,
+          -0.995,
+          -0.565
+        ],
+        "max": [
+          0.557,
+          0.995,
+          0.565
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 0.45,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
+        "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
+      }
+    },
+    "aces": {
+      "title": "Advanced Crew Escape Suit",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "aces/aces_lod0.glb",
+          "bytes": 987084,
+          "triangles": 30606,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "aces/aces_lod1.glb",
+          "bytes": 346132,
+          "triangles": 10202,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "aces/aces_lod2.glb",
+          "bytes": 137348,
+          "triangles": 3393,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "aces/aces_picker.webp",
+          "bytes": 2452,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.444,
+          -0.998,
+          -0.277
+        ],
+        "max": [
+          0.444,
+          0.998,
+          0.277
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 0.45,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
+        "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
+      }
+    },
+    "gemini_suit": {
+      "title": "Gemini spacesuit",
+      "kind": "suit",
+      "files": {
+        "lod0": {
+          "path": "gemini_suit/gemini_suit_lod0.glb",
+          "bytes": 1041848,
+          "triangles": 48751,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "gemini_suit/gemini_suit_lod1.glb",
+          "bytes": 358228,
+          "triangles": 16249,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "gemini_suit/gemini_suit_lod2.glb",
+          "bytes": 132040,
+          "triangles": 5410,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "gemini_suit/gemini_suit_picker.webp",
+          "bytes": 2256,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -0.498,
+          -1.001,
+          -0.355
+        ],
+        "max": [
+          0.497,
+          1.001,
+          0.355
+        ]
+      },
+      "bodyRadiusM": 0.8,
+      "lodTriangleShare": {
+        "lod0": 0.45,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "native": true,
+        "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
+        "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized."
+      }
     }
   },
   "entries": [
@@ -879,6 +1103,62 @@
           "value": 3236.9,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
           "quote": "Mass: 3236.9 kg"
+        }
+      ]
+    },
+    {
+      "id": "mercury-suit",
+      "name": "Mercury spacesuit",
+      "model": "mercury_suit",
+      "travel": null,
+      "facts": [
+        {
+          "key": "what",
+          "value": "NASA's first spacesuits, for the Mercury program",
+          "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
+          "quote": "NASA's first spacesuits were developed for the Mercury program."
+        }
+      ]
+    },
+    {
+      "id": "mark-iii",
+      "name": "Mark III spacesuit",
+      "model": "mark3",
+      "travel": null,
+      "facts": [
+        {
+          "key": "pressurePsi",
+          "value": 8.3,
+          "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
+          "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
+        }
+      ]
+    },
+    {
+      "id": "aces",
+      "name": "Advanced Crew Escape Suit",
+      "model": "aces",
+      "travel": null,
+      "facts": [
+        {
+          "key": "what",
+          "value": "a full pressure suit",
+          "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
+          "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
+        }
+      ]
+    },
+    {
+      "id": "gemini-suit",
+      "name": "Gemini spacesuit",
+      "model": "gemini_suit",
+      "travel": null,
+      "facts": [
+        {
+          "key": "firstUSSpacewalk",
+          "value": "1965-06-03",
+          "page": "https://www.nasa.gov/suits-and-rovers/",
+          "quote": "followed by NASA astronaut Ed White on June 3, 1965, during the Gemini 4 mission"
         }
       ]
     }

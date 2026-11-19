@@ -437,6 +437,210 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 3.0,
         "changes": "flat",
     },
+    # The four suits NASA publishes in metres; each faces +Y in the import frame (visor and chest fittings
+    # there). Mercury, Mark III and ACES export most materials as glass; Mark III's NASA insignia is a decal.
+    "mercury_suit": {
+        "title": "Mercury spacesuit",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-mercury-suit",
+            "title": "Mercury Spacesuit, NASA 3D Resources",
+            "folder": "Mercury Spacesuit",
+            "file": "Mercury Spacesuit.glb",
+            "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
+            "bytes": 513884,
+            "sha256": "406c835b4c91bb3f26e52ce5b79a7a1348cb2a22042744325e4be7826ecd7985",
+            "local": "mercury-suit",
+            "picture": "Mercury Spacesuit.png",
+            "picture_bytes": 180249,
+            "picture_sha256": "7e04bf7624c5f95090a4d0a42eeee3630e40d47f2ba3f25b3a70e2b544aef13a"
+        },
+        "drop_objects": [],
+        "forward": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "up": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "scale_from": {
+            "native": True,
+            "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
+            "quote": "NASA's first spacesuits were developed for the Mercury program."
+        },
+        "material_rules": [
+            {
+                "match": [
+                    ""
+                ],
+                "role": "nasa_flat"
+            }
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 40.0,
+        "lod_ratio": {
+            "lod0": 0.45,
+            "lod1": 0.15,
+            "lod2": 0.05
+        },
+        "body_radius_m": 0.8,
+        "changes": "suit_flat"
+    },
+    "mark3": {
+        "title": "Mark III spacesuit",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-mark3",
+            "title": "Mark III Spacesuit, NASA 3D Resources",
+            "folder": "Mark III Spacesuit",
+            "file": "Mark III Spacesuit.glb",
+            "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
+            "bytes": 894092,
+            "sha256": "885a4a83bd9d18f3886c8201845e384c0a9acb0cb487fb2897846d9f0438ab51",
+            "local": "mark3",
+            "picture": None,
+            "picker_render_reason": "insignia"
+        },
+        "drop_objects": [],
+        "forward": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "up": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "scale_from": {
+            "native": True,
+            "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
+            "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
+        },
+        "material_rules": [
+            {
+                "match": [
+                    ""
+                ],
+                "role": "nasa_flat"
+            }
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 40.0,
+        "lod_ratio": {
+            "lod0": 0.45,
+            "lod1": 0.15,
+            "lod2": 0.05
+        },
+        "body_radius_m": 0.8,
+        "changes": "suit_flat",
+        "drop_materials": [
+            "MKIII:MarkIII_8sizedwithoutskeleton_lambert5SG"
+        ]
+    },
+    "aces": {
+        "title": "Advanced Crew Escape Suit",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-aces",
+            "title": "Advanced Crew Escape Suit, NASA 3D Resources",
+            "folder": "Advanced Crew Escape Suit",
+            "file": "Advanced Crew Escape Suit.glb",
+            "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
+            "bytes": 858408,
+            "sha256": "6017772d557c30ea86e2e3a7651ad2089499f3d0c577b983467650616bfaebeb",
+            "local": "aces",
+            "picture": "Advanced Crew Escape Suit.png",
+            "picture_bytes": 1063336,
+            "picture_sha256": "f28f8d53377124e7e62c73f8bd90a0efcdee8a5a7955ce591c4ef676d0f22d66"
+        },
+        "drop_objects": [],
+        "forward": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "up": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "scale_from": {
+            "native": True,
+            "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
+            "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
+        },
+        "material_rules": [
+            {
+                "match": [
+                    ""
+                ],
+                "role": "nasa_flat"
+            }
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 40.0,
+        "lod_ratio": {
+            "lod0": 0.45,
+            "lod1": 0.15,
+            "lod2": 0.05
+        },
+        "body_radius_m": 0.8,
+        "changes": "suit_flat"
+    },
+    "gemini_suit": {
+        "title": "Gemini spacesuit",
+        "kind": "suit",
+        "source": {
+            "id": "nasa3d-gemini-suit",
+            "title": "Gemini Spacesuit, NASA 3D Resources",
+            "folder": "Gemini Spacesuit",
+            "file": "Gemini Spacesuit.glb",
+            "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
+            "bytes": 2876516,
+            "sha256": "972096ada3f5f4bfb54cd636e103f096f4ecf8d5bbc7dae40778c0185fa82266",
+            "local": "gemini-suit",
+            "picture": "Gemini Spacesuit.png",
+            "picture_bytes": 207773,
+            "picture_sha256": "cc7a7d556a4f58026be956a92ab1b786c05336a8ab58d8f1b40a1b26794627b7"
+        },
+        "drop_objects": [],
+        "forward": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "up": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "scale_from": {
+            "native": True,
+            "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
+            "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized."
+        },
+        "material_rules": [
+            {
+                "match": [
+                    ""
+                ],
+                "role": "nasa_flat"
+            }
+        ],
+        "weld_m": 0.0001,
+        "smooth_deg": 40.0,
+        "lod_ratio": {
+            "lod0": 0.45,
+            "lod1": 0.15,
+            "lod2": 0.05
+        },
+        "body_radius_m": 0.8,
+        "changes": "suit_flat"
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -597,5 +801,65 @@ HANGAR: list[dict] = [
             {"key": "heightCm", "value": 573.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "giving a total height of 573.6 cm for the Gemini spacecraft"},
             {"key": "massKg", "value": 3236.9, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "Mass: 3236.9 kg"},
         ],
+    },
+    # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+    {
+        "id": "mercury-suit",
+        "name": "Mercury spacesuit",
+        "model": "mercury_suit",
+        "travel": None,
+        "facts": [
+            {
+                "key": "what",
+                "value": "NASA's first spacesuits, for the Mercury program",
+                "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
+                "quote": "NASA's first spacesuits were developed for the Mercury program."
+            }
+        ]
+    },
+    # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+    {
+        "id": "mark-iii",
+        "name": "Mark III spacesuit",
+        "model": "mark3",
+        "travel": None,
+        "facts": [
+            {
+                "key": "pressurePsi",
+                "value": 8.3,
+                "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
+                "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
+            }
+        ]
+    },
+    # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+    {
+        "id": "aces",
+        "name": "Advanced Crew Escape Suit",
+        "model": "aces",
+        "travel": None,
+        "facts": [
+            {
+                "key": "what",
+                "value": "a full pressure suit",
+                "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
+                "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
+            }
+        ]
+    },
+    # A spacesuit is worn near a spacecraft, never flown between stars: no speed (D26 item 5).
+    {
+        "id": "gemini-suit",
+        "name": "Gemini spacesuit",
+        "model": "gemini_suit",
+        "travel": None,
+        "facts": [
+            {
+                "key": "firstUSSpacewalk",
+                "value": "1965-06-03",
+                "page": "https://www.nasa.gov/suits-and-rovers/",
+                "quote": "followed by NASA astronaut Ed White on June 3, 1965, during the Gemini 4 mission"
+            }
+        ]
     },
 ]

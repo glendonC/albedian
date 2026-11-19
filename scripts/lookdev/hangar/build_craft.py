@@ -73,6 +73,14 @@ CHANGES = {
         "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
         "sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a suit of NASA's flat colours (recipe "changes": "suit_flat")
+    "lod0_suit_flat": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh and turned so the suit faces along +Z "
+        "with +Y up, at the metre scale NASA's model is built in; every material made opaque in NASA's colours (NASA's "
+        "file marks most of them as fully transmissive, like glass), any NASA insignia decal removed with its faces, "
+        "faces NASA's file keeps apart at shared corners welded, and the normals made again, smooth within an angle "
+        "and sharp beyond it."
+    ),
     # lod0 for a suit whose file holds parts twice and marks every material as glass (recipe "changes": "suit")
     # lod0 for a model NASA textured with its own colour, bump and specular maps (recipe "changes": "baked")
     "lod0_baked": (
