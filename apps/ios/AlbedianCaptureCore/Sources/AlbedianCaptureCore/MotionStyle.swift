@@ -49,3 +49,18 @@ public enum MotionStyle {
         return Double(leaving ? count - 1 - index : index) * staggerSeconds
     }
 }
+
+/// Where the companion's screens sit in the system's navigation stack (MOTION-READY-iphone section 1: forward screens by
+/// NavigationStack's own push, unstyled). Home is the root; aiming, holding still and after the shot are one place (the
+/// capture), as the wait and its result are another (sent), so a change between them is a change inside a screen.
+public enum CompanionPlace: Hashable, Sendable {
+    case credits, kept, capture, pairing, sent
+
+    /// The path after moving to `place` (nil for home): back to it when it is already on the path, which the system shows as a
+    /// pop; pushed on top when it is not; empty for home.
+    public static func path(_ path: [CompanionPlace], to place: CompanionPlace?) -> [CompanionPlace] {
+        guard let place else { return [] }
+        if let at = path.firstIndex(of: place) { return Array(path[...at]) }
+        return path + [place]
+    }
+}

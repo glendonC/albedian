@@ -34,3 +34,24 @@ final class MotionStyleTests: XCTestCase {
         XCTAssertEqual(MotionStyle.staggerDelay(index: 0, count: 0, leaving: false), 0)
     }
 }
+
+/// The navigation path the companion's screens make (MOTION-READY-iphone section 1): forward a push, back a pop.
+final class CompanionPlaceTests: XCTestCase {
+    func testForwardScreensArePushedAndGoingBackPops() {
+        var path: [CompanionPlace] = []
+        path = CompanionPlace.path(path, to: .capture)
+        XCTAssertEqual(path, [.capture], "Start: aiming pushed")
+        XCTAssertEqual(CompanionPlace.path(path, to: .capture), [.capture], "hold still and after the shot stay in the screen")
+        path = CompanionPlace.path(path, to: .pairing)
+        XCTAssertEqual(path, [.capture, .pairing], "Send the first time: Connect pushed")
+        path = CompanionPlace.path(path, to: .capture)
+        XCTAssertEqual(path, [.capture], "back to after the shot: a pop")
+        path = CompanionPlace.path(path, to: .sent)
+        XCTAssertEqual(path, [.capture, .sent], "Send: the wait pushed")
+        XCTAssertEqual(CompanionPlace.path(path, to: .sent), [.capture, .sent], "the result in the same place")
+        XCTAssertEqual(CompanionPlace.path(path, to: nil), [], "close: home")
+        XCTAssertEqual(CompanionPlace.path([], to: .credits), [.credits])
+        XCTAssertEqual(CompanionPlace.path([.kept], to: .pairing), [.kept, .pairing])
+        XCTAssertEqual(CompanionPlace.path([.kept, .pairing], to: .kept), [.kept])
+    }
+}

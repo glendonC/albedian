@@ -18,9 +18,37 @@ struct KeptShot: Equatable {
 @MainActor
 @Observable
 final class CompanionModel {
-    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, waiting, stopped, result, kept }
+    enum Screen: Equatable {
+        case home, credits, aim, holdStill, afterShot, pairing, waiting, stopped, result, kept
 
-    private(set) var screen: Screen = .home
+        /// Its place in the system's navigation stack (MOTION-READY-iphone section 1); nil for home, the root.
+        var place: CompanionPlace? {
+            switch self {
+            case .home: nil
+            case .credits: .credits
+            case .kept: .kept
+            case .aim, .holdStill, .afterShot: .capture
+            case .pairing: .pairing
+            case .waiting, .stopped, .result: .sent
+            }
+        }
+    }
+
+    private(set) var screen: Screen = .home {
+        didSet {
+            path = CompanionPlace.path(path, to: screen.place)
+            if screen.place == .capture { captureScreen = screen }
+            if screen.place == .sent { sentScreen = screen }
+        }
+    }
+    /// The navigation stack's path: forward screens pushed, going back popped, by the system (MOTION-READY-iphone).
+    private(set) var path: [CompanionPlace] = []
+    /// The screen each shared place last showed, so a place below the top keeps what it showed.
+    private(set) var captureScreen: Screen = .aim
+    private(set) var sentScreen: Screen = .waiting
+
+    /// The stack's own change of path: the back button and its swipe are hidden, so this keeps the path as the system has it.
+    func navigated(to newPath: [CompanionPlace]) { path = newPath }
     private(set) var shot: KeptShot?
     /// Under the photo after a send the laptop did not answer (UIUX-unreachable).
     private(set) var unreachable = false

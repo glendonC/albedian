@@ -42,9 +42,37 @@ struct CompanionRoot: View {
     @State private var model = CompanionModel()
 
     var body: some View {
+        // MOTION-READY-iphone section 1: forward screens by NavigationStack's own push, back by its pop, unstyled; its bar
+        // and back button hidden, since each screen has its own close or back control (the approved screens)
+        NavigationStack(path: Binding(get: { model.path }, set: { model.navigated(to: $0) })) {
+            screen(.home)
+                .navigationDestination(for: CompanionPlace.self) { place in
+                    screen(shown(at: place))
+                }
+        }
+        .preferredColorScheme(.dark)
+        .sheet(item: $model.openPage) { page in SafariView(url: page.url).ignoresSafeArea() }
+        #if DEBUG
+        .task { model.runFromLaunchArguments() }
+        #endif
+    }
+
+    /// What a place shows: the current screen when it is the top place, else what it showed last.
+    private func shown(at place: CompanionPlace) -> CompanionModel.Screen {
+        if model.screen.place == place { return model.screen }
+        switch place {
+        case .credits: return .credits
+        case .kept: return .kept
+        case .capture: return model.captureScreen
+        case .pairing: return .pairing
+        case .sent: return model.sentScreen
+        }
+    }
+
+    private func screen(_ screen: CompanionModel.Screen) -> some View {
         ZStack {
             Color(ControlStyle.field).ignoresSafeArea()
-            switch model.screen {
+            switch screen {
             case .home: HomeScreen(model: model)
             case .credits: CreditsScreen(model: model)
             case .aim: AimScreen(model: model)
@@ -57,11 +85,8 @@ struct CompanionRoot: View {
             case .kept: KeptScreen(model: model)
             }
         }
-        .preferredColorScheme(.dark)
-        .sheet(item: $model.openPage) { page in SafariView(url: page.url).ignoresSafeArea() }
-        #if DEBUG
-        .task { model.runFromLaunchArguments() }
-        #endif
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
     }
 }
 
