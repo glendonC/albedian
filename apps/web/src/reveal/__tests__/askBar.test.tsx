@@ -285,9 +285,9 @@ describe("the ask bar's rules are the approved pages'", () => {
   });
 
   it('fills the ask button in ink while listening, its circle dark with an ink microphone, the unsettled word at 42 percent', () => {
-    expect(declarationsOf('.ask-bar__ask')).toEqual({
-      transition: 'background-color 0.2s var(--look-ease-standard), color 0.2s var(--look-ease-standard), border-color 0.2s var(--look-ease-standard)',
-    });
+    // No rule of its own: the button family's transitions (look.css) hold, its press scale's 150 ms with the colours'
+    const own = postcss.parse(css).nodes.filter((node) => node.type === 'rule' && (node as postcss.Rule).selector.trim() === '.ask-bar__ask');
+    expect(own).toHaveLength(0);
     expect(declarationsOf('.ask-bar__ask.is-listening')).toEqual({ background: 'var(--look-ink)', color: 'var(--look-night)', 'border-color': 'var(--look-ink)' });
     expect(declarationsOf('.ask-bar__ask.is-listening .look-second__circle')).toEqual({ background: 'var(--look-night)', color: 'var(--look-ink)' });
     expect(declarationsOf('.ask-bar__word.is-unsettled')).toEqual({ opacity: '0.42' });

@@ -811,13 +811,6 @@
   --look-ic: 19px;
 }
 
-.ask-bar__ask {
-  transition:
-    background-color 0.2s var(--look-ease-standard),
-    color 0.2s var(--look-ease-standard),
-    border-color 0.2s var(--look-ease-standard);
-}
-
 /* Listening: the button fills, its circle turns dark with an ink microphone */
 .ask-bar__ask.is-listening {
   background: var(--look-ink);

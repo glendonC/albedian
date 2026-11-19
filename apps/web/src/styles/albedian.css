@@ -1616,7 +1616,7 @@
   display: inline-flex;
   align-items: flex-start;
   gap: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
 .alb-lusion-brand-btn:hover {
@@ -1653,7 +1653,7 @@
   font-weight: 450;
   letter-spacing: -0.01em;
   color: #969fac;
-  transition: color 0.16s ease;
+  transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
 .alb-audio-label-btn:hover,
