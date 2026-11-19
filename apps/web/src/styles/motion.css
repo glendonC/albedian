@@ -38,3 +38,47 @@
 .keys-help__row {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--keys-i) + 1)) both;
 }
+
+/* A star picked: its mark turns white in the colour time; the leader line draws from the star to the card as the card's
+   frame; the card's lines arrive top first, 20 ms apart, 120 ms after the frame. On a phone the card rises from the
+   bottom edge as Apple's sheet does. Let go: the card and the line go at once (an exit would need them kept mounted). */
+.reveal-marks .reveal-mark {
+  transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
+}
+
+.reveal-leader path {
+  stroke-dasharray: 1;
+  animation: look-mo-line-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+.reveal-card.is-phone {
+  animation: look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both;
+}
+
+.reveal-card__top {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 0) both;
+}
+
+.reveal-card__name {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 1) both;
+}
+
+.reveal-card__sub {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 2) both;
+}
+
+.reveal-card__numbers {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 3) both;
+}
+
+.reveal-card__source {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 4) both;
+}
+
+.reveal-card__acts {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 5) both;
+}
+
+.reveal-card__notes {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * 6) both;
+}

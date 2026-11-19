@@ -483,26 +483,11 @@
   top: 118px;
   width: 320px;
   pointer-events: auto;
-  animation:
-    reveal-card-fade 500ms var(--look-ease-standard) both,
-    reveal-card-rise 900ms var(--look-ease-spring) both;
 }
 
 @keyframes reveal-card-fade {
   from {
     opacity: 0;
-  }
-}
-
-@keyframes reveal-card-rise {
-  from {
-    transform: translateY(14px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-card {
-    animation: none;
   }
 }
 

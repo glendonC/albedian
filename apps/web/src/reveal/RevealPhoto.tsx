@@ -166,7 +166,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {!phone && !bareFrame && picked && marks.some((mark) => mark.picked) && (
         <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
-          <path d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
+          <path pathLength={1} d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
         </svg>
       )}
 

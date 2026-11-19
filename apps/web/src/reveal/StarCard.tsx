@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { CelestialFinding } from '@albedian/contracts';
 import { EvidenceGlyph, EvidenceTag, IconButton, LookIcon, MainAction, SecondAction } from '../look/index.js';
 import { starCardFacts } from './starCardFacts.js';
+import '../styles/motion.css';
 
 export interface StarCardProps {
   finding: CelestialFinding;

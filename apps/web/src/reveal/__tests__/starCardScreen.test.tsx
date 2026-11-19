@@ -22,6 +22,7 @@ import { starCardFacts } from '../starCardFacts.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
 const VIEW = { w: 1440, h: 900 };
 const session = poseSession(sample('plate_calibrated'));
 const betelgeuse = session.observationSolution!.findings.find((f) => f.title === 'Betelgeuse')!;
@@ -234,19 +235,54 @@ describe('the reveal with a star picked', () => {
 });
 
 describe("the card's rules are the approved pages'", () => {
-  it('sits in the right column, 320 wide, and rises 14 px on the spring as it fades in, with no motion when reduced', () => {
+  it('sits in the right column, 320 wide, with no motion of its own (its lines arrive by motion.css)', () => {
     expect(declarationsOf('.reveal-card')).toEqual({
       position: 'absolute',
       right: '32px',
       top: '118px',
       width: '320px',
       'pointer-events': 'auto',
-      animation: 'reveal-card-fade 500ms var(--look-ease-standard) both, reveal-card-rise 900ms var(--look-ease-spring) both',
     });
     const text = css.replace(/\s+/g, ' ');
-    expect(text).toContain('@keyframes reveal-card-rise { from { transform: translateY(14px); } }');
-    expect(text).toContain('@keyframes reveal-card-fade { from { opacity: 0; } }');
-    expect(text).toContain('@media (prefers-reduced-motion: reduce) { .reveal-card { animation: none; } }');
+    // the 14 px rise on the button spring is gone (the motion record: a spring is a button's own)
+    expect(text).not.toContain('reveal-card-rise');
+    expect(text).not.toContain('@media (prefers-reduced-motion: reduce) { .reveal-card {');
+  });
+
+  // The motion record (MOTION-READY-web.md, "Star card and its leader line"): the leader line draws from the star to
+  // the card as the card's frame, then the card's lines arrive top first, 20 ms apart, 120 ms after the frame; the picked
+  // mark turns white in the colour time; on a phone the card rises from the bottom edge as Apple's sheet
+  const motionOf = (selector: string): Record<string, string> => {
+    const found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+      });
+    });
+    return found;
+  };
+  const lineIn = (n: number) =>
+    `look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * ${n}) both`;
+
+  it("brings the card's lines in top first, 20 ms apart, after the leader line's frame", () => {
+    const order = ['.reveal-card__top', '.reveal-card__name', '.reveal-card__sub', '.reveal-card__numbers', '.reveal-card__source', '.reveal-card__acts', '.reveal-card__notes'];
+    order.forEach((selector, n) => expect(motionOf(selector), selector).toEqual({ animation: lineIn(n) }));
+    expect(motionOf('.reveal-leader path')).toEqual({
+      'stroke-dasharray': '1',
+      animation: 'look-mo-line-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both',
+    });
+  });
+
+  it('raises the phone card from the bottom edge as Apple\'s sheet, and turns the picked mark white in the colour time', () => {
+    expect(motionOf('.reveal-card.is-phone')).toEqual({ animation: 'look-mo-sheet-in var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
+    expect(motionOf('.reveal-marks .reveal-mark')).toEqual({ transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)' });
+  });
+
+  it('draws the leader line on a path of length 1, and loads the motion with the card', () => {
+    showReveal(picked());
+    expect(q('[data-testid="reveal-leader"] path')!.getAttribute('pathLength')).toBe('1');
+    expect(fs.readFileSync(path.resolve(here, '../StarCard.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
   });
 
   it('sets the name at 66 px, the line under it at 15 px, the numbers at 30 px with a 15 px unit', () => {
