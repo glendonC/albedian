@@ -38,6 +38,7 @@ ROUTE_SENTENCES = {
     "noSuchPhoto": "No photo with this SHA-256 is held, so no record is kept for it.",
     "notARecord": "The body is not a pointing record by its contract.",
     "notJson": "The body is not JSON text.",
+    "solveStarted": "A solve job exists for this photo, so no pointing record can be added to it now.",
 }
 # Where in the record each of its own rules is broken, for a refusal's issue
 RULE_PATHS = {

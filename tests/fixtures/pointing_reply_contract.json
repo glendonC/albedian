@@ -10,7 +10,8 @@
   "anotherPhoto": "The record names another photo than the one in its address.",
   "noSuchPhoto": "No photo with this SHA-256 is held, so no record is kept for it.",
   "notARecord": "The body is not a pointing record by its contract.",
-  "notJson": "The body is not JSON text."
+  "notJson": "The body is not JSON text.",
+  "solveStarted": "A solve job exists for this photo, so no pointing record can be added to it now."
  },
  "refusalSentences": [
   "A heading needs the place: true north is found from the device location, so a record with no place carries no heading.",
@@ -27,7 +28,8 @@
   "The record names another photo than the one in its address.",
   "No photo with this SHA-256 is held, so no record is kept for it.",
   "The body is not a pointing record by its contract.",
-  "The body is not JSON text."
+  "The body is not JSON text.",
+  "A solve job exists for this photo, so no pointing record can be added to it now."
  ],
  "recordKeys": [
   "aboveEllipsoidM",
@@ -214,6 +216,13 @@
    "kind": "refusal",
    "reply": {
     "detail": "The body is not JSON text."
+   }
+  },
+  {
+   "name": "a refusal: A solve job exists for this photo, so no pointing record can be added to it now.",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A solve job exists for this photo, so no pointing record can be added to it now."
    }
   },
   {
@@ -446,6 +455,21 @@
        "sourceAssetSha256"
       ],
       "message": "The body is not JSON text."
+     }
+    ]
+   }
+  },
+  {
+   "name": "a refusal by the route rule solveStarted, with an issue",
+   "kind": "refusal",
+   "reply": {
+    "detail": "A solve job exists for this photo, so no pointing record can be added to it now.",
+    "issues": [
+     {
+      "path": [
+       "sourceAssetSha256"
+      ],
+      "message": "A solve job exists for this photo, so no pointing record can be added to it now."
      }
     ]
    }

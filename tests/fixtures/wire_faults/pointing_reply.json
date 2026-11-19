@@ -6,7 +6,7 @@
   "constants": {"1.0": "1.0", "1e400": "1e400", "a 401 digit integer": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "2^53 + 1": "9007199254740993", "minus zero": "-0.0", "true": "true", "text": "\"1\"", "1": "1", "the text true": "\"true\"", "year 0": "\"0000-01-01T00:00:00Z\"", "day 30 of February": "\"2031-02-30T00:00:00Z\""},
   "samples": {
     "/valid/0/reply": {"schema": "PointingRecordReceipt", "pointer": "/valid/0/reply"},
-    "/valid/17/reply": {"schema": "PointingRecordRefusal", "pointer": "/valid/17/reply"}
+    "/valid/18/reply": {"schema": "PointingRecordRefusal", "pointer": "/valid/18/reply"}
   },
   "faults": [
     {"sample": "/valid/0/reply", "pointer": "", "fault": "unknown key", "python": "refused"},
@@ -35,19 +35,19 @@
     {"sample": "/valid/0/reply", "pointer": "/alreadyStored", "fault": "rename", "to": "already_stored", "python": "refused"},
     {"sample": "/valid/0/reply", "pointer": "/alreadyStored", "fault": "1", "python": "refused"},
     {"sample": "/valid/0/reply", "pointer": "/alreadyStored", "fault": "the text true", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "", "fault": "unknown key", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/detail", "fault": "over long", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/detail", "fault": "a lone surrogate", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud800\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/detail", "fault": "outside the basic plane", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud83d\\ude00\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/detail", "fault": "a control character", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\u0007\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0", "fault": "unknown key", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/path/0", "fault": "over long", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/path/0", "fault": "a lone surrogate", "raw": "\"heading\\ud800\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/path/0", "fault": "outside the basic plane", "raw": "\"heading\\ud83d\\ude00\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/path/0", "fault": "a control character", "raw": "\"heading\\u0007\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/message", "fault": "over long", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/message", "fault": "a lone surrogate", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud800\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/message", "fault": "outside the basic plane", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud83d\\ude00\"", "python": "refused"},
-    {"sample": "/valid/17/reply", "pointer": "/issues/0/message", "fault": "a control character", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\u0007\"", "python": "refused"}
+    {"sample": "/valid/18/reply", "pointer": "", "fault": "unknown key", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/detail", "fault": "over long", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/detail", "fault": "a lone surrogate", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud800\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/detail", "fault": "outside the basic plane", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud83d\\ude00\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/detail", "fault": "a control character", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\u0007\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0", "fault": "unknown key", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/path/0", "fault": "over long", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/path/0", "fault": "a lone surrogate", "raw": "\"heading\\ud800\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/path/0", "fault": "outside the basic plane", "raw": "\"heading\\ud83d\\ude00\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/path/0", "fault": "a control character", "raw": "\"heading\\u0007\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/message", "fault": "over long", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/message", "fault": "a lone surrogate", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud800\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/message", "fault": "outside the basic plane", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\ud83d\\ude00\"", "python": "refused"},
+    {"sample": "/valid/18/reply", "pointer": "/issues/0/message", "fault": "a control character", "raw": "\"A heading needs the place: true north is found from the device location, so a record with no place carries no heading.\\u0007\"", "python": "refused"}
   ]
 }

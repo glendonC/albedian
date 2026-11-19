@@ -12,7 +12,9 @@ held for the same photo is never a receipt: the route refuses it with `different
 
 A refusal (a 4xx) never repeats what it refuses: its detail and each issue's message are closed sentences (the
 record's own rules and the route's), and an issue's path is made of the record's own wire keys. No value of the
-record, no key the record made up, and no text of the server's own errors is in it. Strict by the wire rules
+record, no key the record made up, and no text of the server's own errors is in it. The API's own 413 for a body over
+the route's limit (services/api.py `body_too_large_detail`) is the same answer on every route and is not a record
+refusal. Strict by the wire rules
 (services/contracts/wire.py): unknown keys and Python field names are refused at every level.
 """
 
@@ -51,6 +53,7 @@ POINTING_REPLY_SENTENCES = {
     "noSuchPhoto": "No photo with this SHA-256 is held, so no record is kept for it.",
     "notARecord": "The body is not a pointing record by its contract.",
     "notJson": "The body is not JSON text.",
+    "solveStarted": "A solve job exists for this photo, so no pointing record can be added to it now.",
 }
 # Every sentence a refusal may say: the record's own rules, then the route's
 POINTING_REFUSAL_SENTENCES = (*POINTING_RULES.values(), *POINTING_REPLY_SENTENCES.values())
