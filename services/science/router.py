@@ -34,6 +34,7 @@ from services.science.ephemeris import (
 from services.science.stellar_parameters import gaia_stellar_parameters
 from services.science.detector import noise_limit_warnings
 from services.science.radiometry import compute_lunar_phase_and_illumination, predict_sky_brightness
+from services.science.predicted_sky import sky_phase
 from services.science.solver import (
     SolveInputRefusal,
     SourceDetection,
@@ -494,6 +495,18 @@ def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, An
         obs_utc_iso, moon_alt_deg=moon_alt_deg, target_alt_deg=90.0, sep_from_moon_deg=90.0 - moon_alt_deg,
         target="zenith",
     )
+    # The Sun, its own block and kept whatever the filters say: below the horizon is when it tells how dark the sky
+    # is. Its band is the science code's own (sky_phase); the contract checks it against the altitude
+    (sun,) = compute_solar_system_ephemerides(obs_utc_iso=obs_utc_iso, lat_deg=lat_deg, lon_deg=lon_deg, bodies=("Sun",))
+    sun_evidence = sun.to_contract_dict(source_sha256=None)["evidence"]
+    sun_alt_deg = float(sun.alt_deg)
+    sun_out = {
+        "altDeg": sun_alt_deg,
+        "band": sky_phase(sun_alt_deg).band,
+        "evidenceClass": "predicted",
+        "method": sun_evidence["verificationMethod"],
+        "limitations": list(sun_evidence["limitations"]),
+    }
     filters: dict[str, Any] = {"aboveHorizonOnly": above_only}
     if req.mag_limit is not None:
         filters["magLimit"] = req.mag_limit
@@ -508,6 +521,7 @@ def post_science_sky_context(req: sky_context.SkyContextRequest) -> dict[str, An
         "ephemerides": ephem_out,
         "constellationEdges": edges_out,
         "predictedSkyBrightness": sky_brightness,
+        "sun": sun_out,
     }
     return sky_context.SkyContextReply.model_validate(reply).to_wire_dict()
 

@@ -5,6 +5,8 @@
 - Its rows are the ones the contract fixture's base holds, for that fixture's synthetic moment and open-ocean place
 - `aboveHorizonOnly` and `magLimit` leave out exactly what they say, and the edges of what they leave out
 - A star's position is `icrs_to_altaz`'s, unrefracted, as the convention states
+- The Sun is always answered, whatever the filters, with the ephemeris's altitude and the science code's USNO band,
+  and through one sunrise its bands run night, astronomical, nautical and civil twilight, then day, in that order
 - A request the contract refuses answers 422 in closed sentences that never repeat the time, the place or a key sent
 
 Every moment and place here is synthetic: open ocean, never a capture's.
@@ -85,6 +87,7 @@ def test_every_item_is_predicted_and_no_key_is_snake_case(whole: dict[str, Any])
     assert all(star["evidenceClass"] == "predicted" for star in whole["stars"])
     assert all(body["evidenceClass"] == body["evidence"]["evidenceClass"] == "predicted" for body in whole["ephemerides"])
     assert whole["predictedSkyBrightness"]["evidenceClass"] == "predicted"
+    assert whole["sun"]["evidenceClass"] == "predicted"
     assert not [key for key in _keys(whole) if "_" in key]
 
 
@@ -96,6 +99,7 @@ def test_its_rows_are_the_contract_fixtures_base_rows(whole: dict[str, Any]) -> 
     for body in BASE["reply"]["ephemerides"]:
         assert _differences(bodies[body["name"]], body) == [], body["name"]
     assert _differences(whole["predictedSkyBrightness"], BASE["reply"]["predictedSkyBrightness"]) == []
+    assert _differences(whole["sun"], BASE["reply"]["sun"]) == []
     held = {star["id"] for star in BASE["reply"]["stars"]}
     assert [e for e in whole["constellationEdges"] if {e["fromStarId"], e["toStarId"]} <= held] == BASE["reply"]["constellationEdges"]
 
@@ -119,6 +123,7 @@ def test_above_horizon_only_leaves_out_what_is_below_and_its_edges(request_: dic
     assert above["constellationEdges"] == [e for e in every["constellationEdges"] if {e["fromStarId"], e["toStarId"]} <= held]
     assert 0 < len(above["stars"]) < len(every["stars"])
     assert above["predictedSkyBrightness"] == every["predictedSkyBrightness"]
+    assert above["sun"] == every["sun"]
     assert _post({**request_, "aboveHorizonOnly": False}, client).json() == every
 
 
@@ -254,6 +259,51 @@ def test_a_moment_the_moons_phase_sits_on_a_sectors_edge_answers_its_null_and_ne
     answer = _post(request)
     assert answer.status_code == 200, answer.text
     assert answer.json()["predictedSkyBrightness"]["lunarPhaseName"] is None
-    assert _differences(answer.json(), edge) == []
+    # The edge base was made before the Sun was added (skycontext-3): the rest of the reply is it, and the Sun is the
+    # ephemeris's
+    assert _differences({key: value for key, value in answer.json().items() if key != "sun"}, edge) == []
+    assert _sun_is_the_ephemeris(answer.json()["sun"], request)
     for place in ({"latDeg": 35.0, "lonDeg": -40.0}, {"latDeg": 10.0, "lonDeg": -150.0}):
         assert _post({**request, **place}).status_code == 200, place
+
+
+def _sun_is_the_ephemeris(sun: dict[str, Any], request: dict[str, Any]) -> bool:
+    """The reply's Sun is the ephemeris's for the request's moment and place, within a nanodegree, with sky_phase's band
+    and the ephemeris's own method and limitations."""
+    from services.science.ephemeris import compute_solar_system_ephemerides
+    from services.science.predicted_sky import sky_phase
+
+    (row,) = compute_solar_system_ephemerides(request["observedAtUTC"], request["latDeg"], request["lonDeg"], bodies=("Sun",))
+    evidence = row.to_contract_dict(source_sha256=None)["evidence"]
+    return (
+        abs(sun["altDeg"] - float(row.alt_deg)) < 1e-9
+        and sun["band"] == sky_phase(float(row.alt_deg)).band
+        and (sun["evidenceClass"], sun["method"], sun["limitations"]) == ("predicted", evidence["verificationMethod"], evidence["limitations"])
+        and set(sun) == {"altDeg", "band", "evidenceClass", "method", "limitations"}
+    )
+
+
+@pytest.mark.parametrize("request_", [REQUEST, OTHER, {**REQUEST, "aboveHorizonOnly": True, "magLimit": -30.0}],
+                         ids=["fixture moment", "another moment", "both filters at their narrowest"])
+def test_the_sun_is_always_answered_and_is_the_ephemeris(request_: dict[str, Any]) -> None:
+    answer = _post(request_)
+    assert answer.status_code == 200, answer.text
+    assert _sun_is_the_ephemeris(answer.json()["sun"], request_)
+    assert "Sun" not in [body["name"] for body in answer.json()["ephemerides"]]
+
+
+def test_through_one_sunrise_the_suns_bands_run_in_order() -> None:
+    """Every five minutes from 13:30 to 16:30 UTC on the fixture's day at its open-ocean place (local sunrise near
+    15:20): the bands appear night, astronomical, nautical and civil twilight, then day, each at least once, never back."""
+    client = TestClient(app)
+    order = list(sc.SKY_CONTEXT_SUN_BANDS)[::-1]
+    seen: list[str] = []
+    altitudes: list[float] = []
+    for minute in range(13 * 60 + 30, 16 * 60 + 31, 5):
+        moment = f"2031-03-20T{minute // 60:02d}:{minute % 60:02d}:00Z"
+        sun = _post({**REQUEST, "observedAtUTC": moment, "magLimit": -30.0}, client).json()["sun"]
+        altitudes.append(sun["altDeg"])
+        if not seen or seen[-1] != sun["band"]:
+            seen.append(sun["band"])
+    assert seen == order, seen
+    assert altitudes == sorted(altitudes)
