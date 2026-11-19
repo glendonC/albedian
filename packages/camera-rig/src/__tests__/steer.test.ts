@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { STEER_SPEED_LIMITS_PC_S, changeSpeed, raDecToUnitVector, steerCamera, type SteerState, type Vec3, type WcsCameraRows } from '../index.js';
+import { CHASE_FOLLOW_SECONDS, STEER_SPEED_LIMITS_PC_S, changeSpeed, followRows, raDecToUnitVector, steerCamera, type SteerState, type Vec3, type WcsCameraRows } from '../index.js';
 
 // ALBEDIAN_FC_SEED pins the seed for the lane's 20-seed runs; unset, fast-check draws one per run.
 const SEED = process.env.ALBEDIAN_FC_SEED ? Number(process.env.ALBEDIAN_FC_SEED) : undefined;
@@ -63,5 +63,75 @@ describe('steering the free camera through the star field (D26 item 6)', () => {
     expect(changeSpeed(1, 0, 3)).toBe(1);
     expect(changeSpeed(1, 1, 1e6)).toBe(STEER_SPEED_LIMITS_PC_S.max);
     expect(changeSpeed(1, -1, 1e6)).toBe(STEER_SPEED_LIMITS_PC_S.min);
+  });
+});
+
+describe('the chase camera following the craft (MOTION k13, decided 08:12)', () => {
+  const angle = (a: Vec3, b: Vec3) => Math.acos(Math.max(-1, Math.min(1, dot(a, b))));
+  const level: WcsCameraRows = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+  const turned = steerCamera({ positionPc: [0, 0, 0], rows: level, speedPcPerS: 0 }, { yawRadPerS: 1, pitchRadPerS: 0.3 }, 0.5).rows;
+
+  it('closes the gap to the craft\'s heading by 1 - exp(-dt / 0.25 s) a frame, at any frame rate, never past it', () => {
+    const start = angle(level.z, turned.z);
+    const one = followRows(level, turned, 0.1);
+    expect(angle(one.z, turned.z)).toBeCloseTo(start * Math.exp(-0.1 / CHASE_FOLLOW_SECONDS), 3);
+    let two = followRows(level, turned, 0.05);
+    two = followRows(two, turned, 0.05);
+    expect(angle(two.z, turned.z)).toBeCloseTo(angle(one.z, turned.z), 4);
+    // First order: it approaches from one side and never overshoots
+    let rows = level;
+    let last = start;
+    for (let i = 0; i < 120; i++) {
+      rows = followRows(rows, turned, 1 / 60);
+      const now = angle(rows.z, turned.z);
+      expect(now).toBeLessThanOrEqual(last + 1e-12);
+      last = now;
+    }
+    // About a second later it has caught up: the record's time constant is 0.25 s, so after 1 s the gap is e^-4
+    expect(CHASE_FOLLOW_SECONDS).toBe(0.25);
+    let oneSecond = level;
+    for (let i = 0; i < 60; i++) oneSecond = followRows(oneSecond, turned, 1 / 60);
+    expect(angle(oneSecond.z, turned.z) / start).toBeCloseTo(Math.exp(-4), 2);
+    expect(last).toBeLessThan(start * 0.02);
+  });
+
+  it('keeps its axes orthonormal and right handed', () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 0.2, noNaN: true }), (dt) => {
+        const r = followRows(level, turned, dt);
+        for (const a of [r.x, r.y, r.z]) expect(Math.abs(norm(a) - 1)).toBeLessThan(1e-9);
+        expect(Math.abs(dot(r.x, r.y))).toBeLessThan(1e-9);
+        expect(Math.abs(dot(r.y, r.z))).toBeLessThan(1e-9);
+        const x = cross(r.y, r.z);
+        for (let k = 0; k < 3; k++) expect(Math.abs(x[k]! - r.x[k]!)).toBeLessThan(1e-9);
+      }),
+      RUNS
+    );
+  });
+
+  it('locks to the craft at once under reduced motion', () => {
+    expect(followRows(level, turned, 0.01, { reduced: true })).toEqual(turned);
+  });
+});
+
+describe('a mirrored photo\'s camera (parity -1: left-handed axes) keeps its handedness', () => {
+  const mirrored: WcsCameraRows = { x: [-1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+  const handed = (r: WcsCameraRows) => Math.sign(dot(cross(r.y, r.z), r.x));
+
+  it('steering neither mirrors the view nor moves it when nothing is pressed', () => {
+    const still = steerCamera({ positionPc: [0, 0, 0], rows: mirrored, speedPcPerS: 0 }, { yawRadPerS: 0, pitchRadPerS: 0 }, 0.1);
+    for (const k of ['x', 'y', 'z'] as const) for (let i = 0; i < 3; i++) expect(still.rows[k][i]).toBeCloseTo(mirrored[k][i]!, 12);
+    const turned = steerCamera({ positionPc: [0, 0, 0], rows: mirrored, speedPcPerS: 0 }, { yawRadPerS: 0.7, pitchRadPerS: -0.4 }, 0.3);
+    expect(handed(turned.rows)).toBe(-1);
+    // A turn to the right still turns toward the screen's right (the x row)
+    const right = steerCamera({ positionPc: [0, 0, 0], rows: mirrored, speedPcPerS: 0 }, { yawRadPerS: 1, pitchRadPerS: 0 }, 0.1);
+    expect(dot(right.rows.z, mirrored.x)).toBeGreaterThan(0);
+  });
+
+  it('the chase follow keeps it too', () => {
+    const turned = steerCamera({ positionPc: [0, 0, 0], rows: mirrored, speedPcPerS: 0 }, { yawRadPerS: 1, pitchRadPerS: 0.3 }, 0.5).rows;
+    const r = followRows(mirrored, turned, 0.1);
+    expect(handed(r)).toBe(-1);
+    expect(followRows(mirrored, mirrored, 0.1)).toEqual(mirrored);
   });
 });

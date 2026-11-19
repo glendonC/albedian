@@ -42,7 +42,7 @@ interface CraftGpu {
   radius: number;
 }
 
-function drawCraft(gpu: CraftGpu, camera: FlightCamera, craft: Craft, steer?: { positionPc: Vec3; rows: WcsCameraRows }): boolean {
+function drawCraft(gpu: CraftGpu, camera: FlightCamera, craft: Craft, steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }): boolean {
   const scene = craftSceneOf(camera, craft, gpu.centre, gpu.radius, steer);
   if (!scene) return false;
   gpu.holder.matrix.fromArray(scene.modelMatrix);
@@ -64,7 +64,7 @@ export const FlightCraftLayer: React.FC<{
   /** Loads the model; NASA's file by default. */
   load?: (url: string) => Promise<THREE.Group>;
   /** While the person steers: the camera they turn and move. */
-  steer?: { positionPc: Vec3; rows: WcsCameraRows } | null;
+  steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows } | null;
 }> = ({ camera, craft, load = loadModel, steer = null }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<CraftGpu | null>(null);

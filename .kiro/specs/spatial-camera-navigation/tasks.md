@@ -30,3 +30,5 @@
   - Traced to: `apps/web/src/spatial/flight/__tests__/steering.test.ts`, `craftScene.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
 - [x] 15. "Fly on your own" after arrival (pilot-1f, D26 item 6, the lead's yes of 09:48): an outlined pill beside Back to Moment on the laptop hands the camera to the person with no star ahead; the readout keeps "from Earth" only and the craft's trip leaves; a press on the sky ends it.
   - Traced to: `apps/web/src/reveal/__tests__/askBar.test.tsx`, `revealPhoto.test.tsx`; `apps/web/src/__tests__/askApp.test.tsx`
+- [x] 16. The chase camera's motion as MOTION measured it (k13, decided 08:12; chase-1): the person's input turns the craft and the camera's look follows its axes by 1 - exp(-dt / 0.25 s) a frame, at once under reduced motion, so in a turn the craft leads off the centre and comes back; steering and the follow keep a mirrored photo camera's left-handed axes, which re-orthonormalising had mirrored the view and hidden the craft.
+  - Traced to: `packages/camera-rig/src/__tests__/steer.test.ts`; `apps/web/src/spatial/flight/__tests__/craftScene.test.ts`

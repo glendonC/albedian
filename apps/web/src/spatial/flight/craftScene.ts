@@ -41,13 +41,16 @@ export function craftSceneOf(
   craft: Craft,
   modelCentre: Vec3,
   modelRadius: number,
-  /** While the person steers (pilot-1e): the camera turned and moved by them; the craft flies where it looks. */
-  steer?: { positionPc: Vec3; rows: WcsCameraRows }
+  /**
+   * While the person steers (pilot-1e): where the camera stands and its axes, and the craft's own axes when the chase
+   * camera's look lags behind them (MOTION k13); the craft flies along its own heading, framed as at rest from its axes.
+   */
+  steer?: { positionPc: Vec3; rows: WcsCameraRows; craftRows?: WcsCameraRows }
 ): CraftScene | null {
   const o = steer ? steer.positionPc : camera.observerPc;
   let heading: Vec3;
   if (steer) {
-    heading = steer.rows.z;
+    heading = (steer.craftRows ?? steer.rows).z;
   } else {
     const t = camera.referencePc;
     const along: Vec3 = [t[0] - o[0], t[1] - o[1], t[2] - o[2]];
@@ -56,8 +59,11 @@ export function craftSceneOf(
     heading = [along[0] / toTarget, along[1] / toTarget, along[2] / toTarget];
   }
   const pin = steer ? { ...photoPinholeOf(camera), rows: steer.rows } : photoPinholeOf(camera);
+  // The craft's place behind which the camera stands at once: framed from the craft's own axes (at rest they are the
+  // camera's), then seen through the camera's, so in a turn the craft leads off the centre
+  const framePin = steer?.craftRows ? { ...pin, rows: steer.craftRows } : pin;
   const placed = craftPlacementInView(
-    pin,
+    framePin,
     { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx },
     CRAFT_FRAMING.diameterPx,
     modelRadius,

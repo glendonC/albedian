@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { resolveFindingParsecPosition, steerCamera, type Vec3 } from '@albedian/camera-rig';
+import { followRows, resolveFindingParsecPosition, steerCamera, type Vec3 } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
@@ -85,6 +85,30 @@ describe('craftSceneOf: a NASA model placed in the photo\'s own view', () => {
     const got = [tip[0] - centre[0], tip[1] - centre[1], tip[2] - centre[2]];
     const n = Math.hypot(got[0]!, got[1]!, got[2]!);
     for (let k = 0; k < 3; k++) expect(got[k]! / n).toBeCloseTo(steer.rows.z[k]!, 9);
+  });
+
+  it('leads off the centre in a turn while the chase camera follows, and comes back as it catches up (MOTION k13)', () => {
+    const camera = flightCameraOf(there(), W, H)!;
+    const start = steerStartOf(camera);
+    let craft = { ...start, speedPcPerS: 0 };
+    let chase = start.rows;
+    // A steady turn to the right at 1 radian a second for a second, the camera following at 60 frames a second
+    for (let i = 0; i < 60; i++) {
+      craft = steerCamera(craft, { yawRadPerS: 1, pitchRadPerS: 0 }, 1 / 60);
+      chase = followRows(chase, craft.rows, 1 / 60);
+    }
+    const at = (rows: typeof chase) => {
+      const scene = craftSceneOf(camera, CRAFTS['voyager-1'], [0, 0, 0], 10, { positionPc: craft.positionPc, rows, craftRows: craft.rows })!;
+      const c = apply(scene.modelMatrix, [0, 0, 0]);
+      return toScreen(apply(scene.clipMatrix, [c[0], c[1], c[2]]));
+    };
+    const turning = at(chase);
+    expect(turning.xPx - CRAFT_FRAMING.xFraction * W).toBeGreaterThan(0.05 * W);
+    // The turn ends; a second later the camera has caught up and the craft is back at its place
+    for (let i = 0; i < 60; i++) chase = followRows(chase, craft.rows, 1 / 60);
+    const settled = at(chase);
+    expect(Math.abs(settled.xPx - CRAFT_FRAMING.xFraction * W)).toBeLessThan(0.01 * W);
+    expect(Math.abs(settled.yPx - CRAFT_FRAMING.yFraction * H)).toBeLessThan(0.01 * H);
   });
 
   it('agrees with the star layer\'s camera on where a far point lands', () => {

@@ -14,7 +14,7 @@ import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
 import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
 import { STEER_START_SPEED_PC_S, SteerHands } from './steering.js';
-import { changeSpeed, steerCamera, type SteerState } from '@albedian/camera-rig';
+import { changeSpeed, followRows, steerCamera, type SteerState, type WcsCameraRows } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
 /**
@@ -213,7 +213,11 @@ export const FlightStarsLayer: React.FC<{
     if (cone) setOrbit(CONE_ORBIT_START);
   }, [cone]);
   // pilot-1e: the person's own camera, handed over where the flight's stands, turned and moved each frame
-  const [steer, setSteer] = useState<SteerState | null>(null);
+  // The person's input turns the craft (steer.rows); the chase camera's look follows it (MOTION k13: 0.25 s, locked
+  // under reduced motion), so in a turn the craft leads off the centre
+  const [steer, setSteer] = useState<(SteerState & { chase: WcsCameraRows }) | null>(null);
+  const reducedRef = useRef(session.reducedMotion === true);
+  reducedRef.current = session.reducedMotion === true;
   const hands = useRef(new SteerHands());
   const flying = steering && !cone && camera !== null;
   useEffect(() => {
@@ -222,14 +226,19 @@ export const FlightStarsLayer: React.FC<{
       return undefined;
     }
     hands.current = new SteerHands();
-    setSteer({ ...steerStartOf(cameraRef.current), speedPcPerS: STEER_START_SPEED_PC_S });
+    const start = steerStartOf(cameraRef.current);
+    setSteer({ ...start, speedPcPerS: STEER_START_SPEED_PC_S, chase: start.rows });
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
       const { input, speedDirection } = hands.current.frame(dt);
-      setSteer((prev) => (prev ? { ...steerCamera(prev, input, dt), speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt) } : prev));
+      setSteer((prev) => {
+        if (!prev) return prev;
+        const next = steerCamera(prev, input, dt);
+        return { ...next, speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt), chase: followRows(prev.chase, next.rows, dt, { reduced: reducedRef.current }) };
+      });
       raf = window.requestAnimationFrame(tick);
     };
     raf = window.requestAnimationFrame(tick);
@@ -312,7 +321,7 @@ export const FlightStarsLayer: React.FC<{
   gainRef.current = gain;
   // The camera the stars are drawn through: the photo's own in the flight, the orbit camera in the cone view
   const view = useMemo<StarView | null>(
-    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx) : steer ? starViewOfSteer(camera, steer) : starViewOfFlight(camera)) : null),
+    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx) : steer ? starViewOfSteer(camera, { positionPc: steer.positionPc, rows: steer.chase }) : starViewOfFlight(camera)) : null),
     [camera, cone, orbit, steer, session.observationSolution, viewportWidthPx, viewportHeightPx]
   );
   const viewRef = useRef(view);
@@ -446,7 +455,7 @@ export const FlightStarsLayer: React.FC<{
     {!cone && onPressSky && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
-    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} steer={steer} />}
+    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}
     </>
   );
 };

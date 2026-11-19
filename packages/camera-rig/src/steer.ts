@@ -29,6 +29,12 @@ function unit(a: Vec3): Vec3 {
   return [a[0] / n, a[1] / n, a[2] / n];
 }
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const mul = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
+/** 1 for right-handed camera axes (x = y cross z), -1 for a mirrored photo's left-handed ones. */
+function handedness(rows: WcsCameraRows): 1 | -1 {
+  const c = cross(rows.y, rows.z);
+  return c[0] * rows.x[0] + c[1] * rows.x[1] + c[2] * rows.x[2] < 0 ? -1 : 1;
+}
 
 /** One step of `dt` seconds: turn, then move along the new forward; the axes made orthonormal again. */
 export function steerCamera(state: SteerState, input: SteerInput, dt: number): SteerState {
@@ -39,8 +45,10 @@ export function steerCamera(state: SteerState, input: SteerInput, dt: number): S
   const z1: Vec3 = [z[0] * Math.cos(a) + x[0] * Math.sin(a), z[1] * Math.cos(a) + x[1] * Math.sin(a), z[2] * Math.cos(a) + x[2] * Math.sin(a)];
   const x1: Vec3 = [x[0] * Math.cos(a) - z[0] * Math.sin(a), x[1] * Math.cos(a) - z[1] * Math.sin(a), x[2] * Math.cos(a) - z[2] * Math.sin(a)];
   const z2 = unit([z1[0] * Math.cos(b) + y[0] * Math.sin(b), z1[1] * Math.cos(b) + y[1] * Math.sin(b), z1[2] * Math.cos(b) + y[2] * Math.sin(b)]);
-  const y2 = unit(cross(z2, x1));
-  const x2 = cross(y2, z2);
+  // A mirrored photo's camera (parity -1) has left-handed axes: keep the hand it came with, or the view would mirror
+  const h = handedness(state.rows);
+  const y2 = mul(unit(cross(z2, x1)), h);
+  const x2 = mul(cross(y2, z2), h);
   const step = state.speedPcPerS * dt;
   const p = state.positionPc;
   return { positionPc: [p[0] + z2[0] * step, p[1] + z2[1] * step, p[2] + z2[2] * step], rows: { x: x2, y: y2, z: z2 }, speedPcPerS: state.speedPcPerS };
@@ -51,4 +59,42 @@ export function changeSpeed(speedPcPerS: number, direction: -1 | 0 | 1, seconds:
   if (direction === 0) return speedPcPerS;
   const next = speedPcPerS * Math.pow(2, direction * seconds);
   return Math.max(STEER_SPEED_LIMITS_PC_S.min, Math.min(STEER_SPEED_LIMITS_PC_S.max, next));
+}
+
+/** MOTION k13 (decided 08:12): the chase camera's look follows the craft's heading with this time constant, seconds. */
+export const CHASE_FOLLOW_SECONDS = 0.25;
+
+/** Rodrigues' rotation of `v` about the unit axis `k` by `angle` radians. */
+function rotateAbout(v: Vec3, k: Vec3, angle: number): Vec3 {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const kv = cross(k, v);
+  const d = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
+  return [v[0] * c + kv[0] * s + k[0] * d * (1 - c), v[1] * c + kv[1] * s + k[1] * d * (1 - c), v[2] * c + kv[2] * s + k[2] * d * (1 - c)];
+}
+
+/**
+ * The chase camera's axes one frame of `dt` seconds on: turned toward the craft's axes along the shortest rotation by
+ * the fraction 1 - exp(-dt / 0.25 s) of it (first order, frame-rate independent, never past the craft); locked to the
+ * craft at once under reduced motion.
+ */
+export function followRows(camera: WcsCameraRows, craft: WcsCameraRows, dt: number, options: { reduced?: boolean } = {}): WcsCameraRows {
+  if (options.reduced) return craft;
+  // The rotation Q with Q [camera axes] = [craft axes]: Q = T C^T, columns of C and T being the axes
+  const C = [camera.x, camera.y, camera.z];
+  const T = [craft.x, craft.y, craft.z];
+  const q = (i: number, j: number) => T[0]![i]! * C[0]![j]! + T[1]![i]! * C[1]![j]! + T[2]![i]! * C[2]![j]!;
+  const trace = q(0, 0) + q(1, 1) + q(2, 2);
+  const angle = Math.acos(Math.max(-1, Math.min(1, (trace - 1) / 2)));
+  if (!(angle > 1e-12)) return craft;
+  const s = 2 * Math.sin(angle);
+  let axis: Vec3 = [(q(2, 1) - q(1, 2)) / s, (q(0, 2) - q(2, 0)) / s, (q(1, 0) - q(0, 1)) / s];
+  const n = Math.hypot(axis[0], axis[1], axis[2]);
+  if (!(n > 1e-9)) return craft;
+  axis = [axis[0] / n, axis[1] / n, axis[2] / n];
+  const step = angle * (1 - Math.exp(-Math.max(0, dt) / CHASE_FOLLOW_SECONDS));
+  const z = unit(rotateAbout(camera.z, axis, step));
+  const h = handedness(camera);
+  const y = mul(unit(cross(z, rotateAbout(camera.x, axis, step))), h);
+  return { x: mul(cross(y, z), h), y, z };
 }
