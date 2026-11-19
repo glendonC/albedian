@@ -43,8 +43,10 @@ export function placeSkyMarks(
   fontPx: number,
   clear: readonly Box[] = []
 ): SkyMark[] {
-  // A star under the status column, the Sound circle or the foot's buttons gets no ring and no name while it is there
-  const under = (x: number, y: number) => clear.some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
+  // A star whose ring would lie under or touch the status column, the Sound circle or the foot's buttons gets no ring
+  // and no name while it is there
+  const ringOf = (x: number, y: number): Box => ({ x0: x - SKY_NAMED_RING_PX, x1: x + SKY_NAMED_RING_PX, y0: y - SKY_NAMED_RING_PX, y1: y + SKY_NAMED_RING_PX });
+  const under = (x: number, y: number) => clear.some((b) => overlaps(ringOf(x, y), b));
   const shown = stars.filter((s) => s.xPx >= 0 && s.xPx <= widthPx && s.yPx >= 0 && s.yPx <= heightPx && !under(s.xPx, s.yPx));
   const r = SKY_NAMED_RING_PX;
   // Every ring keeps its room, at the named size
