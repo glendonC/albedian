@@ -654,6 +654,36 @@
         "unit": "px"
       },
       {
+        "name": "starMinRadiusPx",
+        "steps": [
+          "find_stars"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 256,
+        "unit": "px"
+      },
+      {
+        "name": "farRingGapPx",
+        "steps": [
+          "find_stars"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
+      },
+      {
+        "name": "farRingWidthPx",
+        "steps": [
+          "find_stars"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 64,
+        "unit": "px"
+      },
+      {
         "name": "statistic",
         "steps": [
           "find_stars",
@@ -788,6 +818,76 @@
         "unit": "noise sigmas"
       },
       {
+        "name": "keptGrowPx",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
+      },
+      {
+        "name": "firstScaleLevels",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 8,
+        "unit": "B3 levels"
+      },
+      {
+        "name": "brightSkyNoises",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "unit": "sky noises"
+      },
+      {
+        "name": "brightHaloNoises",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "unit": "sky noises"
+      },
+      {
+        "name": "brightLevels",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 8,
+        "unit": "B3 levels"
+      },
+      {
+        "name": "brightBackgroundPercentile",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 100,
+        "unit": "percentile"
+      },
+      {
+        "name": "brightBackgroundPx",
+        "steps": [
+          "spatial_denoise"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 4096,
+        "unit": "px"
+      },
+      {
         "name": "maxPasses",
         "steps": [
           "dissolve_unconfirmed"
@@ -806,6 +906,106 @@
         "min": 0,
         "max": 100,
         "unit": "signal to noise"
+      },
+      {
+        "name": "sensitivityPeakCodes",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 255,
+        "unit": "codes of 255"
+      },
+      {
+        "name": "floorMargin",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "unit": "times the threshold"
+      },
+      {
+        "name": "gateThresholdSnr",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "unit": "signal to noise"
+      },
+      {
+        "name": "fillLevels",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 8,
+        "unit": "B3 levels"
+      },
+      {
+        "name": "discMinRadiusPx",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 1,
+        "max": 256,
+        "unit": "px"
+      },
+      {
+        "name": "discGrowPx",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px a pass"
+      },
+      {
+        "name": "discEdgePx",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
+      },
+      {
+        "name": "nearCorePx",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 64,
+        "unit": "px"
+      },
+      {
+        "name": "unchangedRadiusPx",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "integer",
+        "min": 0,
+        "max": 16,
+        "unit": "px"
+      },
+      {
+        "name": "unchangedToleranceCodes",
+        "steps": [
+          "dissolve_unconfirmed"
+        ],
+        "type": "number",
+        "min": 0,
+        "max": 65535,
+        "unit": "codes of 65535"
       },
       {
         "name": "gainAtBlack",

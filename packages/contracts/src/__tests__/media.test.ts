@@ -210,6 +210,40 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     expect([exponent.type, 'min' in exponent ? exponent.min : null, 'max' in exponent ? exponent.max : null]).toEqual(['number', 0, 1]);
   });
 
+  it("records restore-4's settings by their own steps (restore-4c)", () => {
+    const rows: [string, 'find_stars' | 'spatial_denoise' | 'dissolve_unconfirmed', number][] = [
+      ['starMinRadiusPx', 'find_stars', 2],
+      ['farRingGapPx', 'find_stars', 4],
+      ['farRingWidthPx', 'find_stars', 8],
+      ['keptGrowPx', 'spatial_denoise', 3],
+      ['firstScaleLevels', 'spatial_denoise', 3],
+      ['brightSkyNoises', 'spatial_denoise', 50.0],
+      ['brightHaloNoises', 'spatial_denoise', 20.0],
+      ['brightLevels', 'spatial_denoise', 1],
+      ['brightBackgroundPercentile', 'spatial_denoise', 20],
+      ['brightBackgroundPx', 'spatial_denoise', 65],
+      ['sensitivityPeakCodes', 'dissolve_unconfirmed', 4.0],
+      ['floorMargin', 'dissolve_unconfirmed', 2.0],
+      ['gateThresholdSnr', 'dissolve_unconfirmed', 5.0],
+      ['fillLevels', 'dissolve_unconfirmed', 2],
+      ['discMinRadiusPx', 'dissolve_unconfirmed', 3],
+      ['discGrowPx', 'dissolve_unconfirmed', 2],
+      ['discEdgePx', 'dissolve_unconfirmed', 4],
+      ['nearCorePx', 'dissolve_unconfirmed', 3],
+      ['unchangedRadiusPx', 'dissolve_unconfirmed', 1],
+      ['unchangedToleranceCodes', 'dissolve_unconfirmed', 1.0],
+    ];
+    for (const [name, step, value] of rows) {
+      const parameter = { name, value, origin: 'default', basis: 'Proposed in design section 7.' };
+      expect(accepts(GraphStepSchema, { kind: step, version: '1.0.0', parameters: [parameter] }), name).toBe(true);
+      expect(accepts(GraphStepSchema, { kind: 'lift', version: '1.0.0', parameters: [parameter] }), name).toBe(false);
+    }
+    const fraction = { name: 'firstScaleLevels', value: 2.5, origin: 'default', basis: 'Proposed in design section 7.' };
+    expect(accepts(GraphStepSchema, { kind: 'spatial_denoise', version: '1.0.0', parameters: [fraction] })).toBe(false);
+    const peak = STEP_PARAMETERS.find((row) => row.name === 'sensitivityPeakCodes')!;
+    expect([peak.type, 'min' in peak ? peak.min : null, 'max' in peak ? peak.max : null]).toEqual(['number', 0, 255]);
+  });
+
   it('parses every record the Python side wrote, unchanged but for minus zero, which is zero', () => {
     expect(Object.keys(VALID).sort()).toEqual(Object.keys(SCHEMAS).sort());
     for (const [name, records] of Object.entries(VALID) as [SchemaName, Rec[]][]) {

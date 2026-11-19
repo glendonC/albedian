@@ -148,6 +148,51 @@ def test_restore_6s_three_constants_are_recorded_by_their_own_steps() -> None:
     assert (row["type"], row["min"], row["max"]) == ("number", 0, 1)
 
 
+# restore-4c: the settings restore-4 chose by measurement have rows, so a still's record says the values that made it
+# (design section 7): the stars' least radius and far ring, what the spatial step keeps and smooths first, and the gate's
+# sensitivity, floor, threshold, fill, discs and unchanged rule, each on its own step (services/media/gate.py)
+GATE_ROWS = {
+    "starMinRadiusPx": ("find_stars", 2),
+    "farRingGapPx": ("find_stars", 4),
+    "farRingWidthPx": ("find_stars", 8),
+    "keptGrowPx": ("spatial_denoise", 3),
+    "firstScaleLevels": ("spatial_denoise", 3),
+    "brightSkyNoises": ("spatial_denoise", 50.0),
+    "brightHaloNoises": ("spatial_denoise", 20.0),
+    "brightLevels": ("spatial_denoise", 1),
+    "brightBackgroundPercentile": ("spatial_denoise", 20),
+    "brightBackgroundPx": ("spatial_denoise", 65),
+    "sensitivityPeakCodes": ("dissolve_unconfirmed", 4.0),
+    "floorMargin": ("dissolve_unconfirmed", 2.0),
+    "gateThresholdSnr": ("dissolve_unconfirmed", 5.0),
+    "fillLevels": ("dissolve_unconfirmed", 2),
+    "discMinRadiusPx": ("dissolve_unconfirmed", 3),
+    "discGrowPx": ("dissolve_unconfirmed", 2),
+    "discEdgePx": ("dissolve_unconfirmed", 4),
+    "nearCorePx": ("dissolve_unconfirmed", 3),
+    "unchangedRadiusPx": ("dissolve_unconfirmed", 1),
+    "unchangedToleranceCodes": ("dissolve_unconfirmed", 1.0),
+}
+
+
+def test_restore_4s_settings_are_recorded_by_their_own_steps() -> None:
+    for name, (step, value) in GATE_ROWS.items():
+        parameter = {"name": name, "value": value, "origin": "default", "basis": "Proposed in design section 7."}
+        media.GraphStep.model_validate({"kind": step, "version": "1.0.0", "parameters": [parameter]})
+        other = "lift" if step != "lift" else "decode"
+        with pytest.raises(ValidationError):
+            media.GraphStep.model_validate({"kind": other, "version": "1.0.0", "parameters": [parameter]})
+    # A level count and a pixel count are whole numbers; a fraction is refused
+    row = next(r for r in media.STEP_PARAMETERS if r["name"] == "firstScaleLevels")
+    assert row["type"] == "integer"
+    with pytest.raises(ValidationError):
+        media.GraphStep.model_validate({"kind": "spatial_denoise", "version": "1.0.0", "parameters": [
+            {"name": "firstScaleLevels", "value": 2.5, "origin": "default", "basis": "Proposed in design section 7."}]})
+    # The sensitivity is a peak in codes of 255, never past the scale
+    peak = next(r for r in media.STEP_PARAMETERS if r["name"] == "sensitivityPeakCodes")
+    assert (peak["type"], peak["min"], peak["max"]) == ("number", 0, 255)
+
+
 def test_the_removed_shapes_are_gone() -> None:
     # REQ-RST-10.3: nothing branches, caches or scores, so the contract describes none of it; the job is the runner's
     for name in ("ProcessingNode", "FidelityPolicy", "AttemptEvaluationMetrics", "validate_processing_graph_dag",
