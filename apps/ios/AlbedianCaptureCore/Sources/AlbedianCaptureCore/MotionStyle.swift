@@ -27,6 +27,9 @@ public enum MotionStyle {
     public static let disc = Timing(springCurve, 0.5)
     /// A fill, a control becoming current.
     public static let colour = Timing(standard, 0.2)
+    /// A progress line's width following each report, as the web's bars do (Progress, decided 19 Nov 12:35); it changes
+    /// at once with Reduce Motion.
+    public static let progress = Timing(standard, 0.15)
     /// A line of words arriving: from 6 pt below, faded in, after 0.12 s.
     public static let wordsIn = Timing(standard, 0.3, delay: 0.12)
     /// A line leaving: faded out toward 6 pt below.

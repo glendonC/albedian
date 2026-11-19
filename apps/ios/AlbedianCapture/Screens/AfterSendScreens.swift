@@ -20,7 +20,9 @@ struct WaitingScreen: View {
                 if let row = model.waitRow {
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         let passed = model.solveStartedAt.map { Double((ContinuousClock.now - $0).components.seconds) } ?? 0
+                        // A new step is a new row: its line starts from its own count, never sliding back from the last
                         StepRow(name: WaitRow.word(row.stage), count: row.count.words(secondsPassed: passed), fraction: row.count.fraction)
+                            .id(row.stage)
                     }
                     // 30 pt under the photo: 668 on the record's 390 pt screen, where the photo ends at 638
                     .atTop(Arrive.photoTop + width * 4 / 3 + 30)
@@ -40,6 +42,7 @@ private struct StepRow: View {
     let name: String
     let count: String?
     let fraction: Double?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 12) {
@@ -57,6 +60,8 @@ private struct StepRow: View {
                     Rectangle().fill(Color(ControlStyle.hairline))
                     if let fraction {
                         Rectangle().fill(Color(ControlStyle.ink)).frame(width: line.size.width * CGFloat(fraction))
+                            // Each report moves the fill on the progress timing, at once with Reduce Motion
+                            .animation(.progress(reduceMotion: reduceMotion), value: fraction)
                     }
                 }
             }
@@ -123,8 +128,8 @@ struct KeptScreen: View {
                                 Rectangle().fill(Color(ControlStyle.hairline))
                                 Rectangle().fill(Color(ControlStyle.ink))
                                     .frame(width: line.size.width * CGFloat(KeptWords.fraction(sent: sending.sent, of: sending.total)))
-                                    // MOTION-READY-iphone (D13): a photo sent changes the fill on the colour timing
-                                    .animation(.motion(MotionStyle.colour, reduceMotion: reduceMotion), value: sending.sent)
+                                    // A photo sent moves the fill on the progress timing, at once with Reduce Motion
+                                    .animation(.progress(reduceMotion: reduceMotion), value: sending.sent)
                             }
                         }
                         .frame(height: 2)

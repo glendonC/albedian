@@ -46,6 +46,11 @@ extension Animation {
         reduceMotion ? .easeInOut(duration: MotionStyle.reduceMotionSeconds) : .timingCurve(curve.0, curve.1, curve.2, curve.3, duration: seconds)
     }
 
+    /// A progress line's width following a report (`MotionStyle.progress`); none, so at once, with Reduce Motion.
+    static func progress(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .motion(MotionStyle.progress, reduceMotion: false)
+    }
+
     /// A named timing of the note (`MotionStyle`), its delay added, extra waits after it; the dissolve with Reduce Motion.
     static func motion(_ timing: MotionStyle.Timing, after extra: Double = 0, reduceMotion: Bool) -> Animation {
         if reduceMotion { return .easeInOut(duration: MotionStyle.reduceMotionSeconds).delay(extra) }

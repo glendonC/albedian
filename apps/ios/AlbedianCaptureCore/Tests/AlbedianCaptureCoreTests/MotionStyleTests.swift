@@ -9,6 +9,8 @@ final class MotionStyleTests: XCTestCase {
         XCTAssertEqual(curve(MotionStyle.spring), [0.175, 1.4, 0.32, 1, 1.2, 0])
         XCTAssertEqual(curve(MotionStyle.disc), [0.175, 1.4, 0.32, 1, 0.5, 0])
         XCTAssertEqual(curve(MotionStyle.colour), [0.4, 0, 0.2, 1, 0.2, 0])
+        // A progress line's width, the web's rule (MOTION-READY-iphone, Progress, decided 19 Nov 12:35)
+        XCTAssertEqual(curve(MotionStyle.progress), [0.4, 0, 0.2, 1, 0.15, 0])
         XCTAssertEqual(curve(MotionStyle.wordsIn), [0.4, 0, 0.2, 1, 0.3, 0.12])
         XCTAssertEqual(curve(MotionStyle.wordsOut), [0.4, 0, 0.2, 1, 0.1, 0])
         XCTAssertEqual(curve(MotionStyle.frameIn), [0.16, 1, 0.3, 1, 0.4, 0])
