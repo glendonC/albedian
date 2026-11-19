@@ -14,7 +14,9 @@ Folders are 0700. A variant folder is assembled under the store root's `.partial
 onto a name that does not exist, so no reader sees a folder with some of its files and nothing is overwritten; an
 attempt record is linked into place, which also fails when the name exists. Ids are content addresses (section 9):
 `graph_<h>` and `var_<h>` with `h` the first 16 hex digits of the SHA-256 of the canonical JSON of {sourceSha256,
-kind, pipelineVersion, request}, `att_<h2>` from the graph id and the attempt's start time.
+kind, pipelineVersion, request}, `att_<h2>` from the graph id and the attempt's start time. The pipeline version
+is named by the restoration producer's revision, so a revision raise gives a rerun new ids and its variant is stored
+beside the older one, which is kept as it is.
 """
 
 from __future__ import annotations
@@ -39,8 +41,12 @@ from services.contracts.ingest import format_utc
 from services.contracts.media import DISCLOSURES, MediaVariant, ProcessingAttempt, ProcessingGraph, variant_uri
 from services.media import decode, photo, png16
 
-# Raised by any unit that changes pixels (design section 9)
-PIPELINE_VERSION = "1.0.0"
+# Raised by any unit that changes pixels (design section 9): 1.<revision>.0 of the restoration producer
+# (services/media/jobs.py MEDIA_PRODUCER, held to it by tests/media/test_jobs.py), so the unit that raises the
+# revision raises this too. Every graph and variant id hashes it: under one version for every revision, a photo
+# restored under revision 2 could not be restored again under 3, since the write refuses an id it holds (FIELD's
+# finding of 2026-11-19). Revisions 1 and 2 stored their variants under 1.0.0.
+PIPELINE_VERSION = "1.3.0"
 # The version of each step this module writes [proposed: a step's own version, raised when what it does changes]
 STEP_VERSION = "1.0.0"
 # [decided 2026-11-11: REQ-RST-1.3, private files 0400 and folders 0700, matching services/ingest/store.py]
@@ -60,16 +66,18 @@ def _h16(value: Any) -> str:
     return hashlib.sha256(canonical_json(value)).hexdigest()[:16]
 
 
-def graph_hash(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: str = PIPELINE_VERSION) -> str:
-    """P-RST-3: a function of the source hash, the request and the pipeline version only."""
-    return _h16({"sourceSha256": source_sha256, "kind": kind, "pipelineVersion": pipeline_version, "request": request})
+def graph_hash(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: Optional[str] = None) -> str:
+    """P-RST-3: a function of the source hash, the request and the pipeline version only (PIPELINE_VERSION as it is
+    when called, by default)."""
+    version = PIPELINE_VERSION if pipeline_version is None else pipeline_version
+    return _h16({"sourceSha256": source_sha256, "kind": kind, "pipelineVersion": version, "request": request})
 
 
-def graph_id(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: str = PIPELINE_VERSION) -> str:
+def graph_id(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: Optional[str] = None) -> str:
     return "graph_" + graph_hash(source_sha256, kind, request, pipeline_version)
 
 
-def variant_id(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: str = PIPELINE_VERSION) -> str:
+def variant_id(source_sha256: str, kind: str, request: dict[str, Any], pipeline_version: Optional[str] = None) -> str:
     return "var_" + graph_hash(source_sha256, kind, request, pipeline_version)
 
 

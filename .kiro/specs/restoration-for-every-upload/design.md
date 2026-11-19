@@ -605,7 +605,12 @@ forced photometry at their own places, the dissolve filling with the plain casca
 - Ids: `graph_<h>` and `var_<h>` with `h` the first 16 hex digits of the SHA-256 of the canonical JSON of
   `{sourceSha256, kind, pipelineVersion, request}`; `att_<h2>` with `h2` from the graph id and the attempt's
   start time. The job id is the runner's `job_<hash16><16 hex>` (the upload jobs design 3.1). `pipelineVersion`
-  is one constant in `services/media/`, raised by any unit that changes pixels.
+  is one constant in `services/media/`, raised by any unit that changes pixels: `1.<revision>.0` of the
+  restoration producer (`services/media/jobs.py`), so the unit that raises the revision raises it too and a test
+  holds them together. A rerun under a raised revision then gets new ids, and its variant is stored beside the older
+  one, which stays as it was [tested: tests/media/test_jobs.py, both kinds; FIELD's finding of 2026-11-19, a photo
+  restored under revision 2 could not be restored again under 3, since the write refuses an id it holds and every
+  revision named its graphs under 1.0.0]. Revisions 1 and 2 stored their variants under 1.0.0.
 - `GET /api/media/{sha256}/variants`: `{variants: [MediaVariant], attempts: [ProcessingAttempt]}`.
   `GET .../variants/{variantId}`: `{variant, graph, attempt}`. `GET .../variants/{variantId}/file`: the bytes with
   `Cache-Control: private, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`,

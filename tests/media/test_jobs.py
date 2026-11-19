@@ -424,6 +424,51 @@ def test_a_job_whose_variant_is_gone_runs_again_and_one_missing_a_file_is_never_
     assert (stored / "variant.png").read_bytes() == whole["variant.png"]
 
 
+def test_the_pipeline_version_names_the_restore_producers_revision() -> None:
+    # Every graph and variant id hashes the pipeline version: raised with the producer's revision, a rerun gets new
+    # ids, so the older variant stays beside the new one and is never overwritten
+    from services.media import variants
+    assert variants.PIPELINE_VERSION == f"1.{media_jobs.MEDIA_PRODUCER.revision}.0"
+
+
+@pytest.mark.parametrize("kind", ["restoration", "display_copy"])
+def test_a_restore_revision_raise_runs_again_and_stores_beside_the_older_variant(client, monkeypatch, kind) -> None:
+    # FIELD's finding of 13:02, 19 November: a photo restored under revision 2 was restored again under 3, and the
+    # write refused the variant id it already held, so the job failed with the internal error and kept no attempt
+    import dataclasses
+    from services.ingest import runner as job_runner
+    from services.media import variants
+
+    class InProcessChild:
+        """The media group's child run in this process, so the raised version below reaches the step."""
+
+        def call(self, target, args, *, timeout_s, stop, progress_kwarg, on_event):
+            return target(*args, **{progress_kwarg: on_event})
+
+    monkeypatch.setattr(job_runner.JobContext, "child", lambda self: InProcessChild())
+    scene = star_field(11, size=320, count=24, noise_sigma=0.0015, peaks=(0.01, 0.2))
+    sha = upload(client, png16.write_png16(scene.codes.astype(np.uint16), None))
+    first = finished(client, client.post(f"/api/media/{sha}/restore", json={"kind": kind}).json())
+    assert first["state"] == "succeeded", first
+    older = folder_of(client, sha) / "variants" / first["variantId"]
+    kept = {p.name: p.read_bytes() for p in older.iterdir()}
+    revision = media_jobs.MEDIA_PRODUCER.revision + 1
+    raised = dataclasses.replace(media_jobs.MEDIA_PRODUCER, revision=revision)
+    monkeypatch.setitem(job_runner._KINDS, kind, dataclasses.replace(job_runner._KINDS[kind], producer=raised))
+    monkeypatch.setattr(variants, "PIPELINE_VERSION", f"1.{revision}.0")
+    again = client.post(f"/api/media/{sha}/restore", json={"kind": kind})
+    assert again.status_code == 202 and again.json()["id"] != first["id"]
+    job = finished(client, again.json())
+    assert job["state"] == "succeeded", job
+    assert job["variantId"] != first["variantId"]
+    assert {p.name: p.read_bytes() for p in older.iterdir()} == kept
+    listed = client.get(f"/api/media/{sha}/variants").json()
+    assert {v["id"] for v in listed["variants"]} >= {first["variantId"], job["variantId"]}
+    graph = client.get(f"/api/media/{sha}/variants/{job['variantId']}").json()["graph"]
+    assert graph["pipelineVersion"] == f"1.{revision}.0"
+    assert graph["id"] == variants.graph_id(sha, kind, graph["request"], f"1.{revision}.0")
+
+
 def test_each_kind_hands_the_child_the_uploads_orientation_and_the_request() -> None:
     turned = {"rotationDegrees": 90, "mirrored": False}
     asset = {"mediaKind": "image", "displayOrientation": turned}
