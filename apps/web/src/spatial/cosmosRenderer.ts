@@ -46,6 +46,12 @@ export interface CosmosRenderer {
    * their turn); absent where a renderer draws only the landing scene.
    */
   showSkyView?(): void;
+  /**
+   * Turns the sky view's camera, under the observer frame, to this azimuth and altitude at once (D33's start,
+   * decided 13:23; added by WEB-UX with the lead's yes of 13:30): yaw is minus the azimuth, pitch the altitude, as
+   * defaultObserverLook writes them.
+   */
+  lookAtSky?(azDeg: number, altDeg: number): void;
   transitionToShowcaseScene(sceneKey: ShowcaseSceneKey, instant?: boolean): void;
   /** Holds the scene clock at `seconds` for matched snapshots; null runs it again. */
   holdClock(seconds: number | null): void;

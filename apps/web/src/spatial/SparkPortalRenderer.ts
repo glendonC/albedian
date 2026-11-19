@@ -210,6 +210,12 @@ export class SparkPortalRenderer {
     this.syncRegimeVisibility();
   }
 
+  public lookAtSky(azDeg: number, altDeg: number): void {
+    const yaw = (-azDeg * Math.PI) / 180;
+    const pitch = (altDeg * Math.PI) / 180;
+    Object.assign(this.lookTarget, { yaw, pitch, curYaw: yaw, curPitch: pitch });
+  }
+
   private lookAtDefault(): void {
     const look = this.observer.site ? defaultObserverLook(this.observer.site.latDeg) : null;
     if (look) Object.assign(this.lookTarget, { yaw: look.yaw, pitch: look.pitch, curYaw: look.yaw, curPitch: look.pitch });

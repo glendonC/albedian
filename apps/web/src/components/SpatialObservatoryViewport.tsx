@@ -392,12 +392,12 @@ export const SpatialObservatoryViewport: React.FC<
   }, [observerLat, observerLon, observerCapturedAtUtc, rendererGeneration]);
 
   // D33's start (decided 13:23): the predicted sky opens facing D24's start, 30 degrees up (26 on the phone), once
-  // each time it opens; the renderer's lookAtSky is SPATIAL's (asked in WEB-UX-predsky-8-FILES.md), so it is optional
+  // each time it opens (the renderer's lookAtSky, added to SPATIAL's files with the lead's yes of 13:30)
   const skyStart = predictedSkyShown ? predictedSkyStart(session, phone) : null;
   const skyStartKey = skyStart ? `${session.observationSolution?.id ?? ''}:${skyStart.azDeg}:${skyStart.altDeg}` : null;
   useEffect(() => {
     if (!skyStart) return;
-    (rendererRef.current as { lookAtSky?: (azDeg: number, altDeg: number) => void } | null)?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg);
+    rendererRef.current?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg);
   }, [skyStartKey, rendererGeneration]);
 
   // The header slider is the engine's master volume; the engine keeps it until audio starts
