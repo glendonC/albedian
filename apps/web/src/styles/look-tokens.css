@@ -87,6 +87,7 @@
   --look-mo-sheet-from-opacity: 1;
   --look-mo-line-from: 1;
   --look-mo-line-from-opacity: 1;
+  --look-mo-dur-bar: 150ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -116,5 +117,6 @@
     --look-mo-sheet-from-opacity: 0;
     --look-mo-line-from: 0;
     --look-mo-line-from-opacity: 0;
+    --look-mo-dur-bar: 0ms;
   }
 }

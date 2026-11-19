@@ -397,6 +397,11 @@ describe("the working screen's rules are the approved pages'", () => {
     });
   });
 
+  it("moves a stage's bar to each new report in 150 ms (MOTION-READY-web.md, Progress), never pulsing or counting", () => {
+    expect(motionOf('.work-step__bar b')).toEqual({ transition: 'width var(--look-mo-dur-bar) var(--look-mo-ease-std)' });
+    expect(motionCss).not.toMatch(/work-step__bar[^{]*\{[^}]*animation/);
+  });
+
   it("brings a stopped or waiting job's sentence in, then its buttons 20 ms later", () => {
     expect(motionOf('.work-why p')).toEqual({ animation: `${WORDS_IN} both` });
     expect(motionOf('.work-why .work-acts')).toEqual({ animation: `${WORDS_IN} var(--look-mo-stagger) both` });

@@ -197,6 +197,7 @@ export interface MotionTokens {
   sheetFromOpacity: number;
   lineFromOffset: number;
   lineFromOpacity: number;
+  barMs: number;
 }
 
 /**
@@ -234,6 +235,9 @@ export const MOTION_TOKENS: Readonly<MotionTokens> = {
   // A leader line is a card's frame: it draws from the star to the card (stroke-dashoffset 1 to 0 on pathLength 1)
   lineFromOffset: 1,
   lineFromOpacity: 1,
+  // A progress bar's width follows each report: boltz.com's default transition, 0.15 s on the standard curve
+  // (measurements/k8-k4-boltz.md); under reduced motion it snaps (boltz: motion-reduce:transition-none)
+  barMs: 150,
 };
 
 const DISSOLVE_EASE = 'ease-in-out';
@@ -268,6 +272,7 @@ export function resolveMotionTokens(reducedMotion: boolean): MotionTokens {
     sheetFromOpacity: 0,
     lineFromOffset: 0,
     lineFromOpacity: 0,
+    barMs: 0,
   };
 }
 
@@ -310,6 +315,7 @@ function motionTokenOverrides(m: MotionTokens) {
     '--look-mo-sheet-from-opacity': String(m.sheetFromOpacity),
     '--look-mo-line-from': String(m.lineFromOffset),
     '--look-mo-line-from-opacity': String(m.lineFromOpacity),
+    '--look-mo-dur-bar': ms(m.barMs),
   } as const;
 }
 
@@ -339,6 +345,7 @@ function motionTokenProperties(m: MotionTokens) {
     '--look-mo-sheet-from-opacity': String(m.sheetFromOpacity),
     '--look-mo-line-from': String(m.lineFromOffset),
     '--look-mo-line-from-opacity': String(m.lineFromOpacity),
+    '--look-mo-dur-bar': ms(m.barMs),
   } as const;
 }
 

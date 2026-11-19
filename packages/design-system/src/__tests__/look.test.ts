@@ -158,6 +158,7 @@ describe('motion tokens: the MOTION record (decided by the lead, 2026-11-19; .le
       sheetFromOpacity: 1,
       lineFromOffset: 1,
       lineFromOpacity: 1,
+      barMs: 150,
     });
   });
 
@@ -181,6 +182,8 @@ describe('motion tokens: the MOTION record (decided by the lead, 2026-11-19; .le
     // the phone card and the leader line dissolve in place: no travel, no drawing
     expect([reduced.sheetMs, reduced.sheetTravelPct, reduced.sheetFromOpacity]).toEqual([MOTION_TOKENS.dissolveMs, 0, 0]);
     expect([reduced.lineFromOffset, reduced.lineFromOpacity]).toEqual([0, 0]);
+    // a progress bar's width snaps to each report (boltz.com: motion-reduce:transition-none)
+    expect(reduced.barMs).toBe(0);
     expect(reduced.colourMs).toBe(MOTION_TOKENS.colourMs);
   });
 
@@ -235,6 +238,7 @@ describe('look tokens: CSS custom properties', () => {
       '--look-mo-sheet-from-opacity': '0',
       '--look-mo-line-from': '0',
       '--look-mo-line-from-opacity': '0',
+      '--look-mo-dur-bar': '0ms',
     });
     for (const name of Object.keys(LOOK_REDUCED_MOTION_CSS_OVERRIDES)) {
       expect(name in LOOK_CSS_CUSTOM_PROPERTIES).toBe(true);

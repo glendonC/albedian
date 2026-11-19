@@ -13,6 +13,12 @@
   transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
 }
 
+/* A stage's bar follows each report the job sends in 150 ms (boltz.com's width transition); no pulse, no shimmer,
+   nothing counted up. Reduced motion: it moves to each report at once. */
+.work-step__bar b {
+  transition: width var(--look-mo-dur-bar) var(--look-mo-ease-std);
+}
+
 .work-why p {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
 }
