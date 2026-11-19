@@ -365,12 +365,28 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       ) : status.kind === 'unmatched' ? (
         <div key="unmatched" className="reveal-status is-unmatched" data-testid="reveal-status" data-moment="unmatched" role="status">
-          {status.lines.map((line) => (
-            <p key={line} className="reveal-status__lead">
-              {line}
+          {compareShown ? (
+            // Restored here too: the fixed sentence leads; the warnings stay under it
+            <p className="reveal-status__note">
+              <LookIcon name="info" />
+              <span>{DISCLOSURES.restoration}</span>
             </p>
-          ))}
-          {status.predictedSky && <MainAction label="Show predicted sky" onClick={() => onShowPredictedSky?.()} />}
+          ) : (
+            <>
+              {status.lines.map((line) => (
+                <p key={line} className="reveal-status__lead">
+                  {line}
+                </p>
+              ))}
+              {status.predictedSky && <MainAction label="Show predicted sky" onClick={() => onShowPredictedSky?.()} />}
+              {/* Restore under Show predicted sky, as D10 puts it under a matched photo's status lines (the lead, 06:39) */}
+              {restoreOffered && (
+                <div className="reveal-status__act">
+                  <SecondAction label="Restore" onClick={() => onRestore?.()} />
+                </div>
+              )}
+            </>
+          )}
           {status.warnings.length > 0 && (
             <ul className="reveal-status__warns">
               {status.warnings.map((warning) => (

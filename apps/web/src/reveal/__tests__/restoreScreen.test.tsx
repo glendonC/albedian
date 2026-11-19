@@ -192,6 +192,30 @@ describe('the restoration on the reveal (laptop)', () => {
   });
 });
 
+describe('Restore on the no-match reveal (the lead, 06:39: every upload can be restored)', () => {
+  const unmatched = () => poseSession({ ...sample('horizon_predicted_only') } as ObservationSolution);
+  it('puts Restore under Show predicted sky, and asks once pressed', () => {
+    const onRestore = vi.fn();
+    show({ phase: 'idle' }, { session: unmatched(), onRestore });
+    const status = q('.reveal-status.is-unmatched')!;
+    const kids = [...status.children].map((el) => el.className || el.tagName);
+    expect(kids.indexOf('reveal-status__act')).toBe(kids.findIndex((k) => String(k).includes('look-main')) + 1);
+    const button = status.querySelector('.reveal-status__act button') as HTMLButtonElement;
+    expect(button.textContent).toBe('Restore');
+    act(() => button.click());
+    expect(onRestore).toHaveBeenCalledTimes(1);
+  });
+
+  it('once restored there, the fixed sentence leads the status and the warnings stay under it', () => {
+    show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } }, { session: unmatched() });
+    const status = q('.reveal-status.is-unmatched')!;
+    expect(status.querySelector('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
+    expect(status.querySelector('.reveal-status__lead')).toBeNull();
+    expect(status.querySelector('.reveal-status__act')).toBeNull();
+    expect(q('[data-testid="restore-compare"]')).not.toBeNull();
+  });
+});
+
 describe('D15: marks over the compare and zooming both pictures together (UIUX-restoration-zoom-DECIDED-BY-LEAD.md)', () => {
   // A photo far larger than its frame, so its real pixels lie well beyond the whole view (the sample is 960 by 540)
   const big = () => {
