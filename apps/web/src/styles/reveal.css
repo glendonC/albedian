@@ -1380,3 +1380,83 @@
 :root[data-phone-scroll] .alb-source-stage > video {
   translate: 0 calc(-1 * var(--phone-scroll, 0px));
 }
+
+/* The restoration (UIUX-restoration-READY.md, D10, approved 2026-11-18): "Restore" 16 px under the status lines */
+.reveal-status__act {
+  margin-top: 16px;
+  pointer-events: auto;
+}
+/* Cancel or Try again above the restoration's steps, where Try again sits on a failed job */
+.restore-why {
+  pointer-events: auto;
+}
+/* Once restored, the fixed sentence in the status place, as the cautions are set */
+.reveal-status__note {
+  --look-ic: 13px;
+  display: flex;
+  gap: 7px;
+  margin: 0 0 18px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--look-ink-3);
+}
+.reveal-status__note .look-i {
+  flex: none;
+  margin-top: 2px;
+}
+/* The compare, in the photo's own frame (CMP_CSS in .cache/uiux/restore/build.mjs) */
+.restore-compare {
+  position: absolute;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+}
+.restore-compare.is-drag {
+  cursor: grabbing;
+}
+.restore-compare__pic {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  clip-path: inset(0 0 0 var(--split));
+}
+.restore-compare__line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--split);
+  width: 1px;
+  margin-left: -0.5px;
+  background: rgba(244, 243, 239, 0.85);
+}
+.restore-compare:not(.is-drag) .restore-compare__pic {
+  transition: clip-path 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98);
+}
+.restore-compare:not(.is-drag) .restore-compare__line {
+  transition: left 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .restore-compare__pic,
+  .restore-compare__line {
+    transition: none !important;
+  }
+}
+.restore-compare__label {
+  position: absolute;
+  top: 24px;
+  --look-h: 28px;
+  --look-fs: 13px;
+  padding: 0 12px;
+  background: rgba(10, 10, 12, 0.55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.restore-compare__label.is-left {
+  left: 24px;
+}
+.restore-compare__label.is-right {
+  right: 24px;
+}

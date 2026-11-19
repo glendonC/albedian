@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { answerFindings, type ObservationSession } from '@albedian/contracts';
+import { answerFindings, DISCLOSURES, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
-import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
+import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
+import { SIDE_FADE } from '../components/SourcePhotoStage.js';
+import { RestoreCompare, RestoreSteps, RestoreWhy } from './RestoreParts.js';
+import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { leaderPath, markArrivalRanks, revealMarks, type RevealMark } from './revealMarks.js';
@@ -50,6 +53,12 @@ import '../styles/reveal.css';
 
 export interface RevealPhotoProps {
   session: ObservationSession;
+  /** The photo's restoration (D10): Restore while idle, its steps while it works, the compare once done. */
+  restoration?: Restoration;
+  /** Restore, or Try again after a stopped restoration. */
+  onRestore?: () => void;
+  /** Cancel, while the restoration works. */
+  onCancelRestore?: () => Promise<unknown> | void;
   onSelectFinding: (findingId: string, pointerCoords?: { xPx: number; yPx: number }) => void;
   /** The logo, pressed: back to the home. */
   onHome: () => void;
@@ -151,6 +160,9 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   phone = false,
   viewportWidthPx,
   viewportHeightPx,
+  restoration,
+  onRestore,
+  onCancelRestore,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -228,6 +240,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     const timer = setTimeout(() => setArriving(false), REVEAL_ARRIVAL_MS);
     return () => clearTimeout(timer);
   }, []);
+  // The restoration (D10), on the laptop over the photo itself: offered while idle on a still, its steps in the counts'
+  // place while it works or once it stopped, the compare once done
+  const overPhoto = !phone && !there && !skyShown;
+  const restoreOffered = overPhoto && onRestore !== undefined && restoration?.phase === 'idle' && session.sourceAsset?.mediaKind === 'image';
+  const restoring = overPhoto && (restoration?.phase === 'working' || restoration?.phase === 'stopped');
+  const compareShown = overPhoto && restoration?.phase === 'done';
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
@@ -241,8 +259,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </svg>
       )}
 
-      {!bareFrame && !earthOnly && (
+      {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
+      {compareShown && frame && restoration?.phase === 'done' && <RestoreCompare rect={frame} src={restoration.variantUrl} fade={SIDE_FADE} />}
+
+      {!bareFrame && !earthOnly && !compareShown && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
+
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
             <svg
@@ -345,18 +367,33 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       ) : (
       <div key="photo" className="reveal-status" data-testid="reveal-status" data-moment="photo" role="status">
-        {status.tag && <EvidenceTag evidenceClass={status.tag} />}
-        {status.lines.map((line) => (
-          <p key={line} className="reveal-status__line">
-            {line}
-          </p>
-        ))}
-        {status.warnings.map((warning) => (
-          <p key={warning} className="reveal-status__warning">
+        {compareShown ? (
+          // Once restored, the status place holds the fixed sentence (REQ-RST-9.3), verbatim
+          <p className="reveal-status__note">
             <LookIcon name="info" />
-            <span>{warning}</span>
+            <span>{DISCLOSURES.restoration}</span>
           </p>
-        ))}
+        ) : (
+          <>
+            {status.tag && <EvidenceTag evidenceClass={status.tag} />}
+            {status.lines.map((line) => (
+              <p key={line} className="reveal-status__line">
+                {line}
+              </p>
+            ))}
+            {status.warnings.map((warning) => (
+              <p key={warning} className="reveal-status__warning">
+                <LookIcon name="info" />
+                <span>{warning}</span>
+              </p>
+            ))}
+          </>
+        )}
+        {restoreOffered && (
+          <div className="reveal-status__act">
+            <SecondAction label="Restore" onClick={() => onRestore?.()} />
+          </div>
+        )}
       </div>
       )}
 
@@ -440,7 +477,20 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       )}
 
-      {!phone && !there && counts.length > 0 && (
+      {restoring && restoration !== undefined && (restoration.phase === 'working' || restoration.phase === 'stopped') && (
+        <>
+          <RestoreWhy
+            job={restoration.job}
+            sentence={restoration.phase === 'stopped' ? restoration.sentence : null}
+            working={restoration.phase === 'working'}
+            onCancel={() => onCancelRestore?.()}
+            onTryAgain={() => onRestore?.()}
+          />
+          {restoration.job && <RestoreSteps job={restoration.job} />}
+        </>
+      )}
+
+      {!phone && !there && !restoring && counts.length > 0 && (
         <div className="reveal-legend" data-testid="reveal-legend">
           {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
           <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>

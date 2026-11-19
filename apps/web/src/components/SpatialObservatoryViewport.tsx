@@ -53,6 +53,7 @@ import { ClipPlayer } from '../reveal/ClipPlayer.js';
 import { realSkyShade } from '../reveal/RealSkyLayer.js';
 import { orientedSize } from '@albedian/contracts';
 import { isPhoneNoMatchShown, isPhoneRevealShown, phoneEndsMask, phoneSlotCrop } from '../reveal/phoneSlot.js';
+import { useRestoration } from '../reveal/restoration.js';
 import { sourcePhotoDisplayRect } from './sourcePhotoRect.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
@@ -386,6 +387,8 @@ export const SpatialObservatoryViewport: React.FC<
 
   // The renderer's camera against its star sphere, for names placed on the sky as it is drawn
   const readSkyPose = useCallback(() => rendererRef.current?.getCameraSkyPose?.() ?? null, []);
+  // The photo's restoration (D10): asked for from Restore on the reveal, followed, compared once done
+  const { restoration, start: startRestore, cancel: cancelRestore } = useRestoration(session.sourceAsset?.sha256 ?? null);
 
   // While audio is on, the catalog stars in view sound and the camera turns the listener
   useEffect(() => {
@@ -725,6 +728,9 @@ export const SpatialObservatoryViewport: React.FC<
               onShowPredictedSky={() => showSky('predicted')}
               answer={answer}
               onCloseAnswer={onCloseAnswer}
+              restoration={restoration}
+              onRestore={startRestore}
+              onCancelRestore={cancelRestore}
               realSky={realSkyShown}
               flight={flightShown ? flightReadout(session) : null}
               freeFlight={freeFlight}

@@ -689,6 +689,33 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(container.querySelectorAll('button.reveal-mark.is-predicted').length).toBe(0);
   });
 
+  it("asks for the photo's restoration from Restore, then shows the job's steps in the counts' place (D10)", async () => {
+    const jobs = (JSON.parse(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../../tests/fixtures/job_contract.json'), 'utf8')) as {
+      valid: Array<Record<string, unknown>>;
+    }).valid;
+    const done = jobs.find((job) => job.kind === 'restoration' && job.state === 'succeeded')!;
+    const { finishedAtUTC: _f, attemptId: _a, variantId: _v, ...rest } = done;
+    const running = { ...rest, state: 'running', stages: (done.stages as unknown[]).slice(0, 2) };
+    const calls: string[] = [];
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      calls.push(`${init?.method ?? 'GET'} ${String(input)}`);
+      return new Response(JSON.stringify(running), { status: String(input).endsWith('/restore') ? 202 : 200 });
+    });
+    try {
+      const base = storedPhoto();
+      open(base);
+      const restore = q('.reveal-status__act button') as HTMLButtonElement;
+      expect(restore.textContent).toBe('Restore');
+      act(() => restore.click());
+      await act(async () => await new Promise((r) => setTimeout(r, 30)));
+      expect(calls[0]).toBe(`POST /api/media/${base.sourceAsset!.sha256}/restore`);
+      expect(q('[data-testid="restore-steps"]')).not.toBeNull();
+      expect(q('.restore-why button')!.textContent).toBe('Cancel');
+    } finally {
+      fetcher.mockRestore();
+    }
+  });
+
   it('sets the session clock through the reducer where the player stops', () => {
     let current = clip();
     const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
