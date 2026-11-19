@@ -200,3 +200,30 @@ describe("the iPhone record's warnings on screen (C13, UIUX-pointingwords-DECIDE
     expect(onScreenWarning(inside)).toBe(inside);
   });
 });
+
+// C14 (UIUX-countwords-DECIDED-BY-LEAD.md): the warning when a floor set a frame's noise (services/science/detector.py
+// NOISE_LIMIT_WORDS["noise_floor"]) shows its first sentence on screen; the second stays in the solution's record (C5)
+describe("the count warning's words on screen (C14)", () => {
+  const SCREEN =
+    "This photo's sky is so even that the smallest steps in its brightness can pass for points of light, so some of the points counted are those steps, not stars.";
+  const RECORD = "The detector takes one brightness step as the sky's noise, so the count's false rate is not controlled.";
+
+  it('shows the first sentence only of the noise-floor warning', () => {
+    expect(onScreenWarning(`${SCREEN} ${RECORD}`)).toBe(SCREEN);
+    expect(onScreenWarning(SCREEN)).toBe(SCREEN);
+  });
+
+  it('leaves the near-black warning, which has no decided cut, whole', () => {
+    const nearBlack =
+      "The photo's sky sits near its darkest value, where the black clip cuts the noise; on such a sky the detector finds more points on pure noise than its stated rate, so the count of detected points is points above the threshold on a frame whose false rate is not controlled.";
+    expect(onScreenWarning(nearBlack)).toBe(nearBlack);
+  });
+
+  it("cuts the job's own warning as the reveal shows it", () => {
+    const base = createSyntheticCalibratedSession();
+    const solution = { ...base.observationSolution, warnings: [`${SCREEN} ${RECORD}`] } as ObservationSolution;
+    const session: ObservationSession = { ...base, observationSolution: solution };
+    expect(revealStatus(session).warnings).toContain(SCREEN);
+    expect(revealStatus(session).warnings.join(' ')).not.toContain(RECORD);
+  });
+});

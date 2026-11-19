@@ -39,14 +39,19 @@ const grouped = (n: number) => n.toLocaleString('en-US');
  */
 /**
  * The notes SCIENCE writes in two sentences so the screen can show the first (services/science/predicted_sky.py): a
- * file that names no time zone (C5), and a photo whose file lends its time or place from the iPhone's record (C13).
+ * file that names no time zone (C5), a photo whose file lends its time or place from the iPhone's record (C13), and
+ * the count warning when a floor set a frame's noise (C14, services/science/detector.py).
  */
-const FIRST_SENTENCE_NOTES: readonly string[] = ['The file names no time zone for its capture time', "The photo's file has no "];
+const FIRST_SENTENCE_NOTES: readonly string[] = [
+  'The file names no time zone for its capture time',
+  "The photo's file has no ",
+  "This photo's sky is so even that the smallest steps in its brightness",
+];
 
 /**
  * A warning as it shows on screen: those notes by their first sentence only, every other warning whole (C5,
- * UIUX-words-DECIDED-BY-LEAD.md; C13, UIUX-pointingwords-DECIDED-BY-LEAD.md); the whole note stays in the solution's
- * record.
+ * UIUX-words-DECIDED-BY-LEAD.md; C13, UIUX-pointingwords-DECIDED-BY-LEAD.md; C14, UIUX-countwords-DECIDED-BY-LEAD.md;
+ * FIELD); the whole note stays in the solution's record.
  */
 export function onScreenWarning(warning: string): string {
   if (!FIRST_SENTENCE_NOTES.some((start) => warning.startsWith(start))) return warning;
