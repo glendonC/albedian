@@ -1566,6 +1566,63 @@
         "quote": "6.56 feet (2 meters) in diameter",
         "trueTo": "part"
       }
+    },
+    "cassini": {
+      "title": "Cassini",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "cassini/cassini_lod0.glb",
+          "bytes": 1801824,
+          "triangles": 25724,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "cassini/cassini_lod1.glb",
+          "bytes": 1349656,
+          "triangles": 12862,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "cassini/cassini_lod2.glb",
+          "bytes": 462576,
+          "triangles": 4624,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "cassini/cassini_picker.webp",
+          "bytes": 2798,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -8.963,
+          -2.033,
+          -1.495
+        ],
+        "max": [
+          8.98,
+          11.044,
+          10.141
+        ]
+      },
+      "bodyRadiusM": 3.0,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "dish_AO",
+        "metres": 4,
+        "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+        "quote": "the fixed 4-meter-diameter (13-foot) high-gain antenna"
+      }
     }
   },
   "entries": [
@@ -2628,6 +2685,56 @@
           "value": "2014-09-22",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A",
           "quote": "completing its orbit insertion burn at 2:24 UT on 22 September 2014 (10:24 p.m. EDT, Sept. 21)"
+        }
+      ]
+    },
+    {
+      "id": "cassini",
+      "name": "Cassini",
+      "model": "cassini",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1997-10-15",
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "Launch: October 15, 1997, from Cape Canaveral Air Force Station, FL."
+        },
+        {
+          "key": "dryMassKg",
+          "value": "2,125",
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "2,125 kilograms (4,685 pounds) unfueled orbiter alone"
+        },
+        {
+          "key": "heightM",
+          "value": 6.8,
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "The spacecraft stands 6.8 meters (22.3 feet) high and is 4 meters (13 feet) wide."
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 4,
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "the fixed 4-meter-diameter (13-foot) high-gain antenna"
+        },
+        {
+          "key": "power",
+          "value": "885 W from RTGs (633 W at end of mission)",
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "Power: 885 watts (633 watts at end of mission) from radioisotope thermoelectric generators"
+        },
+        {
+          "key": "saturnArrival",
+          "value": "2004-07-01",
+          "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+          "quote": "Saturn arrival date: June 30, 2004 PDT (July 1, 2004, UTC)"
+        },
+        {
+          "key": "missionEnd",
+          "value": "2017-09-15",
+          "page": "https://science.nasa.gov/mission/cassini/about-the-mission/",
+          "quote": "The mission ended on Sept. 15, 2017."
         }
       ]
     }

@@ -1303,6 +1303,50 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.0,
         "changes": "photo",
     },
+    "cassini": {
+        "title": "Cassini",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-cassini-huygens-a",
+            "title": "Cassini-Huygens (A), NASA 3D Resources",
+            "folder": "Cassini-Huygens (A)",
+            "file": "Cassini-Huygens (A).glb",
+            "bytes": 1_660_492,
+            "sha256": "f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7",
+            "picture": "Cassini-Huygens (A).png",
+            "picture_bytes": 1_146_299,
+            "picture_sha256": "7632863af6268eb8c7c7de32fead0d440464b726b41f92a37044a4d8f15eafe8",
+            "local": "cassini",
+        },
+        # The source's unit cube at the root has no material and is not part of the craft.
+        "drop_objects": ["_root"],
+        # The high-gain dish tops the stack at +Z in the import frame and faces Earth, so the craft is flown along -Z,
+        # away from it, as Voyager is; the magnetometer boom reaches along +Y, which is up.
+        "forward": (0.0, 0.0, -1.0),
+        "up": (0.0, 1.0, 0.0),
+        # Scale from the dish, NASA's "dish_AO" part, 4.0090 units across, to the press kit's 4 m (NASA's model is in
+        # metres).
+        "scale_from": {
+            "material": "dish_AO",
+            "axis": "x",
+            "metres": 4,
+            "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf",
+            "quote": "the fixed 4-meter-diameter (13-foot) high-gain antenna",
+        },
+        "materials": {
+            # The dish is white; NASA's baked shading moves to the occlusion slot.
+            "dish_AO": {"role": "painted", "base": (0.85, 0.85, 0.83), "roughness": 0.55, "occlusion_from_source": True},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_gold_2": {"role": "photo_atlas"},
+            "tex_01": {"role": "photo_atlas"},
+            "aluminum": {"role": "pbr", "base": (0.91, 0.92, 0.92), "metallic": 1.0, "roughness": 0.35},
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 3.0,
+        "changes": "cassini",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1748,6 +1792,23 @@ HANGAR: list[dict] = [
             {"key": "heightM", "value": 3.47, "page": "https://science.nasa.gov/mission/maven/", "quote": "11.4 feet (3.47 meters)"},
             {"key": "dishDiameterM", "value": 2, "page": "https://science.nasa.gov/mission/maven/", "quote": "6.56 feet (2 meters) in diameter"},
             {"key": "marsOrbit", "value": "2014-09-22", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A", "quote": "completing its orbit insertion burn at 2:24 UT on 22 September 2014 (10:24 p.m. EDT, Sept. 21)"},
+        ],
+    },
+    {
+        # Cassini orbited Saturn and ended in its atmosphere: no speed between stars. The press kit gives its height as
+        # 6.8 m in its spacecraft section and 6.7 m in its quick facts; the spacecraft section's line is used.
+        "id": "cassini",
+        "name": "Cassini",
+        "model": "cassini",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1997-10-15", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "Launch: October 15, 1997, from Cape Canaveral Air Force Station, FL."},
+            {"key": "dryMassKg", "value": "2,125", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "2,125 kilograms (4,685 pounds) unfueled orbiter alone"},
+            {"key": "heightM", "value": 6.8, "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "The spacecraft stands 6.8 meters (22.3 feet) high and is 4 meters (13 feet) wide."},
+            {"key": "dishDiameterM", "value": 4, "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "the fixed 4-meter-diameter (13-foot) high-gain antenna"},
+            {"key": "power", "value": "885 W from RTGs (633 W at end of mission)", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "Power: 885 watts (633 watts at end of mission) from radioisotope thermoelectric generators"},
+            {"key": "saturnArrival", "value": "2004-07-01", "page": "https://www.jpl.nasa.gov/news/press_kits/cassini-arrival.pdf", "quote": "Saturn arrival date: June 30, 2004 PDT (July 1, 2004, UTC)"},
+            {"key": "missionEnd", "value": "2017-09-15", "page": "https://science.nasa.gov/mission/cassini/about-the-mission/", "quote": "The mission ended on Sept. 15, 2017."},
         ],
     },
 ]

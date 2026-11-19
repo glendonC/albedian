@@ -183,6 +183,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.png (1124858 bytes, SHA-256 ceaaee11e4f5475462257287e73f3dcd547e3eab87810e48ffe51a7c66dcaf1f)."
     },
     {
+      "path": "hangar/cassini/cassini_lod0.glb",
+      "sha256": "33cafd6c0bca4407ea8c37fd1565bdac0f0933ffe0ba5b948161c04ca82115f1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model names as aluminium and black blanket given physically based materials of that kind, the gold foil and the photo texture given metalness, roughness and surface relief from their own colours, the dish painted white with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/cassini/cassini_lod1.glb",
+      "sha256": "56714ffcfebda7ff4b655b6ddd0cf7ff7921d7276e420adb6573bf16682b05e9",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/cassini/cassini_lod2.glb",
+      "sha256": "1fd263becb83c4706adf7508b8674c54847d183a805a3401cee237493e72c175",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.glb (1660492 bytes, SHA-256 f8bc110e23821021e99b88634843449cc8e98d86d0d8561c612c1cf0404e64e7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/cassini/cassini_picker.webp",
+      "sha256": "67d6604e9b1c0946f04baea387bb70e0d781a0afbe969c87a4a77cf7635c6607",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft cassini --out apps/web/public/models/hangar/cassini",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Cassini-Huygens%20%28A%29/Cassini-Huygens%20%28A%29.png (1146299 bytes, SHA-256 7632863af6268eb8c7c7de32fead0d440464b726b41f92a37044a4d8f15eafe8)."
+    },
+    {
       "path": "hangar/dawn/dawn_lod0.glb",
       "sha256": "05c7d940b151ee594c5c40fbd8bdc18efb3c305d842e8fbd7466b3f65099de03",
       "sources": [
@@ -479,7 +538,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "81895b1606aacf53bad577fa6229c791635d85f2fc71665e014227649bbb7e18",
+      "sha256": "7c8c8ed44367bcf2aa21e2c4a70da306d1cf473914b4856075f5116ee70d929f",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

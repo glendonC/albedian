@@ -152,6 +152,15 @@ CHANGES = {
         "panels keeping their texture with one roughness and no metalness, the normals made again, smooth within an "
         "angle and sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for named metals and blankets, gold foil and a white dish with baked shading (recipe "changes": "cassini")
+    "lod0_cassini": (
+        "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the "
+        "craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model "
+        "names as aluminium and black blanket given physically based materials of that kind, the gold foil and the "
+        "photo texture given metalness, roughness and surface relief from their own colours, the dish painted white "
+        "with NASA's baked shading moved to the occlusion slot, NASA's flat colours kept for the rest, the normals "
+        "made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
