@@ -8,6 +8,7 @@ import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { choosePhotoOnHome } from './homeEntry.js';
 
+const renderPose = vi.hoisted(() => ({ value: null as unknown }));
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
     setObserverCoordinates() {}
@@ -24,7 +25,7 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
       return null;
     }
     getCameraSkyPose() {
-      return null;
+      return renderPose.value;
     }
   },
 }));
@@ -681,6 +682,108 @@ describe('CelestialMarkerOverlay label budget, auditor gaps (experience-9e)', ()
       expect(marker.dataset.evidenceClass).toBe(evidenceClass);
       expect(marker.dataset.markerShape).toBeTruthy();
       expect(marker.querySelector('svg')).not.toBeNull();
+    }
+  });
+});
+
+// FIELD field-2, finding 3: in the sky view the names follow the sky the renderer draws (its observer frame, its own
+// look), read from its camera's pose against the star sphere, not the session's camera
+describe("sky view names placed through the renderer's camera", () => {
+  const POSE = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: 1440 / 900, limitingMagnitude: 6 } as const;
+  const skySession = (): { session: ObservationSession; finding: CelestialFinding } => {
+    const base = createSyntheticCalibratedSession();
+    const finding = { ...buildFourClassFindings(base)[1]!, skyPosition: { raDeg: 0, decDeg: -80, uncertaintyArcsec: 1 } } as CelestialFinding;
+    const session = {
+      ...base,
+      spatialView: { ...base.spatialView, mode: 'registered_sky', activeOverlays: { ...base.spatialView.activeOverlays, observedMarkers: true, predictedEphemerides: true } },
+      observationSolution: { ...base.observationSolution!, findings: [finding] },
+    } as ObservationSession;
+    return { session, finding };
+  };
+
+  it('puts a star where the renderer draws it: looking down the ICRS -z axis, Dec -80 at RA 0 lands right of centre', () => {
+    const { session, finding } = skySession();
+    const pos = projectFindingToViewport(finding, session, 1440, 900, POSE);
+    // In the camera's axes the star is at (cos 80, 0, -sin 80)
+    const tanY = Math.tan(Math.PI / 6);
+    const ndcX = Math.cos((80 * Math.PI) / 180) / (Math.sin((80 * Math.PI) / 180) * tanY * (1440 / 900));
+    expect(pos.visible).toBe(true);
+    expect(pos.xPx).toBeCloseTo(((ndcX + 1) / 2) * 1440, 6);
+    expect(pos.yPx).toBeCloseTo(450, 6);
+  });
+
+  it('moves with a drag of the look and with another place or time, and hides a star behind the camera', () => {
+    const { session, finding } = skySession();
+    const at = (pose: typeof POSE | { [k: string]: unknown }) => projectFindingToViewport(finding, session, 1440, 900, pose as typeof POSE);
+    const s = Math.sin(0.05);
+    const c = Math.cos(0.05);
+    const dragged = at({ ...POSE, cameraWorldQuaternion: [0, s, 0, c] });
+    const elsewhere = at({ ...POSE, icrsWorldQuaternion: [s, 0, 0, c] });
+    const base = at(POSE);
+    expect(Math.abs(dragged.xPx - base.xPx)).toBeGreaterThan(10);
+    expect(Math.abs(elsewhere.yPx - base.yPx)).toBeGreaterThan(10);
+    // Turned half round about y, the camera faces away from the star
+    expect(at({ ...POSE, cameraWorldQuaternion: [0, 1, 0, 0] }).visible).toBe(false);
+  });
+
+  it("follows the renderer's pose on screen, frame by frame, and keeps the session's camera where the renderer gives none", async () => {
+    const { session, finding } = skySession();
+    let pose: typeof POSE | null = POSE;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(createElement(CelestialMarkerOverlay, { session, selectedFinding: null, onSelectFinding: () => {}, viewportWidthPx: 1440, viewportHeightPx: 900, skyPose: () => pose }));
+    });
+    await act(async () => await new Promise((r) => setTimeout(r, 50)));
+    const left = () => (container.querySelector(`[data-testid="celestial-marker-${finding.id}"]`) as HTMLElement | null)?.style.left ?? null;
+    const expected = projectFindingToViewport(finding, session, 1440, 900, POSE);
+    expect(left()).toBe(`${expected.xPct.toFixed(2)}%`);
+    const s = Math.sin(0.05);
+    pose = { ...POSE, cameraWorldQuaternion: [0, s, 0, Math.cos(0.05)] } as unknown as typeof POSE;
+    await act(async () => await new Promise((r) => setTimeout(r, 50)));
+    expect(left()).toBe(`${projectFindingToViewport(finding, session, 1440, 900, pose).xPct.toFixed(2)}%`);
+    pose = null;
+    await act(async () => await new Promise((r) => setTimeout(r, 50)));
+    const fallback = projectFindingToViewport(finding, session, 1440, 900);
+    expect(left()).toBe(fallback.visible ? `${fallback.xPct.toFixed(2)}%` : null);
+    act(() => root.unmount());
+    container.remove();
+  });
+});
+
+describe("the viewport hands the renderer's camera to the sky view's names", () => {
+  it('places a name where the renderer draws its star, not where the session camera would', async () => {
+    const { Quaternion, Vector3 } = await import('three');
+    const playing = createSyntheticCalibratedSession();
+    const base = pausedOnFrame(playing, playing.observationSolution!.frameTimeSec);
+    const finding = base.observationSolution!.findings.find((f) => f.skyPosition)!;
+    const { raDeg, decDeg } = finding.skyPosition!;
+    const ra = (raDeg * Math.PI) / 180;
+    const dec = ((decDeg + 3) * Math.PI) / 180;
+    // The renderer looks 3 degrees north of the star
+    const look = new Quaternion().setFromUnitVectors(new Vector3(0, 0, -1), new Vector3(Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec)));
+    const pose = { cameraWorldQuaternion: [look.x, look.y, look.z, look.w], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 50, aspect: window.innerWidth / window.innerHeight, limitingMagnitude: 6 };
+    renderPose.value = pose;
+    const noop = () => {};
+    const props = (session: ObservationSession) => ({
+      session, setSession: noop, selectedFinding: null, discoveredMedia: [], activeDiscoveredId: null, setActiveDiscoveredId: noop, activeDiscoveredItem: null,
+      uploadedMediaUrl: null, setUploadedMediaUrl: noop, commandText: '', setCommandText: noop, onRunUtterance: noop, onSelectFinding: noop, onPushToTalk: noop, onTriggerUpload: noop,
+    });
+    try {
+      act(() => root.render(createElement(SpatialObservatoryViewport, props(base))));
+      choosePhotoOnHome(container);
+      const sky = { ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession;
+      act(() => root.render(createElement(SpatialObservatoryViewport, props(sky))));
+      await act(async () => await new Promise((r) => setTimeout(r, 50)));
+      const marker = container.querySelector(`[data-testid="celestial-marker-${finding.id}"]`) as HTMLElement;
+      const expected = projectFindingToViewport(finding, sky, window.innerWidth, window.innerHeight, pose as never);
+      expect(expected.visible).toBe(true);
+      expect(marker.style.left).toBe(`${expected.xPct.toFixed(2)}%`);
+      expect(marker.style.top).toBe(`${expected.yPct.toFixed(2)}%`);
+      expect(marker.style.top).not.toBe(`${projectFindingToViewport(finding, sky, window.innerWidth, window.innerHeight).yPct.toFixed(2)}%`);
+    } finally {
+      renderPose.value = null;
     }
   });
 });

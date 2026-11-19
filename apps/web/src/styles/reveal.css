@@ -224,6 +224,11 @@
   margin-bottom: 12px;
 }
 
+/* The reveal takes no pointer but its own controls: Show predicted sky takes the mouse (FIELD field-2, finding 2) */
+.reveal-status .look-main {
+  pointer-events: auto;
+}
+
 .reveal-status__line {
   margin: 0;
 }

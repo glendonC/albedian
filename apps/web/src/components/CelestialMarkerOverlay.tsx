@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { CelestialFinding, ObservationSession } from '@albedian/contracts';
 import {
   projectWorldPointWithCamera,
@@ -9,6 +9,8 @@ import {
 import { getMarkerVisualSpec, type MarkerVisualSpec } from '@albedian/design-system';
 import { linedUpProjection, shownAtFrame } from './poseProjection.js';
 import { sourcePixelToViewport, useViewportSize } from './sourcePhotoRect.js';
+import { projectIcrsThroughPose } from './skyPoseProjection.js';
+import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 
 export interface CelestialMarkerOverlayProps {
   session: ObservationSession;
@@ -19,6 +21,11 @@ export interface CelestialMarkerOverlayProps {
   ) => void;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
+  /**
+   * The renderer's camera against the star sphere it draws now (CosmosRenderer.getCameraSkyPose), read every frame:
+   * in the sky view the names sit on the stars as drawn, under its observer frame and its own look.
+   */
+  skyPose?: () => CameraSkyPose | null;
 }
 
 export interface ProjectedMarkerPosition {
@@ -51,7 +58,8 @@ export function projectFindingToViewport(
   finding: CelestialFinding,
   session: ObservationSession,
   viewportWidthPx = 1440,
-  viewportHeightPx = 900
+  viewportHeightPx = 900,
+  skyPose: CameraSkyPose | null = null
 ): ProjectedMarkerPosition {
   const safeW = Math.max(1, viewportWidthPx);
   const safeH = Math.max(1, viewportHeightPx);
@@ -101,6 +109,22 @@ export function projectFindingToViewport(
   }
   if (finding.evidenceClass === 'predicted' && overlays?.predictedEphemerides === false) {
     return hidden();
+  }
+
+  // In the sky view, the sky as the renderer draws it (FIELD field-2, finding 3): the session's camera is not its look
+  if (skyPose && mode !== 'catalog_3d') {
+    const parsec = resolveFindingParsecPosition(finding);
+    const length = parsec ? Math.hypot(parsec[0], parsec[1], parsec[2]) : 0;
+    const direction: Vec3 | null = finding.skyPosition
+      ? raDecToUnitVector(finding.skyPosition.raDeg, finding.skyPosition.decDeg)
+      : parsec && length > 0
+        ? [parsec[0] / length, parsec[1] / length, parsec[2] / length]
+        : null;
+    const onScreen = direction ? projectIcrsThroughPose(direction, skyPose, safeW, safeH) : null;
+    if (onScreen) {
+      if (!onScreen.visible) return hidden();
+      return { visible: true, xPct: (onScreen.xPx / safeW) * 100, yPct: (onScreen.yPx / safeH) * 100, xPx: onScreen.xPx, yPx: onScreen.yPx };
+    }
   }
 
   let worldPoint: Vec3 | null = resolveFindingParsecPosition(finding);
@@ -240,8 +264,31 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
   onSelectFinding,
   viewportWidthPx,
   viewportHeightPx,
+  skyPose,
 }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // The renderer's pose, followed frame by frame while the sky view shows; a new one only when it changed
+  const [pose, setPose] = useState<CameraSkyPose | null>(null);
+  const followsSky = skyPose !== undefined && (session.spatialView?.mode ?? 'source_2d') !== 'source_2d';
+  useEffect(() => {
+    if (!followsSky || !skyPose) {
+      setPose(null);
+      return undefined;
+    }
+    let frame = 0;
+    let last = '';
+    const follow = () => {
+      const now = skyPose();
+      const key = now ? JSON.stringify(now) : '';
+      if (key !== last) {
+        last = key;
+        setPose(now);
+      }
+      frame = window.requestAnimationFrame(follow);
+    };
+    follow();
+    return () => window.cancelAnimationFrame(frame);
+  }, [followsSky, skyPose]);
   // The overlay covers the window, so the window's size is the frame markers are placed in
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -253,7 +300,7 @@ export const CelestialMarkerOverlay: React.FC<CelestialMarkerOverlayProps> = ({
   const focusedId = session.focusedFindingId ?? null;
 
   const inView = findings
-    .map((finding) => ({ finding, pos: projectFindingToViewport(finding, session, viewW, viewH) }))
+    .map((finding) => ({ finding, pos: projectFindingToViewport(finding, session, viewW, viewH, pose) }))
     .filter(({ pos }) => pos.visible);
   const labelledIds = chooseLabelledFindingIds(
     inView.map(({ finding }) => finding),

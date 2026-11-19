@@ -640,6 +640,8 @@ describe("the reveal's rules are the approved pages'", () => {
 
   it('sets the no-match sentence, its button and its warnings as the approved page does', () => {
     expect(declarationsOf('.reveal-status.is-unmatched')).toEqual({ top: '74px', width: '306px' });
+    // The reveal takes no pointer but its own controls: Show predicted sky takes the mouse (FIELD field-2, finding 2)
+    expect(declarationsOf('.reveal-status .look-main')).toEqual({ 'pointer-events': 'auto' });
     expect(declarationsOf('.reveal-status__lead')).toEqual({
       margin: '0 0 18px',
       font: '300 24px / 1.2 var(--look-font-sans)',

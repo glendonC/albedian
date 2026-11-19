@@ -372,6 +372,9 @@ export const SpatialObservatoryViewport: React.FC<
   const audioCreditLines = useAudioCreditLines();
   const audioDisclosure = useAudioDisclosure();
 
+  // The renderer's camera against its star sphere, for names placed on the sky as it is drawn
+  const readSkyPose = useCallback(() => rendererRef.current?.getCameraSkyPose?.() ?? null, []);
+
   // While audio is on, the catalog stars in view sound and the camera turns the listener
   useEffect(() => {
     if (!soundEnabled) return;
@@ -719,6 +722,7 @@ export const SpatialObservatoryViewport: React.FC<
               session={session}
               selectedFinding={selectedFinding}
               onSelectFinding={onSelectFinding}
+              skyPose={readSkyPose}
             />
           )}
           {!revealShown && (
