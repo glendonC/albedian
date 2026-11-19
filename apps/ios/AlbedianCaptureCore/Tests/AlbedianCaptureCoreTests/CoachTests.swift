@@ -104,6 +104,23 @@ final class CoachTests: XCTestCase {
         XCTAssertNil(CoachSteadiness.focalPx(longSidePx: 0, longSideFovDeg: 60))
     }
 
+    private func motion(_ sec: Double, rateZ: Double) -> MotionSample {
+        MotionSample(bootClockSec: sec, referenceFrame: .xTrueNorthZVertical, quaternion: .init(x: 0.2, y: -0.4, z: 0.4, w: 0.8),
+                     gravityG: .init(x: 0, y: -0.6, z: -0.8), rotationRateRadPerSec: .init(x: 0, y: 0, z: rateZ))
+    }
+
+    /// The wrapper the app calls judges at the newest sample (AUDIT-B, coach-0-1-2 verdict): a still phone that starts to
+    /// move shows the line at once, and one that comes to rest hides it after half a second, whatever came before.
+    func testTheSamplesAreJudgedAtTheNewest() {
+        // 1 s exposure through 1000 px: 0.002 rad/s smears 2 px, 0.0005 rad/s half a pixel
+        XCTAssertTrue(CoachSteadiness.moving([motion(10, rateZ: 0.0005), motion(11, rateZ: 0.002)], exposureSec: 1, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(10, rateZ: 0.002), motion(11, rateZ: 0.0005)], exposureSec: 1, focalPx: 1000))
+        XCTAssertTrue(CoachSteadiness.moving([motion(10.8, rateZ: 0.002), motion(11, rateZ: 0.0005)], exposureSec: 1, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([], exposureSec: 1, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: nil, focalPx: 1000))
+        XCTAssertFalse(CoachSteadiness.moving([motion(11, rateZ: 0.002)], exposureSec: 1, focalPx: nil))
+    }
+
     func testTheLineShowsAtOnceAndHidesOnlyAfterHalfASecondBelowOnePixel() {
         var window = CoachSteadiness.Window()
         window.add(sec: 10, smearPx: 0.4)
