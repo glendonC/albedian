@@ -586,6 +586,8 @@ export const SpatialObservatoryViewport: React.FC<
   // session's clock through the reducer, so what the reveal draws follows the frame on screen
   const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
   const clipShown = !phone && revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
+  // The first view pill names the recording's kind, as every result sentence does (C16)
+  const firstViewLabel = session.sourceAsset?.mediaKind === 'video' ? 'Your clip' : 'Your photo';
   const seekClip = (sec: number) =>
     setSession((cur) =>
       dispatchAlbedianAction(cur, { type: 'media.seek', requestId: `ui-clip-seek-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, sourceTimeSec: sec, preserveAudioSync: true })
@@ -971,7 +973,7 @@ export const SpatialObservatoryViewport: React.FC<
             label="View"
             size="phone"
             views={[
-              { id: 'photo', label: 'Your photo' },
+              { id: 'photo', label: firstViewLabel },
               { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
               { id: '3d', label: '3D', disabled: !threeDOpens },
             ]}
@@ -991,7 +993,7 @@ export const SpatialObservatoryViewport: React.FC<
             <ViewPills
               label="View"
               views={[
-                { id: 'photo', label: 'Your photo' },
+                { id: 'photo', label: firstViewLabel },
                 { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
                 { id: '3d', label: '3D', disabled: !threeDOpens },
               ]}

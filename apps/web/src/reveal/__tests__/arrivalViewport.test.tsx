@@ -834,6 +834,16 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q('.reveal-card__acts .look-second')!.getAttribute('aria-pressed')).toBe('false');
   });
 
+  it('names a clip "Your clip" on the first view pill, the noun every result sentence gives it (C16)', () => {
+    const photo = storedPhoto();
+    const clip = { ...photo, sourceAsset: { ...photo.sourceAsset!, mediaKind: 'video', mimeType: 'video/quicktime', durationMs: 10_000, fpsNumerator: 30, fpsDenominator: 1 } } as ObservationSession;
+    open(clip);
+    expect([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.textContent)).toEqual(['Your clip', 'Real sky', '3D']);
+    // The window is past the home already
+    renderViewport(photo);
+    expect([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.textContent)).toEqual(['Your photo', 'Real sky', '3D']);
+  });
+
   it('puts the view pills before the Sound circle: Your photo current, Real sky ready, 3D only with a star it can fly to', () => {
     open(storedPhoto());
     const nav = q('.reveal-nav')!;
