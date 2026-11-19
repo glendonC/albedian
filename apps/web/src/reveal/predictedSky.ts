@@ -1,4 +1,5 @@
 import type { ObservationSession } from '@albedian/contracts';
+import { startPose } from './alignPose.js';
 
 /**
  * D33, the predicted sky that Show predicted sky opens (UIUX-predsky-READY.md, decided by the lead 12:45): the words of
@@ -11,6 +12,18 @@ import type { ObservationSession } from '@albedian/contracts';
 export function isPredictedSkyShown(session: ObservationSession): boolean {
   const solution = session.observationSolution;
   return session.sourceAsset !== undefined && session.spatialView?.mode === 'registered_sky' && solution !== undefined && solution.status !== 'calibrated';
+}
+
+/** How high D33's sky opens: 30 degrees up on the laptop and 26 on the phone, so the horizon sits near the foot (13:23). */
+export const PREDICTED_SKY_OPEN_ALT_DEG = { laptop: 30, phone: 26 } as const;
+
+/**
+ * Where D33's sky opens (decided by the lead 13:23): facing D24's start (the file's compass heading, else the
+ * brightest predicted star above the horizon), at the height above. None where D24 has no start.
+ */
+export function predictedSkyStart(session: ObservationSession, phone: boolean): { azDeg: number; altDeg: number } | null {
+  const start = startPose(session);
+  return start ? { azDeg: start.pose.azDeg, altDeg: phone ? PREDICTED_SKY_OPEN_ALT_DEG.phone : PREDICTED_SKY_OPEN_ALT_DEG.laptop } : null;
 }
 
 /** The catalogues the app's star field draws (the There screen names the same two). */

@@ -59,6 +59,16 @@ describe('the early pose from the served predicted sky', () => {
     for (const mark of early.marks) expect(mark.name).not.toMatch(/Predicted Ephemeris/);
   });
 
+  it('takes aligning targets by their kind, never their id: a Hipparcos star and a planet by objectType', () => {
+    const base = POSE.findings.find((f) => f.id.startsWith('finding-predicted-star-'))!;
+    const hip = { ...base, id: 'finding-predicted-hip-30438', catalogRef: { ...base.catalogRef!, objectType: 'star' as const, apparentMagnitude: -0.7 } };
+    expect(alignTargetOf(hip)).not.toBeNull();
+    const faint = { ...hip, catalogRef: { ...hip.catalogRef, apparentMagnitude: 4 } };
+    expect(alignTargetOf(faint)).toBeNull();
+    const planet = { ...base, id: 'finding-predicted-body-x', catalogRef: { ...base.catalogRef!, objectType: 'planet' as const, apparentMagnitude: undefined } };
+    expect(alignTargetOf(planet)).not.toBeNull();
+  });
+
   it('turns the places with the photo when the file says it is shown turned', () => {
     const turned = asset({ displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } });
     const early = earlyPoseOf(POSE, turned)!;

@@ -59,8 +59,10 @@ export function fovYOf(pose: Pick<AlignPose, 'fovXDeg' | 'aspect'>): number {
 
 /** What is drawn while aligning: the predicted stars bright enough to be named, and the planets. */
 export const ALIGN_MAGNITUDE_LIMIT = 3.2;
-const PLANET = /^finding-predicted-(mercury|venus|mars|jupiter|saturn|uranus|neptune)$/;
-const STAR = /^finding-predicted-star-/;
+// A finding's kind is its catalog reference's objectType, never its id: the server writes star ids with "star-",
+// "hip-" and "gaia-" (FIELD, 13:30)
+const isStar = (finding: CelestialFinding) => finding.catalogRef?.objectType === 'star';
+const isPlanet = (finding: CelestialFinding) => finding.catalogRef?.objectType === 'planet';
 
 export interface AlignTarget {
   finding: CelestialFinding;
@@ -78,8 +80,8 @@ export interface AlignTarget {
 export function alignTargetOf(finding: CelestialFinding): { name: string; magnitude: number | null } | null {
   if (finding.evidenceClass !== 'predicted') return null;
   const magnitude = finding.catalogRef?.apparentMagnitude ?? null;
-  const planet = PLANET.test(finding.id);
-  if (!planet && !(STAR.test(finding.id) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return null;
+  const planet = isPlanet(finding);
+  if (!planet && !(isStar(finding) && magnitude !== null && magnitude <= ALIGN_MAGNITUDE_LIMIT)) return null;
   return { name: finding.title.replace(/ \(Predicted Ephemeris\)$/, ''), magnitude };
 }
 
@@ -119,7 +121,7 @@ export function startPose(session: ObservationSession, headingDeg?: number): { p
   const altDeg = fovYOf({ fovXDeg, aspect }) / 2;
   if (headingDeg !== undefined) return { pose: { azDeg: headingDeg, altDeg, rollDeg: 0, fovXDeg, aspect }, from: { kind: 'heading' } };
   // The brightest star: a planet the record gives no magnitude is not one
-  const brightest = alignTargets(session.observationSolution).find((target) => target.altDeg > 0 && target.magnitude !== null && STAR.test(target.finding.id));
+  const brightest = alignTargets(session.observationSolution).find((target) => target.altDeg > 0 && target.magnitude !== null && isStar(target.finding));
   if (!brightest) return null;
   // [proposed] Facing it means it is in view: the centre at its height, never lower than the horizon at the foot
   return { pose: { azDeg: brightest.azDeg, altDeg: Math.max(altDeg, brightest.altDeg), rollDeg: 0, fovXDeg, aspect }, from: { kind: 'brightest', name: brightest.name } };

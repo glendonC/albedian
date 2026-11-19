@@ -28,7 +28,7 @@ const target = (id: string, title: string, alt: number, az: number, mag?: number
     id,
     title,
     skyPosition: { ...template.skyPosition!, altDeg: alt, azDeg: az },
-    catalogRef: mag === undefined ? undefined : { ...(template.catalogRef ?? {}), apparentMagnitude: mag },
+    catalogRef: mag === undefined ? (/(mercury|venus|mars|jupiter|saturn|uranus|neptune)$/.test(id) ? { ...(template.catalogRef ?? {}), objectType: 'planet', apparentMagnitude: undefined } : undefined) : { ...(template.catalogRef ?? {}), apparentMagnitude: mag, objectType: 'star' },
   }) as CelestialFinding;
 const SKY = [
   target('finding-predicted-star-hip-113368', 'Fomalhaut (Predicted Ephemeris)', 20, 150, 1.16),

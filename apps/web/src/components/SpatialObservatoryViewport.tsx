@@ -46,7 +46,7 @@ import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourceP
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
 import { earlyPoseOf } from '../reveal/earlyPose.js';
 import { PredictedSkyScreen } from '../reveal/PredictedSkyScreen.js';
-import { isPredictedSkyShown } from '../reveal/predictedSky.js';
+import { isPredictedSkyShown, predictedSkyStart } from '../reveal/predictedSky.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
@@ -390,6 +390,15 @@ export const SpatialObservatoryViewport: React.FC<
     // The sky view's horizon and its disclosure follow the place and time, or their absence
     setRenderLayers(renderer.getRenderLayers?.() ?? null);
   }, [observerLat, observerLon, observerCapturedAtUtc, rendererGeneration]);
+
+  // D33's start (decided 13:23): the predicted sky opens facing D24's start, 30 degrees up (26 on the phone), once
+  // each time it opens; the renderer's lookAtSky is SPATIAL's (asked in WEB-UX-predsky-8-FILES.md), so it is optional
+  const skyStart = predictedSkyShown ? predictedSkyStart(session, phone) : null;
+  const skyStartKey = skyStart ? `${session.observationSolution?.id ?? ''}:${skyStart.azDeg}:${skyStart.altDeg}` : null;
+  useEffect(() => {
+    if (!skyStart) return;
+    (rendererRef.current as { lookAtSky?: (azDeg: number, altDeg: number) => void } | null)?.lookAtSky?.(skyStart.azDeg, skyStart.altDeg);
+  }, [skyStartKey, rendererGeneration]);
 
   // The header slider is the engine's master volume; the engine keeps it until audio starts
   useEffect(() => {

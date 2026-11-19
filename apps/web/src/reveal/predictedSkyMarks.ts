@@ -14,7 +14,6 @@ import { ALIGN_MAGNITUDE_LIMIT } from './alignPose.js';
 
 export const SKY_NAMED_RING_PX = 6.5;
 export const SKY_UNNAMED_RING_PX = 4.5;
-const STAR = /^finding-predicted-star-/;
 // The gap between a ring and its name, as the aligning layer's names sit
 const NAME_GAP_PX = 4;
 
@@ -83,7 +82,8 @@ export function predictedSkyMarks(
     .flatMap((finding) => {
       const magnitude = finding.catalogRef?.apparentMagnitude;
       const sky = finding.skyPosition;
-      if (finding.evidenceClass !== 'predicted' || !STAR.test(finding.id) || magnitude === undefined || magnitude > ALIGN_MAGNITUDE_LIMIT || !sky) return [];
+      // Every predicted star by its kind, whatever its id ("star-", "hip-", "gaia-")
+      if (finding.evidenceClass !== 'predicted' || finding.catalogRef?.objectType !== 'star' || magnitude === undefined || magnitude > ALIGN_MAGNITUDE_LIMIT || !sky) return [];
       const onScreen = projectIcrsThroughPose(raDecToUnitVector(sky.raDeg, sky.decDeg), pose, widthPx, heightPx);
       if (!onScreen?.visible) return [];
       return [{ id: finding.id, name: finding.catalogRef?.commonName?.trim() || null, xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];

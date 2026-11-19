@@ -62,7 +62,7 @@ describe('the start', () => {
           id: t.id,
           title: t.title,
           skyPosition: { ...template.skyPosition!, altDeg: t.alt, azDeg: t.az },
-          catalogRef: t.mag === undefined ? undefined : { ...(template.catalogRef ?? {}), apparentMagnitude: t.mag },
+          catalogRef: t.mag === undefined ? (/(mercury|venus|mars|jupiter|saturn|uranus|neptune)$/.test(t.id) ? { ...(template.catalogRef ?? {}), objectType: 'planet', apparentMagnitude: undefined } : undefined) : { ...(template.catalogRef ?? {}), apparentMagnitude: t.mag, objectType: 'star' },
         }) as CelestialFinding
     );
     // Placed by hand (a catalog row with a magnitude only), so the session is built from the fixture and given them after

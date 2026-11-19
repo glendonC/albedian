@@ -75,6 +75,14 @@ describe('predictedSkyMarks: the predicted stars through the renderer camera', (
     expect(marks.map((m) => [m.id, m.name])).toEqual([['finding-predicted-star-a', 'Alpha'], ['finding-predicted-star-b', 'Beta']]);
   });
 
+  it('takes every predicted star by its kind, whatever its id: a Hipparcos and a Gaia star are ringed and named (FIELD 13:30)', () => {
+    const hip = { ...star('finding-predicted-hip-30438', 0.7, -80, 'Canopus'), catalogRef: { ...star('x', 0.7, -80).catalogRef!, objectType: 'star', commonName: 'Canopus', apparentMagnitude: -0.7 } } as CelestialFinding;
+    const gaia = { ...star('finding-predicted-gaia-1', 1.5, -86, 'Mimosa'), catalogRef: { ...star('y', 1.5, -86).catalogRef!, objectType: 'star', commonName: 'Mimosa', apparentMagnitude: 1.25 } } as CelestialFinding;
+    const planet = { ...star('finding-predicted-star-not', 1, -84, 'Notastar'), catalogRef: { ...star('z', 1, -84).catalogRef!, objectType: 'planet', commonName: 'Notastar', apparentMagnitude: 1 } } as CelestialFinding;
+    const marks = predictedSkyMarks(sky([hip, gaia, planet]), POLE, W, H);
+    expect(marks.map((m) => m.id)).toEqual(['finding-predicted-hip-30438', 'finding-predicted-gaia-1']);
+  });
+
   it('draws no star behind the camera or out of view, and nothing that is not predicted', () => {
     const marks = predictedSkyMarks(sky([star('finding-predicted-star-n', 1, 80, 'North'), star('finding-predicted-star-m', 1, -85, 'Matched', 'catalog_matched')]), POLE, W, H);
     expect(marks).toEqual([]);

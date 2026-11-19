@@ -29,6 +29,7 @@ vi.mock('../RealSkyLayer.js', async (importOriginal) => {
   };
 });
 
+const skyLooks = vi.hoisted(() => [] as Array<[number, number]>);
 vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
   SparkPortalRenderer: class {
     setObserverCoordinates() {}
@@ -49,6 +50,9 @@ vi.mock('../../spatial/SparkPortalRenderer.js', () => ({
     }
     getCameraSkyPose() {
       return null;
+    }
+    lookAtSky(azDeg: number, altDeg: number) {
+      skyLooks.push([azDeg, altDeg]);
     }
   },
 }));
@@ -167,6 +171,24 @@ describe('the predicted sky in the app (laptop)', () => {
     expect([...container.querySelectorAll('.ask-bar button')].some((b) => b.textContent === 'Back to Moment')).toBe(true);
   });
 
+  it("opens facing D24's start, 30 degrees up on the laptop and 26 on the phone (decided 13:23)", async () => {
+    const { startPose } = await import('../alignPose.js');
+    const { predictedSkyStart } = await import('../predictedSky.js');
+    // The sample's sky with one bright predicted star given its altitude and azimuth, as the server computes them
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const vega = { ...template, id: 'finding-predicted-star-vega', title: 'Vega', skyPosition: { raDeg: 279.2, decDeg: 38.8, uncertaintyArcsec: 1, altDeg: 52, azDeg: 75 }, catalogRef: { id: 'vega', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 91262', commonName: 'Vega', apparentMagnitude: 0.03 } } as unknown as typeof template;
+    const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [...base.observationSolution!.findings, vega] } } as ObservationSession;
+    const start = startPose(session)!;
+    expect(start.pose.azDeg).toBe(75);
+    expect(predictedSkyStart(session, false)).toEqual({ azDeg: start.pose.azDeg, altDeg: 30 });
+    expect(predictedSkyStart(session, true)).toEqual({ azDeg: start.pose.azDeg, altDeg: 26 });
+    skyLooks.length = 0;
+    renderViewport(session);
+    for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+    expect(skyLooks.at(-1)).toEqual([start.pose.azDeg, 30]);
+  });
+
   it('returns to the moment on Esc, as the There screen whose frame it takes does', () => {
     const sessions: ObservationSession[] = [];
     let current = predictedSky();
@@ -223,7 +245,7 @@ describe("D20's marks on the predicted sky (item 4)", () => {
     const base = predictedSky();
     const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
     const star = (id: string, magnitude: number, decDeg: number, commonName: string) =>
-      ({ ...template, id, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { id, provider: 'Hipparcos', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: magnitude } }) as unknown as typeof template;
+      ({ ...template, id, skyPosition: { raDeg: 10, decDeg, uncertaintyArcsec: 1 }, catalogRef: { id, provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: id, commonName, apparentMagnitude: magnitude } }) as unknown as typeof template;
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star('finding-predicted-star-a', 0.5, -80, 'Alpha'), star('finding-predicted-star-b', 2, -86, 'Beta')] } } as ObservationSession;
     let pose: CameraSkyPose | null = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
     act(() => root.render(createElement(PredictedSkyScreen, { session, onHome: noop, skyPose: () => pose })));
@@ -245,7 +267,7 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
     const base = predictedSky();
     const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
-    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', objectType: 'star', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
     const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
     const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
     const picked: string[] = [];
