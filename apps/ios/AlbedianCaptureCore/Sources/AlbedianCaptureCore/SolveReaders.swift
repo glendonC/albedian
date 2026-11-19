@@ -7,10 +7,13 @@ public struct SolveReadRefusal: Error, Equatable, Sendable, CustomStringConverti
     public var description: String { "\(path): \(reason)" }
 }
 
-/// A solve job as the laptop reports it (`SolveJobSchema`, `packages/contracts/src/ingest.ts`): its state, and each
-/// stage's own count of real work, `total` null until known (REQ-IOS-4.2: progress from the job's own denominators).
+/// A solve job as the laptop reports it: the runner's record (`UploadJobSchema` of kind `solve`,
+/// `packages/contracts/src/jobs.ts`), or a record the solve wrote before the runner (`SolveJobSchema`,
+/// `packages/contracts/src/ingest.ts`), as the web reads both. Its state, and each stage's own count of real work,
+/// `total` null until known (REQ-IOS-4.2: progress from the job's own denominators).
 public struct SolveJob: Equatable, Sendable {
-    public enum State: String, Sendable, CaseIterable { case queued, running, succeeded, failed, canceled }
+    /// A solve's states (`rejected` is a media job's only; `interrupted` is the runner's, for a job the server stopped).
+    public enum State: String, Sendable, CaseIterable { case queued, running, succeeded, failed, canceled, interrupted }
     /// The stages in pipeline order (`JOB_STAGES`).
     public enum Stage: String, Sendable, CaseIterable { case store, decode, detect, solve, verify }
     public enum Unit: String, Sendable, CaseIterable { case bytes, frames, candidates, steps }
@@ -20,12 +23,31 @@ public struct SolveJob: Equatable, Sendable {
         public let done: Int
         /// Nil while the server does not know it; then only elapsed time may be shown for the stage.
         public let total: Int?
-        public init(stage: Stage, unit: Unit, done: Int, total: Int?) {
+        /// The search the stage is on, for a solve stage that reports one; a new pass starts its count again.
+        public let pass: Pass?
+        public init(stage: Stage, unit: Unit, done: Int, total: Int?, pass: Pass? = nil) {
             self.stage = stage
             self.unit = unit
             self.done = done
             self.total = total
+            self.pass = pass
         }
+    }
+    public struct Pass: Equatable, Sendable {
+        public enum Label: String, Sendable, CaseIterable { case phonePhotoHinted = "phone_photo_hinted", phonePhotoGeneric = "phone_photo_generic", triangle }
+        public let number: Int
+        public let label: Label
+    }
+    public struct Producer: Equatable, Sendable {
+        public let name: String
+        public let revision: Int
+    }
+    /// A clip's decoded frames.
+    public struct InputSpan: Equatable, Sendable {
+        public let firstFrameIndex: Int
+        public let frameCount: Int
+        public let startSec: Double
+        public let endSec: Double
     }
     public let id: String
     public let sourceAssetSha256: String
@@ -36,9 +58,16 @@ public struct SolveJob: Equatable, Sendable {
     public let stages: [StageProgress]
     public let solutionId: String?
     public let error: String?
+    /// "solve" for the runner's record; nil for a record written before the runner.
+    public var kind: String?
+    public var producer: Producer?
+    /// Queued only: the jobs ahead of it, counted when the laptop answered.
+    public var queueAhead: Int?
+    public var inputSpan: InputSpan?
+    public var cancelRequestedAtUTC: String?
 
     /// Whether the job has ended, one way or another.
-    public var hasEnded: Bool { state == .succeeded || state == .failed || state == .canceled }
+    public var hasEnded: Bool { state == .succeeded || state == .failed || state == .canceled || state == .interrupted }
 }
 
 /// Small checks shared by the readers, each the contract's own rule.
@@ -92,6 +121,8 @@ public enum SolveJobReader {
             .failure(SolveReadRefusal(path: path, reason: reason))
         }
         guard let object = value.objectValue else { return refuse("", "not an object") }
+        // The runner's record names its kind; one written before the runner has no such key (the web reads them the same way)
+        if object["kind"] != nil { return readRunnerRecord(object) }
         if let extra = Wire.onlyKeys(object, keys) { return refuse(extra, "not a key of the contract") }
         guard let id = object["id"]?.stringValue, Wire.isJobId(id) else { return refuse("id", "not a job id") }
         guard let sha = object["sourceAssetSha256"]?.stringValue, Wire.isSha256(sha) else { return refuse("sourceAssetSha256", "not a SHA-256") }
@@ -138,6 +169,7 @@ public enum SolveJobReader {
         case .succeeded: fits = has.started && has.finished && has.solution && !has.error
         case .failed: fits = has.started && has.finished && has.error && !has.solution
         case .canceled: fits = !has.started && has.finished && !has.solution && !has.error
+        case .interrupted: fits = false  // a state of the runner's record only
         }
         guard fits else { return refuse("state", "fields do not fit a \(state.rawValue) job") }
         let startedAt = started ?? nil

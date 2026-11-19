@@ -310,6 +310,13 @@ final class CompanionModel {
     /// then sends it. `-AlbedianOpen credits|pairing` opens that screen.
     func runFromLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
+        // `-AlbedianSolveStored <sha256>` follows the solve of a file the kept laptop already holds (a clip sent there by
+        // other means), so the runner's records of a clip's job can be seen through the phone's reader (mobile-9)
+        if let index = args.firstIndex(of: "-AlbedianSolveStored"), args.indices.contains(index + 1), let laptop = pairing.kept,
+           PhotoHash.isContractHash(args[index + 1]) {
+            startSolve(sha256: args[index + 1], address: laptop)
+            return
+        }
         // The hold-still layout with the mockup's own numbers (1.1 s, 0.6 s in), for the owner's look at it in the
         // simulator, which has no camera: a stand-in, never a capture
         if args.contains("-AlbedianHoldStillLayout") {

@@ -3,9 +3,9 @@ import XCTest
 @testable import AlbedianCaptureCore
 
 /// The solve and its result against a laptop on 127.0.0.1 that each test starts and stops (REQ-IOS-4.2 for the
-/// solve, REQ-IOS-5.1). The laptop holds `POST /api/ingest/{sha256}/solve` until the solve ends
-/// (`services/ingest/router.py`), so the client reads the job beside it, through the receipt's `solveJobId`, and every
-/// state it reports is a job the laptop wrote: no step, count or percentage of its own.
+/// solve, REQ-IOS-5.1), as the job runner serves it (mobile-9): `POST /api/ingest/{sha256}/solve?wait=false` answers at
+/// once with the job, which the client then follows by its own id, `GET /api/ingest/jobs/{id}`, to its end. Every state
+/// it reports is a job record the laptop wrote (`UploadJobSchema`): no step, count or percentage of its own.
 final class SolveClientTests: XCTestCase {
     final class Log<T: Sendable>: @unchecked Sendable {
         private let lock = NSLock()
@@ -24,44 +24,50 @@ final class SolveClientTests: XCTestCase {
         try XCTUnwrap(try ContractFixture.load("observation_solution_contract")["valid"]?["calibrated"])
     }
 
-    private static func job(_ sha: String, _ state: String, stages: String) -> String {
-        let id = "job_" + sha.prefix(16)
-        let times: String
+    static func jobId(_ sha: String) -> String { "job_" + sha.prefix(16) + "0123456789abcdef" }
+    static let store = "{\"stage\":\"store\",\"unit\":\"bytes\",\"done\":10,\"total\":10}"
+    static let producer = ",\"producer\":{\"name\":\"albedian.solve_chain\",\"revision\":4}"
+
+    /// A runner's record of a solve in `state`, with the fields the job contract's state table asks for.
+    static func job(_ sha: String, _ state: String, stages: String = store, id: String? = nil, extra: String = "") -> String {
+        let fields: String
         switch state {
-        case "queued": times = ""
-        case "running": times = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\""
-        case "failed": times = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:02Z\",\"error\":\"The decoder could not read the file.\""
-        default: times = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:41Z\",\"solutionId\":\"sol_\(sha.prefix(16))\""
+        case "queued": fields = ""
+        case "running": fields = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\"" + producer
+        case "failed": fields = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:02Z\",\"error\":\"The decoder could not read the file.\"" + producer
+        case "interrupted": fields = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:02Z\",\"error\":\"The server stopped before this job finished.\"" + producer
+        default: fields = ",\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:41Z\",\"solutionId\":\"sol_\(sha.prefix(16))\"" + producer
         }
-        return "{\"id\":\"\(id)\",\"sourceAssetSha256\":\"\(sha)\",\"state\":\"\(state)\",\"createdAtUTC\":\"2031-05-02T19:20:00Z\"\(times),\"stages\":[\(stages)]}"
+        return "{\"id\":\"\(id ?? jobId(sha))\",\"sourceAssetSha256\":\"\(sha)\",\"kind\":\"solve\",\"state\":\"\(state)\",\"createdAtUTC\":\"2031-05-02T19:20:00Z\"\(fields),\"stages\":[\(stages)]\(extra)}"
     }
 
-    private static func receipt(_ sha: String, jobKnown: Bool) -> String {
-        let job = jobKnown ? ",\"solveJobId\":\"job_\(sha.prefix(16))\"" : ""
-        return "{\"sourceAsset\":{\"sha256\":\"\(sha)\",\"width\":800,\"height\":600},\"hints\":{},\"alreadyStored\":true\(job)}"
+    private static func receipt(_ sha: String) -> String {
+        "{\"sourceAsset\":{\"sha256\":\"\(sha)\",\"width\":800,\"height\":600},\"hints\":{},\"alreadyStored\":true,\"solveJobId\":\"\(jobId(sha))\"}"
     }
 
-    /// A laptop that answers the solve after `holdSec`, while its job moves: queued at the first read, then decode, then
-    /// detect, as the counter of job reads goes.
-    private func laptop(sha: String, solution: JSONValue, holdSec: Double, final: String = "succeeded",
-                        solveStatus: Int = 201) -> LoopbackHTTPServer.Responder {
+    static let decoding = store + ",{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":0,\"total\":1}"
+    static let detecting = store + ",{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":1,\"total\":1},{\"stage\":\"detect\",\"unit\":\"frames\",\"done\":0,\"total\":null}"
+    static let matching = store + ",{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":1,\"total\":1},{\"stage\":\"detect\",\"unit\":\"frames\",\"done\":1,\"total\":1},"
+        + "{\"stage\":\"solve\",\"unit\":\"candidates\",\"done\":40,\"total\":120,\"pass\":{\"number\":2,\"label\":\"phone_photo_generic\"}}"
+
+    /// A laptop whose start answers at once with a queued job (202), which then runs: decode, detect, a search on its
+    /// second pass, then `final`, one read at a time.
+    private func laptop(sha: String, solution: JSONValue, final: String = "succeeded", startStatus: Int = 202,
+                        startJob: String? = nil) -> LoopbackHTTPServer.Responder {
         let reads = Counter()
-        let finalStages = "{\"stage\":\"store\",\"unit\":\"bytes\",\"done\":10,\"total\":10},{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":1,\"total\":1}"
-        let finalJob = Self.job(sha, final, stages: final == "failed" ? "" : finalStages)
         let solutionText = String(decoding: JSONText.data(solution), as: UTF8.self)
         return { request in
             switch (request.method, request.path) {
-            case ("POST", "/api/ingest/\(sha)/solve"):
-                var response = LoopbackHTTPServer.Response.json(solveStatus, finalJob)
-                response.delaySec = holdSec
-                return response
+            case ("POST", "/api/ingest/\(sha)/solve?wait=false"):
+                return .json(startStatus, startJob ?? Self.job(sha, "queued", extra: ",\"queueAhead\":1"))
             case ("GET", "/api/ingest/\(sha)"):
-                return .json(200, Self.receipt(sha, jobKnown: true))
-            case ("GET", "/api/ingest/jobs/job_\(sha.prefix(16))"):
+                return .json(200, Self.receipt(sha))
+            case ("GET", "/api/ingest/jobs/\(Self.jobId(sha))"):
                 switch reads.next() {
-                case 1: return .json(200, Self.job(sha, "queued", stages: "{\"stage\":\"store\",\"unit\":\"bytes\",\"done\":10,\"total\":10}"))
-                case 2: return .json(200, Self.job(sha, "running", stages: "{\"stage\":\"store\",\"unit\":\"bytes\",\"done\":10,\"total\":10},{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":0,\"total\":1}"))
-                default: return .json(200, Self.job(sha, "running", stages: "{\"stage\":\"store\",\"unit\":\"bytes\",\"done\":10,\"total\":10},{\"stage\":\"decode\",\"unit\":\"frames\",\"done\":1,\"total\":1},{\"stage\":\"detect\",\"unit\":\"frames\",\"done\":0,\"total\":null}"))
+                case 1: return .json(200, Self.job(sha, "running", stages: Self.decoding))
+                case 2: return .json(200, Self.job(sha, "running", stages: Self.detecting))
+                case 3: return .json(200, Self.job(sha, "running", stages: Self.matching))
+                default: return .json(200, Self.job(sha, final, stages: final == "failed" ? Self.store : Self.matching))
                 }
             case ("GET", "/api/ingest/\(sha)/solution"):
                 return .json(200, solutionText)
@@ -71,30 +77,32 @@ final class SolveClientTests: XCTestCase {
         }
     }
 
-    private func solve(_ server: LoopbackHTTPServer, sha: String, pollSec: Double = 0.05) async throws -> (SolveState, [SolveState]) {
+    private func solve(_ server: LoopbackHTTPServer, sha: String, pollSec: Double = 0.02, solveTimeoutSec: Double = 10) async throws
+        -> (SolveState, [SolveState]) {
         let address = try XCTUnwrap(LaptopAddress(server.baseURL))
         let log = Log<SolveState>()
         let last = await within(20, otherwise: SolveState.failed(.timedOut)) {
-            await SolveClient(address: address, solveTimeoutSec: 10, readTimeoutSec: 5, pollIntervalSec: pollSec)
+            await SolveClient(address: address, solveTimeoutSec: solveTimeoutSec, readTimeoutSec: 5, pollIntervalSec: pollSec)
                 .solve(sha256: sha) { log.append($0) }
         }
         return (last, log.all)
     }
 
-    func testReportsTheJobAsItMovesThenTheResultAsTheServerReportsIt() async throws {
+    func testFollowsTheJobTheStartAnswersThenShowsTheResultAsTheServerReportsIt() async throws {
         let solution = try calibrated()
         let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
-        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, holdSec: 1.0))
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution))
         defer { server.stop() }
         let (last, states) = try await solve(server, sha: sha)
         XCTAssertEqual(states.first, .starting)
         let running = states.compactMap { state -> SolveJob? in if case .running(let job) = state { job } else { nil } }
-        XCTAssertGreaterThanOrEqual(running.count, 2, "the job read beside the held solve")
-        XCTAssertEqual(running.first?.state, .queued)
-        XCTAssertEqual(running.last?.stages.last?.stage, .detect)
-        XCTAssertNil(running.last?.stages.last?.total, "a stage whose total the server does not know stays unknown")
-        // No two reports in a row are the same job
-        XCTAssertFalse(zip(states, states.dropFirst()).contains { $0 == $1 })
+        XCTAssertEqual(running.map(\.state), [.queued, .running, .running, .running])
+        XCTAssertEqual(running.first?.queueAhead, 1)
+        XCTAssertEqual(running[2].stages.last?.stage, .detect)
+        XCTAssertNil(running[2].stages.last?.total, "a stage whose total the server does not know stays unknown")
+        XCTAssertEqual(running.last?.stages.last?.pass, SolveJob.Pass(number: 2, label: .phonePhotoGeneric))
+        XCTAssertEqual(running.last?.producer, SolveJob.Producer(name: "albedian.solve_chain", revision: 4))
+        XCTAssertFalse(zip(states, states.dropFirst()).contains { $0 == $1 }, "no two reports in a row are the same job")
         guard case .solved(let job, let readout, let frame, _) = last else { return XCTFail("not solved: \(last)") }
         XCTAssertEqual(job.state, .succeeded)
         XCTAssertEqual(readout.status, .calibrated)
@@ -102,15 +110,17 @@ final class SolveClientTests: XCTestCase {
         XCTAssertEqual(frame, StoredFrame(widthPx: 800, heightPx: 600, orientation: .upright))
         XCTAssertEqual(states.last, last)
         let requests = server.requests
-        XCTAssertEqual(requests.filter { $0.method == "POST" }.count, 1, "one solve asked for")
+        XCTAssertEqual(requests.filter { $0.method == "POST" }.map(\.path), ["/api/ingest/\(sha)/solve?wait=false"], "one start, answered at once")
         XCTAssertTrue(requests.allSatisfy { $0.headers["user-agent"] == CaptureUploader.userAgent })
-        XCTAssertTrue(requests.filter { $0.method == "GET" }.allSatisfy { $0.body.isEmpty && $0.headers["content-type"] == nil })
+        XCTAssertTrue(requests.allSatisfy { $0.body.isEmpty })
+        XCTAssertTrue(requests.filter { $0.method == "GET" }.allSatisfy { $0.headers["content-type"] == nil })
+        XCTAssertEqual(requests.filter { $0.path == "/api/ingest/jobs/\(Self.jobId(sha))" }.count, 4, "the job followed by the id the start gave")
     }
 
     func testAFailedJobEndsWithTheJobAndItsOwnSentenceAndAsksForNoSolution() async throws {
         let solution = try calibrated()
         let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
-        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, holdSec: 0.2, final: "failed"))
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, final: "failed"))
         defer { server.stop() }
         let (last, _) = try await solve(server, sha: sha)
         guard case .failed(.jobDidNotSucceed(let job)) = last else { return XCTFail("\(last)") }
@@ -118,13 +128,52 @@ final class SolveClientTests: XCTestCase {
         XCTAssertFalse(server.requests.contains { $0.path.hasSuffix("/solution") })
     }
 
-    func testAJobAlreadySolvedIsTakenAsTheLaptopAnswersIt() async throws {
+    func testAJobTheServerStoppedEndsWithItsSentence() async throws {
         let solution = try calibrated()
         let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
-        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, holdSec: 0, solveStatus: 200))
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, final: "interrupted"))
         defer { server.stop() }
-        let (last, _) = try await solve(server, sha: sha, pollSec: 5)
+        let (last, _) = try await solve(server, sha: sha)
+        guard case .failed(.jobDidNotSucceed(let job)) = last else { return XCTFail("\(last)") }
+        XCTAssertEqual(job.state, .interrupted)
+        XCTAssertEqual(job.error, "The server stopped before this job finished.")
+    }
+
+    func testAJobAlreadySolvedIsTakenAsTheStartAnswersItWithNoJobRead() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, startStatus: 200,
+                                                              startJob: Self.job(sha, "succeeded", stages: Self.matching)))
+        defer { server.stop() }
+        let (last, states) = try await solve(server, sha: sha)
         guard case .solved = last else { return XCTFail("\(last)") }
+        XCTAssertFalse(states.contains { if case .running = $0 { true } else { false } })
+        XCTAssertFalse(server.requests.contains { $0.path.hasPrefix("/api/ingest/jobs/") })
+    }
+
+    func testAJoinedRunningJobIsFollowedFromWhereItIs() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, startStatus: 200,
+                                                              startJob: Self.job(sha, "running", stages: Self.decoding)))
+        defer { server.stop() }
+        let (last, states) = try await solve(server, sha: sha)
+        guard case .solved = last else { return XCTFail("\(last)") }
+        guard case .running(let first)? = states.dropFirst().first else { return XCTFail("\(states)") }
+        XCTAssertEqual(first.state, .running)
+    }
+
+    func testARecordWrittenBeforeTheRunnerIsStillRead() async throws {
+        // A succeeded solve today's code ran before the runner (a 16-character id, no kind): the web reads it too
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let old = "{\"id\":\"job_\(sha.prefix(16))\",\"sourceAssetSha256\":\"\(sha)\",\"state\":\"succeeded\",\"createdAtUTC\":\"2031-05-02T19:20:00Z\","
+            + "\"startedAtUTC\":\"2031-05-02T19:20:01Z\",\"finishedAtUTC\":\"2031-05-02T19:20:41Z\",\"solutionId\":\"sol_\(sha.prefix(16))\",\"stages\":[\(Self.store)]}"
+        let server = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: solution, startStatus: 200, startJob: old))
+        defer { server.stop() }
+        let (last, _) = try await solve(server, sha: sha)
+        guard case .solved(let job, _, _, _) = last else { return XCTFail("\(last)") }
+        XCTAssertNil(job.kind)
     }
 
     func testAPhotoTheLaptopDoesNotHoldIsRefusedWithItsWords() async throws {
@@ -139,69 +188,106 @@ final class SolveClientTests: XCTestCase {
         let solution = try calibrated()
         let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
         let other = String(repeating: "cd", count: 32)
-        // The solve answers with another photo's job
+        // The start answers with another photo's job
         let wrongJob = try LoopbackHTTPServer { request in
-            request.method == "POST" ? .json(201, Self.job(other, "succeeded", stages: "")) : .json(404, "{}")
+            request.method == "POST" ? .json(202, Self.job(other, "queued")) : .json(404, "{}")
         }
         defer { wrongJob.stop() }
-        let (first, _) = try await solve(wrongJob, sha: sha)
+        let (first, firstStates) = try await solve(wrongJob, sha: sha)
         XCTAssertEqual(first, .failed(.jobForAnotherPhoto))
+        XCTAssertFalse(firstStates.contains { if case .running = $0 { true } else { false } })
         // The solution names another photo
         var foreign = solution
         foreign.set(["sourceSha256"], .string(other))
-        let wrongSolution = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: foreign, holdSec: 0))
+        let wrongSolution = try LoopbackHTTPServer(responder: laptop(sha: sha, solution: foreign))
         defer { wrongSolution.stop() }
-        let (second, _) = try await solve(wrongSolution, sha: sha, pollSec: 5)
+        let (second, _) = try await solve(wrongSolution, sha: sha)
         guard case .failed(.unreadableReply) = second else { return XCTFail("\(second)") }
     }
 
-    /// A job read beside the solve that is another photo's is never shown, and a receipt for another photo gives no frame.
-    func testAJobOrReceiptReadForAnotherPhotoIsNeverUsed() async throws {
-        let solution = try calibrated()
-        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
-        let other = String(repeating: "a", count: 64)
-        let mine = laptop(sha: sha, solution: solution, holdSec: 0.6)
-        let server = try LoopbackHTTPServer { request in
-            if request.method == "GET", request.path == "/api/ingest/jobs/job_\(sha.prefix(16))" {
-                return .json(200, Self.job(other, "running", stages: ""))
-            }
-            if request.method == "GET", request.path == "/api/ingest/\(sha)" {
-                // The receipt names the job as usual, and another photo as its asset
-                return .json(200, "{\"sourceAsset\":{\"sha256\":\"\(other)\",\"width\":800,\"height\":600},\"hints\":{},\"alreadyStored\":true,\"solveJobId\":\"job_\(sha.prefix(16))\"}")
-            }
-            return mine(request)
-        }
-        defer { server.stop() }
-        let (last, states) = try await solve(server, sha: sha)
-        XCTAssertFalse(states.contains { if case .running = $0 { true } else { false } })
-        XCTAssertEqual(last, .failed(.unreadableReply(nil)))
-    }
-
-    func testAJobBesideTheSolveForAnotherPhotoIsNotReported() async throws {
+    func testAFollowedReadOfAnotherJobOrPhotoEndsTheWaitAndIsNeverShown() async throws {
         let solution = try calibrated()
         let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
         let other = String(repeating: "cd", count: 32)
-        let mine = laptop(sha: sha, solution: solution, holdSec: 0.6)
+        for answer in [Self.job(other, "running", id: Self.jobId(sha)), Self.job(sha, "running", id: "job_" + String(repeating: "e", count: 32))] {
+            let mine = laptop(sha: sha, solution: solution)
+            let server = try LoopbackHTTPServer { request in
+                request.method == "GET" && request.path == "/api/ingest/jobs/\(Self.jobId(sha))" ? .json(200, answer) : mine(request)
+            }
+            defer { server.stop() }
+            let (last, states) = try await solve(server, sha: sha)
+            XCTAssertEqual(last, .failed(.jobForAnotherPhoto))
+            XCTAssertEqual(states.filter { if case .running = $0 { true } else { false } }.count, 1, "only the start's own job")
+        }
+    }
+
+    func testAReceiptForAnotherPhotoGivesNoResult() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let other = String(repeating: "a", count: 64)
+        let mine = laptop(sha: sha, solution: solution)
         let server = try LoopbackHTTPServer { request in
-            if request.method == "GET", request.path == "/api/ingest/jobs/job_\(sha.prefix(16))" {
-                return .json(200, Self.job(other, "running", stages: ""))
+            if request.method == "GET", request.path == "/api/ingest/\(sha)" {
+                return .json(200, "{\"sourceAsset\":{\"sha256\":\"\(other)\",\"width\":800,\"height\":600},\"hints\":{},\"alreadyStored\":true}")
             }
             return mine(request)
         }
         defer { server.stop() }
-        let (last, states) = try await solve(server, sha: sha)
-        XCTAssertFalse(states.contains { if case .running = $0 { true } else { false } })
-        guard case .solved = last else { return XCTFail("\(last)") }
+        let (last, _) = try await solve(server, sha: sha)
+        XCTAssertEqual(last, .failed(.unreadableReply(nil)))
     }
 
     func testAReplyThatIsNotAJobIsUnreadable() async throws {
         let sha = String(repeating: "ab", count: 32)
+        for body in ["{\"state\":\"succeeded\"}", Self.job(sha, "running", extra: ",\"graphId\":\"graph_0123456789abcdef\""),
+                     Self.job(sha, "queued").replacingOccurrences(of: "\"kind\":\"solve\"", with: "\"kind\":\"restoration\"")] {
+            let server = try LoopbackHTTPServer { request in request.method == "POST" ? .json(202, body) : .json(404, "{}") }
+            defer { server.stop() }
+            let (last, _) = try await solve(server, sha: sha)
+            guard case .failed(.unreadableReply) = last else { return XCTFail("\(last)") }
+        }
+    }
+
+    func testADroppedReadIsTriedAgainAndALaptopGoneForTenReadsEndsTheWait() async throws {
+        let solution = try calibrated()
+        let sha = try XCTUnwrap(solution["sourceSha256"]?.stringValue)
+        let reads = Counter()
+        let mine = laptop(sha: sha, solution: solution)
+        let flaky = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/jobs/\(Self.jobId(sha))", reads.next() <= 3 { return .json(503, "{\"detail\":\"busy\"}") }
+            return mine(request)
+        }
+        defer { flaky.stop() }
+        let (recovered, _) = try await solve(flaky, sha: sha)
+        guard case .solved = recovered else { return XCTFail("\(recovered)") }
+        // Six dropped reads, then one answered, again and again: never ten in a row, so the wait goes on to the end
+        let spotty = Counter()
+        let mine2 = laptop(sha: sha, solution: solution)
+        let patchy = try LoopbackHTTPServer { request in
+            if request.path == "/api/ingest/jobs/\(Self.jobId(sha))", spotty.next() % 7 != 0 { return .json(503, "{\"detail\":\"busy\"}") }
+            return mine2(request)
+        }
+        defer { patchy.stop() }
+        let (lasted, _) = try await solve(patchy, sha: sha)
+        guard case .solved = lasted else { return XCTFail("\(lasted)") }
+        let gone = try LoopbackHTTPServer { request in
+            request.method == "POST" ? .json(202, Self.job(sha, "queued")) : .json(503, "{\"detail\":\"busy\"}")
+        }
+        defer { gone.stop() }
+        let (last, _) = try await solve(gone, sha: sha)
+        XCTAssertEqual(last, .failed(.refused(status: 503, detail: "busy")))
+        XCTAssertEqual(gone.requests.filter { $0.path.hasPrefix("/api/ingest/jobs/") }.count, SolveClient.followFailuresAllowed)
+    }
+
+    func testAJobThatNeverEndsIsLeftAfterTheTimeAllowedAndNotCanceled() async throws {
+        let sha = String(repeating: "ab", count: 32)
         let server = try LoopbackHTTPServer { request in
-            request.method == "POST" ? .json(201, "{\"state\":\"succeeded\"}") : .json(404, "{}")
+            request.method == "POST" ? .json(202, Self.job(sha, "queued")) : .json(200, Self.job(sha, "running", stages: Self.decoding))
         }
         defer { server.stop() }
-        let (last, _) = try await solve(server, sha: sha)
-        guard case .failed(.unreadableReply) = last else { return XCTFail("\(last)") }
+        let (last, _) = try await solve(server, sha: sha, pollSec: 0.05, solveTimeoutSec: 0.5)
+        XCTAssertEqual(last, .failed(.timedOut))
+        XCTAssertFalse(server.requests.contains { $0.path.hasSuffix("/cancel") })
     }
 
     func testALaptopThatCannotBeReachedSaysSo() async throws {
@@ -226,16 +312,19 @@ final class SolveClientTests: XCTestCase {
     }
 
     /// The gate lets through the solve's four requests, each only for a contract SHA-256 or job id, and only to the
-    /// paired endpoint; nothing else.
+    /// paired endpoint: the start only in its at-once form; nothing else.
     func testTheGateLetsThroughOnlyTheSolvesFourRequests() throws {
         let address = try XCTUnwrap(LaptopAddress("http://192.168.1.20:5173"))
         let sha = String(repeating: "ab", count: 32)
-        for (method, path) in [("POST", "/api/ingest/\(sha)/solve"), ("GET", "/api/ingest/\(sha)"), ("GET", "/api/ingest/\(sha)/solution"),
+        for (method, path) in [("POST", "/api/ingest/\(sha)/solve?wait=false"), ("GET", "/api/ingest/\(sha)"), ("GET", "/api/ingest/\(sha)/solution"),
                                ("GET", "/api/ingest/jobs/job_\(sha.prefix(16))"), ("GET", "/api/ingest/jobs/job_\(sha)")] {
             XCTAssertEqual(CaptureUploader.permits(method: method, path: path, to: address),
                            ApprovedRequest(endpoint: address.endpoint, method: method, path: path), "\(method) \(path)")
         }
+        XCTAssertEqual(SolveClient.startPath(sha), "/api/ingest/\(sha)/solve?wait=false")
         let refused: [(String, String)] = [
+            ("POST", "/api/ingest/\(sha)/solve"), ("POST", "/api/ingest/\(sha)/solve?wait=true"), ("POST", "/api/ingest/\(sha)/solve?wait=false&x=1"),
+            ("POST", "/api/ingest/jobs/job_\(sha.prefix(16))/cancel"),
             ("GET", "/api/ingest/\(sha)/solve"), ("POST", "/api/ingest/\(sha)/solution"), ("PUT", "/api/ingest/\(sha)/solve"),
             ("GET", "/api/ingest/\(sha.uppercased())"), ("GET", "/api/ingest/\(String(repeating: "0", count: 64))/solution"),
             ("GET", "/api/ingest/jobs/job_\(sha.prefix(15))"), ("GET", "/api/ingest/jobs/job_\(sha)0"), ("GET", "/api/ingest/jobs/JOB_\(sha.prefix(16))"),
@@ -246,18 +335,18 @@ final class SolveClientTests: XCTestCase {
         for (method, path) in refused { XCTAssertNil(CaptureUploader.permits(method: method, path: path, to: address), "\(method) \(path)") }
     }
 
-    /// A GET carries no body and no Content-Type; the solve's POST carries an empty body.
+    /// A GET carries no body and no Content-Type; the start's POST carries an empty body.
     func testWritesAGetWithNoBodyAndNoContentType() throws {
         let endpoint = LaptopEndpoint(host: "192.168.1.20", port: 5173)
         let get = String(decoding: HTTPMessage.request(method: "GET", path: "/api/ingest/x", endpoint: endpoint, contentType: nil, body: Data()), as: UTF8.self)
         XCTAssertEqual(get, "GET /api/ingest/x HTTP/1.1\r\nHost: 192.168.1.20:5173\r\nUser-Agent: \(CaptureUploader.userAgent)\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
     }
 
-    /// The solve's time allowed covers the laptop's own limit with room for decoding (`SOLVE_TIME_LIMIT_SEC = 180` in
-    /// `services/ingest/jobs.py`), and stays inside the transport's bound.
-    func testTheSolveIsAllowedLongerThanTheLaptopsOwnLimit() {
-        XCTAssertGreaterThan(SolveClient.defaultSolveTimeoutSec, 180)
+    /// The phone follows a job longer than the runner's whole-job bound for a solve (420 s, the API note), at the pace
+    /// the note gives (once a second), inside the transport's bound.
+    func testTheJobIsFollowedLongerThanTheRunnersBoundAtTheNotesPace() {
+        XCTAssertGreaterThan(SolveClient.defaultSolveTimeoutSec, 420)
         XCTAssertTrue(CaptureUploader.isValidTimeout(SolveClient.defaultSolveTimeoutSec))
-        XCTAssertGreaterThan(SolveClient.defaultPollIntervalSec, 0)
+        XCTAssertEqual(SolveClient.defaultPollIntervalSec, 1)
     }
 }

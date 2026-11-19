@@ -40,19 +40,18 @@ public enum SolveState: Equatable, Sendable {
 }
 
 /// Starts the laptop's solve of a stored photo and reads its result, each request on a connection of its own to the
-/// paired endpoint, through the one gate (`CaptureUploader.permits`). `POST /api/ingest/{sha256}/solve` is held by the
-/// laptop until the solve ends (`services/ingest/router.py`); beside it the client reads the receipt, `GET
-/// /api/ingest/{sha256}`, for the job's id (`solveJobId`), then `GET /api/ingest/jobs/{id}`, so the stages show as the
-/// job writes them (`services/ingest/jobs.py`, `run_solve_job`). Once the job succeeds, `GET .../solution`.
+/// paired endpoint, through the one gate (`CaptureUploader.permits`): `POST /api/ingest/{sha256}/solve?wait=false`,
+/// which answers at once with the runner's job, then `GET /api/ingest/jobs/{id}` until the job ends, so the stages
+/// show as the job writes them; once it succeeds, the receipt `GET /api/ingest/{sha256}` (the stored frame and facts)
+/// and `GET /api/ingest/{sha256}/solution`.
 public final class SolveClient: Sendable {
-    /// The time the held solve may take: the laptop's own limit of 180 s (`SOLVE_TIME_LIMIT_SEC`) with room for
-    /// decoding a full-size photo and the answer [proposed].
+    /// How long the phone follows a job from its start [proposed]: the runner's whole-job bound for a solve, 420 s
+    /// (the API note, platform-5b), with room for a wait in the queue.
     public static let defaultSolveTimeoutSec: Double = 600
     /// The time each read beside it may take [proposed].
     public static let defaultReadTimeoutSec: Double = 10
-    /// How often the job is read while the solve is held [proposed: twice a second, so a stage's count moves at a
-    /// pace a person can follow without loading the laptop].
-    public static let defaultPollIntervalSec: Double = 0.5
+    /// How often the job is read while it runs: once a second, the pace the runner's API note gives the web.
+    public static let defaultPollIntervalSec: Double = 1
     /// The bound on the solution's body, the one reply read past the receipts' 64 kB: 64 MiB [proposed]. A photo with a
     /// time and a place solves to about 1.3 MB (the audit of mobile-4, a synthetic 960 by 540 starfield: 1,300,568 bytes)
     /// and a 12 MP night photo to about 35 MB (the CC0 photo rp-b-06, about 32 thousand findings, read here in under a
@@ -75,37 +74,58 @@ public final class SolveClient: Sendable {
         self.transport = transport
     }
 
-    /// Asks for the solve, reports every new job read and the end, in order, and returns the last state.
+    /// Starts the solve, reports every new job read and the end, in order, and returns the last state.
+    ///
+    /// The start (`POST /api/ingest/{sha256}/solve?wait=false`) answers at once with the job: a new one (202, queued or
+    /// running), the active one joined, or the current succeeded one (200). The phone then follows that job by its own
+    /// id, `GET /api/ingest/jobs/{id}`, until it ends (the runner's API note, `.lead/kiro/answers/PLATFORM-runner-api.md`),
+    /// and reads the receipt and the solution once it succeeded. Leaving early never cancels the job on the laptop.
     public func solve(sha256: String, onState: @escaping @Sendable (SolveState) -> Void) async -> SolveState {
         guard PhotoHash.isContractHash(sha256) else { return Self.finish(.failed(.notPermitted), onState) }
         onState(.starting)
-        let last = LastReported()
-        let poller = Task { [self] in
-            while !Task.isCancelled {
-                if let job = await readJob(sha256), job.sourceAssetSha256 == sha256, !Task.isCancelled, last.isNew(job) {
-                    onState(.running(job))
-                }
-                try? await Task.sleep(nanoseconds: UInt64(pollIntervalSec * 1_000_000_000))
-            }
-        }
-        let posted = await exchange("POST", "/api/ingest/\(sha256)/solve", timeoutSec: solveTimeoutSec)
-        poller.cancel()
-        await poller.value
-        let end = await conclude(sha256, posted)
-        return Self.finish(end, onState)
-    }
-
-    private func conclude(_ sha256: String, _ posted: Result<HTTPReply, SolveFailure>) async -> SolveState {
-        let job: SolveJob
-        switch posted {
-        case .failure(let failure): return .failed(failure)
+        let began = ContinuousClock.now
+        var job: SolveJob
+        switch await exchange("POST", Self.startPath(sha256), timeoutSec: readTimeoutSec) {
+        case .failure(let failure): return Self.finish(.failed(failure), onState)
         case .success(let reply):
             switch Self.read(reply.body, SolveJobReader.read) {
-            case .failure(let failure): return .failed(failure)
+            case .failure(let failure): return Self.finish(.failed(failure), onState)
             case .success(let read): job = read
             }
         }
-        guard job.sourceAssetSha256 == sha256 else { return .failed(.jobForAnotherPhoto) }
+        guard job.sourceAssetSha256 == sha256 else { return Self.finish(.failed(.jobForAnotherPhoto), onState) }
+        var failedReads = 0
+        while !job.hasEnded {
+            onState(.running(job))
+            guard (ContinuousClock.now - began) < .seconds(solveTimeoutSec) else { return Self.finish(.failed(.timedOut), onState) }
+            try? await Task.sleep(nanoseconds: UInt64(pollIntervalSec * 1_000_000_000))
+            if Task.isCancelled { return Self.finish(.failed(.timedOut), onState) }
+            switch await exchange("GET", "/api/ingest/jobs/\(job.id)", timeoutSec: readTimeoutSec) {
+            case .failure(let failure):
+                // A read the hotspot drops is tried again; a laptop gone for this many reads in a row ends the wait
+                failedReads += 1
+                if failedReads >= Self.followFailuresAllowed { return Self.finish(.failed(failure), onState) }
+            case .success(let reply):
+                switch Self.read(reply.body, SolveJobReader.read) {
+                case .failure(let failure): return Self.finish(.failed(failure), onState)
+                case .success(let read):
+                    guard read.id == job.id, read.sourceAssetSha256 == sha256 else { return Self.finish(.failed(.jobForAnotherPhoto), onState) }
+                    failedReads = 0
+                    job = read
+                }
+            }
+        }
+        return Self.finish(await conclude(sha256, job), onState)
+    }
+
+    /// The start's path: the answer at once, never the held form platform-7 removes.
+    static func startPath(_ sha256: String) -> String { "/api/ingest/\(sha256)/solve?wait=false" }
+
+    /// [proposed] Reads of the job that may fail in a row before the wait ends: at one a second, about ten seconds of a
+    /// laptop that does not answer.
+    static let followFailuresAllowed = 10
+
+    private func conclude(_ sha256: String, _ job: SolveJob) async -> SolveState {
         guard job.state == .succeeded else { return .failed(.jobDidNotSucceed(job)) }
         let stored: StoredReceipt
         switch await exchange("GET", "/api/ingest/\(sha256)", timeoutSec: readTimeoutSec) {
@@ -124,16 +144,6 @@ public final class SolveClient: Sendable {
             case .success(let readout): return .solved(job: job, readout: readout, frame: stored.frame, facts: stored.facts)
             }
         }
-    }
-
-    /// The job as the laptop wrote it last, or nil while there is none yet or the read failed (the held solve's answer
-    /// is the one that counts).
-    private func readJob(_ sha256: String) async -> SolveJob? {
-        guard case .success(let reply) = await exchange("GET", "/api/ingest/\(sha256)", timeoutSec: readTimeoutSec),
-              let value = try? JSONText.read(reply.body), let id = StoredReceiptReader.read(value, sha256: sha256)?.solveJobId,
-              case .success(let jobReply) = await exchange("GET", "/api/ingest/jobs/\(id)", timeoutSec: readTimeoutSec),
-              let jobValue = try? JSONText.read(jobReply.body), case .success(let job) = SolveJobReader.read(jobValue) else { return nil }
-        return job
     }
 
     private static func read<T>(_ body: Data, _ reader: (JSONValue) -> Result<T, SolveReadRefusal>) -> Result<T, SolveFailure> {

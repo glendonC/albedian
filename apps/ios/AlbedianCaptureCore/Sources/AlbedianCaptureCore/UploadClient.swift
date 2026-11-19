@@ -286,7 +286,7 @@ public final class CaptureUploader: Sendable {
         let allowed: Bool
         switch method {
         case "POST":
-            allowed = parts == ["", "api", "ingest"] || (ofPhoto && parts.count == 5 && parts[4] == "solve")
+            allowed = parts == ["", "api", "ingest"] || (ofPhoto && parts.count == 5 && parts[4] == "solve?wait=false")
         case "PUT":
             allowed = ofPhoto && parts.count == 5 && parts[4] == "pointing"
         case "GET":

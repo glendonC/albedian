@@ -70,7 +70,7 @@ final class SolutionSizeTests: XCTestCase {
         let receipt = "{\"sourceAsset\":{\"sha256\":\"\(sha)\",\"width\":800,\"height\":600},\"hints\":{},\"alreadyStored\":true}"
         let server = try LoopbackHTTPServer { request in
             switch (request.method, request.path) {
-            case ("POST", "/api/ingest/\(sha)/solve"): return .json(200, job)
+            case ("POST", "/api/ingest/\(sha)/solve?wait=false"): return .json(200, job)
             case ("GET", "/api/ingest/\(sha)"): return .json(200, receipt)
             case ("GET", "/api/ingest/\(sha)/solution"): return LoopbackHTTPServer.Response(status: 200, body: body)
             default: return .json(404, "{}")
