@@ -22,3 +22,5 @@
   - Traced to: `apps/web/src/spatial/flight/__tests__/pilotReadout.test.ts`, `pilotPieces.test.tsx`
 - [x] 11. Put the flight's decided pieces on the There screen: the panorama dimmed to 0.3 in flight (D27 item 3), the disclosure's lines in order with the no-distance count (D27 item 4), the craft picker and the craft's real trip under the readout (D26 items 3 to 5), and in the cone view leave out the panorama, the marks and the readout, which are only true from Earth (flight-1c).
   - Traced to: `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
+- [x] 12. Steering math for the free camera (D26 item 6, pilot-1e): turn about the camera's own up and right, move along where it looks at its speed, W and S doubling or halving the speed each second held within limits; the controls wait on the key question (Space is Ask out loud).
+  - Traced to: `packages/camera-rig/src/__tests__/steer.test.ts`

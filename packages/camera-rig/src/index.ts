@@ -13,3 +13,4 @@ export * from './astrometry3d.js';
 export * from './flight3d.js';
 export * from './chase.js';
 export * from './cone.js';
+export * from './steer.js';
