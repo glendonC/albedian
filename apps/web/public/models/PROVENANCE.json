@@ -33,6 +33,48 @@
       "doi": "10.7910/DVN/INB1RB",
       "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
       "note": "Derived from ONeill2024_LocalBubble_ShellProperties_A0.5.fits (786,432 HEALPix nside=256 directions derived from the Edenhofer et al. 2024 3D dust map). Aggregated onto a closed nside=48 HEALPix 2-manifold (27,648 vertices, 55,292 outward triangles) in heliocentric Galactic Cartesian coordinates scaled to 1 unit = 100 pc."
+    },
+    {
+      "id": "nasa-3d-resources-voyager-probe-b",
+      "title": "NASA 3D Resources: Voyager Probe (B)",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20(B)/Voyager%20Probe%20(B).glb",
+      "retrieved": "2026-11-19",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
+      },
+      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
+      "note": "NASA's own repository of 3D models. The file's git blob is bb997a2f539b54574d6e24a8123855ecc83748ac, as the repository lists it on 19 November 2026; 1,720,864 bytes."
+    },
+    {
+      "id": "nasa-3d-resources-james-webb-space-telescope-a",
+      "title": "NASA 3D Resources: James Webb Space Telescope (A)",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).glb",
+      "retrieved": "2026-11-19",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
+      },
+      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
+      "note": "NASA's own repository of 3D models. The file's git blob is 4c00d7b2565a0229dbdbac12b4caa469d359aaf1, as the repository lists it on 19 November 2026; 4,710,016 bytes."
+    },
+    {
+      "id": "nasa-3d-resources-astronaut",
+      "title": "NASA 3D Resources: Astronaut",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.glb",
+      "retrieved": "2026-11-19",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content is generally not subject to copyright in the United States. NASA should be acknowledged as the source, and no use may imply NASA's endorsement; NASA's insignia and logos are not used."
+      },
+      "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
+      "note": "NASA's own repository of 3D models. The file's git blob is 20b576367f8cdc40e9688be24b269a0a74acbff7, as the repository lists it on 19 November 2026; 762,988 bytes."
     }
   ],
   "files": [
@@ -76,6 +118,39 @@
         "changes": "Worked out from the laser altimeter heights, not copied: a sphere with a point at every degree of latitude and longitude, each raised to the average height of the measurements around it, at the Moon's true scale, with texture coordinates and smooth shading."
       },
       "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for use in 3D rendering software\". Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
+    },
+    {
+      "path": "nasa/voyager-probe-b.glb",
+      "sha256": "bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289",
+      "sources": [
+        "nasa-3d-resources-voyager-probe-b"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's model of a Voyager probe (Voyager 1 and 2 are twins), Draco compressed with WebP textures as NASA publishes it. Its high-gain dish is the thin disc across the model's +y axis. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+    },
+    {
+      "path": "nasa/james-webb-space-telescope-a.glb",
+      "sha256": "ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750",
+      "sources": [
+        "nasa-3d-resources-james-webb-space-telescope-a"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's model of the James Webb Space Telescope, Draco compressed as NASA publishes it. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+    },
+    {
+      "path": "nasa/astronaut.glb",
+      "sha256": "d18c141410542b935113d1c25a9271d90c40d44015a64295b7b68a30f0ce2820",
+      "sources": [
+        "nasa-3d-resources-astronaut"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's model of an astronaut in a spacesuit, Draco compressed with WebP textures as NASA publishes it; it stands along +y and faces +z. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
     }
   ],
   "fileSets": []

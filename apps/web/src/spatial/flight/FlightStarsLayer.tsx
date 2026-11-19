@@ -8,6 +8,8 @@ import { usesBMinusV, type CatalogStarCoreTile } from '../catalogStars/tileCodec
 import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
 import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf, flightViewCone, type FlightCamera } from './flightFrame.js';
 import { FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
+import { FlightCraftLayer } from './FlightCraftLayer.js';
+import { craftFromSearch, type Craft } from './crafts.js';
 
 /**
  * The flight's catalog stars (REQ-SCN-2), drawn over the There screen's panorama after Go there: Gaia DR3 and
@@ -154,7 +156,9 @@ export const FlightStarsLayer: React.FC<{
   viewportHeightPx: number;
   /** The tile source; the catalog's own by default. */
   openTiles?: OpenFlightTiles;
-}> = ({ session, viewportWidthPx, viewportHeightPx, openTiles = openCatalogTiles }) => {
+  /** pilot-1: a NASA craft drawn in the view; by default the one the page address asks for (`?craft=`), INTERIM. */
+  craft?: Craft | null;
+}> = ({ session, viewportWidthPx, viewportHeightPx, openTiles = openCatalogTiles, craft = typeof window === 'undefined' ? null : craftFromSearch(window.location.search) }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
   const source = useRef<FlightTileSource | null>(null);
@@ -239,6 +243,7 @@ export const FlightStarsLayer: React.FC<{
 
   const fromEarthPc = camera ? Math.hypot(camera.observerPc[0], camera.observerPc[1], camera.observerPc[2]) : 0;
   return (
+    <>
     <div
       className="flight-stars"
       data-testid="flight-stars"
@@ -256,5 +261,7 @@ export const FlightStarsLayer: React.FC<{
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
     </div>
+    {craft && camera && <FlightCraftLayer camera={camera} craft={craft} />}
+    </>
   );
 };

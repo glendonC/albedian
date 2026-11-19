@@ -1,0 +1,103 @@
+import { describe, expect, it } from 'vitest';
+import type { ObservationSession } from '@albedian/contracts';
+import { resolveFindingParsecPosition, type Vec3 } from '@albedian/camera-rig';
+import { dispatchAlbedianAction } from '@albedian/observation';
+import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
+import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
+import { CRAFTS, CRAFT_FRAMING, craftFromSearch } from '../crafts.js';
+import { craftSceneOf, photoPinholeOf } from '../craftScene.js';
+
+const W = 1440;
+const H = 900;
+
+function there(): ObservationSession {
+  const base = createSyntheticCalibratedSession();
+  const session = {
+    ...base,
+    sourceAsset: { ...base.sourceAsset!, mediaKind: 'image', width: 1920, height: 1080, durationMs: 0 },
+    spatialView: { ...base.spatialView, mode: 'source_2d' },
+  } as ObservationSession;
+  const star = session.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched' && f.inferredDistancePc)!;
+  return dispatchAlbedianAction(session, { type: 'space.enter', requestId: 'go', expectedViewRevision: session.viewRevision, findingId: star.id, distancePolicy: 'measured_or_estimated' }).session;
+}
+
+/** Column-major 4 by 4 times a point. */
+function apply(m: number[], p: Vec3): [number, number, number, number] {
+  return [0, 1, 2, 3].map((r) => m[r]! * p[0] + m[4 + r]! * p[1] + m[8 + r]! * p[2] + m[12 + r]!) as [number, number, number, number];
+}
+const toScreen = (clip: [number, number, number, number]) => ({ xPx: ((clip[0] / clip[3] + 1) / 2) * W, yPx: ((1 - clip[1] / clip[3]) / 2) * H });
+
+describe('craftSceneOf: a NASA model placed in the photo\'s own view', () => {
+  it('lands the model\'s centre at the framing point through the same camera the stars use', () => {
+    const session = there();
+    const camera = flightCameraOf(session, W, H)!;
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1'], [0.5, 3.4, 4.2], 10.8)!;
+    const centre = apply(scene.modelMatrix, [0.5, 3.4, 4.2]);
+    const s = toScreen(apply(scene.clipMatrix, [centre[0], centre[1], centre[2]]));
+    expect(Math.abs(s.xPx - CRAFT_FRAMING.xFraction * W)).toBeLessThan(1e-6);
+    expect(Math.abs(s.yPx - CRAFT_FRAMING.yFraction * H)).toBeLessThan(1e-6);
+    expect(scene.near).toBeLessThan(Math.hypot(centre[0], centre[1], centre[2]) - 10.8);
+    expect(scene.far).toBeGreaterThan(Math.hypot(centre[0], centre[1], centre[2]) + 10.8);
+  });
+
+  it('points the model\'s own forward axis at the star flown to', () => {
+    const session = there();
+    const camera = flightCameraOf(session, W, H)!;
+    const craft = CRAFTS['voyager-1'];
+    const scene = craftSceneOf(camera, craft, [0, 0, 0], 10)!;
+    const picked = session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId)!;
+    const target = resolveFindingParsecPosition(picked)!;
+    const o = camera.observerPc;
+    const d = Math.hypot(target[0] - o[0], target[1] - o[1], target[2] - o[2]);
+    const want = [(target[0] - o[0]) / d, (target[1] - o[1]) / d, (target[2] - o[2]) / d];
+    const tip = apply(scene.modelMatrix, craft.modelForward);
+    const base = apply(scene.modelMatrix, [0, 0, 0]);
+    const got = [tip[0] - base[0], tip[1] - base[1], tip[2] - base[2]];
+    const n = Math.hypot(got[0]!, got[1]!, got[2]!);
+    for (let k = 0; k < 3; k++) expect(got[k]! / n).toBeCloseTo(want[k]!, 9);
+  });
+
+  it('lights it from the Sun\'s real direction, from where the camera stands', () => {
+    const session = there();
+    const camera = flightCameraOf(session, W, H)!;
+    const scene = craftSceneOf(camera, CRAFTS.astronaut, [0, 0, 0], 50)!;
+    const o = camera.observerPc;
+    const r = Math.hypot(o[0], o[1], o[2]);
+    for (let k = 0; k < 3; k++) expect(scene.toSun[k]).toBeCloseTo(-o[k]! / r, 12);
+  });
+
+  it('has no scene once the camera stands at the star itself', () => {
+    const camera = flightCameraOf(there(), W, H)!;
+    expect(craftSceneOf({ ...camera, observerPc: camera.referencePc }, CRAFTS['voyager-1'], [0, 0, 0], 10)).toBeNull();
+  });
+
+  it('agrees with the star layer\'s camera on where a far point lands', () => {
+    const session = there();
+    const camera = flightCameraOf(session, W, H)!;
+    const pin = photoPinholeOf(camera);
+    const placement = { kind: 'sky_sphere' as const, direction: pin.rows.z as Vec3, reason: 'no_usable_distance' as const };
+    const star = screenOfPlacement({ ...camera, wcs: { ...camera.wcs, radialDistortionK1: 0, radialDistortionK2: 0 } }, placement)!;
+    const scene = craftSceneOf(camera, CRAFTS.jwst, [0, 0, 0], 17)!;
+    const s = toScreen(apply(scene.clipMatrix, [pin.rows.z[0] * 5, pin.rows.z[1] * 5, pin.rows.z[2] * 5]));
+    expect(Math.abs(s.xPx - star.xPx)).toBeLessThan(1e-6);
+    expect(Math.abs(s.yPx - star.yPx)).toBeLessThan(1e-6);
+  });
+});
+
+describe('craftFromSearch: the interim choice by page address', () => {
+  it('takes only the crafts NASA\'s models are listed for', () => {
+    expect(craftFromSearch('?craft=voyager-1')?.id).toBe('voyager-1');
+    expect(craftFromSearch('?craft=astronaut&x=1')?.id).toBe('astronaut');
+    expect(craftFromSearch('?craft=enterprise')).toBeNull();
+    // Names every object has are not crafts
+    expect(craftFromSearch('?craft=toString')).toBeNull();
+    expect(craftFromSearch('?craft=constructor')).toBeNull();
+    expect(craftFromSearch('')).toBeNull();
+  });
+
+  it('gives a real speed only for a craft that travels between stars, with its NASA page and date', () => {
+    expect(CRAFTS['voyager-1'].speed).toEqual({ kmS: 17.0, relativeTo: 'the Sun', sourceUrl: 'https://science.nasa.gov/mission/voyager/voyager-1/', asOf: '2024-08-21' });
+    expect(CRAFTS.jwst.speed).toBeNull();
+    expect(CRAFTS.astronaut.speed).toBeNull();
+  });
+});

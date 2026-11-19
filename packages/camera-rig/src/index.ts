@@ -11,3 +11,4 @@ export * from './wcs.js';
 export * from './projection3d.js';
 export * from './astrometry3d.js';
 export * from './flight3d.js';
+export * from './chase.js';
