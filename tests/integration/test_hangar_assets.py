@@ -105,9 +105,10 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
             # a part picked by a slab of the import frame says so, with the slab
             assert sf.get("partBand") == CRAFTS[name]["scale_from"].get("band")
-            # a model true to its scale part only says so, and none of its entries states a span
+            # a model true to its scale part only says so, and none of its entries states a span, unless the span is
+            # the very dimension it is scaled from (the whole model's width, part null)
             assert (sf.get("trueTo") == "part") is (CRAFTS[name]["scale_from"].get("true_to") == "part")
-            if sf.get("trueTo") == "part":
+            if sf.get("trueTo") == "part" and sf["part"] is not None:
                 for entry in (e for e in FACTS["entries"] if e["model"] == name):
                     assert not any("span" in f["key"].lower() for f in entry["facts"]), (name, entry["id"])
             if "quotedFt" in sf:

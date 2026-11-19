@@ -816,6 +816,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "y",
             "metres": 3.5,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+            "true_to": "part",
             "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high.",
         },
         "materials": {
@@ -865,6 +866,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "x",
             "metres": 19.7,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+            "true_to": "part",
             "quote": "Two solar panel wings extend 19.7 m tip-to-tip",
         },
         "materials": {
@@ -913,6 +915,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "z",
             "metres": 2.5,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
+            "true_to": "part",
             "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)",
         },
         "materials": {
@@ -1006,6 +1009,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "y",
             "metres": 2,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+            "true_to": "part",
             "quote": "Primary communication is via a 2 meter high gain directional dish antenna.",
         },
         # NASA's model names each part's colour and finish: gold foil, bronze, silver and solar cells become physically
@@ -1232,6 +1236,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "x",
             "metres": 1.5,
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A",
+            "true_to": "part",
             "quote": "a fixed 1.5 m X-band high-gain radio antenna",
         },
         "materials": {
@@ -1621,8 +1626,6 @@ HANGAR: list[dict] = [
             {"key": "jupiterOrbit", "value": "2016-07-04", "page": "https://science.nasa.gov/mission/juno/", "quote": "the Juno spacecraft entered orbit around Jupiter on July 4, 2016"},
             {"key": "massKg", "value": 1500, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "Mass: 1500 kg"},
             {"key": "busDiameterM", "value": 3.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high."},
-            {"key": "solarArrayLengthM", "value": 9, "page": "https://science.nasa.gov/mission/juno/", "quote": "each of its three solar arrays extend about 29.5 feet (9 meters) from the main body"},
-            {"key": "spanM", "value": 20, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "giving a total diameter of approximately 20 m"},
             {"key": "power", "value": "solar panels, 18 kW at Earth and 400 W at Jupiter", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "The solar panels will produce a total of 18 kW at Earth and 400 W initially at Jupiter."},
         ],
     },
@@ -1656,7 +1659,6 @@ HANGAR: list[dict] = [
             {"key": "massKg", "value": 1093, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "The total mass of the spacecraft is 1093 kg, 607.8 kg of this is propellant and helium."},
             {"key": "sunshadeHeightM", "value": 2.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"},
             {"key": "sunshadeWidthM", "value": 2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"},
-            {"key": "wingSpanM", "value": 6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "two solar panel wings extending radially about 6 meters from tip to tip"},
             {"key": "mercuryOrbit", "value": "2011-03-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "Mercury orbit insertion took place with a 15 minute burn starting at 00:45 UT on 18 March 2011"},
             {"key": "impact", "value": "2015-04-30", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "The MESSENGER spacecraft impacted the surface of Mercury as planned on 30 April 2015 at 19:26 UT (3:26 p.m. EDT)."},
             {"key": "power", "value": "450 W in Mercury orbit", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A", "quote": "provides a nominal 450 W in Mercury orbit"},

@@ -991,7 +991,8 @@
           "axis": "z",
           "min": -1.39,
           "max": -1.36
-        }
+        },
+        "trueTo": "part"
       }
     },
     "dawn": {
@@ -1048,7 +1049,8 @@
         "part": null,
         "metres": 19.7,
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
-        "quote": "Two solar panel wings extend 19.7 m tip-to-tip"
+        "quote": "Two solar panel wings extend 19.7 m tip-to-tip",
+        "trueTo": "part"
       }
     },
     "messenger": {
@@ -1105,7 +1107,8 @@
         "part": "AO_heatshield",
         "metres": 2.5,
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
-        "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
+        "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)",
+        "trueTo": "part"
       }
     },
     "spitzer": {
@@ -1220,7 +1223,8 @@
         "part": "White-sm.001",
         "metres": 2,
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
-        "quote": "Primary communication is via a 2 meter high gain directional dish antenna."
+        "quote": "Primary communication is via a 2 meter high gain directional dish antenna.",
+        "trueTo": "part"
       }
     },
     "mro": {
@@ -1506,7 +1510,8 @@
         "part": "foil_silver",
         "metres": 1.5,
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A",
-        "quote": "a fixed 1.5 m X-band high-gain radio antenna"
+        "quote": "a fixed 1.5 m X-band high-gain radio antenna",
+        "trueTo": "part"
       }
     },
     "maven": {
@@ -2169,18 +2174,6 @@
           "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high."
         },
         {
-          "key": "solarArrayLengthM",
-          "value": 9,
-          "page": "https://science.nasa.gov/mission/juno/",
-          "quote": "each of its three solar arrays extend about 29.5 feet (9 meters) from the main body"
-        },
-        {
-          "key": "spanM",
-          "value": 20,
-          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
-          "quote": "giving a total diameter of approximately 20 m"
-        },
-        {
           "key": "power",
           "value": "solar panels, 18 kW at Earth and 400 W at Jupiter",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
@@ -2279,12 +2272,6 @@
           "value": 2,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
           "quote": "a semi-cylindrical thermal shade (roughly 2.5 meters tall and 2 meters wide)"
-        },
-        {
-          "key": "wingSpanM",
-          "value": 6,
-          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2004-030A",
-          "quote": "two solar panel wings extending radially about 6 meters from tip to tip"
         },
         {
           "key": "mercuryOrbit",
