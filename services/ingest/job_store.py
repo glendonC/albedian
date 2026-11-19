@@ -375,11 +375,12 @@ class JobStore:
         return None
 
     def read_solution(self, sha256: str) -> Optional[dict[str, Any]]:
-        """The solution of the newest succeeded solve of an upload (a job of the runner's, or today's `job.json`),
-        checked as `solution_of` reads it; when no solve has succeeded, today's `solution.json` as it is stored. So
-        while a newer solve runs, the last good solution is the one served (REQ-JOB-6.5). None when there is none;
-        Unreadable when the one to serve fails the contract."""
-        newest = self._newest_succeeded_solve(sha256)
+        """The solution of the upload's served solve (`served_solve`: the newest succeeded, a job of the runner's or
+        today's `job.json`, unless it is an aligned solve that did not calibrate), checked as `solution_of` reads it;
+        when no solve has succeeded, today's `solution.json` as it is stored. So while a newer solve runs, the last good
+        solution is the one served (REQ-JOB-6.5). None when there is none; Unreadable when the one to serve fails the
+        contract."""
+        newest = self.served_solve(sha256)
         if newest is None:
             return self._solution_file(sha256, self.upload_folder(sha256) / "solution.json")
         return self.solution_of(newest)
@@ -390,7 +391,7 @@ class JobStore:
         and the contract takes it. None when no solve succeeded, or its solution is missing or refused: a manifest
         never names a solution that cannot be served. Today's `solution.json` with no succeeded job names none. While
         a newer solve runs, the last good one is named (REQ-JOB-6.5)."""
-        newest = self._newest_succeeded_solve(sha256)
+        newest = self.served_solve(sha256)
         if newest is None:
             return None
         try:
@@ -399,7 +400,8 @@ class JobStore:
             return None
         return newest["solutionId"] if solution is not None else None
 
-    def _newest_succeeded_solve(self, sha256: str) -> Optional[dict[str, Any]]:
+    def _succeeded_solves(self, sha256: str) -> list[dict[str, Any]]:
+        """The upload's succeeded solves, a job of the runner's or today's `job.json`, newest first."""
         succeeded = [r for r in self.jobs_of(sha256) if r["kind"] == "solve" and r["state"] == "succeeded"]
         try:
             legacy = self.legacy_solve_job(sha256)
@@ -407,9 +409,27 @@ class JobStore:
             legacy = None
         if legacy is not None and legacy["state"] == "succeeded":
             succeeded.append(legacy)
-        if not succeeded:
-            return None
-        return max(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]))
+        return sorted(succeeded, key=lambda r: (instant(r["createdAtUTC"]), len(r["id"]), r["id"]), reverse=True)
+
+    def _calibrated(self, record: dict[str, Any]) -> bool:
+        try:
+            solution = self.solution_of(record)
+        except (Unreadable, ValueError):
+            return False
+        return solution is not None and solution.get("status") == "calibrated"
+
+    def served_solve(self, sha256: str) -> Optional[dict[str, Any]]:
+        """The succeeded solve whose solution the upload serves: the newest, except that a solve from a person's
+        alignment whose gate refused never takes the place of a calibrated solution served before it (the lead,
+        2026-11-19 12:32; align-2v). A plain solve is served when it is the newest, calibrated or not: a re-solve is
+        the truth of its producer's revision [proposed: the exception read as the aligned solve's]."""
+        served: Optional[dict[str, Any]] = None
+        for record in reversed(self._succeeded_solves(sha256)):
+            if (served is not None and record.get("request") is not None and not self._calibrated(record)
+                    and self._calibrated(served)):
+                continue
+            served = record
+        return served
 
     def solution_of(self, record: dict[str, Any]) -> Optional[dict[str, Any]]:
         """The solution a succeeded solve record names: `solutions/<job_id>.json` for a job of the runner's, today's
