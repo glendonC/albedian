@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import struct
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,7 +20,7 @@ from urllib.parse import urlparse
 import pytest
 
 from scripts.lookdev.hangar import write_hangar
-from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CRAFTS, HANGAR
+from scripts.lookdev.hangar.crafts import BUDGET_BYTES, CACHE, CRAFTS, HANGAR
 
 ROOT = Path(__file__).resolve().parents[2]
 HANGAR_DIR = ROOT / "apps" / "web" / "public" / "models" / "hangar"
@@ -142,6 +144,18 @@ def test_the_true_size_is_metres_of_a_real_craft() -> None:
         assert model["bodyRadiusM"] < max(extent)
 
 
+def test_a_picker_rendered_from_the_build_has_a_clear_background_and_says_why() -> None:
+    from PIL import Image
+
+    record = {f["path"]: f for f in json.loads(write_hangar.RECORD_PATH.read_text(encoding="utf-8"))["files"]}
+    rendered = [m for m in FACTS["models"] if CRAFTS[m]["source"].get("picker_render_reason")]
+    assert "newhorizons" in rendered  # NASA's render of it is a small picture on white
+    for m in rendered:
+        with Image.open(HANGAR_DIR / m / f"{m}_picker.webp") as im:
+            assert im.mode == "RGBA" and im.getpixel((0, 0))[3] == 0, m
+        assert "rendered by Blender's Cycles" in record[f"hangar/{m}/{m}_picker.webp"]["producedBy"]["changes"]
+
+
 def test_the_frame_and_the_evidence_class() -> None:
     assert FACTS["evidenceClass"] == "simulated"
     assert FACTS["frame"] == {"forward": "+Z", "up": "+Y", "unit": "metre", "origin": "the centre of the part the scale is taken from"}
@@ -174,3 +188,36 @@ def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0
+
+
+# The Blender the committed models were built with; another version may write other bytes from the same recipe.
+BUILT_WITH = "Blender 5.2.3"
+
+
+def _blender_version() -> str | None:
+    blender = shutil.which("blender")
+    if blender is None:
+        return None
+    out = subprocess.run([blender, "--version"], capture_output=True, text=True, timeout=120).stdout
+    return out.splitlines()[0] if out else None
+
+
+@pytest.mark.parametrize("craft", ["hubble", "newhorizons"])
+def test_an_unchanged_craft_rebuilds_byte_for_byte(craft: str, tmp_path: Path) -> None:
+    # Hubble's one mesh sits under a transformed parent in NASA's file: a build that drops that transform when it
+    # unparents the meshes comes out at another scale and shape (AUDIT-B's read of hangar-20); New Horizons' picker is
+    # rendered from the build because its recipe names a reason, so its picture checks that path. Runs only on a machine
+    # with the Blender the hangar was built with and NASA's source in the shared cache; CI has neither.
+    version = _blender_version()
+    if version is None or not version.startswith(BUILT_WITH):
+        pytest.skip(f"needs {BUILT_WITH} (found {version})")
+    src = CRAFTS[craft]["source"]
+    if not (ROOT / CACHE / src["local"] / src["file"]).is_file():
+        pytest.skip("NASA's source is not in the shared cache")
+    script = ROOT / "scripts" / "lookdev" / "hangar" / "build_craft.py"
+    cmd = [shutil.which("blender"), "-b", "--factory-startup", "-P", str(script), "--", "--craft", craft, "--out", str(tmp_path)]
+    done = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd=ROOT)
+    assert done.returncode == 0, done.stderr[-2000:]
+    for level in ("lod0", "lod1", "lod2", "picker"):
+        name = f"{craft}_{level}.webp" if level == "picker" else f"{craft}_{level}.glb"
+        assert (tmp_path / name).read_bytes() == (HANGAR_DIR / craft / name).read_bytes(), name

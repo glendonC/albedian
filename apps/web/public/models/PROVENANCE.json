@@ -361,7 +361,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "5b6ea683504cd996b7db8f66d7719d689c626c97d0fa2be159b16fa8edd04278",
+      "sha256": "237e65b2d2019fc8a44a79a9c8119f647556a3621bcbd2671320db62c251ab28",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -715,7 +715,7 @@
     },
     {
       "path": "hangar/newhorizons/newhorizons_picker.webp",
-      "sha256": "0670ea88cff1336721aae17e7a50f6faeadea471f8b4bebd8c368690311d069f",
+      "sha256": "a7bd23cc3dcfd49fb5a90b4016fa0a4686bfd737b2c3f04e6a4401939d742c9e",
       "sources": [
         "nasa-3d-resources"
       ],
@@ -723,9 +723,9 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft newhorizons --out apps/web/public/models/hangar/newhorizons",
-        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+        "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model is a small picture on white, which the picker shows as a white square."
       },
-      "note": "From NASA's render https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg (14212 bytes, SHA-256 cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b)."
+      "note": "Rendered from this folder's lod0 build of https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb."
     },
     {
       "path": "hangar/parker/parker_lod0.glb",

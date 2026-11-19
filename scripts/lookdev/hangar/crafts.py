@@ -237,6 +237,8 @@ CRAFTS: dict[str, dict] = {
             "picture_url": "https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg",
             "picture_bytes": 14_212,
             "picture_sha256": "cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b",
+            # NASA's render is a 14 kB picture on white, which the picker shows as a white square: rendered instead.
+            "picker_render_reason": "white",
             "local": "newhorizons",
         },
         # The source's unit cube at the root (a see-through helper) is not part of the craft.

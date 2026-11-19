@@ -132,6 +132,11 @@ CHANGES = {
         "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels "
         "square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
     ),
+    "picker_render_white": (
+        "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels "
+        "square, since NASA's own render of this model is a small picture on white, which the picker shows as a white "
+        "square."
+    ),
 }
 
 # Photo atlas material rules, on the texture's sRGB values: hue in degrees, saturation and value in 0..1.
@@ -601,6 +606,9 @@ def main() -> None:
     picture = folder / src["picture"] if src.get("picture") else None
     if picture is not None:
         check_source(picture, src["picture_bytes"], src["picture_sha256"])
+    if src.get("picker_render_reason"):
+        # NASA's own render cannot serve (the recipe names why): the picker is rendered from the build instead
+        picture = None
     out = (REPO_ROOT / args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
 
