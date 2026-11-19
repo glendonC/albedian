@@ -479,7 +479,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "7e65c9767f5fecea57143d5a7a297999279d78a5dd1f6bcb50e298b5cae69a3c",
+      "sha256": "bafbc3c5d39eb200c489c4aa4c470b146995c585ef8ce5025f36c74d16e27315",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -903,6 +903,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29/MErcury%20Surface,%20Space%20ENvironment,%20GEochemistry,%20and%20Ranging%20%28MESSENGER%29.png (1015487 bytes, SHA-256 f78316f866e36c3de93d0475bad86682d8bd05be2e02432b60a3f188b7d629f1)."
+    },
+    {
+      "path": "hangar/mgs/mgs_lod0.glb",
+      "sha256": "2807f0cc38bdc5a2734af13007965d585c0555001caf3c686c232b9e8434b4e7",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mgs --out apps/web/public/models/hangar/mgs",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Global%20Surveyor/Mars%20Global%20Surveyor.glb (1921268 bytes, SHA-256 8812c97f2c147e409e883d5196377d596df84de87c08c1453e9e3cfaf082052f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mgs/mgs_lod1.glb",
+      "sha256": "1c0622371613e1033c631abe02a47598d2f10d09d1eed71bc667e1018b819850",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mgs --out apps/web/public/models/hangar/mgs",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Global%20Surveyor/Mars%20Global%20Surveyor.glb (1921268 bytes, SHA-256 8812c97f2c147e409e883d5196377d596df84de87c08c1453e9e3cfaf082052f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mgs/mgs_lod2.glb",
+      "sha256": "0224f47cb22add4eab26eaca0f50e12926188edda523bc8799135f1a0243b7b8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mgs --out apps/web/public/models/hangar/mgs",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Global%20Surveyor/Mars%20Global%20Surveyor.glb (1921268 bytes, SHA-256 8812c97f2c147e409e883d5196377d596df84de87c08c1453e9e3cfaf082052f); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/mgs/mgs_picker.webp",
+      "sha256": "f8c865c409bce80b51b58b5257de94721d693e66ca606aad0c9ca513a6bb84db",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft mgs --out apps/web/public/models/hangar/mgs",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Global%20Surveyor/Mars%20Global%20Surveyor.png (475903 bytes, SHA-256 8746797697a48c34c2082b48cd48cb2961fc65ad2ec69a3acbc19a052d705c84)."
     },
     {
       "path": "hangar/mro/mro_lod0.glb",

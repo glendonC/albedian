@@ -1155,6 +1155,53 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.4,
         "changes": "photo_foil_label",
     },
+    "mgs": {
+        "title": "Mars Global Surveyor",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-mars-global-surveyor",
+            "title": "Mars Global Surveyor, NASA 3D Resources",
+            "folder": "Mars Global Surveyor",
+            "file": "Mars Global Surveyor.glb",
+            "bytes": 1_921_268,
+            "sha256": "8812c97f2c147e409e883d5196377d596df84de87c08c1453e9e3cfaf082052f",
+            "picture": "Mars Global Surveyor.png",
+            "picture_bytes": 475_903,
+            "picture_sha256": "8746797697a48c34c2082b48cd48cb2961fc65ad2ec69a3acbc19a052d705c84",
+            "local": "mgs",
+        },
+        "drop_objects": [],
+        # The high-gain dish on its boom faces +X in the import frame, toward Earth, so the craft is flown along -X, as
+        # Voyager is; the wings reach along Y and the body stands along Z, so +Z is up.
+        "forward": (-1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the dish, NASA's silver foil disc on the boom's end, 1.2826 units across, to NSSDC's 1.5 m. A check:
+        # each wing's width, 1.5630 units, is then 1.83 m against NSSDC's panels "3.5 x 1.9 m".
+        "scale_from": {
+            "material": "foil_silver",
+            "axis": "y",
+            "metres": 1.5,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A",
+            "quote": "A 1.5 meter diameter parabolic high gain dish antenna",
+        },
+        "materials": {
+            "tex": {
+                "role": "photo_atlas",
+                # A small label stuck on a photographed dark panel, illegible at the source's size.
+                "paint_out": [{"box": (918, 897, 954, 916), "what": "a small label"}],
+            },
+            "black": {"role": "photo_atlas"},
+            "dark grey": {"role": "photo_atlas"},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "AO": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            # The wings' cells under cover glass: NASA's texture kept, no metalness.
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "body_radius_m": 1.5,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1550,6 +1597,23 @@ HANGAR: list[dict] = [
             {"key": "ionEngineDiameterCm", "value": 30, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "The 30 cm diameter engine"},
             {"key": "cometComa", "value": "2001-09-22", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "On 22 September 2001, Deep Space 1 entered the coma of comet Borrelly"},
             {"key": "missionEnd", "value": "2001-12-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "The ion engines on DS1 were commanded off on 18 December 2001 at about 20:00 UT (3:00 p.m. EST) to end the mission."},
+        ],
+    },
+    {
+        # Mars Global Surveyor orbited Mars: no speed between stars. NSSDC dates the lost contact 2 November 2006 where
+        # the mission page ends the mission on 14 November 2006; NSSDC's line is kept, in its own words.
+        "id": "mars-global-surveyor",
+        "name": "Mars Global Surveyor",
+        "model": "mgs",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1996-11-07", "page": "https://science.nasa.gov/mission/mars-global-surveyor/", "quote": "Launch Date: Nov. 7, 1996 UTC"},
+            {"key": "massKg", "value": 1030.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "Mass: 1030.5 kg"},
+            {"key": "dishDiameterM", "value": 1.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "A 1.5 meter diameter parabolic high gain dish antenna"},
+            {"key": "solarPanels", "value": "two, each 3.5 by 1.9 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "Two solar panels, each 3.5 x 1.9 m in size"},
+            {"key": "body", "value": "about 1.17 by 1.17 by 1.7 m", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "a rectangular box approximately 1.17 x 1.17 x 1.7 meters in size"},
+            {"key": "marsOrbit", "value": "1997-09-12", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "was inserted into an elliptical capture orbit at 01:17 UT 12 September 1997"},
+            {"key": "contactLost", "value": "2006-11-02", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A", "quote": "contact with the spacecraft was lost on 2 November 2006"},
         ],
     },
 ]
