@@ -3,8 +3,9 @@
 Covers:
 - The one profile, keyed by the exact QuickTime model tag of the owner's glasses: kind head_worn, a diagonal field
   of view of 80 to 110 degrees labelled [open], the range the phone benchmark already models for its head-worn class,
-  and a source note that says where the 100 degree figure was read and when, that no figure was found for the
-  Display model, and that its smaller frames may be a crop [inference]
+  and a source note that quotes Meta's 100 degree figure, video size and video processing for this model with where
+  and when each was read, says the axis is not stated and that the smaller stored frames are a crop [inference], and
+  notes that quote Meta's zoom for it
 - The lookup matches the model string exactly: no case folding, no trimming, no near names, nothing for a missing
   or non-text model
 - A profile states its range in order inside the contract's bounds, a label of [verified] or [open], and a source
@@ -45,14 +46,27 @@ def test_the_range_is_the_phone_benchmarks_modelled_head_worn_class() -> None:
 
 def test_the_source_note_says_where_the_figure_was_read_and_what_is_open() -> None:
     source = camera_profile(META_RAY_BAN_DISPLAY_MODEL).fov_source
-    # The maker's 100 degree figure for the Ray-Ban Meta glasses, without its axis, with where and when it was read
-    assert "100" in source and "axis" in source
-    assert "meta.com/au/ai-glasses/compare" in source and "2026-11-11" in source
-    assert "ray-ban.com" in source and "403" in source
-    # No figure for the Display model, and its smaller frames may be a crop
-    assert "no figure was found for the Meta Ray-Ban Display" in source
-    assert "1344 x 1792" in source and "1440 x 1920" in source and "[inference]" in source
-    assert "[open]" in source
+    # Meta's own 100 degree figure for this model, read at source with its address and date, without its axis
+    # One [verified] label for each of the three figures read at source: the compare page, the sheet, the help page
+    assert source.count("[verified]") == 3 and "2026-11-18" in source
+    assert "meta.com/ai-glasses/compare" in source and "\"100° field of view, left-oriented\"" in source
+    assert "Meta Ray-Ban Display" in source and "axis" in source
+    assert "no figure was found" not in source
+    # Meta's video size for this model, from its specification sheet
+    assert "meta.com/ai-glasses/meta-ray-ban-display-glasses-and-neural-band" in source
+    assert "\"1440x1920 pixels @30 Fps\"" in source
+    # Meta says its video is de-warped, stabilised and levelled, and the stored frames are smaller: a crop
+    assert "meta.com/help/ai-glasses/951708387778102" in source
+    assert "de-warping" in source and "electronic image stabilization" in source and "horizontal leveling" in source
+    assert "1264 x 1680" in source and "1408 x 1888" in source and "[inference]" in source
+    # So the 100 degrees does not fix a stored frame's diagonal, and the range keeps its [open] label
+    assert "[open]" in source and "research/benchmarks/phone_photos/cameras.py" in source
+
+
+def test_the_notes_quote_the_zoom_meta_states_for_this_model() -> None:
+    notes = camera_profile(META_RAY_BAN_DISPLAY_MODEL).notes
+    assert "\"3x digital zoom\"" in notes and "[verified]" in notes
+    assert "gave no readable text" not in notes
 
 
 @pytest.mark.parametrize(

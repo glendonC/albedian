@@ -67,24 +67,27 @@ _PROFILES = (
         fov_diagonal_deg_range=(80.0, 110.0),
         fov_label="[open]",
         fov_source=(
-            "Meta publishes a 100 degree field of view for the Ray-Ban Meta glasses' 12 MP camera without naming "
-            "its axis (meta.com/au/ai-glasses/compare, \"100° field of view, left-oriented\" for Ray-Ban Meta "
-            "(Gen 3) Wayfarer, read at source 2026-11-11; a web search's excerpt of ray-ban.com's Ray-Ban Meta "
-            "specification page gives the same figure, but that page answered HTTP 403 to a read that day, so it "
-            "was not read at source); no figure was found for the Meta Ray-Ban Display model. Its clip frames "
-            "(1344 x 1792) are smaller than "
-            "the 1440 x 1920 video size retailers list, so a crop may narrow its field of view [inference]. The "
-            "range of 80 to 110 degrees across the diagonal is the one the phone benchmark already uses for its "
-            "modelled head-worn class (research/benchmarks/phone_photos/cameras.py), so it is [open]: no product "
-            "figure stands behind it."
+            "Meta publishes \"100° field of view, left-oriented\" for the Meta Ray-Ban Display glasses' "
+            "\"Wide-angle 12 MP camera\" without naming its axis (meta.com/ai-glasses/compare with the Meta Ray-Ban "
+            "Display and Meta Neural Band column chosen, read at source 2026-11-18) [verified]. Its specification "
+            "sheet gives the video size \"1440x1920 pixels @30 Fps\" (meta.com/ai-glasses/"
+            "meta-ray-ban-display-glasses-and-neural-band, Specifications, Camera, read at source 2026-11-18) "
+            "[verified], and Meta's help page on display recordings says standard video capture gets \"electronic "
+            "image stabilization (EIS), de-warping, horizontal leveling, and stabilization\" "
+            "(meta.com/help/ai-glasses/951708387778102, read at source 2026-11-18) [verified]. The owner's clips "
+            "are stored at 1264 x 1680 to 1408 x 1888, smaller than 1440 x 1920, so a stored frame is a stabilised, "
+            "de-warped crop whose field of view is narrower than the camera's by an amount Meta does not state "
+            "[inference]. With the axis unstated and the crop unknown, the 100 degrees does not fix the diagonal of a "
+            "stored frame, so the range of 80 to 110 degrees across the diagonal stays the one the phone benchmark "
+            "uses for its modelled head-worn class (research/benchmarks/phone_photos/cameras.py), labelled [open]."
         ),
         notes=(
             "Head-worn camera glasses: no horizon need be in view, and the head moves during a clip. The glasses have "
-            "a zoom: a web search's excerpt of Meta's product page for them "
-            "(meta.com/au/ai-glasses/meta-ray-ban-display-glasses-and-neural-band) lists a \"12MP camera with 3x "
-            "zoom\", but the page gave no readable text to a read on 2026-11-11, so it was not read at source [open]. "
-            "The range of 80 to 110 degrees is for no zoom; a zoomed clip sees a narrower field, which the sweep does "
-            "not cover [inference]."
+            "a zoom: Meta's specification sheet and compare page list \"3x digital zoom\" for this model (read at "
+            "source 2026-11-18) [verified]. The range of 80 to 110 degrees is for no zoom; a zoomed clip sees a "
+            "narrower field, which the sweep does not cover [inference]. One Moon plus skyline fit on one of the "
+            "owner's 1408 x 1888 clips gave about 80 degrees across the diagonal [measured 2026-11-18, under that "
+            "pose's assumption of a skyline 0 to 3 degrees above the true horizon; one clip, not a calibration]."
         ),
     ),
 )

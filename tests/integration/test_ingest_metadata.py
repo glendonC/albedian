@@ -14,6 +14,7 @@ import math
 import shutil
 import subprocess
 import tracemalloc
+from datetime import datetime as datetime_type, timedelta as timedelta_type, timezone as timezone_type
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, Iterator, Optional
@@ -282,6 +283,98 @@ def test_quicktime_tags_are_read_strictly() -> None:
                      "source": {"container": "quicktime", "tags": ["location", "com.apple.quicktime.location.accuracy.horizontal"]}}
     camera = quicktime_hints({"com.apple.quicktime.make": "Synthetic", "model": "Synthetic Test Camera"})["camera"]
     assert camera["source"]["tags"] == ["com.apple.quicktime.make", "model"]
+
+
+# Clips recorded far east of UTC (camera glasses and phones write `com.apple.quicktime.creationdate` with the zone the
+# phone keeps): a local time just after midnight at +12:00 or +13:00 is the day before in UTC. The place is the
+# fixtures' open-ocean south Pacific point (tests/integration/test_ephemeris_horizons.py SITES), which points at nobody.
+SOUTH_PACIFIC_ISO6709 = "-45.0000-130.0000/"
+EAST_OF_UTC = [
+    ("2031-01-15T00:20:00+1300", "2031-01-15T00:20:00", 780, "2031-01-14T11:20:00Z"),
+    ("2031-01-15T00:20:00+13:00", "2031-01-15T00:20:00", 780, "2031-01-14T11:20:00Z"),
+    ("2031-02-03T00:05:30.250+1200", "2031-02-03T00:05:30.250", 720, "2031-02-02T12:05:30.250Z"),
+    ("2031-02-03T00:05:30+12:00", "2031-02-03T00:05:30", 720, "2031-02-02T12:05:30Z"),
+    ("2031-03-01T00:59:59+1345", "2031-03-01T00:59:59", 825, "2031-02-28T11:14:59Z"),
+    ("2031-01-01T00:00:00+1400", "2031-01-01T00:00:00", 840, "2030-12-31T10:00:00Z"),
+]
+
+
+@pytest.mark.parametrize(("written", "local", "offset", "utc"), EAST_OF_UTC)
+def test_a_clip_just_after_midnight_far_east_of_utc_is_the_day_before_in_utc(
+    client: TestClient, tmp_path: Path, written: str, local: str, offset: int, utc: str
+) -> None:
+    clip = make_clip(tmp_path, "east.mov", f"com.apple.quicktime.creationdate={written}",
+                     "creation_time=2031-06-12T08:00:00Z", f"com.apple.quicktime.location.ISO6709={SOUTH_PACIFIC_ISO6709}",
+                     "com.apple.quicktime.model=Meta Ray-Ban Display Glasses")
+    receipt = upload_clip(client, clip)
+    assert receipt["hints"]["captureTime"] == {
+        "localDateTime": local, "utcOffsetMinutes": offset, "utc": utc, "marks": "recorded",
+        "source": {"container": "quicktime", "tags": ["com.apple.quicktime.creationdate"]},
+    }
+    asset = receipt["sourceAsset"]
+    assert asset["capturedAtUTC"] == utc
+    assert asset["capturedAtUTC"][:10] < local[:10]
+    assert (asset["observerLocation"]["latDeg"], asset["observerLocation"]["lonDeg"]) == (-45.0, -130.0)
+    assert asset["cameraMetadata"]["model"] == "Meta Ray-Ban Display Glasses"
+
+
+@pytest.mark.parametrize("written", ["2031-01-15T00:20:00Z", "2031-01-15T00:20:00+0000", "2031-01-15T00:20:00+00:00"])
+def test_a_clip_written_at_utc_itself_keeps_its_local_time_as_the_instant(
+    client: TestClient, tmp_path: Path, written: str
+) -> None:
+    clip = make_clip(tmp_path, "utc.mov", f"com.apple.quicktime.creationdate={written}")
+    receipt = upload_clip(client, clip)
+    hint = receipt["hints"]["captureTime"]
+    assert (hint["localDateTime"], hint["utcOffsetMinutes"], hint["utc"], hint["marks"]) == (
+        "2031-01-15T00:20:00", 0, "2031-01-15T00:20:00Z", "recorded")
+    assert receipt["sourceAsset"]["capturedAtUTC"] == "2031-01-15T00:20:00Z"
+
+
+@pytest.mark.parametrize("file_time", [(), ("creation_time=2031-01-14T11:20:00Z",)])
+def test_a_clip_whose_recorded_time_has_no_zone_gets_no_capture_time(
+    client: TestClient, tmp_path: Path, file_time: tuple[str, ...]
+) -> None:
+    # A local time with no zone names no instant: it is never read as UTC, and the file's own written time, when there
+    # is one, stays labelled as such; the asset then has no capture time, so no sky is predicted from a guess
+    clip = make_clip(tmp_path, "zoneless.mov", "com.apple.quicktime.creationdate=2031-01-15T00:20:00", *file_time)
+    receipt = upload_clip(client, clip)
+    assert "capturedAtUTC" not in receipt["sourceAsset"]
+    if file_time:
+        assert receipt["hints"]["captureTime"]["marks"] == "file_written"
+        assert receipt["hints"]["captureTime"]["source"]["tags"] == ["creation_time"]
+    else:
+        assert "captureTime" not in receipt["hints"]
+
+
+@pytest.mark.parametrize("zone", ["+1401", "+1500", "+1460", "-1401", "+13:60"])
+def test_an_offset_past_fourteen_hours_or_sixty_minutes_is_no_recorded_time(zone: str) -> None:
+    hints = quicktime_hints({"com.apple.quicktime.creationdate": f"2031-01-15T00:20:00{zone}"})
+    assert "captureTime" not in hints
+
+
+@settings(max_examples=200, deadline=None)
+@given(
+    local=st.datetimes(min_value=datetime_type(2000, 1, 2), max_value=datetime_type(2049, 12, 30)),
+    offset=st.integers(min_value=-840, max_value=840),
+    colon=st.booleans(),
+)
+@example(local=datetime_type(2031, 1, 15, 0, 20), offset=780, colon=False)
+@example(local=datetime_type(2031, 1, 1, 0, 0), offset=840, colon=True)
+@example(local=datetime_type(2031, 3, 1, 23, 59, 59), offset=-840, colon=False)
+def test_pbt_ingest_offset_a_recorded_clip_time_is_its_local_time_less_its_offset(
+    local: Any, offset: int, colon: bool
+) -> None:
+    local = local.replace(microsecond=(local.microsecond // 1000) * 1000)
+    sign = "-" if offset < 0 else "+"
+    hours, minutes = divmod(abs(offset), 60)
+    zone = f"{sign}{hours:02d}{':' if colon else ''}{minutes:02d}"
+    millis = local.microsecond // 1000
+    written = local.strftime("%Y-%m-%dT%H:%M:%S") + (f".{millis:03d}" if millis else "") + zone
+    hint = quicktime_hints({"com.apple.quicktime.creationdate": written})["captureTime"]
+    expected = (local - timedelta_type(minutes=offset)).replace(tzinfo=timezone_type.utc)
+    assert hint["utcOffsetMinutes"] == offset and hint["marks"] == "recorded"
+    assert hint["localDateTime"] == local.isoformat(timespec="milliseconds" if millis else "seconds")
+    assert hint["utc"] == expected.strftime("%Y-%m-%dT%H:%M:%S") + (f".{millis:03d}" if millis else "") + "Z"
 
 
 def test_the_box_reader_caps_the_boxes_it_will_walk() -> None:
