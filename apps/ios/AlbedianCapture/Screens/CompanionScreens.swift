@@ -429,8 +429,8 @@ struct ResultScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                     .atTop(Arrive.photoTop + cardHeight + 22)
                     HStack(spacing: 16) {
-                        count(result.readout.counts[.observed] ?? 0, .observed)
-                        count(result.readout.counts[.predicted] ?? 0, .predicted)
+                        // A class with none is left out, as the web's legend leaves it out
+                        ForEach(ResultCounts.secondRow(result.readout.counts), id: \.0) { evidence, n in count(n, evidence == .observed ? .observed : .predicted) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                     .atTop(Arrive.photoTop + cardHeight + 78)

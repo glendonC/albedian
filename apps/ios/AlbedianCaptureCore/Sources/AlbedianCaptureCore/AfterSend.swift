@@ -101,6 +101,16 @@ public struct QueuedRow: Equatable, Sendable {
     }
 }
 
+/// The calibrated result's second row (arrive 6: "the observed and predicted counts with their tags, as the server
+/// reports them"): a class with no findings is left out, as the web's evidenceCounts leaves it out of its legend.
+public enum ResultCounts {
+    public static func secondRow(_ counts: [EvidenceClass: Int]) -> [(EvidenceClass, Int)] {
+        [EvidenceClass.observed, .predicted].compactMap { evidence in
+            counts[evidence].flatMap { $0 > 0 ? (evidence, $0) : nil }
+        }
+    }
+}
+
 /// The sentence of a result that is not calibrated (UIUX-iphone-solve-READY, 2): the web's own line for the outcome
 /// (`skyLayerWords.ts`, `skyLayerSentence` with a star search run, as every solve of a sent photo is), its count with a
 /// thousands comma. For "predicted only" the approved picture shows the first sentence alone, without the web's second

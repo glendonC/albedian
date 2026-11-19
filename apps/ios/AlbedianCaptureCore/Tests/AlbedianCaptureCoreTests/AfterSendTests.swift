@@ -18,6 +18,17 @@ final class AfterSendTests: XCTestCase {
         SolveJob.StageProgress(stage: name, unit: unit, done: done, total: total)
     }
 
+    /// The result's second row: the observed then the predicted count, a class with none left out, as the web's
+    /// evidenceCounts filters its legend (revealStatus.ts); the design lane saw "0" beside Predicted on a calibrated result.
+    func testTheResultsSecondRowLeavesOutAClassWithNone() {
+        let row = { (counts: [EvidenceClass: Int]) in ResultCounts.secondRow(counts).map { "\($0.0.rawValue) \($0.1)" } }
+        XCTAssertEqual(row([.catalogMatched: 39, .observed: 3919, .predicted: 0]), ["observed 3919"])
+        XCTAssertEqual(row([.observed: 12, .predicted: 471]), ["observed 12", "predicted 471"])
+        XCTAssertEqual(row([.observed: 0, .predicted: 2]), ["predicted 2"])
+        XCTAssertEqual(row([:]), [])
+        XCTAssertEqual(row([.simulated: 4, .catalogMatched: 9]), [], "only the observed and predicted classes stand in that row")
+    }
+
     func testTheStepWordsAreTheLaptopsApprovedOnes() {
         XCTAssertEqual(SolveJob.Stage.allCases.map(WaitRow.word), ["Saved", "Opened", "Measured", "Matching", "Checking"])
     }
