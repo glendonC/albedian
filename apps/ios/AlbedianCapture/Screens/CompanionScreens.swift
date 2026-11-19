@@ -65,7 +65,8 @@ struct CompanionRoot: View {
         case .kept: return .kept
         case .capture: return model.captureScreen
         case .pairing: return .pairing
-        case .sent: return model.sentScreen
+        case .sent: return .waiting
+        case .result: return model.resultScreen
         }
     }
 
@@ -256,14 +257,19 @@ struct ShotPhoto: View {
 struct AfterShotScreen: View {
     let model: CompanionModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Set once the screen is up, so Take again and Send word in 20 ms apart (MOTION-READY-iphone section 3)
+    @State private var arrived = false
 
     var body: some View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
             ZStack {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
-                IconButton(icon: .again, label: "Take again", action: model.takeAgain)
-                    .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                if arrived {
+                    IconButton(icon: .again, label: "Take again", action: model.takeAgain)
+                        .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
+                        .transition(.words(reduceMotion: reduceMotion))
+                }
                 if model.unreachable {
                     VStack(spacing: 6) {
                         HStack(spacing: 8) {
@@ -283,12 +289,14 @@ struct AfterShotScreen: View {
                     }
                     .atBottom(Arrive.unreachableButtonsBottomGap)
                     .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
-                } else {
+                } else if arrived {
                     MainButton(title: "Send", icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
+                        .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 }
             }
         }
         .ignoresSafeArea()
+        .onAppear { arrived = true }
     }
 }
 

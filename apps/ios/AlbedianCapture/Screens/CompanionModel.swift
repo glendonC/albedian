@@ -29,7 +29,8 @@ final class CompanionModel {
             case .kept: .kept
             case .aim, .holdStill, .afterShot: .capture
             case .pairing: .pairing
-            case .waiting, .stopped, .result: .sent
+            case .waiting: .sent
+            case .stopped, .result: .result
             }
         }
     }
@@ -38,14 +39,14 @@ final class CompanionModel {
         didSet {
             path = CompanionPlace.path(path, to: screen.place)
             if screen.place == .capture { captureScreen = screen }
-            if screen.place == .sent { sentScreen = screen }
+            if screen.place == .result { resultScreen = screen }
         }
     }
     /// The navigation stack's path: forward screens pushed, going back popped, by the system (MOTION-READY-iphone).
     private(set) var path: [CompanionPlace] = []
     /// The screen each shared place last showed, so a place below the top keeps what it showed.
     private(set) var captureScreen: Screen = .aim
-    private(set) var sentScreen: Screen = .waiting
+    private(set) var resultScreen: Screen = .result
 
     /// The stack's own change of path: the back button and its swipe are hidden, so this keeps the path as the system has it.
     func navigated(to newPath: [CompanionPlace]) { path = newPath }

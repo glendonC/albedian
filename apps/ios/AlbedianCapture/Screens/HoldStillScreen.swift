@@ -7,6 +7,9 @@ import SwiftUI
 /// over that real exposure. A second tap stops.
 struct HoldStillScreen: View {
     let model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Set once the screen is up, so its words arrive by their own motion (MOTION-READY-iphone section 3)
+    @State private var arrived = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -31,18 +34,24 @@ struct HoldStillScreen: View {
                             .frame(width: 52, height: 52)
                         }
                         .atTop(Arrive.photoTop)
-                    Text("Hold still").font(AlbedianFont.regular(15)).tracking(-0.01 * 15).foregroundStyle(Color(ControlStyle.ink))
-                        .frame(height: 44).atTop(Arrive.topControls)
-                    if let seconds = model.exposureSec, let words = NightExposure.lengthWords(seconds) {
+                    // "Hold still" and the length word in 0.15 s after the press, the length 20 ms after it
+                    if arrived {
+                        Text("Hold still").font(AlbedianFont.regular(15)).tracking(-0.01 * 15).foregroundStyle(Color(ControlStyle.ink))
+                            .frame(height: 44).atTop(Arrive.topControls)
+                            .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.captureSequenceDelaySeconds))
+                    }
+                    if arrived, let seconds = model.exposureSec, let words = NightExposure.lengthWords(seconds) {
                         Text(words).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
                             .foregroundStyle(Color(ControlStyle.inkQuiet))
                             .atTop(Arrive.photoTop + height + 16)
+                            .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.captureSequenceDelaySeconds + MotionStyle.staggerSeconds))
                     }
                     ExposureButton(fraction: fraction, action: model.stopExposure).atBottom(Arrive.referenceHeight - 706 - 64)
                 }
             }
         }
         .ignoresSafeArea()
+        .onAppear { arrived = true }
     }
 }
 

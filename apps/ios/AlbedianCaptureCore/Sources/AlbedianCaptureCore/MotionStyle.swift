@@ -52,9 +52,10 @@ public enum MotionStyle {
 
 /// Where the companion's screens sit in the system's navigation stack (MOTION-READY-iphone section 1: forward screens by
 /// NavigationStack's own push, unstyled). Home is the root; aiming, holding still and after the shot are one place (the
-/// capture), as the wait and its result are another (sent), so a change between them is a change inside a screen.
+/// capture), so a change between them is a change inside a screen. After Send the wait is pushed (sent), and the result or
+/// a stopped job is pushed on it (result: section 4, "the result screen by the system push").
 public enum CompanionPlace: Hashable, Sendable {
-    case credits, kept, capture, pairing, sent
+    case credits, kept, capture, pairing, sent, result
 
     /// The path after moving to `place` (nil for home): back to it when it is already on the path, which the system shows as a
     /// pop; pushed on top when it is not; empty for home.
