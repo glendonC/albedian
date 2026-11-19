@@ -137,6 +137,7 @@ def build_facts(models: list[str]) -> dict:
             "files": files,
             "boundsM": bounds,
             "bodyRadiusM": recipe["body_radius_m"],
+            "lodTriangleShare": recipe.get("lod_ratio", LOD_RATIO),
             "scaleFrom": {"part": sf["material"], "metres": sf["metres"], "page": sf["page"], "quote": sf["quote"]},
         }
     entries = [e for e in HANGAR if e["model"] in out_models]
@@ -146,7 +147,6 @@ def build_facts(models: list[str]) -> dict:
         "evidenceClass": "simulated",
         "frame": {"forward": "+Z", "up": "+Y", "unit": "metre", "origin": "the centre of the part the scale is taken from"},
         "levels": {"lod0": "close view", "lod1": "chase camera", "lod2": "far or phone view"},
-        "lodTriangleShare": LOD_RATIO,
         "models": out_models,
         "entries": entries,
     }
@@ -191,7 +191,7 @@ def build_record(models: list[str]) -> dict:
                     "path": f"hangar/{m}/{m}_{level}.glb",
                     "sha256": sha256_file(HANGAR_DIR / m / f"{m}_{level}.glb"),
                     "sources": [MODELS_SOURCE, PAGES_SOURCE],
-                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[level]},
+                    "producedBy": {"method": "script", "script": BUILD_SCRIPT, "command": command, "changes": BUILD_SENTENCES[f"lod0_{CRAFTS[m]['changes']}" if level == "lod0" else level]},
                     "note": model_note,
                 }
             )

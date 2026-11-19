@@ -13,11 +13,6 @@
     "lod1": "chase camera",
     "lod2": "far or phone view"
   },
-  "lodTriangleShare": {
-    "lod0": 1.0,
-    "lod1": 0.5,
-    "lod2": 0.18
-  },
   "models": {
     "voyager": {
       "title": "Voyager",
@@ -64,11 +59,73 @@
         ]
       },
       "bodyRadiusM": 2.2,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
       "scaleFrom": {
         "part": "tex_02_AO",
         "metres": 3.7,
         "page": "https://science.nasa.gov/mission/voyager/spacecraft/",
         "quote": "via the 3.7 meter high-gain antenna (HGA)"
+      }
+    },
+    "jwst": {
+      "title": "James Webb Space Telescope",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "jwst/jwst_lod0.glb",
+          "bytes": 3828684,
+          "triangles": 69217,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "jwst/jwst_lod1.glb",
+          "bytes": 1412380,
+          "triangles": 24428,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "jwst/jwst_lod2.glb",
+          "bytes": 534160,
+          "triangles": 8957,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "jwst/jwst_picker.webp",
+          "bytes": 3846,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -7.297,
+          -4.66,
+          -13.972
+        ],
+        "max": [
+          7.317,
+          7.711,
+          9.858
+        ]
+      },
+      "bodyRadiusM": 7.0,
+      "lodTriangleShare": {
+        "lod0": 0.17,
+        "lod1": 0.06,
+        "lod2": 0.022
+      },
+      "scaleFrom": {
+        "part": "James_Webb_Space_Telescope:shld_silv1",
+        "metres": 14.162,
+        "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+        "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"
       }
     }
   },
@@ -140,6 +197,56 @@
           "value": 3.7,
           "page": "https://science.nasa.gov/mission/voyager/spacecraft/",
           "quote": "via the 3.7 meter high-gain antenna (HGA)"
+        }
+      ]
+    },
+    {
+      "id": "jwst",
+      "name": "James Webb Space Telescope",
+      "model": "jwst",
+      "travel": null,
+      "facts": [
+        {
+          "key": "distanceFromEarthMillionKm",
+          "value": 1.5,
+          "page": "https://science.nasa.gov/mission/webb/",
+          "quote": "1.5 million kilometers (1 million miles) away from the Earth"
+        },
+        {
+          "key": "operatesAt",
+          "value": "Sun-Earth L2",
+          "page": "https://science.nasa.gov/mission/webb/",
+          "quote": "1.5 million kilometers (1 million miles) away from the Earth"
+        },
+        {
+          "key": "launch",
+          "value": "2021-12-25",
+          "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+          "quote": "December 25, 2021 07:20am EST"
+        },
+        {
+          "key": "primaryMirrorDiameterM",
+          "value": 6.5,
+          "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+          "quote": "Diameter of Primary Mirror 6.5 m (21.3 ft) approximately"
+        },
+        {
+          "key": "sunshieldLengthM",
+          "value": 21.197,
+          "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+          "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"
+        },
+        {
+          "key": "sunshieldWidthM",
+          "value": 14.162,
+          "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+          "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"
+        },
+        {
+          "key": "massKg",
+          "value": 6200,
+          "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+          "quote": "Approx 6200 kg, including observatory, on-orbit consumables and launch vehicle adaptor"
         }
       ]
     }

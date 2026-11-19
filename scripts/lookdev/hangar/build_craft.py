@@ -48,7 +48,8 @@ from scripts.lookdev.hangar.crafts import (  # noqa: E402
 
 # How each file differs from NASA's model, in plain words; write_hangar.py copies these into the provenance record.
 CHANGES = {
-    "lod0": (
+    # lod0 for a model textured with NASA's photographs (recipe "changes": "photo")
+    "lod0_photo": (
         "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the "
         "craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture "
         "kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, "
@@ -56,13 +57,21 @@ CHANGES = {
         "colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures "
         "re-encoded as WebP."
     ),
+    # lod0 for a model of flat colours whose materials NASA names by what they are (recipe "changes": "named")
+    "lod0_named": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names "
+        "(gold mirror, silver and pink blankets, black paint, aluminium, solar cells) given physically based "
+        "materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle "
+        "merged, and the normals made again, smooth within an angle and sharp beyond it."
+    ),
     "lod1": (
-        "The same rebuild as lod0 with about half its triangles, removed by Blender's collapse decimation, and "
-        "textures at most 1024 pixels on a side."
+        "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed "
+        "with the craft's facts), and textures at most 1024 pixels on a side."
     ),
     "lod2": (
-        "The same rebuild as lod0 with under a fifth of its triangles, removed by Blender's collapse decimation, and "
-        "textures at most 512 pixels on a side."
+        "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept "
+        "is listed with the craft's facts), and textures at most 512 pixels on a side."
     ),
     "picker": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP.",
 }
@@ -241,9 +250,31 @@ def build_material(name: str, spec: dict, source_mat: bpy.types.Material) -> bpy
             out = nt.nodes.new("ShaderNodeGroup")
             out.node_tree = material_output_group()
             links.new(sep.outputs[0], out.inputs["Occlusion"])
+    elif spec["role"] == "pbr":
+        # A flat physically based material for a part NASA's model names (gold mirror, silver blanket, black paint).
+        bsdf.inputs["Base Color"].default_value = (*spec["base"], 1.0)
+        bsdf.inputs["Metallic"].default_value = spec["metallic"]
+        bsdf.inputs["Roughness"].default_value = spec["roughness"]
+    elif spec["role"] == "nasa_flat":
+        # NASA's own flat colour and roughness, kept as the model gives them, for a part no rule names.
+        src = next(n for n in source_mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+        bsdf.inputs["Base Color"].default_value = tuple(src.inputs["Base Color"].default_value)
+        bsdf.inputs["Roughness"].default_value = src.inputs["Roughness"].default_value
+        bsdf.inputs["Metallic"].default_value = 0.0
     else:
         raise SystemExit(f"unknown material role {spec['role']}")
     return mat
+
+
+def material_for(recipe: dict, name: str) -> tuple[str, dict]:
+    """The recipe's spec for a source material: by exact name, or by the first rule a part of whose name it holds."""
+    if name in recipe.get("materials", {}):
+        return name, recipe["materials"][name]
+    low = name.lower()
+    for i, rule in enumerate(recipe.get("material_rules", [])):
+        if any(word in low for word in rule["match"]) and not any(word in low for word in rule.get("not", [])):
+            return f"rule{i:02d}_{rule['match'][0] or 'other'}", rule
+    raise SystemExit(f"the recipe has no role for material {name}")
 
 
 def basis(forward: Vector, up: Vector) -> Matrix:
@@ -302,6 +333,7 @@ def main() -> None:
     ap.add_argument("--out", required=True)
     ap.add_argument("--blend", help="also save the built scene as this .blend, for renders")
     ap.add_argument("--maps", help="also save each rebuilt texture as PNG in this folder, to look at")
+    ap.add_argument("--full", action="store_true", help="a check, not for the web: every level keeps every triangle")
     args = ap.parse_args(argv)
     recipe = CRAFTS[args.craft]
     src = recipe["source"]
@@ -358,16 +390,49 @@ def main() -> None:
     me.transform(m)
     me.update()
 
-    # Materials.
-    for i, slot in enumerate(craft.material_slots):
-        spec = recipe["materials"].get(slot.material.name)
-        if spec is None:
-            raise SystemExit(f"the recipe has no role for material {slot.material.name}")
-        slot.material = build_material(f"{args.craft}_{slot.material.name}", spec, slot.material)
+    # Materials: one per recipe entry, so parts sharing a rule share one material (one draw each in three.js).
+    built: dict[str, bpy.types.Material] = {}
+    for slot in craft.material_slots:
+        key, spec = material_for(recipe, slot.material.name)
+        if spec["role"] == "nasa_flat":
+            key = f"{key}_{slot.material.name}"
+        if key not in built:
+            built[key] = build_material(f"{args.craft}_{key}" if key.startswith("rule") else f"{args.craft}_{slot.material.name}", spec, slot.material)
+        slot.material = built[key]
+    # Slots sharing a material become one slot, so each material is one glTF primitive.
+    first: dict[str, int] = {}
+    remap = np.array([first.setdefault(s.material.name, i) for i, s in enumerate(craft.material_slots)], dtype=np.int32)
+    if len(first) < len(craft.material_slots):
+        idx = np.empty(len(craft.data.polygons), dtype=np.int32)
+        craft.data.polygons.foreach_get("material_index", idx)
+        craft.data.polygons.foreach_set("material_index", remap[idx])
+        craft.data.update()
+        bpy.context.view_layer.objects.active = craft
+        bpy.ops.object.material_slot_remove_unused()
+
+    # Optional clean-up for dense flat sheets: dissolve faces that lie flat within an angle, keeping material borders,
+    # then Blender's own normals, smooth within an angle and sharp beyond it.
+    if recipe.get("planar_deg"):
+        bpy.context.view_layer.objects.active = craft
+        dis = craft.modifiers.new("planar", "DECIMATE")
+        dis.decimate_type = "DISSOLVE"
+        dis.angle_limit = math.radians(recipe["planar_deg"])
+        dis.delimit = {"MATERIAL"}
+        bpy.ops.object.modifier_apply(modifier=dis.name)
+        tri = craft.modifiers.new("tri", "TRIANGULATE")
+        bpy.ops.object.modifier_apply(modifier=tri.name)
+        craft.data.validate(verbose=False, clean_customdata=False)
+    if recipe.get("smooth_deg"):
+        bpy.context.view_layer.objects.active = craft
+        craft.select_set(True)
+        if craft.data.has_custom_normals:
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(recipe["smooth_deg"]))
 
     # Levels of detail.
     tris0 = sum(len(p.vertices) - 2 for p in me.polygons)
-    for level, ratio in LOD_RATIO.items():
+    for level, ratio in recipe.get("lod_ratio", LOD_RATIO).items():
+        ratio = 1.0 if args.full else ratio
         obj = craft.copy()
         obj.data = craft.data.copy()
         obj.name = f"{args.craft}_{level}"
@@ -408,7 +473,7 @@ def main() -> None:
     pic.file_format = "WEBP"
     bpy.context.scene.render.image_settings.quality = 88
     pic.save(quality=88)
-    print(f"HANGAR {args.craft} scale {scale:.6f} metres per source unit, dish-axis extent {extent:.4f}")
+    print(f"HANGAR {args.craft} scale {scale:.6f} metres per source unit, scale part extent {extent:.4f}")
     if args.blend:
         craft.hide_render = False
         bpy.ops.wm.save_as_mainfile(filepath=str(Path(args.blend).resolve()))

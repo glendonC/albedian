@@ -67,6 +67,59 @@ CRAFTS: dict[str, dict] = {
         },
         # The hero shot frames this many metres around the origin (the dish's centre).
         "body_radius_m": 2.2,
+        "changes": "photo",
+    },
+    "jwst": {
+        "title": "James Webb Space Telescope",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-james-webb-space-telescope-a",
+            "title": "James Webb Space Telescope (A), NASA 3D Resources",
+            "folder": "James Webb Space Telescope (A)",
+            "file": "James Webb Space Telescope (A).glb",
+            "bytes": 4_710_016,
+            "sha256": "ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750",
+            "picture": "James Webb Space Telescope (A).png",
+            "picture_bytes": 518_892,
+            "picture_sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
+            "local": "jwst",
+        },
+        "drop_objects": [],
+        # The primary mirror faces +X in the import frame (its secondary mirror stands in front of it there) and the
+        # sunshield lies below it, the Sun's side being -Z: forward is where the telescope looks, up its cold side.
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the sunshield's width; NASA's model is shorter than NASA's 21.197 m length (hangar-2 report).
+        "scale_from": {
+            "material": "James_Webb_Space_Telescope:shld_silv1",
+            "axis": "y",
+            "metres": 14.162,
+            "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
+            "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)",
+        },
+        # By the names NASA's model gives its materials, first match wins; base colours are linear RGB. Gold is gold's
+        # own reflectance; the sunshield's sun side is silvery with a pink cast, its cold side silver, as NASA's
+        # photographs and its own render of this model show.
+        "material_rules": [
+            {"match": ["omnimirror"], "role": "nasa_flat"},
+            {"match": ["mirror_blinn"], "role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.12},
+            {"match": ["edge_gold"], "role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.3},
+            {"match": ["sacells"], "role": "pbr", "base": (0.02, 0.025, 0.06), "metallic": 0.0, "roughness": 0.15},
+            {"match": ["ssm"], "role": "pbr", "base": (0.91, 0.91, 0.92), "metallic": 1.0, "roughness": 0.06},
+            {"match": ["pink", "pnk", "pmli"], "role": "pbr", "base": (0.86, 0.70, 0.80), "metallic": 1.0, "roughness": 0.36},
+            {"match": ["silv", "smli"], "role": "pbr", "base": (0.90, 0.90, 0.91), "metallic": 1.0, "roughness": 0.34},
+            {"match": ["black", "blk"], "role": "pbr", "base": (0.025, 0.025, 0.025), "metallic": 0.0, "roughness": 0.55},
+            {"match": ["graphite", "carbonfiber"], "role": "pbr", "base": (0.04, 0.04, 0.04), "metallic": 0.0, "roughness": 0.35},
+            {"match": ["drkalum"], "role": "pbr", "base": (0.45, 0.47, 0.5), "metallic": 1.0, "roughness": 0.4},
+            {"match": ["alum", "alu"], "role": "pbr", "base": (0.91, 0.92, 0.92), "metallic": 1.0, "roughness": 0.35},
+            {"match": ["whitepaint"], "role": "pbr", "base": (0.85, 0.85, 0.85), "metallic": 0.0, "roughness": 0.6},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        "planar_deg": 1.0,
+        "smooth_deg": 30.0,
+        "lod_ratio": {"lod0": 0.17, "lod1": 0.06, "lod2": 0.022},
+        "body_radius_m": 7.0,
+        "changes": "named",
     },
 }
 
@@ -108,6 +161,22 @@ HANGAR: list[dict] = [
         "facts": [
             {"key": "launch", "value": "1977-08-20", "page": "https://science.nasa.gov/mission/voyager/voyager-2/", "quote": "Aug. 20, 1977 / 14:29:44 UT"},
             {"key": "dishDiameterM", "value": 3.7, "page": "https://science.nasa.gov/mission/voyager/spacecraft/", "quote": "via the 3.7 meter high-gain antenna (HGA)"},
+        ],
+    },
+    {
+        # Webb never travels between stars: no speed, and the design record's no-travel line (D26 item 5).
+        "id": "jwst",
+        "name": "James Webb Space Telescope",
+        "model": "jwst",
+        "travel": None,
+        "facts": [
+            {"key": "distanceFromEarthMillionKm", "value": 1.5, "page": "https://science.nasa.gov/mission/webb/", "quote": "1.5 million kilometers (1 million miles) away from the Earth"},
+            {"key": "operatesAt", "value": "Sun-Earth L2", "page": "https://science.nasa.gov/mission/webb/", "quote": "1.5 million kilometers (1 million miles) away from the Earth"},
+            {"key": "launch", "value": "2021-12-25", "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "December 25, 2021 07:20am EST"},
+            {"key": "primaryMirrorDiameterM", "value": 6.5, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Diameter of Primary Mirror 6.5 m (21.3 ft) approximately"},
+            {"key": "sunshieldLengthM", "value": 21.197, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"},
+            {"key": "sunshieldWidthM", "value": 14.162, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"},
+            {"key": "massKg", "value": 6200, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Approx 6200 kg, including observatory, on-orbit consumables and launch vehicle adaptor"},
         ],
     },
 ]

@@ -117,7 +117,27 @@ def test_the_frame_and_the_evidence_class() -> None:
 @pytest.mark.parametrize("name", sorted(CRAFTS))
 def test_every_photo_texture_with_a_nasa_mark_has_it_painted_out(name: str) -> None:
     # Recorded per recipe: NASA's insignia and logotype are not public domain (NASA's media guidelines)
-    for material in CRAFTS[name]["materials"].values():
+    for material in CRAFTS[name].get("materials", {}).values():
         for box in material.get("paint_out", []):
             x0, y0, x1, y1 = box["box"]
             assert 0 <= x0 < x1 and 0 <= y0 < y1 and box["what"]
+
+
+@pytest.mark.parametrize("name", sorted(CRAFTS))
+def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str) -> None:
+    recipe = CRAFTS[name]
+    rules = recipe.get("material_rules", [])
+    assert recipe.get("materials") or rules
+    if rules:
+        assert rules[-1]["match"] == [""] and rules[-1]["role"] == "nasa_flat"
+        for rule in rules:
+            if rule["role"] == "pbr":
+                assert all(0 <= c <= 1 for c in rule["base"]) and 0 <= rule["metallic"] <= 1 and 0 < rule["roughness"] <= 1
+
+
+def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
+    near = [e for e in FACTS["entries"] if e["travel"] is None]
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2"}
+    for e in FACTS["entries"]:
+        if e["travel"] is not None:
+            assert e["travel"]["speedKmS"] > 0

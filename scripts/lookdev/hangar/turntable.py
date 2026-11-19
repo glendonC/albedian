@@ -27,6 +27,7 @@ CHASE_ELEVATION_DEG = 14.0  # D26: behind the craft and a little above it
 CHASE_CENTRE_FROM_TOP = 0.62  # D26: the craft's middle at 62 percent of the screen height
 CHASE_WIDTH_PX = 320  # D26: about 320 px across on the laptop
 TURN_ELEVATION_DEG = 15.0
+SKY_STRENGTH = 0.6  # the panorama's brightness as the world light, when one is given
 # Light directions, as the way the light travels, in Blender's frame (the craft travels along -Y). In the chase view the
 # key comes from behind the craft, the camera's side: for a craft leaving the Sun that is where the Sun is.
 CHASE_KEY_TRAVEL = (0.3, -1.0, -0.45)
@@ -37,7 +38,7 @@ HERO_KEY_TRAVEL = (0.35, 1.0, -0.6)
 HERO_RIM_TRAVEL = (-0.6, -1.0, -0.3)
 
 
-def setup_render(samples: int, w: int, h: int) -> None:
+def setup_render(samples: int, w: int, h: int, sky: str | None = None, sky_strength: float = SKY_STRENGTH) -> None:
     scene = bpy.context.scene
     try:
         scene.render.engine = "CYCLES"
@@ -62,6 +63,12 @@ def setup_render(samples: int, w: int, h: int) -> None:
     world.use_nodes = True
     bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
     bg.inputs[0].default_value = (0.0, 0.0, 0.0, 1.0)
+    if sky:
+        # A real sky for the metal to reflect: the app's own Milky Way panorama (ESO/S. Brunier, CC BY 4.0), faint.
+        env = world.node_tree.nodes.new("ShaderNodeTexEnvironment")
+        env.image = bpy.data.images.load(str(Path(sky).resolve()))
+        world.node_tree.links.new(env.outputs["Color"], bg.inputs["Color"])
+        bg.inputs["Strength"].default_value = sky_strength
     key = bpy.data.objects.new("key", bpy.data.lights.new("key", "SUN"))
     key.data.energy = 5.0
     key.data.angle = math.radians(0.53)
@@ -98,6 +105,7 @@ def main() -> None:
     ap.add_argument("--samples", type=int, default=48)
     ap.add_argument("--skip-turn", action="store_true")
     ap.add_argument("--body-radius", type=float, help="metres around the origin the hero shot frames")
+    ap.add_argument("--sky", help="an equirectangular sky image for the craft to reflect, e.g. apps/web/public/textures/eso_milkyway_panorama.jpg")
     args = ap.parse_args(argv)
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -119,7 +127,7 @@ def main() -> None:
     scene.camera = cam
 
     # Chase view. Forward is Blender -Y (glTF +Z), so behind is +Y.
-    setup_render(args.samples, 1440, 900)
+    setup_render(args.samples, 1440, 900, args.sky)
     aim_lights(CHASE_KEY_TRAVEL, CHASE_RIM_TRAVEL)
     cam_data.lens = 35
     across = size.x

@@ -108,7 +108,7 @@
   "files": [
     {
       "path": "hangar/hangar.json",
-      "sha256": "45f7fd8309da4316338d6f942c9ad124b2bf5ab9e1a176b54a1a7ec2c69c04a1",
+      "sha256": "0ad0efec039414845dff6dc339dfba870efc96fa0013b2f5b72bf1595ad9685b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -119,6 +119,65 @@
         "command": "uv run python scripts/lookdev/hangar/write_hangar.py",
         "changes": "Written from the built craft files and from facts read on NASA's pages, not copied: each model's file sizes, triangle counts and true size in metres measured from its own glb, and each speed and fact typed from the NASA page named beside it, with a short quote from that page."
       }
+    },
+    {
+      "path": "hangar/jwst/jwst_lod0.glb",
+      "sha256": "29eefd43ffbd27656faab244c8d47037079914beb12f9ea1096540da606c8fc1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names (gold mirror, silver and pink blankets, black paint, aluminium, solar cells) given physically based materials of that kind, the others keeping NASA's own colour, faces that lie flat within a small angle merged, and the normals made again, smooth within an angle and sharp beyond it."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/jwst/jwst_lod1.glb",
+      "sha256": "3969897d03f6f7d185b52dc7e5c2f050a70091c81eb9dad525829eed516b5ae8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/jwst/jwst_lod2.glb",
+      "sha256": "78ffcfe998b1c55831cef7b50aed57ad962710acd6e5bd093ee446f27261525e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb (4710016 bytes, SHA-256 ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/jwst/jwst_picker.webp",
+      "sha256": "a714dbbb087275c49e71014ca5d6bed1389a63655d3601be465205529cce8869",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft jwst --out apps/web/public/models/hangar/jwst",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.png (518892 bytes, SHA-256 a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",
@@ -146,7 +205,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with about half its triangles, removed by Blender's collapse decimation, and textures at most 1024 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
@@ -161,7 +220,7 @@
         "method": "script",
         "script": "scripts/lookdev/hangar/build_craft.py",
         "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
-        "changes": "The same rebuild as lod0 with under a fifth of its triangles, removed by Blender's collapse decimation, and textures at most 512 pixels on a side."
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
       },
       "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
     },
