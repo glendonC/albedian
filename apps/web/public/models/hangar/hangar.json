@@ -1185,7 +1185,7 @@
           "key": "massKg",
           "value": 15103,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
-          "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants."
+          "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants (fuel and oxidizer)."
         }
       ]
     },

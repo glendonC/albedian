@@ -879,7 +879,7 @@ HANGAR: list[dict] = [
             {"key": "footpadSpanM", "value": 9.4, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The distance between the ends of the footpads on opposite landing legs was 9.4 m."},
             {"key": "descentStageWidthM", "value": 4.2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "an octagonal prism 4.2 meters across and 1.7 m thick"},
             {"key": "ascentStageHeightM", "value": 2.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "approximately 2.8 m high"},
-            {"key": "massKg", "value": 15103, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants."},
+            {"key": "massKg", "value": 15103, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants (fuel and oxidizer)."},
         ],
     },
     {
