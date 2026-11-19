@@ -85,3 +85,29 @@ struct ExposureButton: View {
         .accessibilityLabel("Stop")
     }
 }
+
+/// The capture's one place (MOTION-READY-iphone section 3): aiming, holding still and after the shot, changed inside the
+/// screen, never pushed. Aiming and Hold still show the same live preview and capture button in the same place, so
+/// crossfading the two shows exactly the note's sequence: 0.15 s after the press the aiming tag, rings and line leave
+/// (frameOut) and "Hold still", the crosshairs and the length arrive (frameIn), the preview and the button unchanged. The
+/// shot taken: the hold-still pieces leave and the photo with Take again and Send arrive. The dissolve with Reduce Motion.
+struct CaptureStage: View {
+    let model: CompanionModel
+    let screen: CompanionModel.Screen
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            switch screen {
+            case .aim: AimScreen(model: model).transition(stage(inAfter: 0, outAfter: MotionStyle.captureSequenceDelaySeconds))
+            case .holdStill: HoldStillScreen(model: model).transition(stage(inAfter: MotionStyle.captureSequenceDelaySeconds, outAfter: 0))
+            default: AfterShotScreen(model: model).transition(stage(inAfter: 0, outAfter: 0))
+            }
+        }
+    }
+
+    private func stage(inAfter: Double, outAfter: Double) -> AnyTransition {
+        .asymmetric(insertion: .opacity.animation(.motion(MotionStyle.frameIn, after: inAfter, reduceMotion: reduceMotion)),
+                    removal: .opacity.animation(.motion(MotionStyle.frameOut, after: outAfter, reduceMotion: reduceMotion)))
+    }
+}

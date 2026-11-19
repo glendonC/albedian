@@ -425,6 +425,21 @@ final class CompanionModel {
                               AimingSky(latDeg: n[0], lonDeg: n[1], headingAccuracyDeg: 12), n[4])
                 screen = .aim
                 startSky()
+                // `-AlbedianSequence <photo path>` then plays the capture's two changes for a look at their motion
+                // (MOTION-READY-iphone section 3): Hold still 3 s in, with the mockup's 1.1 s exposure, and after the shot
+                // with that photo 2 s later. A stand-in, never a capture
+                if let at = args.firstIndex(of: "-AlbedianSequence"), args.indices.contains(at + 1),
+                   let photo = FileManager.default.contents(atPath: args[at + 1]) {
+                    Task { @MainActor [weak self] in
+                        try? await Task.sleep(for: .seconds(3))
+                        guard let self else { return }
+                        self.exposureSec = 1.1
+                        self.exposureBegan = Date()
+                        self.screen = .holdStill
+                        try? await Task.sleep(for: .seconds(2))
+                        self.show(KeptShot(photo: photo, contentType: .jpeg, recordWire: nil, sha256: PhotoHash.sha256Hex(photo)))
+                    }
+                }
                 return
             }
         }

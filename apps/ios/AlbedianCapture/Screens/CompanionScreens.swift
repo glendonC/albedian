@@ -75,9 +75,7 @@ struct CompanionRoot: View {
             switch screen {
             case .home: HomeScreen(model: model)
             case .credits: CreditsScreen(model: model)
-            case .aim: AimScreen(model: model)
-            case .holdStill: HoldStillScreen(model: model)
-            case .afterShot: AfterShotScreen(model: model)
+            case .aim, .holdStill, .afterShot: CaptureStage(model: model, screen: screen)
             case .pairing: ConnectScreen(model: model)
             case .waiting: WaitingScreen(model: model)
             case .stopped: StoppedScreen(model: model)
