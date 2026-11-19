@@ -48,6 +48,7 @@ export const CREDIT_ROWS = [
   { name: 'The Earth', approved: false },
   { name: 'Lupus 3 photograph', approved: false },
   { name: 'The Local Bubble', approved: false },
+  { name: 'Spacecraft and spacesuit', approved: false },
   { name: 'Unicode character data', approved: false },
   { name: 'Sound', approved: false },
 ] as const;
@@ -87,6 +88,9 @@ export const SOURCE_ROW: Readonly<Record<string, CreditRowName>> = {
   'nasa-bmng-2004-03-base': 'The Earth',
   eso1804a: 'Lupus 3 photograph',
   'oneill-2024-local-bubble': 'The Local Bubble',
+  'nasa-3d-resources-voyager-probe-b': 'Spacecraft and spacesuit',
+  'nasa-3d-resources-james-webb-space-telescope-a': 'Spacecraft and spacesuit',
+  'nasa-3d-resources-astronaut': 'Spacecraft and spacesuit',
   'unicode-ucd-15.1.0': 'Unicode character data',
   'unicode-ucd-15.0.0': 'Unicode character data',
   'unicode-ucd-16.0.0': 'Unicode character data',
