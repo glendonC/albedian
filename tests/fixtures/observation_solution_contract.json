@@ -1220,7 +1220,8 @@
    "type": "choice",
    "values": [
     "search_hint",
-    "pose_estimate"
+    "pose_estimate",
+    "moment"
    ],
    "accept": [],
    "refuse": [
@@ -1970,16 +1971,19 @@
     "rule": "pointingUse",
     "array": true,
     "minItems": 1,
-    "maxItems": 2
+    "maxItems": 3
    },
    "centerAltDeg": {
-    "rule": "degrees90"
+    "rule": "degrees90",
+    "optional": true
    },
    "centerAzDeg": {
-    "rule": "degrees0to360"
+    "rule": "degrees0to360",
+    "optional": true
    },
    "uncertaintyDeg": {
-    "rule": "hintUncertaintyDeg"
+    "rule": "hintUncertaintyDeg",
+    "optional": true
    },
    "verifiedCenterOffsetDeg": {
     "rule": "skyOffsetDeg",
@@ -3715,7 +3719,8 @@
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
      "search_hint",
-     "pose_estimate"
+     "pose_estimate",
+     "moment"
     ],
     "centerAltDeg": 33.0,
     "centerAzDeg": 224.0,
@@ -3781,7 +3786,8 @@
    "pointingHint": {
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
-     "search_hint"
+     "search_hint",
+     "moment"
     ],
     "centerAltDeg": 33.0,
     "centerAzDeg": 224.0,
@@ -3882,12 +3888,310 @@
    "pointingHint": {
     "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
     "usedAs": [
-     "search_hint"
+     "search_hint",
+     "moment"
     ],
     "centerAltDeg": 33.0,
     "centerAzDeg": 224.0,
     "uncertaintyDeg": 12.0,
     "timeFrom": "record",
+    "placeFrom": "record"
+   }
+  },
+  "approximate_with_a_device_pose_not_searched": {
+   "id": "sol-contract-device-pose",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "approximate",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-obs-1",
+     "observationSolutionId": "sol-contract-device-pose",
+     "evidenceClass": "observed",
+     "title": "Observed Point Source #1 (hand-built contract sample)",
+     "subtitle": "At (412.5, 300.2) px",
+     "sourceDetection": {
+      "assetId": "src-contract-sample",
+      "frameTimeSec": 0.0,
+      "xPx": 412.5,
+      "yPx": 300.25,
+      "flux": 5000.0,
+      "snr": 25.0,
+      "fwhmPx": 2.5,
+      "centroidUncertaintyPx": 0.1
+     },
+     "evidence": {
+      "id": "ev-finding-obs-1",
+      "evidenceClass": "observed",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false
+     }
+    }
+   ],
+   "warnings": [],
+   "poseEstimate": {
+    "method": "device_attitude",
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "rollDeg": 0.0,
+    "fovDiagonalDeg": 38.2,
+    "fovSource": "The pointing record's field of view and zoom (a synthetic record for contract tests).",
+    "assumptions": [
+     "The attitude and the heading are as the phone's sensors reported them."
+    ],
+    "sweptWcs": [
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0315,
+      "rotationDeg": -1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 30.24,
+      "fovVerticalDeg": 17.01
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.035,
+      "rotationDeg": 4.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 33.6,
+      "fovVerticalDeg": 18.9
+     },
+     {
+      "projection": "TAN",
+      "crvalRaDeg": 83.8,
+      "crvalDecDeg": 4.0,
+      "crpixX": 480.0,
+      "crpixY": 270.0,
+      "scaleDegPerPx": 0.0385,
+      "rotationDeg": 1.5,
+      "radialDistortionK1": -0.008,
+      "radialDistortionK2": 0.001,
+      "parity": -1,
+      "fovHorizontalDeg": 36.96,
+      "fovVerticalDeg": 20.79
+     }
+    ],
+    "maxCenterOffsetDeg": 0.4
+   },
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "pose_estimate",
+     "moment"
+    ],
+    "centerAltDeg": 33.0,
+    "centerAzDeg": 224.0,
+    "uncertaintyDeg": 12.0,
+    "timeFrom": "record",
+    "placeFrom": "record"
+   }
+  },
+  "predicted_only_with_the_records_moment_only": {
+   "id": "sol-contract-predicted",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "predicted_only",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "quality": {
+    "detectedCandidateCount": 1,
+    "matchedInlierCount": 0,
+    "heldOutPairCount": 0,
+    "heldOutInliers": 0,
+    "passedIndependentVerification": false
+   },
+   "findings": [
+    {
+     "id": "finding-predicted-star-rigel",
+     "observationSolutionId": "sol-contract-predicted",
+     "evidenceClass": "predicted",
+     "title": "Rigel",
+     "subtitle": "Predicted star (hand-built contract sample)",
+     "catalogRef": {
+      "id": "star-rigel",
+      "provider": "Hipparcos",
+      "releaseVersion": "Hipparcos 2007",
+      "catalogSourceId": "HIP 24436",
+      "commonName": "Rigel",
+      "bayerDesignation": "Beta Orionis",
+      "constellation": "Orion",
+      "objectType": "star",
+      "coordinateEpoch": "J2000.0",
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "apparentMagnitude": 0.13,
+      "properMotionRaMasYr": 1.31,
+      "properMotionDecMasYr": 0.5,
+      "bailerJonesDistancePc": {
+       "lower": 242.71844660194174,
+       "median": 264.55026455026456,
+       "upper": 290.69767441860466,
+       "method": "geometric_parallax"
+      },
+      "citation": "Catalog id, parallax and distance (1000/parallax): Hipparcos 2007, van Leeuwen (2007) A&A 474, 653.",
+      "parallaxMas": 3.78,
+      "parallaxErrorMas": 0.34
+     },
+     "skyPosition": {
+      "raDeg": 78.634467,
+      "decDeg": -8.201638,
+      "uncertaintyArcsec": 13.050116735294871,
+      "altDeg": 50.18778706912651,
+      "azDeg": 198.38741087613562
+     },
+     "inferredDistancePc": {
+      "lower": 242.71844660194174,
+      "median": 264.55026455026456,
+      "upper": 290.69767441860466,
+      "method": "geometric_parallax"
+     },
+     "cartesianParsecICRS": [
+      51.60106686984617,
+      256.70968851076134,
+      -37.740007898999316
+     ],
+     "evidence": {
+      "id": "ev-finding-predicted-star-rigel",
+      "evidenceClass": "predicted",
+      "verificationMethod": "Hand-built for the contract fixture",
+      "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+      "limitations": [
+       "A hand-built contract sample, not a measurement."
+      ],
+      "verifiedByIndependentHoldout": false,
+      "catalogReferenceId": "star-rigel"
+     }
+    }
+   ],
+   "warnings": [],
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "moment"
+    ],
+    "timeFrom": "record",
+    "placeFrom": "record"
+   }
+  },
+  "calibrated_with_the_records_moment_only": {
+   "id": "sol-contract-gate",
+   "sourceAssetId": "src-contract-sample",
+   "sourceSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+   "frameTimeSec": 0.0,
+   "revision": 1,
+   "status": "calibrated",
+   "observedAtUTC": "2030-01-01T02:00:00Z",
+   "observerLocation": {
+    "latDeg": 30.0,
+    "lonDeg": -40.0
+   },
+   "solver": {
+    "name": "hand-built contract sample",
+    "version": "0",
+    "catalogRelease": "none"
+   },
+   "wcs": {
+    "projection": "TAN",
+    "crvalRaDeg": 83.8,
+    "crvalDecDeg": 4.0,
+    "crpixX": 480.0,
+    "crpixY": 270.0,
+    "scaleDegPerPx": 0.035,
+    "rotationDeg": 1.5,
+    "radialDistortionK1": -0.008,
+    "radialDistortionK2": 0.001,
+    "parity": -1,
+    "fovHorizontalDeg": 33.6,
+    "fovVerticalDeg": 18.9
+   },
+   "quality": {
+    "detectedCandidateCount": 12,
+    "matchedInlierCount": 6,
+    "heldOutPairCount": 6,
+    "heldOutInliers": 6,
+    "medianResidualPx": 3.0,
+    "p95ResidualPx": 3.0,
+    "medianResidualArcsec": 378.0,
+    "passedIndependentVerification": true,
+    "detection": {
+     "evidenceClass": "observed",
+     "statistic": "whitened",
+     "noiseLimits": [],
+     "starProfile": {
+      "sigmaMajorPx": 2.1,
+      "sigmaMinorPx": 1.6,
+      "angleRad": 0.5,
+      "stars": 37
+     }
+    }
+   },
+   "findings": [],
+   "warnings": [],
+   "pointingHint": {
+    "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
+    "usedAs": [
+     "moment"
+    ],
+    "timeFrom": "file",
     "placeFrom": "record"
    }
   },
@@ -6030,7 +6334,8 @@
       "usedAs"
      ],
      "value": [
-      "search_hint"
+      "search_hint",
+      "moment"
      ]
     }
    ],
@@ -6055,7 +6360,8 @@
       "sourceAssetSha256": "cd6d4797ca18a977a4840cc1909898abbda6e0f16ee92b10a4854b5c8c84386e",
       "usedAs": [
        "search_hint",
-       "pose_estimate"
+       "pose_estimate",
+       "moment"
       ],
       "centerAltDeg": 33.0,
       "centerAzDeg": 224.0,
@@ -6085,11 +6391,36 @@
      ],
      "value": [
       "search_hint",
-      "pose_estimate"
+      "pose_estimate",
+      "moment"
      ]
     }
    ],
    "reason": "a hint used as the pose of a solution with no pose",
+   "paths": [
+    "poseEstimate"
+   ],
+   "messages": [
+    "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude."
+   ]
+  },
+  {
+   "name": "hint_as_the_pose_of_a_calibrated_solution",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "pose_estimate",
+      "moment"
+     ]
+    }
+   ],
+   "reason": "a calibrated solution's hint used as a pose it does not have",
    "paths": [
     "poseEstimate"
    ],
@@ -6149,7 +6480,8 @@
      ],
      "value": [
       "search_hint",
-      "search_hint"
+      "search_hint",
+      "moment"
      ]
     }
    ],
@@ -6158,7 +6490,7 @@
     "pointingHint.usedAs"
    ],
    "messages": [
-    "A pointing hint lists each use at most once, search_hint before pose_estimate."
+    "A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment."
    ]
   },
   {
@@ -6173,7 +6505,8 @@
      ],
      "value": [
       "pose_estimate",
-      "search_hint"
+      "search_hint",
+      "moment"
      ]
     }
    ],
@@ -6182,7 +6515,273 @@
     "pointingHint.usedAs"
    ],
    "messages": [
-    "A pointing hint lists each use at most once, search_hint before pose_estimate."
+    "A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment."
+   ]
+  },
+  {
+   "name": "moment_without_the_record",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "placeFrom"
+     ],
+     "value": "file"
+    }
+   ],
+   "reason": "a hint that says moment when the time and the place came from the file",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint says moment exactly when the solution's time or its place came from the record."
+   ]
+  },
+  {
+   "name": "record_time_not_said",
+   "base": "calibrated_with_a_pointing_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "timeFrom"
+     ],
+     "value": "record"
+    },
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "placeFrom"
+     ],
+     "value": "file"
+    },
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint"
+     ]
+    }
+   ],
+   "reason": "a hint whose time came from the record and its place from the file, not saying moment",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint says moment exactly when the solution's time or its place came from the record."
+   ]
+  },
+  {
+   "name": "moment_only_hint_with_centerAltDeg",
+   "base": "predicted_only_with_the_records_moment_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "centerAltDeg"
+     ],
+     "value": 33.0
+    }
+   ],
+   "reason": "a moment-only hint that gives centerAltDeg",
+   "paths": [
+    "pointingHint.centerAltDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "search_hint_without_centerAltDeg",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "centerAltDeg"
+     ]
+    }
+   ],
+   "reason": "a search hint with no centerAltDeg",
+   "paths": [
+    "pointingHint.centerAltDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "pose_only_hint_without_centerAltDeg",
+   "base": "approximate_with_a_device_pose_not_searched",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "centerAltDeg"
+     ]
+    }
+   ],
+   "reason": "a hint used only as the pose with no centerAltDeg",
+   "paths": [
+    "pointingHint.centerAltDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "moment_only_hint_with_centerAzDeg",
+   "base": "predicted_only_with_the_records_moment_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "centerAzDeg"
+     ],
+     "value": 224.0
+    }
+   ],
+   "reason": "a moment-only hint that gives centerAzDeg",
+   "paths": [
+    "pointingHint.centerAzDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "search_hint_without_centerAzDeg",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "centerAzDeg"
+     ]
+    }
+   ],
+   "reason": "a search hint with no centerAzDeg",
+   "paths": [
+    "pointingHint.centerAzDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "pose_only_hint_without_centerAzDeg",
+   "base": "approximate_with_a_device_pose_not_searched",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "centerAzDeg"
+     ]
+    }
+   ],
+   "reason": "a hint used only as the pose with no centerAzDeg",
+   "paths": [
+    "pointingHint.centerAzDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "moment_only_hint_with_uncertaintyDeg",
+   "base": "predicted_only_with_the_records_moment_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "uncertaintyDeg"
+     ],
+     "value": 12.0
+    }
+   ],
+   "reason": "a moment-only hint that gives uncertaintyDeg",
+   "paths": [
+    "pointingHint.uncertaintyDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "search_hint_without_uncertaintyDeg",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "uncertaintyDeg"
+     ]
+    }
+   ],
+   "reason": "a search hint with no uncertaintyDeg",
+   "paths": [
+    "pointingHint.uncertaintyDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "pose_only_hint_without_uncertaintyDeg",
+   "base": "approximate_with_a_device_pose_not_searched",
+   "patch": [
+    {
+     "op": "remove",
+     "path": [
+      "pointingHint",
+      "uncertaintyDeg"
+     ]
+    }
+   ],
+   "reason": "a hint used only as the pose with no uncertaintyDeg",
+   "paths": [
+    "pointingHint.uncertaintyDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose."
+   ]
+  },
+  {
+   "name": "record_moment_not_said",
+   "base": "predicted_only_with_a_search_hint",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "usedAs"
+     ],
+     "value": [
+      "search_hint"
+     ]
+    }
+   ],
+   "reason": "a hint whose time and place came from the record and that does not say moment",
+   "paths": [
+    "pointingHint.usedAs"
+   ],
+   "messages": [
+    "A pointing hint says moment exactly when the solution's time or its place came from the record."
    ]
   },
   {
@@ -6203,7 +6802,28 @@
     "pointingHint.verifiedCenterOffsetDeg"
    ],
    "messages": [
-    "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+    "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one."
+   ]
+  },
+  {
+   "name": "calibrated_moment_only_hint_with_an_offset",
+   "base": "calibrated_with_the_records_moment_only",
+   "patch": [
+    {
+     "op": "set",
+     "path": [
+      "pointingHint",
+      "verifiedCenterOffsetDeg"
+     ],
+     "value": 1.0
+    }
+   ],
+   "reason": "a calibrated solution's moment-only hint that gives an offset from a centre it has not",
+   "paths": [
+    "pointingHint.verifiedCenterOffsetDeg"
+   ],
+   "messages": [
+    "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one."
    ]
   },
   {
@@ -6223,7 +6843,7 @@
     "pointingHint.verifiedCenterOffsetDeg"
    ],
    "messages": [
-    "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+    "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one."
    ]
   },
   {
@@ -9029,10 +9649,10 @@
   ]
  },
  "keyCases": {
-  "levels": 191,
-  "dropped": 2283,
-  "refusedUnknown": 69,
-  "refusedWhenRenamed": 918,
-  "leftOutWhenRenamed": 97
+  "levels": 223,
+  "dropped": 2654,
+  "refusedUnknown": 89,
+  "refusedWhenRenamed": 1071,
+  "leftOutWhenRenamed": 111
  }
 }

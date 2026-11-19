@@ -220,8 +220,16 @@ SAYS = {
         "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
         "device attitude."
     ),
-    "hint_uses": "A pointing hint lists each use at most once, search_hint before pose_estimate.",
-    "hint_offset": "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution.",
+    "hint_uses": "A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment.",
+    "hint_moment_use": "A pointing hint says moment exactly when the solution's time or its place came from the record.",
+    "hint_centre": (
+        "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the "
+        "pose."
+    ),
+    "hint_offset": (
+        "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution "
+        "whose hint gives one."
+    ),
     "hint_moment": (
         "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
         "observerLocation."
@@ -488,7 +496,7 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
         assumptions=["The attitude and the heading are as the phone's sensors reported them."],
     )
     hint = {
-        "sourceAssetSha256": SHA, "usedAs": ["search_hint", "pose_estimate"], "centerAltDeg": 33.0, "centerAzDeg": 224.0,
+        "sourceAssetSha256": SHA, "usedAs": ["search_hint", "pose_estimate", "moment"], "centerAltDeg": 33.0, "centerAzDeg": 224.0,
         "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
     }
     valid["approximate_with_device_attitude_pose"] = _solution(
@@ -497,10 +505,24 @@ def _samples() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     )
     valid["calibrated_with_a_pointing_hint"] = {
         **copy.deepcopy(valid["calibrated_at_the_gate"]),
-        "pointingHint": {**hint, "usedAs": ["search_hint"], "verifiedCenterOffsetDeg": 3.5, "timeFrom": "file"},
+        "pointingHint": {**hint, "usedAs": ["search_hint", "moment"], "verifiedCenterOffsetDeg": 3.5, "timeFrom": "file"},
     }
     valid["predicted_only_with_a_search_hint"] = {
-        **copy.deepcopy(valid["predicted_only"]), "pointingHint": {**hint, "usedAs": ["search_hint"]},
+        **copy.deepcopy(valid["predicted_only"]), "pointingHint": {**hint, "usedAs": ["search_hint", "moment"]},
+    }
+    # A device pose the search did not use: the hint is the pose alone and still gives its centre (pointing-3b)
+    valid["approximate_with_a_device_pose_not_searched"] = {
+        **copy.deepcopy(valid["approximate_with_device_attitude_pose"]), "pointingHint": {**hint, "usedAs": ["pose_estimate", "moment"]},
+    }
+    # A record with a place and no heading lends the photo only its time and place (pointing-3b)
+    moment_only = {key: value for key, value in hint.items() if key not in ("centerAltDeg", "centerAzDeg", "uncertaintyDeg")}
+    valid["predicted_only_with_the_records_moment_only"] = {
+        **copy.deepcopy(valid["predicted_only"]), "pointingHint": {**moment_only, "usedAs": ["moment"]},
+    }
+    # A photo with no place that solves by its stars: the record lent its place, and with no centre no offset is said
+    valid["calibrated_with_the_records_moment_only"] = {
+        **copy.deepcopy(valid["calibrated_at_the_gate"]),
+        "pointingHint": {**moment_only, "usedAs": ["moment"], "timeFrom": "file"},
     }
     # In an approximate solution, the status a pose estimate has, an observed finding may hold the pose fit's residual
     # (the lead's ruling of 2026-11-12 on the observed Moon; the horizon solver writes its beacon so)
@@ -691,21 +713,43 @@ def _invalid(valid: dict[str, dict[str, Any]], parts: dict[str, Any]) -> list[di
     bad("device_pose_without_a_hint", device, "a pose from the device attitude with no pointing hint", ["pointingHint"],
         drop(["pointingHint"]), says=(SAYS["hint_pose"],))
     bad("device_pose_with_a_search_hint_only", device, "a pose from the device attitude whose hint was only a search hint",
-        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint"]), says=(SAYS["hint_pose"],))
+        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint", "moment"]), says=(SAYS["hint_pose"],))
     bad("hint_as_the_pose_of_a_moon_pose", "approximate_with_pose", "a hint used as the pose of a pose lined up from the Moon",
         ["pointingHint.usedAs"], put(["pointingHint"], parts["hint"]), says=(SAYS["hint_pose"],))
     bad("hint_as_the_pose_with_no_pose", searched, "a hint used as the pose of a solution with no pose", ["poseEstimate"],
-        put(["pointingHint", "usedAs"], ["search_hint", "pose_estimate"]), says=(SAYS["hint_pose"],))
+        put(["pointingHint", "usedAs"], ["search_hint", "pose_estimate", "moment"]), says=(SAYS["hint_pose"],))
+    bad("hint_as_the_pose_of_a_calibrated_solution", hinted, "a calibrated solution's hint used as a pose it does not have",
+        ["poseEstimate"], put(["pointingHint", "usedAs"], ["pose_estimate", "moment"]), says=(SAYS["hint_pose"],))
     bad("hint_of_another_recording", hinted, "a hint that names another recording", ["pointingHint.sourceAssetSha256"],
         put(["pointingHint", "sourceAssetSha256"], "ab" * 32), says=(SAYS["hint_recording"],))
     bad("hint_of_no_recording", searched, "a hint on a solution that names no recording", ["sourceSha256"],
         drop(["sourceSha256"]), says=(SAYS["hint_recording"],))
     bad("hint_used_twice_alike", hinted, "a hint that lists a use twice", ["pointingHint.usedAs"],
-        put(["pointingHint", "usedAs"], ["search_hint", "search_hint"]), says=(SAYS["hint_uses"],))
+        put(["pointingHint", "usedAs"], ["search_hint", "search_hint", "moment"]), says=(SAYS["hint_uses"],))
     bad("hint_uses_out_of_order", device, "a hint that lists its uses out of order", ["pointingHint.usedAs"],
-        put(["pointingHint", "usedAs"], ["pose_estimate", "search_hint"]), says=(SAYS["hint_uses"],))
+        put(["pointingHint", "usedAs"], ["pose_estimate", "search_hint", "moment"]), says=(SAYS["hint_uses"],))
+    bad("moment_without_the_record", hinted, "a hint that says moment when the time and the place came from the file",
+        ["pointingHint.usedAs"], put(["pointingHint", "placeFrom"], "file"), says=(SAYS["hint_moment_use"],))
+    bad("record_time_not_said", hinted, "a hint whose time came from the record and its place from the file, not saying moment",
+        ["pointingHint.usedAs"], put(["pointingHint", "timeFrom"], "record"), put(["pointingHint", "placeFrom"], "file"),
+        put(["pointingHint", "usedAs"], ["search_hint"]), says=(SAYS["hint_moment_use"],))
+    moment_only = "predicted_only_with_the_records_moment_only"
+    for key, value in (("centerAltDeg", 33.0), ("centerAzDeg", 224.0), ("uncertaintyDeg", 12.0)):
+        bad(f"moment_only_hint_with_{key}", moment_only, f"a moment-only hint that gives {key}", [f"pointingHint.{key}"],
+            put(["pointingHint", key], value), says=(SAYS["hint_centre"],))
+        bad(f"search_hint_without_{key}", searched, f"a search hint with no {key}", [f"pointingHint.{key}"],
+            drop(["pointingHint", key]), says=(SAYS["hint_centre"],))
+        bad(f"pose_only_hint_without_{key}", "approximate_with_a_device_pose_not_searched",
+            f"a hint used only as the pose with no {key}", [f"pointingHint.{key}"], drop(["pointingHint", key]),
+            says=(SAYS["hint_centre"],))
+    bad("record_moment_not_said", searched, "a hint whose time and place came from the record and that does not say moment",
+        ["pointingHint.usedAs"], put(["pointingHint", "usedAs"], ["search_hint"]), says=(SAYS["hint_moment_use"],))
     bad("hint_offset_on_an_approximate_solution", device, "a verified offset on a solution with no verified WCS",
         ["pointingHint.verifiedCenterOffsetDeg"], put(["pointingHint", "verifiedCenterOffsetDeg"], 1.0), says=(SAYS["hint_offset"],))
+    bad("calibrated_moment_only_hint_with_an_offset", "calibrated_with_the_records_moment_only",
+        "a calibrated solution's moment-only hint that gives an offset from a centre it has not",
+        ["pointingHint.verifiedCenterOffsetDeg"], put(["pointingHint", "verifiedCenterOffsetDeg"], 1.0),
+        says=(SAYS["hint_offset"],))
     bad("calibrated_hint_without_its_offset", hinted, "a calibrated solution's hint with no verified offset",
         ["pointingHint.verifiedCenterOffsetDeg"], drop(["pointingHint", "verifiedCenterOffsetDeg"]), says=(SAYS["hint_offset"],))
     bad("hint_without_a_time", hinted, "a hint on a solution with no capture time", ["observedAtUTC"],

@@ -853,34 +853,41 @@ class PoseEstimate:
 @dataclass(frozen=True)
 class PointingHint:
     """How a solve used the phone's pointing record, as the contract's PointingHint: the record's photo, what it was
-    used as (`search_hint`, `pose_estimate`, or both, in that order), the hinted frame centre's altitude and azimuth
+    used as (`search_hint`, `pose_estimate` and `moment`, each at most once, in that order; `moment` exactly when the
+    solution's time or place came from the record), the hinted frame centre's altitude and azimuth
     with the uncertainty the record states, the verified centre's offset from it on a calibrated solution, and where
     the solution's time and place came from (`file` or `record`). Never a measurement of the sky. `ObservationSolution`
     ties it to its own photo, status, pose and moment."""
 
     source_asset_sha256: str
     used_as: tuple[str, ...]
-    center_alt_deg: float
-    center_az_deg: float
-    uncertainty_deg: float
     time_from: str
     place_from: str
+    # Given exactly when the hint was a search hint or the pose (a heading's centre and its uncertainty)
+    center_alt_deg: float | None = None
+    center_az_deg: float | None = None
+    uncertainty_deg: float | None = None
     verified_center_offset_deg: float | None = None
 
     def __post_init__(self) -> None:
         require_source_sha256(self.source_asset_sha256)
         if not isinstance(self.used_as, (list, tuple)) or not 1 <= len(self.used_as) <= len(contract.POINTING_USES):
-            raise ContractRefusal("A pointing hint names one or two uses.")
+            raise ContractRefusal(f"A pointing hint names one to {len(contract.POINTING_USES)} uses.")
         used_as = tuple(self.used_as)
         if any(use not in contract.POINTING_USES for use in used_as) or not contract.listed_once_each_in_order(
             used_as, contract.POINTING_USES
         ):
             raise ContractRefusal(contract.HINT_USES)
+        centre_issues = contract.hint_centre_issues(self)
+        if centre_issues:
+            raise ContractRefusal(centre_issues[0][1])
         for name, value, lo, hi, open_low in (
             ("center_alt_deg", self.center_alt_deg, -90.0, 90.0, False),
             ("center_az_deg", self.center_az_deg, 0.0, 360.0, False),
             ("uncertainty_deg", self.uncertainty_deg, 0.0, 180.0, True),
         ):
+            if value is None:
+                continue
             if not _is_number(value) or not (lo < value if open_low else lo <= value) or not value <= hi:
                 raise ContractRefusal(f"A pointing hint's {name} lies in {'(' if open_low else '['}{lo:g}, {hi:g}] (got {value!r}).")
         offset = self.verified_center_offset_deg
@@ -892,15 +899,11 @@ class PointingHint:
         object.__setattr__(self, "used_as", used_as)
 
     def to_contract_dict(self) -> dict:
-        result = {
-            "sourceAssetSha256": self.source_asset_sha256,
-            "usedAs": list(self.used_as),
-            "centerAltDeg": float(self.center_alt_deg),
-            "centerAzDeg": float(self.center_az_deg),
-            "uncertaintyDeg": float(self.uncertainty_deg),
-            "timeFrom": self.time_from,
-            "placeFrom": self.place_from,
-        }
+        result = {"sourceAssetSha256": self.source_asset_sha256, "usedAs": list(self.used_as)}
+        for key, value in (("centerAltDeg", self.center_alt_deg), ("centerAzDeg", self.center_az_deg), ("uncertaintyDeg", self.uncertainty_deg)):
+            if value is not None:
+                result[key] = float(value)
+        result.update({"timeFrom": self.time_from, "placeFrom": self.place_from})
         if self.verified_center_offset_deg is not None:
             result["verifiedCenterOffsetDeg"] = float(self.verified_center_offset_deg)
         return result

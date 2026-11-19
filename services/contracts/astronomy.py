@@ -61,7 +61,7 @@ DEVICE_ATTITUDE = "device_attitude"
 POSE_METHODS = (*POSE_METHOD_BEACONS, DEVICE_ATTITUDE)
 POSE_BEACONS = ("moon", "sun")
 # How a solve used the phone's pointing record, in this order, and where a solution's time and place came from
-POINTING_USES = ("search_hint", "pose_estimate")
+POINTING_USES = ("search_hint", "pose_estimate", "moment")
 MOMENT_SOURCES = ("file", "record")
 MIN_SWEPT_WCS = 2
 MAX_SWEPT_WCS = 27
@@ -235,8 +235,18 @@ HINT_POSE = (
     "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
     "device attitude."
 )
-HINT_USES = "A pointing hint lists each use at most once, search_hint before pose_estimate."
-HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+HINT_USES = "A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment."
+HINT_MOMENT_USE = "A pointing hint says moment exactly when the solution's time or its place came from the record."
+HINT_CENTRE = (
+    "A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the "
+    "pose."
+)
+# The hint's fields that only a heading gives: the hinted centre and its stated uncertainty
+HINT_CENTRE_FIELDS = (("centerAltDeg", "center_alt_deg"), ("centerAzDeg", "center_az_deg"), ("uncertaintyDeg", "uncertainty_deg"))
+HINT_OFFSET = (
+    "A pointing hint gives the verified centre's offset from its h"
+    "inted centre exactly on a calibrated solution whose hint gives one."
+)
 HINT_MOMENT = (
     "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
     "observerLocation."
@@ -789,18 +799,33 @@ class PointingHint(_Contract):
 
     source_asset_sha256: Sha256
     used_as: _listed(Annotated[str, POINTING_USE], 1, len(POINTING_USES))
-    center_alt_deg: Degrees90
-    center_az_deg: Degrees0To360
-    uncertainty_deg: Annotated[float, HINT_UNCERTAINTY]
+    # Present exactly when the hint was used as a search hint or the pose: only a heading gives a centre
+    center_alt_deg: Optional[Degrees90] = None
+    center_az_deg: Optional[Degrees0To360] = None
+    uncertainty_deg: Optional[Annotated[float, HINT_UNCERTAINTY]] = None
     verified_center_offset_deg: Optional[Annotated[float, SKY_OFFSET]] = None
     time_from: Annotated[str, MOMENT_SOURCE]
     place_from: Annotated[str, MOMENT_SOURCE]
 
     @model_validator(mode="after")
     def _rules(self) -> PointingHint:
+        issues = hint_centre_issues(self)
         if not listed_once_each_in_order(self.used_as, POINTING_USES):
-            raise _refusal("PointingHint", [(("usedAs",), HINT_USES)])
+            issues.insert(0, (("usedAs",), HINT_USES))
+        if issues:
+            raise _refusal("PointingHint", issues)
         return self
+
+
+def hint_centre_issues(hint: Any) -> list[Issue]:
+    """The hinted centre and its uncertainty are given exactly when the hint was a search hint or the pose."""
+    centred = hint_is_centred(hint.used_as)
+    return [((wire,), HINT_CENTRE) for wire, name in HINT_CENTRE_FIELDS if (getattr(hint, name) is not None) != centred]
+
+
+def hint_is_centred(used_as: Any) -> bool:
+    """A hint has a hinted centre exactly when it was a search hint or the pose; a moment-only one has none."""
+    return "search_hint" in used_as or "pose_estimate" in used_as
 
 
 class ObserverLocation(_Contract):
@@ -1013,7 +1038,8 @@ def pointing_hint_issues(
     status: str, source_sha256: Any, has_time: bool, has_place: bool, pose_method: Any, hint: Any
 ) -> list[Issue]:
     """The rules between a pointing hint and its solution: the hint's photo is the solution's, it is used as the pose
-    exactly when the pose is the device attitude's, it states the verified offset exactly on a calibrated solution,
+    exactly when the pose is the device attitude's, it states the verified offset exactly on a calibrated solution
+    whose hint gives a centre,
     and a solution with a hint has a time and a place."""
     # Each issue is named where it is: at a field the rule needs when that field is missing, else at the hint's own
     issues: list[Issue] = []
@@ -1030,7 +1056,9 @@ def pointing_hint_issues(
         issues.append((("poseEstimate",), HINT_POSE))
     elif ("pose_estimate" in hint.used_as) != device_pose:
         issues.append((("pointingHint", "usedAs"), HINT_POSE))
-    if (hint.verified_center_offset_deg is not None) != (status == "calibrated"):
+    if ("moment" in hint.used_as) != (hint.time_from == "record" or hint.place_from == "record"):
+        issues.append((("pointingHint", "usedAs"), HINT_MOMENT_USE))
+    if (hint.verified_center_offset_deg is not None) != (status == "calibrated" and hint_is_centred(hint.used_as)):
         issues.append((("pointingHint", "verifiedCenterOffsetDeg"), HINT_OFFSET))
     if not has_time:
         issues.append((("observedAtUTC",), HINT_MOMENT))

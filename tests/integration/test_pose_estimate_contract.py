@@ -459,8 +459,11 @@ HINT_POSE = (
     "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the "
     "device attitude."
 )
-HINT_USES = "A pointing hint lists each use at most once, search_hint before pose_estimate."
-HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution."
+HINT_USES = "A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment."
+HINT_OFFSET = (
+    "A pointing hint gives the verified centre's offset from its h"
+    "inted centre exactly on a calibrated solution whose hint gives one."
+)
 HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256."
 HINT_MOMENT = (
     "A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and "
@@ -476,7 +479,7 @@ def device_pose(**overrides: Any) -> PoseEstimate:
 
 def hint(**overrides: Any) -> PointingHint:
     fields: dict[str, Any] = {
-        "source_asset_sha256": RECORD_SHA, "used_as": ("search_hint", "pose_estimate"), "center_alt_deg": 33.0,
+        "source_asset_sha256": RECORD_SHA, "used_as": ("search_hint", "pose_estimate", "moment"), "center_alt_deg": 33.0,
         "center_az_deg": 224.0, "uncertainty_deg": 12.0, "time_from": "record", "place_from": "record", **overrides,
     }
     return PointingHint(**fields)
@@ -505,15 +508,15 @@ def test_a_pose_from_the_device_attitude_names_no_beacon() -> None:
 def test_a_pointing_hint_rides_with_its_solution_by_the_contracts_rules() -> None:
     written = hinted(pose=device_pose(), pointing=hint()).to_contract_dict()
     assert written["pointingHint"] == {
-        "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint", "pose_estimate"], "centerAltDeg": 33.0,
+        "sourceAssetSha256": RECORD_SHA, "usedAs": ["search_hint", "pose_estimate", "moment"], "centerAltDeg": 33.0,
         "centerAzDeg": 224.0, "uncertaintyDeg": 12.0, "timeFrom": "record", "placeFrom": "record",
     }
     assert "pointingHint" not in solution(pose=pose_estimate()).to_contract_dict()
     # Only narrowing the search, on a solution with no pose: no offset, since nothing was verified
-    assert hinted("predicted_only", pointing=hint(used_as=("search_hint",))).to_contract_dict()["pointingHint"]["usedAs"] == ["search_hint"]
+    assert hinted("predicted_only", pointing=hint(used_as=("search_hint", "moment"))).to_contract_dict()["pointingHint"]["usedAs"] == ["search_hint", "moment"]
     refused = (
         (HINT_POSE, dict(pose=device_pose())),
-        (HINT_POSE, dict(pose=device_pose(), pointing=hint(used_as=("search_hint",)))),
+        (HINT_POSE, dict(pose=device_pose(), pointing=hint(used_as=("search_hint", "moment")))),
         (HINT_POSE, dict(pose=pose_estimate(9), pointing=hint())),
         (HINT_POSE, dict(pointing=hint())),
         (HINT_OFFSET, dict(pose=device_pose(), pointing=hint(verified_center_offset_deg=1.0))),
@@ -528,7 +531,8 @@ def test_a_pointing_hint_rides_with_its_solution_by_the_contracts_rules() -> Non
 
 
 def test_a_pointing_hint_keeps_its_own_bounds() -> None:
-    for used_as in ((), ("pose_estimate", "search_hint"), ("search_hint", "search_hint"), ("search_hint", "pose_estimate", "search_hint"), ("blind",)):
+    for used_as in ((), ("pose_estimate", "search_hint"), ("search_hint", "search_hint"), ("moment", "search_hint"),
+                    ("search_hint", "pose_estimate", "moment", "search_hint"), ("blind",)):
         with pytest.raises(ValueError):
             hint(used_as=used_as)
     for key, value in (("center_alt_deg", 90.5), ("center_az_deg", -0.5), ("uncertainty_deg", 0.0), ("uncertainty_deg", 180.5),
@@ -551,7 +555,9 @@ HINT_BASES = {
     "predicted_only": "predicted_only_with_a_search_hint",
 }
 HINT_USE_LISTS = (["search_hint"], ["pose_estimate"], ["search_hint", "pose_estimate"], ["pose_estimate", "search_hint"],
-                  ["search_hint", "search_hint"])
+                  ["search_hint", "search_hint"], ["moment"], ["search_hint", "moment"], ["search_hint", "pose_estimate", "moment"],
+                  ["pose_estimate", "moment"], ["moment", "search_hint"])
+HINT_USE_ORDER = ("search_hint", "pose_estimate", "moment")
 
 
 def _hinted_payload(spec: dict[str, Any]) -> dict[str, Any]:
@@ -568,6 +574,9 @@ def _hinted_payload(spec: dict[str, Any]) -> dict[str, Any]:
         pointing["sourceAssetSha256"] = out["sourceSha256"] if spec["same_recording"] else "ab" * 32
         if spec["offset"]:
             pointing["verifiedCenterOffsetDeg"] = 3.5
+        if not spec["centre"]:
+            for key in ("centerAltDeg", "centerAzDeg", "uncertaintyDeg"):
+                pointing.pop(key)
         out["pointingHint"] = pointing
     if not spec["time"]:
         out.pop("observedAtUTC", None)
@@ -583,16 +592,20 @@ def _hint_oracle(spec: dict[str, Any]) -> bool:
     moment_ok = spec["status"] == "calibrated" or (spec["time"] and spec["place"])
     if not spec["hint"]:
         return pose_ok and moment_ok and spec["pose"] != "device"
-    uses_ok = len(uses) == 1 or uses == ["search_hint", "pose_estimate"]
+    uses_ok = uses == sorted(set(uses), key=HINT_USE_ORDER.index)
+    # The builder's hint takes its time and its place from the record, so it must say moment (pointing-3b); it gives
+    # a centre exactly when it was a search hint or the pose, and an offset from it exactly when calibrated as well
+    centred = "search_hint" in uses or "pose_estimate" in uses
     return (pose_ok and moment_ok and uses_ok and spec["same_recording"] and ("pose_estimate" in uses) == (spec["pose"] == "device")
-            and spec["offset"] == (spec["status"] == "calibrated") and spec["time"] and spec["place"])
+            and "moment" in uses and spec["centre"] == centred
+            and spec["offset"] == (spec["status"] == "calibrated" and centred) and spec["time"] and spec["place"])
 
 
 @settings(max_examples=400, deadline=None)
 @given(spec=st.fixed_dictionaries({
     "status": st.sampled_from(sorted(HINT_BASES)), "pose": st.sampled_from(("none", "moon", "device")),
     "hint": st.booleans(), "uses": st.integers(0, len(HINT_USE_LISTS) - 1), "offset": st.booleans(),
-    "time": st.booleans(), "place": st.booleans(), "same_recording": st.booleans(),
+    "time": st.booleans(), "place": st.booleans(), "same_recording": st.booleans(), "centre": st.booleans(),
 }))
 def test_p_sky_7b_the_pointing_hint_follows_its_solution(spec: dict[str, Any]) -> None:
     payload = _hinted_payload(spec)
@@ -603,3 +616,13 @@ def test_p_sky_7b_the_pointing_hint_follows_its_solution(spec: dict[str, Any]) -
         return
     assert _hint_oracle(spec), spec
     assert parsed.to_contract_dict() == payload
+
+
+def test_a_moment_only_hint_gives_no_centre_and_a_centred_one_needs_its_use() -> None:
+    moment_only = PointingHint(source_asset_sha256=RECORD_SHA, used_as=("moment",), time_from="record", place_from="record")
+    assert "centerAltDeg" not in moment_only.to_contract_dict()
+    assert hinted("predicted_only", pointing=moment_only).to_contract_dict()["pointingHint"]["usedAs"] == ["moment"]
+    with pytest.raises(ValueError, match="hinted centre"):
+        PointingHint(source_asset_sha256=RECORD_SHA, used_as=("moment",), time_from="record", place_from="record", center_alt_deg=33.0)
+    with pytest.raises(ValueError, match="hinted centre"):
+        hint(uncertainty_deg=None)

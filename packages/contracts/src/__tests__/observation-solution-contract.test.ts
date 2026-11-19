@@ -886,7 +886,11 @@ describe('P-SKY-7b: the pointing hint follows its solution', () => {
     approximate: 'approximate_with_device_attitude_pose',
     predicted_only: 'predicted_only_with_a_search_hint',
   } as const;
-  const USES = [['search_hint'], ['pose_estimate'], ['search_hint', 'pose_estimate'], ['pose_estimate', 'search_hint'], ['search_hint', 'search_hint']];
+  const USES = [
+    ['search_hint'], ['pose_estimate'], ['search_hint', 'pose_estimate'], ['pose_estimate', 'search_hint'], ['search_hint', 'search_hint'],
+    ['moment'], ['search_hint', 'moment'], ['search_hint', 'pose_estimate', 'moment'], ['pose_estimate', 'moment'], ['moment', 'search_hint'],
+  ];
+  const ORDER = ['search_hint', 'pose_estimate', 'moment'];
   const specArb = fc.record({
     status: fc.constantFrom('calibrated', 'approximate', 'predicted_only'),
     pose: fc.constantFrom('none', 'moon', 'device'),
@@ -896,8 +900,12 @@ describe('P-SKY-7b: the pointing hint follows its solution', () => {
     time: fc.boolean(),
     place: fc.boolean(),
     sameRecording: fc.boolean(),
+    centre: fc.boolean(),
   });
-  type Spec = { status: keyof typeof BASES; pose: string; hint: boolean; uses: number; offset: boolean; time: boolean; place: boolean; sameRecording: boolean };
+  type Spec = {
+    status: keyof typeof BASES; pose: string; hint: boolean; uses: number; offset: boolean; time: boolean; place: boolean;
+    sameRecording: boolean; centre: boolean;
+  };
   const valid = fixture.valid as Record<string, Record<string, unknown>>;
 
   function build(spec: Spec): Record<string, unknown> {
@@ -911,6 +919,7 @@ describe('P-SKY-7b: the pointing hint follows its solution', () => {
       hint.usedAs = USES[spec.uses];
       hint.sourceAssetSha256 = spec.sameRecording ? out.sourceSha256 : 'ab'.repeat(32);
       if (spec.offset) hint.verifiedCenterOffsetDeg = 3.5;
+      if (!spec.centre) for (const key of ['centerAltDeg', 'centerAzDeg', 'uncertaintyDeg']) delete hint[key];
       out.pointingHint = hint;
     }
     if (!spec.time) delete out.observedAtUTC;
@@ -924,10 +933,14 @@ describe('P-SKY-7b: the pointing hint follows its solution', () => {
     const poseOk = (spec.pose === 'none') === (spec.status !== 'approximate');
     const momentOk = spec.status === 'calibrated' || (spec.time && spec.place);
     if (!spec.hint) return poseOk && momentOk && spec.pose !== 'device';
-    const usesOk = uses.length === 1 || (uses[0] === 'search_hint' && uses[1] === 'pose_estimate');
+    const usesOk = uses.every((use, i) => i === 0 || ORDER.indexOf(uses[i - 1]!) < ORDER.indexOf(use));
+    // The builder's hint takes its time and its place from the record, so it must say moment (pointing-3b); it gives
+    // a centre exactly when it was a search hint or the pose, and an offset from it exactly when calibrated as well
+    const centred = uses.includes('search_hint') || uses.includes('pose_estimate');
     return (
       poseOk && momentOk && usesOk && spec.sameRecording && uses.includes('pose_estimate') === (spec.pose === 'device') &&
-      spec.offset === (spec.status === 'calibrated') && spec.time && spec.place
+      uses.includes('moment') && spec.centre === centred &&
+      spec.offset === (spec.status === 'calibrated' && centred) && spec.time && spec.place
     );
   }
 

@@ -555,18 +555,20 @@ export const PoseEstimateSchema = z
 export type PoseEstimate = z.infer<typeof PoseEstimateSchema>;
 
 /** How a solve used the phone's pointing record, in this order, and where a solution's time and place came from. */
-export const POINTING_USES = ['search_hint', 'pose_estimate'] as const;
+export const POINTING_USES = ['search_hint', 'pose_estimate', 'moment'] as const;
 export const MOMENT_SOURCES = ['file', 'record'] as const;
 const HINT_RECORDING = "A pointing hint names the recording the solution solved: its sourceAssetSha256 is the solution's sourceSha256.";
 const HINT_POSE =
   "A pointing hint is used as the pose estimate exactly when the solution's pose estimate is lined up from the device attitude.";
-const HINT_OFFSET = "A pointing hint gives the verified centre's offset from it exactly on a calibrated solution.";
+const HINT_MOMENT_USE = "A pointing hint says moment exactly when the solution's time or its place came from the record.";
+const HINT_OFFSET =
+  "A pointing hint gives the verified centre's offset from its hinted centre exactly on a calibrated solution whose hint gives one.";
 const HINT_MOMENT =
   'A pointing hint is lined up in the sky of a time and a place, so a solution with one has observedAtUTC and observerLocation.';
 
 /**
  * How a solve used the phone's pointing record (ios-capture-companion design component 6): the record's photo, what
- * it was used as, the hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's
+ * it was used as (a search hint, the pose, and the moment: its time or place standing in for the file's), the hinted frame centre in altitude and azimuth with its stated uncertainty, the verified centre's
  * offset from it on a calibrated solution (REQ-IOS-2.2), and where the solution's time and place came from: the
  * file's own metadata or the record. Never a measurement of the sky. `ObservationSolutionSchema` ties it to the
  * solution's photo, status, pose and moment. Its Python mirror is `PointingHint` in services/science/wcs_models.py.
@@ -575,19 +577,30 @@ export const PointingHintSchema = z
   .object({
     sourceAssetSha256: SourceSha256Schema,
     usedAs: z.array(z.enum(POINTING_USES)).min(1).max(POINTING_USES.length),
-    centerAltDeg: z.number().min(-90).max(90),
-    centerAzDeg: z.number().min(0).max(360),
-    uncertaintyDeg: z.number().positive().max(180),
+    // Present exactly when the hint was used as a search hint or the pose: only a heading gives a centre
+    centerAltDeg: z.number().min(-90).max(90).optional(),
+    centerAzDeg: z.number().min(0).max(360).optional(),
+    uncertaintyDeg: z.number().positive().max(180).optional(),
     verifiedCenterOffsetDeg: z.number().min(0).max(180).optional(),
     timeFrom: z.enum(MOMENT_SOURCES),
     placeFrom: z.enum(MOMENT_SOURCES),
   })
   .superRefine((hint, ctx) => {
+    const centred = hint.usedAs.includes('search_hint') || hint.usedAs.includes('pose_estimate');
+    (['centerAltDeg', 'centerAzDeg', 'uncertaintyDeg'] as const).forEach((key) => {
+      if ((hint[key] !== undefined) !== centred) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: 'A pointing hint gives the hinted centre and its uncertainty exactly when it was used as a search hint or the pose.',
+        });
+      }
+    });
     if (!listsEachOnceInOrder(hint.usedAs, POINTING_USES)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['usedAs'],
-        message: 'A pointing hint lists each use at most once, search_hint before pose_estimate.',
+        message: 'A pointing hint lists each use at most once, in the order search_hint, pose_estimate, moment.',
       });
     }
   });
@@ -702,7 +715,11 @@ export const ObservationSolutionSchema = z
       const asPose = hint.usedAs.includes('pose_estimate');
       if (asPose && pose === undefined) flag(['poseEstimate'], HINT_POSE);
       else if (asPose !== devicePose) flag(['pointingHint', 'usedAs'], HINT_POSE);
-      if ((hint.verifiedCenterOffsetDeg !== undefined) !== (solution.status === 'calibrated')) {
+      if (hint.usedAs.includes('moment') !== (hint.timeFrom === 'record' || hint.placeFrom === 'record')) {
+        flag(['pointingHint', 'usedAs'], HINT_MOMENT_USE);
+      }
+      const centred = hint.usedAs.includes('search_hint') || hint.usedAs.includes('pose_estimate');
+      if ((hint.verifiedCenterOffsetDeg !== undefined) !== (solution.status === 'calibrated' && centred)) {
         flag(['pointingHint', 'verifiedCenterOffsetDeg'], HINT_OFFSET);
       }
       if (solution.observedAtUTC === undefined) flag(['observedAtUTC'], HINT_MOMENT);

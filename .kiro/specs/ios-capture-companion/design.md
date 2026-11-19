@@ -192,8 +192,12 @@ none, so unit pointing-3 (contract only, both languages, fixtures) needs exactly
   `AVCapturePhoto` writes an EXIF time is still the [open] device check of mobile-2]. A solution with a pointing
   hint has both `observedAtUTC` and `observerLocation`: the hint is lined up in the sky of a time and a place.
 - As built in pointing-3 [tested]: `beacon` and `beaconCentroidUncertaintyDeg` present exactly for the three beacon
-  methods; `pointingHint.usedAs` lists each use at most once, `search_hint` before `pose_estimate`;
-  `uncertaintyDeg` in (0, 180]; `verifiedCenterOffsetDeg` in [0, 180], present exactly on a `calibrated` solution;
+  methods; `pointingHint.usedAs` lists each use at most once, in the order `search_hint`, `pose_estimate`, `moment`
+  (pointing-3b: `moment` exactly when the solution's time or place came from the record, so a record with a place and
+  no heading can still say so); `centerAltDeg`, `centerAzDeg` and `uncertaintyDeg` present exactly when the hint was
+  used as a search hint or the pose, so a moment-only hint gives no centre it never had;
+  `uncertaintyDeg` in (0, 180]; `verifiedCenterOffsetDeg` in [0, 180], present exactly on a `calibrated` solution
+  whose hint gives a centre;
   each rule between the hint and its solution is named at the field it needs when that field is missing, else at
   the hint's own field, in the same sentence on the three readings (`astronomy.ts`, `services/contracts/astronomy.py`
   and `services/science/wcs_models.py`).

@@ -34,6 +34,10 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - As decided on 2026-11-18: no metadata container and no receipt change; the solution's `pointingHint` says where
     its time and place came from (`timeFrom`, `placeFrom`). The web's phrase for a `device_attitude` pose
     (`apps/web/src/services/skyLayerWords.ts`) is worded by UIUX and landed by WEB-UX in the same batch.
+  - pointing-3b (2026-11-19): `usedAs` gains `moment`, said exactly when the solution's time or place came from the
+    record, so a record with a place and no heading can still say it lent the photo its time and place.
+    v2: the hinted centre and its uncertainty are given exactly when the hint was a search hint or the pose, and
+    the verified centre's offset from it exactly on a calibrated solution whose hint gives one.
   - _Requirements: REQ-IOS-2.2, REQ-IOS-6.2_
 
 - [ ] 4. pointing-4: the record as a search hint (REQ-IOS-2.1, 2.2; P1, P2)
