@@ -194,6 +194,12 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
 }
 
+/* The typing field words in as it opens, in the ask button's place (the buttons go as it comes: the place holds one);
+   closed, it leaves on .is-leaving below and the buttons come back on .is-back */
+.ask-bar__field {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* At Go there, Ask out loud and the keyboard button (or the typing field) leave in words out at once, with the reveal's
    other words; on the laptop they come back as Back to Moment arrives, once the camera is still (the bar holds them
    away until then), so their words in has no delay of its own */

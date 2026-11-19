@@ -194,6 +194,7 @@ describe('AskBar: Fly on your own, there after arrival (D26 item 6, pilot-1f)', 
 
 describe('AskBar: typing a question', () => {
   it('turns the ask button into the field in place, focused, from the keyboard button or "/"', () => {
+    vi.useFakeTimers();
     show();
     act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
     expect(q('.ask-bar__ask')).toBeNull();
@@ -204,11 +205,13 @@ describe('AskBar: typing a question', () => {
     const send = q('.ask-bar__send') as HTMLButtonElement;
     expect(send.getAttribute('aria-label')).toBe('Send');
     expect(send.querySelector('path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS['arrow-up']);
-    // Esc closes it and the buttons come back
+    // Esc closes it and the buttons come back once its words are out
     key(input, { key: 'Escape' });
+    act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
     expect(q('.ask-bar__field')).toBeNull();
     expect(key(window, { key: '/' }).defaultPrevented).toBe(true);
     expect(q('.ask-bar__field input')).not.toBeNull();
+    vi.useRealTimers();
   });
 
   it('opens the field from "/" while a button has focus, which keeps Space for its own press (FIELD walk-0900 item 3)', () => {
@@ -224,6 +227,7 @@ describe('AskBar: typing a question', () => {
 
   it('sends the words with Enter or the arrow, then closes, and sends nothing empty', () => {
     const onSend = vi.fn();
+    vi.useFakeTimers();
     show({ onSend });
     act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
     expect((q('.ask-bar__send') as HTMLButtonElement).disabled).toBe(true);
@@ -234,12 +238,14 @@ describe('AskBar: typing a question', () => {
     act(() => (q('.ask-bar__send') as HTMLButtonElement).click());
     expect(onSend).toHaveBeenCalledTimes(1);
     expect(onSend).toHaveBeenCalledWith('How far away is Vega?');
+    act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
     expect(q('.ask-bar__field')).toBeNull();
     act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
     expect((q('.ask-bar__field input') as HTMLInputElement).value).toBe('');
     type('Is that a plane?');
     act(() => (q('.ask-bar__field') as HTMLFormElement).requestSubmit());
     expect(onSend).toHaveBeenLastCalledWith('Is that a plane?');
+    vi.useRealTimers();
   });
 
   it('reads "Type to ask" with the keyboard where the browser cannot listen, opens the field, and drops the keyboard button and Space', () => {
@@ -480,6 +486,80 @@ describe('Fly on your own arrives as the motion record says', () => {
     let found: Record<string, string> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar__fly' && rule.parent?.type === 'root') {
+        rule.walkDecls((decl) => {
+          found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+        });
+      }
+    });
+    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, row "Type to ask field (A7)": words in in the ask button's place, words out):
+// the field words in as it opens (the ask button and the keyboard button go as it comes, the place holds one); closed by
+// Esc or by sending, its words go in 100 ms, inert, and then the buttons come back on the words-in time.
+describe('the typing field arrives and leaves as the motion record says', () => {
+  it('stays for the words-out time when closed, leaving and inert, and the buttons come back on words in after it', () => {
+    vi.useFakeTimers();
+    try {
+      show();
+      act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
+      const field = q('.ask-bar__field')!;
+      expect(field.classList.contains('is-leaving')).toBe(false);
+      key(q('.ask-bar__field input')!, { key: 'Escape' });
+      expect(q('.ask-bar__field')).toBe(field);
+      expect(field.classList.contains('is-leaving')).toBe(true);
+      expect(field.hasAttribute('inert')).toBe(true);
+      expect(q('.ask-bar__ask')).toBeNull();
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs - 1));
+      expect(q('.ask-bar__field')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.ask-bar__field')).toBeNull();
+      expect([...container.querySelectorAll('.ask-bar__ask, .ask-bar__type')].map((el) => el.classList.contains('is-back'))).toEqual([true, true]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('sends once at the press, then leaves the same way', () => {
+    vi.useFakeTimers();
+    try {
+      const onSend = vi.fn();
+      show({ onSend });
+      act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
+      type('How far away is Vega?');
+      act(() => (q('.ask-bar__field') as HTMLFormElement).requestSubmit());
+      expect(onSend).toHaveBeenCalledTimes(1);
+      expect(q('.ask-bar__field')!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.wordsOutMs));
+      expect(onSend).toHaveBeenCalledTimes(1);
+      expect(q('.ask-bar__field')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves in the one 270 ms dissolve under reduced motion', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      show();
+      act(() => (q('.ask-bar__type') as HTMLButtonElement).click());
+      key(q('.ask-bar__field input')!, { key: 'Escape' });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.dissolveMs - 1));
+      expect(q('.ask-bar__field')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.ask-bar__field')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('words the field in as it opens, in motion.css', () => {
+    let found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar__field' && rule.parent?.type === 'root') {
         rule.walkDecls((decl) => {
           found = { ...found, [decl.prop]: decl.value.replace(/\s+/g, ' ') };
         });
