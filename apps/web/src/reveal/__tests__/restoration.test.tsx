@@ -29,6 +29,7 @@ describe('restorationOf: a job record to what the screen shows', () => {
       phase: 'done',
       job: succeeded,
       variantUrl: `/api/media/${sha256}/variants/${succeeded.variantId}/file`,
+      orientation: { quarterTurnsClockwise: 0, mirrored: false },
     });
     expect(restorationOf(restoration('canceled'), sha256)).toMatchObject({ phase: 'stopped', sentence: 'Canceled' });
     expect(restorationOf(restoration('interrupted'), sha256)).toMatchObject({ phase: 'stopped', sentence: INTERRUPTED_SENTENCE });
@@ -76,8 +77,8 @@ describe('useRestoration', () => {
   const settle = () => act(async () => await new Promise((r) => setTimeout(r, 20)));
   const phase = (): Restoration['phase'] => latest.restoration.phase;
 
-  it('is idle, then starts, works with each record, and compares once the job succeeds', async () => {
-    const answers = [json(running, 202), json(running), json(succeeded)];
+  it('is idle, then starts, works with each record, and compares once the job succeeds, turned as its variant record says', async () => {
+    const answers = [json(running, 202), json(running), json(succeeded), json({ variant: { displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } } })];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => answers.shift()!);
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     expect(phase()).toBe('idle');
@@ -85,6 +86,7 @@ describe('useRestoration', () => {
     await settle();
     expect(phase()).toBe('done');
     expect(latest.restoration.phase === 'done' && latest.restoration.variantUrl).toBe(`/api/media/${sha256}/variants/${succeeded.variantId}/file`);
+    expect(latest.restoration.phase === 'done' && latest.restoration.orientation).toEqual({ quarterTurnsClockwise: 1, mirrored: false });
   });
 
   it("stops with the server's own sentence when the start is refused", async () => {

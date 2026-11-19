@@ -260,7 +260,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* The compare (D10) in the photo's own frame, over the original the stage draws, with no marks over it (D15) */}
-      {compareShown && frame && restoration?.phase === 'done' && <RestoreCompare rect={frame} src={restoration.variantUrl} fade={SIDE_FADE} />}
+      {compareShown && frame && restoration?.phase === 'done' && <RestoreCompare rect={frame} src={restoration.variantUrl} fade={SIDE_FADE} orientation={restoration.orientation} />}
 
       {!bareFrame && !earthOnly && !compareShown && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>

@@ -12,6 +12,8 @@ import {
   SolveJobSchema,
   UploadJob,
   UploadJobSchema,
+  DisplayOrientationSchema,
+  type DisplayOrientation,
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
 import { raDecToUnitVector } from '@albedian/camera-rig';
@@ -597,6 +599,19 @@ export async function readRefusal(
   const gate = attempt.gate as { unconfirmedPointCount?: unknown } | undefined;
   const count = gate && Number.isInteger(gate.unconfirmedPointCount) ? (gate.unconfirmedPointCount as number) : null;
   return { rejection: attempt.rejection, unconfirmedPointCount: count };
+}
+
+/**
+ * How a stored variant is turned to be shown upright, from its record (`GET /api/media/{sha256}/variants/{id}`): a
+ * restored PNG carries no orientation tag of its own, so the browser draws it as stored. Unturned when the record names
+ * none. Throws with the server's reason when it refuses.
+ */
+export async function readVariantOrientation(sha256: string, variantId: string): Promise<DisplayOrientation> {
+  const res = await fetchAnswer(`/api/media/${sha256}/variants/${encodeURIComponent(variantId)}`);
+  if (!res.ok) throw new Error(await serverReason(res));
+  const body = (await res.json()) as { variant?: { displayOrientation?: unknown } };
+  const named = body.variant?.displayOrientation;
+  return named === undefined ? { quarterTurnsClockwise: 0, mirrored: false } : DisplayOrientationSchema.parse(named);
 }
 
 /** Where a stored variant's bytes are served (`GET /api/media/{sha256}/variants/{variantId}/file`). */

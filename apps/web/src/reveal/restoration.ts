@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { UploadJob } from '@albedian/contracts';
-import { CANCELED_WORD, cancelJob, failureReason, followJob, readRefusal, startRestoration, variantFileUrl } from '../services/apiClient.js';
+import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
+import {
+  CANCELED_WORD,
+  cancelJob,
+  failureReason,
+  followJob,
+  readRefusal,
+  readVariantOrientation,
+  startRestoration,
+  variantFileUrl,
+} from '../services/apiClient.js';
 import { megabytes } from './arrival.js';
 
 /**
@@ -12,8 +21,10 @@ export type Restoration =
   | { phase: 'idle' }
   | { phase: 'asking' }
   | { phase: 'working'; job: UploadJob }
-  | { phase: 'done'; job: UploadJob; variantUrl: string }
+  | { phase: 'done'; job: UploadJob; variantUrl: string; orientation: DisplayOrientation }
   | { phase: 'stopped'; job: UploadJob | null; sentence: string | null; subline: string | null; canTryAgain: boolean };
+
+const UNTURNED: DisplayOrientation = { quarterTurnsClockwise: 0, mirrored: false };
 
 /** Under a refusal: the photo itself was never touched (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). */
 export const UNCHANGED = 'Your photo is unchanged.';
@@ -51,7 +62,7 @@ export function restorationOf(job: UploadJob, sha256: string): Restoration {
       return { phase: 'working', job };
     case 'succeeded':
       return job.variantId !== undefined
-        ? { phase: 'done', job, variantUrl: variantFileUrl(sha256, job.variantId) }
+        ? { phase: 'done', job, variantUrl: variantFileUrl(sha256, job.variantId), orientation: UNTURNED }
         : stopped(job, null);
     case 'canceled':
       return stopped(job, CANCELED_WORD);
@@ -69,10 +80,12 @@ export function restorationOf(job: UploadJob, sha256: string): Restoration {
  * follows its job once a second, and \`cancel\` asks the server to stop it. A new photo forgets it all and stops
  * following.
  */
-export function useRestoration(sha256: string | null, options: { pollMs?: number } = {}) {
+export function useRestoration(sha256: string | null, options: { pollMs?: number; orientation?: DisplayOrientation } = {}) {
   const [restoration, setRestoration] = useState<Restoration>({ phase: 'idle' });
   const following = useRef<AbortController | null>(null);
   const pollMs = options.pollMs;
+  // How the photo itself is turned: the variant's own record says how it is, and this stands in when it cannot be read
+  const fallback = options.orientation ?? UNTURNED;
 
   useEffect(() => {
     setRestoration({ phase: 'idle' });
@@ -92,13 +105,21 @@ export function useRestoration(sha256: string | null, options: { pollMs?: number
       try {
         const job = await startRestoration(sha256);
         if (stop.signal.aborted) return;
-        setRestoration(restorationOf(job, sha256));
-        const ended = await followJob(job, (record) => !stop.signal.aborted && setRestoration(restorationOf(record, sha256)), {
-          pollMs,
-          signal: stop.signal,
-        });
+        // The compare waits for the variant's turn, so a turned photo is never drawn sideways for a moment
+        const shown = (record: UploadJob) => {
+          const view = restorationOf(record, sha256);
+          if (!stop.signal.aborted && view.phase !== 'done') setRestoration(view);
+        };
+        shown(job);
+        const ended = job.state === 'queued' || job.state === 'running' ? await followJob(job, shown, { pollMs, signal: stop.signal }) : job;
         if (stop.signal.aborted) return;
-        setRestoration(restorationOf(ended, sha256));
+        const view = restorationOf(ended, sha256);
+        if (view.phase === 'done') {
+          const orientation = await readVariantOrientation(sha256, ended.variantId!).catch(() => fallback);
+          if (!stop.signal.aborted) setRestoration({ ...view, orientation });
+          return;
+        }
+        setRestoration(view);
         if (ended.state === 'rejected' && ended.attemptId !== undefined) {
           const refusal = await readRefusal(sha256, ended.attemptId).catch(() => null);
           const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount) : null;
@@ -108,7 +129,7 @@ export function useRestoration(sha256: string | null, options: { pollMs?: number
         if (!stop.signal.aborted) setRestoration(stopped(null, failureReason(err)));
       }
     })();
-  }, [sha256, pollMs]);
+  }, [sha256, pollMs, fallback]);
 
   const cancel = useCallback(async () => {
     if (restoration.phase !== 'working') return;

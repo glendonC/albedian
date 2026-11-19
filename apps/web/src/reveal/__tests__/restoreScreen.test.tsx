@@ -154,10 +154,10 @@ describe('the restoration on the reveal (laptop)', () => {
   });
 
   it("lays the restored picture over the original in the photo's frame, cut at the line, with the fixed sentence and no marks", () => {
-    show({ phase: 'done', job: succeeded, variantUrl: '/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file' });
+    show({ phase: 'done', job: succeeded, variantUrl: '/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file', orientation: { quarterTurnsClockwise: 0, mirrored: false } });
     const compare = q('[data-testid="restore-compare"]') as HTMLElement;
     expect(compare.style.left).toBe(q('svg.photo-corners') ? compare.style.left : compare.style.left);
-    expect((compare.querySelector('img.restore-compare__pic') as HTMLImageElement).getAttribute('src')).toBe('/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file');
+    expect((compare.querySelector('.restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe('/api/media/x/variants/var_7e6f5a4b3c2d1e0f/file');
     expect(compare.querySelector('.restore-compare__line')).not.toBeNull();
     expect(q('.reveal-status__note')!.textContent).toBe("Restored from the original's own pixels with deterministic filters. Nothing was generated.");
     expect(q('[data-testid="reveal-marks"]')).toBeNull();
@@ -166,7 +166,7 @@ describe('the restoration on the reveal (laptop)', () => {
   });
 
   it('starts the line at the right edge and sends it to the middle; Original sends it right, Restored left; a press moves it there', async () => {
-    show({ phase: 'done', job: succeeded, variantUrl: '/v.png' });
+    show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation: { quarterTurnsClockwise: 0, mirrored: false } });
     const compare = q('[data-testid="restore-compare"]') as HTMLElement;
     await act(async () => await new Promise((r) => setTimeout(r, 40)));
     expect(compare.style.getPropertyValue('--split')).toBe('50%');
@@ -191,11 +191,36 @@ describe('the restoration on the reveal (laptop)', () => {
   });
 });
 
+describe('a turned photo (the verdict on unit-restore-2)', () => {
+  it("turns the restored picture as its variant record says, in a box of its stored shape, so it lies over the upright original", () => {
+    const pic = (orientation: { quarterTurnsClockwise: number; mirrored: boolean }) => {
+      show({ phase: 'done', job: succeeded, variantUrl: '/v.png', orientation });
+      const compare = q('[data-testid="restore-compare"]') as HTMLElement;
+      return { box: compare, img: compare.querySelector('.restore-compare__pic img') as HTMLImageElement };
+    };
+    const upright = pic({ quarterTurnsClockwise: 0, mirrored: false });
+    const w = parseFloat(upright.box.style.width);
+    const h = parseFloat(upright.box.style.height);
+    expect(upright.img.style.width).toBe(`${w}px`);
+    expect(upright.img.style.transform).toBe('');
+    const quarter = pic({ quarterTurnsClockwise: 1, mirrored: false }).img;
+    expect(quarter.style.width).toBe(`${h}px`);
+    expect(quarter.style.height).toBe(`${w}px`);
+    expect(quarter.style.left).toBe(`${(w - h) / 2}px`);
+    expect(quarter.style.top).toBe(`${(h - w) / 2}px`);
+    expect(quarter.style.transform).toBe('rotate(90deg)');
+    expect(pic({ quarterTurnsClockwise: 2, mirrored: true }).img.style.transform).toBe('rotate(180deg) scaleX(-1)');
+    expect(pic({ quarterTurnsClockwise: 3, mirrored: true }).img.style.transform).toBe('rotate(270deg) scaleX(-1)');
+  });
+});
+
 describe("the restoration's rules are the approved page's", () => {
   it('sets the compare, its line, its glide and its labels as CMP_CSS does, and still with reduced motion', () => {
     expect(declarationsOf('.restore-compare')).toMatchObject({ position: 'absolute', overflow: 'hidden', cursor: 'grab', 'touch-action': 'none', 'pointer-events': 'auto' });
     expect(declarationsOf('.restore-compare.is-drag')).toEqual({ cursor: 'grabbing' });
-    expect(declarationsOf('.restore-compare__pic')).toEqual({ position: 'absolute', inset: '0', width: '100%', height: '100%', 'object-fit': 'fill', 'clip-path': 'inset(0 0 0 var(--split))' });
+    // The cut is on an upright box, so it cuts the turned picture along the frame's own width
+    expect(declarationsOf('.restore-compare__pic')).toEqual({ position: 'absolute', inset: '0', overflow: 'hidden', 'clip-path': 'inset(0 0 0 var(--split))' });
+    expect(declarationsOf('.restore-compare__pic img')).toEqual({ position: 'absolute', display: 'block', 'object-fit': 'fill', 'max-width': 'none' });
     expect(declarationsOf('.restore-compare__line')).toEqual({ position: 'absolute', top: '0', bottom: '0', left: 'var(--split)', width: '1px', 'margin-left': '-0.5px', background: 'rgba(244, 243, 239, 0.85)' });
     expect(declarationsOf('.restore-compare:not(.is-drag) .restore-compare__pic')).toEqual({ transition: 'clip-path 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98)' });
     expect(declarationsOf('.restore-compare:not(.is-drag) .restore-compare__line')).toEqual({ transition: 'left 0.4s cubic-bezier(0.08, 0.62, 0.1, 0.98)' });

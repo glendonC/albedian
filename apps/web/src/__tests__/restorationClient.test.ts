@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { UploadJob } from '@albedian/contracts';
-import { followJob, startRestoration, variantFileUrl } from '../services/apiClient';
+import { followJob, readVariantOrientation, startRestoration, variantFileUrl } from '../services/apiClient';
 
 // The restoration's routes (restore-2b, restoration design sections 9 and 11): a restoration job started, joined or
 // returned at POST /api/media/{sha256}/restore, followed at GET /api/ingest/jobs/{id} once a second like a solve,
@@ -74,6 +74,32 @@ describe('followJob', () => {
   it("throws the server's reason when a read is refused", async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ detail: 'The stored job record could not be read.' }, 409));
     await expect(followJob(running, () => {}, { pollMs: 0 })).rejects.toThrow('The stored job record could not be read.');
+  });
+});
+
+describe('readVariantOrientation', () => {
+  it("reads how the stored variant is turned from its record (a PNG carries no orientation tag of its own)", async () => {
+    const seen: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      seen.push(String(input));
+      return json({ variant: { id: 'var_7e6f5a4b3c2d1e0f', displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } }, graph: {}, attempt: {} });
+    });
+    expect(await readVariantOrientation(sha256, 'var_7e6f5a4b3c2d1e0f')).toEqual({ quarterTurnsClockwise: 1, mirrored: false });
+    expect(seen).toEqual([`/api/media/${sha256}/variants/var_7e6f5a4b3c2d1e0f`]);
+  });
+
+  it('reads an upright variant (no orientation in its record) as unturned, and throws a refusal', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ variant: { id: 'var_x' }, graph: {}, attempt: {} }));
+    expect(await readVariantOrientation(sha256, 'var_x')).toEqual({ quarterTurnsClockwise: 0, mirrored: false });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ detail: 'no variant with that id is stored for that file' }, 404));
+    await expect(readVariantOrientation(sha256, 'var_x')).rejects.toThrow('no variant with that id is stored for that file');
+  });
+
+  it('starts following from a queued job too (the verdict on unit-restore-1, note a)', async () => {
+    const queued = { ...running, state: 'queued' } as UploadJob;
+    const answers = [succeeded];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json(answers.shift()));
+    expect((await followJob(queued, () => {}, { pollMs: 0 })).state).toBe('succeeded');
   });
 });
 

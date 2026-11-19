@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { UploadJob } from '@albedian/contracts';
+import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { restorationRows, type RestoreRow } from './restoration.js';
@@ -78,6 +78,19 @@ export const RestoreWhy: React.FC<{
   );
 };
 
+/** The stored picture's box and turn, so that once turned it fills the upright frame. */
+function turnedPicture(rect: PhotoRect, orientation: DisplayOrientation): React.CSSProperties {
+  const w = rect.widthPx;
+  const h = rect.heightPx;
+  const quarter = orientation.quarterTurnsClockwise % 2 === 1;
+  const turn = orientation.quarterTurnsClockwise === 0 && !orientation.mirrored
+    ? undefined
+    : `rotate(${orientation.quarterTurnsClockwise * 90}deg)${orientation.mirrored ? ' scaleX(-1)' : ''}`;
+  return quarter
+    ? { width: `${h}px`, height: `${w}px`, left: `${(w - h) / 2}px`, top: `${(h - w) / 2}px`, transform: turn }
+    : { width: `${w}px`, height: `${h}px`, left: '0px', top: '0px', transform: turn };
+}
+
 /** The next frame after the one painted, so the line is first drawn at the right edge and then glides. */
 function afterPaint(callback: () => void): () => void {
   let cancelled = false;
@@ -106,7 +119,12 @@ function afterPaint(callback: () => void): () => void {
  * and glides to the middle; a press moves it there with the same glide, a held drag follows with none; "Original"
  * sends it to the right edge, "Restored" to the left.
  */
-export const RestoreCompare: React.FC<{ rect: PhotoRect; src: string; fade?: string }> = ({ rect, src, fade }) => {
+export const RestoreCompare: React.FC<{ rect: PhotoRect; src: string; fade?: string; orientation?: DisplayOrientation }> = ({
+  rect,
+  src,
+  fade,
+  orientation = { quarterTurnsClockwise: 0, mirrored: false },
+}) => {
   const box = useRef<HTMLDivElement>(null);
   const down = useRef(false);
   const [split, setSplit] = useState(100);
@@ -151,7 +169,11 @@ export const RestoreCompare: React.FC<{ rect: PhotoRect; src: string; fade?: str
         setDrag(false);
       }}
     >
-      <img className="restore-compare__pic" src={src} alt="" draggable={false} />
+      {/* Cut on an upright box; inside it the variant, stored as the camera wrote it, is turned upright: mirrored
+          first, then turned clockwise, as the contract's orientation reads (the verdict on unit-restore-2) */}
+      <div className="restore-compare__pic">
+        <img src={src} alt="" draggable={false} style={turnedPicture(rect, orientation)} />
+      </div>
       <span className="restore-compare__line" aria-hidden="true" />
       <SecondAction part="restore-compare__label is-left" label="Original" onClick={() => setSplit(100)} />
       <SecondAction part="restore-compare__label is-right" label="Restored" onClick={() => setSplit(0)} />
