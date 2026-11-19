@@ -113,7 +113,7 @@ public enum OutcomeSentence {
     static let ephemerisUntil = "2051-01-01T00:00:00.000Z"
 
     static let poseTaken: [String: String] = [
-        "device_attitude": "which way the phone pointed",
+        "device_attitude": "where your iPhone pointed",
         "moon_camera_profile_level_head": "taking a bright spot to be the Moon, with the camera's field of view and a level head",
         "moon_horizon": "taking a bright spot to be the Moon, with the skyline taken to be level",
         "sun_horizon": "taking a bright spot to be the Sun, with the skyline taken to be level",

@@ -113,10 +113,10 @@ final class AfterSendTests: XCTestCase {
         let wide = SolutionReadout.Pose(method: "moon_horizon", maxCenterOffsetDeg: 2.5, beaconCentroidUncertaintyDeg: 0.6)
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: wide, wcs: true), photo),
                        "Lined up by taking a bright spot to be the Moon, with the skyline taken to be level, within about 4 degrees; not checked against stars.")
-        // pointing-3: the phone's own attitude, no beacon and so no beacon uncertainty, in C8's words, as the web says it
+        // pointing-3: the phone's own attitude, no beacon and so no beacon uncertainty, in C17's words (decided 12:47, item 7)
         let phone = SolutionReadout.Pose(method: "device_attitude", maxCenterOffsetDeg: 5.2, beaconCentroidUncertaintyDeg: nil)
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: phone, wcs: true), photo),
-                       "Lined up by which way the phone pointed, within about 6 degrees; not checked against stars.")
+                       "Lined up by where your iPhone pointed, within about 6 degrees; not checked against stars.")
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, wcs: true), photo),
                        "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your photo.")
         XCTAssertEqual(OutcomeSentence.sentence(readout(.approximate, pose: pose, wcs: false), photo),
