@@ -443,6 +443,34 @@ def _solve_chain(
     width: int,
     height: int,
     *,
+    on_event: Callable[..., None],
+    hint_ra_deg: float | None = None,
+    hint_dec_deg: float | None = None,
+    hint_radius_deg: float | None = None,
+    triangle_radius_deg: float | None = None,
+    **chain: Any,
+):
+    """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
+    hinted searches do not calibrate, the searches once more without it, in the same child under the same bound, and
+    their solution when it calibrates (REQ-IOS-2.2: the verified WCS wins over a hint outside its uncertainty, which
+    `pointing_hint_for` then records as a warning; pointing-4 v2, AUDIT's read of 2026-11-19). A hint can narrow the
+    searches, never stand between a photo and the solve it gets without one; the held-out gate is the same in both."""
+    solution = _solve_chain_once(
+        solve_image, detections, width, height, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
+        hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, **chain,
+    )
+    if hint_ra_deg is None or solution.status == "calibrated":
+        return solution
+    unhinted = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, **chain)
+    return unhinted if unhinted.status == "calibrated" else solution
+
+
+def _solve_chain_once(
+    solve_image: np.ndarray,
+    detections: list,
+    width: int,
+    height: int,
+    *,
     camera_meta: bool,
     camera_label: str | None,
     fov_hint: float | None,

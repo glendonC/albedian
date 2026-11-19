@@ -1,8 +1,10 @@
 """The pointing record as a search hint (pointing-4; ios-capture-companion design component 5; REQ-IOS-2.1 to 2.3).
 
-The phone solver's horizon search takes a centre hint: its catalog is the brightest visible stars near the hinted
-centre, and it keeps only rotations whose axis lies within the hint's radius. The held-out gate is unchanged, so a
-hint far from the truth loses the solve and never makes one (P2).
+The phone solver's horizon search takes a centre hint and keeps only rotations whose axis lies within the hint's
+radius (its catalog is the unhinted one); the plate solver cuts its catalog to the hint's radius plus the frame's half
+diagonal. The held-out gate is unchanged, so a hint never makes a solve (P2); when the hinted searches do not
+calibrate, the chain runs once more without the hint, so a hint far from the truth never loses one either
+(REQ-IOS-2.2, pointing-4 v2).
 
 Frames are the benchmark suite's synthetic phone photos, with their known pointing [simulated].
 """
@@ -209,13 +211,50 @@ def test_a_record_aimed_at_the_sky_in_the_photo_narrows_the_search_and_states_it
     assert ingest_jobs.HINT_OUTSIDE not in solution["warnings"]
 
 
-def test_a_record_aimed_far_from_the_photo_loses_the_solve_and_never_makes_one(client: TestClient) -> None:
+def test_a_record_aimed_far_from_the_photo_keeps_the_solve_the_stars_give_with_a_warning(client: TestClient, tmp_path: Path) -> None:
+    # REQ-IOS-2.2: the hinted searches find nothing, the chain runs once more without the hint inside the same bound,
+    # and the verified WCS wins over the hint, its disagreement recorded (pointing-4 v2, AUDIT's read of 12:58)
     spec = _frame().spec
     solution = _solve_with(client, _record("0" * 63 + "1", spec.alt_deg, (spec.az_deg + 120.0) % 360.0, accuracy=3.0))
-    assert solution["status"] != "calibrated"
-    assert not [f for f in solution["findings"] if f["evidenceClass"] == "catalog_matched"]
+    # The same photo beside a record with no heading, in a store of its own: the solve no hint narrowed
+    other = IngestStore(tmp_path / "unhinted", max_bytes=20_000_000)
+    app.dependency_overrides[ingest_router.get_ingest_store] = lambda: other
+    unhinted = _solve_with(TestClient(app), _record("0" * 63 + "1", 0.0, 0.0, heading=False))
+    assert unhinted["status"] == "calibrated", unhinted["warnings"]
+    assert solution["status"] == "calibrated", solution["warnings"]
+    assert solution["wcs"]["crvalRaDeg"] == pytest.approx(unhinted["wcs"]["crvalRaDeg"], abs=1e-6)
+    assert solution["wcs"]["crvalDecDeg"] == pytest.approx(unhinted["wcs"]["crvalDecDeg"], abs=1e-6)
+    matched = lambda s: sorted(f["id"] for f in s["findings"] if f["evidenceClass"] == "catalog_matched")  # noqa: E731
+    assert matched(solution) == matched(unhinted) and matched(solution)
     hint = solution["pointingHint"]
-    assert hint["usedAs"] == ["search_hint", "moment"] and "verifiedCenterOffsetDeg" not in hint
+    assert hint["usedAs"] == ["search_hint", "moment"]
+    assert hint["verifiedCenterOffsetDeg"] > hint["uncertaintyDeg"]
+    assert ingest_jobs.HINT_OUTSIDE in solution["warnings"]
+
+
+def test_the_chain_runs_unhinted_once_more_only_when_the_hinted_searches_do_not_calibrate(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[float | None] = []
+
+    def once(statuses: list[str]):
+        def chain(*args: Any, **kwargs: Any) -> Any:
+            calls.append(kwargs.get("hint_ra_deg"))
+            return type("S", (), {"status": statuses[len(calls) - 1]})()
+        return chain
+
+    hinted = dict(hint_ra_deg=10.0, hint_dec_deg=20.0, hint_radius_deg=5.0, triangle_radius_deg=40.0)
+    for statuses, expected_calls, expected_status in (
+        (["calibrated"], [10.0], "calibrated"),
+        (["unresolved", "calibrated"], [10.0, None], "calibrated"),
+        (["ambiguous", "unresolved"], [10.0, None], "ambiguous"),
+    ):
+        calls.clear()
+        monkeypatch.setattr(ingest_jobs, "_solve_chain_once", once(statuses))
+        result = ingest_jobs._solve_chain(None, [], 10, 10, on_event=lambda *a: None, **hinted)
+        assert calls == expected_calls and result.status == expected_status
+    calls.clear()
+    monkeypatch.setattr(ingest_jobs, "_solve_chain_once", once(["unresolved"]))
+    assert ingest_jobs._solve_chain(None, [], 10, 10, on_event=lambda *a: None).status == "unresolved"
+    assert calls == [None]
 
 
 def test_a_record_with_no_heading_lends_only_its_moment(client: TestClient) -> None:

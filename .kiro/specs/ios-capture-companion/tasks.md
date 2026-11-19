@@ -55,7 +55,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - Waits for the device checks of mobile-1 (the axes, the quaternion direction) and mobile-2 (the timebase).
   - As built (2026-11-19): to the documented conventions, each device check [open] until mobile-1's recorded values
     are compared (`services/science/record_hint.py`, `tests/science/test_record_hint.py`,
-    `tests/integration/test_pointing_search_hint.py`).
+    `tests/integration/test_pointing_search_hint.py`). v2 (AUDIT's read of 12:58): when the hinted searches do not
+    calibrate, the chain runs once more without the hint under the same bound, so the verified WCS wins over a hint
+    outside its uncertainty, with the warning (REQ-IOS-2.2).
   - _Requirements: REQ-IOS-2.1, 2.2, 2.3_
 
 - [ ] 5. pointing-5: a pose from the record when stars do not solve (design component 6)
