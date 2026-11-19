@@ -151,6 +151,28 @@ final class SolveReadersTests: XCTestCase {
 
     // MARK: The solution
 
+    /// pointing-3: a beacon's uncertainty comes with a beacon pose only. The phone's own attitude holds none, a Moon or Sun
+    /// pose always one, never below 0, as the contract's rule says.
+    func testABeaconsUncertaintyComesWithABeaconPoseOnly() throws {
+        let valid = try XCTUnwrap(try solutions()["valid"]?.objectValue).members.map(\.value)
+        let phone = try XCTUnwrap(valid.first { $0["poseEstimate"]?["method"]?.stringValue == "device_attitude" && $0["sourceSha256"] != nil })
+        let beacon = try XCTUnwrap(valid.first { ($0["poseEstimate"]?["beaconCentroidUncertaintyDeg"]) != nil && $0["sourceSha256"] != nil })
+        func read(_ sample: JSONValue) -> SolutionReadout? {
+            try? SolutionReader.read(sample, sha256: sample["sourceSha256"]!.stringValue!).get()
+        }
+        func pose(_ sample: JSONValue, _ value: JSONValue?) -> JSONValue {
+            var changed = sample
+            changed["poseEstimate"]?["beaconCentroidUncertaintyDeg"] = value
+            return changed
+        }
+        XCTAssertNil(try XCTUnwrap(read(phone)?.pose).beaconCentroidUncertaintyDeg)
+        XCTAssertNotNil(try XCTUnwrap(read(beacon)?.pose).beaconCentroidUncertaintyDeg)
+        XCTAssertNil(read(pose(phone, .number(JSONNumber(0.5)!))), "the phone's attitude with a beacon's uncertainty")
+        XCTAssertNil(read(pose(beacon, nil)), "a beacon pose without its uncertainty")
+        XCTAssertNil(read(pose(beacon, .number(JSONNumber(-0.1)!))), "a negative uncertainty")
+        XCTAssertNotNil(read(pose(beacon, .number(JSONNumber(0)!))))
+    }
+
     /// Each valid solution of the fixture that names its photo reads with its status and with every finding counted
     /// once under its own class; the pending sample that names no recording cannot be tied to the photo sent.
     func testEveryValidSolutionReadsWithItsStatusAndCountsByClass() throws {
@@ -175,7 +197,7 @@ final class SolveReadersTests: XCTestCase {
             }
             XCTAssertEqual(readout.marks.count, readout.counts[.catalogMatched])
         }
-        XCTAssertEqual(read, 12)
+        XCTAssertEqual(read, 18)
     }
 
     func testTheCalibratedSampleGivesItsThreeMarksWithTheirPixelsAndMagnitudes() throws {

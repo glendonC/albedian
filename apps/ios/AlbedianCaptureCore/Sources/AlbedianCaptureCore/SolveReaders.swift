@@ -215,8 +215,9 @@ public struct SolutionReadout: Equatable, Sendable {
     public struct Pose: Equatable, Sendable {
         public let method: String
         public let maxCenterOffsetDeg: Double
-        public let beaconCentroidUncertaintyDeg: Double
-        public init(method: String, maxCenterOffsetDeg: Double, beaconCentroidUncertaintyDeg: Double) {
+        /// The beacon's own uncertainty, for a pose lined up from the Moon or the Sun; none for the phone's attitude.
+        public let beaconCentroidUncertaintyDeg: Double?
+        public init(method: String, maxCenterOffsetDeg: Double, beaconCentroidUncertaintyDeg: Double?) {
             self.method = method
             self.maxCenterOffsetDeg = maxCenterOffsetDeg
             self.beaconCentroidUncertaintyDeg = beaconCentroidUncertaintyDeg
@@ -285,8 +286,12 @@ public enum SolutionReader {
         }
         var pose: SolutionReadout.Pose?
         if let given = object["poseEstimate"]?.objectValue {
-            guard let method = given["method"]?.stringValue, let offset = given["maxCenterOffsetDeg"]?.numberValue, offset.isFinite, offset >= 0,
-                  let centroid = given["beaconCentroidUncertaintyDeg"]?.numberValue, centroid.isFinite, centroid >= 0 else {
+            guard let method = given["method"]?.stringValue, let offset = given["maxCenterOffsetDeg"]?.numberValue, offset.isFinite, offset >= 0 else {
+                return refuse("poseEstimate", "a pose estimate names its method and how far off it may be")
+            }
+            // A beacon's uncertainty comes with a beacon pose only: the phone's own attitude (pointing-3) takes none
+            let centroid = given["beaconCentroidUncertaintyDeg"]?.numberValue
+            guard (centroid == nil) == (method == "device_attitude"), centroid.map({ $0.isFinite && $0 >= 0 }) ?? true else {
                 return refuse("poseEstimate", "a pose estimate names its method and how far off it may be")
             }
             pose = SolutionReadout.Pose(method: method, maxCenterOffsetDeg: offset, beaconCentroidUncertaintyDeg: centroid)

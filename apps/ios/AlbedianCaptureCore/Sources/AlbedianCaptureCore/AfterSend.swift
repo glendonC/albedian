@@ -113,6 +113,7 @@ public enum OutcomeSentence {
     static let ephemerisUntil = "2051-01-01T00:00:00.000Z"
 
     static let poseTaken: [String: String] = [
+        "device_attitude": "which way the phone pointed",
         "moon_camera_profile_level_head": "taking a bright spot to be the Moon, with the camera's field of view and a level head",
         "moon_horizon": "taking a bright spot to be the Moon, with the skyline taken to be level",
         "sun_horizon": "taking a bright spot to be the Sun, with the skyline taken to be level",
@@ -132,7 +133,7 @@ public enum OutcomeSentence {
                     ? "Lined up roughly, not checked against stars. How far off it may be is not known, so the sky is not drawn over your \(kind)."
                     : "You can open the sky predicted for your \(kind)'s time and place."
             }
-            let within = Int((pose.maxCenterOffsetDeg + pose.beaconCentroidUncertaintyDeg).rounded(.up))
+            let within = Int((pose.maxCenterOffsetDeg + (pose.beaconCentroidUncertaintyDeg ?? 0)).rounded(.up))
             let taken = poseTaken[pose.method] ?? "taking a bright spot to be the Moon or the Sun"
             return "Lined up by \(taken), within about \(within) \(within == 1 ? "degree" : "degrees"); not checked against stars."
         case .predictedOnly:
