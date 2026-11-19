@@ -45,6 +45,8 @@ export interface RevealPhotoProps {
   realSky?: boolean;
   /** There, after Go there: the readout from the flight's own distances, in the card's place (fly, approved 2026-11-12). */
   flight?: FlightReadout | null;
+  /** Whether the frame's corners are drawn: a clip filling the width has none (INTERIM: UIUX-clip-QUESTION.md). */
+  corners?: boolean;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -105,6 +107,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   onCloseAnswer,
   realSky = false,
   flight = null,
+  corners = true,
   viewportWidthPx,
   viewportHeightPx,
 }) => {
@@ -119,7 +122,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const framed: ObservationSession = skyShown ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
   const frame = sessionPhotoRect(framed, viewW, viewH);
   // There, the frame's corners leave with the photo (fly, approved)
-  const rect = bareFrame || there ? null : frame;
+  const rect = bareFrame || there || !corners ? null : frame;
   // The layer stays a moment after leaving the sky, so it fades out as it faded in
   const [skyMounted, setSkyMounted] = useState(skyShown);
   useEffect(() => {
@@ -286,7 +289,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {!there && counts.length > 0 && (
         <div className="reveal-legend" data-testid="reveal-legend">
-          <p className="reveal-legend__title">In this photo</p>
+          {/* A clip names its kind, as "your clip" does (INTERIM: UIUX-clip-QUESTION.md, a new word for the owner) */}
+          <p className="reveal-legend__title">{session.sourceAsset?.mediaKind === 'video' ? 'In this clip' : 'In this photo'}</p>
           {counts.map((row) => (
             <p key={row.evidenceClass} className="reveal-legend__row">
               <span className="reveal-legend__count">{row.text}</span>

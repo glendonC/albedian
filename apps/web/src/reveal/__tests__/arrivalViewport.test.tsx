@@ -7,6 +7,7 @@ import { createEmptyObservationSession, dispatchAlbedianAction } from '@albedian
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { HOME_SCREEN, choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import type { Arrival } from '../arrival.js';
+import { clipPoseSolution, poseSession } from '../../components/__tests__/poseSessions.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -565,6 +566,119 @@ describe('the viewport shows the approved star card over the photo, above phone 
       window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
     });
     expect(q('.keys-help')).toBeNull();
+  });
+
+  /** A wide clip as an upload leaves it, ten seconds long. */
+  const clip = (): ObservationSession => {
+    const base = storedPhoto();
+    return { ...base, sourceAsset: { ...base.sourceAsset!, mediaKind: 'video', mimeType: 'video/mp4', width: 1920, height: 1080, durationMs: 10_900 } } as ObservationSession;
+  };
+
+  it("shows a clip's player under the frame over the reveal, its sides shaded, and names the counts as the clip's (INTERIM)", () => {
+    open(clip());
+    expect(q('[data-testid="clip-player"]')).not.toBeNull();
+    expect(q('.clip-player__line')!.getAttribute('aria-valuemax')).toBe('10.9');
+    expect(q('.clip-shade')).not.toBeNull();
+    expect((q('.clip-shade') as HTMLElement).style.backgroundImage).toContain('linear-gradient');
+    expect(q('.reveal-legend__title')!.textContent).toBe('In this clip');
+    // A clip filling the width has no corners, as the design lane's page draws it
+    expect(q('svg.photo-corners')).toBeNull();
+  });
+
+  it("hides a lined-up clip's predicted marks while the clip plays, and draws them again once paused on its frame (the verdict on unit-clip-1)", () => {
+    open(poseSession(clipPoseSolution(3, 5), 'video'));
+    const predicted = () => container.querySelectorAll('button.reveal-mark.is-predicted').length;
+    expect(predicted()).toBeGreaterThan(0);
+    // jsdom cannot play a clip: the element is stood in to start and stop as a browser's does
+    const video = q('[data-testid="source-photo-stage"] video') as HTMLVideoElement;
+    let paused = true;
+    Object.defineProperty(video, 'paused', { configurable: true, get: () => paused });
+    video.play = () => {
+      paused = false;
+      video.dispatchEvent(new Event('play'));
+      return Promise.resolve();
+    };
+    video.pause = () => {
+      paused = true;
+      video.dispatchEvent(new Event('pause'));
+    };
+    act(() => (q('[data-testid="clip-player"] button[aria-label="Play"]') as HTMLButtonElement).click());
+    expect(predicted()).toBe(0);
+    act(() => (q('[data-testid="clip-player"] button[aria-label="Pause"]') as HTMLButtonElement).click());
+    expect(predicted()).toBeGreaterThan(0);
+  });
+
+  it("sets the session clock to the clip's end when it plays out on its own, so marks lined up for another frame stay hidden (the re-read of unit-clip-1)", () => {
+    let current = poseSession(clipPoseSolution(3, 5), 'video');
+    const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
+      current = update(current);
+    };
+    open(current, { setSession });
+    const video = q('[data-testid="source-photo-stage"] video') as HTMLVideoElement;
+    let paused = true;
+    let time = 3;
+    Object.defineProperty(video, 'paused', { configurable: true, get: () => paused });
+    Object.defineProperty(video, 'currentTime', { configurable: true, get: () => time, set: (t: number) => (time = t) });
+    video.play = () => {
+      paused = false;
+      video.dispatchEvent(new Event('play'));
+      return Promise.resolve();
+    };
+    act(() => (q('[data-testid="clip-player"] button[aria-label="Play"]') as HTMLButtonElement).click());
+    const end = current.sourceAsset!.durationMs / 1000;
+    act(() => {
+      time = end;
+      paused = true;
+      video.dispatchEvent(new Event('timeupdate'));
+      video.dispatchEvent(new Event('pause'));
+      video.dispatchEvent(new Event('ended'));
+    });
+    expect(end).not.toBe(3);
+    expect(current.currentSourceTimeSec).toBe(end);
+    renderViewport(current, { setSession });
+    expect(container.querySelectorAll('button.reveal-mark.is-predicted').length).toBe(0);
+  });
+
+  it('sets the session clock through the reducer where the player stops', () => {
+    let current = clip();
+    const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
+      current = update(current);
+    };
+    open(current, { setSession });
+    const line = q('.clip-player__line') as HTMLElement;
+    act(() => {
+      line.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    });
+    // jsdom's clip element reports no time of its own: the step lands one second in
+    expect(current.currentSourceTimeSec).toBe(1);
+    expect(current.lastStatusBanner).toMatch(/^Seeked to 1\.00s/);
+  });
+
+  it('shows no player over Real sky, which draws no clip', () => {
+    const sky = { ...clip(), spatialView: { ...clip().spatialView, mode: 'registered_sky' } } as ObservationSession;
+    open(sky);
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+  });
+
+  it('shows no player for a photo, no shade for a tall clip, and none on a phone', () => {
+    open(storedPhoto());
+    expect(q('[data-testid="clip-player"]')).toBeNull();
+    expect(q('.clip-shade')).toBeNull();
+    expect(q('.reveal-legend__title')!.textContent).toBe('In this photo');
+    act(() => root.unmount());
+    root = createRoot(container);
+    const tall = { ...clip(), sourceAsset: { ...clip().sourceAsset!, width: 1080, height: 1920 } } as ObservationSession;
+    open(tall);
+    expect(q('[data-testid="clip-player"]')).not.toBeNull();
+    expect(q('.clip-shade')).toBeNull();
+    // A tall clip stands in the photo's column, with its corners, as a photo does
+    expect(q('svg.photo-corners')).not.toBeNull();
+    act(() => root.unmount());
+    root = createRoot(container);
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(clip());
+    expect(q('[data-testid="clip-player"]')).toBeNull();
   });
 
   it('draws the approved card for the picked star, and not the old card', () => {

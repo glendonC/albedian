@@ -49,6 +49,9 @@ import { AskBar, type HeardWords } from '../reveal/AskBar.js';
 import { canDrawRealSky, isRealSkyShown } from '../reveal/RealSkyLayer.js';
 import { flightReadout, isFlightShown } from '../reveal/flightView.js';
 import { KeyboardHelp } from '../reveal/KeyboardHelp.js';
+import { ClipPlayer } from '../reveal/ClipPlayer.js';
+import { realSkyShade } from '../reveal/RealSkyLayer.js';
+import { orientedSize } from '@albedian/contracts';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
@@ -93,6 +96,9 @@ export interface SpatialObservatoryViewportProps {
   /** Whether this browser can listen; when it cannot, the button reads "Type to ask". */
   canListen?: boolean;
 }
+
+/** The reveal's photo column at 1440 by 900 (675 wide), the frame a wide clip's player and shade follow. */
+const CLIP_COLUMN_PX = 675;
 
 const LANDING_SHOWCASE_SCENES = [
   {
@@ -537,6 +543,40 @@ export const SpatialObservatoryViewport: React.FC<
     if (view === '3d' && pickedFinding && threeDOpens && !flightShown) onRunUtterance(`Take me to ${pickedFinding.title}`, 'pointer');
   };
 
+  // A clip's player over the reveal (INTERIM: UIUX-clip-QUESTION.md): the clip's own element, and where it stops sets the
+  // session's clock through the reducer, so what the reveal draws follows the frame on screen
+  const [clipVideo, setClipVideo] = useState<HTMLVideoElement | null>(null);
+  const clipShown = revealShown && !skyOver && session.sourceAsset?.mediaKind === 'video';
+  const seekClip = (sec: number) =>
+    setSession((cur) =>
+      dispatchAlbedianAction(cur, { type: 'media.seek', requestId: `ui-clip-seek-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, sourceTimeSec: sec, preserveAudioSync: true })
+        .session
+    );
+  // While the clip element plays, the reveal is drawn as for a playing clip, so marks lined up for one frame (P-SKY-9:
+  // on a clip only while it is not playing) never stand over other frames; the session's own playback, which drives
+  // the audio bus, is left alone
+  const [clipPlaying, setClipPlaying] = useState(false);
+  useEffect(() => {
+    if (!clipVideo) {
+      setClipPlaying(false);
+      return undefined;
+    }
+    const onPlay = () => setClipPlaying(true);
+    const onPause = () => setClipPlaying(false);
+    clipVideo.addEventListener('play', onPlay);
+    clipVideo.addEventListener('pause', onPause);
+    setClipPlaying(!clipVideo.paused);
+    return () => {
+      clipVideo.removeEventListener('play', onPlay);
+      clipVideo.removeEventListener('pause', onPause);
+    };
+  }, [clipVideo]);
+  // A clip wider than the reveal's photo column is shaded at the sides as Real sky is, so the words beside it stay legible
+  const clipShaded = clipShown && session.sourceAsset !== undefined && (() => {
+    const shown = orientedSize(session.sourceAsset!.width, session.sourceAsset!.height, session.sourceAsset!.displayOrientation);
+    return shown.widthPx / Math.max(1, shown.heightPx) > CLIP_COLUMN_PX / Math.max(1, windowSize.heightPx);
+  })();
+
   // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer
   const backToMoment = () =>
     setSession((cur) =>
@@ -623,10 +663,10 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && !arrival && (
         <>
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} underSky={skyOver} />
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} underSky={skyOver} onVideo={setClipVideo} />
           {revealShown && (
             <RevealPhoto
-              session={session}
+              session={clipShown && clipPlaying ? { ...session, isPlaying: true } : session}
               onSelectFinding={onSelectFinding}
               onHome={() => setEntryStageActive(true)}
               frameMismatch={photoFrameMismatch}
@@ -642,6 +682,7 @@ export const SpatialObservatoryViewport: React.FC<
               onCloseAnswer={onCloseAnswer}
               realSky={realSkyShown}
               flight={flightShown ? flightReadout(session) : null}
+              corners={!clipShaded}
             />
           )}
           {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
@@ -805,6 +846,17 @@ export const SpatialObservatoryViewport: React.FC<
 
       {/* The row at the top right of every laptop screen after the home: the view pills over the photo, then the Sound
           circle; none on the home, which has its own, nor while a photo is being worked on */}
+      {clipShaded && (
+        <div
+          className="clip-shade"
+          aria-hidden="true"
+          style={{ backgroundImage: realSkyShade({ leftPx: (windowSize.widthPx - CLIP_COLUMN_PX) / 2, topPx: 0, widthPx: CLIP_COLUMN_PX, heightPx: windowSize.heightPx }, windowSize.widthPx) }}
+        />
+      )}
+      {clipShown && session.sourceAsset && (
+        <ClipPlayer video={clipVideo} durationSec={session.sourceAsset.durationMs / 1000} onSeek={seekClip} />
+      )}
+
       {/* Keyboard help on "?" (INTERIM: UIUX-keys-QUESTION.md), on the laptop after the home; the 3D view's keys are
           listed only where that view is on screen */}
       {!phone && !entryStageActive && !arrival && <KeyboardHelp threeD={!revealShown} />}

@@ -28,6 +28,8 @@ export interface SourcePhotoStageProps {
   fadeSides?: boolean;
   /** Real sky is drawn over the photo: the photo stays beneath it. */
   underSky?: boolean;
+  /** Told the clip's element as it mounts and unmounts, for the clip's player (INTERIM: UIUX-clip-QUESTION.md). */
+  onVideo?: (video: HTMLVideoElement | null) => void;
 }
 
 /**
@@ -52,6 +54,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   dimmed = false,
   fadeSides = false,
   underSky = false,
+  onVideo,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -157,7 +160,10 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
         </p>
       ) : asset.mediaKind === 'video' ? (
         <video
-          ref={videoRef}
+          ref={(el) => {
+            videoRef.current = el;
+            onVideo?.(el);
+          }}
           src={asset.uri}
           muted
           playsInline
