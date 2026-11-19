@@ -1686,6 +1686,64 @@
         "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across.",
         "quotedCm": 95
       }
+    },
+    "vanallen": {
+      "title": "Van Allen Probes",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "vanallen/vanallen_lod0.glb",
+          "bytes": 1997660,
+          "triangles": 56140,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "vanallen/vanallen_lod1.glb",
+          "bytes": 796336,
+          "triangles": 16434,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "vanallen/vanallen_lod2.glb",
+          "bytes": 207716,
+          "triangles": 5177,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "vanallen/vanallen_picker.webp",
+          "bytes": 4054,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -21.222,
+          -7.108,
+          -21.218
+        ],
+        "max": [
+          21.212,
+          6.228,
+          21.214
+        ]
+      },
+      "bodyRadiusM": 2.5,
+      "lodTriangleShare": {
+        "lod0": 0.5,
+        "lod1": 0.15,
+        "lod2": 0.05
+      },
+      "scaleFrom": {
+        "part": "RBSP-MainBody-Top",
+        "metres": 1.8,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A",
+        "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m.",
+        "trueTo": "part"
+      }
     }
   },
   "entries": [
@@ -2824,6 +2882,44 @@
           "value": "solar array, 116 W",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A",
           "quote": "Power is produced by a solar array with a 116 W capability, nominal power use is 66 W (16 W for the payload)."
+        }
+      ]
+    },
+    {
+      "id": "van-allen-probes",
+      "name": "Van Allen Probes",
+      "model": "vanallen",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2012-08-30",
+          "page": "https://science.nasa.gov/mission/van-allen-probes/",
+          "quote": "NASA’s Van Allen Probes A and B launched on Aug. 30, 2012."
+        },
+        {
+          "key": "massKg",
+          "value": 591.6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A",
+          "quote": "RBSP-A has a mass of 591.6 kg, including 129.6 kg of instrumentation, exclusive of propellant."
+        },
+        {
+          "key": "bodyDiameterM",
+          "value": 1.8,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A",
+          "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."
+        },
+        {
+          "key": "bodyLengthM",
+          "value": 1.3,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A",
+          "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."
+        },
+        {
+          "key": "missionYears",
+          "value": "almost seven",
+          "page": "https://science.nasa.gov/mission/van-allen-probes/",
+          "quote": "gathered unprecedented data on the Van Allen belts for almost seven years"
         }
       ]
     }

@@ -1395,6 +1395,53 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 0.8,
         "changes": "photo_deck",
     },
+    "vanallen": {
+        "title": "Van Allen Probes",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-van-allen-probes",
+            "title": "Van Allen Probes, NASA 3D Resources",
+            "folder": "Van Allen Probes",
+            "file": "Van Allen Probes.glb",
+            "bytes": 933_260,
+            "sha256": "be9ed53e1452c615750e8d2f977a168eb95216cb82fb698c16d5e08cb4b891f0",
+            "picture": "Van Allen Probes.png",
+            "picture_bytes": 508_169,
+            "picture_sha256": "4e3a6170f06e40fbc2b0fa6f8acbcffd5688c1718cfb9796bf5b32ff992bd083",
+            "local": "vanallen",
+        },
+        "drop_objects": [],
+        # The octagonal body stands along Z in the import frame with its four solar panels spread from the top deck. NASA's
+        # file marks no front (each probe spins with its deck to the Sun), so it is flown along +X with the deck up (a
+        # choice of view, not a sourced attitude).
+        "forward": (1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the octagonal top deck, NASA's "RBSP-MainBody-Top" part, 54.1942 units across, to NSSDC's 1.8 m
+        # diameter. NASA's model is not true to NSSDC's 1.3 m length at that scale, so only the deck is held to it.
+        "scale_from": {
+            "material": "RBSP-MainBody-Top",
+            "axis": "x",
+            "metres": 1.8,
+            "true_to": "part",
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A",
+            "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m.",
+        },
+        # NASA's model names each part's finish: bronze, silver and solar cells become physically based materials of that
+        # kind, the bronze in NASA's own colour; the rest keep NASA's own colour.
+        "material_rules": [
+            {"match": ["solarfaces", "solar-face"], "role": "pbr", "base": (0.02, 0.025, 0.06), "metallic": 0.0, "roughness": 0.15},
+            {"match": ["bronze"], "role": "pbr", "base": (0.70, 0.61, 0.42), "metallic": 1.0, "roughness": 0.35},
+            {"match": ["silver-light"], "role": "pbr", "base": (0.90, 0.90, 0.91), "metallic": 1.0, "roughness": 0.34},
+            {"match": ["silver-dark"], "role": "pbr", "base": (0.40, 0.40, 0.40), "metallic": 1.0, "roughness": 0.4},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        # NASA's file keeps every triangle apart: welded within 0.1 mm first.
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.5, "lod1": 0.15, "lod2": 0.05},
+        "body_radius_m": 2.5,
+        "changes": "named_welded",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1869,6 +1916,20 @@ HANGAR: list[dict] = [
             {"key": "baseAcrossCm", "value": 95, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."},
             {"key": "baseHeightCm", "value": 58, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "The spacecraft is built on an octagonal base, roughly 58 cm high and 95 cm across."},
             {"key": "power", "value": "solar array, 116 W", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2008-051A", "quote": "Power is produced by a solar array with a 116 W capability, nominal power use is 66 W (16 W for the payload)."},
+        ],
+    },
+    {
+        # The two Van Allen Probes, twins drawn with one model, orbited Earth inside its radiation belts: no speed.
+        "id": "van-allen-probes",
+        "name": "Van Allen Probes",
+        "model": "vanallen",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2012-08-30", "page": "https://science.nasa.gov/mission/van-allen-probes/", "quote": "NASA’s Van Allen Probes A and B launched on Aug. 30, 2012."},
+            {"key": "massKg", "value": 591.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "RBSP-A has a mass of 591.6 kg, including 129.6 kg of instrumentation, exclusive of propellant."},
+            {"key": "bodyDiameterM", "value": 1.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
+            {"key": "bodyLengthM", "value": 1.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2012-046A", "quote": "The spacecraft have an octagonal prism shape with a diameter of 1.8 m and a length of 1.3 m."},
+            {"key": "missionYears", "value": "almost seven", "page": "https://science.nasa.gov/mission/van-allen-probes/", "quote": "gathered unprecedented data on the Van Allen belts for almost seven years"},
         ],
     },
 ]

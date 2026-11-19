@@ -538,7 +538,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "72b4ea8ecf91c9624b35506de4fb2c8aad4788e0e4c93a8679abe703bbabb0b2",
+      "sha256": "54255ca9463e4446847c9eb1cd6a603c12f3c606f3f0192336b2574bd8f216f8",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -1670,6 +1670,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Stardust/Stardust.png (748987 bytes, SHA-256 71f48b85a613db2c2c6c270769b11cf14ecc2b00debd41f03038b02cfe97f468)."
+    },
+    {
+      "path": "hangar/vanallen/vanallen_lod0.glb",
+      "sha256": "e393908be5fb1bdbbbe6200ab05f4247d607e524a695bfe8dd5519b6071f99b2",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft vanallen --out apps/web/public/models/hangar/vanallen",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Van%20Allen%20Probes/Van%20Allen%20Probes.glb (933260 bytes, SHA-256 be9ed53e1452c615750e8d2f977a168eb95216cb82fb698c16d5e08cb4b891f0); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/vanallen/vanallen_lod1.glb",
+      "sha256": "18ecb04772e5b229989bc26b587ad750340e1da13b6895fac2571f69005dd96a",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft vanallen --out apps/web/public/models/hangar/vanallen",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Van%20Allen%20Probes/Van%20Allen%20Probes.glb (933260 bytes, SHA-256 be9ed53e1452c615750e8d2f977a168eb95216cb82fb698c16d5e08cb4b891f0); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/vanallen/vanallen_lod2.glb",
+      "sha256": "26a77fb21919291e142192edf658b64256b8c6d5da8bbfe51eb8b8f53f3fe11c",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft vanallen --out apps/web/public/models/hangar/vanallen",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Van%20Allen%20Probes/Van%20Allen%20Probes.glb (933260 bytes, SHA-256 be9ed53e1452c615750e8d2f977a168eb95216cb82fb698c16d5e08cb4b891f0); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/vanallen/vanallen_picker.webp",
+      "sha256": "7444598c586763e4c2c320d29c95f4d52f3556cdb01c005997399d575f8cd9ea",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft vanallen --out apps/web/public/models/hangar/vanallen",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Van%20Allen%20Probes/Van%20Allen%20Probes.png (508169 bytes, SHA-256 4e3a6170f06e40fbc2b0fa6f8acbcffd5688c1718cfb9796bf5b32ff992bd083)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",
