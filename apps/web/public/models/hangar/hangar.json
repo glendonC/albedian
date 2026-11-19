@@ -467,6 +467,64 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
         "quote": "The distance between the ends of the footpads on opposite landing legs was 9.4 m."
       }
+    },
+    "gemini": {
+      "title": "Gemini",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "gemini/gemini_lod0.glb",
+          "bytes": 914992,
+          "triangles": 23260,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "gemini/gemini_lod1.glb",
+          "bytes": 483360,
+          "triangles": 7752,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "gemini/gemini_lod2.glb",
+          "bytes": 222812,
+          "triangles": 2713,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "gemini/gemini_picker.webp",
+          "bytes": 1626,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -1.524,
+          -1.522,
+          -2.363
+        ],
+        "max": [
+          1.524,
+          1.522,
+          3.413
+        ]
+      },
+      "bodyRadiusM": 3.0,
+      "lodTriangleShare": {
+        "lod0": 0.6,
+        "lod1": 0.2,
+        "lod2": 0.07
+      },
+      "scaleFrom": {
+        "part": "lambert2SG",
+        "metres": 3.048,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+        "quote": "304.8 cm in diameter at the base",
+        "quotedCm": 304.8
+      }
     }
   },
   "entries": [
@@ -789,6 +847,38 @@
           "value": 15103,
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C",
           "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants."
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "model": "gemini",
+      "travel": null,
+      "facts": [
+        {
+          "key": "firstCrewedLaunch",
+          "value": "1965-03-23",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+          "quote": "Launch Date: 1965-03-23"
+        },
+        {
+          "key": "baseDiameterCm",
+          "value": 304.8,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+          "quote": "304.8 cm in diameter at the base"
+        },
+        {
+          "key": "heightCm",
+          "value": 573.6,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+          "quote": "giving a total height of 573.6 cm for the Gemini spacecraft"
+        },
+        {
+          "key": "massKg",
+          "value": 3236.9,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+          "quote": "Mass: 3236.9 kg"
         }
       ]
     }

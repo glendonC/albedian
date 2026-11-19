@@ -136,6 +136,8 @@ def build_facts(models: list[str]) -> dict:
             if sf.get("native")
             else {"part": sf["material"], "metres": sf["metres"], "page": sf["page"], "quote": sf["quote"]}
         )
+        if sf.get("quoted_cm") is not None:
+            scale_from["quotedCm"] = sf["quoted_cm"]
         out_models[m] = {
             "title": recipe["title"],
             "kind": recipe["kind"],

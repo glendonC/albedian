@@ -97,7 +97,11 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert 1.5 < height < 2.3, (name, height)
         else:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
-            assert str(sf["metres"]) in sf["quote"]
+            if "quotedCm" in sf:
+                # NASA gives it in centimetres: the quote holds that number and the metres are it over 100
+                assert str(sf["quotedCm"]) in sf["quote"] and abs(sf["quotedCm"] / 100 - sf["metres"]) < 1e-9
+            else:
+                assert str(sf["metres"]) in sf["quote"]
 
 
 def _gltf(path: Path) -> dict:
@@ -156,7 +160,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
-    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm"}
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle"}
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0

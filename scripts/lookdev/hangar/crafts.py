@@ -395,6 +395,48 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 4.0,
         "changes": "flat",
     },
+    "gemini": {
+        "title": "Gemini",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-gemini",
+            "title": "Gemini, NASA 3D Resources",
+            "folder": "Gemini",
+            "file": "Gemini.glb",
+            "bytes": 1_387_812,
+            "sha256": "e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758",
+            "picture": "Gemini.png",
+            "picture_bytes": 196_026,
+            "picture_sha256": "ff2de99df4f58b53b7d76d46442fdfe4420b8c1efc115ad70902c97b0529312a",
+            "local": "gemini",
+        },
+        "drop_objects": [],
+        # Standing nose up +Z on its adapter; its windows and hatches face -Y, made the top.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, -1.0, 0.0),
+        "scale_from": {
+            "material": "lambert2SG",
+            "axis": "x",
+            "metres": 3.048,
+            "quoted_cm": 304.8,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A",
+            "quote": "304.8 cm in diameter at the base",
+        },
+        "materials": {
+            "lambert2SG": {"role": "photo_atlas"},
+            "blinn3SG": {"role": "photo_atlas"},
+            "blinn5SG": {"role": "photo_atlas"},
+            "blinn6SG": {"role": "photo_atlas"},
+            "blinn7SG": {"role": "photo_atlas"},
+            "blinn2SG": {"role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.35},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.6, "lod1": 0.2, "lod2": 0.07},
+        "body_radius_m": 3.0,
+        "changes": "flat",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -541,6 +583,19 @@ HANGAR: list[dict] = [
             {"key": "descentStageWidthM", "value": 4.2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "an octagonal prism 4.2 meters across and 1.7 m thick"},
             {"key": "ascentStageHeightM", "value": 2.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "approximately 2.8 m high"},
             {"key": "massKg", "value": 15103, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1969-059C", "quote": "The spacecraft mass of 15103 kg was the total mass of the LM ascent and descent stages including propellants."},
+        ],
+    },
+    {
+        # Gemini flew in Earth orbit, never between stars: no speed.
+        "id": "gemini",
+        "name": "Gemini",
+        "model": "gemini",
+        "travel": None,
+        "facts": [
+            {"key": "firstCrewedLaunch", "value": "1965-03-23", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "Launch Date: 1965-03-23"},
+            {"key": "baseDiameterCm", "value": 304.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "304.8 cm in diameter at the base"},
+            {"key": "heightCm", "value": 573.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "giving a total height of 573.6 cm for the Gemini spacecraft"},
+            {"key": "massKg", "value": 3236.9, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1965-024A", "quote": "Mass: 3236.9 kg"},
         ],
     },
 ]

@@ -225,8 +225,67 @@
       "note": "Rendered from this folder's lod0 build of https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb."
     },
     {
+      "path": "hangar/gemini/gemini_lod0.glb",
+      "sha256": "7447e558c127d0b2e1e186ef3af2cf5c3faeeba9470c2b68184cb34f8f845bc2",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA colours as gold foil made metal foil, its photo panels given metalness, roughness and relief from their own colours, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/gemini/gemini_lod1.glb",
+      "sha256": "2e2b278deb2b2c32978bfd3dfed26093c386d5acba7fa4196f017669ce860396",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/gemini/gemini_lod2.glb",
+      "sha256": "1880587bcee18b729c9e4623bcab592118d1fab51488b5c7ba3711a8b1364606",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb (1387812 bytes, SHA-256 e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/gemini/gemini_picker.webp",
+      "sha256": "4f16d72118409bc019f56381cc43ddd4c1e468d62c36fb0f6bd6692a42ade1b6",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft gemini --out apps/web/public/models/hangar/gemini",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.png (196026 bytes, SHA-256 ff2de99df4f58b53b7d76d46442fdfe4420b8c1efc115ad70902c97b0529312a)."
+    },
+    {
       "path": "hangar/hangar.json",
-      "sha256": "cebe278ca064b2cc7b76467c0ad0511d22d39e4ff205df32c7750559d31797db",
+      "sha256": "6806dc0bc3618860fd620a8f13163ed0e1cb12d9272cf2060b0fab69eb64a442",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

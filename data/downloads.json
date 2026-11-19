@@ -1210,6 +1210,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Apollo Lunar Module: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/gemini/Gemini.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.glb",
+      "bytes": 1387812,
+      "sha256": "e580e90ac2eb13d029e262e9d638c32980d7f8a48a6830d272ce080576110758",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Gemini: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/gemini/Gemini.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Gemini/Gemini.png",
+      "bytes": 196026,
+      "sha256": "ff2de99df4f58b53b7d76d46442fdfe4420b8c1efc115ad70902c97b0529312a",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Gemini: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }
