@@ -189,9 +189,10 @@
 }
 
 /* There, after Go there: Back to Moment (the ask bar's only main button, there and only there) arrives once the
-   camera is still, after both halves of the flight. */
+   camera is still, after both halves of the flight. It mounts with the there screen, as the second half begins
+   (isFlightShown), so the camera is still one half later. */
 .ask-bar > .look-main {
-  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
 }
 
 /* The typing field words in as it opens, in the ask button's place (the buttons go as it comes: the place holds one);
@@ -251,10 +252,6 @@
 
 [data-arriving] .reveal-status {
   animation-delay: calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in));
-}
-
-.reveal-status[data-moment="there"] {
-  animation-delay: var(--look-mo-dur-camera-half);
 }
 
 /* The line that gave way to another moment's: its words go in 100 ms while the new line waits its 120 ms */

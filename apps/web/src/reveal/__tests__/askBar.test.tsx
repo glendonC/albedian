@@ -352,7 +352,9 @@ describe('Back to Moment arrives when the camera is at rest', () => {
     expect(container.querySelector('.ask-bar > .look-main')!.textContent).toBe('Back to Moment');
   });
 
-  it('words in after the two halves of the flight, and loads the motion with the bar', () => {
+  // Back to Moment mounts with the there screen, as the flight's second half begins (isFlightShown), so the camera
+  // is still one half later: 1500 ms after the press
+  it('words in once the camera rests, one half after the there screen arrives, and loads the motion with the bar', () => {
     let found: Record<string, string> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.selector.replace(/\s+/g, ' ') === '.ask-bar > .look-main' && rule.parent?.type === 'root') {
@@ -361,7 +363,7 @@ describe('Back to Moment arrives when the camera is at rest', () => {
         });
       }
     });
-    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-dur-camera-half) * 2) both' });
+    expect(found).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both' });
     expect(fs.readFileSync(path.resolve(here, '../AskBar.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
   });
 });
@@ -400,7 +402,8 @@ describe('at Go there, Ask out loud leaves and comes back as the motion record s
       expect(asks()).toHaveLength(2);
       act(() => vi.advanceTimersByTime(1));
       expect(asks()).toHaveLength(0);
-      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs * 2 - MOTION_TOKENS.wordsOutMs - 1));
+      // there arrives as the second half begins: the camera rests one half later
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.cameraHalfMs - MOTION_TOKENS.wordsOutMs - 1));
       expect(asks()).toHaveLength(0);
       act(() => vi.advanceTimersByTime(1));
       expect(asks().map((el) => el.classList.contains('is-back'))).toEqual([true, true]);

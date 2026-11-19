@@ -650,15 +650,16 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="reveal-answer"]')).not.toBeNull();
   });
 
-  it('sets the readout as the approved page does, arriving at the flight\'s halfway point (the motion record)', () => {
+  it('sets the readout as the approved page does, arriving at the flight\'s halfway point, as it mounts (the motion record)', () => {
     expect(declarationsOf('.flight-readout')).toEqual({
       position: 'absolute',
       right: '32px',
       top: '118px',
       width: '320px',
       'pointer-events': 'auto',
-      // between the flight's two halves, as NASA's Eyes' two moves: the words of the new place, the readout counting on
-      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both',
+      // between the flight's two halves, as NASA's Eyes' two moves: it mounts as the second half begins, its words
+      // 20 ms after the Simulated disclosure's
+      animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both',
     });
     expect(declarationsOf('.flight-readout h1')).toEqual({ margin: '22px 0 0', font: '400 66px / 1 var(--look-font-sans)', 'letter-spacing': '-0.05em' });
     expect(declarationsOf('.flight-readout__stats')).toEqual({ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px', 'margin-top': '30px', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)' });
@@ -1020,7 +1021,7 @@ describe('the status line comes in at its moment\'s time', () => {
     expect(REVEAL_ARRIVAL_MS).toBe(MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs);
   });
 
-  it('times the line in motion.css: 120 ms after a change, after the marks on arrival, between the halves there', () => {
+  it('times the line in motion.css: 120 ms after a change, after the marks on arrival, and there as it mounts between the halves', () => {
     const rules: Record<string, Record<string, string>> = {};
     postcss.parse(motionCss).walkRules((rule) => {
       if (rule.parent?.type !== 'root') return;
@@ -1031,7 +1032,8 @@ describe('the status line comes in at its moment\'s time', () => {
     });
     expect(rules['.reveal-status']).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
     expect(rules['[data-arriving] .reveal-status']).toEqual({ 'animation-delay': 'calc(var(--look-mo-span-marks) + var(--look-mo-delay-words-in))' });
-    expect(rules['.reveal-status[data-moment="there"]']).toEqual({ 'animation-delay': 'var(--look-mo-dur-camera-half)' });
+    // The there line mounts as the second half begins: no wait of its own, so the disclosure shows from then
+    expect(rules['.reveal-status[data-moment="there"]']).toBeUndefined();
   });
 });
 

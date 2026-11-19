@@ -186,7 +186,7 @@ function answerFor(question: string) {
 async function typeAndSend(words: string) {
   // A field still leaving after the last send (its words out, 100 ms: the motion record) is not the one to type in
   if (q('.ask-bar__field.is-leaving')) await waitUntil(() => expect(q('.ask-bar__field')).toBeNull());
-  // There after Go there the ask buttons are away until the camera rests (1500 ms: the motion record)
+  // There after Go there the ask buttons are away until the camera rests (1500 ms after the press: the motion record)
   await waitUntil(() => expect(q('.ask-bar__field input') ?? q('.ask-bar__type') ?? q('.ask-bar__ask')).not.toBeNull());
   if (!q('.ask-bar__field input')) {
     // jsdom has no speech recognition, so the ask button itself reads "Type to ask" and opens the field

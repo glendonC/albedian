@@ -920,14 +920,15 @@
 }
 
 /* There, after Go there (fly, approved 2026-11-12; #l-there in .cache/uiux/fly/index.html): the readout in the card's
-   place, its words arriving at the flight's halfway point (the motion record; was from 0.45 s over 0.9 s) */
+   place, its words arriving at the flight's halfway point (the motion record; was from 0.45 s over 0.9 s): it mounts
+   as the second half begins, its words 20 ms after the Simulated disclosure's */
 .flight-readout {
   position: absolute;
   right: 32px;
   top: 118px;
   width: 320px;
   pointer-events: auto;
-  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-dur-camera-half) both;
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger)) both;
 }
 
 .flight-readout h1 {

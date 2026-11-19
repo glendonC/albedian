@@ -10,6 +10,7 @@ import { FlightAndRestoreHud } from '../../components/FlightAndRestoreHud.js';
 import { FLIGHT_STANDOFF_PC, distancePc } from '@albedian/observation';
 import { MOTION_TOKENS } from '@albedian/design-system';
 import { FLIGHT_HALF_MS, flightEase, useCameraFlightAnimation } from '../useCameraFlightAnimation.js';
+import { isFlightShown } from '../../reveal/flightView.js';
 
 /**
  * Go There ends one light year short of the star, on the line from where the camera started
@@ -195,6 +196,27 @@ describe('the flight keeps the motion record: two halves of 750 ms on NASA\'s Ey
     const states = flyThrough(base, target.id, queueFrames(), base, [375, 1125, 60_000]);
     expect(states[1]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
     expect(states[2]!.spatialView.transitionProgress).toBeCloseTo(flightEase(0.5), 3);
+  });
+});
+
+// The there screen (the readout with its Simulated disclosure, Back to Moment, Fly on your own) shows from the second
+// half's first frame, not from the press: its motion counts from then (motion.css's there rules, AskBar's rest), so
+// the record's 750 and 1500 ms fall where it says. If this changes, those timings change with it.
+describe('the there screen shows from the flight\'s second half', () => {
+  it('is not shown in the first half, and is shown from the second half\'s first frame to the arrival', () => {
+    vi.stubGlobal('WebGL2RenderingContext', class {});
+    try {
+      const states = flyThrough(base, target.id, queueFrames(), base, [700, 750, 1499, 1500]);
+      expect(states.map((s) => [s.spatialView.transitionPhase, isFlightShown(s)])).toEqual([
+        ['phase_a_photo_to_sky', false],
+        ['phase_a_photo_to_sky', false],
+        ['phase_b_sky_to_space', true],
+        ['phase_b_sky_to_space', true],
+        ['at_space', true],
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

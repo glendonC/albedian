@@ -76,9 +76,10 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
   // There, after Go there (the motion record, "Go there" steps 1 and 5): the ask controls leave in words out with the
   // reveal's other words; on the laptop they come back with Back to Moment once the camera is still, after both halves;
   // on the phone Back to Moment is alone there. Reduced motion: the camera does not travel, so on the laptop they stay.
+  // There arrives with the there screen, as the second half begins (isFlightShown), so the camera is still one half on.
   const there = onBack !== undefined;
   const motion = resolveMotionTokens(reducedMotion());
-  const restMs = motion.cameraHalfMs * 2;
+  const restMs = motion.cameraHalfMs;
   const [rested, setRested] = useState(false);
   useEffect(() => {
     if (!there || restMs === 0) {
