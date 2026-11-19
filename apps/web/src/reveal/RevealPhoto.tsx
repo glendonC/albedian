@@ -482,6 +482,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <RestoreWhy
             job={restoration.job}
             sentence={restoration.phase === 'stopped' ? restoration.sentence : null}
+            subline={restoration.phase === 'stopped' ? restoration.subline : null}
+            canTryAgain={restoration.phase === 'stopped' ? restoration.canTryAgain : true}
             working={restoration.phase === 'working'}
             onCancel={() => onCancelRestore?.()}
             onTryAgain={() => onRestore?.()}

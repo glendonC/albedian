@@ -1390,6 +1390,17 @@
 .restore-why {
   pointer-events: auto;
 }
+/* A refused restoration: its sentence, then the photo unchanged, 10 px apart (UIUX-restore-stop-QUESTION.md, #rx-refused) */
+.restore-why.is-refused {
+  gap: 10px;
+}
+.restore-why .restore-why__sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+  letter-spacing: -0.005em;
+}
 /* Once restored, the fixed sentence in the status place, as the cautions are set */
 .reveal-status__note {
   --look-ic: 13px;

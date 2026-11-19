@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UploadJob } from '@albedian/contracts';
-import { CANCELED_WORD, cancelJob, failureReason, followJob, startRestoration, variantFileUrl } from '../services/apiClient.js';
+import { CANCELED_WORD, cancelJob, failureReason, followJob, readRefusal, startRestoration, variantFileUrl } from '../services/apiClient.js';
 import { megabytes } from './arrival.js';
 
 /**
@@ -13,7 +13,36 @@ export type Restoration =
   | { phase: 'asking' }
   | { phase: 'working'; job: UploadJob }
   | { phase: 'done'; job: UploadJob; variantUrl: string }
-  | { phase: 'stopped'; job: UploadJob | null; sentence: string | null };
+  | { phase: 'stopped'; job: UploadJob | null; sentence: string | null; subline: string | null; canTryAgain: boolean };
+
+/** Under a refusal: the photo itself was never touched (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). */
+export const UNCHANGED = 'Your photo is unchanged.';
+
+/**
+ * One plain sentence per refusal reason (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11). A reason it does
+ * not know, or a count of points it lacks, gives none: a reason code is never shown as words.
+ */
+export function refusalSentence(reason: string, unconfirmedPoints: number | null): string | null {
+  switch (reason) {
+    case 'unconfirmed_points':
+      if (unconfirmedPoints === null) return null;
+      return unconfirmedPoints === 1
+        ? 'The restoration showed 1 point of light that is not in your photo, so it was not kept.'
+        : `The restoration showed ${unconfirmedPoints} points of light that are not in your photo, so it was not kept.`;
+    case 'star_flux_changed':
+      return 'The restoration changed how bright a star is, so it was not kept.';
+    case 'frame_times_differ':
+      return "The restored clip's frame times did not match your clip's, so it was not kept.";
+    case 'audio_differs':
+      return "The restored clip's sound did not match your clip's, so it was not kept.";
+    case 'copy_differs':
+      return "The copy did not match your photo's pixels exactly, so it was not kept.";
+    default:
+      return null;
+  }
+}
+
+const stopped = (job: UploadJob | null, sentence: string | null): Restoration => ({ phase: 'stopped', job, sentence, subline: null, canTryAgain: true });
 
 export function restorationOf(job: UploadJob, sha256: string): Restoration {
   switch (job.state) {
@@ -23,14 +52,15 @@ export function restorationOf(job: UploadJob, sha256: string): Restoration {
     case 'succeeded':
       return job.variantId !== undefined
         ? { phase: 'done', job, variantUrl: variantFileUrl(sha256, job.variantId) }
-        : { phase: 'stopped', job, sentence: null };
+        : stopped(job, null);
     case 'canceled':
-      return { phase: 'stopped', job, sentence: CANCELED_WORD };
+      return stopped(job, CANCELED_WORD);
     case 'interrupted':
     case 'failed':
-      return { phase: 'stopped', job, sentence: job.error ?? null };
+      return stopped(job, job.error ?? null);
     case 'rejected':
-      return { phase: 'stopped', job, sentence: null };
+      // Deterministic: the same photo would be refused the same way, so no Try again and no Restore again
+      return { phase: 'stopped', job, sentence: null, subline: UNCHANGED, canTryAgain: false };
   }
 }
 
@@ -67,9 +97,15 @@ export function useRestoration(sha256: string | null, options: { pollMs?: number
           pollMs,
           signal: stop.signal,
         });
-        if (!stop.signal.aborted) setRestoration(restorationOf(ended, sha256));
+        if (stop.signal.aborted) return;
+        setRestoration(restorationOf(ended, sha256));
+        if (ended.state === 'rejected' && ended.attemptId !== undefined) {
+          const refusal = await readRefusal(sha256, ended.attemptId).catch(() => null);
+          const sentence = refusal ? refusalSentence(refusal.rejection, refusal.unconfirmedPointCount) : null;
+          if (!stop.signal.aborted && sentence !== null) setRestoration({ phase: 'stopped', job: ended, sentence, subline: UNCHANGED, canTryAgain: false });
+        }
       } catch (err) {
-        if (!stop.signal.aborted) setRestoration({ phase: 'stopped', job: null, sentence: failureReason(err) });
+        if (!stop.signal.aborted) setRestoration(stopped(null, failureReason(err)));
       }
     })();
   }, [sha256, pollMs]);
@@ -126,6 +162,8 @@ export function restorationRows(job: UploadJob): RestoreRow[] {
   const lastEntry = last >= 0 ? entries.get(RESTORE_STEPS[last]!)! : null;
   const lastFull = lastEntry !== null && full(lastEntry);
   const final = RESTORE_STEPS.length - 1;
+  // A still has one frame and nothing to count: its rows carry no numbers, Saving included (D10)
+  const still = job.stages.some((entry) => entry.unit === 'frames' && entry.total === 1);
   let at = -1;
   if (!succeeded && (stopped || working)) {
     if (!lastFull) at = Math.max(0, last);
@@ -141,6 +179,8 @@ export function restorationRows(job: UploadJob): RestoreRow[] {
       value,
       fraction,
     });
+    const done = succeeded || (at >= 0 ? index < at : index < last || (index === last && lastFull));
+    if (still) return row(index === at ? (stopped ? 'failed' : 'now') : done ? 'done' : 'next');
     if (index === at) {
       if (entry !== null && entry.unit === 'bytes') return row(stopped ? 'failed' : 'now', megabytes(entry.done));
       const counted = entry !== null && entry.total !== null && entry.total > 1;
@@ -148,7 +188,6 @@ export function restorationRows(job: UploadJob): RestoreRow[] {
         ? row(stopped ? 'failed' : 'now', `${grouped(entry.done)} of ${grouped(entry.total!)}`, entry.done / entry.total!)
         : row(stopped ? 'failed' : 'now');
     }
-    const done = succeeded || (at >= 0 ? index < at : index < last || (index === last && lastFull));
     if (!done) return row('next');
     if (entry === null) return row('done');
     if (entry.unit === 'bytes') return row('done', megabytes(entry.done));

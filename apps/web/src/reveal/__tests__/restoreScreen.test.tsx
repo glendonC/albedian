@@ -96,8 +96,13 @@ describe("restorationRows: the job's own steps in order", () => {
     const rows = restorationRows(clip);
     expect(rows[0]).toMatchObject({ state: 'done', value: '36' });
     expect(rows[1]).toMatchObject({ state: 'now', value: '12 of 36', fraction: 12 / 36 });
-    const saving = { ...still(0), stages: [...still(4).stages, { stage: 'write', unit: 'bytes', done: 2_400_000, total: null }] } as UploadJob;
+    const clipStages = ['decode', 'measure', 'restore', 'encode'].map((stage) => ({ stage, unit: 'frames', done: 36, total: 36 }));
+    const saving = { ...still(0), stages: [...clipStages, { stage: 'write', unit: 'bytes', done: 2_400_000, total: null }] } as UploadJob;
     expect(restorationRows(saving)[4]).toMatchObject({ state: 'now', value: '2.4 MB' });
+    // A still has nothing to count: Saving shows no megabytes either (D10)
+    const stillSaving = { ...still(0), stages: [...still(4).stages, { stage: 'write', unit: 'bytes', done: 2_400_000, total: null }] } as UploadJob;
+    expect(restorationRows(stillSaving)[4]).toMatchObject({ state: 'now', value: null });
+    expect(restorationRows(still(6)).map((r) => r.value)).toEqual([null, null, null, null, null, null]);
     expect(restorationRows({ ...still(3), state: 'canceled', finishedAtUTC: still(3).startedAtUTC } as UploadJob).map((r) => r.state)).toEqual([
       'done', 'done', 'done', 'failed', 'next', 'next',
     ]);
@@ -128,9 +133,19 @@ describe('the restoration on the reveal (laptop)', () => {
     expect(cancel.className).toContain('is-asked');
   });
 
+  it('says a refusal above the stopped steps, the photo unchanged under it, with no Try again and no Restore', () => {
+    const refused = { ...still(6), state: 'rejected', finishedAtUTC: still(6).startedAtUTC, attemptId: 'att_7e6f5a4b3c2d1e0f' } as UploadJob;
+    show({ phase: 'stopped', job: refused, sentence: 'The restoration changed how bright a star is, so it was not kept.', subline: 'Your photo is unchanged.', canTryAgain: false });
+    expect(q('.restore-why')!.className).toBe('work-why restore-why is-refused');
+    expect(q('.restore-why p')!.textContent).toBe('The restoration changed how bright a star is, so it was not kept.');
+    expect(q('.restore-why .restore-why__sub')!.textContent).toBe('Your photo is unchanged.');
+    expect(q('.restore-why button')).toBeNull();
+    expect(q('.reveal-status__act')).toBeNull();
+  });
+
   it('says why it stopped above the stopped steps, with Try again, which asks again', () => {
     const onRestore = vi.fn();
-    show({ phase: 'stopped', job: { ...still(3), state: 'canceled', finishedAtUTC: still(3).startedAtUTC } as UploadJob, sentence: 'Canceled' }, { onRestore });
+    show({ phase: 'stopped', job: { ...still(3), state: 'canceled', finishedAtUTC: still(3).startedAtUTC } as UploadJob, sentence: 'Canceled', subline: null, canTryAgain: true }, { onRestore });
     expect(q('.restore-why p')!.textContent).toBe('Canceled');
     const again = [...container.querySelectorAll('.restore-why button')].find((b) => b.textContent === 'Try again') as HTMLButtonElement;
     act(() => again.click());
@@ -202,6 +217,9 @@ describe("the restoration's rules are the approved page's", () => {
   it('puts Restore 16 px under the status lines, Cancel where Try again sits, and the sentence as the cautions are set', () => {
     expect(declarationsOf('.reveal-status__act')).toEqual({ 'margin-top': '16px', 'pointer-events': 'auto' });
     expect(declarationsOf('.restore-why')).toEqual({ 'pointer-events': 'auto' });
+    // A refusal: the sentence, then the photo unchanged at 14 px in the second ink, 10 px apart (#rx-refused .why)
+    expect(declarationsOf('.restore-why.is-refused')).toEqual({ gap: '10px' });
+    expect(declarationsOf('.restore-why .restore-why__sub')).toEqual({ margin: '0', 'font-size': '14px', 'line-height': '1.45', color: 'var(--look-ink-2)', 'letter-spacing': '-0.005em' });
     expect(declarationsOf('.reveal-status__note')).toEqual({ '--look-ic': '13px', display: 'flex', gap: '7px', margin: '0 0 18px', 'font-size': '12px', 'line-height': '1.45', color: 'var(--look-ink-3)' });
   });
 });

@@ -5,7 +5,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { INTERRUPTED_SENTENCE, type UploadJob } from '@albedian/contracts';
-import { restorationOf, useRestoration, type Restoration } from '../restoration.js';
+import { refusalSentence, restorationOf, useRestoration, type Restoration } from '../restoration.js';
 
 // What the restoration shows, from its job's own record (UIUX-restoration-READY.md, D10): the job's steps while it
 // works, the compare once it succeeded, and why it stopped; canceled and interrupted as D2 says (INTERIM).
@@ -33,8 +33,25 @@ describe('restorationOf: a job record to what the screen shows', () => {
     expect(restorationOf(restoration('canceled'), sha256)).toMatchObject({ phase: 'stopped', sentence: 'Canceled' });
     expect(restorationOf(restoration('interrupted'), sha256)).toMatchObject({ phase: 'stopped', sentence: INTERRUPTED_SENTENCE });
     expect(restorationOf(restoration('failed'), sha256)).toMatchObject({ phase: 'stopped', sentence: restoration('failed').error });
-    // No record words a refused restoration yet (QUESTION filed): it stops with no sentence
-    expect(restorationOf(restoration('rejected'), sha256)).toMatchObject({ phase: 'stopped', sentence: null });
+    // Refused: its sentence comes from the attempt (read after), the photo unchanged, and no Try again
+    expect(restorationOf(restoration('rejected'), sha256)).toMatchObject({ phase: 'stopped', sentence: null, subline: 'Your photo is unchanged.', canTryAgain: false });
+    expect(restorationOf(restoration('failed'), sha256)).toMatchObject({ canTryAgain: true, subline: null });
+  });
+});
+
+describe('refusalSentence: one plain sentence per refusal reason (UIUX-restore-stop-QUESTION.md, decided by the lead 06:11)', () => {
+  it('words each reason, counting the points of light from the gate, one point singular', () => {
+    expect(refusalSentence('unconfirmed_points', 3)).toBe('The restoration showed 3 points of light that are not in your photo, so it was not kept.');
+    expect(refusalSentence('unconfirmed_points', 1)).toBe('The restoration showed 1 point of light that is not in your photo, so it was not kept.');
+    expect(refusalSentence('star_flux_changed', null)).toBe('The restoration changed how bright a star is, so it was not kept.');
+    expect(refusalSentence('frame_times_differ', null)).toBe("The restored clip's frame times did not match your clip's, so it was not kept.");
+    expect(refusalSentence('audio_differs', null)).toBe("The restored clip's sound did not match your clip's, so it was not kept.");
+    expect(refusalSentence('copy_differs', null)).toBe("The copy did not match your photo's pixels exactly, so it was not kept.");
+  });
+
+  it('never shows a reason code as words: a reason it does not know, or a count it lacks, gives no sentence', () => {
+    expect(refusalSentence('something_new', null)).toBeNull();
+    expect(refusalSentence('unconfirmed_points', null)).toBeNull();
   });
 });
 
@@ -75,7 +92,7 @@ describe('useRestoration', () => {
     act(() => root.render(createElement(Probe, { sha: sha256 })));
     act(() => latest.start());
     await settle();
-    expect(latest.restoration).toEqual({ phase: 'stopped', job: null, sentence: 'Restoring a clip is not built yet.' });
+    expect(latest.restoration).toEqual({ phase: 'stopped', job: null, sentence: 'Restoring a clip is not built yet.', subline: null, canTryAgain: true });
   });
 
   it('cancels the job it follows with one POST, and ends as the record says', async () => {
@@ -101,6 +118,33 @@ describe('useRestoration', () => {
     await settle();
     expect(calls).toContain(`POST /api/ingest/jobs/${running.id}/cancel`);
     expect(latest.restoration).toMatchObject({ phase: 'stopped', sentence: 'Canceled' });
+  });
+
+  it("reads a refused job's attempt for its reason and count, and says it, the photo unchanged, with no Try again", async () => {
+    const refused = restoration('rejected');
+    const calls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.endsWith('/restore')) return json(running, 202);
+      if (url.endsWith('/variants')) {
+        return json({
+          variants: [],
+          attempts: [{ id: refused.attemptId, status: 'rejected', rejection: 'unconfirmed_points', gate: { unconfirmedPointCount: 2, passed: false } }],
+        });
+      }
+      return json(refused);
+    });
+    act(() => root.render(createElement(Probe, { sha: sha256 })));
+    act(() => latest.start());
+    await settle();
+    expect(calls).toContain(`/api/media/${sha256}/variants`);
+    expect(latest.restoration).toMatchObject({
+      phase: 'stopped',
+      sentence: 'The restoration showed 2 points of light that are not in your photo, so it was not kept.',
+      subline: 'Your photo is unchanged.',
+      canTryAgain: false,
+    });
   });
 
   it('forgets everything, and stops following, when the photo changes', async () => {

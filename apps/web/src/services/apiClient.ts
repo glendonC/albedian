@@ -580,6 +580,25 @@ export async function followJob(
   return current;
 }
 
+/**
+ * Why a restoration attempt was refused, from the upload's attempt records (`GET /api/media/{sha256}/variants`): its
+ * rejection reason and, from its gate, how many points of light the restoration showed that the photo lacks. Null when
+ * the attempt is not listed or says no reason.
+ */
+export async function readRefusal(
+  sha256: string,
+  attemptId: string
+): Promise<{ rejection: string; unconfirmedPointCount: number | null } | null> {
+  const res = await fetchAnswer(`/api/media/${sha256}/variants`);
+  if (!res.ok) throw new Error(await serverReason(res));
+  const body = (await res.json()) as { attempts?: Array<Record<string, unknown>> };
+  const attempt = body.attempts?.find((entry) => entry.id === attemptId);
+  if (!attempt || typeof attempt.rejection !== 'string') return null;
+  const gate = attempt.gate as { unconfirmedPointCount?: unknown } | undefined;
+  const count = gate && Number.isInteger(gate.unconfirmedPointCount) ? (gate.unconfirmedPointCount as number) : null;
+  return { rejection: attempt.rejection, unconfirmedPointCount: count };
+}
+
 /** Where a stored variant's bytes are served (`GET /api/media/{sha256}/variants/{variantId}/file`). */
 export function variantFileUrl(sha256: string, variantId: string): string {
   return `/api/media/${sha256}/variants/${encodeURIComponent(variantId)}/file`;

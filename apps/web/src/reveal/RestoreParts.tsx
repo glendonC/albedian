@@ -40,10 +40,14 @@ export const RestoreSteps: React.FC<{ job: UploadJob }> = ({ job }) => (
 export const RestoreWhy: React.FC<{
   job: UploadJob | null;
   sentence: string | null;
+  /** Under a refusal: the photo unchanged (UIUX-restore-stop-QUESTION.md). */
+  subline?: string | null;
+  /** False for a refusal: the same photo would be refused the same way. */
+  canTryAgain?: boolean;
   working: boolean;
   onCancel: () => Promise<unknown> | void;
   onTryAgain: () => void;
-}> = ({ job, sentence, working, onCancel, onTryAgain }) => {
+}> = ({ job, sentence, subline = null, canTryAgain = true, working, onCancel, onTryAgain }) => {
   const [asked, setAsked] = useState(false);
   useEffect(() => setAsked(false), [job?.id, working]);
   const held = asked || job?.cancelRequestedAtUTC !== undefined;
@@ -58,15 +62,18 @@ export const RestoreWhy: React.FC<{
     }
   };
   return (
-    <div className="work-why restore-why" role={working ? undefined : 'alert'}>
+    <div className={!working && !canTryAgain ? 'work-why restore-why is-refused' : 'work-why restore-why'} role={working ? undefined : 'alert'}>
       {!working && sentence !== null && <p>{sentence}</p>}
-      <div className="work-acts">
-        {working ? (
-          <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" aria-disabled={held ? true : undefined} onClick={cancel} />
-        ) : (
-          <MainAction label="Try again" icon="arrow-clockwise" onClick={onTryAgain} />
-        )}
-      </div>
+      {!working && subline !== null && <p className="restore-why__sub">{subline}</p>}
+      {(working || canTryAgain) && (
+        <div className="work-acts">
+          {working ? (
+            <SecondAction part={held ? 'work-cancel is-asked' : 'work-cancel'} label="Cancel" aria-disabled={held ? true : undefined} onClick={cancel} />
+          ) : (
+            <MainAction label="Try again" icon="arrow-clockwise" onClick={onTryAgain} />
+          )}
+        </div>
+      )}
     </div>
   );
 };
