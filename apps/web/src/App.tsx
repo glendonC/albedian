@@ -8,7 +8,7 @@ import {
   PersonAlignment,
   orientedSize,
 } from '@albedian/contracts';
-import { alignTargets, placedAtPose, type AlignPose } from './reveal/alignPose.js';
+import { alignTargets, placedAtPose, type AlignPose, type AlignStart } from './reveal/alignPose.js';
 import {
   createEmptyObservationSession,
   dispatchAlbedianAction,
@@ -411,9 +411,12 @@ export const App: React.FC = () => {
   // working screen shows the sent state with the rings at their pose (placed now, from the sky on screen), then the
   // reveal of what the solve found
   const solveHereRef = useRef(0);
-  const handleSolveFromHere = (alignment: PersonAlignment, pose: AlignPose) => {
+  const [alignedFrom, setAlignedFrom] = useState<{ sha256: string; pose: AlignPose; from: AlignStart } | null>(null);
+  const handleSolveFromHere = (alignment: PersonAlignment, pose: AlignPose, from: AlignStart) => {
     const asset = session.sourceAsset;
     if (!asset) return;
+    // Kept for what follows: a refusal draws it again, a match names it (D24 steps 4 and 5)
+    setAlignedFrom({ sha256: asset.sha256, pose, from });
     const token = ++solveHereRef.current;
     latestChoiceRef.current = null;
     const kept = inFlightRef.current?.receipt;
@@ -479,6 +482,7 @@ export const App: React.FC = () => {
         onTryAgain={handleTryAgain}
         onCancelJob={() => (arrival?.job?.id ? cancelJob(arrival.job.id) : undefined)}
         onSolveFromHere={handleSolveFromHere}
+        alignedFrom={alignedFrom}
         answer={answer && answer.photoKey === photoKeyOf(session) ? answer : null}
         heardWords={heardWords}
         canListen={canListen}

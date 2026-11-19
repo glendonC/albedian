@@ -274,3 +274,55 @@ describe('the aligning rules are the al-align screen\'s', () => {
     expect(declarationsOf('.align-layer__name')).toMatchObject({ color: 'var(--look-ev-predicted)', font: '400 13px / 1 var(--look-font-sans)', '-webkit-text-stroke': '3px rgba(0, 0, 0, 0.75)' });
   });
 });
+
+// D24 steps 4 and 5 (UIUX-align-READY.md): after a solve sent from the person's alignment, a refusal keeps the
+// alignment, drawn as predicted at its pose, with its two sentences and Line it up again, Show predicted sky and
+// Restore in a column; a match is the calibrated reveal with one more status line, "Found near your alignment".
+describe('after Solve from here', () => {
+  const KEPT: AlignPose = { azDeg: 120, altDeg: 40, rollDeg: 10, fovXDeg: 45, aspect: 4 / 3 };
+  const keptOf = (session: ObservationSession) => ({ sha256: session.sourceAsset!.sha256, pose: KEPT, from: { kind: 'brightest' as const, name: 'Fomalhaut' } });
+
+  it('refused: says no stars matched near it and that it is kept, drawn as predicted, with the three actions in a column', () => {
+    const session = unmatched();
+    show(session, { alignedFrom: keptOf(session), onRestore: () => {}, restoration: { phase: 'idle' } as Restoration });
+    const status = q('.reveal-status.is-unmatched')!;
+    expect([...status.querySelectorAll('.align-refused p')].map((p) => p.textContent)).toEqual(['No stars matched near your alignment.', 'Your alignment is kept, drawn as predicted.']);
+    expect([...status.querySelectorAll('.align-refused__acts button')].map((b) => b.textContent)).toEqual(['Line it up again', 'Show predicted sky', 'Restore']);
+    // The rings stay amber and dashed at the kept pose
+    expect(q('[data-testid="early-marks"]')!.className).toBe('align-layer is-still');
+    expect(q('[data-testid="early-marks"] circle')).not.toBeNull();
+  });
+
+  it('Line it up again reopens aligning at the kept pose', () => {
+    const session = unmatched();
+    show(session, { alignedFrom: keptOf(session) });
+    act(() => button('Line it up again')!.click());
+    expect(q('[data-testid="align-readout"]')!.innerHTML.split('<br>')[0]).toBe('120° · 40° up · turned 10° · 45° across');
+  });
+
+  it('matched: the calibrated reveal with one more status line, "Found near your alignment"', () => {
+    const calibrated = poseSession(sample('plate_calibrated'));
+    show(calibrated, { alignedFrom: keptOf(calibrated) });
+    const lines = [...container.querySelectorAll('[data-testid="reveal-status"] .reveal-status__line')].map((p) => p.textContent);
+    expect(lines.at(-1)).toBe('Found near your alignment');
+    expect(q('[data-testid="early-marks"]')).toBeNull();
+  });
+
+  it('says nothing of an alignment for another upload', () => {
+    const session = unmatched();
+    show(session, { alignedFrom: { ...keptOf(session), sha256: 'f'.repeat(64) } });
+    expect(q('.align-refused')).toBeNull();
+  });
+});
+
+describe("the refused state's rules", () => {
+  it('sets the second sentence at 14 px and the actions in a column 10 px apart', () => {
+    const found: Record<string, Record<string, string>> = {};
+    postcss.parse(css).walkRules((rule) => {
+      if (!rule.selector.startsWith('.align-refused')) return;
+      found[rule.selector] = Object.fromEntries((rule.nodes ?? []).map((d) => [(d as postcss.Declaration).prop, (d as postcss.Declaration).value]));
+    });
+    expect(found['.align-refused__kept']).toMatchObject({ 'font-size': '14px' });
+    expect(found['.align-refused__acts']).toMatchObject({ display: 'flex', 'flex-direction': 'column', 'align-items': 'flex-start', gap: '10px' });
+  });
+});

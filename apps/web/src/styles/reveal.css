@@ -1911,3 +1911,20 @@
   justify-content: center;
   pointer-events: auto;
 }
+
+/* D24 step 4, refused after Solve from here: the second sentence at 14 px, then Line it up again, Show predicted sky
+   and Restore in a column, 10 px apart. [proposed] the second sentence in ink 66 percent, 18 px above the actions */
+.align-refused__kept {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
+.align-refused__acts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: auto;
+}
