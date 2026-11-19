@@ -33,6 +33,7 @@ import struct
 import time
 import zipfile
 import zlib
+from unittest import mock
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -40,7 +41,7 @@ from urllib.parse import quote
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-from hypothesis import example, given, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 from PIL import Image, TiffImagePlugin
 from pydantic import ValidationError
@@ -528,26 +529,103 @@ def test_the_builder_refuses_a_manifest_the_contract_refuses() -> None:
 @example(contents=[b"", b""], moment=datetime(1980, 1, 1))
 @example(contents=[bytes(70_001), b"{}\n"], moment=datetime(2026, 11, 19, 6, 18, 42))
 def test_the_stored_zip_is_what_pythons_zipfile_writes_and_its_size_is_known_first(contents, moment) -> None:
-    names = [f"var_{index:016x}.png" for index in range(len(contents))]
     stamp = (moment.year, moment.month, moment.day, moment.hour, moment.minute, moment.second - moment.second % 2)
-
-    def entry(name: str, data: bytes) -> variants.ZipEntry:
-        return variants.ZipEntry(name, len(data), zlib.crc32(data) & 0xFFFFFFFF,
-                                 lambda: (data[i:i + 4096] for i in range(0, len(data), 4096)))
-
-    entries = [entry(name, data) for name, data in zip(names, contents)]
-    written = b"".join(variants.stored_zip(entries, stamp))
-    assert variants.stored_zip_size(entries) == len(written)
-    expected = io.BytesIO()
-    with zipfile.ZipFile(expected, "w", zipfile.ZIP_STORED) as archive:
-        for name, data in zip(names, contents):
-            info = zipfile.ZipInfo(name, date_time=stamp)
-            info.create_system = 3
-            info.external_attr = 0o100644 << 16
-            archive.writestr(info, data)
-    assert written == expected.getvalue()
+    written, expected = both_zips(contents, stamp)
+    assert written == expected
     _, read = unzip(written)
     assert [zipfile.ZipFile(io.BytesIO(written)).read(info) for info in read] == contents
+
+
+def zip_entry(name: str, data: bytes) -> variants.ZipEntry:
+    return variants.ZipEntry(name, len(data), zlib.crc32(data) & 0xFFFFFFFF,
+                             lambda: (data[i:i + 4096] for i in range(0, len(data), 4096)))
+
+
+def both_zips(contents: list[bytes], stamp: tuple, limit: int | None = None) -> tuple[bytes, bytes]:
+    """What the writer writes for `contents` and what Python's zipfile writes for them stored, both with zip64 from
+    `limit` bytes on when one is given (zipfile's own ZIP64_LIMIT lowered to it), its default otherwise. The writer's
+    size, known first, is checked against what it wrote."""
+    names = [f"var_{index:016x}.png" for index in range(len(contents))]
+    entries = [zip_entry(name, data) for name, data in zip(names, contents)]
+    options = {} if limit is None else {"zip64_limit": limit}
+    written = b"".join(variants.stored_zip(entries, stamp, **options))
+    assert variants.stored_zip_size(entries, **options) == len(written)
+    expected = io.BytesIO()
+    with mock.patch.object(zipfile, "ZIP64_LIMIT", zipfile.ZIP64_LIMIT if limit is None else limit):
+        with zipfile.ZipFile(expected, "w", zipfile.ZIP_STORED) as archive:
+            for name, data in zip(names, contents):
+                info = zipfile.ZipInfo(name, date_time=stamp)
+                info.create_system = 3
+                info.external_attr = 0o100644 << 16
+                archive.writestr(info, data)
+    return written, expected.getvalue()
+
+
+def test_the_writers_zip64_limit_is_pythons_two_gib() -> None:
+    """Python's zipfile writes zip64 for any entry, offset or directory past 2 GiB less one byte, since some readers
+    take the 32 bit fields as signed [verified: CPython's zipfile ZIP64_LIMIT, 3.12 and 3.14, read for this unit]."""
+    assert variants.ZIP64_LIMIT == zipfile.ZIP64_LIMIT == (1 << 31) - 1
+
+
+def test_past_the_limit_the_zip_is_what_pythons_zipfile_writes_as_zip64() -> None:
+    """With the limit lowered to 3,000 bytes: an entry past it (zip64 sizes in its local header and in the directory),
+    one at an offset past it (its offset in the directory's zip64 field), and a directory past it (the zip64 end
+    records), byte for byte as zipfile writes them, and read back whole."""
+    contents = [bytes(range(256)) * 20, b"x" * 100, b"{}\n" * 600]
+    written, expected = both_zips(contents, (2026, 11, 19, 10, 20, 0), limit=3_000)
+    assert written == expected
+    assert b"PK\x06\x06" in written and b"PK\x06\x07" in written
+    archive, read = unzip(written)
+    assert [archive.read(info) for info in read] == contents
+    assert read[0].file_size == 5_120 and read[1].header_offset > 3_000
+
+
+def test_an_entry_of_exactly_the_limit_is_not_zip64_and_reads_back() -> None:
+    """zipfile itself disagrees with itself there (its local header goes zip64 from 1/1.05 of the limit, its directory
+    past it); this writer keeps 32 bit fields up to the limit in both, which a reader taking them as signed still reads."""
+    data = b"z" * 3_000
+    written = b"".join(variants.stored_zip([zip_entry("a.png", data)], (2026, 11, 19, 10, 20, 0), zip64_limit=3_000))
+    # The local header: version 2.0, both sizes 3,000, no extra field
+    assert struct.unpack("<H", written[4:6]) == (20,) and struct.unpack("<IIHH", written[18:30]) == (3_000, 3_000, 5, 0)
+    # The directory's record of it: version 2.0, both sizes, no extra field (the directory itself starts past the limit,
+    # so the end records are zip64)
+    directory = written.index(b"PK\x01\x02")
+    assert struct.unpack("<HH", written[directory + 4:directory + 8]) == (0x0314, 20)
+    assert struct.unpack("<IIHH", written[directory + 20:directory + 32]) == (3_000, 3_000, 5, 0)
+    archive, read = unzip(written)
+    assert archive.read(read[0]) == data
+
+
+def test_a_directory_past_the_limit_alone_gets_the_zip64_end_records() -> None:
+    # Fifty empty entries: their local headers end before 3,000 bytes, their directory runs past 3,000
+    contents = [b""] * 50
+    written, expected = both_zips(contents, (2026, 11, 19, 10, 20, 0), limit=3_000)
+    assert written == expected and b"PK\x06\x06" in written
+    directory_start = struct.unpack("<I", written[-6:-2])[0]
+    assert directory_start < 3_000
+
+
+def test_more_than_65535_entries_get_the_zip64_end_records() -> None:
+    contents = [b""] * 65_536
+    written, expected = both_zips(contents, (2026, 11, 19, 10, 20, 0))
+    assert written == expected and b"PK\x06\x06" in written
+    # The end record's two counts, at 8 and 10 of its 22 bytes, are capped; the zip64 record holds the true one
+    assert struct.unpack("<HH", written[-14:-10]) == (0xFFFF, 0xFFFF)
+    assert len(zipfile.ZipFile(io.BytesIO(written)).infolist()) == 65_536
+
+
+@settings(max_examples=60, deadline=None)
+@given(sizes=st.lists(st.integers(0, 6_000), min_size=1, max_size=4))
+def test_at_any_size_about_a_lowered_limit_the_zip_is_what_pythons_zipfile_writes(sizes) -> None:
+    limit = 2_000
+    # zipfile gives a local header zip64 from 1/1.05 of its limit, and its directory from the limit: between the two
+    # its own two records disagree, which this writer does not copy
+    assume(not any(limit / 1.05 < size <= limit for size in sizes))
+    contents = [bytes([index]) * size for index, size in enumerate(sizes)]
+    written, expected = both_zips(contents, (2026, 11, 19, 10, 20, 0), limit=limit)
+    assert written == expected
+    archive, read = unzip(written)
+    assert [archive.read(info) for info in read] == contents
 
 
 def test_a_zip_time_is_the_variants_own_utc_instant_at_two_second_steps() -> None:

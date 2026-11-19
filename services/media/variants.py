@@ -349,18 +349,23 @@ def manifest_bytes(manifest: dict[str, Any]) -> bytes:
     return _record_bytes(manifest)
 
 
-# A stored zip [verified: PKWARE APPNOTE.TXT 6.3, sections 4.3.7, 4.3.12 and 4.3.16; the writer is tested to write
-# what Python's zipfile writes for the same entries]: each entry's local header with its CRC-32 and sizes, so no data
-# descriptor follows it, then the central directory and its end record. No zip64: an entry or offset past 4 GiB is
-# refused [open: a long clip's export].
+# A stored zip [inference: the layout of PKWARE's APPNOTE.TXT as recalled, not read again for this unit; tested: the
+# writer writes what Python's zipfile writes for the same entries, below its zip64 limit and above a lowered one]:
+# each entry's local header with its CRC-32 and sizes, so no data descriptor follows it, then the central directory
+# and its end record; an entry, offset or directory past the limit is written as zip64, as zipfile writes it
 _LOCAL = struct.Struct("<IHHHHHIIIHH")
 _CENTRAL = struct.Struct("<IHHHHHHIIIHHHHHII")
 _END = struct.Struct("<IHHHHIIH")
+_ZIP64_END = struct.Struct("<IQHHIIQQQQ")
+_ZIP64_LOCATOR = struct.Struct("<IIQI")
 _ZIP_VERSION = 20  # 2.0, the version Python's zipfile writes for a stored entry
+_ZIP64_VERSION = 45  # 4.5, the version a zip64 entry or end record needs
 _MADE_BY_UNIX = 3 << 8
 # Readable by whoever unpacks it, whatever the store's own 0400
 _EXTERNAL_ATTR = 0o100644 << 16
-_ZIP32_LIMIT = 0xFFFFFFFF
+# Past 2 GiB less one byte an entry, an offset or the directory is zip64, as Python's zipfile writes it, since some
+# readers take the 32 bit fields as signed [verified: CPython's zipfile ZIP64_LIMIT, 3.12 and 3.14, read for this unit]
+ZIP64_LIMIT = (1 << 31) - 1
 
 
 @dataclass(frozen=True)
@@ -384,28 +389,46 @@ def _dos(date_time: tuple[int, int, int, int, int, int]) -> tuple[int, int]:
     return hour << 11 | minute << 5 | second // 2, (year - 1980) << 9 | month << 5 | day
 
 
-def _local_header(entry: ZipEntry, dos: tuple[int, int]) -> bytes:
-    name = entry.name.encode("ascii")
-    return _LOCAL.pack(0x04034B50, _ZIP_VERSION, 0, 0, dos[0], dos[1], entry.crc32, entry.size, entry.size, len(name), 0) + name
+def _plan(entries: list[ZipEntry], date_time: tuple[int, int, int, int, int, int], limit: int) -> tuple[list[bytes], bytes]:
+    """Each entry's local header, and the central directory with its end records: everything but the entries' bytes,
+    known from their names, sizes and CRC-32s before a byte is sent."""
+    dos, offset, headers, central = _dos(date_time), 0, [], []
+    for entry in entries:
+        name = entry.name.encode("ascii")
+        big, far = entry.size > limit, offset > limit
+        size = 0xFFFFFFFF if big else entry.size
+        local_extra = struct.pack("<HHQQ", 1, 16, entry.size, entry.size) if big else b""
+        version = _ZIP64_VERSION if big else _ZIP_VERSION
+        headers.append(_LOCAL.pack(0x04034B50, version, 0, 0, dos[0], dos[1], entry.crc32, size, size, len(name),
+                                   len(local_extra)) + name + local_extra)
+        fields = ([entry.size, entry.size] if big else []) + ([offset] if far else [])
+        extra = struct.pack("<HH" + "Q" * len(fields), 1, 8 * len(fields), *fields) if fields else b""
+        version = _ZIP64_VERSION if fields else _ZIP_VERSION
+        central.append(_CENTRAL.pack(0x02014B50, _MADE_BY_UNIX | version, version, 0, 0, dos[0], dos[1], entry.crc32, size,
+                                     size, len(name), len(extra), 0, 0, 0, _EXTERNAL_ATTR,
+                                     0xFFFFFFFF if far else offset) + name + extra)
+        offset += len(headers[-1]) + entry.size
+    directory = b"".join(central)
+    count, length, at, tail = len(entries), len(directory), offset, b""
+    if count > 0xFFFF or at > limit or length > limit:
+        tail = (_ZIP64_END.pack(0x06064B50, _ZIP64_END.size - 12, _ZIP64_VERSION, _ZIP64_VERSION, 0, 0, count, count,
+                                length, at)
+                + _ZIP64_LOCATOR.pack(0x07064B50, 0, at + length, 1))
+        count, length, at = min(count, 0xFFFF), min(length, 0xFFFFFFFF), min(at, 0xFFFFFFFF)
+    return headers, directory + tail + _END.pack(0x06054B50, 0, 0, count, count, length, at, 0)
 
 
-def stored_zip_size(entries: list[ZipEntry]) -> int:
+def stored_zip_size(entries: list[ZipEntry], zip64_limit: int = ZIP64_LIMIT) -> int:
     """The zip's length in bytes, known before a byte of it is written."""
-    names = sum(len(entry.name.encode("ascii")) for entry in entries)
-    return (sum(_LOCAL.size + entry.size + _CENTRAL.size for entry in entries) + 2 * names + _END.size)
+    headers, tail = _plan(entries, (1980, 1, 1, 0, 0, 0), zip64_limit)
+    return sum(len(header) + entry.size for header, entry in zip(headers, entries)) + len(tail)
 
 
-def stored_zip(entries: list[ZipEntry], date_time: tuple[int, int, int, int, int, int]) -> Any:
+def stored_zip(entries: list[ZipEntry], date_time: tuple[int, int, int, int, int, int], zip64_limit: int = ZIP64_LIMIT) -> Any:
     """The zip's bytes, block by block: an entry's bytes are read as they are sent, never held whole. An entry whose
     blocks do not add up to its size stops the zip before its central directory, so no reader takes it as whole."""
-    if stored_zip_size(entries) > _ZIP32_LIMIT or len(entries) > 0xFFFF:
-        raise ValueError("an export past 4 GiB needs zip64, which this writer does not write")
-    dos, offset, central = _dos(date_time), 0, []
-    for entry in entries:
-        header = _local_header(entry, dos)
-        name = entry.name.encode("ascii")
-        central.append(_CENTRAL.pack(0x02014B50, _MADE_BY_UNIX | _ZIP_VERSION, _ZIP_VERSION, 0, 0, dos[0], dos[1],
-                                     entry.crc32, entry.size, entry.size, len(name), 0, 0, 0, 0, _EXTERNAL_ATTR, offset) + name)
+    headers, tail = _plan(entries, date_time, zip64_limit)
+    for entry, header in zip(entries, headers):
         yield header
         sent, crc = 0, 0
         for block in entry.blocks():
@@ -413,6 +436,4 @@ def stored_zip(entries: list[ZipEntry], date_time: tuple[int, int, int, int, int
             yield block
         if sent != entry.size or crc & 0xFFFFFFFF != entry.crc32:
             raise ValueError(f"{entry.name} changed while it was sent")
-        offset += len(header) + entry.size
-    directory = b"".join(central)
-    yield directory + _END.pack(0x06054B50, 0, 0, len(entries), len(entries), len(directory), offset, 0)
+    yield tail
