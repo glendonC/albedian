@@ -699,11 +699,17 @@
   --look-ic: 16px;
 }
 
-/* While sound is on, pointing at the circle or focusing it shows the sentence and the volume 8 px under it */
+/* While sound is on, pointing at the circle or focusing it shows the sentence and the volume 8 px under it, on their
+   own small dark panel so they never sit on an open card's words (D17, UIUX-sound-card-QUESTION.md, INTERIM) */
 .sound-control__pop {
   position: absolute;
-  right: 0;
+  right: -8px;
   top: 44px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 18px;
+  background: #111112;
+  border: 1px solid var(--look-hair);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   display: flex;
   gap: 14px;
   align-items: flex-start;
@@ -728,7 +734,7 @@
 
 .sound-control__pop p {
   width: 252px;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   text-align: right;
   font: 400 12px / 1.5 var(--look-font-sans);
   letter-spacing: -0.005em;

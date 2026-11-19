@@ -163,10 +163,17 @@ describe('SoundControl: what the sound is, and its volume, while on', () => {
 describe("the sound control's rules are the approved page's", () => {
   it('opens the group under the circle only while on, on hover or focus, in a quarter of a second, and never moves with reduced motion', () => {
     expect(declarationsOf('.sound-control')).toEqual({ position: 'relative' });
+    // On its own small dark panel, so it never sits on an open card's words (D17, UIUX-sound-card-QUESTION.md, INTERIM;
+    // #sc-fix .snd.pan .snd-pop): 8 px past the circle's right edge, 44 px from its top
     expect(declarationsOf('.sound-control__pop')).toEqual({
       position: 'absolute',
-      right: '0',
+      right: '-8px',
       top: '44px',
+      padding: '8px 8px 8px 16px',
+      'border-radius': '18px',
+      background: '#111112',
+      border: '1px solid var(--look-hair)',
+      'box-shadow': '0 12px 32px rgba(0, 0, 0, 0.55)',
       display: 'flex',
       gap: '14px',
       'align-items': 'flex-start',
@@ -183,10 +190,10 @@ describe("the sound control's rules are the approved page's", () => {
     expect(css.replace(/\s+/g, ' ')).toContain('@media (prefers-reduced-motion: reduce) { .sound-control__pop { transition: none; } }');
   });
 
-  it('sets the sentence 252 px wide, right aligned, 12 px at the second ink', () => {
+  it('sets the sentence 252 px wide, right aligned, 12 px at the second ink, 4 px down on the panel', () => {
     expect(declarationsOf('.sound-control__pop p')).toEqual({
       width: '252px',
-      margin: '6px 0 0',
+      margin: '4px 0 0',
       'text-align': 'right',
       font: '400 12px / 1.5 var(--look-font-sans)',
       'letter-spacing': '-0.005em',
