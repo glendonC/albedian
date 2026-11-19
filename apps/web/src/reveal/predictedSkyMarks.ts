@@ -27,7 +27,8 @@ export interface SkyMark {
   nameOnLeft: boolean;
 }
 
-interface Box {
+/** A place on screen marks keep clear of: the status column, the Sound circle, the foot's buttons (ruled 13:10). */
+export interface Box {
   x0: number;
   x1: number;
   y0: number;
@@ -40,9 +41,12 @@ export function placeSkyMarks(
   stars: ReadonlyArray<{ id: string; name: string | null; xPx: number; yPx: number }>,
   widthPx: number,
   heightPx: number,
-  fontPx: number
+  fontPx: number,
+  clear: readonly Box[] = []
 ): SkyMark[] {
-  const shown = stars.filter((s) => s.xPx >= 0 && s.xPx <= widthPx && s.yPx >= 0 && s.yPx <= heightPx);
+  // A star under the status column, the Sound circle or the foot's buttons gets no ring and no name while it is there
+  const under = (x: number, y: number) => clear.some((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
+  const shown = stars.filter((s) => s.xPx >= 0 && s.xPx <= widthPx && s.yPx >= 0 && s.yPx <= heightPx && !under(s.xPx, s.yPx));
   const r = SKY_NAMED_RING_PX;
   // Every ring keeps its room, at the named size
   const rings = shown.map((s) => ({ id: s.id, box: { x0: s.xPx - r, x1: s.xPx + r, y0: s.yPx - r, y1: s.yPx + r } }));
@@ -56,6 +60,7 @@ export function placeSkyMarks(
       const box = { x0, x1: x0 + width, y0: star.yPx - fontPx * 0.6, y1: star.yPx + fontPx * 0.6 };
       if (box.x0 < 2 || box.x1 > widthPx - 2) continue;
       if (names.some((n) => overlaps(box, n))) continue;
+      if (clear.some((b) => overlaps(box, b))) continue;
       if (rings.some((ring) => ring.id !== star.id && overlaps(box, ring.box))) continue;
       names.push(box);
       return { ...unnamed, r: SKY_NAMED_RING_PX, name: star.name, nameOnLeft: left };
@@ -65,7 +70,14 @@ export function placeSkyMarks(
 }
 
 /** The predicted stars of magnitude 3.2 or brighter, through the renderer's camera now, named by D20's rule. */
-export function predictedSkyMarks(solution: ObservationSolution | undefined, pose: CameraSkyPose | null, widthPx: number, heightPx: number, fontPx = 13): SkyMark[] {
+export function predictedSkyMarks(
+  solution: ObservationSolution | undefined,
+  pose: CameraSkyPose | null,
+  widthPx: number,
+  heightPx: number,
+  fontPx = 13,
+  clear: readonly Box[] = []
+): SkyMark[] {
   if (!solution || !pose) return [];
   const stars = solution.findings
     .flatMap((finding) => {
@@ -77,5 +89,5 @@ export function predictedSkyMarks(solution: ObservationSolution | undefined, pos
       return [{ id: finding.id, name: finding.catalogRef?.commonName?.trim() || null, xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
     })
     .sort((a, b) => a.magnitude - b.magnitude);
-  return placeSkyMarks(stars, widthPx, heightPx, fontPx);
+  return placeSkyMarks(stars, widthPx, heightPx, fontPx, clear);
 }

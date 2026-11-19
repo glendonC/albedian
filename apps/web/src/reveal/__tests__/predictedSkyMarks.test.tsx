@@ -46,6 +46,18 @@ describe('placeSkyMarks: names by D20', () => {
     expect(marks.map((m) => [m.name, m.nameOnLeft])).toEqual([['Arcturus', false], [null, false], [null, false]]);
   });
 
+  it('keeps clear of the status column, the Sound circle and the foot\'s buttons (ruled 13:10)', () => {
+    const status = { x0: 36, x1: 336, y0: 70, y1: 304 };
+    // A star under the column gets no ring and no name; one beside it keeps its ring, its name only where it clears
+    const marks = placeSkyMarks([at('under', 'Phecda', 120, 180), at('beside', 'Dubhe', 340, 208)], W, H, 13, [status]);
+    expect(marks.map((m) => [m.id, m.name, m.nameOnLeft])).toEqual([['beside', 'Dubhe', false]]);
+    // Its name would run into the column on the left, so where the right is taken too it is not drawn
+    const hemmed = placeSkyMarks([at('a', 'Merak', 345, 260), at('b', null, 370, 260)], W, H, 13, [status]);
+    expect(hemmed[0]).toMatchObject({ id: 'a', name: null, r: SKY_UNNAMED_RING_PX });
+    // Out from under it, by a drag, the same star is ringed and named again
+    expect(placeSkyMarks([at('under', 'Phecda', 520, 180)], W, H, 13, [status])[0]).toMatchObject({ name: 'Phecda' });
+  });
+
   it('draws nothing off screen', () => {
     expect(placeSkyMarks([at('a', 'Vega', -5, 400), at('b', 'Deneb', 700, H + 2)], W, H, 13)).toEqual([]);
   });

@@ -1,10 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import { EvidenceTag, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { predictedSkyWords } from './predictedSky.js';
-import { predictedSkyMarks } from './predictedSkyMarks.js';
+import { predictedSkyMarks, type Box } from './predictedSkyMarks.js';
+
+/** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
+function clearOf(status: HTMLElement | null): Box[] {
+  const rects = [status, document.querySelector('.reveal-nav .sound-control'), document.querySelector('.ask-bar')]
+    .filter((el): el is Element => el !== null)
+    .map((el) => el.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0);
+  return rects.map((r) => ({ x0: r.left, x1: r.right, y0: r.top, y1: r.bottom }));
+}
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
@@ -38,7 +47,8 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
     return () => window.cancelAnimationFrame(frame);
   }, [skyPose]);
   const size = useViewportSize();
-  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx);
+  const status = useRef<HTMLDivElement>(null);
+  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, 13, clearOf(status.current));
   return (
     <div className="predsky" data-testid="predicted-sky" data-evidence-class="predicted">
       <svg className="align-layer__rings" data-testid="predicted-sky-rings" aria-hidden="true" focusable="false">
@@ -60,7 +70,7 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
       <button type="button" className="reveal-word" data-testid="predicted-sky-home" onClick={onHome}>
         <Logo sizePx={21} />
       </button>
-      <div className="reveal-status predsky-status" data-testid="reveal-status" data-moment="predicted-sky" role="status">
+      <div ref={status} className="reveal-status predsky-status" data-testid="reveal-status" data-moment="predicted-sky" role="status">
         <EvidenceTag evidenceClass="predicted" />
         <p className="predsky-status__lead">{words.heading}</p>
         <p className="predsky-status__note">{words.note}</p>
