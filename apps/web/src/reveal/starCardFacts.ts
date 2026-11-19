@@ -2,6 +2,7 @@ import { DESIGNATION_CONSTELLATIONS, type CelestialFinding, type EvidenceClass }
 import { PARSEC_TO_LIGHT_YEAR } from '@albedian/evidence';
 import { findingCanEnterSpace } from '../components/askSuggestions.js';
 import { RUWE_CAUTION_ABOVE, astrophysicsOf, formatSignificant } from '../components/scanScales.js';
+import { deepSkyKindWords, isDeepSky, type DeepSkyRow } from './deepSky.js';
 
 /**
  * What the picked star's card says (reveal, approved 2026-11-12, laptop screen 3), each fact from the finding itself:
@@ -53,14 +54,24 @@ function namelessParts(finding: CelestialFinding): { title: string; number: stri
   return { title: ref.provider, number };
 }
 
-export function starCardFacts(finding: CelestialFinding): StarCardFacts {
+export function starCardFacts(finding: CelestialFinding, deepSky: DeepSkyRow | null = null): StarCardFacts {
   const ref = finding.catalogRef;
-  const nameless = namelessParts(finding);
+  const deep = isDeepSky(finding);
+  // A deep-sky object is titled by its own name or its NGC number (D23): never a nameless star's parts
+  const nameless = deep ? null : namelessParts(finding);
   const designation = ref?.bayerDesignation !== undefined && ref.bayerDesignation !== finding.title ? ref.bayerDesignation : null;
   const constellation = ref ? (CONSTELLATION_NAME.get(ref.constellation) ?? null) : null;
-  const subParts = [nameless ? nameless.number : designation, constellation].filter((part): part is string => part !== null);
+  // A deep-sky object's small line is its type in words and its constellation ("Globular cluster · Centaurus", D23)
+  const first = deep ? (deepSky ? deepSkyKindWords(deepSky.type) : null) : nameless ? nameless.number : designation;
+  const subParts = [first, constellation].filter((part): part is string => part !== null);
 
   const numbers: StarCardNumber[] = [];
+  // Its one number (D23): V as the catalog gives it, labelled "magnitude"; a catalog value, never more than the
+  // finding's own class
+  const vMag = ref?.apparentMagnitude;
+  if (deep && vMag !== undefined && Number.isFinite(vMag)) {
+    numbers.push({ value: String(vMag), unit: '', label: 'magnitude', evidenceClass: finding.evidenceClass === 'observed' ? 'catalog_matched' : finding.evidenceClass });
+  }
   const distance = finding.inferredDistancePc;
   if (distance && CATALOG_DISTANCE_METHODS.has(distance.method)) {
     numbers.push({

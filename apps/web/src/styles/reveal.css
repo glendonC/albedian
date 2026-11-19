@@ -1578,3 +1578,14 @@
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
+
+/* A deep-sky object (D23), unpicked: its symbol 12 px across at 1.1 in amber, its common name 6 px beside the symbol,
+   13 px (11 px at phone width, the phone rule's size); after the phone's rules, so the gap holds there too */
+.reveal-photo .reveal-mark.is-deepsky .reveal-mark__name {
+  left: calc(50% + 12px);
+}
+
+.reveal-photo .reveal-mark.is-deepsky.is-left .reveal-mark__name {
+  left: auto;
+  right: calc(50% + 12px);
+}

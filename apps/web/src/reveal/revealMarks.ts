@@ -2,6 +2,7 @@ import { hasVerifiedWcs, type CelestialFinding, type ObservationSession } from '
 import { chooseLabelledFindingIds, projectFindingToViewport } from '../components/CelestialMarkerOverlay.js';
 import { sessionPhotoRect, sourcePixelToViewport } from '../components/sourcePhotoRect.js';
 import { worldToPixelWCS } from '@albedian/camera-rig';
+import { DEEP_SKY_LIMIT, decisionMagnitude, deepSkyRowOf, deepSkySymbol, hasCommonName, isDeepSky, type DeepSkySymbol, type DeepSkyTable } from './deepSky.js';
 
 /**
  * Which marks the reveal draws over the photo (reveal, approved 2026-11-12), and where.
@@ -27,6 +28,8 @@ export interface RevealMark {
   picked: boolean;
   /** For a predicted mark: the radius on screen of the ring that shows how far it may be off. */
   uncertaintyPx: number | null;
+  /** A deep-sky object placed through the photo's solve: its symbol by type (D23); none for any other mark. */
+  deepSky: DeepSkySymbol | null;
 }
 
 /**
@@ -44,6 +47,11 @@ const NAME_EM_PER_CHAR = 0.56;
 /** The room a mark keeps around its centre (its ring, gap and ticks, and 2 px), and a name's margin at each end. */
 const MARK_ROOM_PX = 14;
 const NAME_MARGIN_PX = 3;
+/** A deep-sky symbol (D23): 12 px across, its name 6 px beside it, and 2 px kept round it. */
+export const DEEP_SKY_RADIUS_PX = 6;
+export const DEEP_SKY_NAME_GAP_PX = 6;
+const DEEP_SKY_ROOM_PX = DEEP_SKY_RADIUS_PX + 2;
+const DEEP_SKY_STAR_ROOM_PX = 9;
 
 interface Box {
   x0: number;
@@ -115,7 +123,8 @@ function throughSolve(
   const sky = finding.skyPosition;
   if (!wcs || !asset || !sky) return null;
   const at = worldToPixelWCS(sky.raDeg, sky.decDeg, wcs);
-  if (!at.visible || at.uPx < 0 || at.vPx < 0 || at.uPx > asset.width || at.vPx > asset.height) return null;
+  // A place the projection cannot give (behind the camera, not a number) is never drawn (D23)
+  if (!at.visible || !Number.isFinite(at.uPx) || !Number.isFinite(at.vPx) || at.uPx < 0 || at.vPx < 0 || at.uPx > asset.width || at.vPx > asset.height) return null;
   const shown = sourcePixelToViewport(at.uPx, at.vPx, asset.width, asset.height, viewportWidthPx, viewportHeightPx, session.cropTransform, asset.displayOrientation);
   return { xPx: shown.xPx, yPx: shown.yPx, xPct: (shown.xPx / viewportWidthPx) * 100, yPct: (shown.yPx / viewportHeightPx) * 100, visible: true };
 }
@@ -124,7 +133,7 @@ export function revealMarks(
   session: ObservationSession,
   viewportWidthPx: number,
   viewportHeightPx: number,
-  { phone = false }: { phone?: boolean } = {}
+  { phone = false, deepSky = null }: { phone?: boolean; deepSky?: DeepSkyTable | null } = {}
 ): RevealMark[] {
   const spec = phone ? PHONE_NAMES : LAPTOP_NAMES;
   const solution = session.observationSolution;
@@ -136,6 +145,16 @@ export function revealMarks(
   const placed = solution.findings.flatMap((finding) => {
     const catalog = finding.evidenceClass === 'catalog_matched' && verified;
     if (!catalog && finding.evidenceClass !== 'predicted') return [];
+    // A deep-sky object on a verified solve (D23): placed through the solve at its catalog centre, drawn only when it
+    // is no fainter than the naked-eye limit, or picked
+    if (verified && finding.evidenceClass === 'predicted' && isDeepSky(finding)) {
+      const row = deepSkyRowOf(finding, deepSky);
+      const magnitude = row ? decisionMagnitude(row) : null;
+      if (finding.id !== pickedId && (magnitude === null || magnitude > DEEP_SKY_LIMIT)) return [];
+      const through = throughSolve(finding, session, viewportWidthPx, viewportHeightPx);
+      if (!through) return [];
+      return [{ finding, kind: 'predicted' as RevealMarkKind, position: through, symbol: row ? deepSkySymbol(row.type) : ('circle' as DeepSkySymbol), magnitude }];
+    }
     let position = projectFindingToViewport(finding, session, viewportWidthPx, viewportHeightPx);
     // A predicted object picked on a photo matched to stars is placed through the photo's verified solve, drawn as
     // predicted (INTERIM: .lead/uiux/UIUX-predicted-pick-QUESTION.md); otherwise it has a place over the photo only
@@ -144,23 +163,28 @@ export function revealMarks(
       position = throughSolve(finding, session, viewportWidthPx, viewportHeightPx) ?? position;
     }
     if (!position.visible) return [];
-    return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position }];
+    return [{ finding, kind: (catalog ? 'catalog' : 'predicted') as RevealMarkKind, position, symbol: null as DeepSkySymbol | null, magnitude: null as number | null }];
   });
 
   // Predicted objects (drawn only where a pose lines the sky up) keep the budget of names the app already gives them
   const predictedNamed = chooseLabelledFindingIds(
-    placed.filter((mark) => mark.kind === 'predicted').map((mark) => mark.finding),
+    placed.filter((mark) => mark.kind === 'predicted' && mark.symbol === null).map((mark) => mark.finding),
     viewportWidthPx,
     [pickedId]
   );
   const left = rect.leftPx;
   const right = rect.leftPx + rect.widthPx;
-  const rooms = placed.map(({ finding, position }) => ({
-    id: finding.id,
-    box: { x0: position.xPx - MARK_ROOM_PX, x1: position.xPx + MARK_ROOM_PX, y0: position.yPx - MARK_ROOM_PX, y1: position.yPx + MARK_ROOM_PX },
-  }));
-  return placed.map(({ finding, kind, position }) => {
+  // A deep-sky symbol keeps its 12 px and 2 px round it; a star's mark its ring, ticks and gap
+  const rooms = placed.map(({ finding, position, symbol }) => {
+    const room = symbol === null ? MARK_ROOM_PX : DEEP_SKY_ROOM_PX;
+    return { id: finding.id, box: { x0: position.xPx - room, x1: position.xPx + room, y0: position.yPx - room, y1: position.yPx + room } };
+  });
+  const marks: RevealMark[] = placed.map(({ finding, kind, position, symbol }) => {
     const picked = finding.id === pickedId;
+    // A deep-sky object's name is placed after the stars' (below); picked, it takes the picked look as any prediction
+    if (symbol !== null && !picked) {
+      return { finding, kind, xPx: position.xPx, yPx: position.yPx, name: null, nameOnLeft: false, picked, uncertaintyPx: null, deepSky: symbol };
+    }
     const magnitude = finding.catalogRef?.apparentMagnitude;
     // The picked star keeps its name; a star with no name keeps its mark and no label, its card naming it (INTERIM:
     // .lead/uiux/UIUX-unnamed-QUESTION.md)
@@ -190,9 +214,43 @@ export function revealMarks(
       name,
       nameOnLeft: name !== null && nameOnLeft,
       picked,
-      uncertaintyPx: kind === 'predicted' ? (position.ringPx ?? null) : null,
+      uncertaintyPx: kind === 'predicted' && symbol === null ? (position.ringPx ?? null) : null,
+      deepSky: symbol,
     };
   });
+
+  // Deep-sky names (D23), brightest first: a common name only, 6 px beside its symbol, right or else left, kept only
+  // when it stays inside the photo and runs into no star mark, star name, other symbol or other name
+  const size = spec.size;
+  // Here a star's mark keeps 9 px round its centre, as the design page's own code measures it (build.mjs)
+  const deepRooms = placed.map(({ finding, position, symbol }) => {
+    const room = symbol === null ? DEEP_SKY_STAR_ROOM_PX : DEEP_SKY_ROOM_PX;
+    return { id: finding.id, box: { x0: position.xPx - room, x1: position.xPx + room, y0: position.yPx - room, y1: position.yPx + room } };
+  });
+  const taken: Box[] = marks.flatMap((mark) => (mark.name === null ? [] : [nameBox(mark.xPx, mark.yPx, mark.name, mark.picked, mark.nameOnLeft, spec)]));
+  const order = placed
+    .map((entry, index) => ({ index, magnitude: entry.magnitude }))
+    .filter(({ index }) => marks[index]!.deepSky !== null && !marks[index]!.picked)
+    .sort((a, b) => (a.magnitude ?? Infinity) - (b.magnitude ?? Infinity));
+  for (const { index } of order) {
+    const mark = marks[index]!;
+    if (!hasCommonName(mark.finding.title)) continue;
+    const width = mark.finding.title.length * size * NAME_EM_PER_CHAR;
+    const reach = DEEP_SKY_RADIUS_PX + DEEP_SKY_NAME_GAP_PX;
+    for (const onLeft of [false, true]) {
+      const box: Box = onLeft
+        ? { x0: mark.xPx - reach - width, x1: mark.xPx - reach + 2, y0: mark.yPx - size * 0.8, y1: mark.yPx + size * 0.5 }
+        : { x0: mark.xPx + reach - 2, x1: mark.xPx + reach + width, y0: mark.yPx - size * 0.8, y1: mark.yPx + size * 0.5 };
+      if (box.x0 < left + 2 || box.x1 > right) continue;
+      // A mark over the symbol's own centre (a star the object holds) does not stand in its way, as build.mjs has it
+      const holds = (room: Box) => room.x0 <= mark.xPx && mark.xPx <= room.x1 && room.y0 <= mark.yPx && mark.yPx <= room.y1;
+      if (deepRooms.some((room) => room.id !== mark.finding.id && !holds(room.box) && overlap(box, room.box)) || taken.some((other) => overlap(box, other))) continue;
+      taken.push(box);
+      marks[index] = { ...mark, name: mark.finding.title, nameOnLeft: onLeft };
+      break;
+    }
+  }
+  return marks;
 }
 
 /**

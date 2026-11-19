@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { CelestialFinding } from '@albedian/contracts';
 import { EvidenceGlyph, EvidenceTag, IconButton, LookIcon, MainAction, SecondAction } from '../look/index.js';
+import type { DeepSkyRow } from './deepSky.js';
 import { starCardFacts } from './starCardFacts.js';
 import '../styles/motion.css';
 
@@ -15,6 +16,8 @@ export interface StarCardProps {
   onClose: () => void;
   /** At phone width (reveal, approved 2026-11-12, iPhone 3; #p-pick): the same card on its own dark sheet at the foot. */
   phone?: boolean;
+  /** For a deep-sky object, its OpenNGC row, for its type in words (D23). */
+  deepSky?: DeepSkyRow | null;
 }
 
 /** A pointer that went down and up within this distance is a tap, not a drag. */
@@ -31,8 +34,8 @@ const typing = (target: EventTarget | null): boolean => {
  * catalog row, Go there (only for a star the app can fly to) and Original pixels, and at the foot its limitations,
  * always in view. Esc and a tap on empty sky close it; G goes there. Every word is the finding's (starCardFacts.ts).
  */
-export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false }) => {
-  const facts = starCardFacts(finding);
+export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null }) => {
+  const facts = starCardFacts(finding, deepSky);
   const close = useRef(onClose);
   close.current = onClose;
   const goThere = useRef(onGoThere);

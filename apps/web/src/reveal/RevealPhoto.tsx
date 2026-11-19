@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { answerFindings, DISCLOSURES, orientedSize, type ObservationSession } from '@albedian/contracts';
+import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type ObservationSession } from '@albedian/contracts';
+import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
@@ -98,6 +99,33 @@ const MARK_CLASS: Readonly<Record<RevealMark['kind'], string>> = {
 };
 
 /**
+ * A deep-sky object's symbol by its type (D23, copied from build.mjs's symbol()), 12 px across: every outline dashed
+ * 2.6 2.4, the cross and ticks solid.
+ */
+const DEEP_SKY_DASH = '2.6 2.4';
+const DeepSkyGlyph: React.FC<{ symbol: DeepSkySymbol }> = ({ symbol }) =>
+  symbol === 'globular' ? (
+    <>
+      <circle r="6" strokeDasharray={DEEP_SKY_DASH} />
+      <path d="M-6 0H6M0 -6V6" />
+    </>
+  ) : symbol === 'cluster_nebula' ? (
+    <>
+      <rect x="-6" y="-6" width="12" height="12" strokeDasharray={DEEP_SKY_DASH} />
+      <circle r="4.8" strokeDasharray={DEEP_SKY_DASH} />
+    </>
+  ) : symbol === 'planetary' ? (
+    <>
+      <circle r="6" strokeDasharray={DEEP_SKY_DASH} />
+      <path d="M-10.5 0H-6M6 0H10.5M0 -10.5V-6M0 6V10.5" />
+    </>
+  ) : symbol === 'galaxy' ? (
+    <ellipse rx="3" ry="6" strokeDasharray={DEEP_SKY_DASH} />
+  ) : (
+    <circle r="6" strokeDasharray={DEEP_SKY_DASH} />
+  );
+
+/**
  * A mark's drawing, in a box centred on the star: the approved page's rings and ticks, sized as it sizes them. The
  * picked look is a star's (the reveal record); a predicted object keeps its dashed ring when picked, so the mark never
  * stops saying it is predicted (the auditor's verdict on unit-1d; its picked look is the design lane's to give).
@@ -121,6 +149,8 @@ const MarkGlyph: React.FC<{ mark: RevealMark; phone?: boolean }> = ({ mark, phon
         <circle r="6" />
         <path d="M0 -12V-9M0 9V12M-12 0H-9M9 0H12" />
       </>
+    ) : mark.deepSky !== null && !mark.picked ? (
+      <DeepSkyGlyph symbol={mark.deepSky} />
     ) : mark.picked ? (
       // A picked predicted object (INTERIM: UIUX-predicted-pick-QUESTION.md): its dashed ring enlarged, with an outer ring
       <>
@@ -230,7 +260,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
   // There, only the picked star's mark stays (fly, approved)
-  const marks = revealMarks(marked, viewW, viewH, { phone }).filter((mark) => !there || mark.picked);
+  // Deep-sky objects on a verified solve (D23): their OpenNGC rows read once from the shipped table
+  const solution = session.observationSolution;
+  const deepSkyWanted = solution?.status === 'calibrated' && hasVerifiedWcs(solution) && solution.findings.some(isDeepSky);
+  const deepSky = useDeepSkyTable(deepSkyWanted);
+  const marks = revealMarks(marked, viewW, viewH, { phone, deepSky }).filter((mark) => !there || mark.picked);
   // The order the marks arrive in: brightest first (the motion record)
   const arrival = markArrivalRanks(marks);
   const status = revealStatus(session);
@@ -300,7 +334,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           <button
             key={mark.finding.id}
             type="button"
-            className={`${MARK_CLASS[mark.kind]}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
+            className={`${MARK_CLASS[mark.kind]}${mark.deepSky !== null && !mark.picked ? ' is-deepsky' : ''}${mark.picked ? ' is-picked' : ''}${mark.nameOnLeft ? ' is-left' : ''}`}
             data-testid={`reveal-mark-${mark.finding.id}`}
             data-evidence-class={mark.finding.evidenceClass}
             aria-label={
@@ -482,6 +516,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onGoThere={() => onGoThere?.(picked.id)}
           onClose={() => onCloseCard?.()}
           phone={phone}
+          deepSky={isDeepSky(picked) ? deepSkyRowOf(picked, deepSky) : null}
         />
       )}
 
