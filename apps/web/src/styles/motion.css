@@ -45,6 +45,24 @@
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--keys-i) + 1)) both;
 }
 
+/* Keyboard help leaving: the rows go last first, 20 ms apart, then the title; the card and the dim go with the title.
+   Gone after 20 ms x rows + 300 ms (useLeaving keeps it mounted that long); under reduced motion all dissolve at once. */
+.keys-help.is-leaving .keys-help__veil {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * var(--keys-n)) both;
+}
+
+.keys-help.is-leaving .keys-help__card {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * var(--keys-n)) both;
+}
+
+.keys-help.is-leaving .keys-help__head {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--keys-n)) both;
+}
+
+.keys-help.is-leaving .keys-help__row {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * (var(--keys-n) - 1 - var(--keys-i))) both;
+}
+
 /* A star picked: its mark turns white in the colour time; the leader line draws from the star to the card as the card's
    frame; the card's lines arrive top first, 20 ms apart, 120 ms after the frame. On a phone the card rises from the
    bottom edge as Apple's sheet does. Let go: the card and the line go at once (an exit would need them kept mounted). */

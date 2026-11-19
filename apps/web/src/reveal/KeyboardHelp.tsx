@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { resolveMotionTokens } from '@albedian/design-system';
 import { IconButton } from '../look/index.js';
+import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import '../styles/motion.css';
 
 /** Whether a key went to a field the person is typing in. */
@@ -30,8 +32,8 @@ const LAST: readonly [string, readonly string[]] = ['Keyboard', ['?']];
 /**
  * Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md, waiting on the owner; modelled on GitHub's "?" dialog):
  * "?" opens a centred dark card over the screen dimmed to 60 percent; Esc, the close circle or a click outside closes
- * it. It hears Esc before anything else, so closing it leaves the screen beneath as it was. No movement (the lead's
- * rule: none before the MOTION record's yes).
+ * it. It hears Esc before anything else, so closing it leaves the screen beneath as it was. It arrives and leaves as
+ * the motion record says (motion.css); while it leaves it is inert and no longer a dialog.
  */
 export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
   const [open, setOpen] = useState(false);
@@ -57,12 +59,19 @@ export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
     if (open) card.current?.focus();
   }, [open]);
 
-  if (!open) return null;
   const rows = [...ROWS, ...(threeD ? ROWS_3D : []), LAST];
+  // the title and each row are its lines
+  const { mounted, leaving } = useLeaving(open, blockLeaveMs(rows.length + 1, resolveMotionTokens(reducedMotion())));
+  if (!mounted) return null;
   return (
-    <div className="keys-help" data-hud-interactive="true">
+    <div
+      className={leaving ? 'keys-help is-leaving' : 'keys-help'}
+      data-hud-interactive="true"
+      inert={leaving}
+      style={{ '--keys-n': rows.length } as React.CSSProperties}
+    >
       <div className="keys-help__veil" onClick={() => setOpen(false)} />
-      <section className="keys-help__card" role="dialog" aria-label="Keyboard" tabIndex={-1} ref={card}>
+      <section className="keys-help__card" role={leaving ? undefined : 'dialog'} aria-label="Keyboard" tabIndex={-1} ref={card}>
         <header className="keys-help__head">
           <b className="keys-help__title">Keyboard</b>
           <IconButton label="Close" icon="x" part="keys-help__close" onClick={() => setOpen(false)} />

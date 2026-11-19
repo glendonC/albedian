@@ -6,7 +6,9 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MOTION_TOKENS } from '@albedian/design-system';
 import { KeyboardHelp } from '../KeyboardHelp.js';
+import { blockLeaveMs } from '../../hooks/useLeaving.js';
 
 // Keyboard help (INTERIM: .lead/uiux/UIUX-keys-QUESTION.md, waiting on the owner; values from #kh-open in
 // .cache/uiux/keys/screen/kh-open.html): "?" opens a card listing the keys the app handles; Esc, the close circle or a
@@ -203,5 +205,85 @@ describe("keyboard help's rules are the design lane's page", () => {
     expect(rows.length).toBeGreaterThan(1);
     rows.forEach((row, i) => expect(row.style.getPropertyValue('--keys-i')).toBe(String(i)));
     expect(fs.readFileSync(path.resolve(here, '../KeyboardHelp.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Any card or block" and "Keyboard help (D5)"): out, the rows go last first,
+// 20 ms apart, then the title, and the frame and the dim with the title. While it leaves it is no longer a dialog and
+// takes no input, so a screen reader and the keys are done with it at once.
+describe('keyboard help leaves as the motion record says', () => {
+  const leaving = () => q('.keys-help.is-leaving');
+  it('stays on screen, inert and no longer a dialog, for its leave time after Esc, then is gone', () => {
+    vi.useFakeTimers();
+    try {
+      show();
+      key(window, { key: '?' });
+      const n = container.querySelectorAll('.keys-help__row').length;
+      expect((q('.keys-help') as HTMLElement).style.getPropertyValue('--keys-n')).toBe(String(n));
+      key(window, { key: 'Escape' });
+      expect(q('[role="dialog"]')).toBeNull();
+      expect(leaving()).not.toBeNull();
+      expect(leaving()!.hasAttribute('inert')).toBe(true);
+      act(() => vi.advanceTimersByTime(blockLeaveMs(n + 1, MOTION_TOKENS) - 1));
+      expect(leaving()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.keys-help')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('is gone after the one 270 ms dissolve under reduced motion', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)' }));
+    try {
+      show();
+      key(window, { key: '?' });
+      key(window, { key: 'Escape' });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.dissolveMs - 1));
+      expect(leaving()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('.keys-help')).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('comes back whole when "?" is pressed while it leaves', () => {
+    vi.useFakeTimers();
+    try {
+      show();
+      key(window, { key: '?' });
+      key(window, { key: 'Escape' });
+      act(() => vi.advanceTimersByTime(100));
+      key(window, { key: '?' });
+      expect(leaving()).toBeNull();
+      expect(q('[role="dialog"]')).not.toBeNull();
+      expect(q('.keys-help')!.hasAttribute('inert')).toBe(false);
+      act(() => vi.advanceTimersByTime(2000));
+      expect(q('[role="dialog"]')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('times the leaving in motion.css: rows last first, the title and the frame with the last of them', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        rules[rule.selector.replace(/\s+/g, ' ')] = { ...(rules[rule.selector.replace(/\s+/g, ' ')] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    const FRAME_OUT = 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * var(--keys-n)) both';
+    expect(rules['.keys-help.is-leaving .keys-help__veil']).toEqual({ animation: FRAME_OUT });
+    expect(rules['.keys-help.is-leaving .keys-help__card']).toEqual({ animation: FRAME_OUT });
+    expect(rules['.keys-help.is-leaving .keys-help__head']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * var(--keys-n)) both',
+    });
+    expect(rules['.keys-help.is-leaving .keys-help__row']).toEqual({
+      animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * (var(--keys-n) - 1 - var(--keys-i))) both',
+    });
   });
 });
