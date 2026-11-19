@@ -223,7 +223,9 @@ pictures under `.cache/restore-review/<unit>/`.
     a camera make, tEXt, iTXt, tIME and eXIf chunks and text in every kind of ICC text tag exports none of them;
     restore-8b builds the profile anew from its colour data alone (a fresh header, fixed text in the description
     and copyright, each colour tag at its defined length), in a restoration and in a display copy (REQ-RST-9.4,
-    decided 2026-11-19; `tests/media/test_profile_text.py`). restore-8c writes zip64 past 2 GiB, as Python's zipfile
+    decided 2026-11-19; `tests/media/test_profile_text.py`). restore-8d makes each stored still's record name the
+    profile its own file holds, keeps only the tags of the profile's own space with D50 as its illuminant, and fails
+    an attempt whose profile cannot be rebuilt (`tests/media/test_stored_colour.py`). restore-8c writes zip64 past 2 GiB, as Python's zipfile
     does, so a long clip fits. A clip's export waits for restore-7's stored file and its export row (501 until then)
     [open].
   - _Requirements: REQ-RST-9.1 to 9.7_

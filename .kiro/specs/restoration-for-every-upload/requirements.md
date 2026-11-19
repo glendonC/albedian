@@ -351,11 +351,16 @@ made.
      SHALL carry no container tag copied from the original [decided 2026-11-11: an export is made to be shared;
      the owner can ask for their own metadata later]. Of the original's ICC colour profile, a stored still (a
      restoration or a display copy) SHALL keep only the colour data: its profile SHALL be built anew, a fresh header
-     holding the original's version, class, colour spaces, rendering intent and illuminant with every other byte zero,
-     its description and copyright written with fixed text, and each colour tag of the matrix and curve model written
-     from its numbers at the length its type defines; nothing else of the original's profile (its other header bytes,
-     other tags, padding) SHALL reach the export, and a profile that cannot be rebuilt so is left out [decided
-     2026-11-19 by the lead at 07:31 and 08:34: the colour data stays, nothing else does].
+     holding the original's version, class, colour spaces and rendering intent and the illuminant the ICC
+     specification fixes (cited where `services/media/photo.py` writes it) with every other byte zero, its description
+     and copyright written with fixed text, and each colour tag of the matrix and curve model of the profile's own
+     space written from its numbers at the length its type defines; nothing else of the original's profile (its other
+     header bytes, other tags, another space's tags, padding) SHALL reach the export [decided
+     2026-11-19 by the lead at 07:31 and 08:34: the colour data stays, nothing else does]. THE stored still's variant
+     record SHALL name the rebuilt profile by its hash, and its attempt's measured colour the original's [decided by
+     the lead later the same day: a record describes the bytes it ships]; a profile that cannot be rebuilt so SHALL
+     fail the attempt with the sentence for a file that could not be decoded, since no description is true of the
+     file without it [proposed, restore-8d].
   5. A still SHALL be exported as the PNG that is the variant.
   6. A `rejected` or `failed` attempt SHALL have nothing to export (404).
   7. THE manifest SHALL parse under `ExportManifestSchema` in both languages, and its variant hash SHALL equal the

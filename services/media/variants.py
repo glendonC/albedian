@@ -282,6 +282,10 @@ def make_display_copy(store_root: Path, source_folder: Path, original: Path, *, 
 
     try:
         still = decode.decode_still(original)
+        # The record names the profile the copy holds; one that cannot be rebuilt leaves no true description (restore-8d)
+        colour = photo.stored_colour(still.colour, still.icc_profile)
+        if colour is None:
+            raise decode.DecodeRefusal(decode.UNDECODABLE)
         graph = display_copy_graph(source_sha256, still)
         data = encode_png(still)
         verified = verify_copy(data, still.samples)
@@ -302,7 +306,7 @@ def make_display_copy(store_root: Path, source_folder: Path, original: Path, *, 
         "id": vid, "kind": "display_copy", "sourceSha256": source_sha256, "sourceAssetId": f"src_{source_sha256[:16]}",
         "graphId": graph_ref, "attemptId": att, "sha256": hashlib.sha256(data).hexdigest(),
         "uri": variant_uri(source_sha256, vid), "byteSize": len(data), "mimeType": "image/png", "width": width,
-        "height": height, "durationMs": 0, "frameCount": 1, "audioStreams": [], "colour": still.colour,
+        "height": height, "durationMs": 0, "frameCount": 1, "audioStreams": [], "colour": colour,
         "disclosure": DISCLOSURES["display_copy"], "createdAtUTC": record["finishedAtUTC"],
     }
     if display_orientation is not None:

@@ -285,6 +285,9 @@ def test_an_export_holds_no_name_time_place_or_container_tag_the_upload_was_plan
         for encoding in ("latin-1", "utf-16-be"):
             assert text.encode(encoding) not in kept, (text, encoding)
     manifest = json.loads(sidecar)
+    # The manifest's variant names the profile of the PNG beside it, its attempt the original's (restore-8d)
+    assert manifest["variant"]["colour"]["iccProfileSha256"] == hashlib.sha256(kept).hexdigest()
+    assert manifest["attempt"]["measured"]["colour"]["iccProfileSha256"] == hashlib.sha256(PROFILE).hexdigest()
     keys, leaves = set(), []
     keys_and_leaves(manifest, keys, leaves)
     # A graph parameter's "name" is the parameter's (its decode or encode setting), so it is not among these
@@ -594,6 +597,36 @@ def test_an_entry_of_exactly_the_limit_is_not_zip64_and_reads_back() -> None:
     assert struct.unpack("<IIHH", written[directory + 20:directory + 32]) == (3_000, 3_000, 5, 0)
     archive, read = unzip(written)
     assert archive.read(read[0]) == data
+
+
+def test_past_four_gib_the_planned_records_hold_the_true_offsets_at_the_real_limit() -> None:
+    """At the real limit, with no byte on disk (AUDIT-B's verdicts/restore-8c.md, finding 1): an entry declared 5 GiB,
+    then a small one past 4 GiB. Only the plan is made, every header and the directory with its end records: the
+    small entry's directory record names its true offset in its zip64 field, the zip64 end record the directory's
+    true offset and length, its locator the zip64 end record's own offset, and the 32 bit end record holds 0xFFFFFFFF;
+    the planned size is the sum of the parts."""
+    big, small = 5 << 30, 300
+    entries = [variants.ZipEntry("a.png", big, 0x1234ABCD, lambda: iter(())),
+               variants.ZipEntry("a.png.json", small, 0x0BADF00D, lambda: iter(()))]
+    headers, tail = variants._plan(entries, (2026, 11, 19, 10, 20, 0), variants.ZIP64_LIMIT)
+    second_at = len(headers[0]) + big
+    directory_at = second_at + len(headers[1]) + small
+    assert second_at > 1 << 32 and directory_at > 1 << 32
+    # The second entry's directory record: 46 fixed bytes, its name, then its zip64 extra holding the offset alone
+    first_length = 46 + len("a.png") + 4 + 16
+    record = tail[first_length:]
+    assert struct.unpack("<I", record[:4]) == (0x02014B50,) and struct.unpack("<I", record[42:46]) == (0xFFFFFFFF,)
+    extra = record[46 + len("a.png.json"):]
+    assert struct.unpack("<HHQ", extra[:12]) == (1, 8, second_at)
+    length = first_length + 46 + len("a.png.json") + 12
+    zip64_end = tail[length:length + 56]
+    fields = struct.unpack("<IQHHIIQQQQ", zip64_end)
+    assert fields[0] == 0x06064B50 and fields[6:] == (2, 2, length, directory_at)
+    locator = struct.unpack("<IIQI", tail[length + 56:length + 76])
+    assert locator == (0x07064B50, 0, directory_at + length, 1)
+    end = struct.unpack("<IHHHHIIH", tail[length + 76:])
+    assert end == (0x06054B50, 0, 0, 2, 2, length, 0xFFFFFFFF, 0)
+    assert variants.stored_zip_size(entries) == directory_at + len(tail)
 
 
 def test_a_directory_past_the_limit_alone_gets_the_zip64_end_records() -> None:

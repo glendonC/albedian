@@ -294,8 +294,9 @@ def test_the_copy_carries_the_originals_icc_colour_data_byte_for_byte_and_none_o
     assert kept == photo.profile_without_text(profile)
     assert all(icc.tag_data(kept)[sig] == icc.tag_data(profile)[sig] for sig in icc.COLOUR_SIGNATURES if sig in icc.tag_data(profile))
     assert b"planted" not in kept and "planted".encode("utf-16-be") not in kept
-    # The record names the original's profile [open: asked of the lead whether it names the written one]
-    assert copy.variant["colour"]["iccProfileSha256"] == hashlib.sha256(profile).hexdigest()
+    # The record names the profile the copy holds, the attempt the original's [decided 2026-11-19 by the lead at 12:20]
+    assert copy.variant["colour"]["iccProfileSha256"] == hashlib.sha256(kept).hexdigest()
+    assert copy.attempt["measured"]["colour"]["iccProfileSha256"] == hashlib.sha256(profile).hexdigest()
 
 
 def test_a_second_copy_of_the_same_graph_is_refused_and_the_first_stands(tmp_path: Path) -> None:

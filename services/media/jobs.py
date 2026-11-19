@@ -229,6 +229,11 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
         still = decode.decode_still(original_path)
     except decode.DecodeRefusal as refusal:
         return failed(refusal.sentence)
+    # The record names the profile the stored file holds; one that cannot be rebuilt leaves no true description, so
+    # the attempt fails before any restoring (restore-8d)
+    colour = photo.stored_colour(still.colour, still.icc_profile)
+    if colour is None:
+        return failed(decode.UNDECODABLE)
     progress("decode", "frames", 1, 1)
     progress("measure", "frames", 0, 1)
     try:
@@ -255,7 +260,7 @@ def restoration_in_child(store_root: str, folder: str, original: str, sha256: st
         "id": vid, "kind": "restoration", "sourceSha256": sha256, "sourceAssetId": f"src_{sha256[:16]}",
         "graphId": graph_ref, "attemptId": record["id"], "sha256": hashlib.sha256(data).hexdigest(),
         "uri": variant_uri(sha256, vid), "byteSize": len(data), "mimeType": "image/png", "width": width,
-        "height": height, "durationMs": 0, "frameCount": 1, "audioStreams": [], "colour": {**still.colour, "bitDepth": 16},
+        "height": height, "durationMs": 0, "frameCount": 1, "audioStreams": [], "colour": {**colour, "bitDepth": 16},
         "disclosure": DISCLOSURES["restoration"], "createdAtUTC": record["finishedAtUTC"],
     }
     if orientation is not None:

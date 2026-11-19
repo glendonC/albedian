@@ -3,8 +3,8 @@
 verdicts/restore-8b.md and restore-8b-v2.md).
 
 Covers, on Little CMS's own sRGB:
-- A fresh header: the size, version, class, colour space, connection space, `acsp`, rendering intent and illuminant
-  from the original, every other byte zero, and the id the MD5 of the profile with its flags, intent and id zero.
+- A fresh header: the size, version, class, colour space, connection space, `acsp` and rendering intent from the
+  original, the illuminant D50 whatever the original holds there (restore-8d), every other byte zero, and the id the MD5 of the profile with its flags, intent and id zero.
 - Only the description and the copyright as text, each written fresh in its version's type with the fixed words;
   every colour tag written by its type at its defined length, equal to the original's data there; every other tag
   gone; identical curves shared.
@@ -15,6 +15,9 @@ Covers, on Little CMS's own sRGB:
   a version 2 profile gets version 2 text types; the rewrite of a rewrite is itself; a profile it cannot rebuild from
   colour data is dropped (None).
 - Property: the result is a function of the colour data alone (seeds 1 to 20).
+- restore-8d, AUDIT-B's hand-built carriers (verdicts/restore-8b-v3.md): another space's tags (a grey curve on an RGB
+  profile, primaries, RGB curves and chromaticities on a grey one) and the luminance are left behind; chromaticities
+  of other than the space's channels are not rebuilt.
 """
 
 from __future__ import annotations
@@ -200,3 +203,48 @@ def test_the_result_is_a_function_of_the_colour_data_alone(one: bytes, other: by
     a = photo.profile_without_text(icc.planted_everywhere(base, one))
     b = photo.profile_without_text(icc.planted_everywhere(base, other))
     assert a is not None and a == b == photo.profile_without_text(base)
+
+
+# restore-8d: the carriers AUDIT-B built by hand in verdicts/restore-8b-v3.md, each a colour tag no transform of the
+# profile's space reads, or colour numbers no transform needs
+XYZ_MARKER = b"XYZ " + bytes(4) + MARKER[:12]
+CURVE_MARKER = b"curv" + bytes(4) + struct.pack(">I", 6) + MARKER[:12]
+
+
+def test_a_grey_curve_and_the_luminance_on_an_rgb_profile_are_left_behind(base) -> None:
+    table = list(icc.tag_data(base).items()) + [(b"kTRC", CURVE_MARKER), (b"lumi", XYZ_MARKER)]
+    out = photo.profile_without_text(icc.assemble(base, table))
+    assert out == photo.profile_without_text(base)
+    assert MARKER[:12] not in out and b"kTRC" not in out and b"lumi" not in out
+
+
+def test_primaries_and_chromaticities_on_a_grey_profile_are_left_behind(base) -> None:
+    data = icc.tag_data(base)
+    grey = base[:16] + b"GRAY" + base[20:]
+    clean = icc.assemble(grey, [(b"wtpt", data[b"wtpt"]), (b"kTRC", data[b"rTRC"])])
+    planted = icc.assemble(grey, [(b"wtpt", data[b"wtpt"]), (b"kTRC", data[b"rTRC"]), (b"rXYZ", XYZ_MARKER),
+                                  (b"gTRC", CURVE_MARKER), (b"chrm", data[b"chrm"])])
+    out = photo.profile_without_text(planted)
+    assert out is not None and out == photo.profile_without_text(clean)
+    assert MARKER[:12] not in out and set(icc.tag_data(out)) == {b"desc", b"cprt", b"wtpt", b"kTRC"}
+
+
+@pytest.mark.parametrize("channels", [0, 1, 2, 4, 20])
+def test_chromaticities_of_other_than_the_spaces_channels_are_not_rebuilt(base, channels: int) -> None:
+    chrm = b"chrm" + bytes(4) + struct.pack(">HH", channels, 0) + (MARKER[:8] * max(channels, 1))[:8 * channels]
+    table = [(sig, chrm if sig == b"chrm" else body) for sig, body in icc.tag_data(base).items()]
+    assert photo.profile_without_text(icc.assemble(base, table)) is None
+
+
+def test_chromaticities_of_three_channels_on_an_rgb_profile_are_kept(base) -> None:
+    out = photo.profile_without_text(base)
+    assert icc.tag_data(out)[b"chrm"] == icc.tag_data(base)[b"chrm"]
+    assert struct.unpack(">H", icc.tag_data(out)[b"chrm"][8:10]) == (3,)
+
+
+@pytest.mark.parametrize("version", [2, 4])
+def test_the_illuminant_is_d50_whatever_the_original_holds(base, version: int) -> None:
+    original = base[:8] + bytes([version]) + base[9:68] + MARKER[:12] + base[80:]
+    out = photo.profile_without_text(original)
+    assert out[68:80] == base[68:80] == bytes.fromhex("0000f6d6" "00010000" "0000d32d")
+    assert MARKER[:12] not in out and out[84:100] == icc.profile_id(out)

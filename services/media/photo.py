@@ -396,10 +396,12 @@ PROFILE_TEXT = "Text removed by Albedian"
 _ICC_HEADER = 128
 # The tags a profile is rebuilt from, in the order they are written, each with the types it may have [inference: the
 # matrix and tone curve model of an RGB or grey display profile as the ICC specification has it, as recalled; tested:
-# Little CMS turns colours identically through the rebuilt sRGB]. Single XYZ numbers: the white and black points, the
-# three primaries, the luminance; tone curves; the chromatic adaptation matrix; the chromaticities; the code points.
+# Little CMS turns colours identically through the rebuilt sRGB]. Single XYZ numbers: the white and black points and
+# the three primaries; tone curves; the chromatic adaptation matrix; the chromaticities; the code points. The
+# luminance (lumi) is left behind: the absolute luminance of an emissive device, which no transform here reads
+# [verified: ICC.1:2022 section 9.2.33, luminanceTag] (restore-8d, AUDIT-B's verdicts/restore-8b-v3.md).
 _ICC_COLOUR_TAGS = (
-    (b"wtpt", (b"XYZ ",)), (b"bkpt", (b"XYZ ",)), (b"lumi", (b"XYZ ",)), (b"chad", (b"sf32",)),
+    (b"wtpt", (b"XYZ ",)), (b"bkpt", (b"XYZ ",)), (b"chad", (b"sf32",)),
     (b"rXYZ", (b"XYZ ",)), (b"gXYZ", (b"XYZ ",)), (b"bXYZ", (b"XYZ ",)),
     (b"rTRC", (b"curv", b"para")), (b"gTRC", (b"curv", b"para")), (b"bTRC", (b"curv", b"para")),
     (b"kTRC", (b"curv", b"para")), (b"chrm", (b"chrm",)), (b"cicp", (b"cicp",)),
@@ -407,15 +409,30 @@ _ICC_COLOUR_TAGS = (
 # What a profile must hold to be rebuilt: an RGB one its white point, primaries and curves, a grey one its white
 # point and curve
 _ICC_NEEDED = {b"RGB ": (b"wtpt", b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC"), b"GRAY": (b"wtpt", b"kTRC")}
+# The tags a transform of each space reads, every other left behind whatever its type (restore-8d: a grey curve on
+# an RGB profile or primaries on a grey one carried bytes no reader of that space looks at)
+_ICC_SPACE_TAGS = {
+    b"RGB ": frozenset({b"wtpt", b"bkpt", b"chad", b"rXYZ", b"gXYZ", b"bXYZ", b"rTRC", b"gTRC", b"bTRC", b"chrm", b"cicp"}),
+    b"GRAY": frozenset({b"wtpt", b"bkpt", b"chad", b"kTRC", b"cicp"}),
+}
+# The channels of each space, which its chromaticities must number [verified: ICC.1:2022 section 10.2, chromaticityType:
+# the number of device channels, then one CIE xy pair for each; tested: Little CMS's sRGB numbers three]
+_ICC_CHANNELS = {b"RGB ": 3, b"GRAY": 1}
+# The connection space's illuminant every header holds, D50 as an XYZ number, written whatever the original holds there
+# (restore-8d) [verified: ICC.1:2022 (version 4.4) and ICC.1:2010 (4.3) section 7.2.16, "PCS illuminant field", D50's
+# X 0.9642, Y 1.0, Z 0.8249; ICC.1:2001-04 (2.4) Annex A.1, the field "must be set to the CIE Illuminant D50"; read
+# from color.org's PDFs on 2026-11-19; tested: Little CMS writes these bytes in its own sRGB]
+_ICC_D50 = bytes.fromhex("0000f6d6" "00010000" "0000d32d")
 _ICC_CLASSES = frozenset({b"scnr", b"mntr", b"prtr", b"spac"})
 # The parameters of each parametric curve function [tested: Little CMS's sRGB and Apple's Display P3 use function 3
 # with five; the other counts are the ICC specification's parametricCurveType as recalled, an inference]
 _PARA_COUNTS = {0: 1, 1: 3, 2: 4, 3: 5, 4: 7}
 
 
-def _colour_tag(kind: bytes, sig: bytes, body: bytes) -> Optional[bytes]:
+def _colour_tag(kind: bytes, body: bytes, channels: int) -> Optional[bytes]:
     """The tag written fresh from its colour numbers at the length its type defines, its reserved bytes zero; None
-    when the body is too short for its type or names a function or count it cannot hold."""
+    when the body is too short for its type or names a function or count it cannot hold, chromaticities among them
+    of other than the space's `channels`."""
     def numbers(start: int, length: int) -> Optional[bytes]:
         return body[start:start + length] if len(body) >= start + length else None
 
@@ -432,8 +449,8 @@ def _colour_tag(kind: bytes, sig: bytes, body: bytes) -> Optional[bytes]:
         values = numbers(12, 4 * _PARA_COUNTS[function]) if function in _PARA_COUNTS else None
         data = body[8:10] + bytes(2) + values if values is not None else None
     elif kind == b"chrm":
-        channels = int.from_bytes(body[8:10], "big") if len(body) >= 10 else None
-        values = numbers(12, 8 * channels) if channels else None
+        count = int.from_bytes(body[8:10], "big") if len(body) >= 10 else None
+        values = numbers(12, 8 * count) if count == channels else None
         data = body[8:12] + values if values is not None else None
     else:  # cicp: primaries, transfer, matrix and range, a byte each
         data = numbers(8, 4)
@@ -453,15 +470,16 @@ def _text_tag(version: int, sig: bytes, text: str) -> bytes:
 
 def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
     """The original's ICC profile as a stored file carries it, built anew from its colour data alone: a fresh header
-    holding only the original's version, class, colour space, connection space, rendering intent and illuminant
-    (every other byte zero, the id the MD5 of the profile with its flags, intent and id zero [inference: the ICC
+    holding only the original's version, class, colour space, connection space and rendering intent, and the D50
+    illuminant (every other byte zero, the id the MD5 of the profile with its flags, intent and id zero [inference: the ICC
     header's profile id, as recalled; tested: Little CMS reads it]), the description and the copyright written fresh
-    with the fixed words, and each colour tag of the matrix and curve model written from its numbers at the length its
-    type defines, identical ones shared. Every other byte of the original is left behind: its header's maker, model,
-    dates and reserved bytes, its other tags, the padding inside and between tags. None when there is no profile or one
-    it cannot rebuild so (not RGB or grey, not XYZ connected, a needed tag missing or cut short): a stored file then has
-    no profile rather than bytes it cannot check [decided 2026-11-19 by the lead at 07:31 and 08:34: the colour data
-    stays, nothing else does]."""
+    with the fixed words, and each colour tag of the matrix and curve model of its own space written from its numbers
+    at the length its type defines, identical ones shared. Every other byte of the original is left behind: its
+    header's maker, model, dates, illuminant and reserved bytes, its other tags (another space's among them), the
+    padding inside and between tags. None when there is no profile or one it cannot rebuild so (not RGB or grey, not
+    XYZ connected, a needed tag missing or cut short, chromaticities not of its channels): `stored_colour` then has no
+    description to give and the stored still is not made [decided 2026-11-19 by the lead at 07:31 and 08:34: the
+    colour data stays, nothing else does; restore-8d]."""
     if not profile or len(profile) < _ICC_HEADER + 4:
         return None
     size = int.from_bytes(profile[0:4], "big")
@@ -480,9 +498,9 @@ def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
     tags = [(b"desc", _text_tag(version, b"desc", PROFILE_DESCRIPTION)), (b"cprt", _text_tag(version, b"cprt", PROFILE_TEXT))]
     for sig, kinds in _ICC_COLOUR_TAGS:
         body = found.get(sig)
-        if body is None:
+        if body is None or sig not in _ICC_SPACE_TAGS[space]:
             continue
-        written = _colour_tag(body[:4], sig, body) if body[:4] in kinds else None
+        written = _colour_tag(body[:4], body, _ICC_CHANNELS[space]) if body[:4] in kinds else None
         if written is None:
             return None
         tags.append((sig, written))
@@ -501,10 +519,25 @@ def profile_without_text(profile: Optional[bytes]) -> Optional[bytes]:
     header[8:10], header[12:24], header[36:40] = profile[8:10], profile[12:24], b"acsp"
     intent = int.from_bytes(profile[64:68], "big")
     header[64:68] = struct.pack(">I", intent if intent <= 3 else 0)
-    header[68:80] = profile[68:80]
+    header[68:80] = _ICC_D50
     out = header + struct.pack(">I", len(tags)) + table + blocks
     out[0:4] = struct.pack(">I", len(out))
     zeroed = bytearray(out)
     zeroed[44:48], zeroed[64:68] = bytes(4), bytes(4)
     out[84:100] = hashlib.md5(bytes(zeroed)).digest()
     return bytes(out)
+
+
+def stored_colour(colour: dict, icc_profile: Optional[bytes]) -> Optional[dict]:
+    """The colour description of a stored still written with `profile_without_text(icc_profile)`: the decoded one,
+    its `iccProfileSha256` naming the profile the stored file holds, since a record describes the bytes it ships
+    [decided 2026-11-19 by the lead at 12:20; restore-8d]. Unchanged when the original has no profile. None when the
+    original has one that cannot be rebuilt: no description is then true of a file without it, so the caller fails
+    the attempt rather than store it. The attempt's measured colour keeps naming the original's profile, which it
+    describes."""
+    if not icc_profile:
+        return dict(colour)
+    kept = profile_without_text(icc_profile)
+    if kept is None:
+        return None
+    return {**colour, "iccProfileSha256": hashlib.sha256(kept).hexdigest()}
