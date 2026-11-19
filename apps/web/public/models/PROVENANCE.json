@@ -108,7 +108,7 @@
   "files": [
     {
       "path": "hangar/hangar.json",
-      "sha256": "0ad0efec039414845dff6dc339dfba870efc96fa0013b2f5b72bf1595ad9685b",
+      "sha256": "b1e13edca472d23ddf3dc562a47fe964ccd76579a1fb4ccc1c0b7e69902af1bb",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -178,6 +178,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.png (518892 bytes, SHA-256 a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10)."
+    },
+    {
+      "path": "hangar/pioneer10/pioneer10_lod0.glb",
+      "sha256": "ff4f662bb0a53ed85613c1cbca3827c4a0a3be0e01dab7fb97494fb8f98ad30a",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft pioneer10 --out apps/web/public/models/hangar/pioneer10",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.glb (2049840 bytes, SHA-256 81443a7fa01cca0dda878cd27692b3307f9c332c4eb8e55a844499d7b350573c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/pioneer10/pioneer10_lod1.glb",
+      "sha256": "4f7205fe01abb82688f7e213f71ed2a838e5a8f1c47416623f8a227d28813051",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft pioneer10 --out apps/web/public/models/hangar/pioneer10",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.glb (2049840 bytes, SHA-256 81443a7fa01cca0dda878cd27692b3307f9c332c4eb8e55a844499d7b350573c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/pioneer10/pioneer10_lod2.glb",
+      "sha256": "58a5b5eb56b33386b410d23d6fe22e31a4f3a335f7e7800f7c74d1eb9ab5768f",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft pioneer10 --out apps/web/public/models/hangar/pioneer10",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.glb (2049840 bytes, SHA-256 81443a7fa01cca0dda878cd27692b3307f9c332c4eb8e55a844499d7b350573c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/pioneer10/pioneer10_picker.webp",
+      "sha256": "f7080320244a4e3e0206d184f9bb34cb19e582ef67d93adcb61e49eacce5bfde",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft pioneer10 --out apps/web/public/models/hangar/pioneer10",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.png (996987 bytes, SHA-256 46a4bd3dc507930f9f3df5fda41b63d65d8b52023968414b5f559c9424a3b5ea)."
     },
     {
       "path": "hangar/voyager/voyager_lod0.glb",

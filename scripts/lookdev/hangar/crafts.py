@@ -121,6 +121,49 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 7.0,
         "changes": "named",
     },
+    "pioneer10": {
+        "title": "Pioneer 10",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-pioneer-10",
+            "title": "Pioneer 10, NASA 3D Resources",
+            "folder": "Pioneer 10",
+            "file": "Pioneer 10.glb",
+            "bytes": 2_049_840,
+            "sha256": "81443a7fa01cca0dda878cd27692b3307f9c332c4eb8e55a844499d7b350573c",
+            "picture": "Pioneer 10.png",
+            "picture_bytes": 996_987,
+            "picture_sha256": "46a4bd3dc507930f9f3df5fda41b63d65d8b52023968414b5f559c9424a3b5ea",
+            "local": "pioneer10",
+        },
+        "drop_objects": [],
+        # The dish faces +Y in the import frame (its feed struts reach forward there, the equipment box sits behind
+        # it at -Y) and faces Earth, so the craft travels along -Y; the magnetometer boom hangs along -Z.
+        "forward": (0.0, -1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        "scale_from": {
+            "material": "dish_AO",
+            "axis": "x",
+            "metres": 2.74,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A",
+            "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep",
+        },
+        "materials": {
+            "Pioneer_tex_01": {"role": "photo_atlas"},
+            "pioneer_tex_02": {"role": "photo_atlas"},
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "photo_atlas"},
+            "Tex_black": {"role": "photo_atlas"},
+            "dish_AO": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+            "other_AO": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "RTG_AO_new": {"role": "painted", "base": (0.10, 0.10, 0.10), "roughness": 0.5, "occlusion_from_source": True},
+            "Pioneer_silver_01": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "Pioneer_silver_02": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "norm_trans": {"role": "nasa_flat"},
+        },
+        "body_radius_m": 1.8,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -177,6 +220,25 @@ HANGAR: list[dict] = [
             {"key": "sunshieldLengthM", "value": 21.197, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"},
             {"key": "sunshieldWidthM", "value": 14.162, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"},
             {"key": "massKg", "value": 6200, "page": "https://science.nasa.gov/mission/webb/fact-sheet/", "quote": "Approx 6200 kg, including observatory, on-orbit consumables and launch vehicle adaptor"},
+        ],
+    },
+    {
+        "id": "pioneer-10",
+        "name": "Pioneer 10",
+        "model": "pioneer10",
+        "travel": {
+            "speedKmS": 12.24,
+            "relativeTo": "Sun",
+            "asOf": "2001-06-03",
+            "page": "https://science.nasa.gov/missions/pioneer-10-update/",
+            "quote": "Speed relative to the Sun: 12.24 km/sec (27,380 mph)",
+        },
+        "facts": [
+            {"key": "launch", "value": "1972-03-02", "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "March 2, 1972 / 01:49:04 UT"},
+            {"key": "lastSignal", "value": "2003-01-23", "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "Jan. 23, 2003: Pioneer 10's last signal is received on Earth"},
+            {"key": "massKg", "value": 258, "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "Spacecraft Mass 569 pounds (258 kilograms)"},
+            {"key": "heading", "value": "Aldebaran", "page": "https://science.nasa.gov/mission/pioneer-10/", "quote": "generally heading in the direction of the red star Aldebaran"},
+            {"key": "dishDiameterM", "value": 2.74, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A", "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"},
         ],
     },
 ]

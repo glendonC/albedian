@@ -127,6 +127,63 @@
         "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
         "quote": "Size of Sun Shield 21.197 m x 14.162 m (69.5 ft x 46.5 ft)"
       }
+    },
+    "pioneer10": {
+      "title": "Pioneer 10",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "pioneer10/pioneer10_lod0.glb",
+          "bytes": 653948,
+          "triangles": 8189,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "pioneer10/pioneer10_lod1.glb",
+          "bytes": 527540,
+          "triangles": 4094,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "pioneer10/pioneer10_lod2.glb",
+          "bytes": 174352,
+          "triangles": 1474,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "pioneer10/pioneer10_picker.webp",
+          "bytes": 5262,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -2.26,
+          -6.833,
+          -0.905
+        ],
+        "max": [
+          2.256,
+          1.414,
+          1.636
+        ]
+      },
+      "bodyRadiusM": 1.8,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "dish_AO",
+        "metres": 2.74,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A",
+        "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"
+      }
     }
   },
   "entries": [
@@ -247,6 +304,50 @@
           "value": 6200,
           "page": "https://science.nasa.gov/mission/webb/fact-sheet/",
           "quote": "Approx 6200 kg, including observatory, on-orbit consumables and launch vehicle adaptor"
+        }
+      ]
+    },
+    {
+      "id": "pioneer-10",
+      "name": "Pioneer 10",
+      "model": "pioneer10",
+      "travel": {
+        "speedKmS": 12.24,
+        "relativeTo": "Sun",
+        "asOf": "2001-06-03",
+        "page": "https://science.nasa.gov/missions/pioneer-10-update/",
+        "quote": "Speed relative to the Sun: 12.24 km/sec (27,380 mph)"
+      },
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1972-03-02",
+          "page": "https://science.nasa.gov/mission/pioneer-10/",
+          "quote": "March 2, 1972 / 01:49:04 UT"
+        },
+        {
+          "key": "lastSignal",
+          "value": "2003-01-23",
+          "page": "https://science.nasa.gov/mission/pioneer-10/",
+          "quote": "Jan. 23, 2003: Pioneer 10's last signal is received on Earth"
+        },
+        {
+          "key": "massKg",
+          "value": 258,
+          "page": "https://science.nasa.gov/mission/pioneer-10/",
+          "quote": "Spacecraft Mass 569 pounds (258 kilograms)"
+        },
+        {
+          "key": "heading",
+          "value": "Aldebaran",
+          "page": "https://science.nasa.gov/mission/pioneer-10/",
+          "quote": "generally heading in the direction of the red star Aldebaran"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 2.74,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1972-012A",
+          "quote": "2.74-m-diameter parabolic dish antenna that was 46 cm deep"
         }
       ]
     }
