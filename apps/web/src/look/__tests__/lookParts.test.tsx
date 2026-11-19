@@ -276,9 +276,15 @@ describe('Logo: the name always as the logo', () => {
 describe('LookIcon: only the Phosphor icons the approved screens use', () => {
   it('draws each as one path in the Phosphor 256 box, hidden from screen readers', () => {
     expect([...LOOK_ICON_NAMES].sort()).toEqual([
+      'arrow-clockwise',
       'arrow-left',
       'arrow-right',
       'arrow-square-out',
+      'arrow-u-up-left',
+      'arrow-up',
+      'check',
+      'info',
+      'keyboard',
       'microphone',
       'speaker-high',
       'upload-simple',
