@@ -420,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "e07f3a1b2247fea77b802b69f1e4694199b8f5dd19e1d70923a36039e8411767",
+      "sha256": "fd041c11d0ecc1b6322f384a090e631d578763adf1b50b8c1dc2e8b5e41126f8",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -903,6 +903,65 @@
         "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model is a small picture on white, which the picker shows as a white square."
       },
       "note": "Rendered from this folder's lod0 build of https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb."
+    },
+    {
+      "path": "hangar/osirisrex/osirisrex_lod0.glb",
+      "sha256": "76e487d76f6435e2f5a5c60685485cd9e729cfdb444db9b74a476e224eeca8a6",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts whose material NASA's model names as gold foil, bronze, silver or solar cells given physically based materials of that kind, the bronze in NASA's own colour, the others keeping NASA's own colour, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and fewer triangles kept at every level."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/osirisrex/osirisrex_lod1.glb",
+      "sha256": "2fe732ee677f9f97448ef25c7b8a9d65bb93ebf84457909f7075cdd07eeb395b",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/osirisrex/osirisrex_lod2.glb",
+      "sha256": "2d497b46ce0235683ff480cba5a4b29add41f1df7b1a07a13ce012c25d8d094f",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.glb (1281308 bytes, SHA-256 ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/osirisrex/osirisrex_picker.webp",
+      "sha256": "374fa5fb14a2f3e4ecaa5f8301cf1614b963b6535138480207a2b773cf8b9a71",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft osirisrex --out apps/web/public/models/hangar/osirisrex",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Origins,%20Spectral%20Interpretation,%20Resource%20Identification,%20and%20Security%20-%20Regolith%20Explorer%20%28OSIRIS-REx%29/OSIRIS-REx.png (941876 bytes, SHA-256 9b02b5f685379bb8a7770b2e1c2033d443e78dfd4910f095e6f0f923455af63a)."
     },
     {
       "path": "hangar/parker/parker_lod0.glb",

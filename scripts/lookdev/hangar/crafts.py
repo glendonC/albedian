@@ -980,6 +980,50 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 2.2,
         "changes": "metals",
     },
+    "osirisrex": {
+        "title": "OSIRIS-REx",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-osiris-rex",
+            "title": "OSIRIS-REx, NASA 3D Resources",
+            "folder": "Origins, Spectral Interpretation, Resource Identification, and Security - Regolith Explorer (OSIRIS-REx)",
+            "file": "OSIRIS-REx.glb",
+            "bytes": 1_281_308,
+            "sha256": "ef8e0429ee4dd8e918908923d5efdc6d3576b9216cc8e16533b50dd28c196bca",
+            "picture": "OSIRIS-REx.png",
+            "picture_bytes": 941_876,
+            "picture_sha256": "9b02b5f685379bb8a7770b2e1c2033d443e78dfd4910f095e6f0f923455af63a",
+            "local": "osirisrex",
+        },
+        "drop_objects": [],
+        # The high-gain dish faces +X in the import frame and faces Earth, so the craft is flown along -X, as Voyager is;
+        # the sample return capsule sits on top at +Z and the wings reach along Y.
+        "forward": (-1.0, 0.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the dish's white face, NASA's "White-sm" part, 8.3365 units across, to NSSDC's 2 m.
+        "scale_from": {
+            "material": "White-sm.001",
+            "axis": "y",
+            "metres": 2,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+            "quote": "Primary communication is via a 2 meter high gain directional dish antenna.",
+        },
+        # NASA's model names each part's colour and finish: gold foil, bronze, silver and solar cells become physically
+        # based materials of that kind in NASA's own colours where NASA gives one; the rest keep NASA's own colour.
+        "material_rules": [
+            {"match": ["solarfaces"], "role": "pbr", "base": (0.02, 0.025, 0.06), "metallic": 0.0, "roughness": 0.15},
+            {"match": ["goldfoil", "tpp-botplates"], "role": "pbr", "base": (1.0, 0.766, 0.336), "metallic": 1.0, "roughness": 0.3},
+            {"match": ["bronze", "silver-puck"], "role": "pbr", "base": (0.692, 0.609, 0.384), "metallic": 1.0, "roughness": 0.35},
+            {"match": ["silver"], "role": "pbr", "base": (0.90, 0.90, 0.91), "metallic": 1.0, "roughness": 0.34},
+            {"match": [""], "role": "nasa_flat"},
+        ],
+        # NASA's file keeps every triangle apart (553,221 vertices for 184,407 triangles): welded within 0.1 mm first.
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "lod_ratio": {"lod0": 0.7, "lod1": 0.2, "lod2": 0.06},
+        "body_radius_m": 1.6,
+        "changes": "foils",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1308,6 +1352,24 @@ HANGAR: list[dict] = [
             {"key": "apertureCm", "value": 85, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A", "quote": "The telescope has an 85 cm diameter aperture."},
             {"key": "orbit", "value": "Earth-trailing, around the Sun", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2003-038A", "quote": "Spitzer has an Earth-trailing Heliocentric orbit."},
             {"key": "decommissioned", "value": "2020-01-30", "page": "https://science.nasa.gov/mission/spitzer/", "quote": "was decommissioned on Jan. 30, 2020"},
+        ],
+    },
+    {
+        # OSIRIS-REx went to the asteroid Bennu and back, and flies on as OSIRIS-APEX; NASA states no speed relative to
+        # the Sun for it: no speed. NSSDC gives 1529 kg at launch where the in-depth page gives 2,110 kg; NSSDC's,
+        # stated as the launch mass with propellant, is used.
+        "id": "osiris-rex",
+        "name": "OSIRIS-REx",
+        "model": "osirisrex",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2016-09-08", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "OSIRIS-REx launched on 08 September 2016 at 23:05 UT"},
+            {"key": "launchMassKg", "value": 1529, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "Launch mass including propellant is 1529 kg."},
+            {"key": "dishDiameterM", "value": 2, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "Primary communication is via a 2 meter high gain directional dish antenna."},
+            {"key": "heightM", "value": 2.72, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "The spacecraft is a roughly cubic shape, 2.72 meters high and 3.1 meters wide"},
+            {"key": "widthM", "value": 3.1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A", "quote": "The spacecraft is a roughly cubic shape, 2.72 meters high and 3.1 meters wide"},
+            {"key": "bennuArrival", "value": "2018-12-03", "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/", "quote": "After arriving at Bennu on Dec. 3, 2018,"},
+            {"key": "renamed", "value": "OSIRIS-APEX", "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/", "quote": "After the delivery, OSIRIS-REx was renamed OSIRIS-APEX (OSIRIS-Apophis Explorer)"},
         ],
     },
 ]

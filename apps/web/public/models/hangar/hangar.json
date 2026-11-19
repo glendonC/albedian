@@ -1165,6 +1165,63 @@
         "quote": "The telescope has an 85 cm diameter aperture.",
         "quotedCm": 85
       }
+    },
+    "osirisrex": {
+      "title": "OSIRIS-REx",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "osirisrex/osirisrex_lod0.glb",
+          "bytes": 2892356,
+          "triangles": 81841,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "osirisrex/osirisrex_lod1.glb",
+          "bytes": 1082456,
+          "triangles": 22936,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "osirisrex/osirisrex_lod2.glb",
+          "bytes": 252408,
+          "triangles": 6757,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "osirisrex/osirisrex_picker.webp",
+          "bytes": 3308,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -4.154,
+          -1.775,
+          -0.231
+        ],
+        "max": [
+          4.159,
+          1.106,
+          3.061
+        ]
+      },
+      "bodyRadiusM": 1.6,
+      "lodTriangleShare": {
+        "lod0": 0.7,
+        "lod1": 0.2,
+        "lod2": 0.06
+      },
+      "scaleFrom": {
+        "part": "White-sm.001",
+        "metres": 2,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+        "quote": "Primary communication is via a 2 meter high gain directional dish antenna."
+      }
     }
   },
   "entries": [
@@ -1883,6 +1940,56 @@
           "value": "2020-01-30",
           "page": "https://science.nasa.gov/mission/spitzer/",
           "quote": "was decommissioned on Jan. 30, 2020"
+        }
+      ]
+    },
+    {
+      "id": "osiris-rex",
+      "name": "OSIRIS-REx",
+      "model": "osirisrex",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2016-09-08",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+          "quote": "OSIRIS-REx launched on 08 September 2016 at 23:05 UT"
+        },
+        {
+          "key": "launchMassKg",
+          "value": 1529,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+          "quote": "Launch mass including propellant is 1529 kg."
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 2,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+          "quote": "Primary communication is via a 2 meter high gain directional dish antenna."
+        },
+        {
+          "key": "heightM",
+          "value": 2.72,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+          "quote": "The spacecraft is a roughly cubic shape, 2.72 meters high and 3.1 meters wide"
+        },
+        {
+          "key": "widthM",
+          "value": 3.1,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2016-055A",
+          "quote": "The spacecraft is a roughly cubic shape, 2.72 meters high and 3.1 meters wide"
+        },
+        {
+          "key": "bennuArrival",
+          "value": "2018-12-03",
+          "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/",
+          "quote": "After arriving at Bennu on Dec. 3, 2018,"
+        },
+        {
+          "key": "renamed",
+          "value": "OSIRIS-APEX",
+          "page": "https://science.nasa.gov/mission/osiris-rex/in-depth/",
+          "quote": "After the delivery, OSIRIS-REx was renamed OSIRIS-APEX (OSIRIS-Apophis Explorer)"
         }
       ]
     }
