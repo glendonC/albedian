@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { IconButton, LookIcon, SecondAction } from '../look/index.js';
+import { IconButton, LookIcon, MainAction, SecondAction } from '../look/index.js';
 
 /** The words heard so far while listening, and whether the recogniser has settled the last of them. */
 export interface HeardWords {
@@ -15,6 +15,8 @@ export interface AskBarProps {
   words: HeardWords | null;
   onListen: () => void;
   onSend: (text: string) => void;
+  /** There, after Go there: "Back to Moment", the screen's one main button, before Ask out loud (fly, approved 2026-11-12). */
+  onBack?: () => void;
 }
 
 /** Whether a key belongs to a field, a button or editable text rather than to the bar's keys. */
@@ -48,7 +50,7 @@ function heardLabel(words: HeardWords): React.ReactNode {
  * as they are heard. The keyboard button or "/" turns the ask button into the field in place; Enter or the arrow
  * sends, Esc closes. Nothing on screen names Space or "/".
  */
-export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend }) => {
+export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onListen, onSend, onBack }) => {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -87,6 +89,7 @@ export const AskBar: React.FC<AskBarProps> = ({ canListen, listening, words, onL
 
   return (
     <div className="ask-bar" data-hud-interactive="true" data-testid="ask-bar">
+      {onBack && <MainAction label="Back to Moment" icon="arrow-u-up-left" size="home" onClick={() => onBack()} />}
       {typing ? (
         <form className="ask-bar__field" onSubmit={send}>
           <input

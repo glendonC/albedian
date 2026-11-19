@@ -3,7 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { createEmptyObservationSession } from '@albedian/observation';
+import { createEmptyObservationSession, dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { HOME_SCREEN, choosePhotoOnHome } from '../../components/__tests__/homeEntry.js';
 import type { Arrival } from '../arrival.js';
@@ -477,6 +477,68 @@ describe('the viewport shows the approved star card over the photo, above phone 
     renderViewport({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
     expect(q('[data-testid="real-sky"]')).toBeNull();
     expect(q('[data-testid="reveal-photo"]')).toBeNull();
+  });
+
+  /** The picked session after the card's Go there, through the reducer (space.enter saves the moment first). */
+  const thereFrom = (session: ObservationSession): ObservationSession => {
+    const out = dispatchAlbedianAction(session, {
+      type: 'space.enter',
+      requestId: 'ui-go-there',
+      expectedViewRevision: session.viewRevision,
+      findingId: session.selectedFindingId!,
+      distancePolicy: 'measured_or_estimated',
+    });
+    expect(out.outcome.status).toBe('completed');
+    return out.session;
+  };
+
+  it('shows there after Go there: the panorama, the picked mark alone, the readout, Back to Moment first, 3D current, and none of the old 3D pieces', () => {
+    const there = thereFrom(pickedSession());
+    open(there, { selectedFinding: there.observationSolution!.findings.find((f) => f.id === there.selectedFindingId) });
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(q('[data-testid="flight-readout"] h1')!.textContent).toBe(there.observationSolution!.findings.find((f) => f.id === there.selectedFindingId)!.title);
+    expect(container.querySelectorAll('button.reveal-mark')).toHaveLength(1);
+    expect(q('.ask-bar > button.look-main')!.textContent).toBe('Back to Moment');
+    expect([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
+    for (const gone of ['[data-testid="flight-and-restore-hud"]', '.alb-layer-disclosure', '[data-testid="star-card"]', '[data-testid="voice-command-hud"]']) {
+      expect(q(gone), gone).toBeNull();
+    }
+  });
+
+  it('lands Back to Moment on the exact moment: the photo with the same star picked, its card back; Esc and Your photo do the same', () => {
+    const picked = pickedSession();
+    for (const way of ['button', 'esc', 'pill'] as const) {
+      let current = thereFrom(picked);
+      const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
+        current = update(current);
+      };
+      open(current, { setSession });
+      if (way === 'button') act(() => (q('.ask-bar > button.look-main') as HTMLButtonElement).click());
+      if (way === 'esc') act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      if (way === 'pill') act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === 'Your photo')!).click());
+      expect(current.spatialView.mode, way).toBe('source_2d');
+      expect(current.selectedFindingId, way).toBe(picked.selectedFindingId);
+      expect(current.lastStatusBanner, way).toMatch(/^Returned to Moment/);
+      act(() => root.unmount());
+      root = createRoot(container);
+    }
+  });
+
+  it('keeps Esc for an open answer there, and Go there pressed again does nothing', () => {
+    const onRunUtterance = vi.fn();
+    let current = thereFrom(pickedSession());
+    const setSession = (update: (prev: ObservationSession) => ObservationSession) => {
+      current = update(current);
+    };
+    open(current, { setSession, onRunUtterance, answer: { heard: 'Is that a plane?', sentence: "Nothing in this photo's data answers that.", answer: null } });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    });
+    expect(current.spatialView.mode).toBe('catalog_3d');
+    act(() => ([...q('.reveal-nav')!.querySelectorAll<HTMLButtonElement>('[role="group"] button')].find((b) => b.textContent === '3D')!).click());
+    expect(onRunUtterance).not.toHaveBeenCalled();
   });
 
   it('draws the approved card for the picked star, and not the old card', () => {

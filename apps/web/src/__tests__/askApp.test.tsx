@@ -469,6 +469,22 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
+  it('shows answers there after Go there too, in the readout\'s place', async () => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
+      await waitUntil(() => expect(q('[data-testid="flight-readout"]')).not.toBeNull());
+      await typeAndSend('Is that a plane?');
+      await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+      expect(q('[data-testid="flight-readout"]')).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+    }
+  });
+
   it("shows answers over Real sky too, the photo's frame still the reveal's", async () => {
     (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
     try {

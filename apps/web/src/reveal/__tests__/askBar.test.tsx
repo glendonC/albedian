@@ -122,6 +122,21 @@ describe('AskBar: Ask out loud and the keyboard button', () => {
   });
 });
 
+describe('AskBar: Back to Moment, there (fly, approved 2026-11-12)', () => {
+  it('puts "Back to Moment" first as the screen\'s one main button, with its return arrow, and goes back once per press', () => {
+    const onBack = vi.fn();
+    show({ onBack });
+    const back = q('.ask-bar > button.look-main') as HTMLButtonElement;
+    expect(back.textContent).toBe('Back to Moment');
+    expect(back.querySelector('.look-main__circle path')!.getAttribute('d')).toBe(LOOK_ICON_PATHS['arrow-u-up-left']);
+    expect([...q('.ask-bar')!.children].map((c) => c.className.split(' ')[0])).toEqual(['look-main', 'look-second', 'look-icon']);
+    act(() => back.click());
+    expect(onBack).toHaveBeenCalledTimes(1);
+    show();
+    expect(q('.ask-bar button.look-main')).toBeNull();
+  });
+});
+
 describe('AskBar: typing a question', () => {
   it('turns the ask button into the field in place, focused, from the keyboard button or "/"', () => {
     show();

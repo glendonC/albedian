@@ -11,7 +11,12 @@ import { RealSkyLayer } from './RealSkyLayer.js';
 
 /** Real sky's cross-fade with the photo (reveal, approved: 0.9 s). */
 const REAL_SKY_FADE_MS = 900;
+
+/** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
+const THERE_DISCLOSURE =
+  'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.';
 import { realSkyResidualArcmin } from './realSkyGrid.js';
+import { oneDecimal, type FlightReadout } from './flightView.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -38,6 +43,8 @@ export interface RevealPhotoProps {
   onCloseAnswer?: () => void;
   /** Real sky is shown: the panorama through the solve over the photo's frame, its status the Simulated tag and sentence. */
   realSky?: boolean;
+  /** There, after Go there: the readout from the flight's own distances, in the card's place (fly, approved 2026-11-12). */
+  flight?: FlightReadout | null;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
 }
@@ -91,6 +98,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   answer = null,
   onCloseAnswer,
   realSky = false,
+  flight = null,
   viewportWidthPx,
   viewportHeightPx,
 }) => {
@@ -99,36 +107,40 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const viewH = viewportHeightPx ?? windowSize.heightPx;
   // The photo alone: a frame the browser turned wrongly, or Original pixels pressed
   const bareFrame = frameMismatch || originalPixels;
-  // Real sky keeps the photo's frame: its corners and marks stand where they stand on the photo
-  const framed: ObservationSession = realSky ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
+  // Real sky, and there after Go there, keep the photo's frame: marks stand where they stand on the photo
+  const there = flight !== null;
+  const skyShown = realSky || there;
+  const framed: ObservationSession = skyShown ? { ...session, spatialView: { ...session.spatialView, mode: 'source_2d' } } : session;
   const frame = sessionPhotoRect(framed, viewW, viewH);
-  const rect = bareFrame ? null : frame;
-  // The layer stays a moment after leaving Real sky, so it fades out as it faded in
-  const [skyMounted, setSkyMounted] = useState(realSky);
+  // There, the frame's corners leave with the photo (fly, approved)
+  const rect = bareFrame || there ? null : frame;
+  // The layer stays a moment after leaving the sky, so it fades out as it faded in
+  const [skyMounted, setSkyMounted] = useState(skyShown);
   useEffect(() => {
-    if (realSky) {
+    if (skyShown) {
       setSkyMounted(true);
       return undefined;
     }
     const timer = setTimeout(() => setSkyMounted(false), REAL_SKY_FADE_MS);
     return () => clearTimeout(timer);
-  }, [realSky]);
+  }, [skyShown]);
   const residual = realSky && session.observationSolution ? realSkyResidualArcmin(session.observationSolution) : null;
   // Whether the panorama is on screen: the status says Simulated only then, and the photo's own status otherwise (while
   // it loads, when it cannot be drawn, with Original pixels pressed: the verdict on unit-realsky-1)
   const [skyDrawn, setSkyDrawn] = useState(false);
-  const skyOnScreen = realSky && skyDrawn && !originalPixels;
+  const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
   const marked = lit === undefined ? framed : { ...framed, selectedFindingId: lit };
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
-  const marks = revealMarks(marked, viewW, viewH);
+  // There, only the picked star's mark stays (fly, approved)
+  const marks = revealMarks(marked, viewW, viewH).filter((mark) => !there || mark.picked);
   const status = revealStatus(session);
   const counts = evidenceCounts(session.observationSolution);
 
   return (
     <div className="reveal-photo" data-testid="reveal-photo" data-hud-interactive="true">
-      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!realSky} onDrawn={setSkyDrawn} />}
+      {skyMounted && !originalPixels && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!bareFrame && picked && marks.some((mark) => mark.picked) && (
@@ -179,7 +191,12 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         <Logo sizePx={21} />
       </button>
 
-      {skyOnScreen ? (
+      {there && skyOnScreen ? (
+        <div className="reveal-status" data-testid="reveal-status" role="status">
+          <EvidenceTag evidenceClass="simulated" />
+          <p className="reveal-status__line">{THERE_DISCLOSURE}</p>
+        </div>
+      ) : skyOnScreen ? (
         <div className="reveal-status" data-testid="reveal-status" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {/* A verified solve always carries its residual (the contract); without one no "within" is claimed and no sentence shows */}
@@ -225,7 +242,32 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} />}
 
-      {!answer && picked && (
+      {!answer && flight && (
+        <section className="flight-readout" data-testid="flight-readout" aria-label={flight.name}>
+          <EvidenceTag evidenceClass="simulated" />
+          <h1>{flight.name}</h1>
+          <div className="flight-readout__stats">
+            {flight.toStarLy !== null && (
+              <div className="flight-readout__stat">
+                <b>
+                  {oneDecimal(flight.toStarLy)}
+                  <small>ly</small>
+                </b>
+                <span>{`to ${flight.name}`}</span>
+              </div>
+            )}
+            <div className="flight-readout__stat">
+              <b>
+                {oneDecimal(flight.fromEarthLy)}
+                <small>ly</small>
+              </b>
+              <span>from Earth</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {!answer && !there && picked && (
         <StarCard
           key={picked.id}
           finding={picked}
@@ -236,7 +278,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         />
       )}
 
-      {counts.length > 0 && (
+      {!there && counts.length > 0 && (
         <div className="reveal-legend" data-testid="reveal-legend">
           <p className="reveal-legend__title">In this photo</p>
           {counts.map((row) => (

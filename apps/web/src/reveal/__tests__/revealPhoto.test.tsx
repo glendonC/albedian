@@ -14,6 +14,22 @@ import { cornerPaths } from '../cornerPaths.js';
 import { revealMarks } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
 
+// The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
+const sky = vi.hoisted(() => ({ drawn: true }));
+vi.mock('../RealSkyLayer.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
+  const { createElement: h, useEffect } = await import('react');
+  return {
+    ...original,
+    RealSkyLayer: (props: { onDrawn?: (drawn: boolean) => void }) => {
+      useEffect(() => {
+        props.onDrawn?.(sky.drawn);
+      }, [props.onDrawn]);
+      return h('div', { className: 'real-sky', 'data-testid': 'real-sky' });
+    },
+  };
+});
+
 // The reveal's "your photo" on the laptop (reveal, approved 2026-11-12; estimate and cautions, decided the same
 // night). Sizes and colours are the approved pages' (#l-photo, #l-pick in .cache/uiux/reveal/index.html; #o3, #o456 in
 // .cache/uiux/web2/index.html). The sessions are the Python side's own fixture solutions on a 960 by 540 frame.
@@ -425,6 +441,86 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
     show({ ...session, selectedFindingId: rigel.id }, { answer: null });
     expect(q(ANSWER)).toBeNull();
     expect(q('[data-testid="star-card"]')).not.toBeNull();
+  });
+});
+
+describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => {
+  const READOUT = '[data-testid="flight-readout"]';
+  const DISCLOSURE = 'Drawn or computed by the app; not measured in the source recording. Stars at their Hipparcos 2007 and Gaia DR3 distances. Milky Way: ESO/S. Brunier.';
+  const rigelPicked = () => {
+    const session = calibrated();
+    const rigel = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+    return { session: { ...session, selectedFindingId: rigel.id } as ObservationSession, rigel };
+  };
+
+  it('keeps only the picked star\'s mark, white and named, with the line to the readout, and no corners, card, legend or counts', () => {
+    const { session, rigel } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    expect(all('button.reveal-mark').map((m) => m.getAttribute('data-testid'))).toEqual([`reveal-mark-${rigel.id}`]);
+    expect(q('.reveal-mark')!.className).toContain('is-picked');
+    expect(q('[data-testid="reveal-leader"]')).not.toBeNull();
+    expect(q('svg.photo-corners')).toBeNull();
+    expect(q('[data-testid="star-card"]')).toBeNull();
+    expect(q('[data-testid="reveal-legend"]')).toBeNull();
+  });
+
+  it('says what the view is: the Simulated tag and the spec\'s sentence with the layer\'s sources, word for word', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    const status = q('[data-testid="reveal-status"]')!;
+    expect(status.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(status.querySelector('.reveal-status__line')!.textContent).toBe(DISCLOSURE);
+  });
+
+  it('keeps the photo\'s own status there while the sky is not drawn, the readout staying (the verdict on unit-realsky-1)', () => {
+    sky.drawn = false;
+    try {
+      const { session } = rigelPicked();
+      show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+      expect(q('[data-testid="reveal-status"] .look-tag')).toBeNull();
+      expect(q('[data-testid="reveal-status"]')!.textContent).not.toContain('Drawn or computed by the app');
+      expect(q(READOUT)).not.toBeNull();
+    } finally {
+      sky.drawn = true;
+    }
+  });
+
+  it('puts the readout in the card\'s place: the Simulated tag, the name, then to the star and from Earth in light years with one decimal', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.43 } });
+    const readout = q(READOUT)!;
+    expect(readout.querySelector('.look-tag')!.getAttribute('data-evidence-class')).toBe('simulated');
+    expect(readout.querySelector('h1')!.textContent).toBe('Rigel');
+    expect([...readout.querySelectorAll('.flight-readout__stat')].map((s) => [s.querySelector('b')!.textContent, s.querySelector('span')!.textContent])).toEqual([
+      ['1.0ly', 'to Rigel'],
+      ['859.4ly', 'from Earth'],
+    ]);
+    // A star with no position in space: only how far the camera is from Earth
+    show(session, { flight: { name: 'Rigel', toStarLy: null, fromEarthLy: 0 } });
+    expect([...q(READOUT)!.querySelectorAll('.flight-readout__stat span')].map((s) => s.textContent)).toEqual(['from Earth']);
+  });
+
+  it('gives the readout\'s place to an answer while one shows', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, answer: { heard: 'Is that a plane?', sentence: "Nothing in this photo's data answers that.", answer: null } });
+    expect(q(READOUT)).toBeNull();
+    expect(q('[data-testid="reveal-answer"]')).not.toBeNull();
+  });
+
+  it('sets the readout as the approved page does, arriving after the old panels leave', () => {
+    expect(declarationsOf('.flight-readout')).toEqual({
+      position: 'absolute',
+      right: '32px',
+      top: '118px',
+      width: '320px',
+      'pointer-events': 'auto',
+      animation: 'reveal-card-fade 900ms var(--look-ease-standard) 450ms both',
+    });
+    expect(declarationsOf('.flight-readout h1')).toEqual({ margin: '22px 0 0', font: '400 66px / 1 var(--look-font-sans)', 'letter-spacing': '-0.05em' });
+    expect(declarationsOf('.flight-readout__stats')).toEqual({ display: 'grid', 'grid-template-columns': '1fr 1fr', gap: '16px', 'margin-top': '30px', 'padding-top': '20px', 'border-top': '1px solid var(--look-hair)' });
+    expect(declarationsOf('.flight-readout__stat b')).toEqual({ display: 'block', 'font-weight': '400', 'font-size': '44px', 'letter-spacing': '-0.045em', 'line-height': '1', 'font-variant-numeric': 'tabular-nums' });
+    expect(declarationsOf('.flight-readout__stat small')).toEqual({ 'font-size': '16px', 'letter-spacing': '-0.01em', color: 'var(--look-ink-2)', 'margin-left': '4px' });
+    expect(declarationsOf('.flight-readout__stat span')).toEqual({ display: 'block', 'margin-top': '8px', 'font-size': '13px', color: 'var(--look-ink-3)' });
   });
 });
 

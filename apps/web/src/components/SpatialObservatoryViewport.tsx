@@ -7,7 +7,7 @@ import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
 import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
-import { dispatchAlbedianAction } from '@albedian/observation';
+import { dispatchAlbedianAction, returnCheckpointOf } from '@albedian/observation';
 import { ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
 import {
@@ -47,6 +47,7 @@ import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
 import { canDrawRealSky, isRealSkyShown } from '../reveal/RealSkyLayer.js';
+import { flightReadout, isFlightShown } from '../reveal/flightView.js';
 import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
@@ -174,7 +175,10 @@ export const SpatialObservatoryViewport: React.FC<
   // Real sky (reveal, approved 2026-11-12): the measured sky of a verified solve, drawn over the photo's frame by the
   // reveal itself, the reducer's sky.show having saved the moment to come back to
   const realSkyShown = !phone && isRealSkyShown(session);
-  const revealShown = !phone && (isSourcePhotoShown(session) || realSkyShown);
+  // There, after Go there (fly, approved 2026-11-12): the same panorama in the photo's place, the readout in the card's
+  const flightShown = !phone && isFlightShown(session);
+  const skyOver = realSkyShown || flightShown;
+  const revealShown = !phone && (isSourcePhotoShown(session) || skyOver);
   // Original pixels (original, decided 2026-11-12): pressed on the star's card, it shows the photo whole; it lasts
   // only while that card is open
   const [originalPixels, setOriginalPixels] = useState(false);
@@ -527,15 +531,37 @@ export const SpatialObservatoryViewport: React.FC<
   const threeDOpens = pickedFinding !== null && findingCanEnterSpace(pickedFinding);
   const handleView = (view: string) => {
     if (view === 'sky' && realSkyOpens && !realSkyShown) showSky('measured');
-    // Back to the photo from Real sky: the saved moment, restored exactly
-    if (view === 'photo' && realSkyShown) {
-      setSession((cur) =>
-        dispatchAlbedianAction(cur, { type: 'source.return', requestId: `ui-source-return-${cur.viewRevision}`, expectedViewRevision: cur.viewRevision, restoreAudio: true })
-          .session
-      );
-    }
-    if (view === '3d' && pickedFinding && threeDOpens) onRunUtterance(`Take me to ${pickedFinding.title}`, 'pointer');
+    // Back to the photo from the sky: the saved moment, restored exactly
+    if (view === 'photo' && skyOver) backToMoment();
+    if (view === '3d' && pickedFinding && threeDOpens && !flightShown) onRunUtterance(`Take me to ${pickedFinding.title}`, 'pointer');
   };
+
+  // Back to Moment (fly, approved 2026-11-12): the saved CameraCheckpoint, restored exactly by the reducer
+  const backToMoment = () =>
+    setSession((cur) =>
+      dispatchAlbedianAction(cur, {
+        type: 'source.return',
+        requestId: `ui-source-return-${cur.viewRevision}`,
+        expectedViewRevision: cur.viewRevision,
+        checkpointId: returnCheckpointOf(cur)?.id,
+        restoreAudio: true,
+      }).session
+    );
+  const back = useRef(backToMoment);
+  back.current = backToMoment;
+
+  // There, Esc returns too, with nothing on screen saying so; an open answer takes Esc first
+  useEffect(() => {
+    if (!flightShown || answer) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (event.key !== 'Escape' || event.defaultPrevented || tag === 'input' || tag === 'textarea') return;
+      event.preventDefault();
+      back.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [flightShown, answer]);
 
   const handleToggleSound = useCallback(() => {
     const next = observatoryAudio.toggle();
@@ -558,7 +584,7 @@ export const SpatialObservatoryViewport: React.FC<
       />
 
       {/* While the home or the photo covers the canvas, the modeled scene's layers are not what is on screen */}
-      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && !realSkyShown && (
+      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && !skyOver && (
         <RenderLayerDisclosure layers={renderLayers} />
       )}
 
@@ -596,7 +622,7 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && !arrival && (
         <>
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} underSky={realSkyShown} />
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown && !originalPixels} underSky={skyOver} />
           {revealShown && (
             <RevealPhoto
               session={session}
@@ -614,6 +640,7 @@ export const SpatialObservatoryViewport: React.FC<
               answer={answer}
               onCloseAnswer={onCloseAnswer}
               realSky={realSkyShown}
+              flight={flightShown ? flightReadout(session) : null}
             />
           )}
           {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
@@ -633,7 +660,7 @@ export const SpatialObservatoryViewport: React.FC<
             onClose={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
           />
           )}
-          {!realSkyShown && (
+          {!skyOver && (
           <FlightAndRestoreHud
             session={session}
             setSession={setSession}
@@ -645,7 +672,7 @@ export const SpatialObservatoryViewport: React.FC<
               setSession={setSession}
             />
           )}
-          {!realSkyShown && (
+          {!skyOver && (
           <EpochAndDisclosureHud
             session={session}
             setSession={setSession}
@@ -660,6 +687,7 @@ export const SpatialObservatoryViewport: React.FC<
               words={heardWords}
               onListen={onPushToTalk}
               onSend={(text) => onRunUtterance(text, 'text')}
+              onBack={flightShown ? backToMoment : undefined}
             />
           ) : (
           <VoiceCommandHud
@@ -786,7 +814,7 @@ export const SpatialObservatoryViewport: React.FC<
                 { id: 'sky', label: 'Real sky', disabled: !realSkyOpens },
                 { id: '3d', label: '3D', disabled: !threeDOpens },
               ]}
-              current={realSkyShown ? 'sky' : 'photo'}
+              current={flightShown ? '3d' : realSkyShown ? 'sky' : 'photo'}
               onSelect={handleView}
             />
           )}

@@ -897,3 +897,58 @@
     transition: none;
   }
 }
+
+/* There, after Go there (fly, approved 2026-11-12; #l-there in .cache/uiux/fly/index.html): the readout in the card's
+   place, arriving from 0.45 s over 0.9 s, once the old panels have left */
+.flight-readout {
+  position: absolute;
+  right: 32px;
+  top: 118px;
+  width: 320px;
+  pointer-events: auto;
+  animation: reveal-card-fade 900ms var(--look-ease-standard) 450ms both;
+}
+
+.flight-readout h1 {
+  margin: 22px 0 0;
+  font: 400 66px / 1 var(--look-font-sans);
+  letter-spacing: -0.05em;
+}
+
+.flight-readout__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid var(--look-hair);
+}
+
+.flight-readout__stat b {
+  display: block;
+  font-weight: 400;
+  font-size: 44px;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-readout__stat small {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--look-ink-2);
+  margin-left: 4px;
+}
+
+.flight-readout__stat span {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--look-ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight-readout {
+    animation: none;
+  }
+}
