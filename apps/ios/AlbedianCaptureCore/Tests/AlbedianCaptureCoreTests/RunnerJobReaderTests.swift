@@ -16,6 +16,11 @@ final class RunnerJobReaderTests: XCTestCase {
         return true
     }
 
+    private func refusalPath(_ sample: JSONValue) -> String? {
+        guard let object = sample.objectValue, case .failure(let refusal) = SolveJobReader.readRunnerRecord(object) else { return nil }
+        return refusal.path
+    }
+
     private func isSolve(_ sample: JSONValue) -> Bool { sample["kind"]?.stringValue == "solve" }
 
     /// Each entry of a section that carries a verdict: a solve's verdict is the reader's; any other kind is refused.
@@ -52,7 +57,30 @@ final class RunnerJobReaderTests: XCTestCase {
                 XCTAssertFalse(isSolve(record), "valid[\(index)] refused: \(refusal)")
             }
         }
-        XCTAssertEqual(solves, 8)
+        XCTAssertEqual(solves, 10)
+    }
+
+    /// platform-10a: a solve's record may say when it published the sky predicted from an early pose, once started and
+    /// within its run; the phone takes such a record and refuses the time outside the run, as the contract does.
+    func testTakesAPredictedSkyTimeWithinTheRunAndRefusesOneOutsideIt() throws {
+        let valid = try XCTUnwrap(fixture()["valid"]?.arrayValue)
+        let withSky = valid.compactMap(\.objectValue).filter { $0["predictedSkyAtUTC"] != nil }
+        XCTAssertEqual(withSky.count, 2)
+        for record in withSky {
+            XCTAssertNoThrow(try SolveJobReader.read(.object(record)).get())
+            let started = try XCTUnwrap(record["startedAtUTC"])
+            var early = record
+            early["predictedSkyAtUTC"] = .string("2000-01-01T00:00:00.000Z")
+            XCTAssertEqual(refusalPath(.object(early)), "predictedSkyAtUTC")
+            if record["finishedAtUTC"] != nil {
+                var late = record
+                late["predictedSkyAtUTC"] = .string("2099-01-01T00:00:00.000Z")
+                XCTAssertEqual(refusalPath(.object(late)), "predictedSkyAtUTC")
+            }
+            var atStart = record
+            atStart["predictedSkyAtUTC"] = started
+            XCTAssertTrue(accepts(.object(atStart)))
+        }
     }
 
     func testRefusesEveryInvalidRecordOfTheFixture() throws {
@@ -71,7 +99,7 @@ final class RunnerJobReaderTests: XCTestCase {
 
     func testHoldsTheStateTableCellByCellForASolve() throws {
         let (checked, wrong) = try judge("grid")
-        XCTAssertEqual(checked, 7 * 13 * 2 * 2, "every solve cell of the table")
+        XCTAssertEqual(checked, 7 * 14 * 2 * 2, "every solve cell of the table")
         XCTAssertEqual(wrong, [])
     }
 

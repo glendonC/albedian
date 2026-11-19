@@ -7,7 +7,7 @@ import Foundation
 public enum RunnerJob {
     static let keys: Set<String> = ["id", "sourceAssetSha256", "kind", "state", "createdAtUTC", "startedAtUTC", "finishedAtUTC",
                                     "stages", "solutionId", "error", "producer", "request", "graphId", "attemptId", "variantId",
-                                    "inputSpan", "cancelRequestedAtUTC", "queueAhead"]
+                                    "inputSpan", "cancelRequestedAtUTC", "queueAhead", "predictedSkyAtUTC"]
     static let stageKeys: Set<String> = ["stage", "unit", "done", "total", "pass"]
     /// Every stage name the contract knows (`UPLOAD_JOB_STAGES`); a solve's are `SolveJob.Stage`.
     static let allStages: Set<String> = ["store", "decode", "detect", "solve", "verify", "encode", "write", "measure", "restore"]
@@ -48,15 +48,16 @@ public enum RunnerJob {
     }
     /// The fields the table judges, in its order (`JOB_STATE_FIELDS`).
     static let stateFields = ["startedAtUTC", "finishedAtUTC", "error", "solutionId", "attemptId", "variantId", "inputSpan",
-                              "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages"]
+                              "cancelRequestedAtUTC", "queueAhead", "producer", "request", "graphId", "workStages",
+                              "predictedSkyAtUTC"]
     /// `JOB_STATE_TABLE.solve`, row by row as the contract writes it; `rejected` has no row for a solve.
     static let solveTable: [SolveJob.State: [Rule]] = [
-        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .f, .f, .f],
-        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e],
-        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .f, .f, .e],
-        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e],
-        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .f, .f, .s],
-        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e],
+        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .f, .f, .f, .f],
+        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
+        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
+        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
+        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .f, .f, .s, .s],
+        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
     ]
 
     /// `^[a-z][a-z0-9_.]{0,79}$` (`PRODUCER_NAME_PATTERN`).
@@ -91,7 +92,7 @@ extension SolveJobReader {
         }
         guard let created = Wire.instant(object["createdAtUTC"]) else { return refuse("createdAtUTC", "not an instant") }
         var instants: [String: String] = [:]
-        for key in ["startedAtUTC", "finishedAtUTC", "cancelRequestedAtUTC"] where object[key] != nil {
+        for key in ["startedAtUTC", "finishedAtUTC", "cancelRequestedAtUTC", "predictedSkyAtUTC"] where object[key] != nil {
             guard let instant = Wire.instant(object[key]) else { return refuse(key, "not an instant") }
             instants[key] = instant
         }
@@ -192,6 +193,13 @@ extension SolveJobReader {
         if let cancel = instants["cancelRequestedAtUTC"], let startedAt {
             if cancel < startedAt || (finishedAt.map { cancel > $0 } ?? false) {
                 return refuse("cancelRequestedAtUTC", "a cancel time lies within the job's run")
+            }
+        }
+        // When the solve published the sky predicted from an early pose (platform-10a): read and held to the run, not
+        // shown, since the lock-on is the web reveal's and Open shows it (LEAD ANSWER 12:21)
+        if let sky = instants["predictedSkyAtUTC"], let startedAt {
+            if sky < startedAt || (finishedAt.map { sky > $0 } ?? false) {
+                return refuse("predictedSkyAtUTC", "a predicted sky time lies within the job's run")
             }
         }
         if let error {
