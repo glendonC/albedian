@@ -81,6 +81,12 @@
   --look-mo-dur-mark: 67ms;
   --look-mo-span-marks: 330ms;
   --look-mo-dur-dissolve: 270ms;
+  --look-mo-ease-sheet: cubic-bezier(0.37, 0.37, 0.08, 1.05);
+  --look-mo-dur-sheet: 500ms;
+  --look-mo-sheet-travel: 110%;
+  --look-mo-sheet-from-opacity: 1;
+  --look-mo-line-from: 1;
+  --look-mo-line-from-opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -104,5 +110,11 @@
     --look-mo-dur-camera-half: 0ms;
     --look-mo-dur-mark: 270ms;
     --look-mo-span-marks: 0ms;
+    --look-mo-ease-sheet: ease-in-out;
+    --look-mo-dur-sheet: 270ms;
+    --look-mo-sheet-travel: 0%;
+    --look-mo-sheet-from-opacity: 0;
+    --look-mo-line-from: 0;
+    --look-mo-line-from-opacity: 0;
   }
 }

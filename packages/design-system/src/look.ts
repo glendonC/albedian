@@ -191,6 +191,12 @@ export interface MotionTokens {
   markMs: number;
   marksSpanMs: number;
   dissolveMs: number;
+  easeSheet: string;
+  sheetMs: number;
+  sheetTravelPct: number;
+  sheetFromOpacity: number;
+  lineFromOffset: number;
+  lineFromOpacity: number;
 }
 
 /**
@@ -219,6 +225,15 @@ export const MOTION_TOKENS: Readonly<MotionTokens> = {
   markMs: 67,
   marksSpanMs: 330,
   dissolveMs: 270,
+  // A card over a phone screen rises from the bottom edge as Apple's share sheet does, measured at 1080p: at rest in
+  // 0.5 s on (.37, .37, .08, 1.05) [measured: .lead/uiux/motion/measurements/k9-apple-system.md]
+  easeSheet: 'cubic-bezier(0.37, 0.37, 0.08, 1.05)',
+  sheetMs: 500,
+  sheetTravelPct: 110,
+  sheetFromOpacity: 1,
+  // A leader line is a card's frame: it draws from the star to the card (stroke-dashoffset 1 to 0 on pathLength 1)
+  lineFromOffset: 1,
+  lineFromOpacity: 1,
 };
 
 const DISSOLVE_EASE = 'ease-in-out';
@@ -247,6 +262,12 @@ export function resolveMotionTokens(reducedMotion: boolean): MotionTokens {
     cameraHalfMs: 0,
     markMs: d,
     marksSpanMs: 0,
+    easeSheet: DISSOLVE_EASE,
+    sheetMs: d,
+    sheetTravelPct: 0,
+    sheetFromOpacity: 0,
+    lineFromOffset: 0,
+    lineFromOpacity: 0,
   };
 }
 
@@ -283,6 +304,12 @@ function motionTokenOverrides(m: MotionTokens) {
     '--look-mo-dur-camera-half': ms(m.cameraHalfMs),
     '--look-mo-dur-mark': ms(m.markMs),
     '--look-mo-span-marks': ms(m.marksSpanMs),
+    '--look-mo-ease-sheet': m.easeSheet,
+    '--look-mo-dur-sheet': ms(m.sheetMs),
+    '--look-mo-sheet-travel': `${m.sheetTravelPct}%`,
+    '--look-mo-sheet-from-opacity': String(m.sheetFromOpacity),
+    '--look-mo-line-from': String(m.lineFromOffset),
+    '--look-mo-line-from-opacity': String(m.lineFromOpacity),
   } as const;
 }
 
@@ -306,6 +333,12 @@ function motionTokenProperties(m: MotionTokens) {
     '--look-mo-dur-mark': ms(m.markMs),
     '--look-mo-span-marks': ms(m.marksSpanMs),
     '--look-mo-dur-dissolve': ms(m.dissolveMs),
+    '--look-mo-ease-sheet': m.easeSheet,
+    '--look-mo-dur-sheet': ms(m.sheetMs),
+    '--look-mo-sheet-travel': `${m.sheetTravelPct}%`,
+    '--look-mo-sheet-from-opacity': String(m.sheetFromOpacity),
+    '--look-mo-line-from': String(m.lineFromOffset),
+    '--look-mo-line-from-opacity': String(m.lineFromOpacity),
   } as const;
 }
 

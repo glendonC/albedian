@@ -152,6 +152,12 @@ describe('motion tokens: the MOTION record (decided by the lead, 2026-11-19; .le
       markMs: 67,
       marksSpanMs: 330,
       dissolveMs: 270,
+      easeSheet: 'cubic-bezier(0.37, 0.37, 0.08, 1.05)',
+      sheetMs: 500,
+      sheetTravelPct: 110,
+      sheetFromOpacity: 1,
+      lineFromOffset: 1,
+      lineFromOpacity: 1,
     });
   });
 
@@ -171,7 +177,10 @@ describe('motion tokens: the MOTION record (decided by the lead, 2026-11-19; .le
     for (const ms of [reduced.frameInMs, reduced.wordsInMs, reduced.wordsOutMs, reduced.frameOutMs, reduced.viewMs, reduced.markMs]) {
       expect(ms).toBe(MOTION_TOKENS.dissolveMs);
     }
-    for (const ease of [reduced.easeStandard, reduced.easeFrameIn, reduced.easeFrameOut]) expect(ease).toBe('ease-in-out');
+    for (const ease of [reduced.easeStandard, reduced.easeFrameIn, reduced.easeFrameOut, reduced.easeSheet]) expect(ease).toBe('ease-in-out');
+    // the phone card and the leader line dissolve in place: no travel, no drawing
+    expect([reduced.sheetMs, reduced.sheetTravelPct, reduced.sheetFromOpacity]).toEqual([MOTION_TOKENS.dissolveMs, 0, 0]);
+    expect([reduced.lineFromOffset, reduced.lineFromOpacity]).toEqual([0, 0]);
     expect(reduced.colourMs).toBe(MOTION_TOKENS.colourMs);
   });
 
@@ -220,6 +229,12 @@ describe('look tokens: CSS custom properties', () => {
       '--look-mo-dur-camera-half': '0ms',
       '--look-mo-dur-mark': '270ms',
       '--look-mo-span-marks': '0ms',
+      '--look-mo-ease-sheet': 'ease-in-out',
+      '--look-mo-dur-sheet': '270ms',
+      '--look-mo-sheet-travel': '0%',
+      '--look-mo-sheet-from-opacity': '0',
+      '--look-mo-line-from': '0',
+      '--look-mo-line-from-opacity': '0',
     });
     for (const name of Object.keys(LOOK_REDUCED_MOTION_CSS_OVERRIDES)) {
       expect(name in LOOK_CSS_CUSTOM_PROPERTIES).toBe(true);

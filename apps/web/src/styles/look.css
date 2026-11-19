@@ -331,3 +331,33 @@
     translate: 0 var(--look-mo-rise);
   }
 }
+
+/* A leader line draws from its star to its card (a path with pathLength="1" and stroke-dasharray: 1); a card over a
+   phone screen rises from the bottom edge like Apple's sheet. Under reduced motion both only dissolve in place. */
+@keyframes look-mo-line-in {
+  from {
+    stroke-dashoffset: var(--look-mo-line-from);
+    opacity: var(--look-mo-line-from-opacity);
+  }
+}
+
+@keyframes look-mo-line-out {
+  to {
+    stroke-dashoffset: var(--look-mo-line-from);
+    opacity: var(--look-mo-line-from-opacity);
+  }
+}
+
+@keyframes look-mo-sheet-in {
+  from {
+    translate: 0 var(--look-mo-sheet-travel);
+    opacity: var(--look-mo-sheet-from-opacity);
+  }
+}
+
+@keyframes look-mo-sheet-out {
+  to {
+    translate: 0 var(--look-mo-sheet-travel);
+    opacity: var(--look-mo-sheet-from-opacity);
+  }
+}
