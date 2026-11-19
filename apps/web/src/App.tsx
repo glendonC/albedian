@@ -22,6 +22,7 @@ import {
   uploadAndSolveMedia,
   type UploadEvent,
 } from './services/apiClient.js';
+import { openStoredUpload, uploadAddressed } from './services/openUpload.js';
 import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import {
   applyVoiceBackendReply,
@@ -132,6 +133,23 @@ export const App: React.FC = () => {
   // List media found in data/uploads; a capture becomes the session only when the user picks it
   useEffect(() => {
     void fetchDiscoveredMedia().then(setDiscoveredMedia);
+  }, []);
+
+  // The address may name one stored upload (?upload=<sha256>, as the iPhone's Open writes it): its stored reveal
+  // opens with no upload and no solve. A value that is no sha256 asks the server nothing, and an upload that cannot
+  // be opened leaves the home as it is. A photo chosen meanwhile wins: the stored one arriving later changes nothing
+  useEffect(() => {
+    const sha256 = uploadAddressed(window.location.search);
+    if (sha256 === null) return undefined;
+    let left = false;
+    void openStoredUpload(sha256).then((opened) => {
+      if (left || opened === null || latestChoiceRef.current !== null) return;
+      setSession(opened);
+      setUploadedMediaUrl(opened.sourceAsset?.uri ?? null);
+    });
+    return () => {
+      left = true;
+    };
   }, []);
 
   // Sync Web Audio Bus whenever navigation, voice, or playback state changes
