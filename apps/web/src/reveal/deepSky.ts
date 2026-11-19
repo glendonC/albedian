@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CelestialFinding } from '@albedian/contracts';
+import { DESIGNATION_CONSTELLATIONS, DESIGNATION_LETTERS, type CelestialFinding } from '@albedian/contracts';
 
 /**
  * Deep-sky objects on the photo (D23, UIUX-deepsky-READY.md, decided by the lead 2026-11-19 06:54): which are drawn,
@@ -78,6 +78,21 @@ const KIND_WORDS: Readonly<Record<string, string>> = {
 };
 export function deepSkyKindWords(type: string): string | null {
   return Object.hasOwn(KIND_WORDS, type) ? KIND_WORDS[type]! : null;
+}
+
+const LETTER_NAMES = new Map(DESIGNATION_LETTERS.map(([abbreviation, , name]) => [abbreviation.toLowerCase(), name]));
+const GENITIVES = new Map(DESIGNATION_CONSTELLATIONS.map(([abbreviation, , genitive]) => [abbreviation, genitive]));
+
+/**
+ * A deep-sky common name as the app writes it (C19 item 3, decided 12:59): a leading Greek letter abbreviation and
+ * constellation abbreviation, as OpenNGC writes "lam Cen Nebula", are written in full as a star's Bayer name is,
+ * "Lambda Centauri Nebula"; the rest is kept as OpenNGC gives it, and a name with no such prefix is unchanged.
+ */
+export function deepSkyName(title: string): string {
+  const parts = /^([A-Za-z]{2,3}) ([A-Z][a-z]{2}) (.+)$/.exec(title);
+  const letter = parts ? LETTER_NAMES.get(parts[1]!.toLowerCase()) : undefined;
+  const genitive = parts ? GENITIVES.get(parts[2]!) : undefined;
+  return parts && letter && genitive ? `${letter} ${genitive} ${parts[3]}` : title;
 }
 
 /** Only a common name is written on the photo: a title that is not "NGC n", "IC n" or "H n". */

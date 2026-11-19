@@ -2,7 +2,7 @@ import { hasVerifiedWcs, type CelestialFinding, type ObservationSession } from '
 import { chooseLabelledFindingIds, projectFindingToViewport } from '../components/CelestialMarkerOverlay.js';
 import { sessionPhotoRect, sourcePixelToViewport } from '../components/sourcePhotoRect.js';
 import { worldToPixelWCS } from '@albedian/camera-rig';
-import { DEEP_SKY_LIMIT, decisionMagnitude, deepSkyRowOf, deepSkySymbol, hasCommonName, isDeepSky, type DeepSkySymbol, type DeepSkyTable } from './deepSky.js';
+import { DEEP_SKY_LIMIT, decisionMagnitude, deepSkyName, deepSkyRowOf, deepSkySymbol, hasCommonName, isDeepSky, type DeepSkySymbol, type DeepSkyTable } from './deepSky.js';
 
 /**
  * Which marks the reveal draws over the photo (reveal, approved 2026-11-12), and where.
@@ -235,7 +235,8 @@ export function revealMarks(
   for (const { index } of order) {
     const mark = marks[index]!;
     if (!hasCommonName(mark.finding.title)) continue;
-    const width = mark.finding.title.length * size * NAME_EM_PER_CHAR;
+    const name = deepSkyName(mark.finding.title);
+    const width = name.length * size * NAME_EM_PER_CHAR;
     const reach = DEEP_SKY_RADIUS_PX + DEEP_SKY_NAME_GAP_PX;
     for (const onLeft of [false, true]) {
       const box: Box = onLeft
@@ -246,7 +247,7 @@ export function revealMarks(
       const holds = (room: Box) => room.x0 <= mark.xPx && mark.xPx <= room.x1 && room.y0 <= mark.yPx && mark.yPx <= room.y1;
       if (deepRooms.some((room) => room.id !== mark.finding.id && !holds(room.box) && overlap(box, room.box)) || taken.some((other) => overlap(box, other))) continue;
       taken.push(box);
-      marks[index] = { ...mark, name: mark.finding.title, nameOnLeft: onLeft };
+      marks[index] = { ...mark, name, nameOnLeft: onLeft };
       break;
     }
   }

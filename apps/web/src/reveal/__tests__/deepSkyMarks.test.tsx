@@ -255,7 +255,7 @@ describe('a deep-sky name: a common name only, 6 px beside its symbol, where it 
   it('is not stopped by a star mark over its own centre, as the design page has it (lam Cen Nebula)', () => {
     // A star 3 photo px from the symbol's centre: its room holds the centre, and the name runs on to the right
     const marks = byTitle(sessionOf([deep('IC2944', 'lam Cen Nebula', 300, 200), matched('Held', 303, 202)]));
-    expect([marks['lam Cen Nebula']!.name, marks['lam Cen Nebula']!.nameOnLeft]).toEqual(['lam Cen Nebula', false]);
+    expect([marks['lam Cen Nebula']!.name, marks['lam Cen Nebula']!.nameOnLeft]).toEqual(['Lambda Centauri Nebula', false]);
   });
 
   it("gives way to a star's name", () => {
