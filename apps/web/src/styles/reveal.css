@@ -1825,3 +1825,15 @@
   pointer-events: auto;
   cursor: pointer;
 }
+
+/* D33: D14's card in the predicted sky stands on D26's dark panel (ruled 17:05), 20 px inside it, in the card's own
+   place, so the stars do not show through its notes; the reveal's card is unchanged */
+.reveal-card.is-sky {
+  box-sizing: border-box;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid var(--look-hair);
+  background: rgba(16, 16, 18, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}

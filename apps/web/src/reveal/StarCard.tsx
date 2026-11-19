@@ -88,7 +88,7 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
   }, [canGoThere, leaving]);
 
   return (
-    <section className={`${phone ? 'reveal-card is-phone' : 'reveal-card'}${leaving ? ' is-leaving' : ''}`} data-testid="star-card" aria-label={facts.title} inert={leaving}>
+    <section className={`${phone ? 'reveal-card is-phone' : 'reveal-card'}${inSky && !phone ? ' is-sky' : ''}${leaving ? ' is-leaving' : ''}`} data-testid="star-card" aria-label={facts.title} inert={leaving}>
       <div className="reveal-card__top">
         <EvidenceTag evidenceClass={facts.evidenceClass} />
         <IconButton label="Close" icon="x" onClick={onClose} />

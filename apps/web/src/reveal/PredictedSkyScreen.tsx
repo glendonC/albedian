@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { phoneFacts, predictedSkyWords } from './predictedSky.js';
 import { StarCard } from './StarCard.js';
-import { predictedSkyMarks, type Box } from './predictedSkyMarks.js';
+import { predictedSkyMarks, skyLeaderPath, type Box } from './predictedSkyMarks.js';
 
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
 function clearOf(status: HTMLElement | null): Box[] {
@@ -59,12 +59,26 @@ export const PredictedSkyScreen: React.FC<{
   }, [skyPose]);
   const size = useViewportSize();
   const status = useRef<HTMLDivElement>(null);
-  // Names at 11 px on the phone, 13 on the laptop
-  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, phone ? 11 : 13, clearOf(status.current));
-  const facts = phone ? phoneFacts(words) : words.facts;
   const picked = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId && f.evidenceClass === 'predicted') ?? null;
+  // The open card's box (ruled 17:05): rings and names under it are left out, the picked star's own mark stays
+  const [cardBox, setCardBox] = useState<Box | null>(null);
+  useLayoutEffect(() => {
+    const card = picked ? document.querySelector('.predsky .reveal-card') : null;
+    const r = card?.getBoundingClientRect();
+    setCardBox(r && r.width > 0 && r.height > 0 ? { x0: r.left, x1: r.right, y0: r.top, y1: r.bottom } : null);
+  }, [picked?.id, size.widthPx, size.heightPx]);
+  // Names at 11 px on the phone, 13 on the laptop
+  const fontPx = phone ? 11 : 13;
+  const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, fontPx, [...clearOf(status.current), ...(cardBox ? [cardBox] : [])], picked?.id ?? null);
+  const facts = phone ? phoneFacts(words) : words.facts;
+  const pickedMark = picked && !phone ? (marks.find((m) => m.id === picked.id) ?? null) : null;
   return (
     <div className={phone ? 'predsky is-phone' : 'predsky'} data-testid="predicted-sky" data-evidence-class="predicted">
+      {pickedMark && (
+        <svg className="reveal-leader is-predicted" data-testid="predicted-sky-leader" aria-hidden="true" focusable="false">
+          <path pathLength={1} d={skyLeaderPath(pickedMark, size.widthPx, fontPx)} />
+        </svg>
+      )}
       <svg className="align-layer__rings" data-testid="predicted-sky-rings" aria-hidden="true" focusable="false">
         {marks.map((mark) => (
           <circle key={mark.id} cx={mark.xPx} cy={mark.yPx} r={mark.r} />

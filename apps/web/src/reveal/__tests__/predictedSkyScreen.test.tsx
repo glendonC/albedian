@@ -285,6 +285,10 @@ describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
     const card = container.querySelector('.reveal-card')!;
     expect(card).not.toBeNull();
     expect([...card.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('Original pixels');
+    // On the dark panel in the sky (ruled 17:05), with the leader line from the picked star
+    expect(card.className).toBe('reveal-card is-sky');
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    expect(container.querySelector('.predsky svg.reveal-leader.is-predicted path')).not.toBeNull();
   });
 });
 
@@ -327,6 +331,18 @@ describe("the predicted sky's rules are the record's", () => {
     expect(declarationsOf('.predsky.is-phone .predsky-status__lead')).toEqual({ 'font-size': '20px' });
     expect(declarationsOf('.predsky.is-phone .align-layer__name')).toEqual({ 'font-size': '11px' });
     expect(declarationsOf('.predsky-top')).toEqual({ position: 'absolute', left: '20px', top: '60px', 'pointer-events': 'auto' });
+  });
+
+  it("sets the card in the sky on D26's dark panel, 20 px inside it, in the card's own place", () => {
+    expect(declarationsOf('.reveal-card.is-sky')).toEqual({
+      'box-sizing': 'border-box',
+      padding: '20px',
+      'border-radius': '18px',
+      border: '1px solid var(--look-hair)',
+      background: 'rgba(16, 16, 18, 0.92)',
+      '-webkit-backdrop-filter': 'blur(12px)',
+      'backdrop-filter': 'blur(12px)',
+    });
   });
 
   it('sets the heading 14 px under the tag at 24 px light, the disclosure 12 px under it, the facts after a hairline', () => {

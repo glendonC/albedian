@@ -3,6 +3,7 @@ import type { ObservationSolution } from '@albedian/contracts';
 import { projectIcrsThroughPose } from '../components/skyPoseProjection.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { ALIGN_MAGNITUDE_LIMIT } from './alignPose.js';
+import { CARD_RIGHT_PX, CARD_TOP_PX, CARD_WIDTH_PX } from './revealMarks.js';
 
 /**
  * D33 item 4 (UIUX-predsky-READY.md, decided by the lead 12:45) by D20's rule (UIUX-aimnames-DECIDED-BY-LEAD.md): on
@@ -48,13 +49,15 @@ export function placeSkyMarks(
   widthPx: number,
   heightPx: number,
   fontPx: number,
-  clear: readonly Box[] = []
+  clear: readonly Box[] = [],
+  /** The picked star: its own mark stays under the open card (ruled 17:05). */
+  keepId: string | null = null
 ): SkyMark[] {
   // A star whose ring would lie under or touch the status column, the Sound circle or the foot's buttons gets no ring
   // and no name while it is there
   const ringOf = (x: number, y: number): Box => ({ x0: x - SKY_NAMED_RING_PX, x1: x + SKY_NAMED_RING_PX, y0: y - SKY_NAMED_RING_PX, y1: y + SKY_NAMED_RING_PX });
   const under = (x: number, y: number) => clear.some((b) => overlaps(ringOf(x, y), b));
-  const shown = stars.filter((s) => s.xPx >= 0 && s.xPx <= widthPx && s.yPx >= 0 && s.yPx <= heightPx && !under(s.xPx, s.yPx));
+  const shown = stars.filter((s) => s.xPx >= 0 && s.xPx <= widthPx && s.yPx >= 0 && s.yPx <= heightPx && (s.id === keepId || !under(s.xPx, s.yPx)));
   const r = SKY_NAMED_RING_PX;
   // Every ring keeps its room, at the named size
   const rings = shown.map((s) => ({ id: s.id, box: { x0: s.xPx - r, x1: s.xPx + r, y0: s.yPx - r, y1: s.yPx + r } }));
@@ -77,6 +80,21 @@ export function placeSkyMarks(
   });
 }
 
+/**
+ * The picked star's leader line to its card, as the reveal draws it (revealMarks.ts leaderPath): from just past its
+ * mark, or past its name where it has one on the right, across to a turn 40 px before the card, then to the card's top
+ * left.
+ */
+export function skyLeaderPath(mark: SkyMark, viewportWidthPx: number, fontPx: number): string {
+  const cardLeft = viewportWidthPx - CARD_RIGHT_PX - CARD_WIDTH_PX;
+  const nameWidth = mark.name !== null && !mark.nameOnLeft ? NAME_GAP_PX + mark.name.length * fontPx * 0.56 : 0;
+  const start = mark.xPx + mark.r + nameWidth + 8;
+  const turn = cardLeft - 40;
+  const from = `M${Number(start.toFixed(1))} ${Number(mark.yPx.toFixed(1))}`;
+  const end = `L${cardLeft - 10} ${CARD_TOP_PX + 14}`;
+  return start < turn ? `${from}H${turn}${end}` : `${from}${end}`;
+}
+
 /** The predicted stars of magnitude 3.2 or brighter, through the renderer's camera now, named by D20's rule. */
 export function predictedSkyMarks(
   solution: ObservationSolution | undefined,
@@ -84,7 +102,8 @@ export function predictedSkyMarks(
   widthPx: number,
   heightPx: number,
   fontPx = 13,
-  clear: readonly Box[] = []
+  clear: readonly Box[] = [],
+  keepId: string | null = null
 ): SkyMark[] {
   if (!solution || !pose) return [];
   const stars = solution.findings
@@ -98,5 +117,5 @@ export function predictedSkyMarks(
       return [{ id: finding.id, name: properName(finding.catalogRef?.commonName), xPx: onScreen.xPx, yPx: onScreen.yPx, magnitude }];
     })
     .sort((a, b) => a.magnitude - b.magnitude);
-  return placeSkyMarks(stars, widthPx, heightPx, fontPx, clear);
+  return placeSkyMarks(stars, widthPx, heightPx, fontPx, clear, keepId);
 }

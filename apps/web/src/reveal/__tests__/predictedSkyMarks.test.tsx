@@ -65,6 +65,16 @@ describe('placeSkyMarks: names by D20', () => {
     expect(['Vega', 'Gaia DR3 1621259036510505344', 'HIP 54539', 'HD 12345', 'HR 7001', 'TYC 1-2-3', '12345', '  ', undefined].map(properName)).toEqual(['Vega', null, null, null, null, null, null, null, null]);
   });
 
+  it("keeps the picked star's own mark under the open card, and leaves the others there out (ruled 17:05)", async () => {
+    const { skyLeaderPath } = await import('../predictedSkyMarks.js');
+    const card = { x0: 1088, x1: 1408, y0: 118, y1: 600 };
+    const marks = placeSkyMarks([at('picked', 'Mirfak', 1280, 321), at('other', 'Algol', 1200, 400), at('free', 'Capella', 600, 300)], W, H, 13, [card], 'picked');
+    expect(marks.map((m) => m.id)).toEqual(['picked', 'free']);
+    // Its leader line runs from the mark (past its name where it has one) to the card's top left, as the reveal's
+    const free = marks[1]!;
+    expect(skyLeaderPath(free, W, 13)).toBe(`M${(free.xPx + free.r + 4 + 7 * 13 * 0.56 + 8).toFixed(1)} 300H1048L1078 132`);
+  });
+
   it('draws nothing off screen', () => {
     expect(placeSkyMarks([at('a', 'Vega', -5, 400), at('b', 'Deneb', 700, H + 2)], W, H, 13)).toEqual([]);
   });
