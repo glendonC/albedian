@@ -301,7 +301,7 @@ CRAFTS: dict[str, dict] = {
                 "paint_out": [
                     {"box": (54, 3512, 214, 3678), "what": "an emblem patch", "fill_from": (1560, 3810, 1640, 3890)},
                     {"box": (208, 3450, 352, 3598), "what": "the NASA insignia", "fill_from": (1560, 3810, 1640, 3890)},
-                    {"box": (3940, 2530, 4010, 3735), "what": "a credit line in unused texture space"},
+                    {"box": (3940, 1740, 4010, 3735), "what": "a credit line in unused texture space"},
                     {"box": (3830, 3720, 4096, 4012), "what": "a logo in unused texture space"},
                 ],
             },

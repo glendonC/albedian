@@ -304,21 +304,21 @@
       "files": {
         "lod0": {
           "path": "z2/z2_lod0.glb",
-          "bytes": 2754236,
+          "bytes": 2743644,
           "triangles": 30244,
           "textureEdgeMax": 2048,
           "budgetBytes": 4000000
         },
         "lod1": {
           "path": "z2/z2_lod1.glb",
-          "bytes": 1034796,
+          "bytes": 1029468,
           "triangles": 12097,
           "textureEdgeMax": 1024,
           "budgetBytes": 1500000
         },
         "lod2": {
           "path": "z2/z2_lod2.glb",
-          "bytes": 400596,
+          "bytes": 399232,
           "triangles": 4536,
           "textureEdgeMax": 512,
           "budgetBytes": 600000

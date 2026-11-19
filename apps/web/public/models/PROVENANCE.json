@@ -403,7 +403,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "e2dd746da80ab41a8a14a452759d6307e7ce4ba7e4030b9a41dc9187103a3d04",
+      "sha256": "0446e23fcda5257c08ef4feb02dea450c406ab7855a6796bb1535939fb679f70",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -948,7 +948,7 @@
     },
     {
       "path": "hangar/z2/z2_lod0.glb",
-      "sha256": "cee5999cbbf6fce702194f8b0dda9a72b99bd8c9d58c35a9ca34a7f07db582a9",
+      "sha256": "0cfb3beda8a232fbbe1dbaf7f632a929599c48289d02e1670eb57e9fb81a9241",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -963,7 +963,7 @@
     },
     {
       "path": "hangar/z2/z2_lod1.glb",
-      "sha256": "4209363bf5584d5d8c396f6977ddd1baef6e27031f55178b6be5162e1ffea32f",
+      "sha256": "f0c0da7124ff8b143b14f60d9d92f5bdd00ae76b84f8ff14bf8da1ced44fc350",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -978,7 +978,7 @@
     },
     {
       "path": "hangar/z2/z2_lod2.glb",
-      "sha256": "8307703ca2bc98ab46951824d0d0369d462654dbfbff8d25ee3c12bd9d7d06fc",
+      "sha256": "37c4515dea2ec8ea46ca2fc0200a49c7d12ac86c95c05c35331139fe220560dc",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
