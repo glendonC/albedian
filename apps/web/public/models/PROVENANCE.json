@@ -18,21 +18,32 @@
       "note": "From the Lunar Orbiter Laser Altimeter, LOLA. SVS says the elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\", and that the kit's \"color and elevation maps are designed for use in 3D rendering software\"."
     },
     {
-      "id": "oneill-2024-local-bubble",
-      "title": "The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
-      "url": "https://doi.org/10.7910/DVN/INB1RB",
-      "version": "V1 (2024-05-06)",
-      "retrieved": "2026-11-04",
+      "id": "nasa-3d-resources",
+      "title": "NASA 3D Resources",
+      "url": "https://github.com/nasa/NASA-3D-Resources",
+      "retrieved": "2026-11-19",
       "license": {
-        "spdx": "CC0-1.0",
-        "name": "Creative Commons Zero v1.0 Universal",
-        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content, 3D models included, is generally not subject to copyright in the United States. NASA should be acknowledged as the source, no use may imply NASA's endorsement, and the NASA insignia and logotype are not in the public domain, so none is shown."
       },
-      "credit": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. (2024, ApJ 973, 136); Harvard Dataverse doi:10.7910/DVN/INB1RB",
-      "citation": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, ApJ, 973, 136 (doi:10.3847/1538-4357/ad47b5)",
-      "doi": "10.7910/DVN/INB1RB",
-      "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
-      "note": "Derived from ONeill2024_LocalBubble_ShellProperties_A0.5.fits (786,432 HEALPix nside=256 directions derived from the Edenhofer et al. 2024 3D dust map). Aggregated onto a closed nside=48 HEALPix 2-manifold (27,648 vertices, 55,292 outward triangles) in heliocentric Galactic Cartesian coordinates scaled to 1 unit = 100 pc."
+      "credit": "NASA",
+      "note": "NASA's own models and its renders of them; the repository's README says the assets are free and without copyright. Each file built from it names its input's address, size and SHA-256 in its note."
+    },
+    {
+      "id": "nasa-science-mission-pages",
+      "title": "NASA Science mission pages",
+      "url": "https://science.nasa.gov/",
+      "retrieved": "2026-11-19",
+      "license": {
+        "spdx": "LicenseRef-NASA-Media-Guidelines",
+        "name": "NASA Images and Media Usage Guidelines",
+        "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+        "conditions": "NASA content, 3D models included, is generally not subject to copyright in the United States. NASA should be acknowledged as the source, no use may imply NASA's endorsement, and the NASA insignia and logotype are not in the public domain, so none is shown."
+      },
+      "credit": "NASA",
+      "note": "Each speed, size and date in hangar/hangar.json names the NASA page it was read on, with a short quote from that page."
     },
     {
       "id": "nasa-3d-resources-voyager-probe-b",
@@ -75,9 +86,99 @@
       },
       "credit": "NASA 3D Resources (github.com/nasa/NASA-3D-Resources)",
       "note": "NASA's own repository of 3D models. The file's git blob is 20b576367f8cdc40e9688be24b269a0a74acbff7, as the repository lists it on 19 November 2026; 762,988 bytes."
+    },
+    {
+      "id": "oneill-2024-local-bubble",
+      "title": "The Local Bubble Is a Magnetized, Multi-temperature Superbubble: 3D Dust Shell Model (A_G = 0.5 mag/kpc threshold)",
+      "url": "https://doi.org/10.7910/DVN/INB1RB",
+      "version": "V1 (2024-05-06)",
+      "retrieved": "2026-11-04",
+      "license": {
+        "spdx": "CC0-1.0",
+        "name": "Creative Commons Zero v1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/"
+      },
+      "credit": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. (2024, ApJ 973, 136); Harvard Dataverse doi:10.7910/DVN/INB1RB",
+      "citation": "O'Neill, T. J., Zucker, C., Goodman, A. A., & Edenhofer, G. 2024, ApJ, 973, 136 (doi:10.3847/1538-4357/ad47b5)",
+      "doi": "10.7910/DVN/INB1RB",
+      "sha256": "3d8f214426f0c4b4f6eeb69030610f66c0166b87fbb3764bdab1b3f9751ca9ff",
+      "note": "Derived from ONeill2024_LocalBubble_ShellProperties_A0.5.fits (786,432 HEALPix nside=256 directions derived from the Edenhofer et al. 2024 3D dust map). Aggregated onto a closed nside=48 HEALPix 2-manifold (27,648 vertices, 55,292 outward triangles) in heliocentric Galactic Cartesian coordinates scaled to 1 unit = 100 pc."
     }
   ],
   "files": [
+    {
+      "path": "hangar/hangar.json",
+      "sha256": "45f7fd8309da4316338d6f942c9ad124b2bf5ab9e1a176b54a1a7ec2c69c04a1",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/write_hangar.py",
+        "command": "uv run python scripts/lookdev/hangar/write_hangar.py",
+        "changes": "Written from the built craft files and from facts read on NASA's pages, not copied: each model's file sizes, triangle counts and true size in metres measured from its own glb, and each speed and fact typed from the NASA page named beside it, with a short quote from that page."
+      }
+    },
+    {
+      "path": "hangar/voyager/voyager_lod0.glb",
+      "sha256": "3c4abc4fc7399ac10fb12ecb4a750167d94ee57d4a81f4686b6d8ea3503c14a8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/voyager/voyager_lod1.glb",
+      "sha256": "81ecc6413e1e60891c19596719859074b7586a17f8ebe52618bc9b18aa40c69e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
+        "changes": "The same rebuild as lod0 with about half its triangles, removed by Blender's collapse decimation, and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/voyager/voyager_lod2.glb",
+      "sha256": "e21d3c83e4dc062355d674f10b5e44332476b15cbf5c95de83713a037c933258",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
+        "changes": "The same rebuild as lod0 with under a fifth of its triangles, removed by Blender's collapse decimation, and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb (1720864 bytes, SHA-256 bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/voyager/voyager_picker.webp",
+      "sha256": "3710bdd84109d8d3900ae13fd2f5c4b99739318f675303a8994bea7b657fa1e6",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft voyager --out apps/web/public/models/hangar/voyager",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.png (417970 bytes, SHA-256 66d9fc3028a3f92413519bd413aa1a8705790d0f7786c11f62b1b166bd1ee964)."
+    },
     {
       "path": "lb_splats.json",
       "sha256": "6f73cbe4d38282b3867c707977bad9ef8065c37ee41c6e7c3879dd016c62e801",
@@ -106,29 +207,26 @@
       }
     },
     {
-      "path": "nasa_lro_moon_3d.glb",
-      "sha256": "1a5acbfc93fb507feb0134b47eb30439075f8b612dc8cbb1c5bfe2aaa492256d",
+      "path": "nasa/astronaut.glb",
+      "sha256": "d18c141410542b935113d1c25a9271d90c40d44015a64295b7b68a30f0ce2820",
       "sources": [
-        "nasa-svs-4720-ldem-16"
-      ],
-      "producedBy": {
-        "method": "script",
-        "script": "scripts/bake_moon_mesh.py",
-        "command": "uv run python scripts/bake_moon_mesh.py",
-        "changes": "Worked out from the laser altimeter heights, not copied: a sphere with a point at every degree of latitude and longitude, each raised to the average height of the measurements around it, at the Moon's true scale, with texture coordinates and smooth shading."
-      },
-      "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for use in 3D rendering software\". Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
-    },
-    {
-      "path": "nasa/voyager-probe-b.glb",
-      "sha256": "bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289",
-      "sources": [
-        "nasa-3d-resources-voyager-probe-b"
+        "nasa-3d-resources-astronaut"
       ],
       "producedBy": {
         "method": "downloaded-as-is"
       },
-      "note": "NASA's model of a Voyager probe (Voyager 1 and 2 are twins), Draco compressed with WebP textures as NASA publishes it. Its high-gain dish is the thin disc across the model's +y axis. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+      "note": "NASA's model of an astronaut in a spacesuit, Draco compressed with WebP textures as NASA publishes it; it stands along +y and faces +z. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+    },
+    {
+      "path": "nasa/astronaut.png",
+      "sha256": "5d44c49cb9803ec18b408d43dbd93adc3828e1b5e5f477bd85654f6f357933d9",
+      "sources": [
+        "nasa-3d-resources-astronaut"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.png (git blob c843147a7c426be10ddaea9fcb815b5fd663de2c, 1,109,191 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
     },
     {
       "path": "nasa/james-webb-space-telescope-a.glb",
@@ -142,15 +240,26 @@
       "note": "NASA's model of the James Webb Space Telescope, Draco compressed as NASA publishes it. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
     },
     {
-      "path": "nasa/astronaut.glb",
-      "sha256": "d18c141410542b935113d1c25a9271d90c40d44015a64295b7b68a30f0ce2820",
+      "path": "nasa/james-webb-space-telescope-a.png",
+      "sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
       "sources": [
-        "nasa-3d-resources-astronaut"
+        "nasa-3d-resources-james-webb-space-telescope-a"
       ],
       "producedBy": {
         "method": "downloaded-as-is"
       },
-      "note": "NASA's model of an astronaut in a spacesuit, Draco compressed with WebP textures as NASA publishes it; it stands along +y and faces +z. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
+      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).png (git blob c7a442139024b023cf1db470beaef03bfb96f496, 518,892 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
+    },
+    {
+      "path": "nasa/voyager-probe-b.glb",
+      "sha256": "bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289",
+      "sources": [
+        "nasa-3d-resources-voyager-probe-b"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "NASA's model of a Voyager probe (Voyager 1 and 2 are twins), Draco compressed with WebP textures as NASA publishes it. Its high-gain dish is the thin disc across the model's +y axis. Drawn in the flight through the stars (pilot-1) as a craft the app places in the photo's view; simulated, never measured."
     },
     {
       "path": "nasa/voyager-probe-b.png",
@@ -164,26 +273,18 @@
       "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20(B)/Voyager%20Probe%20(B).png (git blob f1428536445e57e3acf2eb14b31fde000c6806ac, 417,970 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
     },
     {
-      "path": "nasa/james-webb-space-telescope-a.png",
-      "sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
+      "path": "nasa_lro_moon_3d.glb",
+      "sha256": "1a5acbfc93fb507feb0134b47eb30439075f8b612dc8cbb1c5bfe2aaa492256d",
       "sources": [
-        "nasa-3d-resources-james-webb-space-telescope-a"
+        "nasa-svs-4720-ldem-16"
       ],
       "producedBy": {
-        "method": "downloaded-as-is"
+        "method": "script",
+        "script": "scripts/bake_moon_mesh.py",
+        "command": "uv run python scripts/bake_moon_mesh.py",
+        "changes": "Worked out from the laser altimeter heights, not copied: a sphere with a point at every degree of latitude and longitude, each raised to the average height of the measurements around it, at the Moon's true scale, with texture coordinates and smooth shading."
       },
-      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20(A)/James%20Webb%20Space%20Telescope%20(A).png (git blob c7a442139024b023cf1db470beaef03bfb96f496, 518,892 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
-    },
-    {
-      "path": "nasa/astronaut.png",
-      "sha256": "5d44c49cb9803ec18b408d43dbd93adc3828e1b5e5f477bd85654f6f357933d9",
-      "sources": [
-        "nasa-3d-resources-astronaut"
-      ],
-      "producedBy": {
-        "method": "downloaded-as-is"
-      },
-      "note": "NASA's own picture of the same model, from the same folder: https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.png (git blob c843147a7c426be10ddaea9fcb815b5fd663de2c, 1,109,191 bytes, 1920 by 1080). Shown at 44 px in the craft picker's row (pilot-1, D26 item 3)."
+      "note": "The Moon at true scale on a 1 degree latitude-longitude grid: 361 x 181 = 65,341 vertices, 128,880 triangles, 2,865,384 bytes. Measured: each vertex's radius is 1727.4 km plus the mean LOLA height in the 1 degree box centred on it (at each pole, the mean of the half degree band), with no exaggeration; 10 units = 1737.4 km. SVS says this elevation map \"was taken directly from the latest (as of spring 2019) gridded data products of the Lunar Orbiter Laser Altimeter instrument team\" and that the kit's maps \"are designed for use in 3D rendering software\". Conventions kept from the mesh this replaced: +y north, longitude 0 toward +x, 90 E toward -z, u = (longitude + 180) / 360, v = (90 - latitude) / 180. POSITION, NORMAL and TEXCOORD_0 only, no material or image."
     }
   ],
   "fileSets": []

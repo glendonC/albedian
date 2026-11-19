@@ -1,0 +1,147 @@
+{
+  "format": "albedian.hangar",
+  "formatVersion": 1,
+  "evidenceClass": "simulated",
+  "frame": {
+    "forward": "+Z",
+    "up": "+Y",
+    "unit": "metre",
+    "origin": "the centre of the part the scale is taken from"
+  },
+  "levels": {
+    "lod0": "close view",
+    "lod1": "chase camera",
+    "lod2": "far or phone view"
+  },
+  "lodTriangleShare": {
+    "lod0": 1.0,
+    "lod1": 0.5,
+    "lod2": 0.18
+  },
+  "models": {
+    "voyager": {
+      "title": "Voyager",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "voyager/voyager_lod0.glb",
+          "bytes": 1071624,
+          "triangles": 20378,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "voyager/voyager_lod1.glb",
+          "bytes": 826672,
+          "triangles": 9512,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "voyager/voyager_lod2.glb",
+          "bytes": 303516,
+          "triangles": 2977,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "voyager/voyager_picker.webp",
+          "bytes": 2942,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -12.327,
+          -3.762,
+          -7.275
+        ],
+        "max": [
+          4.085,
+          3.762,
+          3.437
+        ]
+      },
+      "bodyRadiusM": 2.2,
+      "scaleFrom": {
+        "part": "tex_02_AO",
+        "metres": 3.7,
+        "page": "https://science.nasa.gov/mission/voyager/spacecraft/",
+        "quote": "via the 3.7 meter high-gain antenna (HGA)"
+      }
+    }
+  },
+  "entries": [
+    {
+      "id": "voyager-1",
+      "name": "Voyager 1",
+      "model": "voyager",
+      "travel": {
+        "speedKmS": 17.0,
+        "relativeTo": "Sun",
+        "asOf": "2024-08-21",
+        "page": "https://science.nasa.gov/mission/voyager/voyager-1/",
+        "quote": "38,026.79 mph (17.0 km/second) relative to the Sun"
+      },
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1977-09-05",
+          "page": "https://science.nasa.gov/mission/voyager/voyager-1/",
+          "quote": "Sept. 5, 1977 / 12:56:01 UT"
+        },
+        {
+          "key": "interstellarSpace",
+          "value": "2012-08",
+          "page": "https://science.nasa.gov/mission/voyager/voyager-1/",
+          "quote": "crossed into interstellar space in August 2012"
+        },
+        {
+          "key": "massKg",
+          "value": 721.9,
+          "page": "https://science.nasa.gov/mission/voyager/voyager-1/",
+          "quote": "Spacecraft Mass 1,592 pounds (721.9 kilograms)"
+        },
+        {
+          "key": "power",
+          "value": "3 radioisotope thermoelectric generators",
+          "page": "https://science.nasa.gov/mission/voyager/voyager-1/",
+          "quote": "3 Multi-Hundred Watt Radioisotope Thermoelectric Generators (MHW-RTGs)"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 3.7,
+          "page": "https://science.nasa.gov/mission/voyager/spacecraft/",
+          "quote": "via the 3.7 meter high-gain antenna (HGA)"
+        }
+      ]
+    },
+    {
+      "id": "voyager-2",
+      "name": "Voyager 2",
+      "model": "voyager",
+      "travel": {
+        "speedKmS": 15.4,
+        "relativeTo": "Sun",
+        "asOf": "2017-11-05",
+        "page": "https://science.nasa.gov/mission/voyager/voyager-2/",
+        "quote": "9.6 miles per second (15.4 kilometers per second) relative to the Sun"
+      },
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1977-08-20",
+          "page": "https://science.nasa.gov/mission/voyager/voyager-2/",
+          "quote": "Aug. 20, 1977 / 14:29:44 UT"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 3.7,
+          "page": "https://science.nasa.gov/mission/voyager/spacecraft/",
+          "quote": "via the 3.7 meter high-gain antenna (HGA)"
+        }
+      ]
+    }
+  ]
+}
