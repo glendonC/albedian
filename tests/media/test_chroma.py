@@ -1,0 +1,302 @@
+"""restore-chroma-1: chroma smoothing at coarse scales (REQ-RST-5.2, 6.2; P-RST-9), the step RESTORE-PHOTO measured as
+missing: luma noise falls thirtyfold at the finest scale while chroma barely moves at any scale, so colour blotches
+stay. Each pixel keeps its own luminance and takes its neighbourhood's colour; stars and whatever stands above the sky
+are kept as they are and lend no colour; no output sample leaves the range of the samples it was made from.
+
+Scenes are synthetic, in linear light; the step itself draws no random number.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+from hypothesis import HealthCheck, example, given, settings
+from hypothesis import strategies as st
+from scipy import ndimage
+
+from services.media import chroma, noise, stars
+from test_photo_path import SOURCE_MARKERS, numeric_constants
+
+LUMA = np.array(chroma.LUMA)
+SKY = np.array([0.020, 0.025, 0.040])
+# Noise and blotches as a lifted night photo has them: the blotches far under one sample's noise, but correlated over
+# tens of pixels (rp-b-03: Cb 0.24 codes at 64 px against luma 5.4 codes at 1 px, RESTORE-PHOTO's restore-4 report)
+SIGMA = 0.002
+SIZE = 256
+
+
+def blotched_sky(seed: int, *, size: int = SIZE, blotch: float = 0.03, scale_px: float = 16.0) -> np.ndarray:
+    """A sky of one colour with white noise of SIGMA per channel and smooth colour blotches: each channel scaled by
+    1 + blotch x a smooth field of unit spread at about `scale_px`."""
+    rng = np.random.default_rng(seed)
+    frame = np.empty((size, size, 3))
+    for c in range(3):
+        field = ndimage.gaussian_filter(rng.normal(0.0, 1.0, (size, size)), scale_px, mode="wrap")
+        field /= field.std()
+        frame[..., c] = SKY[c] * (1.0 + blotch * field)
+    return frame + rng.normal(0.0, SIGMA, frame.shape)
+
+
+def guide_of(frame: np.ndarray) -> np.ndarray:
+    """The stabilised luminance for a noise of SIGMA per channel: one unit is one noise sigma."""
+    return frame @ LUMA / (SIGMA * float(np.sqrt(np.sum(LUMA**2))))
+
+
+def scale_spread(plane: np.ndarray, level: int) -> float:
+    """The spread of the B3 wavelet scale `level` (0 the finest) of a plane, as RESTORE-PHOTO measured it."""
+    current = plane
+    for step in range(level):
+        current = noise.b3_smooth(current, 2**step)
+    detail = current - noise.b3_smooth(current, 2**level)
+    return float(detail[16:-16, 16:-16].std())
+
+
+def chromaticity(frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Red and blue over luminance: colour with the light divided out."""
+    luminance = frame @ LUMA
+    return frame[..., 0] / luminance, frame[..., 2] / luminance
+
+
+def support_bounds(frame: np.ndarray, levels: int) -> tuple[np.ndarray, np.ndarray]:
+    size = 2 * chroma.support_px(levels) + 1
+    low = np.stack([ndimage.minimum_filter(frame[..., c], size=size, mode="mirror") for c in range(3)], -1)
+    high = np.stack([ndimage.maximum_filter(frame[..., c], size=size, mode="mirror") for c in range(3)], -1)
+    return low, high
+
+
+def test_coarse_colour_blotches_are_smoothed_and_the_luminance_is_left_as_it_was() -> None:
+    frame = blotched_sky(1)
+    result = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((SIZE, SIZE)))
+    # Where nothing was held to its range, the luminance is the frame's own
+    free = ~result.clamped_map
+    assert np.allclose((result.frame @ LUMA)[free], (frame @ LUMA)[free], rtol=0, atol=1e-15)
+    before, after = chromaticity(frame), chromaticity(result.frame)
+    for level in (3, 4, 5):
+        for b, a in zip(before, after):
+            # The blotches live at 8 to 64 px; there the colour's spread falls at least by half
+            assert scale_spread(a, level) <= 0.5 * scale_spread(b, level), level
+    for level in range(6):
+        # One clamped sample may move a luminance; the scales stay the frame's within a part in ten thousand
+        assert scale_spread(result.frame @ LUMA, level) == pytest.approx(scale_spread(frame @ LUMA, level), rel=1e-4)
+
+
+@settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(seed=st.integers(0, 2**31 - 1), height=st.integers(9, 48), width=st.integers(9, 48), levels=st.integers(1, 3),
+       footprint_share=st.sampled_from([0.0, 0.3]))
+@example(seed=1, height=9, width=9, levels=3, footprint_share=0.0)
+def test_p_rst_9_every_output_sample_lies_between_the_inputs_of_its_support(seed: int, height: int, width: int, levels: int,
+                                                                           footprint_share: float) -> None:
+    rng = np.random.default_rng(seed)
+    frame = rng.uniform(0.0, 0.05, (height, width, 3)) ** rng.choice([1.0, 2.0])
+    footprint = np.where(rng.uniform(size=(height, width)) < footprint_share, 1.0, 0.0)
+    result = chroma.smooth_chroma(frame, rng.normal(0.0, 3.0, (height, width)), footprint, levels=levels)
+    low, high = support_bounds(frame, levels)
+    assert np.all(result.frame >= low - 1e-15) and np.all(result.frame <= high + 1e-15)
+    assert result.clamped == int(result.clamped_map.sum())
+
+
+def test_a_sky_sample_is_bounded_by_what_it_was_made_from_and_a_held_one_by_its_whole_reach() -> None:
+    frame = np.full((40, 40, 3), 0.02)
+    frame[5, 5] = [0.9, 0.8, 0.7]  # a bright held light
+    frame[30, 30] = [0.001, 0.001, 0.001]  # a dark held sample
+    frame[20, 20] = [0.03, 0.04, 0.05]  # a sky sample of its own colour
+    frame[7, 7] = [0.002, 0.002, 0.002]  # a dark held sample beside the light
+    source = np.ones((40, 40), dtype=bool)
+    source[5, 5] = source[30, 30] = source[7, 7] = False
+    low, high = chroma._bounds(frame, source, ~source, levels=2)
+    # Sky: the sky samples within reach and itself, never the held ones
+    assert np.allclose(high[8, 8], 0.02) and np.allclose(low[8, 8], 0.02)
+    assert np.allclose(high[20, 20], [0.03, 0.04, 0.05]) and np.allclose(low[27, 27], 0.02)
+    # Held: every sample within reach, the other held ones among them
+    assert np.allclose(high[5, 5], [0.9, 0.8, 0.7]) and np.allclose(low[30, 30], 0.001)
+    assert np.allclose(low[5, 5], 0.002)
+
+
+def test_inside_a_footprint_the_light_is_kept_and_the_sky_under_it_takes_the_skys_correction() -> None:
+    frame = blotched_sky(2)
+    footprint = np.zeros((SIZE, SIZE))
+    footprint[100:120, 50:70] = 1.0
+    result = chroma.smooth_chroma(frame, guide_of(frame), footprint)
+    inside = result.frame[100:120, 50:70]
+    # The luminance is the frame's own, and only a correction of no luminance was added, the one around it
+    assert not result.clamped_map[100:120, 50:70].any()
+    assert np.allclose(inside @ LUMA, frame[100:120, 50:70] @ LUMA, rtol=0, atol=1e-15)
+    change = (inside - frame[100:120, 50:70]).mean(axis=(0, 1))
+    # The correction carried under it is the sky's around it: the same sign and size, channel by channel
+    ring = np.zeros((SIZE, SIZE), dtype=bool)
+    ring[90:130, 40:80] = True
+    ring[98:122, 48:72] = False
+    around = (result.frame - frame)[ring].mean(axis=0)
+    assert np.all(np.abs(around) > 0) and np.allclose(change, around, rtol=0.5)
+
+
+def coloured_stars(frame: np.ndarray) -> tuple[np.ndarray, list[stars.Star], list[np.ndarray]]:
+    """Gaussian stars of sigma 1.3 px and three colours, drawn into a frame, with footprints of radius 4."""
+    yy, xx = np.mgrid[0:SIZE, 0:SIZE].astype(float)
+    colours = [np.array([1.0, 0.8, 0.5]), np.array([0.6, 0.8, 1.0]), np.array([1.0, 1.0, 1.0])]
+    placed = []
+    out = frame.copy()
+    for k, (x, y) in enumerate([(60.3, 70.2), (140.6, 128.4), (200.1, 60.7), (90.8, 190.5), (180.2, 200.3)]):
+        out += 0.05 * np.exp(-((xx - x) ** 2 + (yy - y) ** 2) / (2 * 1.3**2))[..., None] * colours[k % 3]
+        placed.append(stars.Star(x, y, 50.0, 4))
+    return out, placed, colours
+
+
+def test_star_colours_are_kept_within_the_gates_flux_rule_in_each_channel() -> None:
+    frame, placed, _ = coloured_stars(blotched_sky(3))
+    footprint = stars.footprint_map((SIZE, SIZE), placed)
+    result = chroma.smooth_chroma(frame, guide_of(frame), footprint)
+    out = result.frame
+    # The star's luminance, inside its footprint, is the frame's own wherever no sample was held to its range
+    inside = (footprint >= 1.0) & ~result.clamped_map
+    assert inside.any() and np.allclose(out[inside] @ LUMA, frame[inside] @ LUMA, rtol=0, atol=1e-15)
+    clipped = np.zeros((SIZE, SIZE), dtype=bool)
+    for star in placed:
+        for c in range(3):
+            sigma = stars.empty_aperture_sigma(frame[..., c], star.radius_px, footprint, clipped)
+            before = stars.aperture_flux(frame[..., c], star.x_px, star.y_px, star.radius_px)
+            after = stars.aperture_flux(out[..., c], star.x_px, star.y_px, star.radius_px)
+            assert abs(after - before) <= chroma.STAR_FLUX_SIGMAS * sigma, (c, after - before, sigma)
+
+
+def test_what_stands_above_the_sky_is_kept_and_lends_it_no_colour() -> None:
+    sky = blotched_sky(4)
+    # A warm light, not a confirmed star, standing far above a blue sky
+    yy, xx = np.mgrid[0:SIZE, 0:SIZE].astype(float)
+    light = np.exp(-((xx - 128) ** 2 + (yy - 128) ** 2) / (2 * 3.0**2))
+    frame = sky + 0.3 * light[..., None] * np.array([1.0, 0.6, 0.2])
+    result = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((SIZE, SIZE)))
+    without = chroma.smooth_chroma(sky, guide_of(sky), np.zeros((SIZE, SIZE))).frame
+    core = light > 0.5
+    # Its light above the sky keeps its colour: only the sky's small correction moves it
+    assert result.kept > 0
+    unclamped = core & ~result.clamped_map
+    assert np.allclose(result.frame[unclamped] @ LUMA, frame[unclamped] @ LUMA, rtol=0, atol=1e-15)
+    warm = result.frame[core][:, 0] / result.frame[core][:, 2]
+    assert np.allclose(warm, frame[core][:, 0] / frame[core][:, 2], rtol=0.02)
+    # The sky around it takes no colour from it: no warm halo at the cascade's tap offsets, against the same sky without it
+    ring = (np.hypot(xx - 128, yy - 128) > 12) & (np.hypot(xx - 128, yy - 128) < 70)
+    warmed = (result.frame[..., 0] / result.frame[..., 2]) / (without[..., 0] / without[..., 2]) - 1.0
+    assert abs(float(np.median(warmed[ring]))) <= 0.01 and float(np.percentile(np.abs(warmed[ring]), 99)) <= 0.05
+
+
+def test_a_sample_stands_above_the_sky_from_three_noise_sigmas() -> None:
+    guide = np.zeros((96, 96))
+    guide[20, 20] = 5.0
+    guide[60, 60] = 2.0
+    held = chroma.above_sky(guide)
+    assert held[20, 20] and held[20, 22] and not held[20, 23] and not held[60, 60]
+    assert not chroma.above_sky(np.zeros((32, 32))).any()
+
+
+def test_colour_does_not_cross_a_luminance_edge() -> None:
+    rng = np.random.default_rng(5)
+    frame = np.empty((SIZE, SIZE, 3))
+    frame[:, :128] = np.array([0.010, 0.012, 0.030])
+    frame[:, 128:] = np.array([0.090, 0.060, 0.030])
+    frame += rng.normal(0.0, SIGMA, frame.shape)
+    out = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((SIZE, SIZE))).frame
+    left_before, left_after = chromaticity(frame[:, 100:124]), chromaticity(out[:, 100:124])
+    for b, a in zip(left_before, left_after):
+        # Within 4 to 28 px of the edge the dark blue side keeps its colour within 5 percent
+        assert abs(float(np.median(a)) / float(np.median(b)) - 1.0) <= 0.05
+
+
+A = np.array([0.020, 0.025, 0.040])
+
+
+def other_colour(d: float) -> np.ndarray:
+    """A's luminance with red up and blue down by a share d."""
+    colour = A * np.array([1 + d, 1.0, 1 - d])
+    return colour * (A @ LUMA) / (colour @ LUMA)
+
+
+def red_over_blue(frame: np.ndarray) -> np.ndarray:
+    return frame[..., 0] / frame[..., 2]
+
+
+def test_a_brighter_neighbour_lends_its_colour_only_through_the_luminance_stop() -> None:
+    # Dark sky A beside a sky four times brighter whose colour differs by 3 percent: within 4 to 24 px of the edge the
+    # dark side moves by under 1.4 percent; without the luminance stop it moved by 1.8 to 2.1 percent, over 8 seeds
+    rng = np.random.default_rng(100)
+    xx = np.mgrid[0:SIZE, 0:SIZE][1]
+    frame = np.where((xx < 128)[..., None], A, 4 * other_colour(0.03)) + rng.normal(0.0, SIGMA, (SIZE, SIZE, 3))
+    out = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((SIZE, SIZE))).frame
+    near = (xx >= 104) & (xx < 124)
+    moved = float(np.median(red_over_blue(out)[near]) / np.median(red_over_blue(frame)[near]) - 1.0)
+    assert moved < 0.014, moved
+
+
+def held_scene(window_colour: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Sky A everywhere; a held block of 140 px with one hole at its centre and an unheld window 32 px from it."""
+    rng = np.random.default_rng(300)
+    frame = A + rng.normal(0.0, SIGMA, (SIZE, SIZE, 3))
+    yy, xx = np.mgrid[0:SIZE, 0:SIZE]
+    held = (np.abs(yy - 128) < 70) & (np.abs(xx - 128) < 70)
+    window = (np.abs(yy - 128) < 6) & (np.abs(xx - 160) < 6)
+    frame[window] = window_colour
+    frame[128, 128] = A
+    footprint = (held & ~window).astype(float)
+    footprint[128, 128] = 0.0
+    return frame, footprint
+
+
+def test_the_weight_held_samples_take_away_stays_with_the_pixel(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Both stops opened, so only the held block takes weight away: the hole, whose only unheld taps at the coarse
+    # levels lie in the window, moves toward the window's colour by its taps' share, not by the whole
+    monkeypatch.setattr(chroma, "RANGE_SIGMAS", 1e9)
+    window = other_colour(0.05)
+    frame, footprint = held_scene(window)
+    out = chroma.smooth_chroma(frame, guide_of(frame), footprint).frame
+    difference = (window[0] / window[2]) / (A[0] / A[2]) - 1.0
+    moved = red_over_blue(out)[128, 128] / red_over_blue(frame)[128, 128] - 1.0
+    # As built it moved 0.11 of the difference; renormalising the taps left moved it 0.41 [tested: restore-chroma-1]
+    assert 0 < moved <= 0.25 * difference, (moved, difference)
+
+
+def test_held_samples_lend_no_colour(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Both stops opened: recolouring what is held, at the same luminance, changes nothing outside it
+    monkeypatch.setattr(chroma, "RANGE_SIGMAS", 1e9)
+    frame, footprint = held_scene(A)
+    recoloured = frame.copy()
+    inside = footprint >= 1.0
+    recoloured[inside] = recoloured[inside] * other_colour(0.2) / A
+    recoloured[inside] *= ((frame[inside] @ LUMA) / (recoloured[inside] @ LUMA))[:, None]
+    first = chroma.smooth_chroma(frame, guide_of(frame), footprint).frame
+    second = chroma.smooth_chroma(recoloured, guide_of(recoloured), footprint).frame
+    outside = ndimage.distance_transform_edt(footprint < 1.0) > 0
+    outside &= ~ndimage.binary_dilation(inside, iterations=4)
+    assert np.allclose(first[outside], second[outside], rtol=0, atol=1e-12)
+
+
+def test_a_frame_without_light_is_left_as_it_is() -> None:
+    frame = np.zeros((64, 64, 3))
+    result = chroma.smooth_chroma(frame, np.zeros((64, 64)), np.zeros((64, 64)))
+    assert np.array_equal(result.frame, frame) and np.all(np.isfinite(result.frame))
+
+
+def test_the_step_repeats_exactly_and_draws_no_random_number(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert "random" not in Path(chroma.__file__).read_text()
+    frame = blotched_sky(6, size=96)
+
+    def refuse(*_args, **_kwargs):
+        raise AssertionError("the chroma step drew a random number")
+
+    for name in ("default_rng", "random", "normal", "uniform", "seed", "rand", "randn"):
+        monkeypatch.setattr(np.random, name, refuse)
+    first = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((96, 96))).frame
+    second = chroma.smooth_chroma(frame, guide_of(frame), np.zeros((96, 96))).frame
+    assert np.array_equal(first, second)
+
+
+def test_the_support_is_the_cascades_reach() -> None:
+    # Taps at 2 x step either side, steps 1, 2, 4, ... : 2 x (2^levels - 1)
+    assert [chroma.support_px(levels) for levels in (1, 2, 6)] == [2, 6, 126]
+
+
+def test_every_numeric_constant_of_the_chroma_step_names_its_source() -> None:
+    constants = numeric_constants(chroma)
+    assert constants
+    assert [f"{line} {name}" for name, line, comment in constants if not any(m in comment for m in SOURCE_MARKERS)] == []
