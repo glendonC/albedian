@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { answerFindings, type ObservationSession } from '@albedian/contracts';
-import { getMarkerVisualSpec } from '@albedian/design-system';
+import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -11,8 +11,8 @@ import { RealSkyLayer } from './RealSkyLayer.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
 
-/** Real sky's cross-fade with the photo (reveal, approved: 0.9 s). */
-const REAL_SKY_FADE_MS = 900;
+/** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
+export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
 
 /** What the view there is, word for word from the approved fly record: the spec's sentence, then the layer's sources. */
 const THERE_DISCLOSURE =

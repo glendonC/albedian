@@ -12,7 +12,8 @@ import { SIDE_FADE, SourcePhotoStage } from '../../components/SourcePhotoStage.j
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { cornerPaths } from '../cornerPaths.js';
 import { leaderPath, revealMarks } from '../revealMarks.js';
-import { RevealPhoto } from '../RevealPhoto.js';
+import { REAL_SKY_FADE_MS, RevealPhoto } from '../RevealPhoto.js';
+import { MOTION_TOKENS } from '@albedian/design-system';
 
 // The Real sky layer draws with WebGL 2, which jsdom has not: a stand-in reports what each test says it drew
 const sky = vi.hoisted(() => ({ drawn: true }));
@@ -735,5 +736,18 @@ describe("the reveal's rules are the approved pages'", () => {
 
   it('lets the pointer through to the photo everywhere but the logo and the marks', () => {
     expect(declarationsOf('.reveal-photo')).toMatchObject({ position: 'fixed', inset: '0', 'pointer-events': 'none' });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Your photo, Real sky"): a 400 ms dissolve on the standard curve, replacing the
+// earlier 0.9 s crossfade that named no source; under reduced motion the token makes it the 270 ms dissolve
+describe('Your photo and Real sky dissolve into each other in the motion record\'s 400 ms', () => {
+  it('fades the panorama on the view token', () => {
+    expect(declarationsOf('.real-sky')).toMatchObject({ transition: 'opacity var(--look-mo-dur-view) var(--look-mo-ease-std)' });
+  });
+
+  it('keeps the layer mounted as long as the fade, and no longer', () => {
+    expect(REAL_SKY_FADE_MS).toBe(MOTION_TOKENS.viewMs);
+    expect(REAL_SKY_FADE_MS).toBe(400);
   });
 });

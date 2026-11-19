@@ -919,12 +919,12 @@
 }
 
 /* Real sky (reveal, approved 2026-11-12, laptop 2; #l-real in .cache/uiux/reveal/index.html): the panorama fills the
-   window under the reveal's words and marks, cross-fading with the photo in 0.9 s */
+   window under the reveal's words and marks, dissolving with the photo in the motion record's 400 ms (was 0.9 s) */
 .real-sky {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.9s var(--look-ease-standard);
+  transition: opacity var(--look-mo-dur-view) var(--look-mo-ease-std);
 }
 
 .real-sky.is-shown {
