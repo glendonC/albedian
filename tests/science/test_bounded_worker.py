@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 import operator
 import os
+from pathlib import Path
 import signal
 import subprocess
 import threading
@@ -160,11 +161,77 @@ STOP_BOUND_S = POLL_SEC + 2 * STOP_GRACE_SEC + STOP_MARGIN_S
 
 
 def _group_is_gone(pgid: int) -> bool:
+    """No process of the group still runs: the system knows none, or each member it still lists has ended and only
+    waits to be reaped. Neither EPERM nor success from a signal to the group is taken alone: Darwin answers EPERM
+    for a group of such ended members, Linux success."""
     try:
         os.killpg(pgid, 0)
     except ProcessLookupError:
         return True
-    return False
+    except PermissionError:
+        pass
+    return all(state.startswith("Z") for state in _states_of_group(pgid))
+
+
+def _states_of_group(pgid: int) -> list[str]:
+    """The state of each process the system lists in the group: from /proc where the system has it (Linux, where ps
+    is not in every image), else from ps (macOS)."""
+    if Path("/proc/self/stat").exists():
+        states = []
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                state, _parent, group = (entry / "stat").read_text().rsplit(")", 1)[1].split()[:3]
+            except OSError:  # the process ended while the folder was read
+                continue
+            if int(group) == pgid:
+                states.append(state)
+        return states
+    listing = subprocess.run(["ps", "-A", "-o", "pgid=,stat="], stdin=subprocess.DEVNULL, capture_output=True,
+                             text=True, timeout=30, check=True).stdout
+    rows = (line.split() for line in listing.splitlines() if line.strip())
+    return [state for group, state in rows if int(group) == pgid]
+
+
+def test_a_group_left_with_only_an_ended_member_not_yet_reaped_counts_as_gone() -> None:
+    """A killed grandchild waits for launchd or init to reap it, later under load. Meanwhile Darwin answers EPERM, not
+    ESRCH, to a signal for its group, and Linux answers success (batch 24's gate failed so, on 19 Nov): the member
+    has stopped, so the group counts as gone; while a member runs, beside an ended one or alone, it does not."""
+    leader = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL, process_group=0)
+    member = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL, process_group=leader.pid)
+    pgid = leader.pid
+
+    def letters() -> list[str]:
+        return sorted(state[:1] for state in _states_of_group(pgid))
+    try:
+        assert not _group_is_gone(pgid)
+        leader.kill()  # this test's own child, not yet waited for
+        assert _wait_until(lambda: letters().count("Z") == 1 and len(letters()) == 2, STOP_BOUND_S), letters()
+        assert not _group_is_gone(pgid), "a running member beside an ended one is missed"
+        member.kill()
+        assert _wait_until(lambda: letters() == ["Z", "Z"], STOP_BOUND_S), letters()
+        assert _group_is_gone(pgid), "ended members not yet reaped are taken for running ones"
+    finally:
+        for process in (leader, member):
+            process.kill()
+            process.wait()
+    assert _group_is_gone(pgid)
+
+
+def test_a_refused_signal_is_not_taken_for_a_gone_group_while_a_member_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """EPERM alone says only that no member could be signalled; a member of another account would answer so while it
+    runs, so the answer is checked against the members' states."""
+    member = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL, start_new_session=True)
+    try:
+        with monkeypatch.context() as patched:
+            def refuse(*args: Any) -> None:
+                raise PermissionError(1, "Operation not permitted")
+            patched.setattr(os, "killpg", refuse)
+            assert not _group_is_gone(member.pid)
+    finally:
+        member.kill()
+        member.wait()
 
 
 def _wait_until(check: Callable[[], bool], bound_s: float) -> bool:

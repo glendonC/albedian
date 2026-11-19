@@ -50,6 +50,7 @@ from services.media import decode as media_decode
 from services.media import jobs as media_jobs
 from services.media import variants as media_variants
 from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC
+from tests.science.test_bounded_worker import _group_is_gone
 
 BOUND_S = 30.0
 # A stop in the child is seen at its next poll, then the child's group is terminated and, after the grace, killed
@@ -552,14 +553,6 @@ def _start_grandchild_then_sleep(seconds: float, report: Callable[..., None]) ->
     grandchild = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL)
     report("grandchild", grandchild.pid, os.getpgid(0))
     time.sleep(seconds)
-
-
-def _group_is_gone(pgid: int) -> bool:
-    try:
-        os.killpg(pgid, 0)
-    except ProcessLookupError:
-        return True
-    return False
 
 
 def _until(check: Callable[[], bool], bound_s: float) -> bool:
