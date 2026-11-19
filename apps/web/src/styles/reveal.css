@@ -1748,3 +1748,46 @@
 .align-layer.is-phone .align-layer__name {
   font-size: 11px;
 }
+
+/* D33, the predicted sky Show predicted sky opens (UIUX-predsky-READY.md item 5): the status column at the status
+   place; the tag, 14 px under it the heading (Geist 300, 24 px, 1.2), 12 px under that the disclosure (13 px, ink 66
+   percent), then after a hairline (14 px above, 12 px padding) the facts at 12 px, ink 44 percent, tabular figures */
+.predsky {
+  /* Over the sky's canvas, as the reveal is */
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.predsky-status__lead {
+  margin: 14px 0 0;
+  font: 300 24px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  color: var(--look-ink);
+}
+
+.predsky-status__note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
+.predsky-status__facts {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--look-hair);
+  font-size: 12px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  color: var(--look-ink-3);
+}
+
+.predsky-status__facts p {
+  margin: 0;
+}
+
+.predsky-status .look-tag {
+  margin-bottom: 0;
+}

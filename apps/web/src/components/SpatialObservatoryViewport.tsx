@@ -45,6 +45,8 @@ import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
 import { earlyPoseOf } from '../reveal/earlyPose.js';
+import { PredictedSkyScreen } from '../reveal/PredictedSkyScreen.js';
+import { isPredictedSkyShown } from '../reveal/predictedSky.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
 import { AskBar, type HeardWords } from '../reveal/AskBar.js';
@@ -208,6 +210,8 @@ export const SpatialObservatoryViewport: React.FC<
     if (!flightShown) setPhoneSteering(false);
   }, [flightShown]);
   const skyOver = realSkyShown || flightShown;
+  // D33: the sky Show predicted sky opens, on the laptop, in place of the old panel (UIUX-predsky-READY.md)
+  const predictedSkyShown = !phone && !flightShown && isPredictedSkyShown(session);
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
   // pieces until their own units
@@ -694,7 +698,7 @@ export const SpatialObservatoryViewport: React.FC<
       />
 
       {/* While the home or the photo covers the canvas, the modeled scene's layers are not what is on screen */}
-      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && !skyOver && (
+      {renderLayers && !entryStageActive && !arrival && !isSourcePhotoShown(session) && !skyOver && !predictedSkyShown && (
         <RenderLayerDisclosure layers={renderLayers} />
       )}
 
@@ -785,7 +789,8 @@ export const SpatialObservatoryViewport: React.FC<
               corners={!clipShaded}
             />
           )}
-          {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
+          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} />}
+          {!revealShown && !predictedSkyShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
               session={session}
               selectedFinding={selectedFinding}
@@ -793,7 +798,7 @@ export const SpatialObservatoryViewport: React.FC<
               skyPose={readSkyPose}
             />
           )}
-          {!revealShown && (
+          {!revealShown && !predictedSkyShown && (
           <CelestialTargetCard
             session={session}
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
@@ -803,18 +808,20 @@ export const SpatialObservatoryViewport: React.FC<
             onClose={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
           />
           )}
-          {!skyOver && (
+          {!skyOver && !predictedSkyShown && (
           <FlightAndRestoreHud
             session={session}
             setSession={setSession}
           />
           )}
-          {!revealShown && (
+          {!revealShown && !predictedSkyShown && (
             <ObservationSolveAndCompareHud
               session={session}
               setSession={setSession}
             />
           )}
+          {/* Kept on the predicted sky (D33): it draws nothing unless the epoch was shifted, and then it is the simulated
+              epoch's own disclosure, which the screen's status column does not give */}
           {!skyOver && (
           <EpochAndDisclosureHud
             session={session}
@@ -825,14 +832,14 @@ export const SpatialObservatoryViewport: React.FC<
               bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
           {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
           {/* Nor over Real sky on the phone, as #p-real draws it */}
-          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch) ? null : revealShown ? (
+          {revealShown && phoneReveal && !flightShown && (pickedFinding || realSkyShown || phoneNoMatch) ? null : revealShown || predictedSkyShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}
               words={heardWords}
               onListen={onPushToTalk}
               onSend={(text) => onRunUtterance(text, 'text')}
-              onBack={flightShown ? backToMoment : undefined}
+              onBack={flightShown || predictedSkyShown ? backToMoment : undefined}
               leaving={returning}
               phone={phoneReveal}
               onFlyOnYourOwn={arrived && !freeFlight ? () => setFreeFlight(true) : undefined}
@@ -863,7 +870,7 @@ export const SpatialObservatoryViewport: React.FC<
           data-hud-interactive="true"
         >
           <div className="alb-lusion-header-left">
-            {!revealShown && (
+            {!revealShown && !predictedSkyShown && (
             <button
               type="button"
               className="alb-lusion-brand-btn"
