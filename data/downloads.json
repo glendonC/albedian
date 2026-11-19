@@ -1070,6 +1070,106 @@
       "licence": "Not stated: astrometry.net's readme says the index files come with their own licence conditions in a file GETTING-INDEXES, which is not at the top of its code repository (github.com/dstndstn/astrometry.net, main) and not in data.astrometry.net/4100/, whose README states no licence; read 2026-11-11. Used only on this machine by the test-only independent check, never shipped.",
       "licenceUrl": "https://astrometry.net/doc/readme.html",
       "source": "astrometry.net 4100-series wide-field index file index-4119.fits, built from the Tycho-2 catalogue (Hog et al. 2000, A&A 355, L27) by the Astrometry.net team (Lang, Hogg, Mierle, Blanton and Roweis 2010, AJ 139, 1782); listed at https://data.astrometry.net/4100/, whose README names Tycho-2"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/voyager/Voyager Probe (B).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.glb",
+      "bytes": 1720864,
+      "sha256": "bd86ded828dd3f459293aee4ffc3cd0998d8db67439317c8299650a1174c3289",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Voyager: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/voyager/Voyager Probe (B).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Voyager%20Probe%20%28B%29/Voyager%20Probe%20%28B%29.png",
+      "bytes": 417970,
+      "sha256": "66d9fc3028a3f92413519bd413aa1a8705790d0f7786c11f62b1b166bd1ee964",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Voyager: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/jwst/James Webb Space Telescope (A).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.glb",
+      "bytes": 4710016,
+      "sha256": "ea4a53f71f1e7477d8b90e30d1299b2cb33faea18acdcaf831dc9d3ebf1b7750",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, James Webb Space Telescope: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/jwst/James Webb Space Telescope (A).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/James%20Webb%20Space%20Telescope%20%28A%29/James%20Webb%20Space%20Telescope%20%28A%29.png",
+      "bytes": 518892,
+      "sha256": "a53474485946d90d84fce0bc8af85ec79ed6d2615420ede3a3ef08c480290c10",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, James Webb Space Telescope: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/pioneer10/Pioneer 10.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.glb",
+      "bytes": 2049840,
+      "sha256": "81443a7fa01cca0dda878cd27692b3307f9c332c4eb8e55a844499d7b350573c",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Pioneer 10: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/pioneer10/Pioneer 10.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Pioneer%2010/Pioneer%2010.png",
+      "bytes": 996987,
+      "sha256": "46a4bd3dc507930f9f3df5fda41b63d65d8b52023968414b5f559c9424a3b5ea",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Pioneer 10: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/emu/Extravehicular Mobility Unit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://assets.science.nasa.gov/content/dam/science/cds/3d/resources/model/extravehicular-mobility-unit/Extravehicular%20Mobility%20Unit.glb",
+      "bytes": 3448904,
+      "sha256": "4dd79f1f8e02ab39bc15d87a7bbeda1f437e1103ab7661f7797340e0c114f372",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Extravehicular Mobility Unit: NASA's own model (https://science.nasa.gov/3d-resources/extravehicular-mobility-unit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/newhorizons/New_Horizons.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/n/New_Horizons.glb",
+      "bytes": 3293532,
+      "sha256": "cf152d8cea17c4a83711041cb0d29ca1d980bfafa084ada2656569ea92cdd73f",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, New Horizons: NASA's own model (https://science.nasa.gov/resource/new-horizons-3d-model/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/newhorizons/spacecraft_th_new_horizons.jpg",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg",
+      "bytes": 14212,
+      "sha256": "cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, New Horizons: NASA's own render of the model (https://science.nasa.gov/resource/new-horizons-3d-model/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/z2/Z2 Spacesuit.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Z2%20Spacesuit/Z2%20Spacesuit.glb",
+      "bytes": 16933148,
+      "sha256": "4199762c27f8e730030a7bf9f1a453c203457e84c33b36247c0237a74f9a0c2a",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Z-2: NASA's own model (https://science.nasa.gov/3d-resources/z2-spacesuit/); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }
