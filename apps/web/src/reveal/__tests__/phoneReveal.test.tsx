@@ -113,11 +113,13 @@ describe('RevealPhoto at phone width', () => {
     expect(q('.reveal-legend')).toBeNull();
   });
 
-  it('shows no laptop card for a picked star (the phone keeps its own until the phone card unit)', () => {
+  it('opens the phone card for a picked star (reveal, approved, iPhone 3), the counts giving way to it', () => {
     const session = calibrated();
     show({ ...session, selectedFindingId: session.observationSolution!.findings.find((f) => f.title === 'Rigel')!.id });
-    expect(q('[data-testid="star-card"]')).toBeNull();
+    expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-phone');
+    expect(q('.reveal-card__name')!.textContent).toBe('Rigel');
     expect(q('.reveal-mark.is-picked')).not.toBeNull();
+    expect(q('.reveal-phone-counts')).toBeNull();
   });
 });
 
@@ -139,6 +141,32 @@ describe("the phone reveal's rules are the approved page's", () => {
     expect(declarationsOf('.reveal-answer.is-phone .reveal-answer__v')).toEqual({ 'font-size': '12px' });
     expect(declarationsOf('.ask-bar.is-phone')).toEqual({ top: '772px', bottom: 'auto' });
     expect(declarationsOf('.ask-bar.is-phone .look-second')).toEqual({ '--look-h': 'var(--look-h-phone)', '--look-fs': 'var(--look-fs-phone)' });
+  });
+
+  it('sets the phone card as #p-pick does: 12 from the sides, 30 from the foot, its type and buttons at the phone sizes', () => {
+    expect(declarationsOf('.reveal-card.is-phone')).toEqual({
+      left: '12px',
+      right: '12px',
+      top: 'auto',
+      bottom: '30px',
+      width: 'auto',
+      padding: '22px 20px 20px',
+      'border-radius': '28px',
+      background: '#111112',
+      border: '1px solid var(--look-hair)',
+    });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__name')).toEqual({ margin: '16px 0 0', 'font-size': '46px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__sub')).toEqual({ margin: '8px 0 0' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__numbers')).toEqual({ gap: '12px', 'margin-top': '20px', 'padding-top': '16px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__number b')).toEqual({ 'font-size': '26px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__number b small')).toEqual({ 'font-size': '14px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__label')).toEqual({ 'margin-top': '6px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__source')).toEqual({ margin: '14px 0 0', 'padding-top': '0', 'border-top': '0' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__acts')).toEqual({ 'margin-top': '20px' });
+    expect(declarationsOf('.reveal-card.is-phone .reveal-card__acts .look-main, .reveal-card.is-phone .reveal-card__acts .look-second')).toEqual({
+      '--look-h': 'var(--look-h-phone)',
+      '--look-fs': 'var(--look-fs-phone)',
+    });
   });
 
   it('puts the close circle and the views in the top row, 20 px in, 60 px down', () => {

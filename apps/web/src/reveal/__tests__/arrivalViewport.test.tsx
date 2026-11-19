@@ -705,13 +705,6 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q(`${CARD} h1`)!.textContent).toBe(pickedSession().observationSolution!.findings.find((f) => f.id === pickedSession().selectedFindingId)!.title);
   });
 
-  it('keeps the old card on a phone and in the sky and 3D views', () => {
-    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
-    open(pickedSession());
-    expect(q(CARD)).toBeNull();
-    expect(q(OLD_CARD)).not.toBeNull();
-  });
-
   it('shows the photo whole while Original pixels is pressed, and faded with its marks again once pressed again', () => {
     open(pickedSession());
     expect(mask()).toContain('56px');
@@ -822,14 +815,6 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(q('[data-testid="home-screen"]')).not.toBeNull();
   });
 
-  it('shows the old card for a picked star on a phone, until the phone card unit', () => {
-    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
-    const picked = pickedSession();
-    open(picked, { selectedFinding: picked.observationSolution!.findings.find((f) => f.id === picked.selectedFindingId) });
-    expect(q('[data-testid="star-card"]')).toBeNull();
-    expect(q('[data-testid="celestial-target-card"]')).not.toBeNull();
-  });
-
   it('gives the ask bar the listening state, the words heard and the browser\'s ability, and sends typed words as text', () => {
     const onRunUtterance = vi.fn();
     const onPushToTalk = vi.fn();
@@ -855,6 +840,14 @@ describe('the viewport shows the approved star card over the photo, above phone 
     });
     act(() => (q('.ask-bar__field') as HTMLFormElement).requestSubmit());
     expect(onRunUtterance).toHaveBeenCalledWith('Is that a plane?', 'text');
+  });
+
+  it("opens the phone's card for a picked star on a phone, with no old card and no ask button under it", () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(pickedSession());
+    expect(q('[data-testid="star-card"]')!.className).toBe('reveal-card is-phone');
+    expect(q('[data-testid="celestial-target-card"]')).toBeNull();
+    expect(q('[data-testid="ask-bar"]')).toBeNull();
   });
 
   it("asks from the phone's own ask bar over the phone's reveal, not the old bar", () => {

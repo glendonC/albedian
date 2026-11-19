@@ -12,6 +12,8 @@ export interface StarCardProps {
   onGoThere: () => void;
   /** The close button, Esc, or a tap on empty sky. */
   onClose: () => void;
+  /** At phone width (reveal, approved 2026-11-12, iPhone 3; #p-pick): the same card on its own dark sheet at the foot. */
+  phone?: boolean;
 }
 
 /** A pointer that went down and up within this distance is a tap, not a drag. */
@@ -28,7 +30,7 @@ const typing = (target: EventTarget | null): boolean => {
  * catalog row, Go there (only for a star the app can fly to) and Original pixels, and at the foot its limitations,
  * always in view. Esc and a tap on empty sky close it; G goes there. Every word is the finding's (starCardFacts.ts).
  */
-export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose }) => {
+export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false }) => {
   const facts = starCardFacts(finding);
   const close = useRef(onClose);
   close.current = onClose;
@@ -74,7 +76,7 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
   }, [canGoThere]);
 
   return (
-    <section className="reveal-card" data-testid="star-card" aria-label={facts.title}>
+    <section className={phone ? 'reveal-card is-phone' : 'reveal-card'} data-testid="star-card" aria-label={facts.title}>
       <div className="reveal-card__top">
         <EvidenceTag evidenceClass={facts.evidenceClass} />
         <IconButton label="Close" icon="x" onClick={onClose} />

@@ -1238,3 +1238,51 @@
   --look-h: var(--look-h-phone);
   --look-fs: var(--look-fs-phone);
 }
+
+/* The star's card at phone width: the same card on its own dark sheet at the foot (reveal, approved 2026-11-12,
+   iPhone 3; #p-pick) */
+.reveal-card.is-phone {
+  left: 12px;
+  right: 12px;
+  top: auto;
+  bottom: 30px;
+  width: auto;
+  padding: 22px 20px 20px;
+  border-radius: 28px;
+  background: #111112;
+  border: 1px solid var(--look-hair);
+}
+.reveal-card.is-phone .reveal-card__name {
+  margin: 16px 0 0;
+  font-size: 46px;
+}
+.reveal-card.is-phone .reveal-card__sub {
+  margin: 8px 0 0;
+}
+.reveal-card.is-phone .reveal-card__numbers {
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+}
+.reveal-card.is-phone .reveal-card__number b {
+  font-size: 26px;
+}
+.reveal-card.is-phone .reveal-card__number b small {
+  font-size: 14px;
+}
+.reveal-card.is-phone .reveal-card__label {
+  margin-top: 6px;
+}
+.reveal-card.is-phone .reveal-card__source {
+  margin: 14px 0 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.reveal-card.is-phone .reveal-card__acts {
+  margin-top: 20px;
+}
+.reveal-card.is-phone .reveal-card__acts .look-main,
+.reveal-card.is-phone .reveal-card__acts .look-second {
+  --look-h: var(--look-h-phone);
+  --look-fs: var(--look-fs-phone);
+}

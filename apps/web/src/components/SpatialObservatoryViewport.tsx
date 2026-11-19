@@ -721,7 +721,7 @@ export const SpatialObservatoryViewport: React.FC<
               onSelectFinding={onSelectFinding}
             />
           )}
-          {(!revealShown || phoneReveal) && (
+          {!revealShown && (
           <CelestialTargetCard
             session={session}
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
@@ -751,7 +751,8 @@ export const SpatialObservatoryViewport: React.FC<
           )}
           {/* Over the reveal, the approved Ask out loud button (with the keyboard button on the laptop) takes the old
               bar's place (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
-          {revealShown ? (
+          {/* On the phone the picked star's card covers the foot, Ask out loud's place, as #p-pick draws it */}
+          {revealShown && phoneReveal && pickedFinding ? null : revealShown ? (
             <AskBar
               canListen={canListen}
               listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}

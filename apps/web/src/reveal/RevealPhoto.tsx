@@ -288,7 +288,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </section>
       )}
 
-      {!phone && !answer && !there && picked && (
+      {!answer && !there && picked && (
         <StarCard
           key={picked.id}
           finding={picked}
@@ -296,10 +296,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
           onToggleOriginalPixels={() => onToggleOriginalPixels?.()}
           onGoThere={() => onGoThere?.(picked.id)}
           onClose={() => onCloseCard?.()}
+          phone={phone}
         />
       )}
 
-      {phone && !answer && counts.length > 0 && (
+      {phone && !answer && !picked && counts.length > 0 && (
         // Under the photo at phone width: the catalog matched count large with its tag, then the others with theirs;
         // an answer takes their place (ask, approved, iPhone; #p-answer)
         <div className="reveal-phone-counts" data-testid="reveal-legend">
