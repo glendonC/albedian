@@ -700,6 +700,93 @@
             }
           }
         }
+      },
+      "/api/ingest/{sha256}/pointing": {
+        "put": {
+          "summary": "Put Ingest Pointing",
+          "description": "Keep a stored photo's pointing record, once; a receipt names the record's own hash.",
+          "operationId": "put_ingest_pointing_api_ingest__sha256__pointing_put",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "description": "The photo's SHA-256, 64 lowercase hex characters; any other text names no stored photo",
+                "title": "Sha256"
+              },
+              "description": "The photo's SHA-256, 64 lowercase hex characters; any other text names no stored photo"
+            }
+          ],
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          },
+          "requestBody": {
+            "required": true,
+            "description": "The pointing record (packages/contracts/src/pointing.ts) as JSON text, kept byte for byte",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "get": {
+          "summary": "Get Ingest Pointing",
+          "description": "The stored photo's pointing record, exactly as it was sent, once it meets the contract.",
+          "operationId": "get_ingest_pointing_api_ingest__sha256__pointing_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "description": "The photo's SHA-256, 64 lowercase hex characters; any other text names no stored photo",
+                "title": "Sha256"
+              },
+              "description": "The photo's SHA-256, 64 lowercase hex characters; any other text names no stored photo"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "The stored pointing record, byte for byte",
+              "content": {
+                "application/json": {}
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "components": {
@@ -1298,6 +1385,24 @@
       "name": "get_ingest_solution",
       "responseModel": "dict[str, typing.Any]",
       "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/pointing",
+      "methods": [
+        "PUT"
+      ],
+      "name": "put_ingest_pointing",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/ingest/{sha256}/pointing",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_pointing",
+      "responseModel": null,
+      "includeInSchema": true
     }
   ],
   "middleware": [
@@ -1365,7 +1470,8 @@
           "/api/ingest/{sha256}/original": 0,
           "/api/ingest/{sha256}/solve": 0,
           "/api/ingest/jobs/{job_id}": 0,
-          "/api/ingest/{sha256}/solution": 0
+          "/api/ingest/{sha256}/solution": 0,
+          "/api/ingest/{sha256}/pointing": 65536
         }
       }
     }

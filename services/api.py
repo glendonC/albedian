@@ -216,6 +216,8 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/ingest/{sha256}/solve": 0,
     "/api/ingest/jobs/{job_id}": 0,
     "/api/ingest/{sha256}/solution": 0,
+    # Largest measured body 1,936 bytes (a pointing record of the fixture, indented); 4 times is 7,744
+    "/api/ingest/{sha256}/pointing": BODY_LIMIT_FLOOR,
 }
 # Nothing reads the body of a request no route serves (it is answered 404, 405 or a redirect)
 UNROUTED_BODY_LIMIT = 0

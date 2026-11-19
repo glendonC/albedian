@@ -44,6 +44,8 @@ UPLOAD_PATH = "/api/ingest"
 VOICE_PATH = "/api/voice/command"
 ANSWER_PATH = "/api/voice/answer/{sha256}"
 SOLVE_JOB_PATH = "/api/ingest/{sha256}/solve"
+# Reads its body as raw bytes, as the upload route does, so FastAPI gives it no body field
+POINTING_PATH = "/api/ingest/{sha256}/pointing"
 DEV_ORIGIN = "http://localhost:5173"
 
 # The largest body each route received across the Python tests that reach the API and the web's tests of its own
@@ -59,6 +61,8 @@ MEASURED_LARGEST_BODY = {
     VOICE_PATH: 5_154,
     # The question at one past its 500 unit cap, which the contract refuses (test_voice_answer_route.py)
     ANSWER_PATH: 516,
+    # A pointing record of the fixture written with an indent of one (test_pointing_route.py)
+    POINTING_PATH: 1_936,
 }
 
 
@@ -211,7 +215,7 @@ def test_only_the_upload_route_has_no_limit_and_routes_with_no_body_take_none() 
     takes_body = {
         route.path
         for route in iter_route_contexts(app.routes)
-        if getattr(route, "body_field", None) is not None or route.path == UPLOAD_PATH
+        if getattr(route, "body_field", None) is not None or route.path in (UPLOAD_PATH, POINTING_PATH)
     }
     for path, limit in api.BODY_LIMITS.items():
         if path not in takes_body:

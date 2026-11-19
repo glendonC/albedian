@@ -15,14 +15,16 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - Landed as `ff8f2630` (audits: FAIL three times, then PASS on the fourth version).
   - _Requirements: REQ-IOS-1.2, 1.3, REQ-IOS-2 (the evidence statement), REQ-IOS-6.2, REQ-IOS-7.1_
 
-- [ ] 2. pointing-2: receive the record (REQ-IOS-4.1, REQ-IOS-6.1; P3)
+- [x] 2. pointing-2: receive the record (REQ-IOS-4.1, REQ-IOS-6.1; P3)
   - `PUT` and `GET /api/ingest/{sha256}/pointing` in `services/ingest/router.py`, the record stored beside the
     receipt by `services/ingest/store.py`; the rules of design component 4 (404, 422, 409, 200); no record value in
     any log or error. P3: the stored bytes and SHA-256 equal the uploaded ones, with a record and without.
-  - Split in two. pointing-2a, the route's reply contract (`packages/contracts/src/pointing-reply.ts`,
+  - Split in three. pointing-2a, the route's reply contract (`packages/contracts/src/pointing-reply.ts`,
     `services/contracts/pointing_reply.py`, the shared fixture `tests/fixtures/pointing_reply_contract.json`), landed
-    as `61fa49b2` (audits: FAIL, then PASS on the second version). Missing: pointing-2b, the two routes and the
-    stored record; `services/ingest/router.py` has no pointing route on `main` at `698e9c50`.
+    as `61fa49b2` (audits: FAIL, then PASS on the second version). pointing-2a2 adds the refusal for a record sent
+    once a solve job exists. pointing-2b: the two routes (201 for a record stored now, 200 for the same bytes again),
+    the record's exact bytes in `services/ingest/store_pointing.py`, its `BODY_LIMITS` row, and
+    `tests/integration/test_pointing_route.py`.
   - _Requirements: REQ-IOS-1.1, REQ-IOS-4.1, REQ-IOS-6.1_
 
 - [ ] 3. pointing-3: the contract changes a pose from the record needs (design component 6)

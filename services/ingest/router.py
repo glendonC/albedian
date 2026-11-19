@@ -8,6 +8,15 @@ leaves nothing behind. `GET /api/ingest/{sha256}` returns the receipt of a store
 `GET /api/ingest/{sha256}/original` its bytes. There is no listing: a stored file is reached only by
 its full hash.
 
+`PUT /api/ingest/{sha256}/pointing` keeps the photo's pointing record (ios-capture-companion design component 4): the
+exact body bytes, beside the receipt, once. It answers 201 with a `PointingRecordReceipt` for a record stored now,
+200 with `alreadyStored` for the same bytes again, and a `PointingRecordRefusal` otherwise: 404 when no photo with
+that hash is stored (an address that is not a SHA-256 names none), 422 for a body that is not JSON text, not a
+record by its contract, or a record of another photo, 409 for a different record when one is held and for a first
+record once a solve job exists for the photo. A refusal holds
+only the contract's closed sentences and the record's own keys, never a value of the record, and nothing here logs a
+record. `GET` of the same path returns the stored bytes, once checked against the contract and the address.
+
 Job records are read through the job store (services/ingest/job_store.py), checked against the contract: a
 stored record that fails it is never served. A receipt then names no job, a start runs the solve again, and
 `GET /api/ingest/jobs/{job_id}` answers 409 with one plain sentence. The solution is read through the store's
@@ -17,20 +26,37 @@ solve again, and `GET /api/ingest/{sha256}/solution` answers 409 with one plain 
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import re
 from typing import Any, Optional
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
+from pydantic import ValidationError
 
 from services.contracts.ingest import JOB_ID_PATTERN, IngestReceipt
+from services.contracts.pointing import POINTING_RULES, PointingRecord
+from services.contracts.pointing_reply import (
+    POINTING_RECEIPT_FORMAT,
+    POINTING_RECEIPT_FORMAT_VERSION,
+    POINTING_RECORD_KEYS,
+    POINTING_REFUSAL_SENTENCES,
+    POINTING_REPLY_ISSUES_MAX,
+    POINTING_REPLY_SENTENCES,
+    PointingRecordReceipt,
+    PointingRecordRefusal,
+)
 from services.ingest.job_store import JobStore, Unreadable
 from services.ingest.jobs import run_solve_job
 from services.ingest.metadata import HeifError, display_matrix_hint, exif_hints, quicktime_hints, read_heif
 from services.ingest.probe import MediaFacts, ProbeError, probe_media
 from services.ingest.store import DECLARABLE, IngestStore, Received, Refused
+from services.ingest.store_pointing import PointingUnreadable
 
 router = APIRouter()
 
@@ -52,6 +78,31 @@ UNREADABLE_JOB = "The stored record of that job does not meet the contract, so i
 UNREADABLE_SOLUTION = (
     "The stored solution for that file does not meet the contract, so it is not served; run the solve again."
 )
+
+
+# The pointing route's GET answers beyond the reply contract, worded like the other GET routes [proposed]
+NO_POINTING_RECORD = "no pointing record is stored for that file"
+UNREADABLE_POINTING = "The stored pointing record for that file does not meet the contract, so it is not served."
+SHA256_ADDRESS = re.compile(r"[0-9a-f]{64}")
+# Where in the record each of its own rules is broken, for a refusal's issue: the reply contract's table
+# (tests/integration/test_pointing_reply_contract.py RULE_PATHS), by the rule's sentence
+POINTING_RULE_PATHS = {
+    POINTING_RULES[rule]: path
+    for rule, path in {
+        "headingNeedsPlace": ["heading"],
+        "headingInsideLimit": ["heading", "headingAccuracyDeg"],
+        "noPlaceReasonNeedsNoPlace": ["heading", "reason"],
+        "outsideLimitCarriesAccuracy": ["heading", "reportedHeadingAccuracyDeg"],
+        "onlyOutsideLimitReportsAccuracy": ["heading", "reportedHeadingAccuracyDeg"],
+        "unitQuaternion": ["heading", "attitude", "quaternion"],
+        "gravityNearOneG": ["motion", "gravityDeviceG"],
+        "sampleAtThePhoto": ["motion", "sampleOffsetFromPhotoSec"],
+        "windowRunsForward": ["motion", "window"],
+        "placeholderSha256": ["sourceAssetSha256"],
+    }.items()
+}
+_RECORD_KEYS = frozenset(POINTING_RECORD_KEYS)
+_SENTENCES = frozenset(POINTING_REFUSAL_SENTENCES)
 
 
 def get_ingest_store() -> IngestStore:
@@ -313,3 +364,161 @@ def get_ingest_solution(
     if solution is None:
         raise HTTPException(status_code=404, detail="no solution is stored for that file")
     return solution
+
+
+# ---- The pointing record (pointing-2b) ----
+
+
+class _NotJson(Exception):
+    """The body is not JSON text as JavaScript's JSON.parse reads it (no NaN or Infinity, UTF-8, no BOM)."""
+
+
+def _no_constant(_token: str) -> Any:
+    raise _NotJson
+
+
+class _NoRecordText(Exception):
+    """JSON text that no record can be and Python's reader cannot take whole: a whole number past its 4,300-digit
+    limit (`ValueError`), or arrays nested past its recursion limit (`RecursionError`, on Python 3.12)."""
+
+
+def _json_text(body: bytes) -> Any:
+    """The body as JSON; `_NotJson` when it is not JSON text, `_NoRecordText` when the reader cannot take it whole,
+    never with a byte of it in the error."""
+    try:
+        return json.loads(body.decode("utf-8"), parse_constant=_no_constant)
+    except (UnicodeDecodeError, json.JSONDecodeError, _NotJson):
+        raise _NotJson from None
+    except (RecursionError, ValueError):
+        raise _NoRecordText from None
+
+
+def _pointing_refusal(status: int, detail: str, issues: list[dict[str, Any]] | None = None) -> JSONResponse:
+    reply: dict[str, Any] = {"detail": POINTING_REPLY_SENTENCES[detail]}
+    if issues:
+        reply["issues"] = issues
+    PointingRecordRefusal.model_validate(reply)
+    return JSONResponse(reply, status_code=status)
+
+
+def _pointing_receipt(sha256: str, body: bytes, already_stored: bool) -> JSONResponse:
+    receipt = {
+        "format": POINTING_RECEIPT_FORMAT,
+        "formatVersion": POINTING_RECEIPT_FORMAT_VERSION,
+        "sourceAssetSha256": sha256,
+        "pointingRecordSha256": hashlib.sha256(body).hexdigest(),
+        "alreadyStored": already_stored,
+    }
+    PointingRecordReceipt.model_validate(receipt)
+    return JSONResponse(receipt, status_code=200 if already_stored else 201)
+
+
+def _issues(error: ValidationError) -> list[dict[str, Any]]:
+    """Each failed check of the record as a path of its own keys and a closed sentence: the rule's own sentence
+    when it is one, else the route's `notARecord`. Never the value, never a key the record made up (a failure with
+    no path of the record's keys is left out), at most the contract's number of issues. The record nests four keys
+    deep at most, inside the contract's path depth of eight."""
+    issues: list[dict[str, Any]] = []
+    for failure in error.errors(include_url=False, include_input=False, include_context=False):
+        said = failure["msg"].removeprefix("Value error, ")
+        message = said if said in _SENTENCES else POINTING_REPLY_SENTENCES["notARecord"]
+        path = POINTING_RULE_PATHS.get(message) or [
+            part for part in failure["loc"] if isinstance(part, str) and part in _RECORD_KEYS
+        ]
+        issue = {"path": path, "message": message}
+        if path and issue not in issues:
+            issues.append(issue)
+        if len(issues) == POINTING_REPLY_ISSUES_MAX:
+            break
+    return issues
+
+
+def _solve_job_exists(store: IngestStore, sha256: str) -> bool:
+    """Whether a solve of this photo was started: today's `job.json` is there, readable or not, or the job store holds
+    a solve record for it. A record that arrives after that is not kept, so a solution never changes under the
+    person (design component 4); the same record sent again is still a receipt."""
+    if os.path.lexists(store.folder(sha256) / "job.json"):
+        return True
+    return any(job["kind"] == "solve" for job in JobStore(store).jobs_of(sha256))
+
+
+def _photo_stored(store: IngestStore, sha256: str) -> bool:
+    return bool(SHA256_ADDRESS.fullmatch(sha256)) and store.read_record(sha256) is not None and store.original(sha256) is not None
+
+
+def _pointing_path() -> Any:
+    return Path(description="The photo's SHA-256, 64 lowercase hex characters; any other text names no stored photo")
+
+
+@router.put(
+    "/api/ingest/{sha256}/pointing",
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "description": "The pointing record (packages/contracts/src/pointing.ts) as JSON text, kept byte for byte",
+            "content": {"application/json": {"schema": {"type": "object"}}},
+        },
+    },
+)
+async def put_ingest_pointing(
+    request: Request, sha256: str = _pointing_path(), store: IngestStore = Depends(get_ingest_store)
+) -> JSONResponse:
+    """Keep a stored photo's pointing record, once; a receipt names the record's own hash."""
+    if not _photo_stored(store, sha256):
+        return _pointing_refusal(404, "noSuchPhoto")
+    body = await request.body()
+    try:
+        data = _json_text(body)
+    except _NotJson:
+        return _pointing_refusal(422, "notJson")
+    except _NoRecordText:
+        return _pointing_refusal(422, "notARecord")
+    try:
+        record = PointingRecord.model_validate(data)
+    except ValidationError as error:
+        return _pointing_refusal(422, "notARecord", _issues(error))
+    except (RecursionError, ValueError):
+        return _pointing_refusal(422, "notARecord")
+    if record.source_asset_sha256 != sha256:
+        return _pointing_refusal(422, "anotherPhoto", [{"path": ["sourceAssetSha256"], "message": POINTING_REPLY_SENTENCES["anotherPhoto"]}])
+    held, stored = store.read_pointing(sha256), False
+    if held is None:
+        if _solve_job_exists(store, sha256):
+            return _pointing_refusal(409, "solveStarted")
+        held, stored = store.write_pointing(sha256, body)
+    if held != body:
+        return _pointing_refusal(409, "differentRecordHeld")
+    return _pointing_receipt(sha256, body, already_stored=not stored)
+
+
+def _servable_pointing(body: bytes, sha256: str) -> bool:
+    try:
+        record = PointingRecord.model_validate(_json_text(body))
+    except (_NotJson, _NoRecordText, ValidationError, RecursionError, ValueError):
+        return False
+    return record.source_asset_sha256 == sha256
+
+
+@router.get(
+    "/api/ingest/{sha256}/pointing",
+    response_class=Response,
+    responses={200: {"description": "The stored pointing record, byte for byte", "content": {"application/json": {}}}},
+)
+def get_ingest_pointing(sha256: str = _pointing_path(), store: IngestStore = Depends(get_ingest_store)) -> Response:
+    """The stored photo's pointing record, exactly as it was sent, once it meets the contract."""
+    if not _photo_stored(store, sha256):
+        return _pointing_refusal(404, "noSuchPhoto")
+    try:
+        body = store.read_pointing(sha256)
+    except PointingUnreadable:
+        raise HTTPException(status_code=409, detail=UNREADABLE_POINTING) from None
+    if body is None:
+        raise HTTPException(status_code=404, detail=NO_POINTING_RECORD)
+    if not _servable_pointing(body, sha256):
+        raise HTTPException(status_code=409, detail=UNREADABLE_POINTING)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Cache-Control": "private, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"},
+    )

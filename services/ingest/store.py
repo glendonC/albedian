@@ -27,6 +27,10 @@ from services.ingest.store_fs import (
     sweep_stale_partials as _sweep_stale_partials,
     write_stored_record as _write_stored_record,
 )
+from services.ingest.store_pointing import (
+    read_stored_pointing as _read_stored_pointing,
+    write_stored_pointing as _write_stored_pointing,
+)
 from services.ingest.store_sniff import (
     UnsupportedIsoBrand as _UnsupportedIsoBrand,
     classify_head as _classify_head,
@@ -166,6 +170,16 @@ class IngestStore:
     def write_record(self, sha256: str, record: dict) -> dict:
         """Write the record once; when one exists already, it stands and is returned."""
         return _write_stored_record(self.root, sha256, record)
+
+    def read_pointing(self, sha256: str) -> _Optional[bytes]:
+        """The photo's pointing record as the bytes received, if one is held (`store_pointing.PointingUnreadable` when
+        something else is at its place)."""
+        return _read_stored_pointing(self.root, sha256)
+
+    def write_pointing(self, sha256: str, body: bytes) -> tuple[bytes, bool]:
+        """Keep `body` as the stored photo's pointing record unless one is held; the standing bytes and whether this
+        call stored them."""
+        return _write_stored_pointing(self.root, sha256, body)
 
 
 __all__ = [
