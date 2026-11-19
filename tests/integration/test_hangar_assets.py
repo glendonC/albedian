@@ -105,6 +105,11 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
             # a part picked by a slab of the import frame says so, with the slab
             assert sf.get("partBand") == CRAFTS[name]["scale_from"].get("band")
+            # a model true to its scale part only says so, and none of its entries states a span
+            assert (sf.get("trueTo") == "part") is (CRAFTS[name]["scale_from"].get("true_to") == "part")
+            if sf.get("trueTo") == "part":
+                for entry in (e for e in FACTS["entries"] if e["model"] == name):
+                    assert not any("span" in f["key"].lower() for f in entry["facts"]), (name, entry["id"])
             if "quotedFt" in sf:
                 # NASA gives it in feet: the quote holds that number and the metres are it times 0.3048
                 assert str(sf["quotedFt"]) in sf["quote"] and abs(sf["quotedFt"] * 0.3048 - sf["metres"]) < 1e-9
@@ -113,6 +118,10 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
                 assert str(sf["quotedCm"]) in sf["quote"] and abs(sf["quotedCm"] / 100 - sf["metres"]) < 1e-9
             else:
                 assert str(sf["metres"]) in sf["quote"]
+    # Mars Global Surveyor's wings do not hold NASA's sizes at its dish's scale (AUDIT-B's read of hangar-28)
+    assert FACTS["models"]["mgs"]["scaleFrom"].get("trueTo") == "part"
+    # nor do MAVEN's wings at its dish's scale (AUDIT-B's read of hangar-30)
+    assert FACTS["models"]["maven"]["scaleFrom"].get("trueTo") == "part"
 
 
 def _gltf(path: Path) -> dict:

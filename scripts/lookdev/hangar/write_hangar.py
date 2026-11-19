@@ -142,6 +142,9 @@ def build_facts(models: list[str]) -> dict:
         if sf.get("band"):
             # the part is the faces of that material inside a slab of NASA's import frame (one face of a shield)
             scale_from["partBand"] = sf["band"]
+        if sf.get("true_to") == "part":
+            # only the named part is held to NASA's size; the model's other sizes are its own and state nothing
+            scale_from["trueTo"] = "part"
         if sf.get("quoted_cm") is not None:
             scale_from["quotedCm"] = sf["quoted_cm"]
         if sf.get("quoted_ft") is not None:

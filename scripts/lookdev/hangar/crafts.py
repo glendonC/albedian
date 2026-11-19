@@ -1175,12 +1175,15 @@ CRAFTS: dict[str, dict] = {
         # Voyager is; the wings reach along Y and the body stands along Z, so +Z is up.
         "forward": (-1.0, 0.0, 0.0),
         "up": (0.0, 0.0, 1.0),
-        # Scale from the dish, NASA's silver foil disc on the boom's end, 1.2826 units across, to NSSDC's 1.5 m. A check:
-        # each wing's width, 1.5630 units, is then 1.83 m against NSSDC's panels "3.5 x 1.9 m".
+        # Scale from the dish, NASA's silver foil disc on the boom's end, 1.2826 units across, to NSSDC's 1.5 m. Each
+        # wing's width, 1.5630 units, is then 1.83 m against NSSDC's panels "3.5 x 1.9 m", but the wings come out about
+        # half again longer than two panels and the body make (AUDIT-B): only the dish is held to NASA's size, and no
+        # card or fact may state a span taken from this model.
         "scale_from": {
             "material": "foil_silver",
             "axis": "y",
             "metres": 1.5,
+            "true_to": "part",
             "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-062A",
             "quote": "A 1.5 meter diameter parabolic high gain dish antenna",
         },
@@ -1274,6 +1277,7 @@ CRAFTS: dict[str, dict] = {
             "axis": "x",
             "metres": 2,
             "page": "https://science.nasa.gov/mission/maven/",
+            "true_to": "part",
             "quote": "6.56 feet (2 meters) in diameter",
         },
         "materials": {
@@ -1741,7 +1745,6 @@ HANGAR: list[dict] = [
             {"key": "launch", "value": "2013-11-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A", "quote": "MAVEN launched successfully on 18 November 2013 at 18:28 UT (1:28 p.m. EST)"},
             {"key": "dryMassKg", "value": 809, "page": "https://science.nasa.gov/mission/maven/", "quote": "Dry (unfueled) mass at launch: 1,784 pounds (809 kilograms)"},
             {"key": "launchMassKg", "value": "2,454", "page": "https://science.nasa.gov/mission/maven/", "quote": "Wet (fueled with hydrazine) mass at launch: 5,410 pounds (2,454 kilograms)"},
-            {"key": "lengthM", "value": 11.4, "page": "https://science.nasa.gov/mission/maven/", "quote": "37.5 feet (11.4 meters)"},
             {"key": "heightM", "value": 3.47, "page": "https://science.nasa.gov/mission/maven/", "quote": "11.4 feet (3.47 meters)"},
             {"key": "dishDiameterM", "value": 2, "page": "https://science.nasa.gov/mission/maven/", "quote": "6.56 feet (2 meters) in diameter"},
             {"key": "marsOrbit", "value": "2014-09-22", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A", "quote": "completing its orbit insertion burn at 2:24 UT on 22 September 2014 (10:24 p.m. EDT, Sept. 21)"},
