@@ -869,6 +869,68 @@
         "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
         "quote": "The space station is 356 feet (109 meters) end-to-end"
       }
+    },
+    "parker": {
+      "title": "Parker Solar Probe",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "parker/parker_lod0.glb",
+          "bytes": 1798904,
+          "triangles": 39245,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "parker/parker_lod1.glb",
+          "bytes": 787108,
+          "triangles": 19622,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "parker/parker_lod2.glb",
+          "bytes": 277480,
+          "triangles": 7056,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "parker/parker_picker.webp",
+          "bytes": 4872,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -2.841,
+          -2.601,
+          -6.534
+        ],
+        "max": [
+          2.841,
+          2.601,
+          0
+        ]
+      },
+      "bodyRadiusM": 1.6,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "PSP",
+        "metres": 2.3,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A",
+        "quote": "the end of the TPS is 2.3 m in diameter.",
+        "partBand": {
+          "axis": "y",
+          "min": 1.47,
+          "max": 1.49
+        }
+      }
     }
   },
   "entries": [
@@ -1337,6 +1399,50 @@
           "value": "2000-11",
           "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/",
           "quote": "The space station has been continuously occupied since November 2000."
+        }
+      ]
+    },
+    {
+      "id": "parker-solar-probe",
+      "name": "Parker Solar Probe",
+      "model": "parker",
+      "travel": null,
+      "facts": [
+        {
+          "key": "speedAtClosestApproachKph",
+          "value": "700,000",
+          "page": "https://science.nasa.gov/mission/parker-solar-probe/",
+          "quote": "At closest approach, Parker Solar Probe hurtles around the Sun at approximately 430,000 mph (700,000 kph)."
+        },
+        {
+          "key": "launch",
+          "value": "2018-08-12",
+          "page": "https://science.nasa.gov/mission/parker-solar-probe/",
+          "quote": "Aug. 12, 2018 / 7:31 UTC"
+        },
+        {
+          "key": "massKg",
+          "value": 685,
+          "page": "https://science.nasa.gov/mission/parker-solar-probe/",
+          "quote": "1,510 pounds (685 kilograms) at launch"
+        },
+        {
+          "key": "heatShieldDiameterM",
+          "value": 2.3,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A",
+          "quote": "the end of the TPS is 2.3 m in diameter."
+        },
+        {
+          "key": "heatShieldThicknessCm",
+          "value": 11.43,
+          "page": "https://science.nasa.gov/mission/parker-solar-probe/",
+          "quote": "4.5-inch-thick (11.43 cm) carbon-composite shield"
+        },
+        {
+          "key": "power",
+          "value": "solar arrays, 384 W at solar encounter",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A",
+          "quote": "The solar arrays produce 384 W power at solar encounter."
         }
       ]
     }

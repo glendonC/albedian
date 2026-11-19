@@ -101,6 +101,8 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert (sf.get("size") == "model") is not states_height, (name, sf)
         else:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
+            # a part picked by a slab of the import frame says so, with the slab
+            assert sf.get("partBand") == CRAFTS[name]["scale_from"].get("band")
             if "quotedFt" in sf:
                 # NASA gives it in feet: the quote holds that number and the metres are it times 0.3048
                 assert str(sf["quotedFt"]) in sf["quote"] and abs(sf["quotedFt"] * 0.3048 - sf["metres"]) < 1e-9
@@ -168,7 +170,7 @@ def test_every_source_material_has_a_role_and_rules_end_in_a_catch_all(name: str
 
 def test_a_craft_that_never_travels_between_stars_has_no_speed() -> None:
     near = [e for e in FACTS["entries"] if e["travel"] is None]
-    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle"}
+    assert {e["id"] for e in near} <= {"jwst", "hubble", "astronaut-emu", "z2", "apollo-lm", "gemini", "mercury-suit", "mark-iii", "aces", "gemini-suit", "iss", "shuttle", "parker-solar-probe"}
     for e in FACTS["entries"]:
         if e["travel"] is not None:
             assert e["travel"]["speedKmS"] > 0

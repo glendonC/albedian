@@ -403,7 +403,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "0446e23fcda5257c08ef4feb02dea450c406ab7855a6796bb1535939fb679f70",
+      "sha256": "5b6ea683504cd996b7db8f66d7719d689c626c97d0fa2be159b16fa8edd04278",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -768,6 +768,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/s/spacecraft_th_new_horizons.jpg (14212 bytes, SHA-256 cd5fa2e0638249d975cf8817842a049585ba081f3e362deb458e9eff9b72da5b)."
+    },
+    {
+      "path": "hangar/parker/parker_lod0.glb",
+      "sha256": "792cedbe302ea441a1789a39e86fac827f6b61a9f101452d44c6e31df423e791",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft parker --out apps/web/public/models/hangar/parker",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA's model names as silver foil made metal foil, its texture of solar cells, panels and the heat shield's white face kept as the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the texture re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Parker%20Solar%20Probe/Parker%20Solar%20Probe.glb (443572 bytes, SHA-256 4d26e84efd29a78c5d07e474f6272bb111668b58da5a7555e305a65c72ddb1c5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/parker/parker_lod1.glb",
+      "sha256": "ece2e905af700a6f3a98a6722f4d85e830ecf39ecbfa16793c0199e0e765d1bc",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft parker --out apps/web/public/models/hangar/parker",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Parker%20Solar%20Probe/Parker%20Solar%20Probe.glb (443572 bytes, SHA-256 4d26e84efd29a78c5d07e474f6272bb111668b58da5a7555e305a65c72ddb1c5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/parker/parker_lod2.glb",
+      "sha256": "7ea5ee779f06b4366fb8ad6da97925173d14c3f7d4a72ac00b614b55fa1960cb",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft parker --out apps/web/public/models/hangar/parker",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Parker%20Solar%20Probe/Parker%20Solar%20Probe.glb (443572 bytes, SHA-256 4d26e84efd29a78c5d07e474f6272bb111668b58da5a7555e305a65c72ddb1c5); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/parker/parker_picker.webp",
+      "sha256": "598a830ee037f3a31839d0d4d834e1e6f29263135dad9cdc0c7bb8294870238e",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft parker --out apps/web/public/models/hangar/parker",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Parker%20Solar%20Probe/Parker%20Solar%20Probe.png (604383 bytes, SHA-256 c62a1851d27fcb6985722a3cd7249fde654fe72f385362c770cc4a935513724e)."
     },
     {
       "path": "hangar/pioneer10/pioneer10_lod0.glb",

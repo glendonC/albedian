@@ -739,6 +739,50 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 30.0,
         "changes": "mean",
     },
+    "parker": {
+        "title": "Parker Solar Probe",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-parker-solar-probe",
+            "title": "Parker Solar Probe, NASA 3D Resources",
+            "folder": "Parker Solar Probe",
+            "file": "Parker Solar Probe.glb",
+            "bytes": 443_572,
+            "sha256": "4d26e84efd29a78c5d07e474f6272bb111668b58da5a7555e305a65c72ddb1c5",
+            "picture": "Parker Solar Probe.png",
+            "picture_bytes": 604_383,
+            "picture_sha256": "c62a1851d27fcb6985722a3cd7249fde654fe72f385362c770cc4a935513724e",
+            "local": "parker",
+        },
+        # The source's unit cube at the root has no material and is not part of the craft.
+        "drop_objects": ["_root"],
+        # The heat shield's two flat faces lie across +Y in the import frame (the front one highest, at the top of the
+        # model), the bus and the magnetometer boom behind it along -Y, the solar wings along X. Flown shield first,
+        # as it meets the Sun; the wings stay level, so +Z is up.
+        "forward": (0.0, 1.0, 0.0),
+        "up": (0.0, 0.0, 1.0),
+        # Scale from the heat shield's front face: the textured faces of that material lying in the shield's plane.
+        # NASA's model is close to metres already (that face 2.25 by 2.33 units, the shield 0.125 units thick
+        # against NSSDC's 11.43 cm), so the scale is near one.
+        "scale_from": {
+            "material": "PSP",
+            "band": {"axis": "y", "min": 1.47, "max": 1.49},
+            "axis": "z",
+            "metres": 2.3,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A",
+            "quote": "the end of the TPS is 2.3 m in diameter.",
+        },
+        "materials": {
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            # Solar cells, panels and the shield's white face in one texture: none of them metal.
+            "PSP": {"role": "textured", "metallic": 0.0, "roughness": 0.45},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.6,
+        "changes": "foil",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -983,6 +1027,22 @@ HANGAR: list[dict] = [
             {"key": "massKg", "value": "419,725", "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "Mass: 925,335 pounds (419,725 kilograms)"},
             {"key": "orbitMinutes", "value": 90, "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "orbiting Earth about every 90 minutes"},
             {"key": "occupiedSince", "value": "2000-11", "page": "https://www.nasa.gov/international-space-station/space-station-facts-and-figures/", "quote": "The space station has been continuously occupied since November 2000."},
+        ],
+    },
+    {
+        "id": "parker-solar-probe",
+        "name": "Parker Solar Probe",
+        "model": "parker",
+        # Parker orbits the Sun: its speed at closest approach, its fastest, is a speed around the Sun and gives no trip
+        # time to a star, so no travel (the design record's D35); NASA's figure stays a fact, in NASA's own words.
+        "travel": None,
+        "facts": [
+            {"key": "speedAtClosestApproachKph", "value": "700,000", "page": "https://science.nasa.gov/mission/parker-solar-probe/", "quote": "At closest approach, Parker Solar Probe hurtles around the Sun at approximately 430,000 mph (700,000 kph)."},
+            {"key": "launch", "value": "2018-08-12", "page": "https://science.nasa.gov/mission/parker-solar-probe/", "quote": "Aug. 12, 2018 / 7:31 UTC"},
+            {"key": "massKg", "value": 685, "page": "https://science.nasa.gov/mission/parker-solar-probe/", "quote": "1,510 pounds (685 kilograms) at launch"},
+            {"key": "heatShieldDiameterM", "value": 2.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A", "quote": "the end of the TPS is 2.3 m in diameter."},
+            {"key": "heatShieldThicknessCm", "value": 11.43, "page": "https://science.nasa.gov/mission/parker-solar-probe/", "quote": "4.5-inch-thick (11.43 cm) carbon-composite shield"},
+            {"key": "power", "value": "solar arrays, 384 W at solar encounter", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A", "quote": "The solar arrays produce 384 W power at solar encounter."},
         ],
     },
 ]

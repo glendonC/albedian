@@ -73,6 +73,15 @@ CHANGES = {
         "faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and "
         "sharp beyond it, and the textures re-encoded as WebP."
     ),
+    # lod0 for a model of flat colours whose blankets NASA's model names as silver foil (recipe "changes": "foil")
+    "lod0_foil": (
+        "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
+        "with +Y up and scaled to metres from a dimension NASA states; NASA's flat colours kept, the parts NASA's "
+        "model names as silver foil made metal foil, its texture of solar cells, panels and the heat shield's white "
+        "face kept as the base colour with one roughness and no metalness, faces NASA's file keeps apart at shared "
+        "corners welded, the normals made again, smooth within an angle and sharp beyond it, and the texture "
+        "re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "
@@ -689,6 +698,13 @@ def main() -> None:
             mat_index = [i for i, m in enumerate(me.materials) if m and m.name == sf["material"]]
             vidx = sorted({v for p in me.polygons if p.material_index in mat_index for v in p.vertices})
             co = np.array([me.vertices[i].co for i in vidx])
+            band = sf.get("band")
+            if band:
+                # only the part of that material lying in a slab of the import frame (one face of a shield)
+                b = "xyz".index(band["axis"])
+                co = co[(co[:, b] >= band["min"]) & (co[:, b] <= band["max"])]
+                if len(co) < 3:
+                    raise SystemExit("the recipe's band holds no part of its material")
         axis = "xyz".index(sf["axis"])
         extent = co[:, axis].max() - co[:, axis].min()
         centre = Vector(((co.max(0) + co.min(0)) / 2).tolist())
