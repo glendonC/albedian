@@ -242,6 +242,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.png (1118264 bytes, SHA-256 2a5c7d395136787354d2155f2a826888c596b912d55fd4ec597a8ad588bcc673)."
     },
     {
+      "path": "hangar/ds1/ds1_lod0.glb",
+      "sha256": "9362e5c306dfaa4a3c78e0eb36a50dfe921a33d88d9d8816621a07e5ef3842c0",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ds1 --out apps/web/public/models/hangar/ds1",
+        "changes": "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture and gold foil kept as the base colour, with metalness, roughness and surface relief added from their own colours and shading, a small printed label in the photo painted over in the colour around it, the silver foil made metal foil and the black blanket black, the solar wings keeping their texture with one roughness and no metalness, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.glb (934676 bytes, SHA-256 86751b676520496d6508c31e3d4baeeb7aca01331fb1e1ad819bb50584c07c12); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ds1/ds1_lod1.glb",
+      "sha256": "7a58ea60b6050504f26d454395b7051ebba8d84943c06c9e9a8b34002245eac4",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ds1 --out apps/web/public/models/hangar/ds1",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.glb (934676 bytes, SHA-256 86751b676520496d6508c31e3d4baeeb7aca01331fb1e1ad819bb50584c07c12); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ds1/ds1_lod2.glb",
+      "sha256": "793137983f703db4067781b8a650951e5f6912baf1cebf01dd384f721a5b55f8",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ds1 --out apps/web/public/models/hangar/ds1",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.glb (934676 bytes, SHA-256 86751b676520496d6508c31e3d4baeeb7aca01331fb1e1ad819bb50584c07c12); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/ds1/ds1_picker.webp",
+      "sha256": "0cf5965109380d6f213faff1f4aa54db2802d7c4d00c59129b6217c0fd484aa1",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft ds1 --out apps/web/public/models/hangar/ds1",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.png (1507333 bytes, SHA-256 721db235a2d806417872c954d4f9403a2bc69877dcac86186cb0b39688f8aea4)."
+    },
+    {
       "path": "hangar/emu/emu_lod0.glb",
       "sha256": "b48ed61de56ee208f6e407dd973d1cd4dfdfad7c71a8ab7f583eafba42ab36e6",
       "sources": [
@@ -420,7 +479,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "b64041780faea16340033db25029780f3c1859b8aeb37eca278aea69f5d99fe9",
+      "sha256": "7e65c9767f5fecea57143d5a7a297999279d78a5dd1f6bcb50e298b5cae69a3c",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"

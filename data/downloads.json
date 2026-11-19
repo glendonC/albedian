@@ -1490,6 +1490,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, Stardust: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/ds1/Deep Space 1.glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.glb",
+      "bytes": 934676,
+      "sha256": "86751b676520496d6508c31e3d4baeeb7aca01331fb1e1ad819bb50584c07c12",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Deep Space 1: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/ds1/Deep Space 1.png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Deep%20Space%201/Deep%20Space%201.png",
+      "bytes": 1507333,
+      "sha256": "721db235a2d806417872c954d4f9403a2bc69877dcac86186cb0b39688f8aea4",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, Deep Space 1: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }

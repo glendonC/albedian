@@ -1109,6 +1109,52 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.4,
         "changes": "photo_foil",
     },
+    "ds1": {
+        "title": "Deep Space 1",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-deep-space-1",
+            "title": "Deep Space 1, NASA 3D Resources",
+            "folder": "Deep Space 1",
+            "file": "Deep Space 1.glb",
+            "bytes": 934_676,
+            "sha256": "86751b676520496d6508c31e3d4baeeb7aca01331fb1e1ad819bb50584c07c12",
+            "picture": "Deep Space 1.png",
+            "picture_bytes": 1_507_333,
+            "picture_sha256": "721db235a2d806417872c954d4f9403a2bc69877dcac86186cb0b39688f8aea4",
+            "local": "ds1",
+        },
+        "drop_objects": [],
+        # The ion engine's gold-blanketed end is at -Z in the import frame and pushes the craft along +Z; the wings reach
+        # along X, so +Y is up and the wings stay level.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, 1.0, 0.0),
+        # The model's whole width along X is the wings deployed, 11.8004 units, to NSSDC's "roughly 11.75 m" (NASA's
+        # model is in metres at a scale of 0.9957).
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 11.75,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+            "quote": "span roughly 11.75 m when deployed",
+        },
+        "materials": {
+            "DS1_tex_01": {
+                "role": "photo_atlas",
+                # The maker's two-line label on the photographed circuit panel Dawn's texture also holds, illegible.
+                "paint_out": [{"box": (526, 346, 570, 360), "what": "a printed label"}],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+            # The wings' cells under cover glass: NASA's texture kept, no metalness.
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.4,
+        "changes": "photo_foil_label",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1487,6 +1533,23 @@ HANGAR: list[dict] = [
             {"key": "capsuleDiameterM", "value": 0.8, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "The short cone-shaped 0.8 m diameter, 0.5 m high, 46 kg sample reentry capsule"},
             {"key": "dishDiameterM", "value": 0.6, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "0.6 m diameter high gain dish"},
             {"key": "cometComa", "value": "2003-12-31", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A", "quote": "The spacecraft entered the coma of comet P/Wild 2 on 31 December 2003."},
+        ],
+    },
+    {
+        # Deep Space 1 tested an ion engine on its way to an asteroid and a comet; NASA states no speed relative to the
+        # Sun for it: no speed. NSSDC's text gives 486.3 kg at launch where its Facts in Brief box says 373.7 kg.
+        "id": "deep-space-1",
+        "name": "Deep Space 1",
+        "model": "ds1",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "1998-10-24", "page": "https://science.nasa.gov/mission/deep-space-1/", "quote": "Oct. 24, 1998 / 12:08:00 UT"},
+            {"key": "launchMassKg", "value": 486.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "The launch mass of the spacecraft is about 486.3 kg"},
+            {"key": "spanM", "value": 11.75, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "span roughly 11.75 m when deployed"},
+            {"key": "heightM", "value": 2.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "the spacecraft measures 2.5 m high, 2.1 m deep, and 1.7 m wide"},
+            {"key": "ionEngineDiameterCm", "value": 30, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "The 30 cm diameter engine"},
+            {"key": "cometComa", "value": "2001-09-22", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "On 22 September 2001, Deep Space 1 entered the coma of comet Borrelly"},
+            {"key": "missionEnd", "value": "2001-12-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A", "quote": "The ion engines on DS1 were commanded off on 18 December 2001 at about 20:00 UT (3:00 p.m. EST) to end the mission."},
         ],
     },
 ]

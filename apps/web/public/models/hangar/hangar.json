@@ -1336,6 +1336,63 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
         "quote": "Two long (4.8 m tip-to-tip) rectangular solar arrays"
       }
+    },
+    "ds1": {
+      "title": "Deep Space 1",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "ds1/ds1_lod0.glb",
+          "bytes": 824196,
+          "triangles": 13800,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "ds1/ds1_lod1.glb",
+          "bytes": 508896,
+          "triangles": 6900,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "ds1/ds1_lod2.glb",
+          "bytes": 202632,
+          "triangles": 2484,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "ds1/ds1_picker.webp",
+          "bytes": 3808,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -5.875,
+          -0.977,
+          -1.104
+        ],
+        "max": [
+          5.875,
+          0.977,
+          1.104
+        ]
+      },
+      "bodyRadiusM": 1.4,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 11.75,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+        "quote": "span roughly 11.75 m when deployed"
+      }
     }
   },
   "entries": [
@@ -2198,6 +2255,56 @@
           "value": "2003-12-31",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1999-003A",
           "quote": "The spacecraft entered the coma of comet P/Wild 2 on 31 December 2003."
+        }
+      ]
+    },
+    {
+      "id": "deep-space-1",
+      "name": "Deep Space 1",
+      "model": "ds1",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "1998-10-24",
+          "page": "https://science.nasa.gov/mission/deep-space-1/",
+          "quote": "Oct. 24, 1998 / 12:08:00 UT"
+        },
+        {
+          "key": "launchMassKg",
+          "value": 486.3,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "The launch mass of the spacecraft is about 486.3 kg"
+        },
+        {
+          "key": "spanM",
+          "value": 11.75,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "span roughly 11.75 m when deployed"
+        },
+        {
+          "key": "heightM",
+          "value": 2.5,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "the spacecraft measures 2.5 m high, 2.1 m deep, and 1.7 m wide"
+        },
+        {
+          "key": "ionEngineDiameterCm",
+          "value": 30,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "The 30 cm diameter engine"
+        },
+        {
+          "key": "cometComa",
+          "value": "2001-09-22",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "On 22 September 2001, Deep Space 1 entered the coma of comet Borrelly"
+        },
+        {
+          "key": "missionEnd",
+          "value": "2001-12-18",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1998-061A",
+          "quote": "The ion engines on DS1 were commanded off on 18 December 2001 at about 20:00 UT (3:00 p.m. EST) to end the mission."
         }
       ]
     }
