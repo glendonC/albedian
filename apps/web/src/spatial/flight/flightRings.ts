@@ -9,8 +9,9 @@ import type { StarView } from './starView.js';
  * while it is on screen, and the count of stars kept on the sky sphere for want of a measured distance.
  */
 
-/** The ring (D27 item 1): radius 7 px on the laptop, stroke 1, ink #f4f3ef at 70 percent, no fill. */
+/** The ring (D27 item 1): radius 7 px on the laptop, 6 on the phone, stroke 1, ink #f4f3ef at 70 percent, no fill. */
 export const RING_RADIUS_PX = 7;
+export const RING_RADIUS_PX_PHONE = 6;
 export const RING_STROKE = 'rgba(244, 243, 239, 0.7)';
 
 export interface FlightRing {
@@ -32,12 +33,12 @@ function touches(x: number, y: number, r: number, box: ScreenBox): boolean {
 }
 
 /** Rings for the matched stars on screen now, the picked star left to its own mark, none touching a kept-out box. */
-export function flightRings(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number, keepOut: readonly ScreenBox[]): FlightRing[] {
+export function flightRings(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number, keepOut: readonly ScreenBox[], radiusPx = RING_RADIUS_PX): FlightRing[] {
   return photoStarsInFlight(session, viewportWidthPx, viewportHeightPx).flatMap((s) => {
     if (!s.screen || s.findingId === session.selectedFindingId) return [];
     const { xPx, yPx } = s.screen;
     if (xPx < 0 || xPx > viewportWidthPx || yPx < 0 || yPx > viewportHeightPx) return [];
-    if (keepOut.some((box) => touches(xPx, yPx, RING_RADIUS_PX, box))) return [];
+    if (keepOut.some((box) => touches(xPx, yPx, radiusPx, box))) return [];
     return [{ findingId: s.findingId, xPx, yPx }];
   });
 }

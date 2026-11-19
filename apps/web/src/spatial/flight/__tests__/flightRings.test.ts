@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import type { CatalogStarCoreTile } from '../../catalogStars/tileCodec.js';
 import { FLIGHT_DRAW_LIMIT_MAG, flightCameraOf, photoStarsInFlight } from '../flightFrame.js';
-import { RING_RADIUS_PX, flightRings, noDistanceStarsOnScreen, noDistanceSentence } from '../flightRings.js';
+import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, flightRings, noDistanceStarsOnScreen, noDistanceSentence } from '../flightRings.js';
 import { starViewOfFlight } from '../starView.js';
 
 const W = 1440;
@@ -44,6 +44,10 @@ describe('flightRings: a ring on every star the photo matched, while on screen (
       expect(touching.some((r) => r.findingId === first.findingId)).toBe(false);
       const clear = flightRings(session, W, H, [{ left: first.xPx + RING_RADIUS_PX + 2, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }]);
       expect(clear.some((r) => r.findingId === first.findingId)).toBe(true);
+      // The phone's smaller ring clears a box the laptop's touches
+      const nearBox = [{ left: first.xPx + 6.5, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }];
+      expect(flightRings(session, W, H, nearBox).some((r) => r.findingId === first.findingId)).toBe(false);
+      expect(flightRings(session, W, H, nearBox, RING_RADIUS_PX_PHONE).some((r) => r.findingId === first.findingId)).toBe(true);
     }
   });
 });

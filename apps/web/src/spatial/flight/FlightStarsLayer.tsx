@@ -13,7 +13,7 @@ import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
 import { coneLengthPc, coneStarView, dragOrbit, initialOrbit, isConeViewOn, zoomOrbit, type OrbitState } from './coneView.js';
 import { starViewOfFlight, type StarView } from './starView.js';
-import { RING_RADIUS_PX, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
+import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
 /**
  * The flight's catalog stars (REQ-SCN-2), drawn over the There screen's panorama after Go there: Gaia DR3 and
@@ -167,6 +167,8 @@ export const FlightStarsLayer: React.FC<{
   cone?: boolean;
   /** D27 item 2: told how many drawn stars stay on the sky sphere for want of a measured distance, for the disclosure. */
   onNoDistanceCount?: (count: number) => void;
+  /** At phone width the rings are 6 px across the radius (D27 item 1). */
+  phone?: boolean;
 }> = ({
   session,
   viewportWidthPx,
@@ -175,6 +177,7 @@ export const FlightStarsLayer: React.FC<{
   craft = typeof window === 'undefined' ? null : craftFromSearch(window.location.search),
   cone = isConeViewOn(session),
   onNoDistanceCount,
+  phone = false,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
@@ -289,7 +292,8 @@ export const FlightStarsLayer: React.FC<{
       if (r && r.width > 0) keepOut.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
     }
   }
-  const rings = !cone && camera ? flightRings(session, viewportWidthPx, viewportHeightPx, keepOut) : [];
+  const ringRadius = phone ? RING_RADIUS_PX_PHONE : RING_RADIUS_PX;
+  const rings = !cone && camera ? flightRings(session, viewportWidthPx, viewportHeightPx, keepOut, ringRadius) : [];
 
   const at = view?.observerPc ?? [0, 0, 0];
   const fromEarthPc = Math.hypot(at[0], at[1], at[2]);
@@ -317,7 +321,7 @@ export const FlightStarsLayer: React.FC<{
     {rings.length > 0 && (
       <svg className="flight-rings" data-testid="flight-rings" aria-hidden="true" width={viewportWidthPx} height={viewportHeightPx} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}>
         {rings.map((r) => (
-          <circle key={r.findingId} data-finding-id={r.findingId} cx={r.xPx} cy={r.yPx} r={RING_RADIUS_PX} fill="none" stroke={RING_STROKE} strokeWidth={1} />
+          <circle key={r.findingId} data-finding-id={r.findingId} cx={r.xPx} cy={r.yPx} r={ringRadius} fill="none" stroke={RING_STROKE} strokeWidth={1} />
         ))}
       </svg>
     )}
