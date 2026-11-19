@@ -62,7 +62,7 @@ A table built from one half of the stars predicts the other half's residuals, so
 
 ### Check on screen [measured]
 
-`?scene=0&freeze=1&t=4` at 1920x1080 in headless Chrome 156 (WebGPU on the Apple M5 Max), captured by [`scripts/capture_landing.mjs`](../../scripts/capture_landing.mjs) with the catalog sprites drawn and again with them hidden, and measured by [`scripts/check_sky_dome_on_screen.py`](../../scripts/check_sky_dome_on_screen.py). Every IAU-named star brighter than magnitude 4.5 is projected through the captured camera at its catalog direction (fov 55.4 degrees, view centre RA 0h22m, Dec +1.0); stars behind the Moon, the Earth or its atmosphere shell are left out; and the dome's star image is centroided within 6 pixels (the brightest difference-of-Gaussians peak, refined by the Gaussian-windowed centroid of section 2). Screen scale at the centre is 1.08 pixels per texel.
+`?scene=0&freeze=1&t=4` at 1920x1080 (at the time; since home-cycle-1 on 19 Nov 2026 the app has no landing scenes: the home draws nothing behind itself and `?scene=` selects nothing, so this check cannot be repeated from an address) in headless Chrome 156 (WebGPU on the Apple M5 Max), captured by [`scripts/capture_landing.mjs`](../../scripts/capture_landing.mjs) with the catalog sprites drawn and again with them hidden, and measured by [`scripts/check_sky_dome_on_screen.py`](../../scripts/check_sky_dome_on_screen.py). Every IAU-named star brighter than magnitude 4.5 is projected through the captured camera at its catalog direction (fov 55.4 degrees, view centre RA 0h22m, Dec +1.0); stars behind the Moon, the Earth or its atmosphere shell are left out; and the dome's star image is centroided within 6 pixels (the brightest difference-of-Gaussians peak, refined by the Gaussian-windowed centroid of section 2). Screen scale at the centre is 1.08 pixels per texel.
 
 | Renderer | Before (acecdc9): stars, median, max | After: stars, median, max |
 |---|---|---|
@@ -101,7 +101,7 @@ uv run pytest tests/integration/test_sky_registration.py tests/integration/test_
 pnpm vitest run apps/web/src/spatial/sky
 
 pnpm dev                                                  # the web app, on port 5173
-node scripts/capture_landing.mjs --out /tmp/sky-capture   # both renderers; --url for another port
+node scripts/capture_landing.mjs --out /tmp/sky-capture   # both renderers; captures no scene since home-cycle-1
 uv run python scripts/check_sky_dome_on_screen.py /tmp/sky-capture webgpu   # or webgl; --json, --detail
 uv run pytest tests/integration/test_sky_dome_on_screen.py
 ```

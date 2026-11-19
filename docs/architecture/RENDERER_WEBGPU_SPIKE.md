@@ -242,7 +242,7 @@ Each frame is 26 draw calls and 134,193 triangles; JavaScript submit time was 0.
 
 ### Milestone 1 before and after, cislunar scene [measured]
 
-`?scene=0&freeze=1&t=4` at 1920x1080, canvas only (page overlays hidden): [WebGL renderer, ACES](img/webgpu-migration/cislunar-webgl-aces-before.jpg), [WebGPU host, AgX](img/webgpu-migration/cislunar-webgpu-agx-after.jpg), [Moon, both](img/webgpu-migration/moon-before-after.jpg).
+`?scene=0&freeze=1&t=4` at 1920x1080 (at the time; since home-cycle-1 on 19 Nov 2026 the app has no landing scenes: the home draws nothing behind itself and `?scene=` selects nothing, so this view cannot be reproduced from an address), canvas only (page overlays hidden): [WebGL renderer, ACES](img/webgpu-migration/cislunar-webgl-aces-before.jpg), [WebGPU host, AgX](img/webgpu-migration/cislunar-webgpu-agx-after.jpg), [Moon, both](img/webgpu-migration/moon-before-after.jpg).
 
 - The same TSL on the WebGL2 backend matches WebGPU: mean difference 0.009 display code values, 0.01% of pixels differ by 8 or more.
 - The new host against the WebGL renderer: 99.9% of pixels differ by 2 or more (the tone curve changes every pixel), 49.8% by 8 or more. Mean display luminance and its standard deviation per region: Moon sunlit side 67 to 75 (31 to 25), Earth day side 61 to 72 (50 to 42), Milky Way band 16 to 21; the dark sky's median goes from (1, 2, 7) to (1, 4, 14). AgX is brighter and flatter in the midtones and lifts the sky dome's constant blue floor that ACES crushed.
@@ -283,8 +283,8 @@ pnpm --filter @albedian/webgpu-spike dev              # http://127.0.0.1:5191
 SPIKE_BENCH_OUT=/some/dir pnpm --filter @albedian/webgpu-spike dev   # where results are written
 
 pnpm dev                                              # apps/web, milestone 1 host
-# WebGPU host:    ?scene=0&freeze=1&renderer=webgpu[&backend=webgl][&t=4]
-# WebGL renderer: ?scene=0&freeze=1[&t=4]            (t holds the scene clock on both)
+# WebGPU host:    ?renderer=webgpu[&backend=webgl][&t=4]   (the ?scene=0&freeze=1 landing scene these
+# WebGL renderer: [?t=4]                                   measurements used was removed in home-cycle-1)
 # In the page:    await window.__albedianCosmos.runBench()          frame times (section 10)
 #                 await window.__albedianCosmos.capturePngDataUrl() readback still
 ```

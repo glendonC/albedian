@@ -4,6 +4,11 @@
  * frame with the catalog star sprites hidden (the sky dome alone under the bodies), and the
  * camera and scene geometry that scripts/check_sky_dome_on_screen.py needs.
  *
+ * Since home-cycle-1 (19 Nov 2026) the web app has no landing scenes: the home draws nothing behind itself and `?scene=` selects nothing, so this
+ * captures no scene today [tested: the viewport's own tests ask for no landing scene]. It is kept for the measurements in
+ * docs/architecture/RENDERER_WEBGPU_SPIKE.md, docs/science/SKY_PANORAMA_REGISTRATION.md and
+ * docs/science/LANDING_MOMENT.md, which stand as taken at their commits.
+ *
  * Usage:
  *   node scripts/capture_landing.mjs --out <dir> [--url http://localhost:5173] [--renderer webgl|webgpu|both]
  *     [--scene 0] [--t 4] [--size 1920x1080]

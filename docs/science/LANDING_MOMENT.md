@@ -84,7 +84,7 @@ At the landing camera's 26 deg vertical field of view, screen angular density is
 | Sky dome against the catalog stars in this view | `uv run python scripts/check_sky_dome_on_screen.py <capture dir> webgpu` | 12 named stars, median 0.434 texels (2.48 px per texel), max 1.348 [tested] |
 
 Captures come from `node scripts/capture_landing.mjs --out <dir> --url <dev server> --renderer webgpu
---scene 0 --t 4 --size 1920x1080` (or 3840x2160). The tool now keeps each frame in the page,
+--scene 0 --t 4 --size 1920x1080` (or 3840x2160), as they were taken: since home-cycle-1 on 19 Nov 2026 the app has no landing scenes: the home draws nothing behind itself and `?scene=` selects nothing, so these captures cannot be repeated today. The tool keeps each frame in the page,
 compares frames by SHA-256 there and brings the chosen one over in 1 MB pieces: DevTools replies of
 3 MB arrive, but replies of 4.7 MB and more never did, and a 1080p frame of this busy sky is a 4.7 MB
 data URL [tested].
