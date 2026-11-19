@@ -12,25 +12,27 @@ struct SkyOverlayView: View {
     let height: Double
 
     /// The marks on the preview now, with where each falls: only where the whole ring is inside the preview, as the
-    /// record draws every ring (a mark at the edge was drawn half outside it, cut with its name: the drift pass of 19 Nov).
+    /// record draws every ring (a mark at the edge was drawn half outside it, cut with its name: the drift pass of 19 Nov);
+    /// at the smaller ring, a named one being kept wholly inside by the naming rule.
     static func placed(_ marks: [SkyMark], attitude: PointingRecord.Quaternion?, acrossFovDeg: Double?, width: Double,
                        height: Double) -> [(SkyMark, CGPoint)] {
         guard let attitude, let acrossFovDeg else { return [] }
         return marks.compactMap { mark in
             SkyProjection.point(altDeg: mark.altDeg, azDeg: mark.azDeg, attitude: attitude, widthPt: width, heightPt: height,
-                                acrossFovDeg: acrossFovDeg, marginPt: -SkyOverlayStyle.ringRadiusPt).map { (mark, CGPoint(x: $0.x, y: $0.y)) }
+                                acrossFovDeg: acrossFovDeg, marginPt: -SkyOverlayStyle.unnamedRingRadiusPt).map { (mark, CGPoint(x: $0.x, y: $0.y)) }
         }
     }
 
     var body: some View {
         Canvas { context, _ in
             let amber = Color(ControlStyle.Evidence.predicted.colour)
-            let r = SkyOverlayStyle.ringRadiusPt
             let ring = StrokeStyle(lineWidth: CGFloat(SkyOverlayStyle.ringLineWidthPt), dash: SkyOverlayStyle.ringDash.map { CGFloat($0) })
             let placed = Self.placed(marks, attitude: attitude, acrossFovDeg: acrossFovDeg, width: width, height: height)
-            // INTERIM: the web's naming rule for a crowded sky (`SkyOverlayNames`); every ring stays
-            let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width)
+            // D20 (`SkyOverlayNames`): every ring stays; names only for named stars brighter than 3.2 that fit
+            let names = SkyOverlayNames.names(placed.map { SkyOverlayNames.Placed(mark: $0.0, x: $0.1.x, y: $0.1.y) }, widthPt: width, heightPt: height)
             for (mark, at) in placed {
+                // D20: a named ring at r 6.5, one without a name at r 4.5
+                let r = names[mark.id] == nil ? SkyOverlayStyle.unnamedRingRadiusPt : SkyOverlayStyle.ringRadiusPt
                 context.stroke(Path(ellipseIn: CGRect(x: at.x - r, y: at.y - r, width: 2 * r, height: 2 * r)), with: .color(amber), style: ring)
                 guard let onLeft = names[mark.id] else { continue }
                 let size = SkyOverlayStyle.nameSizePt

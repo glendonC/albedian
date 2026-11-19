@@ -41,6 +41,9 @@ public struct SkyMark: Equatable, Sendable {
     public let source: Source
     /// A star's catalog magnitude; nil for a body, which has none in this reply.
     public var mag: Double? = nil
+    /// A star's id in its catalog (its `catalogSourceId`); nil for a body. A star whose name is this id has no name of
+    /// its own and is never named on the overlay (D20).
+    public var catalogSourceId: String? = nil
     /// Always predicted: the reader takes no other.
     public var evidence: EvidenceClass { .predicted }
 }
@@ -61,8 +64,10 @@ public enum SkyContextReader {
         for star in stars {
             guard star["evidenceClass"]?.stringValue == "predicted", let release = star["releaseVersion"]?.stringValue,
                   var mark = mark(star, name: star["commonName"]?.stringValue, source: .catalog(release: release)),
-                  let mag = star["mag"]?.numberValue, mag.isFinite else { return nil }
+                  let mag = star["mag"]?.numberValue, mag.isFinite,
+                  let catalogSourceId = star["catalogSourceId"]?.stringValue, !catalogSourceId.isEmpty else { return nil }
             mark.mag = mag
+            mark.catalogSourceId = catalogSourceId
             out.append(mark)
         }
         for body in bodies {
@@ -150,15 +155,19 @@ public enum SkyOverlayWords {
 
 }
 
-/// The record's sizes, in points (arrive iPhone 2's picture: `.cache/uiux/arrive/screen/p-aim.html`).
+/// The record's sizes, in points (arrive iPhone 2's picture: `.cache/uiux/arrive/screen/p-aim.html`; the ring sizes
+/// and the name's size from D20, UIUX-aimnames-DECIDED-BY-LEAD.md).
 public enum SkyOverlayStyle {
+    /// A named ring, and a ring without a name.
     public static let ringRadiusPt = 6.5
+    public static let unnamedRingRadiusPt = 4.5
     public static let ringLineWidthPt = 1.1
     public static let ringDash: [Double] = [2.6, 2.4]
-    /// From the ring's centre to the name's near edge, and the name's baseline below the centre.
-    public static let nameGapPt = 11.0
+    /// From the ring's centre to the name's near edge (12 in D20's screen, 11 in the aiming screen before it), and the
+    /// name's baseline below the centre.
+    public static let nameGapPt = 12.0
     public static let nameBaselinePt = 4.0
-    public static let nameSizePt = 12.0
+    public static let nameSizePt = 11.0
     public static let nameTracking = -0.01
     /// The name's dark edge: a 3 px stroke at 75 percent black under the fill.
     public static let haloWidthPt = 3.0
@@ -235,20 +244,23 @@ extension SkyProjection {
         }
     }
 }
-
-/// Which marks get a name, and on which side: the web's interim rule for a crowded sky (`apps/web/src/reveal/
-/// revealMarks.ts`, the lead's answer of 2026-11-19 03:31; INTERIM, the design lane records it). A star gets its name
-/// only when it is brighter than magnitude 3.2 and its name runs into no other mark's room; the name goes right of its
-/// ring unless that crosses the preview's right edge, and tries the other side once when it runs into a mark. Every
-/// ring stays. A body has no catalog magnitude in this reply: it keeps its name by the same room rule alone
-/// [inference: the web names its predicted bodies through a budget of its own, not by magnitude].
+/// Which marks get a name, and on which side: D20, decided by the lead under the owner's delegation
+/// (UIUX-aimnames-DECIDED-BY-LEAD.md, option (a) made exact), as its screen's own code draws it
+/// (`.cache/uiux/aimnames/build.mjs`: the web's rule with the phone's sizes). Every ring stays. Brightest first, a star
+/// gets its name only when it has a name of its own (not titled by its catalog number, as the web tells one), is
+/// brighter than magnitude 3.2, and its name runs into no ring's room and no name given before it; the name goes right
+/// of its ring, left near the right edge, and tries the other side once when it runs into something. A body has no
+/// catalog magnitude in this reply: it is named by the same rule after the stars [inference: the record names stars
+/// only; a body keeps its name as the approved aiming screen and the web give one].
 public enum SkyOverlayNames {
-    /// The web's numbers, kept as it states them: the faintest star named, a name's width per character in ems, the room a
-    /// mark keeps around its centre, and a name's margin at each end.
+    /// The screen's numbers: the faintest star named, a name's width per character in ems, the room every ring keeps
+    /// about its centre, a name's margin at each end, and how far inside the preview's sides a name (with its margins)
+    /// stays.
     public static let magnitudeLimit = 3.2
     static let emPerChar = 0.56
-    static let markRoomPt = 14.0
+    static let ringRoomPt = 9.0
     static let marginPt = 3.0
+    static let sideInsetPt = 2.0
 
     public struct Placed: Equatable, Sendable {
         public let mark: SkyMark
@@ -266,7 +278,8 @@ public enum SkyOverlayNames {
         func overlaps(_ other: Box) -> Bool { x0 < other.x1 && x1 > other.x0 && y0 < other.y1 && y1 > other.y0 }
     }
 
-    /// The box a name takes beside its ring at the overlay's size: from 0.8 of its size above the centre to 0.5 below.
+    /// The box a name takes beside its ring at the overlay's size: from 0.8 of its size above the centre to 0.5 below,
+    /// with its margin at each end.
     static func box(_ placed: Placed, left: Bool) -> Box {
         let size = SkyOverlayStyle.nameSizePt
         let width = Double(placed.mark.name.utf16.count) * size * emPerChar  // as the web counts a name's length
@@ -275,23 +288,42 @@ public enum SkyOverlayNames {
                    y0: placed.y - size * 0.8, y1: placed.y + size * 0.5)
     }
 
+    /// Whether a mark may carry a name at all: a body, or a star with a name of its own brighter than the limit.
+    static func mayBeNamed(_ mark: SkyMark) -> Bool {
+        switch mark.source {
+        case .ephemeris: true
+        case .catalog: mark.name != mark.catalogSourceId && (mark.mag.map { $0 < magnitudeLimit } ?? false)
+        }
+    }
+
     /// For each mark that gets a name, by its id: whether the name sits on the left of its ring.
-    public static func names(_ placed: [Placed], widthPt: Double) -> [String: Bool] {
-        let rooms = placed.map { p in
-            (p.mark.id, Box(x0: p.x - markRoomPt, x1: p.x + markRoomPt, y0: p.y - markRoomPt, y1: p.y + markRoomPt))
+    public static func names(_ placed: [Placed], widthPt: Double, heightPt: Double) -> [String: Bool] {
+        let order = placed.indices.filter { mayBeNamed(placed[$0].mark) }.sorted { a, b in
+            let (ma, mb) = (placed[a].mark.mag ?? .infinity, placed[b].mark.mag ?? .infinity)
+            return ma == mb ? a < b : ma < mb
+        }
+        let rooms = placed.map { Box(x0: $0.x - ringRoomPt, x1: $0.x + ringRoomPt, y0: $0.y - ringRoomPt, y1: $0.y + ringRoomPt) }
+        let r = SkyOverlayStyle.ringRadiusPt
+        var named: [Int: Bool] = [:]
+        var given: [Box] = []
+        for i in order {
+            let p = placed[i]
+            func clashes(_ name: Box) -> Bool {
+                rooms.indices.contains { $0 != i && name.overlaps(rooms[$0]) } || given.contains(where: name.overlaps)
+            }
+            var onLeft = box(p, left: false).x1 > widthPt - sideInsetPt
+            if clashes(box(p, left: onLeft)) { onLeft.toggle() }
+            let name = box(p, left: onLeft)
+            // On the preview: the name inside its sides, and (the drift pass's rule) the name and its named ring never cut
+            // by an edge (the name's top is above the ring's and its foot above the ring's foot)
+            let fits = name.x0 >= sideInsetPt && name.x1 <= widthPt - sideInsetPt && name.y0 >= 0
+                && p.x - r >= 0 && p.x + r <= widthPt && p.y + r <= heightPt
+            guard fits, !clashes(name) else { continue }
+            named[i] = onLeft
+            given.append(name)
         }
         var out: [String: Bool] = [:]
-        for p in placed {
-            if case .catalog = p.mark.source, !(p.mark.mag.map { $0 < magnitudeLimit } ?? false) { continue }
-            func runsInto(_ box: Box) -> Bool { rooms.contains { $0.0 != p.mark.id && box.overlaps($0.1) } }
-            var onLeft = box(p, left: false).x1 - marginPt > widthPt
-            if runsInto(box(p, left: onLeft)) {
-                let other = box(p, left: !onLeft)
-                if runsInto(other) || other.x1 > widthPt || other.x0 < 0 { continue }
-                onLeft.toggle()
-            }
-            out[p.mark.id] = onLeft
-        }
+        for (i, onLeft) in named { out[placed[i].mark.id] = onLeft }
         return out
     }
 }

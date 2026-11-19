@@ -110,6 +110,8 @@ final class SkyOverlayTests: XCTestCase {
             ("a star's altitude past 90", changed { star(&$0, "altDeg", .number(JSONNumber(91))) }),
             ("a star's azimuth as text", changed { star(&$0, "azDeg", .string("10")) }),
             ("a star with no magnitude", changed { star(&$0, "mag", nil) }),
+            ("a star with no catalog id", changed { star(&$0, "catalogSourceId", nil) }),
+            ("a star with an empty catalog id", changed { star(&$0, "catalogSourceId", .string("")) }),
             ("a body said catalog matched", changed { body(&$0, ["evidenceClass"], .string("catalog_matched")) }),
             ("a body's evidence said observed", changed { body(&$0, ["evidence", "evidenceClass"], .string("observed")) }),
             ("another format", changed { $0["format"] = .string("albedian.sky") }),
@@ -217,59 +219,83 @@ final class SkyOverlayTests: XCTestCase {
         XCTAssertEqual(SkyOverlayWords.tag, "Predicted")
     }
 
-    // MARK: Which marks get a name (INTERIM, the web's rule)
+    // MARK: Which marks get a name (D20, UIUX-aimnames-DECIDED-BY-LEAD.md)
 
-    private func star(_ name: String, mag: Double) -> SkyMark {
+    private func star(_ name: String, mag: Double, catalogSourceId: String = "HIP 1") -> SkyMark {
         var mark = SkyMark(id: "star-\(name.lowercased())", name: name, altDeg: 30, azDeg: 100, source: .catalog(release: "Hipparcos 2007"))
         mark.mag = mag
+        mark.catalogSourceId = catalogSourceId
         return mark
     }
 
-    func testOnlyAStarBrighterThan3Point2IsNamedAndEveryBodyKeepsItsName() {
+    private func at(_ mark: SkyMark, _ x: Double, _ y: Double) -> SkyOverlayNames.Placed { .init(mark: mark, x: x, y: y) }
+
+    private func names(_ placed: [SkyOverlayNames.Placed], width: Double = 390, height: Double = 500) -> [String: Bool] {
+        SkyOverlayNames.names(placed, widthPt: width, heightPt: height)
+    }
+
+    func testOnlyAStarWithANameOfItsOwnBrighterThan3Point2IsNamedAndABodyKeepsItsName() {
         let mars = SkyMark(id: "finding-predicted-mars", name: "Mars", altDeg: 30, azDeg: 100, source: .ephemeris)
-        let placed = [SkyOverlayNames.Placed(mark: star("Vega", mag: 0.03), x: 60, y: 60),
-                      SkyOverlayNames.Placed(mark: star("Sheliak", mag: 3.52), x: 60, y: 160),
-                      SkyOverlayNames.Placed(mark: star("Edge", mag: 3.2), x: 60, y: 260),
-                      SkyOverlayNames.Placed(mark: star("Under", mag: 3.19), x: 60, y: 360),
-                      SkyOverlayNames.Placed(mark: mars, x: 60, y: 460)]
-        XCTAssertEqual(SkyOverlayNames.names(placed, widthPt: 390), ["star-vega": false, "star-under": false, "finding-predicted-mars": false])
+        let placed = [at(star("Vega", mag: 0.03), 60, 60), at(star("Sheliak", mag: 3.52), 60, 120),
+                      at(star("Edge", mag: 3.2), 60, 180), at(star("Under", mag: 3.19), 60, 240),
+                      at(star("HIP 27989", mag: 0.5, catalogSourceId: "HIP 27989"), 60, 300), at(mars, 60, 360)]
+        XCTAssertEqual(names(placed), ["star-vega": false, "star-under": false, "finding-predicted-mars": false])
         var noMag = star("Nomag", mag: 0)
         noMag.mag = nil
-        XCTAssertEqual(SkyOverlayNames.names([SkyOverlayNames.Placed(mark: noMag, x: 60, y: 60)], widthPt: 390), [:])
+        XCTAssertEqual(names([at(noMag, 60, 60)]), [:])
     }
 
-    func testANameGoesLeftNearTheRightEdgeAndTriesTheOtherSideOnceWhenItRunsIntoAMark() {
-        // Near the right edge: 12 pt type, 0.56 em a letter, 11 pt from the ring, 3 pt of margin
-        let edge = SkyOverlayNames.Placed(mark: star("Alkaid", mag: 1.86), x: 346.9, y: 100)
-        XCTAssertEqual(SkyOverlayNames.names([edge], widthPt: 390), ["star-alkaid": true])
-        // A mark just right of a name pushes it to the left of its ring
-        let named = SkyOverlayNames.Placed(mark: star("Rigel", mag: 0.13), x: 150, y: 200)
-        let crowd = SkyOverlayNames.Placed(mark: star("Faint", mag: 4), x: 185, y: 200)
-        XCTAssertEqual(SkyOverlayNames.names([named, crowd], widthPt: 390), ["star-rigel": true])
-        // Marks on both sides: no name, and the ring stays (the view draws every placed ring)
-        let other = SkyOverlayNames.Placed(mark: star("Dim", mag: 4), x: 115, y: 200)
-        XCTAssertEqual(SkyOverlayNames.names([named, crowd, other], widthPt: 390), [:])
-        // The left side past the preview's left edge: no name
-        let atLeft = SkyOverlayNames.Placed(mark: star("Sirius", mag: -1.46), x: 20, y: 300)
-        let right = SkyOverlayNames.Placed(mark: star("Dim2", mag: 4), x: 50, y: 300)
-        XCTAssertEqual(SkyOverlayNames.names([atLeft, right], widthPt: 390), [:])
-        // The room a mark keeps (14 pt about its centre) and a name's height (0.8 of its size above, 0.5 below): a mark
-        // 16 pt above the name's line still pushes it aside, and one 16 pt below too
-        let above = SkyOverlayNames.Placed(mark: star("Above", mag: 4), x: 180, y: 184)
-        XCTAssertEqual(SkyOverlayNames.names([named, above], widthPt: 390), ["star-rigel": true])
-        let below = SkyOverlayNames.Placed(mark: star("Below", mag: 4), x: 180, y: 216)
-        XCTAssertEqual(SkyOverlayNames.names([named, below], widthPt: 390), ["star-rigel": true])
-        let clear = SkyOverlayNames.Placed(mark: star("Clear", mag: 4), x: 180, y: 222)
-        XCTAssertEqual(SkyOverlayNames.names([named, clear], widthPt: 390), ["star-rigel": false])
-        // A mark far away runs into nothing
-        let far = SkyOverlayNames.Placed(mark: star("Far", mag: 4), x: 150, y: 260)
-        XCTAssertEqual(SkyOverlayNames.names([named, far], widthPt: 390), ["star-rigel": false])
+    func testANameGoesLeftNearTheRightEdgeAndOnlyWhereItFits() {
+        // Geist 11, 0.56 em a letter, 12 pt from the ring, 3 pt of margin, 2 pt inside the sides: Alkaid's name with its
+        // margin ends 51.96 pt right of its centre
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 336, 100)]), ["star-alkaid": false])
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 336.1, 100)]), ["star-alkaid": true])
+        // Flipped and still off the preview: no name
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 30, 100)], width: 60), [:])
+        // Flipped, its name fits, but the named ring (r 6.5) would cross the right edge
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 383.5, 100)]), ["star-alkaid": true])
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 383.6, 100)]), [:])
+        // The named ring wholly inside, and the name's box (0.8 of its size above the centre, 0.5 below)
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 6, 100)]), [:])
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 6.5, 100)]), ["star-sirius": false])
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 100, 8.7)]), [:])
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 100, 9)]), ["star-sirius": false])
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 100, 493.5)]), ["star-sirius": false])
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 100, 493.6)]), [:])
     }
 
-    func testTheReaderKeepsEachStarsMagnitudeAndNoneForABody() throws {
+    func testANameRunsIntoNoRingsRoomAndNoNameGivenBeforeItTryingTheOtherSideOnce() {
+        // Rigel's name at (150, 200) spans x 159 to 195.8 on the right, 104.2 to 141 on the left, y 191.2 to 205.5
+        let rigel = at(star("Rigel", mag: 0.13), 150, 200)
+        // Every ring keeps 9 pt about its centre: a ring just right of the name, above it and below it sends it left
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 204.7, 200)]), ["star-rigel": true])
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 204.9, 200)]), ["star-rigel": false])
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 180, 182.3)]), ["star-rigel": true])
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 180, 182.1)]), ["star-rigel": false])
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 180, 214.4)]), ["star-rigel": true])
+        XCTAssertEqual(names([rigel, at(star("Faint", mag: 4), 180, 214.6)]), ["star-rigel": false])
+        // Rings on both sides: no name, and the ring stays (the view draws every placed ring)
+        let right = at(star("Faint", mag: 4), 204.7, 200)
+        XCTAssertEqual(names([rigel, right, at(star("Dim", mag: 4), 95.3, 200)]), [:])
+        XCTAssertEqual(names([rigel, right, at(star("Dim", mag: 4), 95.1, 200)]), ["star-rigel": true])
+        // The other side off the preview: no name, whichever side it starts on
+        XCTAssertEqual(names([at(star("Sirius", mag: -1.46), 20, 300), at(star("Dim", mag: 4), 50, 300)]), [:])
+        XCTAssertEqual(names([at(star("Alkaid", mag: 1.86), 350, 300), at(star("Dim", mag: 4), 320, 300)]), [:])
+        // Brightest first, whatever the order given: a fainter star's name that would run into Rigel's goes left, and a
+        // body (no magnitude) comes after every star
+        XCTAssertEqual(names([at(star("Saiph", mag: 2.09), 150, 210), rigel]), ["star-rigel": false, "star-saiph": true])
+        let mars = SkyMark(id: "finding-predicted-mars", name: "Mars", altDeg: 30, azDeg: 100, source: .ephemeris)
+        XCTAssertEqual(names([at(mars, 150, 210), rigel]), ["star-rigel": false, "finding-predicted-mars": true])
+        // Far apart, both are named on the right
+        XCTAssertEqual(names([rigel, at(star("Saiph", mag: 2.09), 150, 260)]), ["star-rigel": false, "star-saiph": false])
+    }
+
+    func testTheReaderKeepsEachStarsMagnitudeAndCatalogIdAndNoneForABody() throws {
         let marks = try XCTUnwrap(SkyContextReader.marks(base()))
         let vegaRow = try XCTUnwrap(base()["stars"]?.arrayValue?.first { $0["id"]?.stringValue == "star-vega" })
         XCTAssertEqual(marks.first { $0.id == "star-vega" }?.mag, vegaRow["mag"]?.numberValue)
+        XCTAssertEqual(marks.first { $0.id == "star-vega" }?.catalogSourceId, vegaRow["catalogSourceId"]?.stringValue)
+        XCTAssertNil(marks.first { $0.source == .ephemeris }?.catalogSourceId)
         XCTAssertNil(marks.first { $0.source == .ephemeris }?.mag)
         XCTAssertTrue(marks.filter { if case .catalog = $0.source { true } else { false } }.allSatisfy { $0.mag != nil })
     }
