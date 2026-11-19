@@ -72,13 +72,71 @@ describe('the entry on the no-match reveal', () => {
     expect(act.previousElementSibling!.textContent).toContain('Show predicted sky');
   });
 
-  it('is not offered with no target above the horizon, at phone width, or while Original pixels is pressed', () => {
+  it('is not offered with no target above the horizon, or while Original pixels is pressed', () => {
     show(unmatched([target('finding-predicted-star-hip-1', 'Low', -4, 150, 1)]));
-    expect(button('Line it up yourself')).toBeUndefined();
-    show(unmatched(), { phone: true });
     expect(button('Line it up yourself')).toBeUndefined();
     show(unmatched(), { originalPixels: true });
     expect(button('Line it up yourself')).toBeUndefined();
+  });
+});
+
+describe('at phone width (alp-align)', () => {
+  it('offers the entry under Show predicted sky, and aligns with the sentence at 654 and the one line of hints at 700', () => {
+    const told: boolean[] = [];
+    show(unmatched(), { phone: true, onAligningChange: (active: boolean) => told.push(active) });
+    const go = [...container.querySelectorAll('.reveal-phone-go')];
+    expect(go.map((g) => g.textContent)).toEqual(['Show predicted sky', 'Line it up yourself']);
+    expect(go[1]!.className).toBe('reveal-phone-go reveal-phone-go--more');
+    act(() => button('Line it up yourself')!.click());
+    expect(q('.align-phone__lead')!.textContent).toBe('Drag the stars onto the dots you see.');
+    expect(q('.align-phone__help')!.textContent).toBe('Drag to move. Turn or pinch with two fingers.');
+    expect(q('[data-testid="align-layer"]')!.className).toBe('align-layer is-phone');
+    expect(q('[data-testid="reveal-phone-scroll"]')).toBeNull();
+    expect(told).toEqual([false, true]);
+  });
+
+  it('ends at the close circle: the viewport changes the token, and nothing is kept', () => {
+    const told: boolean[] = [];
+    const props = { phone: true, onAligningChange: (active: boolean) => told.push(active) };
+    show(unmatched(), { ...props, cancelAligningToken: 0 });
+    act(() => button('Line it up yourself')!.click());
+    show(unmatched(), { ...props, cancelAligningToken: 1 });
+    expect(q('[data-testid="align-layer"]')).toBeNull();
+    expect(button('Line it up yourself')).toBeDefined();
+    expect(told.at(-1)).toBe(false);
+  });
+
+  it('turns and scales with two fingers: the angle between them turns, their spread scales', () => {
+    show(unmatched(), { phone: true });
+    act(() => button('Line it up yourself')!.click());
+    const layer = q('[data-testid="align-layer"]') as HTMLElement;
+    const touch = (type: string, id: number, x: number, y: number) =>
+      act(() => {
+        const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y });
+        Object.defineProperty(event, 'pointerId', { value: id });
+        layer.dispatchEvent(event);
+      });
+    const fov = () => Number(/(\d+)° across/.exec(container.textContent ?? '')?.[1] ?? NaN);
+    // The readout is not on the phone; read the pose through the rings' spread instead
+    const spread = () => {
+      const c = [...layer.querySelectorAll('circle')].map((el) => [Number(el.getAttribute('cx')), Number(el.getAttribute('cy'))] as const);
+      return Math.hypot(c[0]![0] - c[1]![0], c[0]![1] - c[1]![1]);
+    };
+    expect(Number.isNaN(fov())).toBe(true);
+    const before = spread();
+    touch('pointerdown', 1, 100, 300);
+    touch('pointerdown', 2, 200, 300);
+    // Fingers apart, twice the spread: the sky grows twice as large
+    touch('pointermove', 2, 300, 300);
+    expect(spread() / before).toBeGreaterThan(1.8);
+    touch('pointerup', 2, 300, 300);
+    touch('pointerup', 1, 100, 300);
+    // Both lifted, one finger only moves the sky: its size stays, but for the tangent plane's bend (under 2 percent)
+    const after = spread();
+    touch('pointerdown', 3, 150, 300);
+    touch('pointermove', 3, 190, 330);
+    touch('pointerup', 3, 190, 330);
+    expect(Math.abs(spread() / after - 1)).toBeLessThan(0.02);
   });
 });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { LookIcon, MainAction } from '../look/index.js';
+import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { RevealStatus } from './revealStatus.js';
 
 /**
@@ -7,7 +7,7 @@ import type { RevealStatus } from './revealStatus.js';
  * photo, Show predicted sky centred where Ask out loud sits when a predicted sky can open, and under it the warnings in
  * one list, reached by scrolling the whole screen; the photo moves up with it (the lead's answer 23:50, INTERIM).
  */
-export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void }> = ({ status, onShowPredictedSky }) => {
+export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: () => void; onAlign?: () => void }> = ({ status, onShowPredictedSky, onAlign }) => {
   const screen = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = document.documentElement;
@@ -33,6 +33,12 @@ export const PhoneNoMatch: React.FC<{ status: RevealStatus; onShowPredictedSky: 
         {status.predictedSky && (
           <div className="reveal-phone-go">
             <MainAction label="Show predicted sky" size="phone" onClick={() => onShowPredictedSky()} />
+          </div>
+        )}
+        {/* Line it up yourself under Show predicted sky, reached by scrolling (D24, UIUX-align-READY.md point 1) */}
+        {onAlign && (
+          <div className="reveal-phone-go reveal-phone-go--more">
+            <SecondAction label="Line it up yourself" size="phone" onClick={() => onAlign()} />
           </div>
         )}
         {status.warnings.length > 0 && (

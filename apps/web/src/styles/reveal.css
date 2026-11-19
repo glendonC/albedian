@@ -1704,3 +1704,42 @@
   cursor: default;
   pointer-events: none;
 }
+
+/* Line it up yourself at phone width (D24, the alp-align screen's rules): the entry 16 px under Show predicted sky
+   [proposed: the laptop's gap]; while aligning, the sentence at 654 and the hints at 700; names at 11 px */
+.reveal-phone-go--more {
+  margin-top: 16px;
+}
+
+.align-phone {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.align-phone__lead {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 654px;
+  margin: 0;
+  font: 300 22px / 1.2 var(--look-font-sans);
+  letter-spacing: -0.03em;
+  color: var(--look-ink);
+  text-wrap: balance;
+}
+
+.align-phone__help {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 700px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--look-ink-2);
+}
+
+.align-layer.is-phone .align-layer__name {
+  font-size: 11px;
+}

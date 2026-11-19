@@ -234,6 +234,9 @@ export const SpatialObservatoryViewport: React.FC<
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [volumeLevel, setVolumeLevel] = useState<number>(0.42);
 
+  // Line it up yourself (D24) on the phone: while it shows, the close circle cancels it instead of going home
+  const [phoneAligning, setPhoneAligning] = useState(false);
+  const [cancelAligningToken, setCancelAligningToken] = useState(0);
   const [entryStageActive, setEntryStageActive] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return new URLSearchParams(window.location.search).get('view') !== 'observatory';
@@ -726,6 +729,8 @@ export const SpatialObservatoryViewport: React.FC<
             <RevealPhoto
               session={clipShown && clipPlaying ? { ...slotted, isPlaying: true } : slotted}
               phone={phoneReveal}
+              onAligningChange={setPhoneAligning}
+              cancelAligningToken={cancelAligningToken}
               onSelectFinding={onSelectFinding}
               onHome={() => setEntryStageActive(true)}
               frameMismatch={photoFrameMismatch}
@@ -930,7 +935,7 @@ export const SpatialObservatoryViewport: React.FC<
       {/* The phone reveal's top row (reveal, approved, iPhone 1): a 44 pt close circle, home as the laptop's logo, and the views */}
       {phoneReveal && !entryStageActive && !arrival && (
         <div className="reveal-phone-top" data-hud-interactive="true">
-          <IconButton label="Close" icon="x" size="phone" onClick={() => setEntryStageActive(true)} />
+          <IconButton label="Close" icon="x" size="phone" onClick={() => (phoneAligning ? setCancelAligningToken((n) => n + 1) : setEntryStageActive(true))} />
           <ViewPills
             label="View"
             size="phone"

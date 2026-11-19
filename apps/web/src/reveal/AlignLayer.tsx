@@ -104,7 +104,9 @@ export const AlignLayer: React.FC<{
   live.current = pose;
   const report = useRef(onPose);
   report.current = onPose;
-  const held = useRef<{ x: number; y: number; id: number } | null>(null);
+  // Every pointer held on the layer: one drags; two (a phone's fingers) turn by the angle between them and scale by
+  // their spread
+  const held = useRef(new Map<number, { x: number; y: number }>());
 
   // The wheel is taken without the page scrolling (a passive listener cannot stop it)
   useEffect(() => {
@@ -122,34 +124,45 @@ export const AlignLayer: React.FC<{
 
   const centre = { x: rect.leftPx + rect.widthPx / 2, y: rect.topPx + rect.heightPx / 2 };
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    held.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    held.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const from = held.current;
-    if (!from || from.id !== event.pointerId) return;
+    const pointers = held.current;
+    const from = pointers.get(event.pointerId);
+    if (!from) return;
+    const to = { x: event.clientX, y: event.clientY };
     let next: AlignPose;
-    if (event.ctrlKey) {
+    if (pointers.size >= 2) {
+      // Two fingers: the other one stays where it was for this move
+      const other = [...pointers.entries()].find(([id]) => id !== event.pointerId)![1];
+      const a0 = Math.atan2(from.y - other.y, from.x - other.x);
+      const a1 = Math.atan2(to.y - other.y, to.x - other.x);
+      const d0 = Math.hypot(from.x - other.x, from.y - other.y);
+      const d1 = Math.hypot(to.x - other.x, to.y - other.y);
+      next = turnPose(live.current, ((a1 - a0) * 180) / Math.PI);
+      if (d0 > 0 && d1 > 0) next = scalePose(next, d0 / d1);
+    } else if (event.ctrlKey) {
       // The angle swept about the photo's centre
       const a0 = Math.atan2(from.y - centre.y, from.x - centre.x);
-      const a1 = Math.atan2(event.clientY - centre.y, event.clientX - centre.x);
+      const a1 = Math.atan2(to.y - centre.y, to.x - centre.x);
       next = turnPose(live.current, ((a1 - a0) * 180) / Math.PI);
     } else {
-      next = dragPose(live.current, event.clientX - from.x, event.clientY - from.y, rect.widthPx);
+      next = dragPose(live.current, to.x - from.x, to.y - from.y, rect.widthPx);
     }
-    held.current = { ...from, x: event.clientX, y: event.clientY };
+    pointers.set(event.pointerId, to);
     live.current = next;
     report.current(next);
   };
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (held.current?.id === event.pointerId) held.current = null;
+    held.current.delete(event.pointerId);
   };
 
   const marks = alignMarks(targets, pose, rect, phone ? 11 : 13);
   return (
     <div
       ref={layer}
-      className="align-layer"
+      className={phone ? 'align-layer is-phone' : 'align-layer'}
       data-testid="align-layer"
       style={{ left: `${rect.leftPx}px`, top: `${rect.topPx}px`, width: `${rect.widthPx}px`, height: `${rect.heightPx}px` }}
       onPointerDown={onPointerDown}

@@ -62,6 +62,10 @@ export interface RevealPhotoProps {
   onRestore?: () => void;
   /** Cancel, while the restoration works. */
   onCancelRestore?: () => Promise<unknown> | void;
+  /** Told whenever Line it up yourself (D24) starts or ends, so the phone's close circle (the viewport's) can cancel it. */
+  onAligningChange?: (active: boolean) => void;
+  /** Changed to cancel an alignment from outside: the phone's close circle while aligning. */
+  cancelAligningToken?: number;
   onSelectFinding: (findingId: string, pointerCoords?: { xPx: number; yPx: number }) => void;
   /** The logo, pressed: back to the home. */
   onHome: () => void;
@@ -195,6 +199,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   restoration,
   onRestore,
   onCancelRestore,
+  onAligningChange,
+  cancelAligningToken = 0,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -293,12 +299,18 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const alignStart = useMemo(() => startPose(session), [session]);
   const alignTargetList = useMemo(() => alignTargets(session.observationSolution), [session.observationSolution]);
   const [aligningState, setAligning] = useState<{ pose: AlignPose; from: AlignStart } | null>(null);
-  const alignAllowed = overPhoto && !compareShown && status.kind === 'unmatched' && frame !== null && !bareFrame;
+  // On the laptop and at phone width alike (alp-align), over the photo itself
+  const alignAllowed = !there && !skyShown && !compareShown && status.kind === 'unmatched' && frame !== null && !bareFrame;
   const aligning = alignAllowed ? aligningState : null;
   const alignOffered = alignAllowed && alignStart !== null && restoration?.phase !== 'working';
   useEffect(() => {
     setAligning(null);
-  }, [session.sourceAsset?.sha256]);
+  }, [session.sourceAsset?.sha256, cancelAligningToken]);
+  // The phone's close circle is the viewport's: it is told while aligning shows, so the circle cancels it
+  const aligningShown = aligning !== null;
+  useEffect(() => {
+    onAligningChange?.(aligningShown);
+  }, [aligningShown]);
   useEffect(() => {
     if (!aligning) return undefined;
     const onKey = (event: KeyboardEvent) => {
@@ -336,7 +348,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {aligning && frame && (
-        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
+        <AlignLayer rect={frame} pose={aligning.pose} targets={alignTargetList} phone={phone} onPose={(pose) => setAligning((now) => (now ? { ...now, pose } : now))} />
       )}
 
       {!bareFrame && !earthOnly && !(compareShown && compareZoomed) && (
@@ -384,8 +396,15 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
 
       {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
-      {phone && !skyOnScreen && status.kind === 'unmatched' ? (
-        <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} />
+      {phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
+        // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700; the close circle
+        // cancels. "Solve from here" at 772 waits on SOLVER's contract (lead 07:51)
+        <div className="align-phone" data-testid="reveal-status" role="status">
+          <p className="align-phone__lead">Drag the stars onto the dots you see.</p>
+          <p className="align-phone__help">Drag to move. Turn or pinch with two fingers.</p>
+        </div>
+      ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
+        <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
       ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || earthOnly) ? (
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
