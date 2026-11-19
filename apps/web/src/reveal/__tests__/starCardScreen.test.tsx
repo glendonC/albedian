@@ -11,7 +11,9 @@ import { poseSession, sample } from '../../components/__tests__/poseSessions.js'
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { leaderPath, revealMarks } from '../revealMarks.js';
 import { RevealPhoto } from '../RevealPhoto.js';
+import { MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
 import { StarCard } from '../StarCard.js';
+import { blockLeaveMs } from '../../hooks/useLeaving.js';
 import { starCardFacts } from '../starCardFacts.js';
 
 // The picked star's card on the screen (reveal, approved 2026-11-12, laptop screen 3; numberglyph, cautions and
@@ -337,5 +339,106 @@ describe("the card's rules are the approved pages'", () => {
 
   it('draws the leader as a hairline at 35 percent ink', () => {
     expect(declarationsOf('.reveal-leader')).toMatchObject({ fill: 'none', stroke: 'rgba(244, 243, 239, 0.35)', 'stroke-width': '1' });
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "A star picked and let go"): let go, the card's seven lines go last first,
+// 20 ms apart, in words out, and the leader line undraws with the top line in frame out: 420 ms in all; on the phone
+// the sheet goes down as it came (0.5 s). While they leave the card hears no keys or taps and takes no input.
+describe('a star let go: its card and leader line leave as the motion record says', () => {
+  const LEAVE = blockLeaveMs(7, MOTION_TOKENS);
+  const motionOf = (selector: string): Record<string, string> => {
+    const found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+      });
+    });
+    return found;
+  };
+  const card = () => q('[data-testid="star-card"]');
+  const leader = () => q('[data-testid="reveal-leader"]');
+  it('keeps the card and the line for the leave time, leaving and inert, then removes them', () => {
+    vi.useFakeTimers();
+    try {
+      showReveal(picked());
+      showReveal(session);
+      expect(LEAVE).toBe(420);
+      expect(card()!.classList.contains('is-leaving')).toBe(true);
+      expect(card()!.hasAttribute('inert')).toBe(true);
+      expect(card()!.querySelector('h1')!.textContent).toBe('Betelgeuse');
+      expect(leader()!.classList.contains('is-leaving')).toBe(true);
+      act(() => vi.advanceTimersByTime(LEAVE - 1));
+      expect(card()).not.toBeNull();
+      expect(leader()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(card()).toBeNull();
+      expect(leader()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('swaps the card at once when another star is picked, even while one is leaving', () => {
+    vi.useFakeTimers();
+    try {
+      const other = session.observationSolution!.findings.find((f) => f.title === 'Rigel')!;
+      showReveal(picked());
+      showReveal(session);
+      act(() => vi.advanceTimersByTime(100));
+      showReveal(picked(other));
+      expect(all('[data-testid="star-card"]')).toHaveLength(1);
+      expect(card()!.querySelector('h1')!.textContent).toBe('Rigel');
+      expect(card()!.classList.contains('is-leaving')).toBe(false);
+      expect(leader()!.classList.contains('is-leaving')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives way at once to an answer', () => {
+    showReveal(picked());
+    showReveal(picked(), { answer: { heard: 'What is that?', sentence: 'That is Betelgeuse.', answer: null } });
+    expect(card()).toBeNull();
+  });
+
+  it('on the phone, lets the sheet go down in its own time; under reduced motion all go in the one dissolve', () => {
+    vi.useFakeTimers();
+    try {
+      showReveal(picked(), { phone: true });
+      showReveal(session, { phone: true });
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.sheetMs - 1));
+      expect(card()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(card()).toBeNull();
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+      showReveal(picked());
+      showReveal(session);
+      act(() => vi.advanceTimersByTime(resolveMotionTokens(true).frameOutMs - 1));
+      expect(card()).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(card()).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('as a card leaving, hears no Esc and no tap on the sky', () => {
+    const onClose = vi.fn();
+    showCard(betelgeuse, { onClose, leaving: true });
+    expect(q('.reveal-card')!.classList.contains('is-leaving')).toBe(true);
+    key('Escape');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('times the leaving in motion.css: lines last first, the line undrawing with the top one, the phone sheet down', () => {
+    const order = ['.reveal-card__notes', '.reveal-card__acts', '.reveal-card__source', '.reveal-card__numbers', '.reveal-card__sub', '.reveal-card__name', '.reveal-card__top'];
+    order.forEach((line, n) => expect(motionOf(`.reveal-card.is-leaving ${line}`), line).toEqual({
+      animation: `look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) calc(var(--look-mo-stagger) * ${n}) both`,
+    }));
+    expect(motionOf('.reveal-leader.is-leaving path')).toEqual({ animation: 'look-mo-line-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) calc(var(--look-mo-stagger) * 6) both' });
+    expect(motionOf('.reveal-card.is-phone.is-leaving')).toEqual({ animation: 'look-mo-sheet-out var(--look-mo-dur-sheet) var(--look-mo-ease-sheet) both' });
   });
 });

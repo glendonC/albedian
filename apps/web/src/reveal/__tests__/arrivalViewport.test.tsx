@@ -796,7 +796,8 @@ describe('the viewport shows the approved star card over the photo, above phone 
     expect(mask()).toBe('');
     // The card closes: the session no longer has a picked star
     renderViewport({ ...session, selectedFindingId: null } as ObservationSession, { selectedFinding: null });
-    expect(q(CARD)).toBeNull();
+    // It leaves as the motion record says (motion-17): its lines go, inert, while the fade and the marks are back
+    expect(q(CARD)!.classList.contains('is-leaving')).toBe(true);
     expect(mask()).toContain('56px');
     renderViewport(session, { selectedFinding: session.observationSolution!.findings.find((f) => f.id === session.selectedFindingId) });
     expect(q('.reveal-card__acts .look-second')!.getAttribute('aria-pressed')).toBe('false');

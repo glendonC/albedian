@@ -18,6 +18,8 @@ export interface StarCardProps {
   phone?: boolean;
   /** For a deep-sky object, its OpenNGC row, for its type in words (D23). */
   deepSky?: DeepSkyRow | null;
+  /** Let go: its lines are leaving (the motion record); it hears no keys or taps and takes no input meanwhile. */
+  leaving?: boolean;
 }
 
 /** A pointer that went down and up within this distance is a tap, not a drag. */
@@ -34,7 +36,7 @@ const typing = (target: EventTarget | null): boolean => {
  * catalog row, Go there (only for a star the app can fly to) and Original pixels, and at the foot its limitations,
  * always in view. Esc and a tap on empty sky close it; G goes there. Every word is the finding's (starCardFacts.ts).
  */
-export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null }) => {
+export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null, leaving = false }) => {
   const facts = starCardFacts(finding, deepSky);
   const close = useRef(onClose);
   close.current = onClose;
@@ -43,6 +45,7 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
   const canGoThere = facts.canGoThere;
 
   useEffect(() => {
+    if (leaving) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || typing(event.target)) return;
       if (event.key === 'Escape') {
@@ -77,10 +80,10 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
       window.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [canGoThere]);
+  }, [canGoThere, leaving]);
 
   return (
-    <section className={phone ? 'reveal-card is-phone' : 'reveal-card'} data-testid="star-card" aria-label={facts.title}>
+    <section className={`${phone ? 'reveal-card is-phone' : 'reveal-card'}${leaving ? ' is-leaving' : ''}`} data-testid="star-card" aria-label={facts.title} inert={leaving}>
       <div className="reveal-card__top">
         <EvidenceTag evidenceClass={facts.evidenceClass} />
         <IconButton label="Close" icon="x" onClick={onClose} />

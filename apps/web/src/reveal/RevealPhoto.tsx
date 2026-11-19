@@ -4,10 +4,11 @@ import { ALIGN_RING_PX, AlignLayer, StillAlignMarks } from './AlignLayer.js';
 import { earlyPoseOf } from './earlyPose.js';
 import { lockOnPlan } from './lockOn.js';
 import type { ObservationSolution } from '@albedian/contracts';
-import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type ObservationSession } from '@albedian/contracts';
+import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
 import { saveFromServer, variantExportUrl } from '../services/apiClient.js';
-import { getMarkerVisualSpec, MOTION_TOKENS } from '@albedian/design-system';
+import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
+import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
 import { RestoreCompare, RestoreSteps, RestoreWhy } from './RestoreParts.js';
@@ -34,6 +35,8 @@ import { PhoneNoMatch } from './PhoneNoMatch.js';
 
 /** How long Real sky takes to dissolve in or out: the motion record's view change (reveal.css .real-sky). */
 export const REAL_SKY_FADE_MS = MOTION_TOKENS.viewMs;
+/** The star card's lines, top to foot (motion.css staggers them): top, name, sub, numbers, source, actions, notes. */
+const STAR_CARD_LINES = 7;
 // How long the reveal is arriving: its marks' span, then the status, In this photo and Ask out loud, 20 ms apart (the
 // motion record). While it is, the status waits for the marks; after, a view change brings it in at the words' delay.
 export const REVEAL_ARRIVAL_MS = MOTION_TOKENS.marksSpanMs + MOTION_TOKENS.wordsInDelayMs + MOTION_TOKENS.wordsInMs + 2 * MOTION_TOKENS.staggerMs;
@@ -394,15 +397,34 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     ) : null;
   const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
+  // A star let go: its card (seven lines) and its leader line stay while they leave, with the last picked star; on the
+  // phone the sheet goes down in its own time (the motion record). Another star picked swaps the card at once.
+  const leaveMotion = resolveMotionTokens(reducedMotion());
+  const cardLeaveMs = phone ? Math.max(blockLeaveMs(STAR_CARD_LINES, leaveMotion), leaveMotion.sheetMs) : blockLeaveMs(STAR_CARD_LINES, leaveMotion);
+  const [heldStar, setHeldStar] = useState<CelestialFinding | null>(picked);
+  useEffect(() => {
+    if (picked) setHeldStar(picked);
+  }, [picked]);
+  const cardStar = picked ?? heldStar;
+  const card = useLeaving(!answer && !there && picked !== null, cardLeaveMs);
+  const leaderMark = !phone && !bareFrame && !earthOnly && picked ? (marks.find((mark) => mark.picked) ?? null) : null;
+  const leaderNow = leaderMark ? { d: leaderPath(leaderMark, viewW), predicted: leaderMark.kind === 'predicted' } : null;
+  const [heldLeader, setHeldLeader] = useState(leaderNow);
+  useEffect(() => {
+    if (leaderNow) setHeldLeader(leaderNow);
+  }, [leaderNow?.d, leaderNow?.predicted]);
+  const leaderShape = leaderNow ?? heldLeader;
+  const leader = useLeaving(leaderNow !== null, cardLeaveMs);
+
   return (
     <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
       {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 
-      {!phone && !bareFrame && !earthOnly && picked && marks.some((mark) => mark.picked) && (
-        <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
-          <path pathLength={1} d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
+      {leader.mounted && leaderShape && !earthOnly && (
+        <svg className={`reveal-leader${leaderShape.predicted ? ' is-predicted' : ''}${leader.leaving ? ' is-leaving' : ''}`} data-testid="reveal-leader" aria-hidden="true" focusable="false">
+          <path pathLength={1} d={leaderShape.d} />
         </svg>
       )}
 
@@ -703,16 +725,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       )}
       {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} phone={phone} hidden={phone && details} onDetails={() => setDetails(true)} />}
 
-      {!answer && !there && picked && (
+      {!answer && card.mounted && cardStar && (
         <StarCard
-          key={picked.id}
-          finding={picked}
+          key={cardStar.id}
+          finding={cardStar}
           originalPixels={originalPixels}
           onToggleOriginalPixels={() => onToggleOriginalPixels?.()}
-          onGoThere={() => onGoThere?.(picked.id)}
+          onGoThere={() => onGoThere?.(cardStar.id)}
           onClose={() => onCloseCard?.()}
           phone={phone}
-          deepSky={isDeepSky(picked) ? deepSkyRowOf(picked, deepSky) : null}
+          deepSky={isDeepSky(cardStar) ? deepSkyRowOf(cardStar, deepSky) : null}
+          leaving={card.leaving}
         />
       )}
 
