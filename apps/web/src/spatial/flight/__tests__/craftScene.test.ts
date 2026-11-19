@@ -5,7 +5,7 @@ import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
 import { steerStartOf } from '../starView.js';
-import { CRAFTS, CRAFT_FRAMING, craftFromSearch, craftModelUrl } from '../crafts.js';
+import { CRAFTS, CRAFT_FRAMING, craftFromSearch, craftModelUrl, craftsOfHangar } from '../crafts.js';
 import { craftSceneOf, photoPinholeOf, restExtentM } from '../craftScene.js';
 
 const W = 1440;
@@ -250,6 +250,26 @@ describe('craftFromSearch: the interim choice by page address', () => {
     const boomEnd = at([-12, 0, 0]);
     expect(boomEnd.yPx - dish.yPx).toBeGreaterThan(100);
     expect(Math.abs(boomEnd.xPx - dish.xPx)).toBeLessThan(0.15 * (boomEnd.yPx - dish.yPx));
+  });
+
+  it('takes a travel speed only relative to the Sun and above zero, else claims none (AUDIT-C on hangar-1)', () => {
+    // A hangar file written by hand (typed test data): one model, entries whose travel varies
+    const travel = (speedKmS: number, relativeTo: string) => ({ speedKmS, relativeTo, asOf: '2024-01-01', page: 'https://science.nasa.gov/' });
+    const file = {
+      frame: { forward: '+Z', up: '+Y' },
+      models: { m: { kind: 'craft', files: { lod1: { path: 'm/a.glb' }, lod2: { path: 'm/b.glb' }, picker: { path: 'm/p.webp' } } } },
+      entries: [
+        { id: 'sun', name: 'Sun-relative', model: 'm', travel: travel(15.3, 'Sun') },
+        { id: 'earth', name: 'Earth-relative', model: 'm', travel: travel(7.7, 'Earth') },
+        { id: 'zero', name: 'Zero', model: 'm', travel: travel(0, 'Sun') },
+        { id: 'negative', name: 'Negative', model: 'm', travel: travel(-3, 'Sun') },
+        { id: 'nan', name: 'Not a number', model: 'm', travel: travel(Number.NaN, 'Sun') },
+        { id: 'none', name: 'None', model: 'm', travel: null },
+      ],
+    };
+    const crafts = craftsOfHangar(file);
+    expect(crafts.map((c) => [c.id, c.speed?.kmS ?? null])).toEqual([['sun', 15.3], ['earth', null], ['zero', null], ['negative', null], ['nan', null], ['none', null]]);
+    expect(crafts[0]!.speed).toEqual({ kmS: 15.3, relativeTo: 'the Sun', sourceUrl: 'https://science.nasa.gov/', asOf: '2024-01-01' });
   });
 });
 
