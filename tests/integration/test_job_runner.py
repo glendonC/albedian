@@ -1163,3 +1163,59 @@ def test_a_read_never_serves_an_ended_record_before_it_is_written(
         time.sleep(0.01)
     else:
         raise AssertionError("the job never ended")
+
+
+def test_a_job_whose_runner_stops_builds_no_ending_and_leaves_its_record_for_the_next_start(
+        world: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """At shutdown a running job's work stops, and no ending is built: the record stays running for the next start's
+    sweep, and nothing reads the clock for a job that will not end here (one did, after the next test had set its own
+    clock, and moved that test's stamps)."""
+    script = Script()
+
+    def body(ctx: JobContext) -> KindResult:
+        script.entered.set()
+        while True:
+            ctx.check_cancel()
+            time.sleep(0.01)
+
+    world["kinds"]["solve"] = solve_kind(script, body)
+    runner, sha = world["runner"](), world["shas"][0]
+    record, _ = runner.start(sha, "solve")
+    assert script.entered.wait(BOUND_S)
+    reads: list[datetime] = []
+    real_now = job_runner._now
+    monkeypatch.setattr(job_runner, "_now", lambda: reads.append(real_now()) or reads[-1])
+    job = runner._jobs[record["id"]]
+    runner.shutdown()
+    assert job.ended.wait(BOUND_S), "the stopped job's slot let it go"
+    assert reads == [], "nothing read the clock for a job that does not end here"
+    assert _on_disk(world["store"], record["id"])["state"] == "running"
+
+
+@pytest.mark.parametrize("error", [KeyError("a key"), TypeError("findings is not a list")])
+def test_an_error_while_a_job_ends_fails_that_job_and_the_group_runs_the_next(
+        world: dict[str, Any], error: Exception) -> None:
+    """A kind's results check that raises (a damaged stored solution makes the solve's raise TypeError) fails its one
+    job with the kind's internal-error sentence; the lock and the group's slot are freed, so the same upload starts a
+    new job and another upload's solve runs to its end (AUDIT-B's read of platform-7b)."""
+    script = Script()
+    script.release.set()
+    kind = solve_kind(script)
+    checks = {"raise": True}
+
+    def results_valid(store: JobStore, record: dict[str, Any]) -> bool:
+        if checks["raise"]:
+            raise error
+        return store.solution_of(record) is not None
+
+    world["kinds"]["solve"] = JobKind(**{**kind.__dict__, "results_valid": results_valid})
+    runner, (sha_a, sha_b, _) = world["runner"](), world["shas"]
+    first, _ = runner.start(sha_a, "solve")
+    ended = runner.wait(first["id"], BOUND_S)
+    assert (ended["state"], ended["error"]) == ("failed", INTERNAL_SENTENCE)
+    checks["raise"] = False
+    again, created = runner.start(sha_a, "solve")
+    assert created and again["id"] != first["id"]
+    other, _ = runner.start(sha_b, "solve")
+    assert runner.wait(again["id"], BOUND_S)["state"] == "succeeded"
+    assert runner.wait(other["id"], BOUND_S)["state"] == "succeeded", "the group's slot runs the next job"

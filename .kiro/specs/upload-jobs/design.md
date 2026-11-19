@@ -247,7 +247,8 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   platform-5s), and an ending record that cannot be written fails it with the kind's storing sentence ("The job's
   result could not be stored."). Before the commit the runner checks the record by the contract and asks the kind
   whether its results are whole; a job that does not commit loses everything `ctx.publish` made and its partials.
-  At shutdown no record is written, so a job that was running is ended interrupted by the next start's sweep. A
+  At shutdown no record is written, and since platform-7b none is even built (nothing reads the clock for a job
+  that will not end here), so a job that was running is ended interrupted by the next start's sweep. A
   cancel of a job another process runs answers 409. `run_solve_job` stays as on `main`, writing today's two files,
   for the tests and scripts that call it; it becomes the thin wrapper in platform-5c [decided 2026-11-18].
   One child per group serves the whole process (`SlotWorker`), shared by the runners of every store root, as the one

@@ -561,20 +561,33 @@ class Runner:
             timer = threading.Timer(limit, self._deadline_passed, args=(job,))
             timer.daemon = True
             timer.start()
-            final = self._commit(job, kind.run(JobContext(self, job)))
+            outcome: Any = kind.run(JobContext(self, job))
         except (JobStopped, WorkerStopped):
-            final = self._stopped(job)
+            outcome = JobStopped()
         except JobRefusal as refusal:
-            final = self._failed(job, refusal.reason)
+            outcome = refusal
         except Exception:  # noqa: BLE001 - its text is never stored or logged (REQ-JOB-9)
-            final = self._failed(job, None)
+            outcome = None
         finally:
             if timer is not None:
                 timer.cancel()
         if self.closed:
-            # The server is stopping: the record stays as it was, and the next start's sweep says it was interrupted
+            # The server is stopping: the record stays as it was, and the next start's sweep says it was interrupted.
+            # No ending is built, so nothing reads the clock or the store for a job that will not end here
             self._finish(job, keep_results=False)
             return
+        try:
+            if isinstance(outcome, KindResult):
+                final = self._commit(job, outcome)
+            elif isinstance(outcome, JobStopped):
+                final = self._stopped(job)
+            elif isinstance(outcome, JobRefusal):
+                final = self._failed(job, outcome.reason)
+            else:
+                final = self._failed(job, None)
+        except Exception:  # noqa: BLE001 - a kind's results check may raise anything; its text is never stored
+            # The ending itself failed (a results check that raised): this one job fails, the slot goes on
+            final = self._failed(job, None)
         try:
             self._end(job, final)
         except (OSError, ValidationError, ValueError):
