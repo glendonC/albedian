@@ -197,7 +197,7 @@ pictures under `.cache/restore-review/<unit>/`.
     ends with its plain note and a lift held by the quantisation bound.
   - _Requirements: REQ-RST-6.10, 6.11, 7.1 to 7.10, 8.1 to 8.5, 8.9, 12.2 to 12.4_
 
-- [ ] 8. restore-8: export and the manifest (REQ-RST-9; P-RST-21)
+- [x] 8. restore-8: export and the manifest (REQ-RST-9; P-RST-21)
   - Changed: `services/media/router.py` (the export and manifest routes), `services/media/variants.py` (the
     manifest builder), `tests/fixtures/api_surface.json`; tests under `tests/media/`.
   - An export carries no capture time, place, file name or container tag from the original [decided 2026-11-11:
@@ -205,6 +205,14 @@ pictures under `.cache/restore-review/<unit>/`.
     upload planted with all four.
   - Done when: the exported bytes hash to the manifest's variant hash; the manifest parses in both languages and
     holds no title, time, place or path; a rejected attempt has nothing to export.
+  - Done 2026-11-19 for stills [tested: `tests/media/test_export.py`]: `GET .../variants/{variantId}/export` answers
+    one zip stored without compression, `<variantId>.zip`, holding `<variantId>.png` byte for byte and
+    `<variantId>.png.json`, the manifest, as review row D22 decided (`.lead/uiux/UIUX-export-READY.md`; section 12's
+    two `albedian-` attachments are replaced by it); `GET .../manifest` answers the same sidecar. The manifest names
+    the newest solution id the job store names. A synthetic upload planted with a file name, a capture time, a place,
+    a camera make and tEXt, iTXt, tIME and eXIf chunks exports none of them; its ICC profile is kept byte for byte,
+    with none of them in its text tags (REQ-RST-9.4, decided 2026-11-19). A clip's export waits for restore-7's
+    stored file (501 until then) and, past 4 GiB, for zip64 [open].
   - _Requirements: REQ-RST-9.1 to 9.7_
 
 - [ ] 9. restore-9: the corrections of old code (REQ-RST-11)

@@ -215,3 +215,134 @@ def get_variant_file(
             "Content-Disposition": "inline",
         },
     )
+
+
+# =============================================================================================
+# The export and its manifest (design section 12; REQ-RST-9; review row D22; restore-8)
+# =============================================================================================
+
+import hashlib  # noqa: E402
+import os  # noqa: E402
+import stat  # noqa: E402
+import zlib  # noqa: E402
+
+from fastapi.responses import Response, StreamingResponse  # noqa: E402
+
+from services.ingest.job_store import JobStore  # noqa: E402
+from services.media import variants  # noqa: E402
+
+# Built on request from the stored records and the solution id named at that moment, so never kept by a cache
+EXPORT_HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+VARIANT_RECORDS = ("variant.json", "graph.json", "attempt.json")
+CLIP_EXPORT_NOT_BUILT = "Exporting a clip is not built yet."
+RECORDS_REFUSED = "the stored records do not make a manifest the contract takes"
+FILE_CHANGED = "the stored file does not match its record"
+READ_BLOCK = 1 << 20
+
+
+def _export_records(store: IngestStore, sha256: str, variant_id: str) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """The variant's folder, its manifest and its variant record. 404 when the folder is missing, is a link, or lacks a
+    record, and when its attempt is not `ready`: a rejected or failed attempt has nothing to export (REQ-RST-9.6)."""
+    folder = store.folder(sha256) / "variants" / variant_id
+    try:
+        if not stat.S_ISDIR(os.lstat(folder).st_mode):
+            raise HTTPException(status_code=404, detail=NO_VARIANT)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
+    try:
+        variant, graph, attempt = (json.loads(_read_unlinked(folder / name)) for name in VARIANT_RECORDS)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
+    if attempt.get("status") != "ready" or variant.get("id") != variant_id:
+        raise HTTPException(status_code=404, detail=NO_VARIANT)
+    if variant.get("mimeType") not in variants.EXPORT_EXTENSIONS:
+        raise HTTPException(status_code=501, detail=CLIP_EXPORT_NOT_BUILT)
+    try:
+        manifest = variants.export_manifest(variant, graph, attempt, JobStore(store).newest_solution_id(sha256))
+    except ValidationError:
+        raise HTTPException(status_code=500, detail=RECORDS_REFUSED) from None
+    return folder, manifest, variant
+
+
+def _open_unlinked(path: Path) -> int:
+    """A descriptor of a regular file, never opened through a link. FileNotFoundError for a link or anything else."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        raise FileNotFoundError(path.name) from error
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise FileNotFoundError(path.name)
+    return fd
+
+
+def _read_unlinked(path: Path) -> bytes:
+    with os.fdopen(_open_unlinked(path), "rb") as handle:
+        return handle.read()
+
+
+def _export_name(variant: dict[str, Any]) -> str:
+    return f"{variant['id']}.{variants.EXPORT_EXTENSIONS[variant['mimeType']]}"
+
+
+@router.get("/api/media/{sha256}/variants/{variant_id}/export", response_class=StreamingResponse)
+def get_variant_export(
+    sha256: str = PathParameter(pattern=SHA256_PATTERN),
+    variant_id: str = PathParameter(pattern=VARIANT_PATTERN),
+    store: IngestStore = Depends(get_ingest_store),
+) -> StreamingResponse:
+    """A ready variant to take away (REQ-RST-9.1, review row D22): one zip stored without compression, an attachment
+    named `<variantId>.zip`, holding `<variantId>.png`, the stored file byte for byte, and `<variantId>.png.json`, its
+    manifest. The file is read once to check it hashes to its record before a byte is sent, and again as it is sent."""
+    folder, manifest, variant = _export_records(store, sha256, variant_id)
+    name = _export_name(variant)
+    try:
+        # A still's stored file, the only type EXPORT_EXTENSIONS names until a clip's file is stored (restore-7)
+        fd = _open_unlinked(folder / "variant.png")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=NO_VARIANT) from None
+    handle = os.fdopen(fd, "rb")
+    digest, crc, size = hashlib.sha256(), 0, 0
+    for block in iter(lambda: handle.read(READ_BLOCK), b""):
+        digest.update(block)
+        crc, size = zlib.crc32(block, crc), size + len(block)
+    if digest.hexdigest() != variant["sha256"]:
+        handle.close()
+        raise HTTPException(status_code=500, detail=FILE_CHANGED)
+    sidecar = variants.manifest_bytes(manifest)
+
+    def file_blocks():
+        handle.seek(0)
+        return iter(lambda: handle.read(READ_BLOCK), b"")
+
+    entries = [
+        variants.ZipEntry(name, size, crc & 0xFFFFFFFF, file_blocks),
+        variants.ZipEntry(f"{name}.json", len(sidecar), zlib.crc32(sidecar) & 0xFFFFFFFF, lambda: iter((sidecar,))),
+    ]
+    length = variants.stored_zip_size(entries)
+    body = variants.stored_zip(entries, variants.zip_date_time(variant["createdAtUTC"]))
+
+    def stream():
+        try:
+            yield from body
+        finally:
+            handle.close()
+
+    return StreamingResponse(stream(), media_type="application/zip", headers={
+        **EXPORT_HEADERS, "Content-Length": str(length),
+        "Content-Disposition": f'attachment; filename="{variant_id}.zip"',
+    })
+
+
+@router.get("/api/media/{sha256}/variants/{variant_id}/manifest")
+def get_variant_manifest(
+    sha256: str = PathParameter(pattern=SHA256_PATTERN),
+    variant_id: str = PathParameter(pattern=VARIANT_PATTERN),
+    store: IngestStore = Depends(get_ingest_store),
+) -> Response:
+    """A ready variant's manifest alone (REQ-RST-9.2), the export's own sidecar, as an attachment named
+    `<variantId>.png.json`."""
+    _, manifest, variant = _export_records(store, sha256, variant_id)
+    return Response(variants.manifest_bytes(manifest), media_type="application/json", headers={
+        **EXPORT_HEADERS, "Content-Disposition": f'attachment; filename="{_export_name(variant)}.json"',
+    })

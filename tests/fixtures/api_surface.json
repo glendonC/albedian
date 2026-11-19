@@ -486,6 +486,99 @@
           }
         }
       },
+      "/api/media/{sha256}/variants/{variant_id}/export": {
+        "get": {
+          "summary": "Get Variant Export",
+          "description": "A ready variant to take away (REQ-RST-9.1, review row D22): one zip stored without compression, an attachment\nnamed `<variantId>.zip`, holding `<variantId>.png`, the stored file byte for byte, and `<variantId>.png.json`, its\nmanifest. The file is read once to check it hashes to its record before a byte is sent, and again as it is sent.",
+          "operationId": "get_variant_export_api_media__sha256__variants__variant_id__export_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/{sha256}/variants/{variant_id}/manifest": {
+        "get": {
+          "summary": "Get Variant Manifest",
+          "description": "A ready variant's manifest alone (REQ-RST-9.2), the export's own sidecar, as an attachment named\n`<variantId>.png.json`.",
+          "operationId": "get_variant_manifest_api_media__sha256__variants__variant_id__manifest_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/voice/command": {
         "post": {
           "summary": "Post Voice Command",
@@ -1593,6 +1686,24 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/media/{sha256}/variants/{variant_id}/export",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_variant_export",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/{sha256}/variants/{variant_id}/manifest",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_variant_manifest",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
       "path": "/api/voice/command",
       "methods": [
         "POST"
@@ -1754,6 +1865,8 @@
           "/api/media/{sha256}/variants": 0,
           "/api/media/{sha256}/variants/{variant_id}": 0,
           "/api/media/{sha256}/variants/{variant_id}/file": 0,
+          "/api/media/{sha256}/variants/{variant_id}/export": 0,
+          "/api/media/{sha256}/variants/{variant_id}/manifest": 0,
           "/api/voice/command": 65536,
           "/api/voice/answer/{sha256}": 65536,
           "/api/ingest": null,

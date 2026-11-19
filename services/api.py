@@ -212,6 +212,8 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/media/{sha256}/variants": 0,
     "/api/media/{sha256}/variants/{variant_id}": 0,
     "/api/media/{sha256}/variants/{variant_id}/file": 0,
+    "/api/media/{sha256}/variants/{variant_id}/export": 0,
+    "/api/media/{sha256}/variants/{variant_id}/manifest": 0,
     # Largest measured body 5,154 bytes from the tests and 553 from the web's; an utterance at its 2,000 UTF-16
     # unit cap is at most 12,000 bytes of JSON (services/contracts/voice.py UTTERANCE_MAX_UTF16)
     "/api/voice/command": BODY_LIMIT_FLOOR,

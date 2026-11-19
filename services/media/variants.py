@@ -310,3 +310,107 @@ def verify_copy(data: bytes, samples: np.ndarray) -> bool:
     except (OSError, ValueError):
         return False
     return written.shape == samples.shape and written.dtype == samples.dtype and np.array_equal(written, samples)
+
+
+# =============================================================================================
+# The export and its manifest (design section 12; REQ-RST-9; review row D22)
+# =============================================================================================
+
+import struct  # noqa: E402
+
+from services.contracts.media import EXPORT_MANIFEST_FORMAT, EXPORT_MANIFEST_FORMAT_VERSION, ExportManifest  # noqa: E402
+
+# A variant's export name by its type: a still is exported as the PNG that is the variant (REQ-RST-9.5). A clip's
+# rows come with its stored file (restore-7) [open: until then a clip has no export]
+EXPORT_EXTENSIONS = {"image/png": "png"}
+
+
+def export_manifest(variant: dict[str, Any], graph: dict[str, Any], attempt: dict[str, Any],
+                    solution_id: Optional[str]) -> dict[str, Any]:
+    """The manifest of a stored variant (REQ-RST-9.2), built from its three stored records and the solution id the
+    job store names for its upload at this moment: the same stored state gives the same manifest, with no clock of
+    its own. It holds what the three records hold, which is no title, file name, capture time, place or path
+    (P-RST-19). Raises ValidationError when the contract refuses it, a manifest of an attempt not `ready` among them."""
+    manifest: dict[str, Any] = {
+        "format": EXPORT_MANIFEST_FORMAT, "formatVersion": EXPORT_MANIFEST_FORMAT_VERSION,
+        "sourceSha256": graph["sourceSha256"], "variant": variant, "graph": graph, "attempt": attempt,
+    }
+    if solution_id is not None:
+        manifest["observationSolutionId"] = solution_id
+    manifest["disclosure"] = variant["disclosure"]
+    ExportManifest.model_validate(manifest)
+    return manifest
+
+
+def manifest_bytes(manifest: dict[str, Any]) -> bytes:
+    """The sidecar's bytes: pretty printed, UTF-8, one newline at the end, as the stored records are written."""
+    return _record_bytes(manifest)
+
+
+# A stored zip [verified: PKWARE APPNOTE.TXT 6.3, sections 4.3.7, 4.3.12 and 4.3.16; the writer is tested to write
+# what Python's zipfile writes for the same entries]: each entry's local header with its CRC-32 and sizes, so no data
+# descriptor follows it, then the central directory and its end record. No zip64: an entry or offset past 4 GiB is
+# refused [open: a long clip's export].
+_LOCAL = struct.Struct("<IHHHHHIIIHH")
+_CENTRAL = struct.Struct("<IHHHHHHIIIHHHHHII")
+_END = struct.Struct("<IHHHHIIH")
+_ZIP_VERSION = 20  # 2.0, the version Python's zipfile writes for a stored entry
+_MADE_BY_UNIX = 3 << 8
+# Readable by whoever unpacks it, whatever the store's own 0400
+_EXTERNAL_ATTR = 0o100644 << 16
+_ZIP32_LIMIT = 0xFFFFFFFF
+
+
+@dataclass(frozen=True)
+class ZipEntry:
+    """One file of a stored zip: its name in the archive, its size and CRC-32, and its bytes in blocks."""
+
+    name: str
+    size: int
+    crc32: int
+    blocks: Any  # a callable answering an iterator of bytes
+
+
+def zip_date_time(utc_instant: str) -> tuple[int, int, int, int, int, int]:
+    """An entry's time: the variant's own UTC instant (its `createdAtUTC`), at the zip format's two second steps."""
+    moment = datetime.strptime(utc_instant[:19], "%Y-%m-%dT%H:%M:%S")
+    return (moment.year, moment.month, moment.day, moment.hour, moment.minute, moment.second - moment.second % 2)
+
+
+def _dos(date_time: tuple[int, int, int, int, int, int]) -> tuple[int, int]:
+    year, month, day, hour, minute, second = date_time
+    return hour << 11 | minute << 5 | second // 2, (year - 1980) << 9 | month << 5 | day
+
+
+def _local_header(entry: ZipEntry, dos: tuple[int, int]) -> bytes:
+    name = entry.name.encode("ascii")
+    return _LOCAL.pack(0x04034B50, _ZIP_VERSION, 0, 0, dos[0], dos[1], entry.crc32, entry.size, entry.size, len(name), 0) + name
+
+
+def stored_zip_size(entries: list[ZipEntry]) -> int:
+    """The zip's length in bytes, known before a byte of it is written."""
+    names = sum(len(entry.name.encode("ascii")) for entry in entries)
+    return (sum(_LOCAL.size + entry.size + _CENTRAL.size for entry in entries) + 2 * names + _END.size)
+
+
+def stored_zip(entries: list[ZipEntry], date_time: tuple[int, int, int, int, int, int]) -> Any:
+    """The zip's bytes, block by block: an entry's bytes are read as they are sent, never held whole. An entry whose
+    blocks do not add up to its size stops the zip before its central directory, so no reader takes it as whole."""
+    if stored_zip_size(entries) > _ZIP32_LIMIT or len(entries) > 0xFFFF:
+        raise ValueError("an export past 4 GiB needs zip64, which this writer does not write")
+    dos, offset, central = _dos(date_time), 0, []
+    for entry in entries:
+        header = _local_header(entry, dos)
+        name = entry.name.encode("ascii")
+        central.append(_CENTRAL.pack(0x02014B50, _MADE_BY_UNIX | _ZIP_VERSION, _ZIP_VERSION, 0, 0, dos[0], dos[1],
+                                     entry.crc32, entry.size, entry.size, len(name), 0, 0, 0, 0, _EXTERNAL_ATTR, offset) + name)
+        yield header
+        sent, crc = 0, 0
+        for block in entry.blocks():
+            sent, crc = sent + len(block), zlib.crc32(block, crc)
+            yield block
+        if sent != entry.size or crc & 0xFFFFFFFF != entry.crc32:
+            raise ValueError(f"{entry.name} changed while it was sent")
+        offset += len(header) + entry.size
+    directory = b"".join(central)
+    yield directory + _END.pack(0x06054B50, 0, 0, len(entries), len(entries), len(directory), offset, 0)
