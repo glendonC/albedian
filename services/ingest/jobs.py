@@ -38,7 +38,13 @@ from services.contracts.jobs import SOLVE_FAILURE_SENTENCES
 from services.ingest.job_store import JobStore
 from services.ingest.runner import JobContext, JobKind, JobRefusal, KindResult, NoUpload, Producer, runner_for
 from services.ingest.store import IngestStore, Refused, _fsync_dir, sniff
-from services.science.detector import _to_luma_2d, detect_point_sources, noise_limit_warnings, stack_video_frames_for_calibration
+from services.science.detector import (
+    _to_luma_2d,
+    detect_point_sources,
+    noise_limit_warnings,
+    stack_rounding_noise,
+    stack_video_frames_for_calibration,
+)
 from services.science.bounded_worker import WorkerTimeout
 from services.science.catalog import get_catalog_stars
 from services.science.phone_photo_solver import (
@@ -584,7 +590,9 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
 
     if frame_count > 1:
         composite = stack_video_frames_for_calibration(frames).composite_luma
-        detections = detect_point_sources(composite, asset_id=asset["id"])
+        # The frames' own rounding noise floors the stack's (FIELD field-8): the stack sits on no whole-code grid, so
+        # its own floor fell to 0.001 of a code while the phone solver's, on the same stack scaled to 0..1, is 0.255
+        detections = detect_point_sources(composite, asset_id=asset["id"], noise_floor=stack_rounding_noise(frames))
         solve_image: np.ndarray = composite
         ctx.report({"stage": "detect", "unit": "frames", "done": frame_count, "total": frame_count})
     else:
@@ -762,8 +770,10 @@ SOLVE_PRODUCER_FILES = (
 # Revisions: 1, the runner's first (platform-5a); 2, field-1's camera profile for the Display glasses, whose
 # field of view source a head-worn pose stores in its solution as fovSource (platform-6r); 3, the IAU's genitives
 # in a matched or predicted star's Bayer designation (field-5: Crucis, Coronae Australis) and the deep-sky objects
-# every predicted sky and a calibrated frame now hold (field-6, whose three deep-sky modules join the files) (field-6r)
-SOLVE_PRODUCER = Producer("albedian.solve_chain", 3, SOLVE_PRODUCER_FILES)
+# every predicted sky and a calibrated frame now hold (field-6, whose three deep-sky modules join the files) (field-6r);
+# 4, a clip's stack detected with its frames' rounding noise as the floor, which changes its detections, the searches
+# they feed and the job's noise words (field-8)
+SOLVE_PRODUCER = Producer("albedian.solve_chain", 4, SOLVE_PRODUCER_FILES)
 # The whole solve job's bound (platform-5b). Its steps' own bounds come to 300 s on the longest chain: a HEIC photo's
 # tile probe and tile decode (60 s each) and the 180 s search, or a clip's 60 s decode, the search and its 60 s of
 # spread frames. Stacking, detection and the predicted sky run in the server thread with no bound of their own: at

@@ -91,6 +91,17 @@ def _quantization_sigma(image: np.ndarray) -> float:
     return 0.0 if step is None else step / float(np.sqrt(12.0))
 
 
+def stack_rounding_noise(frames: Sequence[np.ndarray]) -> float:
+    """The rounding noise of the frames a stack is made from, the largest of theirs (`_quantization_sigma`), 0 for none.
+
+    For a caller to hand `detect_point_sources` as `noise_floor` on the stack (FIELD field-8): on a still, dark scene
+    with under a code of noise each frame rounds alike, so averaging does not average the rounding away, while the stack
+    sits on a grid N times finer, or on none once its frames are shifted by fractions of a pixel, and its own measured
+    floor falls far below the frames' [inference from the quantiser's noise; tests/science/test_stack_rounding_floor.py].
+    """
+    return max((_quantization_sigma(frame) for frame in frames), default=0.0)
+
+
 def _effective_sigma(sigma_bg: float, image: np.ndarray, floor: float = 0.0) -> float:
     """The noise to divide by: never below the rounding noise of the data's own value step, nor below the old code's
     absolute floor.

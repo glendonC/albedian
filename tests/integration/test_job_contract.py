@@ -707,9 +707,10 @@ def _fixture_disagreements(folder: Path) -> tuple[list[str], list[str], int]:
 def test_every_job_shaped_sample_in_every_fixture_is_judged_as_its_fixture_says() -> None:
     unread, wrong, judged = _fixture_disagreements(FIXTURES)
     assert unread == [] and wrong == [], (unread, wrong[:10], len(wrong))
-    # the four readers judge 2,900 job-shaped samples on 2026-11-18: 1,833 in the two contract fixtures, 6 in the
-    # solution contract's ingest section, 1,061 in the solve chain's characterization (the runner's, since platform-5c)
-    assert judged >= 2900
+    # the four readers judge 2,779 job-shaped samples on 2026-11-19: 1,833 in the two contract fixtures, 6 in the
+    # solution contract's ingest section, 940 in the solve chain's characterization (the runner's, since platform-5c;
+    # 1,061 until field-8 floored a clip's stack, whose fewer candidates leave its clip case 121 fewer transitions)
+    assert judged >= 2779
 
 
 def test_the_fixture_check_finds_an_unread_job_and_a_wrong_verdict(tmp_path: Path) -> None:
