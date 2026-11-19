@@ -17,13 +17,17 @@ struct KeptShot: Equatable {
 @MainActor
 @Observable
 final class CompanionModel {
-    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, result }
+    enum Screen: Equatable { case home, credits, aim, holdStill, afterShot, pairing, waiting, stopped, result }
 
     private(set) var screen: Screen = .home
     private(set) var shot: KeptShot?
     /// Under the photo after a send the laptop did not answer (UIUX-unreachable).
     private(set) var unreachable = false
-    private(set) var result: (readout: SolutionReadout, frame: StoredFrame)?
+    private(set) var result: (readout: SolutionReadout, frame: StoredFrame, facts: AssetFacts)?
+    /// The failed screen's sentence (UIUX-iphone-solve-READY, 3): the job's own, or the laptop's own words for a refusal.
+    private(set) var stoppedSentence: String?
+    /// What "Try again" on the failed screen does: the solve again, or the send again.
+    private var retry: (sha256: String, address: LaptopAddress, solveOnly: Bool)?
     /// The text typed after "http://" on the connect screen.
     var typedAddress = ""
     private(set) var cameraProblem: CameraSession.Failure?
@@ -59,6 +63,15 @@ final class CompanionModel {
 
     /// A send or its solve is under way: Send and Try again take no second press.
     var isBusy: Bool { uploads.isSending || solver.isSolving }
+
+    /// The wait's row: the step the job is on, once a job has been read (UIUX-iphone-solve-READY, 1).
+    var waitRow: WaitRow? {
+        if case .running(let job)? = solver.state { return WaitRow.current(job) }
+        return nil
+    }
+
+    /// When the phone asked for the solve, for a step that reports no total.
+    var solveStartedAt: ContinuousClock.Instant? { solver.startedAt }
 
     // MARK: Moving between screens
 
@@ -222,25 +235,52 @@ final class CompanionModel {
             switch SendEnd.after(last) {
             case .solve(let sha256)?:
                 self.pairing.keep(address)
-                self.solver.start(sha256: sha256, client: SolveClient(address: address)) { [weak self] end in self?.solved(end) }
+                self.startSolve(sha256: sha256, address: address)
             case .unreachable?:
                 self.unreachable = true
-            case .notSent?, nil:
+            case .notSent?:
+                // A photo the laptop refused, in its own words, follows the failed screen; a refused record's sentence is
+                // review question C9, so that one leaves the screen as it is
+                if case .failed(.refused(.photo, _, let detail?)) = last { self.stop(detail, sha256: shot.sha256, address: address, solveOnly: false) }
+            case nil:
                 break
             }
         }
     }
 
-    private func solved(_ end: SolveState) {
+    private func startSolve(sha256: String, address: LaptopAddress) {
+        stoppedSentence = nil
+        screen = .waiting
+        solver.start(sha256: sha256, client: SolveClient(address: address)) { [weak self] end in self?.solved(end, sha256: sha256, address: address) }
+    }
+
+    private func solved(_ end: SolveState, sha256: String, address: LaptopAddress) {
         switch end {
-        case .solved(_, let readout, let frame):
-            result = (readout, frame)
+        case .solved(_, let readout, let frame, let facts):
+            result = (readout, frame, facts)
             screen = .result
         case .failed(.networkError), .failed(.timedOut), .failed(.connectionClosed), .failed(.notThePairedPeer):
             unreachable = true
+            screen = .afterShot
+        case .failed(.jobDidNotSucceed(let job)):
+            if let sentence = job.error { stop(sentence, sha256: sha256, address: address, solveOnly: true) } else { screen = .afterShot }
+        case .failed(.refused(_, let detail?)):
+            stop(detail, sha256: sha256, address: address, solveOnly: true)
         default:
-            break
+            screen = .afterShot
         }
+    }
+
+    private func stop(_ sentence: String, sha256: String, address: LaptopAddress, solveOnly: Bool) {
+        stoppedSentence = sentence
+        retry = (sha256, address, solveOnly)
+        screen = .stopped
+    }
+
+    /// "Try again" on the failed screen: the solve again for a job that failed, the send again for a refused photo.
+    func tryAgainAfterStop() {
+        guard let retry, !isBusy else { return }
+        if retry.solveOnly { startSolve(sha256: retry.sha256, address: retry.address) } else { screen = .afterShot; send(to: retry.address) }
     }
 
     #if DEBUG

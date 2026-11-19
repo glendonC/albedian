@@ -9,7 +9,7 @@ import XCTest
 /// asks for, and the licence notices and provenance records beside them and bundled with the app.
 final class ApprovedAssetsTests: XCTestCase {
     private let app = repositoryRoot.appendingPathComponent("apps/ios/AlbedianCapture")
-    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise", "arrow-left", "arrow-square-out", "wifi-slash"]
+    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise", "arrow-left", "arrow-square-out", "wifi-slash", "warning-circle"]
 
     private func sha256(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -52,7 +52,7 @@ final class ApprovedAssetsTests: XCTestCase {
             XCTAssertTrue(webIcon.contains("'\(try path(name))'"), name)
         }
         // The back and open-link icons the Credits and Connect screens draw are the web's notice copies too
-        for name in ["arrow-left", "arrow-square-out"] {
+        for name in ["arrow-left", "arrow-square-out", "warning-circle"] {
             XCTAssertEqual(try svg(name), try Data(contentsOf: webNotices.appendingPathComponent("\(name).svg")), name)
         }
         XCTAssertEqual(

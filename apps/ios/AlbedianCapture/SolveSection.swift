@@ -22,7 +22,7 @@ struct SolveSection: View {
                     if let total = stage.total { ProgressView(value: Double(stage.done), total: Double(total)) }
                 }
                 if job.stages.contains(where: { $0.total == nil }) { elapsed }
-            case .solved(let job, let readout, _):
+            case .solved(let job, let readout, _, _):
                 LabeledContent("Job", value: job.state.rawValue)
                 LabeledContent("Status", value: readout.status.rawValue)
                 ForEach(EvidenceClass.allCases, id: \.self) { evidence in

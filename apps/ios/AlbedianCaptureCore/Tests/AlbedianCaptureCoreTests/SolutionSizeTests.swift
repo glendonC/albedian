@@ -81,7 +81,7 @@ final class SolutionSizeTests: XCTestCase {
         let last = await within(30, otherwise: SolveState.failed(.timedOut)) {
             await SolveClient(address: address, solveTimeoutSec: 20, readTimeoutSec: 20, pollIntervalSec: 5).solve(sha256: sha) { _ in }
         }
-        guard case .solved(_, let readout, _) = last else { return XCTFail("\(last)") }
+        guard case .solved(_, let readout, _, _) = last else { return XCTFail("\(last)") }
         XCTAssertEqual(readout.counts[.observed], observed)
         XCTAssertEqual(readout.counts[.catalogMatched], 3)
     }

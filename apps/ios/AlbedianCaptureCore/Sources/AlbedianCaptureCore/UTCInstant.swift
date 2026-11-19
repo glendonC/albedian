@@ -68,6 +68,28 @@ public enum UTCInstant {
         }
     }
 
+    /// The instant a contract instant names, or nil when the text is not one. The calendar is computed here, as in
+    /// `string(from:)`, so no setting of the device changes it.
+    public static func date(_ text: String) -> Date? {
+        guard isValid(text) else { return nil }
+        let units = Array(text.utf8)
+        func digits(_ range: Range<Int>) -> Int64 { range.reduce(Int64(0)) { $0 * 10 + Int64(units[$1] - 0x30) } }
+        let days = daysFromCivil(year: digits(0..<4), month: digits(5..<7), day: digits(8..<10))
+        let millis = units.count == 24 ? digits(20..<23) : 0
+        let ms = ((days * 24 + digits(11..<13)) * 60 + digits(14..<16)) * 60_000 + digits(17..<19) * 1000 + millis
+        return Date(timeIntervalSince1970: Double(ms) / 1000)
+    }
+
+    /// The day counted from 1970-01-01 of a Gregorian date (Hinnant, the inverse of `civil(fromDays:)`).
+    static func daysFromCivil(year: Int64, month: Int64, day: Int64) -> Int64 {
+        let y = month <= 2 ? year - 1 : year
+        let era = (y >= 0 ? y : y - 399) / 400
+        let yearOfEra = y - era * 400
+        let dayOfYear = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1
+        let dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear
+        return era * 146_097 + dayOfEra - 719_468
+    }
+
     /// The Gregorian date of a day counted from 1970-01-01 (Hinnant, "chrono-compatible low-level date algorithms").
     static func civil(fromDays days: Int64) -> (Int64, Int64, Int64) {
         let z = days + 719_468

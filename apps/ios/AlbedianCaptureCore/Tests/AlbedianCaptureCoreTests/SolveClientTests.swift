@@ -95,7 +95,7 @@ final class SolveClientTests: XCTestCase {
         XCTAssertNil(running.last?.stages.last?.total, "a stage whose total the server does not know stays unknown")
         // No two reports in a row are the same job
         XCTAssertFalse(zip(states, states.dropFirst()).contains { $0 == $1 })
-        guard case .solved(let job, let readout, let frame) = last else { return XCTFail("not solved: \(last)") }
+        guard case .solved(let job, let readout, let frame, _) = last else { return XCTFail("not solved: \(last)") }
         XCTAssertEqual(job.state, .succeeded)
         XCTAssertEqual(readout.status, .calibrated)
         XCTAssertEqual(readout.counts, [.observed: 3, .catalogMatched: 3, .predicted: 1, .simulated: 1])

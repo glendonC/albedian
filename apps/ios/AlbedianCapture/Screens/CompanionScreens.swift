@@ -51,6 +51,8 @@ struct CompanionRoot: View {
             case .holdStill: HoldStillScreen(model: model)
             case .afterShot: AfterShotScreen(model: model)
             case .pairing: ConnectScreen(model: model)
+            case .waiting: WaitingScreen(model: model)
+            case .stopped: StoppedScreen(model: model)
             case .result: ResultScreen(model: model)
             }
         }
@@ -266,7 +268,20 @@ struct ResultScreen: View {
             ZStack {
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
-                if let result = model.result {
+                if let result = model.result, let sentence = OutcomeSentence.sentence(result.readout, result.facts) {
+                    // A result that is not calibrated (UIUX-iphone-solve-READY, 2; mockup is-pre): no word at the top, no marks,
+                    // the web's own sentence at 592, the counts it has at 676, and "Open" at 730
+                    ShotPhoto(shot: model.shot, width: cardWidth).clipShape(RoundedRectangle(cornerRadius: 18)).atTop(Arrive.photoTop)
+                    Text(sentence).font(AlbedianFont.light(20)).tracking(-0.025 * 20).foregroundStyle(Color(ControlStyle.ink))
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, CGFloat(Arrive.side))
+                        .atTop(Arrive.photoTop + cardHeight + 18)
+                    HStack(spacing: 16) {
+                        ForEach(OutcomeSentence.countsShown(result.readout), id: \.0) { pair in count(pair.1, Self.tag(pair.0)) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
+                    .atTop(Arrive.photoTop + cardHeight + 102)
+                    MainButton(title: "Open", icon: .arrow, action: model.openReveal).atBottom(Arrive.unreachableButtonsBottomGap)
+                } else if let result = model.result {
                     Text(result.readout.status.word).font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
                         .foregroundStyle(Color(ControlStyle.ink))
                         .frame(height: 44).atTop(Arrive.topControls)
@@ -293,6 +308,15 @@ struct ResultScreen: View {
             }
         }
         .ignoresSafeArea()
+    }
+
+    static func tag(_ evidence: EvidenceClass) -> ControlStyle.Evidence {
+        switch evidence {
+        case .observed: .observed
+        case .catalogMatched: .catalogMatched
+        case .predicted: .predicted
+        case .simulated: .simulated
+        }
     }
 
     private func count(_ value: Int, _ evidence: ControlStyle.Evidence) -> some View {

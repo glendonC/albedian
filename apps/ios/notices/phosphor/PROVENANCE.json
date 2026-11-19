@@ -15,7 +15,7 @@
         "conditions": "The copyright and permission notice travels with every copy: LICENSE sits beside this record and is bundled in AlbedianCapture.app as Phosphor-LICENSE.txt."
       },
       "credit": "Phosphor Icons",
-      "note": "Seven regular-weight icons the approved iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
+      "note": "Eight regular-weight icons the approved iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
     }
   ],
   "files": [
@@ -106,6 +106,17 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/wifi-slash.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/wifi-slash.imageset/wifi-slash.svg for the screen when the laptop cannot be reached."
+    },
+    {
+      "path": "warning-circle.svg",
+      "sha256": "e48a90760a68659fd3f06dd9187e471aead4877c72e915339071b2c7f7bd714c",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/warning-circle.svg, byte for byte (the same bytes as apps/web/public/notices/phosphor/warning-circle.svg); embedded in apps/ios/AlbedianCapture/Assets.xcassets/warning-circle.imageset/warning-circle.svg for the failed job's line (UIUX-iphone-solve-READY)."
     }
   ],
   "fileSets": []

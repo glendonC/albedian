@@ -150,3 +150,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - Needs first: mobile-2; that later spec.
   - Only on an iPhone: every part.
   - _Requirements: REQ-IOS-1.1, 1.2_
+
+- [x] 14. mobile-8: the iPhone after Send (UIUX-iphone-solve-APPROVED and -READY, the owner's yes of 2026-11-18)
+  - The wait with the job's current step and its own count, a result with no star matched in the web's own sentence
+    with its counts, and a failed job (or a refused photo) in its own sentence with "Try again".
+  - Only on an iPhone: the wait's steps over the hotspot on a full-size photo.
+  - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1_

@@ -34,8 +34,8 @@ public enum SolveState: Equatable, Sendable {
     /// The job as the laptop last wrote it, read beside the held solve.
     case running(SolveJob)
     /// The job succeeded and its solution was read: the status and counts as the server reports them, and the stored
-    /// frame the marks are placed in.
-    case solved(job: SolveJob, readout: SolutionReadout, frame: StoredFrame)
+    /// frame the marks are placed in, and the recording's facts the sentence of a result that is not calibrated reads.
+    case solved(job: SolveJob, readout: SolutionReadout, frame: StoredFrame, facts: AssetFacts)
     case failed(SolveFailure)
 }
 
@@ -107,21 +107,21 @@ public final class SolveClient: Sendable {
         }
         guard job.sourceAssetSha256 == sha256 else { return .failed(.jobForAnotherPhoto) }
         guard job.state == .succeeded else { return .failed(.jobDidNotSucceed(job)) }
-        let frame: StoredFrame
+        let stored: StoredReceipt
         switch await exchange("GET", "/api/ingest/\(sha256)", timeoutSec: readTimeoutSec) {
         case .failure(let failure): return .failed(failure)
         case .success(let reply):
             guard let value = try? JSONText.read(reply.body), let receipt = StoredReceiptReader.read(value, sha256: sha256) else {
                 return .failed(.unreadableReply(nil))
             }
-            frame = receipt.frame
+            stored = receipt
         }
         switch await exchange("GET", "/api/ingest/\(sha256)/solution", timeoutSec: readTimeoutSec, bodyMaxBytes: Self.solutionMaxBytes) {
         case .failure(let failure): return .failed(failure)
         case .success(let reply):
             switch Self.read(reply.body, { SolutionReader.read($0, sha256: sha256) }) {
             case .failure(let failure): return .failed(failure)
-            case .success(let readout): return .solved(job: job, readout: readout, frame: frame)
+            case .success(let readout): return .solved(job: job, readout: readout, frame: stored.frame, facts: stored.facts)
             }
         }
     }

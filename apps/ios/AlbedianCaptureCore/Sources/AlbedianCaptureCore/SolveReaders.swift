@@ -179,10 +179,40 @@ public struct SolutionReadout: Equatable, Sendable {
         }
         public var isNamedOnThePhone: Bool { apparentMagnitude.map { $0 < Self.namedBrighterThanMagnitude } ?? false }
     }
+    /// A pose estimate's method and how far off it may be, for the result's sentence (`skyLayerWords.ts`).
+    public struct Pose: Equatable, Sendable {
+        public let method: String
+        public let maxCenterOffsetDeg: Double
+        public let beaconCentroidUncertaintyDeg: Double
+        public init(method: String, maxCenterOffsetDeg: Double, beaconCentroidUncertaintyDeg: Double) {
+            self.method = method
+            self.maxCenterOffsetDeg = maxCenterOffsetDeg
+            self.beaconCentroidUncertaintyDeg = beaconCentroidUncertaintyDeg
+        }
+    }
     public let status: SolutionStatus
     /// Every class is a key, a class with no finding at 0.
     public let counts: [EvidenceClass: Int]
     public let marks: [Mark]
+    /// What the sentence of a result that is not calibrated reads (mobile-8): the solver's counts, the pose estimate,
+    /// whether a WCS is there, and the frame's time in the recording.
+    public let detectedCandidateCount: Int?
+    public let matchedInlierCount: Int?
+    public let pose: Pose?
+    public let hasWCS: Bool
+    public let frameTimeSec: Double
+
+    public init(status: SolutionStatus, counts: [EvidenceClass: Int], marks: [Mark], detectedCandidateCount: Int? = nil,
+                matchedInlierCount: Int? = nil, pose: Pose? = nil, hasWCS: Bool = false, frameTimeSec: Double = 0) {
+        self.status = status
+        self.counts = counts
+        self.marks = marks
+        self.detectedCandidateCount = detectedCandidateCount
+        self.matchedInlierCount = matchedInlierCount
+        self.pose = pose
+        self.hasWCS = hasWCS
+        self.frameTimeSec = frameTimeSec
+    }
 }
 
 /// Reads only the solution fields the phone shows. The laptop checks the whole contract before it serves a solution
@@ -221,7 +251,20 @@ public enum SolutionReader {
             if let magnitude, !magnitude.isFinite { return refuse("\(path).catalogRef.apparentMagnitude", "not finite") }
             marks.append(SolutionReadout.Mark(id: id, title: title, xPx: x, yPx: y, apparentMagnitude: magnitude))
         }
-        return .success(SolutionReadout(status: status, counts: counts, marks: marks))
+        var pose: SolutionReadout.Pose?
+        if let given = object["poseEstimate"]?.objectValue {
+            guard let method = given["method"]?.stringValue, let offset = given["maxCenterOffsetDeg"]?.numberValue, offset.isFinite, offset >= 0,
+                  let centroid = given["beaconCentroidUncertaintyDeg"]?.numberValue, centroid.isFinite, centroid >= 0 else {
+                return refuse("poseEstimate", "a pose estimate names its method and how far off it may be")
+            }
+            pose = SolutionReadout.Pose(method: method, maxCenterOffsetDeg: offset, beaconCentroidUncertaintyDeg: centroid)
+        }
+        let frameTime = object["frameTimeSec"]?.numberValue ?? 0
+        guard frameTime.isFinite else { return refuse("frameTimeSec", "not finite") }
+        return .success(SolutionReadout(status: status, counts: counts, marks: marks,
+                                        detectedCandidateCount: Wire.whole(object["quality"]?["detectedCandidateCount"]),
+                                        matchedInlierCount: Wire.whole(object["quality"]?["matchedInlierCount"]),
+                                        pose: pose, hasWCS: object["wcs"]?.objectValue != nil, frameTimeSec: frameTime))
     }
 }
 
@@ -283,10 +326,24 @@ public struct StoredFrame: Equatable, Sendable {
     }
 }
 
-/// The receipt's fields the result needs: the stored frame, and the solve job's id once one exists.
+/// The recording's facts the result's sentence reads (`SkyAssetFacts` in `skyLayerWords.ts`): whether it is a clip,
+/// its capture time as the receipt states it, and whether it holds a place. Never shown as they are.
+public struct AssetFacts: Equatable, Sendable {
+    public let isVideo: Bool
+    public let capturedAtUTC: String?
+    public let hasPlace: Bool
+    public init(isVideo: Bool, capturedAtUTC: String?, hasPlace: Bool) {
+        self.isVideo = isVideo
+        self.capturedAtUTC = capturedAtUTC
+        self.hasPlace = hasPlace
+    }
+}
+
+/// The receipt's fields the result needs: the stored frame, the solve job's id once one exists, and the recording's facts.
 public struct StoredReceipt: Equatable, Sendable {
     public let frame: StoredFrame
     public let solveJobId: String?
+    public let facts: AssetFacts
 }
 
 public enum StoredReceiptReader {
@@ -306,6 +363,8 @@ public enum StoredReceiptReader {
             guard let id = given.stringValue, Wire.isJobId(id) else { return nil }
             jobId = id
         }
-        return StoredReceipt(frame: StoredFrame(widthPx: width, heightPx: height, orientation: orientation), solveJobId: jobId)
+        let captured = asset["capturedAtUTC"].flatMap { $0.stringValue }.flatMap { UTCInstant.isValid($0) ? $0 : nil }
+        let facts = AssetFacts(isVideo: asset["mediaKind"]?.stringValue == "video", capturedAtUTC: captured, hasPlace: asset["observerLocation"]?.objectValue != nil)
+        return StoredReceipt(frame: StoredFrame(widthPx: width, heightPx: height, orientation: orientation), solveJobId: jobId, facts: facts)
     }
 }
