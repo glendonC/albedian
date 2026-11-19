@@ -27,7 +27,7 @@ import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
 import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
-import { STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
+import { PHONE_STEER_LINE, STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
@@ -121,6 +121,10 @@ export interface RevealPhotoProps {
   corners?: boolean;
   /** pilot-1f (D26 item 6): flying on one's own after "Fly on your own", with no star ahead. */
   freeFlight?: boolean;
+  /** D30 item 6: on the phone the person steers (a drag on the sky took the camera; Autopilot in the ask bar gives it back). */
+  phoneSteering?: boolean;
+  /** On the phone, told when a drag on the sky takes the steering. */
+  onPhoneSteer?: () => void;
   /** A press on the sky during free flight hands the camera back: the flight ends. */
   onEndFreeFlight?: () => void;
   /** At phone width (reveal, approved, iPhone 1): smaller marks, the counts under the photo, no logo, status or corners. */
@@ -223,6 +227,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   corners = true,
   freeFlight = false,
   onEndFreeFlight,
+  phoneSteering = false,
+  onPhoneSteer,
   phone = false,
   viewportWidthPx,
   viewportHeightPx,
@@ -297,7 +303,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   useEffect(() => {
     if (!there || cone) setSteeringAsked(false);
   }, [there, cone]);
-  const steering = there && !cone && !phone && (steeringAsked || freeFlight);
+  const steering = there && !cone && (phone ? phoneSteering : steeringAsked || freeFlight);
   const [steered, setSteered] = useState<{ fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null>(null);
   // What is only true from Earth (the panorama, the photo-frame marks) leaves in the cone view and while steering
   const earthOnly = cone || steering;
@@ -384,7 +390,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   return (
     <div className={`${phone ? 'reveal-photo is-phone' : 'reveal-photo'}${lockOn ? ' is-locking' : ''}`} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
       {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onSteer={setSteered} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={craft} craftFraming={phone ? phoneCraftFraming(viewW, readoutTopPx ?? viewH - PHONE_READOUT_FOOT_PX) : undefined} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => (freeFlight ? onEndFreeFlight?.() : setSteeringAsked((on) => !on))} onDragSky={phone && !steering ? onPhoneSteer : undefined} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 
       {!phone && !bareFrame && !earthOnly && picked && marks.some((mark) => mark.picked) && (
@@ -621,14 +627,27 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         >
           {phone ? <PhoneTagRow open={false} onToggle={() => setDetails(true)} /> : <EvidenceTag evidenceClass="simulated" />}
           {/* D26 item 7: while the person steers, the flight's own speed under the Simulated tag */}
-          {steering && steered && (
+          {steering && steered && !phone && (
             <p data-testid="steer-speed" style={{ margin: '10px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
               {steeringSpeedLine(steered.speedPcPerS)}
             </p>
           )}
           {/* On the phone, where no status line shows, the readout keeps D27's first sentence in view and the rest one
               press away behind the circle (D30 items 2b and 5; AGENTS.md 1.2) */}
-          {phone && <p className="flight-readout__note">{FLIGHT_LINES.spec}</p>}
+          {phone && (
+            <p className="flight-readout__note">
+              {FLIGHT_LINES.spec}
+              {/* D30 item 6: while steering, its line under the first sentence, at ink 66 percent */}
+              {steering && (
+                <>
+                  <br />
+                  <span data-testid="steer-line" style={{ color: 'var(--look-ink-2)' }}>
+                    {PHONE_STEER_LINE}
+                  </span>
+                </>
+              )}
+            </p>
+          )}
           <h1>{shownFlight.name}</h1>
           <div className="flight-readout__stats">
             {shownFlight.toStarLy !== null && (

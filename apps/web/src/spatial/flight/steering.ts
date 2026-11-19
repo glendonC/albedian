@@ -17,6 +17,9 @@ export const STEER_DRAG_RAD_PER_PX = 0.003;
 export const DRAG_DECAY_PER_60TH = 0.8;
 
 /** D26 item 6's lines while steering, the third reworded for a press on the sky [proposed words: the lead decides]. */
+/** D30 item 6: the phone's one steering line, under the first sentence (no keys on a touch screen). */
+export const PHONE_STEER_LINE = 'Drag: turn';
+
 export const STEER_LINES = ['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment'] as const;
 
 const TURN_KEYS: Readonly<Record<string, [number, number]>> = {

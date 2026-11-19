@@ -149,6 +149,24 @@ describe('FlightStarsLayer', () => {
     expect(Number(layer().getAttribute('data-from-earth-pc'))).toBeCloseTo(Math.hypot(...halfway.spatialView.observerOriginParsec), 3);
   });
 
+  it('tells the page once when a drag on the sky starts, and not on a tap (D30 item 6, the phone\'s hand-over)', async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const onDragSky = vi.fn();
+    await act(async () => root.render(createElement(FlightStarsLayer, { session: there(), viewportWidthPx: 390, viewportHeightPx: 844, openTiles: vi.fn<OpenFlightTiles>(), phone: true, onDragSky })));
+    const sky = container.querySelector('[data-testid="flight-sky"]')!;
+    const ev = (type: string, x: number, y: number) => act(() => void sky.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y })));
+    ev('pointerdown', 200, 300);
+    ev('pointerup', 202, 301);
+    expect(onDragSky).not.toHaveBeenCalled();
+    ev('pointerdown', 200, 300);
+    ev('pointermove', 203, 300);
+    expect(onDragSky).not.toHaveBeenCalled();
+    ev('pointermove', 220, 310);
+    ev('pointermove', 240, 320);
+    ev('pointerup', 240, 320);
+    expect(onDragSky).toHaveBeenCalledTimes(1);
+  });
+
   it('tells the page how many stars with no distance it draws in the window, summed over its tiles (D27 item 2)', async () => {
     const { gl } = recordingGl();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(gl as never);

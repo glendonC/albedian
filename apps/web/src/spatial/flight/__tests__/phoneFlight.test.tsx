@@ -5,18 +5,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ObservationSession, ObservationSolution } from '@albedian/contracts';
 import { poseSession, sample } from '../../../components/__tests__/poseSessions.js';
 import { RevealPhoto } from '../../../reveal/RevealPhoto.js';
+import { AskBar } from '../../../reveal/AskBar.js';
 import { PHONE_CRAFT_DIAMETER_PX, PHONE_SKY_TOP_PX, phoneCraftFraming, type CraftFraming } from '../craftScene.js';
 import type { Craft } from '../crafts.js';
 
 // D30 (UIUX-phone3d-READY.md): the flight behind a NASA craft at phone width. WebGL 2 is not in jsdom, so both drawn
 // layers are stand-ins; the star layer's stand-in records the craft and the framing it is asked to draw.
-const seen = vi.hoisted(() => ({ craft: null as Craft | null, framing: undefined as CraftFraming | undefined }));
+const seen = vi.hoisted(() => ({
+  craft: null as Craft | null,
+  framing: undefined as CraftFraming | undefined,
+  steering: false,
+  onDragSky: undefined as (() => void) | undefined,
+  onPressSky: undefined as (() => void) | undefined,
+}));
 vi.mock('../FlightStarsLayer.js', async () => {
   const { createElement: h, useEffect } = await import('react');
   return {
-    FlightStarsLayer: (props: { craft?: Craft | null; craftFraming?: CraftFraming; onNoDistanceCount?: (n: number) => void }) => {
+    FlightStarsLayer: (props: { craft?: Craft | null; craftFraming?: CraftFraming; onNoDistanceCount?: (n: number) => void; steering?: boolean; onDragSky?: () => void; onPressSky?: () => void }) => {
       seen.craft = props.craft ?? null;
       seen.framing = props.craftFraming;
+      seen.steering = props.steering === true;
+      seen.onDragSky = props.onDragSky;
+      seen.onPressSky = props.onPressSky;
       useEffect(() => {
         props.onNoDistanceCount?.(3);
       });
@@ -65,7 +75,7 @@ function rigelThere(): ObservationSession {
   return { ...session, selectedFindingId: rigel.id } as ObservationSession;
 }
 
-function showPhone() {
+function showPhone(more: { phoneSteering?: boolean; onPhoneSteer?: () => void } = {}) {
   act(() => {
     root.render(
       createElement(RevealPhoto, {
@@ -76,6 +86,7 @@ function showPhone() {
         viewportHeightPx: 844,
         phone: true,
         flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 },
+        ...more,
       })
     );
   });
@@ -193,5 +204,47 @@ describe('There at phone width with a craft (D30 items 1 to 5)', () => {
     expect(lines).toHaveLength(5);
     expect(lines.some((l) => l?.startsWith('Speed:'))).toBe(false);
     expect(lines).not.toContain("NASA's own 3D models. Drawn by the app, not measured.");
+  });
+});
+
+describe('Steering on a touch screen (D30 item 6)', () => {
+  it('hands the camera over on a drag on the sky, never on a tap', () => {
+    const onPhoneSteer = vi.fn();
+    showPhone({ onPhoneSteer });
+    expect(seen.onPressSky).toBeUndefined();
+    expect(seen.steering).toBe(false);
+    act(() => seen.onDragSky!());
+    expect(onPhoneSteer).toHaveBeenCalledTimes(1);
+  });
+
+  it('while steering: "Drag: turn" on its own line under the first sentence, no speed line, nothing only true from Earth', () => {
+    showPhone({ phoneSteering: true, onPhoneSteer: () => {} });
+    expect(seen.steering).toBe(true);
+    expect(seen.onDragSky).toBeUndefined();
+    const note = q('[data-testid="flight-readout"] .flight-readout__note')!;
+    expect(note.textContent).toBe('Drawn or computed by the app; not measured in the source recording.Drag: turn');
+    const line = note.querySelector('[data-testid="steer-line"]') as HTMLElement;
+    expect(line.textContent).toBe('Drag: turn');
+    expect(line.previousElementSibling!.tagName).toBe('BR');
+    expect(line.style.color).toBe('var(--look-ink-2)');
+    expect(q('[data-testid="steer-speed"]')).toBeNull();
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+  });
+
+  it('offers "Autopilot" beside Back to Moment on the phone while steering, which gives the camera back', () => {
+    const onAutopilot = vi.fn();
+    const bar = (phone: boolean, autopilot?: () => void) =>
+      act(() => root.render(createElement(AskBar, { canListen: true, listening: false, words: null, onListen: () => {}, onSend: () => {}, onBack: () => {}, phone, onAutopilot: autopilot })));
+    bar(true, onAutopilot);
+    const buttons = all('[data-testid="ask-bar"] button').map((b) => b.textContent);
+    expect(buttons).toEqual(['Back to Moment', 'Autopilot']);
+    click(all('[data-testid="ask-bar"] button')[1]!);
+    expect(onAutopilot).toHaveBeenCalledTimes(1);
+    expect((all('[data-testid="ask-bar"] button')[1] as HTMLElement).className).toContain('look-second');
+    bar(true, undefined);
+    expect(all('[data-testid="ask-bar"] button').map((b) => b.textContent)).toEqual(['Back to Moment']);
+    bar(false, onAutopilot);
+    expect(all('[data-testid="ask-bar"] button').map((b) => b.textContent)).not.toContain('Autopilot');
   });
 });

@@ -201,6 +201,11 @@ export const SpatialObservatoryViewport: React.FC<
     if (!flightShown) setFreeFlight(false);
   }, [flightShown]);
   const arrived = flightShown && session.spatialView?.transitionPhase === 'at_space';
+  // D30 item 6: on the phone a drag on the sky takes the steering and Autopilot gives it back; leaving there ends it
+  const [phoneSteering, setPhoneSteering] = useState(false);
+  useEffect(() => {
+    if (!flightShown) setPhoneSteering(false);
+  }, [flightShown]);
   const skyOver = realSkyShown || flightShown;
   // The reveal at phone width (reveal, approved 2026-11-12, iPhone 1), for now over a photo with a verified solve: the
   // photo covers its slot, with the phone's marks and counts; its card, its asking and the other views keep the old
@@ -757,6 +762,8 @@ export const SpatialObservatoryViewport: React.FC<
               flight={flightShown ? flightReadout(session) : null}
               freeFlight={freeFlight}
               onEndFreeFlight={() => setFreeFlight(false)}
+              phoneSteering={phoneSteering}
+              onPhoneSteer={() => setPhoneSteering(true)}
               corners={!clipShaded}
             />
           )}
@@ -810,6 +817,7 @@ export const SpatialObservatoryViewport: React.FC<
               onBack={flightShown ? backToMoment : undefined}
               phone={phoneReveal}
               onFlyOnYourOwn={arrived && !freeFlight ? () => setFreeFlight(true) : undefined}
+              onAutopilot={flightShown && phoneReveal && phoneSteering ? () => setPhoneSteering(false) : undefined}
             />
           ) : (
           <VoiceCommandHud

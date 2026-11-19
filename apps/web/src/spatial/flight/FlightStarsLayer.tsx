@@ -182,6 +182,8 @@ export const FlightStarsLayer: React.FC<{
   steering?: boolean;
   /** Told of a press on the sky (a click or tap that is not a drag), in the flight view. */
   onPressSky?: () => void;
+  /** Told once when a drag on the sky starts (D30 item 6: on the phone a drag takes the steering; a tap never does). */
+  onDragSky?: () => void;
   /** While steering, told where the camera stands and how fast it flies, each frame; none when steering stops. */
   onSteer?: (state: { fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null) => void;
 }> = ({
@@ -196,6 +198,7 @@ export const FlightStarsLayer: React.FC<{
   craftFraming,
   steering = false,
   onPressSky,
+  onDragSky,
   onSteer,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -285,6 +288,8 @@ export const FlightStarsLayer: React.FC<{
   const sky = useRef<HTMLDivElement>(null);
   const toldPress = useRef(onPressSky);
   toldPress.current = onPressSky;
+  const toldDrag = useRef(onDragSky);
+  toldDrag.current = onDragSky;
   useEffect(() => {
     const el = sky.current;
     if (!el) return undefined;
@@ -299,7 +304,10 @@ export const FlightStarsLayer: React.FC<{
     };
     const moveP = (e: PointerEvent) => {
       if (!start) return;
-      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 4) dragged = true;
+      if (!dragged && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 4) {
+        dragged = true;
+        toldDrag.current?.();
+      }
       const now = performance.now();
       if (dragged) hands.current.drag(e.clientX - lastMove.x, e.clientY - lastMove.y, (now - lastMove.t) / 1000);
       lastMove = { x: e.clientX, y: e.clientY, t: now };
@@ -456,7 +464,7 @@ export const FlightStarsLayer: React.FC<{
       </svg>
     )}
     {cone && view && geometry && <ConeLayer session={session} view={view} geometry={geometry} keepOut={keepOut} onDrag={onDrag} onWheel={onWheel} />}
-    {!cone && onPressSky && (
+    {!cone && (onPressSky || onDragSky || steering) && (
       <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
     )}
     {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} framing={craftFraming} steer={steer ? { positionPc: steer.positionPc, rows: steer.chase, craftRows: steer.rows } : null} />}

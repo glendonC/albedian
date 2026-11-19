@@ -571,6 +571,45 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
+  it('on the phone, a drag on the flight\'s sky takes the steering and Autopilot gives it back (D30 item 6)', async () => {
+    // Go there on the laptop (jsdom's phone slot shows no mark to pick), then the window narrows to a phone's
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    let phone = false;
+    const listeners: Array<() => void> = [];
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      get matches() {
+        return (phone && query.includes('max-width: 720px')) || query === '(prefers-reduced-motion: reduce)';
+      },
+      addEventListener: (_: string, listener: () => void) => listeners.push(listener),
+      removeEventListener: () => {},
+    });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
+      await waitUntil(() => expect(q('.ask-bar__fly')).not.toBeNull());
+      phone = true;
+      await act(async () => listeners.forEach((listener) => listener()));
+      await waitUntil(() => expect(q('[data-testid="ask-bar"]')!.className).toBe('ask-bar is-phone'));
+      const autopilot = () => [...container.querySelectorAll('[data-testid="ask-bar"] button')].find((b) => b.textContent === 'Autopilot') ?? null;
+      expect(autopilot()).toBeNull();
+      const sky = q('[data-testid="flight-sky"]')!;
+      await act(async () => {
+        sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 200, clientY: 300 }));
+        sky.dispatchEvent(new MouseEvent('pointermove', { clientX: 230, clientY: 310 }));
+        sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 230, clientY: 310 }));
+      });
+      expect(q('[data-testid="steer-line"]')!.textContent).toBe('Drag: turn');
+      await act(async () => (autopilot() as HTMLButtonElement).click());
+      expect(q('[data-testid="steer-line"]')).toBeNull();
+      expect(autopilot()).toBeNull();
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it("shows answers over Real sky too, the photo's frame still the reveal's", async () => {
     (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
     try {
