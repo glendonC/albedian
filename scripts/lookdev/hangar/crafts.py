@@ -785,6 +785,106 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.6,
         "changes": "foil",
     },
+    "juno": {
+        "title": "Juno",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-juno-a",
+            "title": "Juno (A), NASA 3D Resources",
+            "folder": "Juno (A)",
+            "file": "Juno (A).glb",
+            "bytes": 8_999_028,
+            "sha256": "13f6bd48ff830a1890b21ef6e0182bb1043926feebb77af9733e7374b050367a",
+            "picture": "Juno (A).png",
+            "picture_bytes": 877_228,
+            "picture_sha256": "50103ebfff182051bb6c01f0bd25af3c4e2e1cc5453fec6b9cceff6d165c18c6",
+            "local": "juno",
+        },
+        "drop_objects": [],
+        # The dish's top surface is in NASA's file twice, 7 mm apart, the second copy under this material.
+        "drop_materials": ["new"],
+        # The high-gain dish faces +Z in the import frame and faces Earth, so the craft is flown along -Z, as Voyager
+        # is; the three solar wings lie in the XY plane, so +Y is up.
+        "forward": (0.0, 0.0, -1.0),
+        "up": (0.0, 1.0, 0.0),
+        # Scale from the bus: the silver foil of its hexagonal bottom deck (the faces of that material in a slab across
+        # z; the top deck's slab also holds foil on the wing booms), 3.4065 units corner to corner (a regular hexagon,
+        # 2.95 across the flats), to NSSDC's 3.5 m diameter; the wings then span 19.1 m, NASA's "approximately 20 m".
+        "scale_from": {
+            "material": "foil_silver",
+            "band": {"axis": "z", "min": -1.39, "max": -1.36},
+            "axis": "y",
+            "metres": 3.5,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+            "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high.",
+        },
+        "materials": {
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "photo_atlas"},
+            "foil_ant": {"role": "photo_atlas"},
+            "black_krinkle": {"role": "photo_atlas"},
+            "tex_01": {"role": "photo_atlas"},
+            # The solar cells, under cover glass: no metalness, fairly smooth.
+            "solar_panels": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+            "shiny_panels": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+        },
+        # A perforated panel NASA cuts with its texture's alpha: the mean of its map, the alpha kept as a mask.
+        "material_rules": [{"match": ["tex_01_a"], "role": "maps_mean"}, {"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        # Its foil and panel maps each get their own metal, roughness and relief maps: smaller far levels keep the budget.
+        "texture_edge": {"lod1": 512, "lod2": 256},
+        "body_radius_m": 2.0,
+        "changes": "atlas",
+    },
+    "dawn": {
+        "title": "Dawn",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-dawn",
+            "title": "Dawn, NASA 3D Resources",
+            "folder": "Dawn",
+            "file": "Dawn.glb",
+            "bytes": 927_020,
+            "sha256": "411249aed791994b6a2014894ad6bd7ca0445dbcf6d5342af9edc5df988f04b7",
+            "picture": "Dawn.png",
+            "picture_bytes": 1_118_264,
+            "picture_sha256": "2a5c7d395136787354d2155f2a826888c596b912d55fd4ec597a8ad588bcc673",
+            "local": "dawn",
+        },
+        # The source's unit cube at the root has no material and is not part of the craft.
+        "drop_objects": ["_root"],
+        # The ion thrusters' rings sit at -Z in the import frame and push the craft along +Z; the dish faces -Y, so -Y
+        # is up and the dish rides on top.
+        "forward": (0.0, 0.0, 1.0),
+        "up": (0.0, -1.0, 0.0),
+        # The model's whole width along X is the two wings tip to tip: 19.6985 units to NSSDC's 19.7 m. NASA's model
+        # draws the dish 1.2407 units across against NSSDC's 1.52 m, so the dish is not true to size at this scale.
+        "scale_from": {
+            "material": None,
+            "axis": "x",
+            "metres": 19.7,
+            "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+            "quote": "Two solar panel wings extend 19.7 m tip-to-tip",
+        },
+        "materials": {
+            # Black Kapton blanket and silver foil, as NASA's model names them (NASA gives both a grey ramp).
+            "black_krinkle": {"role": "pbr", "base": (0.03, 0.03, 0.03), "metallic": 0.0, "roughness": 0.6},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "foil_silver_2": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "foil_gold": {"role": "photo_atlas"},
+            "tex_01": {
+                "role": "photo_atlas",
+                # A maker's two-line label printed on a photographed panel, illegible at the source's size.
+                "paint_out": [{"box": (376, 345, 420, 359), "what": "a printed label"}],
+            },
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "weld_m": 0.0001,
+        "smooth_deg": 35.0,
+        "body_radius_m": 1.5,
+        "changes": "dawn",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1045,6 +1145,41 @@ HANGAR: list[dict] = [
             {"key": "heatShieldDiameterM", "value": 2.3, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A", "quote": "the end of the TPS is 2.3 m in diameter."},
             {"key": "heatShieldThicknessCm", "value": 11.43, "page": "https://science.nasa.gov/mission/parker-solar-probe/", "quote": "4.5-inch-thick (11.43 cm) carbon-composite shield"},
             {"key": "power", "value": "solar arrays, 384 W at solar encounter", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A", "quote": "The solar arrays produce 384 W power at solar encounter."},
+        ],
+    },
+    {
+        # Juno orbits Jupiter, never travels between stars: no speed. NASA's mission page calls it a "four-ton probe"
+        # where NSSDC gives 1500 kg; NSSDC's figure is the one stated as a mass.
+        "id": "juno",
+        "name": "Juno",
+        "model": "juno",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2011-08-05", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "Juno launched on 05 August 2011 at 16:25 UTC (12:25 p.m. EDT)"},
+            {"key": "jupiterOrbit", "value": "2016-07-04", "page": "https://science.nasa.gov/mission/juno/", "quote": "the Juno spacecraft entered orbit around Jupiter on July 4, 2016"},
+            {"key": "massKg", "value": 1500, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "Mass: 1500 kg"},
+            {"key": "busDiameterM", "value": 3.5, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high."},
+            {"key": "solarArrayLengthM", "value": 9, "page": "https://science.nasa.gov/mission/juno/", "quote": "each of its three solar arrays extend about 29.5 feet (9 meters) from the main body"},
+            {"key": "spanM", "value": 20, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "giving a total diameter of approximately 20 m"},
+            {"key": "power", "value": "solar panels, 18 kW at Earth and 400 W at Jupiter", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A", "quote": "The solar panels will produce a total of 18 kW at Earth and 400 W initially at Jupiter."},
+        ],
+    },
+    {
+        # Dawn ended in orbit around Ceres and NASA states no speed relative to the Sun for it: no speed.
+        "id": "dawn",
+        "name": "Dawn",
+        "model": "dawn",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2007-09-27", "page": "https://science.nasa.gov/mission/dawn/technology/spacecraft/", "quote": "Launch Date: Sept. 27, 2007 | 11:34 UTC"},
+            {"key": "dryMassKg", "value": 747.1, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "with a dry mass of 747.1 kg and a fueled launch mass of 1217.7 kg"},
+            {"key": "launchMassKg", "value": 1217.7, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "with a dry mass of 747.1 kg and a fueled launch mass of 1217.7 kg"},
+            {"key": "spanM", "value": 19.7, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "Two solar panel wings extend 19.7 m tip-to-tip"},
+            {"key": "dishDiameterM", "value": 1.52, "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "A parabolic fixed 1.52 m high gain dish antenna"},
+            {"key": "propulsion", "value": "three ion thrusters", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "The ion propulsion consists of three ion thrusters"},
+            {"key": "vestaArrival", "value": "2011-07-16", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "Dawn reached Vesta on 16 July 2011"},
+            {"key": "ceresOrbit", "value": "2015-03-06", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "entered initial orbit around Ceres on 6 March 2015 at 12:29 UT"},
+            {"key": "communicationsEnded", "value": "2018-10-31", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A", "quote": "communications ended on 31 October 2018"},
         ],
     },
 ]

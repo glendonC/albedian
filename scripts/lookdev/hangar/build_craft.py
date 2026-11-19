@@ -82,6 +82,26 @@ CHANGES = {
         "corners welded, the normals made again, smooth within an angle and sharp beyond it, and the texture "
         "re-encoded as WebP."
     ),
+    # lod0 for a model of foil, panel and solar cell textures (recipe "changes": "atlas")
+    "lod0_atlas": (
+        "Rebuilt from NASA's model, not copied: a second copy of the dish's top surface removed, the parts joined into "
+        "one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; "
+        "NASA's foil and panel textures kept as the base colour, with metalness, roughness and surface relief added "
+        "from each texture's own colours and shading, the solar cells' textures kept with one roughness and no "
+        "metalness, a perforated panel given the mean of NASA's map with NASA's alpha kept as its mask, faces NASA's "
+        "file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond "
+        "it, and the textures re-encoded as WebP."
+    ),
+    # lod0 for a model whose blankets NASA's model names, with a gold foil and one photo texture (recipe "changes": "dawn")
+    "lod0_dawn": (
+        "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the "
+        "craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model "
+        "names as black blanket or silver foil given physically based materials of that kind, the gold foil and the "
+        "photo texture given metalness, roughness and surface relief from their own colours, a small printed label "
+        "in the photo painted over in the colour around it, NASA's flat colours kept for the rest, faces NASA's file "
+        "keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, "
+        "and the textures re-encoded as WebP."
+    ),
     # lod0 for a model whose maps are averaged per part (recipe "changes": "mean")
     "lod0_mean": (
         "Rebuilt from NASA's model, not copied: the parts joined into one mesh, turned so the craft faces along +Z "

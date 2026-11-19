@@ -931,6 +931,125 @@
           "max": 1.49
         }
       }
+    },
+    "juno": {
+      "title": "Juno",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "juno/juno_lod0.glb",
+          "bytes": 2990384,
+          "triangles": 16459,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "juno/juno_lod1.glb",
+          "bytes": 1212248,
+          "triangles": 8204,
+          "textureEdgeMax": 512,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "juno/juno_lod2.glb",
+          "bytes": 400996,
+          "triangles": 2840,
+          "textureEdgeMax": 256,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "juno/juno_picker.webp",
+          "bytes": 3386,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -11.849,
+          -9.524,
+          -3.353
+        ],
+        "max": [
+          6.29,
+          9.528,
+          1.015
+        ]
+      },
+      "bodyRadiusM": 2.0,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": "foil_silver",
+        "metres": 3.5,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+        "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high.",
+        "partBand": {
+          "axis": "z",
+          "min": -1.39,
+          "max": -1.36
+        }
+      }
+    },
+    "dawn": {
+      "title": "Dawn",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "dawn/dawn_lod0.glb",
+          "bytes": 1162340,
+          "triangles": 30376,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "dawn/dawn_lod1.glb",
+          "bytes": 712124,
+          "triangles": 15188,
+          "textureEdgeMax": 1024,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "dawn/dawn_lod2.glb",
+          "bytes": 245084,
+          "triangles": 5436,
+          "textureEdgeMax": 512,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "dawn/dawn_picker.webp",
+          "bytes": 1940,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -9.85,
+          -1.108,
+          -1.1
+        ],
+        "max": [
+          9.85,
+          1.108,
+          1.1
+        ]
+      },
+      "bodyRadiusM": 1.5,
+      "lodTriangleShare": {
+        "lod0": 1.0,
+        "lod1": 0.5,
+        "lod2": 0.18
+      },
+      "scaleFrom": {
+        "part": null,
+        "metres": 19.7,
+        "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+        "quote": "Two solar panel wings extend 19.7 m tip-to-tip"
+      }
     }
   },
   "entries": [
@@ -1443,6 +1562,118 @@
           "value": "solar arrays, 384 W at solar encounter",
           "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2018-065A",
           "quote": "The solar arrays produce 384 W power at solar encounter."
+        }
+      ]
+    },
+    {
+      "id": "juno",
+      "name": "Juno",
+      "model": "juno",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2011-08-05",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+          "quote": "Juno launched on 05 August 2011 at 16:25 UTC (12:25 p.m. EDT)"
+        },
+        {
+          "key": "jupiterOrbit",
+          "value": "2016-07-04",
+          "page": "https://science.nasa.gov/mission/juno/",
+          "quote": "the Juno spacecraft entered orbit around Jupiter on July 4, 2016"
+        },
+        {
+          "key": "massKg",
+          "value": 1500,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+          "quote": "Mass: 1500 kg"
+        },
+        {
+          "key": "busDiameterM",
+          "value": 3.5,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+          "quote": "The spacecraft is built around a hexagonal cylinder bus measuring 3.5 m in diameter by 3.5 m high."
+        },
+        {
+          "key": "solarArrayLengthM",
+          "value": 9,
+          "page": "https://science.nasa.gov/mission/juno/",
+          "quote": "each of its three solar arrays extend about 29.5 feet (9 meters) from the main body"
+        },
+        {
+          "key": "spanM",
+          "value": 20,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+          "quote": "giving a total diameter of approximately 20 m"
+        },
+        {
+          "key": "power",
+          "value": "solar panels, 18 kW at Earth and 400 W at Jupiter",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2011-040A",
+          "quote": "The solar panels will produce a total of 18 kW at Earth and 400 W initially at Jupiter."
+        }
+      ]
+    },
+    {
+      "id": "dawn",
+      "name": "Dawn",
+      "model": "dawn",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2007-09-27",
+          "page": "https://science.nasa.gov/mission/dawn/technology/spacecraft/",
+          "quote": "Launch Date: Sept. 27, 2007 | 11:34 UTC"
+        },
+        {
+          "key": "dryMassKg",
+          "value": 747.1,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "with a dry mass of 747.1 kg and a fueled launch mass of 1217.7 kg"
+        },
+        {
+          "key": "launchMassKg",
+          "value": 1217.7,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "with a dry mass of 747.1 kg and a fueled launch mass of 1217.7 kg"
+        },
+        {
+          "key": "spanM",
+          "value": 19.7,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "Two solar panel wings extend 19.7 m tip-to-tip"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 1.52,
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "A parabolic fixed 1.52 m high gain dish antenna"
+        },
+        {
+          "key": "propulsion",
+          "value": "three ion thrusters",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "The ion propulsion consists of three ion thrusters"
+        },
+        {
+          "key": "vestaArrival",
+          "value": "2011-07-16",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "Dawn reached Vesta on 16 July 2011"
+        },
+        {
+          "key": "ceresOrbit",
+          "value": "2015-03-06",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "entered initial orbit around Ceres on 6 March 2015 at 12:29 UT"
+        },
+        {
+          "key": "communicationsEnded",
+          "value": "2018-10-31",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2007-043A",
+          "quote": "communications ended on 31 October 2018"
         }
       ]
     }

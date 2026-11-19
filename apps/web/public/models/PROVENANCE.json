@@ -183,6 +183,65 @@
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Apollo%20Lunar%20Module/Apollo%20Lunar%20Module.png (1124858 bytes, SHA-256 ceaaee11e4f5475462257287e73f3dcd547e3eab87810e48ffe51a7c66dcaf1f)."
     },
     {
+      "path": "hangar/dawn/dawn_lod0.glb",
+      "sha256": "05c7d940b151ee594c5c40fbd8bdc18efb3c305d842e8fbd7466b3f65099de03",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft dawn --out apps/web/public/models/hangar/dawn",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; the parts NASA's model names as black blanket or silver foil given physically based materials of that kind, the gold foil and the photo texture given metalness, roughness and surface relief from their own colours, a small printed label in the photo painted over in the colour around it, NASA's flat colours kept for the rest, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.glb (927020 bytes, SHA-256 411249aed791994b6a2014894ad6bd7ca0445dbcf6d5342af9edc5df988f04b7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/dawn/dawn_lod1.glb",
+      "sha256": "4c539a79569ef247afa6964d0afc6495c985e6f4cfff0d84eb16e375582fed38",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft dawn --out apps/web/public/models/hangar/dawn",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.glb (927020 bytes, SHA-256 411249aed791994b6a2014894ad6bd7ca0445dbcf6d5342af9edc5df988f04b7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/dawn/dawn_lod2.glb",
+      "sha256": "d5e60a81ca82b1ec13e1deaffe1f06a9fe6e0e4d607d5dd1f449b88d4ad094ea",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft dawn --out apps/web/public/models/hangar/dawn",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.glb (927020 bytes, SHA-256 411249aed791994b6a2014894ad6bd7ca0445dbcf6d5342af9edc5df988f04b7); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/dawn/dawn_picker.webp",
+      "sha256": "aa4b36fa12477b63684f9fe0a39c51cb7fb1666b34febc512dc85a1982df15de",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft dawn --out apps/web/public/models/hangar/dawn",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Dawn/Dawn.png (1118264 bytes, SHA-256 2a5c7d395136787354d2155f2a826888c596b912d55fd4ec597a8ad588bcc673)."
+    },
+    {
       "path": "hangar/emu/emu_lod0.glb",
       "sha256": "b48ed61de56ee208f6e407dd973d1cd4dfdfad7c71a8ab7f583eafba42ab36e6",
       "sources": [
@@ -361,7 +420,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "237e65b2d2019fc8a44a79a9c8119f647556a3621bcbd2671320db62c251ab28",
+      "sha256": "be76779f0a96c599af7b0fc21d6b20f24d503d73fd97576a50dc3433ad092a5b",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -490,6 +549,65 @@
         "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
       },
       "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29/International%20Space%20Station%20%28ISS%29%20%28D%29%20%28IGOAL%29.png (1628716 bytes, SHA-256 cb4800bf76b9ab76c44fd0ecea7ec47c4230bd3293b8bda6626ebb8d1128493a)."
+    },
+    {
+      "path": "hangar/juno/juno_lod0.glb",
+      "sha256": "5f954719cd33c635ac26c9a570085d432e0540eccdbd3987143aa1378035980d",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft juno --out apps/web/public/models/hangar/juno",
+        "changes": "Rebuilt from NASA's model, not copied: a second copy of the dish's top surface removed, the parts joined into one mesh, turned so the craft faces along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's foil and panel textures kept as the base colour, with metalness, roughness and surface relief added from each texture's own colours and shading, the solar cells' textures kept with one roughness and no metalness, a perforated panel given the mean of NASA's map with NASA's alpha kept as its mask, faces NASA's file keeps apart at shared corners welded, the normals made again, smooth within an angle and sharp beyond it, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Juno%20%28A%29/Juno%20%28A%29.glb (8999028 bytes, SHA-256 13f6bd48ff830a1890b21ef6e0182bb1043926feebb77af9733e7374b050367a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/juno/juno_lod1.glb",
+      "sha256": "661b3a28c1aadb68e6f8876bd2012aff62c84645ee950d7967d71dc4671299b0",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft juno --out apps/web/public/models/hangar/juno",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Juno%20%28A%29/Juno%20%28A%29.glb (8999028 bytes, SHA-256 13f6bd48ff830a1890b21ef6e0182bb1043926feebb77af9733e7374b050367a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/juno/juno_lod2.glb",
+      "sha256": "3d70044c4815368cbc773ca5c2e8841116ea46e0d73b9529f5e537552c0eff7e",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft juno --out apps/web/public/models/hangar/juno",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Juno%20%28A%29/Juno%20%28A%29.glb (8999028 bytes, SHA-256 13f6bd48ff830a1890b21ef6e0182bb1043926feebb77af9733e7374b050367a); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/juno/juno_picker.webp",
+      "sha256": "60e6b60492e1dad5e82026ec409f4dd33be15d610f01beccbafa0976eaf29577",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft juno --out apps/web/public/models/hangar/juno",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Juno%20%28A%29/Juno%20%28A%29.png (877228 bytes, SHA-256 50103ebfff182051bb6c01f0bd25af3c4e2e1cc5453fec6b9cceff6d165c18c6)."
     },
     {
       "path": "hangar/jwst/jwst_lod0.glb",
