@@ -43,15 +43,18 @@ export const SmallMainAction: React.FC<MainActionProps> = ({ label, icon = 'arro
 );
 
 export interface SecondActionProps extends ButtonProps {
-  label: string;
+  /** The word; while Ask out loud listens, the words as heard, the unsettled last one in its own element. */
+  label: React.ReactNode;
   /** When given, the pill carries a filled circle holding the icon (Ask out loud's microphone). */
   icon?: LookIconName;
   size?: LookSizeName;
+  /** The screen's own class beside the part's, for the screen's placing and states. */
+  part?: string;
 }
 
 /** A second action: an outlined pill. */
-export const SecondAction: React.FC<SecondActionProps> = ({ label, icon, size = 'compact', ...rest }) => (
-  <button type="button" className={join('look-second', icon && 'look-second--with-circle', SIZE_CLASS[size])} {...rest}>
+export const SecondAction: React.FC<SecondActionProps> = ({ label, icon, size = 'compact', part, ...rest }) => (
+  <button type="button" className={join('look-second', icon && 'look-second--with-circle', SIZE_CLASS[size], part)} {...rest}>
     {label}
     {icon && (
       <span className="look-second__circle" aria-hidden="true">
@@ -68,13 +71,15 @@ export interface IconButtonProps extends ButtonProps {
   /** For a switch (sound on or off): pressed shows filled and says so; leave it out for a plain button. */
   pressed?: boolean;
   size?: LookSizeName;
+  /** The screen's own class beside the part's, for the screen's placing and states. */
+  part?: string;
 }
 
 /** An icon only: an outlined circle the controls' height, filled on hover or while on. */
-export const IconButton: React.FC<IconButtonProps> = ({ label, icon, pressed, size = 'compact', ...rest }) => (
+export const IconButton: React.FC<IconButtonProps> = ({ label, icon, pressed, size = 'compact', part, ...rest }) => (
   <button
     type="button"
-    className={join('look-icon', pressed && 'is-on', SIZE_CLASS[size])}
+    className={join('look-icon', pressed && 'is-on', SIZE_CLASS[size], part)}
     aria-label={label}
     aria-pressed={pressed}
     {...rest}

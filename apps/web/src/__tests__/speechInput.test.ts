@@ -165,6 +165,39 @@ describe('@albedian/web push-to-talk speech capture', () => {
     expect(calls.stopped).toEqual([speechErrorBanner('no-speech')]);
   });
 
+  it('hands over the words as they are heard when asked to, the last unsettled until the recogniser settles it (ask, approved 2026-11-12)', () => {
+    const words: Array<[string, boolean]> = [];
+    const transcripts: string[] = [];
+    startSpeechCapture(FakeRecognition, {
+      onAsking: () => {},
+      onListening: () => {},
+      onTranscript: (text) => transcripts.push(text),
+      onStopped: () => {},
+      onWords: (text, settled) => words.push([text, settled]),
+    });
+    const rec = FakeRecognition.last!;
+    expect(rec.interimResults).toBe(true);
+    const result = (transcript: string, isFinal: boolean) => Object.assign([{ transcript }], { isFinal });
+    rec.onresult?.({ results: [result('How far', false)] } as never);
+    rec.onresult?.({ results: [result('How far away is', false)] } as never);
+    expect(transcripts).toEqual([]);
+    // The browser splits a capture into results; the words are all of them, in order
+    rec.onresult?.({ results: [result('How far away', true), result(' is Vega', false)] } as never);
+    expect(words.at(-1)).toEqual(['How far away is Vega', false]);
+    expect(transcripts).toEqual([]);
+    rec.onresult?.({ results: [result('How far away', true), result(' is Vega', true)] } as never);
+    expect(words).toEqual([
+      ['How far', false],
+      ['How far away is', false],
+      ['How far away is Vega', false],
+      ['How far away is Vega', true],
+    ]);
+    expect(transcripts).toEqual(['How far away is Vega']);
+    // Nothing after the words were handed over
+    rec.onresult?.({ results: [result('How far away is Vega now', true)] } as never);
+    expect(transcripts).toEqual(['How far away is Vega']);
+  });
+
   it('writes no em or en dash in any sentence', () => {
     for (const code of ['network', 'not-allowed', 'no-speech', 'audio-capture', 'aborted', 'language-not-supported', undefined]) {
       expect(speechErrorBanner(code)).not.toMatch(/[\u2013\u2014]/);

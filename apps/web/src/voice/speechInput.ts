@@ -52,7 +52,8 @@ export function speechErrorBanner(code?: string): string {
 export interface SpeechRecognitionLike {
   lang: string;
   interimResults: boolean;
-  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  /** Each result holds its alternatives; `isFinal` is false while the recogniser may still change it (absent: final). */
+  onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> }) => void) | null;
   onerror: ((ev: { error?: string }) => void) | null;
   onend: (() => void) | null;
   /** The browser opened the microphone, after any permission prompt (Web Speech API audiostart). */
@@ -72,6 +73,11 @@ export interface SpeechCaptureHandlers {
    * the banner the command itself wrote stays. Called exactly once per capture.
    */
   onStopped(banner: string | null): void;
+  /**
+   * The words as they are heard, all results in order, and whether the recogniser has settled the last of them (ask,
+   * approved 2026-11-12: the listening button shows them). Given, the capture asks for results as they form.
+   */
+  onWords?(text: string, settled: boolean): void;
 }
 
 /**
@@ -99,11 +105,16 @@ export function startSpeechCapture(
   try {
     rec = new Recognition();
     rec.lang = 'en-US';
-    rec.interimResults = false;
+    rec.interimResults = handlers.onWords !== undefined;
     rec.onresult = (event) => {
-      if (stopped) return;
-      const transcript = (event.results[0]?.[0]?.transcript ?? '').trim();
+      // One capture hands over its words once
+      if (stopped || heard) return;
+      const results = Array.from(event.results);
+      const transcript = results.map((result) => result[0]?.transcript ?? '').join('').trim();
       if (!transcript) return;
+      const settled = results.at(-1)?.isFinal !== false;
+      handlers.onWords?.(transcript, settled);
+      if (!settled) return;
       heard = true;
       handlers.onTranscript(transcript);
     };

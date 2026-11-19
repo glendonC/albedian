@@ -294,7 +294,8 @@ describe('the viewport opens on the home', () => {
     const file = choosePhotoOnHome(container);
     expect(q(HOME_SCREEN)).toBeNull();
     expect(q('.alb-lusion-header')).not.toBeNull();
-    expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
+    // Over the photo on the laptop, the approved ask bar takes the old bar's place (unit-1g-b)
+    expect(q('[data-testid="ask-bar"]')).not.toBeNull();
     expect(onFileChosen).toHaveBeenCalledWith(file);
   });
 

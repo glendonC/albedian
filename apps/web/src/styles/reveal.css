@@ -758,3 +758,111 @@
   border-radius: 50%;
   background: var(--look-ink);
 }
+
+/* Asking, bottom centre (ask, approved 2026-11-12: #l-listen in .cache/uiux/ask/index.html; typed, decided the same
+   night: #o8a, #o8b, #o9 in .cache/uiux/web2/index.html) */
+.ask-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.ask-bar__ask,
+.ask-bar__type {
+  background: rgba(10, 10, 12, 0.55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.ask-bar .look-i {
+  --look-ic: 18px;
+}
+
+.ask-bar__type .look-i {
+  --look-ic: 19px;
+}
+
+.ask-bar__ask {
+  transition:
+    background-color 0.2s var(--look-ease-standard),
+    color 0.2s var(--look-ease-standard),
+    border-color 0.2s var(--look-ease-standard);
+}
+
+/* Listening: the button fills, its circle turns dark with an ink microphone */
+.ask-bar__ask.is-listening {
+  background: var(--look-ink);
+  color: var(--look-night);
+  border-color: var(--look-ink);
+}
+
+.ask-bar__ask.is-listening .look-second__circle {
+  background: var(--look-night);
+  color: var(--look-ink);
+}
+
+/* The newest word, until the recogniser settles it */
+.ask-bar__ask i {
+  font-style: normal;
+  opacity: 0.42;
+}
+
+.ask-bar__field {
+  height: 48px;
+  width: 440px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 1px solid var(--look-ink);
+  background: rgba(10, 10, 12, 0.7);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 22px;
+  font: 400 17px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  color: var(--look-ink);
+}
+
+.ask-bar__field input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  caret-color: var(--look-ink);
+  outline: none;
+}
+
+.ask-bar__send {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--look-ink);
+  color: var(--look-night);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ask-bar__send:disabled {
+  cursor: default;
+}
+
+.ask-bar__send:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}

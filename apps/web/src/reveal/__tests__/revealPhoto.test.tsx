@@ -341,6 +341,7 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
       },
     } as unknown as VoiceQuestionReply;
   }
+  const shown = (reply: VoiceQuestionReply) => ({ heard: reply.heard, sentence: reply.answer.sentence, answer: reply.answer });
   const refusal = { heard: 'Is that a plane?', answer: { status: 'unanswerable', question: 'unanswerable', reason: 'outside_the_data', sentence: "Nothing in this photo's data answers that." } } as VoiceQuestionReply;
   /** The session with Rigel's catalog distance measured by its parallax, in the release the approved picture names. */
   function withParallax(session: ObservationSession): ObservationSession {
@@ -354,7 +355,7 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
 
   it('shows the words as heard, the sentence, and under a hairline each statement as its tag, with a value line only for the approved kind', () => {
     const session = withParallax(calibrated());
-    show(session, { answer: answered(session) });
+    show(session, { answer: shown(answered(session)) });
     expect(q(ANSWER)!.tagName).toBe('SECTION');
     expect(q('.reveal-answer__q')!.textContent).toBe('How far away is Rigel?');
     expect(q('.reveal-answer__s')!.textContent).toBe('Rigel is about 260 parsecs away, about 860 light years.');
@@ -367,7 +368,7 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
     const session = calibrated();
     const { rigel } = rigelOf(session);
     const other = session.observationSolution!.findings.find((f) => f.evidenceClass === 'catalog_matched' && f.id !== rigel.id)!;
-    show({ ...session, selectedFindingId: other.id }, { answer: answered(session) });
+    show({ ...session, selectedFindingId: other.id }, { answer: shown(answered(session)) });
     expect(q('[data-testid="star-card"]')).toBeNull();
     expect(all('.reveal-mark.is-picked').map((m) => m.getAttribute('data-testid'))).toEqual([`reveal-mark-${rigel.id}`]);
     expect(q('[data-testid="reveal-leader"]')).not.toBeNull();
@@ -375,7 +376,7 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
 
   it('shows a refusal as the words and the sentence only: no statements, nothing lit, no line', () => {
     const session = calibrated();
-    show(session, { answer: refusal });
+    show(session, { answer: shown(refusal) });
     expect(q('.reveal-answer__q')!.textContent).toBe('Is that a plane?');
     expect(q('.reveal-answer__s')!.textContent).toBe("Nothing in this photo's data answers that.");
     expect(q('.reveal-answer__st')).toBeNull();
@@ -385,7 +386,7 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
 
   it('closes on Esc, and not on Esc something else already answered or while typing', () => {
     const onCloseAnswer = vi.fn();
-    show(calibrated(), { answer: refusal, onCloseAnswer });
+    show(calibrated(), { answer: shown(refusal), onCloseAnswer });
     const press = (target: EventTarget, prevented = false) => {
       const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
       if (prevented) event.preventDefault();
@@ -401,6 +402,21 @@ describe('RevealPhoto: an answer takes the card\'s place (ask, approved 2026-11-
     expect(onCloseAnswer).not.toHaveBeenCalled();
     press(window);
     expect(onCloseAnswer).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a command's refusal the same way: the words and the app's sentence, nothing lit", () => {
+    const session = calibrated();
+    show(session, { answer: { heard: 'Take me to Zorblax', sentence: 'I could not find that in this photo\'s sky.', answer: null } });
+    expect(q('.reveal-answer__q')!.textContent).toBe('Take me to Zorblax');
+    expect(q('.reveal-answer__s')!.textContent).toBe("I could not find that in this photo's sky.");
+    expect(q('.reveal-answer__st')).toBeNull();
+    expect(q('.reveal-mark.is-picked')).toBeNull();
+  });
+
+  it('shows a capture that heard nothing as its sentence alone, with no heard line (the lead\'s answer 21:33)', () => {
+    show(calibrated(), { answer: { heard: '', sentence: 'No speech was heard. Press push-to-talk and speak, or type the command below.', answer: null } });
+    expect(q('.reveal-answer__q')).toBeNull();
+    expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard. Press push-to-talk and speak, or type the command below.');
   });
 
   it('shows the card again once the answer is gone', () => {

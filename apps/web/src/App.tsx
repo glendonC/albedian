@@ -4,7 +4,6 @@ import {
   CelestialFinding,
   IngestReceipt,
   ObservationSession,
-  VoiceQuestionReply,
 } from '@albedian/contracts';
 import {
   createEmptyObservationSession,
@@ -28,6 +27,8 @@ import { arrivalAfter, arrivalOf, type Arrival } from './reveal/arrival.js';
 import { usePhoneLayout } from './reveal/usePhoneLayout.js';
 import { isSourcePhotoShown } from './components/sourcePhotoRect.js';
 import { askVoiceAnswer, isQuestion } from './services/voiceAnswer.js';
+import type { ShownAnswer } from './reveal/AnswerPanel.js';
+import type { HeardWords } from './reveal/AskBar.js';
 import {
   applyVoiceBackendReply,
   askVoiceBackend,
@@ -111,9 +112,18 @@ export const App: React.FC = () => {
   const latestChoiceRef = useRef<File | null>(null);
   // The upload on its way to a solved sky, for the working screen; none once its sky is solved or it was refused
   const [arrival, setArrival] = useState<Arrival | null>(null);
-  // The answer to the last question asked over the laptop reveal, with the photo it is about (ask, approved 2026-11-12)
-  const [answer, setAnswer] = useState<{ photoKey: string; reply: VoiceQuestionReply } | null>(null);
+  // The answer to the last question asked over the laptop reveal, or a command's refusal, with the photo it is about
+  // (ask, approved 2026-11-12; command, decided the same night)
+  const [answer, setAnswer] = useState<({ photoKey: string } & ShownAnswer) | null>(null);
   const phone = usePhoneLayout();
+  // The words heard so far while the microphone is open, for the listening button
+  const [heardWords, setHeardWords] = useState<HeardWords | null>(null);
+  // Whether this browser can listen: a recogniser, on a secure page (a phone's plain http address is not one)
+  const canListen = useMemo(() => {
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+    return Boolean(w.SpeechRecognition ?? w.webkitSpeechRecognition) && window.isSecureContext !== false;
+  }, []);
+  const revealOn = (s: ObservationSession) => !phone && isSourcePhotoShown(s);
   // What Try again needs: the file and its browser URL, and the receipt once the file is stored
   const inFlightRef = useRef<{ file: File; url: string; receipt: IngestReceipt | null } | null>(null);
 
@@ -197,12 +207,12 @@ export const App: React.FC = () => {
     // A question over the laptop reveal goes to the answer route of the photo's upload, whose answer takes the card's
     // place; when the route does not answer, the words run as they did before. A command stays with the app.
     const sha256 = asked.sourceAsset?.sha256;
-    if (modality !== 'pointer' && sha256 && !phone && isSourcePhotoShown(asked) && isQuestion(utterance, asked, pointer)) {
+    if (modality !== 'pointer' && sha256 && revealOn(asked) && isQuestion(utterance, asked, pointer)) {
       const photoKey = photoKeyOf(asked);
       void askVoiceAnswer(sha256, utterance, asked.selectedFindingId).then((reply) => {
         // An answer about the previous photo is dropped
         if (photoKeyOf(sessionRef.current) !== photoKey) return;
-        if (reply) setAnswer({ photoKey, reply });
+        if (reply) setAnswer({ photoKey, heard: reply.heard, sentence: reply.answer.sentence, answer: reply.answer });
         else runCommand(utterance, modality, pointer);
       });
       return;
@@ -215,6 +225,15 @@ export const App: React.FC = () => {
     const asked = sessionRef.current;
     const result = executeVoiceOrTextCommand(asked, utterance, modality, pointer);
     setSession(result.session);
+    // A command it cannot carry out shows its refusal where answers show, over the laptop reveal (command, decided
+    // 2026-11-12): the words as heard, then the app's own sentence; nothing lights up
+    const refuse = (sentence: string) => {
+      if (revealOn(asked) && photoKeyOf(sessionRef.current) === photoKeyOf(asked)) {
+        setAnswer({ photoKey: photoKeyOf(asked), heard: utterance, sentence, answer: null });
+      }
+    };
+    if (result.outcome.status === 'needs_input') refuse(result.outcome.question);
+    if (result.outcome.status === 'rejected' && !backendMayResolve(result.outcome.reason)) refuse(result.outcome.explanation);
 
     if (result.outcome.status === 'completed') {
       audioBusRef.current?.playSelectionClick(isMuted);
@@ -224,8 +243,12 @@ export const App: React.FC = () => {
     } else if (result.outcome.status === 'rejected' && backendMayResolve(result.outcome.reason)) {
       // The backend may read what the parser could not. Its reply applies to the session as it stands when
       // the reply arrives, through the reducer, which refuses an action that went stale meanwhile.
+      const local = result.outcome.explanation;
       void askVoiceBackend(utterance, result.session, pointer).then((reply) => {
-        if (!reply) return;
+        if (!reply) {
+          refuse(local);
+          return;
+        }
         // A reply about the previous photo is dropped: a new session can match its view revision by coincidence
         if (photoKeyOf(sessionRef.current) !== photoKeyOf(asked)) {
           setSession((prev) => ({ ...prev, lastStatusBanner: VOICE_REPLY_PREVIOUS_PHOTO }));
@@ -233,6 +256,11 @@ export const App: React.FC = () => {
         }
         const applied = applyVoiceBackendReply(sessionRef.current, reply);
         setSession(applied.session);
+        const outcome = applied.outcome;
+        if (outcome?.status === 'rejected') refuse(outcome.explanation);
+        else if (outcome?.status === 'needs_input') refuse(outcome.question);
+        else if (!outcome && reply.status === 'rejected') refuse(reply.explanation);
+        else if (!outcome && reply.status === 'needs_input') refuse(reply.question);
         if (applied.outcome?.status === 'completed') {
           audioBusRef.current?.playSelectionClick(isMuted);
           if (applied.flyToFindingId) animatePhaseAToPhaseBSpaceFlight(applied.flyToFindingId);
@@ -277,12 +305,17 @@ export const App: React.FC = () => {
     const spokenOver = photoKeyOf(sessionRef.current);
     startSpeechCapture(w.SpeechRecognition ?? w.webkitSpeechRecognition, {
       // The browser may be asking for the microphone; nothing is heard yet
-      onAsking: () =>
+      onAsking: () => {
+        setHeardWords(null);
         setSession((prev) => ({
           ...prev,
           machines: { ...prev.machines, voice: 'permission' },
           lastStatusBanner: SPEECH_ASKING,
-        })),
+        }));
+      },
+      onWords: (text, settled) => {
+        if (photoKeyOf(sessionRef.current) === spokenOver) setHeardWords({ text, settled });
+      },
       onListening: () =>
         setSession((prev) => ({
           ...prev,
@@ -298,12 +331,20 @@ export const App: React.FC = () => {
         runUtterance(transcript, 'voice');
       },
       // Every ending returns voice to off, which also lifts the listening duck on the source audio
-      onStopped: (banner) =>
+      onStopped: (banner) => {
+        setHeardWords(null);
+        // A capture that heard nothing says why where answers show, over the laptop reveal, in today's sentence until
+        // the design lane rewords it (the lead's answer of 2026-11-18 21:33, option A)
+        const now = sessionRef.current;
+        if (banner !== null && revealOn(now) && photoKeyOf(now) === spokenOver) {
+          setAnswer({ photoKey: spokenOver, heard: '', sentence: banner, answer: null });
+        }
         setSession((prev) => ({
           ...prev,
           machines: { ...prev.machines, voice: 'off' },
           ...(banner === null ? {} : { lastStatusBanner: banner }),
-        })),
+        }));
+      },
     });
   };
 
@@ -384,7 +425,9 @@ export const App: React.FC = () => {
         uploadRefusal={uploadRefusal}
         arrival={arrival}
         onTryAgain={handleTryAgain}
-        answer={answer && answer.photoKey === photoKeyOf(session) ? answer.reply : null}
+        answer={answer && answer.photoKey === photoKeyOf(session) ? answer : null}
+        heardWords={heardWords}
+        canListen={canListen}
         onCloseAnswer={() => setAnswer(null)}
       />
     </>

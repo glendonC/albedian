@@ -182,6 +182,7 @@ describe('the viewport shows the working screen while an upload is on its way', 
       '.reveal-nav',
       '.sound-control',
       '[data-testid="voice-command-hud"]',
+      '[data-testid="ask-bar"]',
       '[data-testid="observation-solve-compare-hud"]',
       '[data-testid="celestial-marker-overlay"]',
       '[data-testid="celestial-target-card"]',
@@ -247,7 +248,9 @@ describe('the viewport shows the working screen while an upload is on its way', 
     expect(q('.alb-lusion-header')).not.toBeNull();
     // The Sound circle comes with the screens after the solve
     expect(q('.reveal-nav .sound-control button[aria-label="Sound"]')).not.toBeNull();
-    expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
+    // Over the laptop reveal the approved ask bar takes the old bar's place
+    expect(q('[data-testid="ask-bar"]')).not.toBeNull();
+    expect(q('[data-testid="voice-command-hud"]')).toBeNull();
     // The reveal takes the working screen's place over the same photo, at full strength again
     expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
     expect((q(`${STAGE} img`) as HTMLImageElement).style.opacity).toBe('');
@@ -480,6 +483,40 @@ describe('the viewport shows the approved star card over the photo, above phone 
     open(storedPhoto());
     expect(q('.reveal-nav')).toBeNull();
     expect(q('[role="group"][aria-label="View"]')).toBeNull();
+  });
+
+  it('gives the ask bar the listening state, the words heard and the browser\'s ability, and sends typed words as text', () => {
+    const onRunUtterance = vi.fn();
+    const onPushToTalk = vi.fn();
+    const base = storedPhoto();
+    const listening = { ...base, machines: { ...base.machines, voice: 'listening' } } as ObservationSession;
+    open(listening, { onRunUtterance, onPushToTalk, heardWords: { text: 'How far away is Vega', settled: false }, canListen: true });
+    const ask = q('.ask-bar__ask') as HTMLButtonElement;
+    expect(ask.classList.contains('is-listening')).toBe(true);
+    expect(ask.innerHTML).toContain('How far away is <i>Vega</i>');
+    act(() => ask.click());
+    expect(onPushToTalk).toHaveBeenCalledTimes(1);
+    renderViewport({ ...base, machines: { ...base.machines, voice: 'permission' } } as ObservationSession, { onRunUtterance, onPushToTalk, heardWords: null, canListen: true });
+    expect(q('.ask-bar__ask')!.className).toContain('is-listening');
+    expect(q('.ask-bar__ask')!.textContent).toBe('Ask out loud');
+    renderViewport(base, { onRunUtterance, onPushToTalk, heardWords: null, canListen: false });
+    expect(q('.ask-bar__ask')!.textContent).toBe('Type to ask');
+    expect(q('.ask-bar__ask')!.className).not.toContain('is-listening');
+    act(() => (q('.ask-bar__ask') as HTMLButtonElement).click());
+    const input = q('.ask-bar__field input') as HTMLInputElement;
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Is that a plane?');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    act(() => (q('.ask-bar__field') as HTMLFormElement).requestSubmit());
+    expect(onRunUtterance).toHaveBeenCalledWith('Is that a plane?', 'text');
+  });
+
+  it('keeps the old bar on a phone, and no ask bar', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({ matches: query.includes('max-width: 720px'), addEventListener: () => {}, removeEventListener: () => {} });
+    open(storedPhoto());
+    expect(q('[data-testid="ask-bar"]')).toBeNull();
+    expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
   });
 
   it('runs Go there as the words "Take me to" the star, once per press, and clears the picked star on Close', () => {

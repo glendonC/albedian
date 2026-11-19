@@ -1,12 +1,12 @@
 import React from 'react';
-import { answerFindings, type ObservationSession, type VoiceQuestionReply } from '@albedian/contracts';
+import { answerFindings, type ObservationSession } from '@albedian/contracts';
 import { getMarkerVisualSpec } from '@albedian/design-system';
 import { EvidenceTag, LookIcon, Logo, MainAction } from '../look/index.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
 import { leaderPath, revealMarks, type RevealMark } from './revealMarks.js';
 import { StarCard } from './StarCard.js';
-import { AnswerPanel } from './AnswerPanel.js';
+import { AnswerPanel, type ShownAnswer } from './AnswerPanel.js';
 import { evidenceCounts, revealStatus } from './revealStatus.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
@@ -29,7 +29,7 @@ export interface RevealPhotoProps {
   /** "Show predicted sky" on a reveal no star was matched on (no-match reveal, approved 2026-11-18). */
   onShowPredictedSky?: () => void;
   /** The answer to the last question, in the card's place, with the star it is about lit (ask, approved 2026-11-12). */
-  answer?: VoiceQuestionReply | null;
+  answer?: ShownAnswer | null;
   onCloseAnswer?: () => void;
   viewportWidthPx?: number;
   viewportHeightPx?: number;
@@ -93,7 +93,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const bareFrame = frameMismatch || originalPixels;
   const rect = bareFrame ? null : sessionPhotoRect(session, viewW, viewH);
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
-  const lit = answer ? (answerFindings(answer.answer)[0] ?? null) : undefined;
+  const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
   const marked = lit === undefined ? session : { ...session, selectedFindingId: lit };
   const picked = session.observationSolution?.findings.find((finding) => finding.id === marked.selectedFindingId) ?? null;
   const marks = revealMarks(marked, viewW, viewH);
@@ -188,7 +188,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       </div>
       )}
 
-      {answer && <AnswerPanel key={`${answer.heard}|${answer.answer.sentence}`} reply={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} />}
+      {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} />}
 
       {!answer && picked && (
         <StarCard

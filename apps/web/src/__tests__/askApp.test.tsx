@@ -111,7 +111,7 @@ async function openAppAt(
     receipt?: () => Response | Promise<Response>;
     solution?: () => Response | Promise<Response>;
     answer?: () => Response | Promise<Response>;
-    other?: (url: string) => Response | undefined;
+    other?: (url: string, init?: RequestInit) => Response | undefined;
   } = {}
 ) {
   window.history.replaceState({}, '', address);
@@ -124,7 +124,7 @@ async function openAppAt(
       calls.push(`${init?.method ?? 'GET'} ${url}`);
       if (url === `/api/ingest/${sha256}`) return (routes.receipt ?? (() => json(receipt)))();
       if (url === `/api/ingest/${sha256}/solution`) return (routes.solution ?? (() => json(solution)))();
-      const other = routes.other?.(url);
+      const other = routes.other?.(url, init);
       if (other) return other;
       if (url === `/api/voice/answer/${sha256}`) {
         asked.push(JSON.parse(String(init?.body)));
@@ -182,12 +182,13 @@ function answerFor(question: string) {
   return { heard: question, answer: { status: 'unanswerable', question: 'unanswerable', reason: 'outside_the_data', sentence: "Nothing in this photo's data answers that." } };
 }
 
-/** Types the words into the bar the app has today and sends them. */
+/** Types the words into the approved field (the keyboard button turns the ask button into it) and sends them. */
 async function typeAndSend(words: string) {
-  if (!q('[data-testid="voice-command-input"]')) {
-    await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
+  if (!q('.ask-bar__field input')) {
+    // jsdom has no speech recognition, so the ask button itself reads "Type to ask" and opens the field
+    await act(async () => ((q('.ask-bar__type') ?? q('.ask-bar__ask')) as HTMLButtonElement).click());
   }
-  const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
+  const input = q('.ask-bar__field input') as HTMLInputElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, words);
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -224,13 +225,29 @@ describe('asking about the photo on the laptop reveal', () => {
     expect(q('.reveal-mark.is-picked')).toBeNull();
   });
 
-  it('keeps a command with the app: nothing goes to the answer route', async () => {
+  it('keeps a command with the app: nothing goes to the answer route, and one it carries out shows nothing in the answer place', async () => {
     const calls = await openAppAt(`/?upload=${sha256}`);
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
-    await typeAndSend('Back to moment');
+    await typeAndSend('Select Rigel');
     expect(asked).toEqual([]);
     expect(calls.filter((call) => call.includes('/api/voice/answer/'))).toEqual([]);
     expect(q(ANSWER)).toBeNull();
+    expect(q('[data-testid="star-card"] h1')!.textContent).toBe('Rigel');
+  });
+
+  it("shows a command it cannot carry out where answers show: the words as typed and the app's own sentence, nothing lit (command, decided)", async () => {
+    await openAppAt(`/?upload=${sha256}`);
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend('Take me to Zorblax');
+    await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+    expect(asked).toEqual([]);
+    expect(q('.reveal-answer__q')!.textContent).toBe('Take me to Zorblax');
+    expect(q('.reveal-answer__s')!.textContent!.length).toBeGreaterThan(0);
+    expect(q('.reveal-answer__st')).toBeNull();
+    expect(q('.reveal-mark.is-picked')).toBeNull();
+    // No old caption box or bar over the laptop reveal
+    expect(q('[data-testid="voice-command-hud"]')).toBeNull();
+    expect(q('[data-testid="ask-bar"]')).not.toBeNull();
   });
 
   it('runs the words as the app did before when the answer route does not answer', async () => {
@@ -238,7 +255,10 @@ describe('asking about the photo on the laptop reveal', () => {
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
     await typeAndSend('Is that a plane?');
     await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
-    expect(q(ANSWER)).toBeNull();
+    // The app's own refusal shows where answers show, with no statements (waiting for UIUX's words: QUESTION unit-1g-b)
+    await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+    expect(q('.reveal-answer__q')!.textContent).toBe('Is that a plane?');
+    expect(q('.reveal-answer__st')).toBeNull();
   });
 
   it('closes the answer when a command runs, and on Esc', async () => {
@@ -246,7 +266,7 @@ describe('asking about the photo on the laptop reveal', () => {
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
     await typeAndSend('Is that a plane?');
     await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
-    await typeAndSend('Take me to Zorblax');
+    await typeAndSend('Select Rigel');
     expect(q(ANSWER)).toBeNull();
     await typeAndSend('Is that a plane?');
     await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
@@ -314,6 +334,127 @@ describe('asking about the photo on the laptop reveal', () => {
     });
     await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
     await waitUntil(() => expect(q('[data-testid="working-screen"]')).toBeNull());
+    expect(q(ANSWER)).toBeNull();
+  });
+
+  it("says why listening stopped where answers show, in the app's own sentence, when nothing was heard (the lead's answer 21:33)", async () => {
+    class SilentRecognition {
+      lang = '';
+      interimResults = false;
+      onresult = null;
+      onerror: ((ev: { error?: string }) => void) | null = null;
+      onend: (() => void) | null = null;
+      onaudiostart: (() => void) | null = null;
+      start() {
+        setTimeout(() => {
+          this.onaudiostart?.();
+          this.onerror?.({ error: 'no-speech' });
+          this.onend?.();
+        }, 0);
+      }
+    }
+    (window as unknown as Record<string, unknown>).SpeechRecognition = SilentRecognition;
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      expect(q('.ask-bar__ask')!.textContent).toBe('Ask out loud');
+      await act(async () => (q('.ask-bar__ask') as HTMLButtonElement).click());
+      await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+      expect(q('.reveal-answer__q')).toBeNull();
+      expect(q('.reveal-answer__s')!.textContent).toBe('No speech was heard. Press push-to-talk and speak, or type the command below.');
+      expect(q('.ask-bar__ask')!.className).not.toContain('is-listening');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    }
+  });
+
+  it('shows no refusal when the voice backend reads the words the app could not and carries them out', async () => {
+    const calls = await openAppAt(`/?upload=${sha256}`, {
+      other: (url, init) =>
+        url === '/api/voice/command'
+          ? json({
+              status: 'proposed',
+              actionId: 'backend-1',
+              // The revision the app sent, as the backend echoes it
+              proposedAction: { type: 'finding.select', requestId: 'backend-1', expectedViewRevision: JSON.parse(String(init?.body)).context.viewRevision, findingId: rigel.id },
+              visualStatus: 'Selected Rigel.',
+            })
+          : undefined,
+    });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    // The view revision the backend's action must name, as the session stands
+    await typeAndSend('Take me to Zorblax');
+    await waitUntil(() => expect(calls).toContain('POST /api/voice/command'));
+    await settle();
+    expect(q(ANSWER)).toBeNull();
+    expect(q('[data-testid="star-card"] h1')!.textContent).toBe('Rigel');
+  });
+
+  it('asks back where answers show when the app cannot tell which star is meant', async () => {
+    // Two stars measured equally bright on the same frame: "the brightest" names neither on its own
+    const [a, b] = solution.findings.filter((f) => f.sourceDetection);
+    const tied = {
+      ...solution,
+      findings: solution.findings.map((f) =>
+        f.id === b!.id ? { ...f, sourceDetection: { ...f.sourceDetection!, flux: a!.sourceDetection!.flux, snr: a!.sourceDetection!.snr, frameTimeSec: a!.sourceDetection!.frameTimeSec } } : f
+      ),
+    };
+    await openAppAt(`/?upload=${sha256}`, { solution: () => json(tied) });
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await typeAndSend('Select the brightest star');
+    await waitUntil(() => expect(q(ANSWER)).not.toBeNull());
+    expect(q('.reveal-answer__q')!.textContent).toBe('Select the brightest star');
+    expect(q('.reveal-answer__s')!.textContent).toContain('Which did you mean?');
+  });
+
+  it('shows the words in the Ask out loud button as they are heard, and its own label again once the capture ends', async () => {
+    let rec: { onresult: ((ev: unknown) => void) | null; onend: (() => void) | null; onaudiostart: (() => void) | null } | null = null;
+    class Hearing {
+      lang = '';
+      interimResults = false;
+      onresult = null;
+      onerror = null;
+      onend = null;
+      onaudiostart = null;
+      constructor() {
+        rec = this as never;
+      }
+      start() {}
+    }
+    (window as unknown as Record<string, unknown>).SpeechRecognition = Hearing;
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => (q('.ask-bar__ask') as HTMLButtonElement).click());
+      await act(async () => rec!.onaudiostart?.());
+      await act(async () => rec!.onresult?.({ results: [Object.assign([{ transcript: 'How far away is Rig' }], { isFinal: false })] }));
+      expect(q('.ask-bar__ask')!.innerHTML).toContain('How far away is <i>Rig</i>');
+      await act(async () => rec!.onend?.());
+      expect(q('.ask-bar__ask')!.textContent).toBe('Ask out loud');
+      expect(q('.ask-bar__ask')!.innerHTML).not.toContain('Rig');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).SpeechRecognition;
+    }
+  });
+
+  it('keeps a refusal given off the photo view from showing when the photo comes back', async () => {
+    await openAppAt(`/?upload=${sha256}`);
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    // To the measured sky, where the old bar still asks
+    await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('.reveal-nav [role="group"] button')].find((b) => b.textContent === 'Real sky')!).click());
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).toBeNull());
+    await act(async () => (q('button[aria-label="Type a question"]') as HTMLButtonElement).click());
+    const input = q('[data-testid="voice-command-input"]') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Take me to Zorblax');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => (input.form as HTMLFormElement).requestSubmit());
+    await settle();
+    // Back to the photo with the restore button, not a command
+    await act(async () => (q('[data-testid="back-to-moment-btn"]') as HTMLButtonElement).click());
+    await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+    await settle();
     expect(q(ANSWER)).toBeNull();
   });
 

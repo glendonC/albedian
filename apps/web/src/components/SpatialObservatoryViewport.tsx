@@ -6,7 +6,7 @@ import {
 import {
   DiscoveredMediaItem,
 } from '../services/apiClient.js';
-import { hasVerifiedWcs, type RenderLayerSet, type VoiceQuestionReply } from '@albedian/contracts';
+import { hasVerifiedWcs, type RenderLayerSet } from '@albedian/contracts';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { ViewPills } from '../look/index.js';
 import { findingCanEnterSpace } from './askSuggestions.js';
@@ -45,6 +45,8 @@ import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourceP
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
 import { RevealPhoto } from '../reveal/RevealPhoto.js';
 import { SoundControl } from '../reveal/SoundControl.js';
+import { AskBar, type HeardWords } from '../reveal/AskBar.js';
+import type { ShownAnswer } from '../reveal/AnswerPanel.js';
 import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
@@ -80,9 +82,13 @@ export interface SpatialObservatoryViewportProps {
   arrival?: Arrival | null;
   /** Starts the failed upload's work again (the working screen's Try again). */
   onTryAgain?: () => void;
-  /** The answer to the last question, shown in the card's place over the laptop reveal. */
-  answer?: VoiceQuestionReply | null;
+  /** The answer to the last question, or a command's refusal, shown in the card's place over the laptop reveal. */
+  answer?: ShownAnswer | null;
   onCloseAnswer?: () => void;
+  /** The words heard so far while listening, for the Ask out loud button. */
+  heardWords?: HeardWords | null;
+  /** Whether this browser can listen; when it cannot, the button reads "Type to ask". */
+  canListen?: boolean;
 }
 
 const LANDING_SHOWCASE_SCENES = [
@@ -157,6 +163,8 @@ export const SpatialObservatoryViewport: React.FC<
   arrival = null,
   answer = null,
   onCloseAnswer,
+  heardWords = null,
+  canListen = true,
   onTryAgain,
 }) => {
   const windowSize = useViewportSize();
@@ -627,6 +635,17 @@ export const SpatialObservatoryViewport: React.FC<
             session={session}
             setSession={setSession}
           />
+          {/* Over the laptop reveal, the approved Ask out loud button and the keyboard button take the old bar's place
+              (ask, approved 2026-11-12); elsewhere the old bar stays until its own unit */}
+          {revealShown ? (
+            <AskBar
+              canListen={canListen}
+              listening={session.machines?.voice === 'listening' || session.machines?.voice === 'permission'}
+              words={heardWords}
+              onListen={onPushToTalk}
+              onSend={(text) => onRunUtterance(text, 'text')}
+            />
+          ) : (
           <VoiceCommandHud
             voiceState={session.machines?.voice ?? 'off'}
             lastStatusBanner={session.lastStatusBanner ?? null}
@@ -637,6 +656,7 @@ export const SpatialObservatoryViewport: React.FC<
             onPushToTalk={onPushToTalk}
             selectedFinding={selectedFinding && selectedFinding.id === session.selectedFindingId ? selectedFinding : null}
           />
+          )}
         </>
       )}
 

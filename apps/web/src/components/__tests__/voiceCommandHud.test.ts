@@ -473,7 +473,8 @@ describe('SpatialObservatoryViewport wiring (hud-4)', () => {
   it('offers no suggestions when the session has no selection, whatever finding App falls back to', () => {
     const base = createSyntheticCalibratedSession();
     const fallback = base.observationSolution!.findings[0]!;
-    renderViewport({ ...base, selectedFindingId: null }, fallback);
+    // In the sky view, where the old bar still asks (over the photo on the laptop the approved ask bar takes its place)
+    renderViewport({ ...base, selectedFindingId: null, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession, fallback);
     choosePhotoOnHome(container);
     act(() => q<HTMLButtonElement>('voice-type-btn')!.click());
     expect(q('ask-palette')).not.toBeNull();
