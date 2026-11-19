@@ -224,7 +224,7 @@
       }
     ],
     "warnings": [
-      "WCS solution did not pass independent held-out calibration gate."
+      "A possible match was found, but the stars held back to check it did not land where it put them, so it was not kept."
     ]
   },
   "plate_calibrated": {
