@@ -511,6 +511,36 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
     expect(q('[data-testid="craft-picker"]')).toBeNull();
   });
 
+  it('hands the camera to the person on a press on the sky, with D26\'s lines, and takes it back on another (pilot-1e)', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+    const press = () => {
+      const sky = q('[data-testid="flight-sky"]')!;
+      act(() => {
+        sky.dispatchEvent(new MouseEvent('pointerdown', { clientX: 400, clientY: 300 }));
+        sky.dispatchEvent(new MouseEvent('pointerup', { clientX: 400, clientY: 300 }));
+      });
+    };
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    press();
+    expect(all('[data-testid="steer-line"]').map((p) => p.textContent)).toEqual(['W and S: faster and slower', 'Drag or arrow keys: turn', 'Press the sky: autopilot again', 'Esc: Back to Moment']);
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    expect(q(READOUT)).not.toBeNull();
+    expect(q('[data-testid="steer-speed"]')!.textContent).toBe('this flight: 1.00 ly each second');
+    expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).not.toContain('Milky Way: ESO/S. Brunier, dimmed in flight, since its stars are as seen from Earth.');
+    press();
+    expect(q('[data-testid="steer-line"]')).toBeNull();
+    expect(q('[data-testid="real-sky"]')).not.toBeNull();
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+  });
+
+  it('does not take the press on the phone, where steering waits for its own screen', () => {
+    const { session } = rigelPicked();
+    show(session, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 }, phone: true });
+    expect(q('[data-testid="flight-sky"]')).toBeNull();
+  });
+
   it('leaves out what is only true from Earth in the cone view: the panorama, the marks, the readout, the rings and the panorama\'s line (cone-1)', () => {
     const { session } = rigelPicked();
     const flying = { ...session, spatialView: { ...session.spatialView, mode: 'catalog_3d' }, machines: { ...session.machines, navigation: 'space' } } as ObservationSession;

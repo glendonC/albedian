@@ -1,4 +1,4 @@
-import { craftPlacementInView, photoCameraClipMatrix, wcsCameraRows, type PhotoPinhole, type Vec3 } from '@albedian/camera-rig';
+import { craftPlacementInView, photoCameraClipMatrix, wcsCameraRows, type PhotoPinhole, type Vec3, type WcsCameraRows } from '@albedian/camera-rig';
 import type { FlightCamera } from './flightFrame.js';
 import { CRAFT_FRAMING, modelToIcrs, type Craft } from './crafts.js';
 
@@ -36,14 +36,26 @@ export interface CraftScene {
  * The craft's scene for a model whose bounding sphere has `modelCentre` and `modelRadius` in its own units, or none
  * when the camera has no star to fly to (the reference is the Sun).
  */
-export function craftSceneOf(camera: FlightCamera, craft: Craft, modelCentre: Vec3, modelRadius: number): CraftScene | null {
-  const o = camera.observerPc;
-  const t = camera.referencePc;
-  const along: Vec3 = [t[0] - o[0], t[1] - o[1], t[2] - o[2]];
-  const toTarget = Math.hypot(along[0], along[1], along[2]);
-  if (!(toTarget > 0)) return null;
-  const heading: Vec3 = [along[0] / toTarget, along[1] / toTarget, along[2] / toTarget];
-  const pin = photoPinholeOf(camera);
+export function craftSceneOf(
+  camera: FlightCamera,
+  craft: Craft,
+  modelCentre: Vec3,
+  modelRadius: number,
+  /** While the person steers (pilot-1e): the camera turned and moved by them; the craft flies where it looks. */
+  steer?: { positionPc: Vec3; rows: WcsCameraRows }
+): CraftScene | null {
+  const o = steer ? steer.positionPc : camera.observerPc;
+  let heading: Vec3;
+  if (steer) {
+    heading = steer.rows.z;
+  } else {
+    const t = camera.referencePc;
+    const along: Vec3 = [t[0] - o[0], t[1] - o[1], t[2] - o[2]];
+    const toTarget = Math.hypot(along[0], along[1], along[2]);
+    if (!(toTarget > 0)) return null;
+    heading = [along[0] / toTarget, along[1] / toTarget, along[2] / toTarget];
+  }
+  const pin = steer ? { ...photoPinholeOf(camera), rows: steer.rows } : photoPinholeOf(camera);
   const placed = craftPlacementInView(
     pin,
     { xPx: CRAFT_FRAMING.xFraction * camera.viewportWidthPx, yPx: CRAFT_FRAMING.yFraction * camera.viewportHeightPx },

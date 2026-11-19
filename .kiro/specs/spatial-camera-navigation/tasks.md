@@ -26,3 +26,5 @@
   - Traced to: `packages/camera-rig/src/__tests__/steer.test.ts`
 - [x] 13. Build D28 for the cone view (cone-1b): "Your photo's view" pill right of the craft pill, the cone to the farthest matched star's cross-section with the photo at three quarters of the nearest's, line work, Earth, your stars ringed and the picked one named, the far field at 45 percent, the readout and disclosure in the record's words, and an orbit that starts beside the cone and turns rigidly round Earth.
   - Traced to: `apps/web/src/spatial/flight/__tests__/coneView.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
+- [x] 14. Hand the flight's camera to the person on a press on the sky and take it back on another (pilot-1e, D26 item 6 with the lead's answer of 08:55): W and S for speed, arrows and a drag to turn with k10's slowing after release, the craft flying where they look, the readout's numbers from their own camera, D26's lines and the flight's own speed; the panorama and the photo-frame marks leave while they steer.
+  - Traced to: `apps/web/src/spatial/flight/__tests__/steering.test.ts`, `craftScene.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`

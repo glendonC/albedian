@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ObservationSession } from '@albedian/contracts';
-import { resolveFindingParsecPosition, type Vec3 } from '@albedian/camera-rig';
+import { resolveFindingParsecPosition, steerCamera, type Vec3 } from '@albedian/camera-rig';
 import { dispatchAlbedianAction } from '@albedian/observation';
 import { createSyntheticCalibratedSession } from '@albedian/observation/testing';
 import { flightCameraOf, screenOfPlacement } from '../flightFrame.js';
+import { steerStartOf } from '../starView.js';
 import { CRAFTS, CRAFT_FRAMING, craftFromSearch } from '../crafts.js';
 import { craftSceneOf, photoPinholeOf } from '../craftScene.js';
 
@@ -69,6 +70,21 @@ describe('craftSceneOf: a NASA model placed in the photo\'s own view', () => {
   it('has no scene once the camera stands at the star itself', () => {
     const camera = flightCameraOf(there(), W, H)!;
     expect(craftSceneOf({ ...camera, observerPc: camera.referencePc }, CRAFTS['voyager-1'], [0, 0, 0], 10)).toBeNull();
+  });
+
+  it('while steered, frames the craft at the same point and points it where the person looks', () => {
+    const camera = flightCameraOf(there(), W, H)!;
+    const start = steerStartOf(camera);
+    const steer = steerCamera({ ...start, speedPcPerS: 0.3 }, { yawRadPerS: 0.4, pitchRadPerS: 0.2 }, 0.5);
+    const scene = craftSceneOf(camera, CRAFTS['voyager-1'], [0, 0, 0], 10, steer)!;
+    const centre = apply(scene.modelMatrix, [0, 0, 0]);
+    const s = toScreen(apply(scene.clipMatrix, [centre[0], centre[1], centre[2]]));
+    expect(Math.abs(s.xPx - CRAFT_FRAMING.xFraction * W)).toBeLessThan(1e-6);
+    expect(Math.abs(s.yPx - CRAFT_FRAMING.yFraction * H)).toBeLessThan(1e-6);
+    const tip = apply(scene.modelMatrix, CRAFTS['voyager-1'].modelForward);
+    const got = [tip[0] - centre[0], tip[1] - centre[1], tip[2] - centre[2]];
+    const n = Math.hypot(got[0]!, got[1]!, got[2]!);
+    for (let k = 0; k < 3; k++) expect(got[k]! / n).toBeCloseTo(steer.rows.z[k]!, 9);
   });
 
   it('agrees with the star layer\'s camera on where a far point lands', () => {

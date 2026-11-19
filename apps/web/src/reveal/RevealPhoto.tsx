@@ -15,6 +15,7 @@ import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
 import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
 import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
+import { STEER_LINES, steeringSpeedLine } from '../spatial/flight/steering.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
@@ -189,6 +190,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     if (!there) setConeAsked(false);
   }, [there]);
   const cone = there && coneAsked;
+  // pilot-1e: a press on the sky hands the flight's camera to the person and takes it back; leaving there, or the cone
+  // view, ends it. While they steer, the readout's numbers are their camera's own
+  const [steeringAsked, setSteeringAsked] = useState(false);
+  useEffect(() => {
+    if (!there || cone) setSteeringAsked(false);
+  }, [there, cone]);
+  const steering = there && !cone && !phone && steeringAsked;
+  const [steered, setSteered] = useState<{ fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null>(null);
+  // What is only true from Earth (the panorama, the photo-frame marks) leaves in the cone view and while steering
+  const earthOnly = cone || steering;
+  const shownFlight = flight && steering && steered ? { ...flight, toStarLy: flight.toStarLy === null ? null : steered.toStarPc * 3.261563777, fromEarthLy: steered.fromEarthPc * 3.261563777 } : flight;
   const coneGeometry = cone ? coneGeometryOf(session) : null;
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
@@ -209,17 +221,17 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
   return (
     <div className={phone ? 'reveal-photo is-phone' : 'reveal-photo'} data-testid="reveal-photo" data-hud-interactive="true" data-arriving={arriving ? 'true' : undefined}>
-      {skyMounted && !originalPixels && !cone && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
-      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} />}
+      {skyMounted && !originalPixels && !earthOnly && <RealSkyLayer session={framed} rect={frame} viewportWidthPx={viewW} viewportHeightPx={viewH} leaving={!skyShown} onDrawn={setSkyDrawn} phone={phone} there={there} />}
+      {there && !originalPixels && <FlightStarsLayer session={session} viewportWidthPx={viewW} viewportHeightPx={viewH} craft={phone ? null : craft} cone={cone} onNoDistanceCount={setNoDistance} phone={phone} steering={steering} onPressSky={phone ? undefined : () => setSteeringAsked((on) => !on)} onSteer={setSteered} />}
       {rect && <PhotoCorners rect={rect} />}
 
-      {!phone && !bareFrame && !cone && picked && marks.some((mark) => mark.picked) && (
+      {!phone && !bareFrame && !earthOnly && picked && marks.some((mark) => mark.picked) && (
         <svg className={marks.find((mark) => mark.picked)!.kind === 'predicted' ? 'reveal-leader is-predicted' : 'reveal-leader'} data-testid="reveal-leader" aria-hidden="true" focusable="false">
           <path pathLength={1} d={leaderPath(marks.find((mark) => mark.picked)!, viewW)} />
         </svg>
       )}
 
-      {!bareFrame && !cone && (
+      {!bareFrame && !earthOnly && (
       <div className="reveal-marks" data-testid="reveal-marks" style={{ '--mark-n': marks.length } as React.CSSProperties}>
         {marks.map((mark) =>
           mark.uncertaintyPx === null ? null : (
@@ -266,7 +278,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {/* There on the phone the Simulated tag rides in the readout (#p-there) */}
       {phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} />
-      ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || cone) ? (
+      ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || earthOnly) ? (
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {cone ? (
@@ -283,7 +295,14 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
               <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
               <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
               {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-              <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>
+              {!steering && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
+              {/* While steering, D26 item 6's plain lines at 13 px, ink 66 percent */}
+              {steering &&
+                STEER_LINES.map((line) => (
+                  <p key={line} className="reveal-status__line" data-testid="steer-line" style={{ fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
+                    {line}
+                  </p>
+                ))}
             </>
           )}
         </div>
@@ -333,32 +352,38 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
 
       {answer && <AnswerPanel key={`${answer.heard}|${answer.sentence}`} shown={answer} solution={session.observationSolution} onClose={() => onCloseAnswer?.()} phone={phone} />}
 
-      {!answer && flight && !cone && (
-        <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={flight.name}>
+      {!answer && shownFlight && !cone && (
+        <section className={phone ? 'flight-readout is-phone' : 'flight-readout'} data-testid="flight-readout" aria-label={shownFlight.name}>
           <EvidenceTag evidenceClass="simulated" />
+          {/* D26 item 7: while the person steers, the flight's own speed under the Simulated tag */}
+          {steering && steered && (
+            <p data-testid="steer-speed" style={{ margin: '10px 0 0', fontSize: 13, color: 'rgba(244, 243, 239, 0.66)' }}>
+              {steeringSpeedLine(steered.speedPcPerS)}
+            </p>
+          )}
           {/* On the phone, where no status line shows, the readout says what the view is (AGENTS.md 1.2) */}
           {phone && <p className="flight-readout__note">{THERE_DISCLOSURE}</p>}
-          <h1>{flight.name}</h1>
+          <h1>{shownFlight.name}</h1>
           <div className="flight-readout__stats">
-            {flight.toStarLy !== null && (
+            {shownFlight.toStarLy !== null && (
               <div className="flight-readout__stat">
                 <b>
-                  {oneDecimal(flight.toStarLy)}
+                  {oneDecimal(shownFlight.toStarLy)}
                   <small>ly</small>
                 </b>
-                <span>{`to ${flight.name}`}</span>
+                <span>{`to ${shownFlight.name}`}</span>
               </div>
             )}
             <div className="flight-readout__stat">
               <b>
-                {oneDecimal(flight.fromEarthLy)}
+                {oneDecimal(shownFlight.fromEarthLy)}
                 <small>ly</small>
               </b>
               <span>from Earth</span>
             </div>
           </div>
           {!phone && craft && picked && placeFinding(picked).kind === 'at_distance' && (
-            <PilotTrip craft={craft} starName={flight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} />
+            <PilotTrip craft={craft} starName={shownFlight.name} starDistancePc={(placeFinding(picked) as { distancePc: number }).distancePc} flightSeconds={flightSeconds} />
           )}
         </section>
       )}

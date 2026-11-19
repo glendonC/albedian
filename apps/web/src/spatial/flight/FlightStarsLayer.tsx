@@ -12,7 +12,9 @@ import { FlightCraftLayer } from './FlightCraftLayer.js';
 import { craftFromSearch, type Craft } from './crafts.js';
 import { ConeLayer } from './ConeLayer.js';
 import { CONE_ORBIT_START, coneGeometryOf, coneStarView, dragConeOrbit, zoomConeOrbit, type ConeOrbit } from './coneView.js';
-import { starViewOfFlight, type StarView } from './starView.js';
+import { starViewOfFlight, starViewOfSteer, steerStartOf, type StarView } from './starView.js';
+import { STEER_START_SPEED_PC_S, SteerHands } from './steering.js';
+import { changeSpeed, steerCamera, type SteerState } from '@albedian/camera-rig';
 import { RING_RADIUS_PX, RING_RADIUS_PX_PHONE, RING_STROKE, flightRings, noDistanceStarsOnScreen, type ScreenBox } from './flightRings.js';
 
 /**
@@ -173,6 +175,12 @@ export const FlightStarsLayer: React.FC<{
   onNoDistanceCount?: (count: number) => void;
   /** At phone width the rings are 6 px across the radius (D27 item 1). */
   phone?: boolean;
+  /** pilot-1e: whether the person steers (a press on the sky hands over and takes back the steering). */
+  steering?: boolean;
+  /** Told of a press on the sky (a click or tap that is not a drag), in the flight view. */
+  onPressSky?: () => void;
+  /** While steering, told where the camera stands and how fast it flies, each frame; none when steering stops. */
+  onSteer?: (state: { fromEarthPc: number; toStarPc: number; speedPcPerS: number } | null) => void;
 }> = ({
   session,
   viewportWidthPx,
@@ -182,6 +190,9 @@ export const FlightStarsLayer: React.FC<{
   cone = false,
   onNoDistanceCount,
   phone = false,
+  steering = false,
+  onPressSky,
+  onSteer,
 }) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
@@ -201,13 +212,108 @@ export const FlightStarsLayer: React.FC<{
   useEffect(() => {
     if (cone) setOrbit(CONE_ORBIT_START);
   }, [cone]);
+  // pilot-1e: the person's own camera, handed over where the flight's stands, turned and moved each frame
+  const [steer, setSteer] = useState<SteerState | null>(null);
+  const hands = useRef(new SteerHands());
+  const flying = steering && !cone && camera !== null;
+  useEffect(() => {
+    if (!flying || !cameraRef.current) {
+      setSteer(null);
+      return undefined;
+    }
+    hands.current = new SteerHands();
+    setSteer({ ...steerStartOf(cameraRef.current), speedPcPerS: STEER_START_SPEED_PC_S });
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+      last = now;
+      const { input, speedDirection } = hands.current.frame(dt);
+      setSteer((prev) => (prev ? { ...steerCamera(prev, input, dt), speedPcPerS: changeSpeed(prev.speedPcPerS, speedDirection, dt) } : prev));
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    // W, S and the arrows are steering's while it lasts; Space stays Ask out loud, Esc Back to Moment
+    const typing = (e: KeyboardEvent) => e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName));
+    const down = (e: KeyboardEvent) => {
+      if (typing(e) || !SteerHands.takes(e.code)) return;
+      hands.current.keyDown(e.code);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    const up = (e: KeyboardEvent) => {
+      if (!SteerHands.takes(e.code)) return;
+      hands.current.keyUp(e.code);
+      e.stopPropagation();
+    };
+    window.addEventListener('keydown', down, true);
+    window.addEventListener('keyup', up, true);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', down, true);
+      window.removeEventListener('keyup', up, true);
+    };
+  }, [flying]);
+  const toldSteer = useRef(onSteer);
+  toldSteer.current = onSteer;
+  useEffect(() => {
+    const ref = cameraRef.current?.referencePc ?? [0, 0, 0];
+    toldSteer.current?.(
+      steer
+        ? {
+            fromEarthPc: Math.hypot(steer.positionPc[0], steer.positionPc[1], steer.positionPc[2]),
+            toStarPc: Math.hypot(steer.positionPc[0] - ref[0], steer.positionPc[1] - ref[1], steer.positionPc[2] - ref[2]),
+            speedPcPerS: steer.speedPcPerS,
+          }
+        : null
+    );
+  }, [steer]);
+  // A press on the sky (not a drag) in the flight view; while steering, a drag turns
+  const sky = useRef<HTMLDivElement>(null);
+  const toldPress = useRef(onPressSky);
+  toldPress.current = onPressSky;
+  useEffect(() => {
+    const el = sky.current;
+    if (!el) return undefined;
+    let start: { x: number; y: number; t: number } | null = null;
+    let lastMove = { x: 0, y: 0, t: 0 };
+    let dragged = false;
+    const downP = (e: PointerEvent) => {
+      start = { x: e.clientX, y: e.clientY, t: performance.now() };
+      lastMove = { ...start };
+      dragged = false;
+      el.setPointerCapture?.(e.pointerId);
+    };
+    const moveP = (e: PointerEvent) => {
+      if (!start) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 4) dragged = true;
+      const now = performance.now();
+      if (dragged) hands.current.drag(e.clientX - lastMove.x, e.clientY - lastMove.y, (now - lastMove.t) / 1000);
+      lastMove = { x: e.clientX, y: e.clientY, t: now };
+    };
+    const upP = () => {
+      if (start && !dragged) toldPress.current?.();
+      hands.current.release();
+      start = null;
+    };
+    el.addEventListener('pointerdown', downP);
+    el.addEventListener('pointermove', moveP);
+    el.addEventListener('pointerup', upP);
+    el.addEventListener('pointercancel', upP);
+    return () => {
+      el.removeEventListener('pointerdown', downP);
+      el.removeEventListener('pointermove', moveP);
+      el.removeEventListener('pointerup', upP);
+      el.removeEventListener('pointercancel', upP);
+    };
+  }, [cone]);
   const gain = cone ? CONE_FIELD_GAIN : 1;
   const gainRef = useRef(gain);
   gainRef.current = gain;
   // The camera the stars are drawn through: the photo's own in the flight, the orbit camera in the cone view
   const view = useMemo<StarView | null>(
-    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx) : starViewOfFlight(camera)) : null),
-    [camera, cone, orbit, session.observationSolution, viewportWidthPx, viewportHeightPx]
+    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx) : steer ? starViewOfSteer(camera, steer) : starViewOfFlight(camera)) : null),
+    [camera, cone, orbit, steer, session.observationSolution, viewportWidthPx, viewportHeightPx]
   );
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -337,7 +443,10 @@ export const FlightStarsLayer: React.FC<{
       </svg>
     )}
     {cone && view && geometry && <ConeLayer session={session} view={view} geometry={geometry} keepOut={keepOut} onDrag={onDrag} onWheel={onWheel} />}
-    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} />}
+    {!cone && onPressSky && (
+      <div ref={sky} className="flight-sky" data-testid="flight-sky" data-steering={steer ? 'true' : 'false'} aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none', cursor: steer ? 'grab' : 'pointer' }} />
+    )}
+    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} steer={steer} />}
     </>
   );
 };
