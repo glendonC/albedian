@@ -508,6 +508,27 @@ describe('asking about the photo on the laptop reveal', () => {
     }
   });
 
+  it('arrives at once, with no flight, when the person asks for less motion (REQ-DSA-2.1)', async () => {
+    (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    try {
+      await openAppAt(`/?upload=${sha256}`);
+      await waitUntil(() => expect(q('[data-testid="reveal-marks"]')).not.toBeNull());
+      await act(async () => (q(`[data-testid="reveal-mark-${rigel.id}"]`) as HTMLButtonElement).click());
+      // One press, nothing awaited after it: with a flight, the first frame is still the photo turning into the sky
+      await act(async () => ([...container.querySelectorAll<HTMLButtonElement>('[data-testid="star-card"] button')].find((b) => b.textContent === 'Go there')!).click());
+      expect(q('[data-testid="flight-readout"]')).not.toBeNull();
+      expect(q('[data-testid="flight-readout"]')!.textContent).toContain('1.0ly');
+    } finally {
+      delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
+      delete (window as unknown as Record<string, unknown>).matchMedia;
+    }
+  });
+
   it("shows answers over Real sky too, the photo's frame still the reveal's", async () => {
     (window as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
     try {

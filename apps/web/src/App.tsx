@@ -13,6 +13,7 @@ import {
 import { SpatialObservatoryViewport } from './components/SpatialObservatoryViewport.js';
 import { AlbedianWebAudioBus } from './audio/WebAudioBus.js';
 import { useCameraFlightAnimation } from './hooks/useCameraFlightAnimation.js';
+import { usePrefersReducedMotion, withReducedMotion } from './hooks/usePrefersReducedMotion.js';
 import {
   DiscoveredMediaItem,
   UploadRefusedError,
@@ -105,6 +106,12 @@ export const App: React.FC = () => {
   const [session, setSession] = useState<ObservationSession>(() =>
     createEmptyObservationSession()
   );
+  // Less motion when the person asks for it: every session the app builds or opens follows the setting, so Go there
+  // dissolves instead of flying (REQ-DSA-2.1)
+  const reducedMotion = usePrefersReducedMotion();
+  useEffect(() => {
+    setSession((prev) => withReducedMotion(prev, reducedMotion));
+  }, [reducedMotion, session]);
   const [discoveredMedia, setDiscoveredMedia] = useState<DiscoveredMediaItem[]>([]);
   const [activeDiscoveredId, setActiveDiscoveredId] = useState<string | null>(null);
   const [commandText, setCommandText] = useState('');
