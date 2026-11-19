@@ -50,7 +50,6 @@ from services.media import decode as media_decode
 from services.media import jobs as media_jobs
 from services.media import variants as media_variants
 from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC
-from tests.science.test_bounded_worker import _group_is_gone
 
 BOUND_S = 30.0
 # A stop in the child is seen at its next poll, then the child's group is terminated and, after the grace, killed
@@ -549,10 +548,23 @@ def test_a_cancel_of_a_finished_job_changes_nothing(world: dict[str, Any]) -> No
     assert runner.cancel(new_job_id(world["shas"][1])) is None
 
 
+def _child_pid() -> int:
+    # Of this module, so a child that runs it has imported this module
+    return os.getpid()
+
+
 def _start_grandchild_then_sleep(seconds: float, report: Callable[..., None]) -> None:
     grandchild = subprocess.Popen(["sleep", "60"], stdin=subprocess.DEVNULL)
     report("grandchild", grandchild.pid, os.getpgid(0))
     time.sleep(seconds)
+
+
+def _group_is_gone(pgid: int) -> bool:
+    """The bounded worker tests' check, one for both files: an ended member not yet reaped counts as gone. Imported
+    here, not at the top, so a slot worker, which imports this module again, does not import that one too."""
+    from tests.science.test_bounded_worker import _group_is_gone as group_is_gone
+
+    return group_is_gone(pgid)
 
 
 def _until(check: Callable[[], bool], bound_s: float) -> bool:
@@ -581,8 +593,9 @@ def test_p_job_4_5_a_cancel_or_the_bound_stops_the_child_and_every_process_it_st
     limit = 4.0 if how == "deadline" else BOUND_S
     world["kinds"]["solve"] = solve_kind(Script(), body, time_limit_s=limit)
     runner = world["runner"]()
-    # The child up first, so the bound stops the work, not a fresh child's start-up (it imports this module again)
-    job_runner._SLOT_WORKERS["solve"].call(os.getpid, timeout_s=BOUND_S)
+    # The child up first, and this module imported in it by a call of one of its functions (3.2 s on the laptop, more
+    # under load on Linux, past the 4 s bound), so the bound stops the work, not a fresh child's start-up or import
+    job_runner._SLOT_WORKERS["solve"].call(_child_pid, timeout_s=BOUND_S)
     started = time.monotonic()
     record, _ = runner.start(world["shas"][0], "solve")
     assert in_child.wait(BOUND_S)

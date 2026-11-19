@@ -301,6 +301,8 @@ def test_a_stop_set_before_the_call_stops_it_at_once() -> None:
 def test_a_call_past_its_bound_ends_every_process_the_child_started() -> None:
     seen: list[tuple] = []
     with BoundedWorker() as worker:
+        # The child up, and this module imported in it, before the 3 s bound starts
+        worker.call(_own_group, timeout_s=30.0)
         with pytest.raises(WorkerTimeout):
             worker.call(_start_grandchild_then_sleep, (30.0,), timeout_s=3.0, progress_kwarg="report",
                         on_event=lambda *event: seen.append(event))
