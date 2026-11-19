@@ -70,3 +70,16 @@ export function pinholeOfView(view: StarView): PhotoPinhole {
     viewportHeightPx: view.viewportHeightPx,
   };
 }
+
+/**
+ * The flight's camera handed to the person (D26 item 6): the photo's own lens and frame on the window, turned and
+ * moved as they steer, so the moment control passes nothing jumps.
+ */
+export function starViewOfSteer(camera: FlightCamera, steer: { positionPc: Vec3; rows: WcsCameraRows }): StarView {
+  return { ...starViewOfFlight(camera), rows: steer.rows, observerPc: steer.positionPc };
+}
+
+/** Where steering starts: the flight camera as it stands, the photo's own axes. */
+export function steerStartOf(camera: FlightCamera): { positionPc: Vec3; rows: WcsCameraRows } {
+  return { positionPc: camera.observerPc, rows: wcsCameraRows(camera.wcs) };
+}

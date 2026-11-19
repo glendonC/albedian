@@ -293,7 +293,7 @@ export const FlightStarsLayer: React.FC<{
     }
   }
   const ringRadius = phone ? RING_RADIUS_PX_PHONE : RING_RADIUS_PX;
-  const rings = !cone && camera ? flightRings(session, viewportWidthPx, viewportHeightPx, keepOut, ringRadius) : [];
+  const rings = !cone && view ? flightRings(session, view, keepOut, ringRadius) : [];
 
   const at = view?.observerPc ?? [0, 0, 0];
   const fromEarthPc = Math.hypot(at[0], at[1], at[2]);

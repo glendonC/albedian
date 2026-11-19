@@ -27,7 +27,8 @@ describe('flightRings: a ring on every star the photo matched, while on screen (
     const session = there();
     const stars = photoStarsInFlight(session, W, H);
     const onScreen = stars.filter((s) => s.screen && s.findingId !== session.selectedFindingId && s.screen.xPx >= 0 && s.screen.xPx <= W && s.screen.yPx >= 0 && s.screen.yPx <= H);
-    const all = flightRings(session, W, H, []);
+    const view = starViewOfFlight(flightCameraOf(session, W, H)!);
+    const all = flightRings(session, view, []);
     expect(all.map((r) => r.findingId).sort()).toEqual(onScreen.map((s) => s.findingId).sort());
     for (const r of all) {
       const s = stars.find((x) => x.findingId === r.findingId)!;
@@ -38,16 +39,16 @@ describe('flightRings: a ring on every star the photo matched, while on screen (
     if (all.length > 0) {
       const first = all[0]!;
       // A box over the first ring takes it away, and one that only touches its edge does too
-      const covered = flightRings(session, W, H, [{ left: first.xPx - 2, top: first.yPx - 2, right: first.xPx + 2, bottom: first.yPx + 2 }]);
+      const covered = flightRings(session, view, [{ left: first.xPx - 2, top: first.yPx - 2, right: first.xPx + 2, bottom: first.yPx + 2 }]);
       expect(covered.some((r) => r.findingId === first.findingId)).toBe(false);
-      const touching = flightRings(session, W, H, [{ left: first.xPx + RING_RADIUS_PX - 0.5, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }]);
+      const touching = flightRings(session, view, [{ left: first.xPx + RING_RADIUS_PX - 0.5, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }]);
       expect(touching.some((r) => r.findingId === first.findingId)).toBe(false);
-      const clear = flightRings(session, W, H, [{ left: first.xPx + RING_RADIUS_PX + 2, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }]);
+      const clear = flightRings(session, view, [{ left: first.xPx + RING_RADIUS_PX + 2, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }]);
       expect(clear.some((r) => r.findingId === first.findingId)).toBe(true);
       // The phone's smaller ring clears a box the laptop's touches
       const nearBox = [{ left: first.xPx + 6.5, top: first.yPx - 1, right: first.xPx + 40, bottom: first.yPx + 1 }];
-      expect(flightRings(session, W, H, nearBox).some((r) => r.findingId === first.findingId)).toBe(false);
-      expect(flightRings(session, W, H, nearBox, RING_RADIUS_PX_PHONE).some((r) => r.findingId === first.findingId)).toBe(true);
+      expect(flightRings(session, view, nearBox).some((r) => r.findingId === first.findingId)).toBe(false);
+      expect(flightRings(session, view, nearBox, RING_RADIUS_PX_PHONE).some((r) => r.findingId === first.findingId)).toBe(true);
     }
   });
 });

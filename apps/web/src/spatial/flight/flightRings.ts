@@ -1,7 +1,7 @@
 import type { ObservationSession } from '@albedian/contracts';
 import { projectThroughRows, usableDistancePc, type Vec3 } from '@albedian/camera-rig';
 import { distanceKindOf, type CatalogStarCoreTile } from '../catalogStars/tileCodec.js';
-import { FLIGHT_DRAW_LIMIT_MAG, photoStarsInFlight } from './flightFrame.js';
+import { FLIGHT_DRAW_LIMIT_MAG, placeFinding } from './flightFrame.js';
 import type { StarView } from './starView.js';
 
 /**
@@ -32,15 +32,29 @@ function touches(x: number, y: number, r: number, box: ScreenBox): boolean {
   return x + r >= box.left && x - r <= box.right && y + r >= box.top && y - r <= box.bottom;
 }
 
-/** Rings for the matched stars on screen now, the picked star left to its own mark, none touching a kept-out box. */
-export function flightRings(session: ObservationSession, viewportWidthPx: number, viewportHeightPx: number, keepOut: readonly ScreenBox[], radiusPx = RING_RADIUS_PX): FlightRing[] {
-  return photoStarsInFlight(session, viewportWidthPx, viewportHeightPx).flatMap((s) => {
-    if (!s.screen || s.findingId === session.selectedFindingId) return [];
-    const { xPx, yPx } = s.screen;
-    if (xPx < 0 || xPx > viewportWidthPx || yPx < 0 || yPx > viewportHeightPx) return [];
+/**
+ * Rings for the matched stars on screen now, seen through the camera that draws the stars (the flight's, or the
+ * person's own while steering), the picked star left to its own mark, none touching a kept-out box.
+ */
+export function flightRings(session: ObservationSession, view: StarView, keepOut: readonly ScreenBox[], radiusPx = RING_RADIUS_PX): FlightRing[] {
+  const m = view.storedToScreen;
+  return (session.observationSolution?.findings ?? []).flatMap((finding) => {
+    if (finding.evidenceClass !== 'catalog_matched' || finding.id === session.selectedFindingId) return [];
+    const placement = placeFinding(finding);
+    const o = view.observerPc;
+    const v: Vec3 = placement.kind === 'at_distance' ? [placement.positionPc[0] - o[0], placement.positionPc[1] - o[1], placement.positionPc[2] - o[2]] : placement.direction;
+    const p = projectThroughRows(v, view.rows, intrinsicsOf(view));
+    if (!p.visible) return [];
+    const xPx = m[0] * p.uPx + m[1] * p.vPx + m[2];
+    const yPx = m[3] * p.uPx + m[4] * p.vPx + m[5];
+    if (xPx < 0 || xPx > view.viewportWidthPx || yPx < 0 || yPx > view.viewportHeightPx) return [];
     if (keepOut.some((box) => touches(xPx, yPx, radiusPx, box))) return [];
-    return [{ findingId: s.findingId, xPx, yPx }];
+    return [{ findingId: finding.id, xPx, yPx }];
   });
+}
+
+function intrinsicsOf(view: StarView) {
+  return { crpixX: view.crpixX, crpixY: view.crpixY, scaleRadPerPx: view.scaleRadPerPx, k1: view.k1, k2: view.k2, foldRad: view.foldRad };
 }
 
 /**
@@ -65,7 +79,7 @@ export function noDistanceStarsOnScreen(tile: CatalogStarCoreTile, view: StarVie
 
 /** A direction through the view's tangent plane and lens model to its image pixel; none behind it or past the fold. */
 function projectThroughView(direction: Vec3, view: StarView): { u: number; v: number } | null {
-  const p = projectThroughRows(direction, view.rows, { crpixX: view.crpixX, crpixY: view.crpixY, scaleRadPerPx: view.scaleRadPerPx, k1: view.k1, k2: view.k2, foldRad: view.foldRad });
+  const p = projectThroughRows(direction, view.rows, intrinsicsOf(view));
   return p.visible ? { u: p.uPx, v: p.vPx } : null;
 }
 
