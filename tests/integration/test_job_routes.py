@@ -618,3 +618,55 @@ def test_a_solve_places_the_predicted_sky_before_its_search_when_a_pose_is_known
     assert ("predictedSkyAtUTC" in ended) is (early == "a pose")
     stored = json.loads((real["store"].folder(sha) / "solutions" / f"{ended['id']}.json").read_text(encoding="utf-8"))
     assert parse_observation_solution(stored).id == f"sol_{sha[:16]}"
+
+
+def test_a_phone_photo_is_lined_up_from_its_pointing_record_before_its_search_as_its_final_sky_is(
+        real: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """platform-10d, REQ-JOB-2.7 with pointing-5: a photo no search solves, whose stored pointing record lends its
+    place and holds a measured heading, has its sky lined up from the record before the search starts, by the final
+    sky's own rule: the same pose, WCS, solver and pointing hint, and the same predicted items, which name the record
+    as the source of the place [simulated photo and record]."""
+    from tests.integration.test_pointing_search_hint import _frame, _record as aimed  # noqa: PLC0415
+    from tests.science.test_record_pose import _starless_png  # noqa: PLC0415
+
+    client = real["client"]
+    spec = _frame().spec
+    body = _starless_png(spec.utc)
+    assert client.post("/api/ingest", content=body, headers={"content-type": "image/png"}).status_code == 201
+    sha = hashlib.sha256(body).hexdigest()
+    record = {**aimed(sha, spec.alt_deg, spec.az_deg, accuracy=3.0), "sourceAssetSha256": sha}
+    record["camera"]["photoDimensionsPx"] = {"width": 480, "height": 360}
+    put = client.put(f"/api/ingest/{sha}/pointing", content=json.dumps(record),
+                     headers={"content-type": "application/json"})
+    assert put.status_code == 201, put.text
+    real_chain = ingest_jobs._solve_chain
+    searching, release = threading.Event(), threading.Event()
+
+    def chain(*args: Any, **kwargs: Any) -> Any:
+        searching.set()
+        assert release.wait(BOUND_S), "the test never released the search"
+        return real_chain(*args, **kwargs)
+
+    monkeypatch.setattr(ingest_jobs, "_solve_chain", chain)
+    monkeypatch.setattr(ingest_jobs, "_SOLVE_IN_PROCESS", True)
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert searching.wait(BOUND_S)
+    live = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    early = client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky")
+    release.set()
+    assert "predictedSkyAtUTC" in live, "the record's sky is published before the search began"
+    assert early.status_code == 200, early.text
+    ended = _until_state(client, job["id"], ("succeeded", "failed"))
+    assert ended["state"] == "succeeded", ended.get("error")
+    final = client.get(f"/api/ingest/{sha}/solution").json()
+    sky = early.json()
+    assert final["status"] == sky["status"] == "approximate", final["warnings"]
+    assert sky["poseEstimate"]["method"] == "device_attitude"
+    assert sky["pointingHint"]["usedAs"] == ["search_hint", "pose_estimate", "moment"]
+    for key in ("poseEstimate", "wcs", "solver", "pointingHint"):
+        assert sky[key] == final[key], key
+
+    def predicted(solution: dict[str, Any]) -> list[dict[str, Any]]:
+        return [f for f in solution["findings"] if f["evidenceClass"] == "predicted"]
+
+    assert predicted(sky) and predicted(sky) == predicted(final)

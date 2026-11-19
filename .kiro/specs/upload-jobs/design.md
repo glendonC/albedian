@@ -479,6 +479,11 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   live record, written at once. `GET /api/ingest/jobs/{job_id}/predicted-sky` serves it while the job runs in
   this process and 404 otherwise; it goes with the job's partials at its end. Which poses call it (the head-worn
   Moon pose found before the search, the phone's pointing record, a person's alignment) are later units.
+- As built in platform-10c and 10d [tested]: before the search the solve completes an empty unresolved solution with
+  the same `complete_sky` that ends it, given what the photo's pointing record gives the final sky (the lent moment,
+  the record's attitude and the hint the solution states, `_sky_from_record`), and publishes the result when a pose
+  places it: the head-worn Moon or horizon pose on the pose frames, read once for both tries, or a phone photo lined
+  up from its record's attitude. A person's alignment does not call it yet.
 - `producer` is required on a job that started and absent on one that never did, as design 4 writes it with the
   start [decided 2026-11-13]; a record today's code wrote has none and could not have had one, so the store judges
   it by `SolveJob` and never gives it one (3.1). `error` keeps its 2000 character bound.

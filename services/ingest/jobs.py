@@ -685,6 +685,19 @@ def lent_moment(moment_hint: PointingHint | None, moment: RecordMoment | None) -
     )
 
 
+def _sky_from_record(
+    moment_hint: PointingHint | None, moment: RecordMoment | None, hint: PointingHint | None
+) -> dict[str, Any]:
+    """What `complete_sky` is given from the photo's pointing record, one rule for the early try and the final sky
+    (platform-10d): the lent moment only when the record lent one, so a file's own solve calls the predicted sky as
+    before; and the record's attitude, which lines up a photo the stars did not solve (pointing-5), with the hint the
+    solution states, the record as its pose."""
+    lent = lent_moment(moment_hint, moment)
+    attitude = None if moment is None else moment.attitude
+    return {**({} if lent is None else {"lent": lent}),
+            **({} if attitude is None else {"attitude": attitude, "hint": hint})}
+
+
 def lend_record_moment(
     asset: Mapping[str, Any], moment: RecordMoment | None, sha256: str
 ) -> tuple[Mapping[str, Any], PointingHint | None]:
@@ -913,8 +926,14 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
             read_for_pose.append([(0.0, frames[0])] if media_kind == "image" else _decode_spread_frames(original, asset))
         return read_for_pose[0]
 
+    def record_sky(unsolved: ObservationSolution) -> tuple[dict[str, Any], PointingHint | None]:
+        # What the photo's pointing record gives the sky of an unsolved photo, the same before the search as after
+        # it (platform-10d): before any verified centre the hint holds no offset
+        hint, _ = pointing_hint_for(unsolved, moment_hint, search, sha256, width, height)
+        return _sky_from_record(moment_hint, ctx.record_moment, hint), hint
+
     if ctx.on_predicted_sky is not None:
-        _publish_early_sky(ctx.on_predicted_sky, asset, sha256, solution_id, pose_frames)
+        _publish_early_sky(ctx.on_predicted_sky, asset, sha256, solution_id, pose_frames, record_sky)
         ctx.check_cancel()
     limit_s = SOLVE_TIME_LIMIT_SEC if ctx.time_limit_s is None else float(ctx.time_limit_s)
     if ctx.remaining_s is not None:
@@ -973,15 +992,8 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
     # over one frame when a pose is found; it adds no stage. A failure in it keeps what the solver found, with
     # one generic warning
     try:
-        # The lent moment only when there is one, so a file's own solve calls the predicted sky as before
-        lent = lent_moment(moment_hint, ctx.record_moment)
-        # The record's attitude lines up a photo the stars did not solve (pointing-5); the sky then states the
-        # pointing hint itself, the record as its pose
-        attitude = None if ctx.record_moment is None else ctx.record_moment.attitude
-        solution = complete_sky(
-            solution, asset, frames=pose_frames, **({} if lent is None else {"lent": lent}),
-            **({} if attitude is None else {"attitude": attitude, "hint": pointing_hint}),
-        )
+        solution = complete_sky(solution, asset, frames=pose_frames,
+                                **_sky_from_record(moment_hint, ctx.record_moment, pointing_hint))
     except Exception:
         solution = replace(solution, warnings=[*solution.warnings, PREDICTED_SKY_FAILED])
     if pointing_hint is not None and solution.pointing_hint is None:
@@ -1162,19 +1174,25 @@ def _write_partial(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _publish_early_sky(publish: Callable[[dict[str, Any]], None], asset: Mapping[str, Any], sha256: str,
-                       solution_id: str, frames: Callable[[], list[tuple[float, np.ndarray]]]) -> None:
+                       solution_id: str, frames: Callable[[], list[tuple[float, np.ndarray]]],
+                       record_sky: Callable[[ObservationSolution], tuple[dict[str, Any], PointingHint | None]]) -> None:
     """The lock-on (REQ-JOB-2.7, platform-10c): before the search, the sky is completed onto an empty unresolved
-    solution by the same `complete_sky` that ends the solve; when a pose places it (an approximate solution with
-    its pose estimate) the job publishes it at once. The empty start adds no finding and no sentence of its own,
-    so only the sky's own words reach a screen. No pose, or any failure here, publishes nothing: the solve and its
-    final sky run as before."""
+    solution by the same `complete_sky` that ends the solve, given what the photo's pointing record gives the final
+    sky (`record_sky`: the lent moment, the record's attitude and the hint, platform-10d), so a phone photo is lined
+    up from its record before the search; when a pose places it (an approximate solution with its pose estimate)
+    the job publishes it at once, stating the hint as the final sky does. The empty start adds no finding and no
+    sentence of its own, so only the sky's own words reach a screen. No pose, or any failure here, publishes
+    nothing: the solve and its final sky run as before."""
     try:
         # No detection, so no finding and no limitation; its one warning is dropped before anything reads it, and a
         # pose's result names its own pose solver
         start = replace(_build_unresolved_solution([], solution_id, asset["id"], sha256, 0.0, None, None, None,
                                                    "", "", triangle_solver_identity(get_catalog_stars())), warnings=[])
-        early = complete_sky(start, asset, frames=frames)
+        given, hint = record_sky(start)
+        early = complete_sky(start, asset, frames=frames, **given)
         if early.status == "approximate" and early.pose_estimate is not None:
+            if hint is not None and early.pointing_hint is None:
+                early = replace(early, pointing_hint=hint)
             publish(early.to_contract_dict())
     except Exception:  # noqa: BLE001 - the early sky is an extra; the solve's own path is unchanged
         return
