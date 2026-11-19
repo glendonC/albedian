@@ -58,6 +58,20 @@ const buildProbeRef = (parts: [unknown, unknown, unknown, unknown, unknown]): Ca
 const cases = JSON.parse(fs.readFileSync(CASES, 'utf8')) as Cases;
 
 describe('@albedian/contracts: designations', () => {
+  it("gives every constellation the IAU's own genitive, read at its source", () => {
+    const iau = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../../tests/fixtures/iau_constellations.json'), 'utf8')) as {
+      source: string;
+      rows: [string, string, string][];
+    };
+    expect(iau.source.startsWith('https://www.iau.org/')).toBe(true);
+    expect(iau.rows).toHaveLength(88);
+    const ours = Object.fromEntries(DESIGNATION_CONSTELLATIONS.map(([abbr, , genitive]) => [abbr, genitive]));
+    expect(ours).toEqual(Object.fromEntries(iau.rows.map(([abbr, , genitive]) => [abbr, genitive])));
+    expect(new RegExp(BAYER_DESIGNATION_PATTERN).test('Delta Crucis')).toBe(true);
+    expect(new RegExp(BAYER_DESIGNATION_PATTERN).test('Delta Crux')).toBe(false);
+    expect(new RegExp(BAYER_DESIGNATION_PATTERN).test('Alpha Coronae Australis')).toBe(true);
+  });
+
   it('builds the same strict pattern as the Python side, from the same tables', () => {
     expect(BAYER_DESIGNATION_PATTERN).toBe(cases.pattern);
     expect(DESIGNATION_LETTERS).toHaveLength(24);

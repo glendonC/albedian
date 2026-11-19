@@ -3,7 +3,8 @@
 // with the Greek small letter whose Unicode name begins with it and its name, with one stated
 // exception: Unicode spells U+03BB LAMDA, the long form writes Lambda. Indices: the superscript digits 1 to 9.
 // Constellations: d3-celestial data/constellations.json at commit d2e20e104b86429d90ac8227a5b021262b45d75a
-// (sha256 3649b9d93cc787e3816a06509a7dde895673717478c451f87f00c62c638ab93f), BSD-3-Clause, Copyright (c) 2015 Olaf Frohn: abbreviation, Latin name, genitive.
+// (sha256 3649b9d93cc787e3816a06509a7dde895673717478c451f87f00c62c638ab93f), BSD-3-Clause, Copyright (c) 2015 Olaf Frohn: abbreviation, Latin name, genitive, with two
+// stated exceptions, the IAU's own genitives: Crucis for Crux and Coronae Australis for Corona Australis.
 
 /** [abbreviation as HYG writes it, Greek small letter, the letter's name in a long form] */
 export const DESIGNATION_LETTERS: ReadonlyArray<readonly [string, string, string]> = [
@@ -73,11 +74,11 @@ export const DESIGNATION_CONSTELLATIONS: ReadonlyArray<readonly [string, string,
   ["Cir", "Circinus", "Circini"],
   ["Col", "Columba", "Columbae"],
   ["Com", "Coma Berenices", "Comae Berenices"],
-  ["CrA", "Corona Austrina", "Coronae Austrini"],
+  ["CrA", "Corona Austrina", "Coronae Australis"],
   ["CrB", "Corona Borealis", "Coronae Borealis"],
   ["Crv", "Corvus", "Corvi"],
   ["Crt", "Crater", "Crateris"],
-  ["Cru", "Crux", "Crux"],
+  ["Cru", "Crux", "Crucis"],
   ["Cyg", "Cygnus", "Cygni"],
   ["Del", "Delphinus", "Delphini"],
   ["Dor", "Dorado", "Doradus"],

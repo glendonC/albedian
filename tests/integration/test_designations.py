@@ -120,15 +120,65 @@ def test_the_constellations_are_the_88_each_once() -> None:
 def test_the_constellations_are_d3_celestials_own_rows() -> None:
     rows = {f["properties"]["desig"]: f["properties"] for f in json.loads((ROOT / D3_REL).read_text(encoding="utf-8"))["features"]}
     for abbr, name, genitive in DESIGNATION_CONSTELLATIONS:
-        assert rows[abbr]["gen"] == genitive
+        # d3-celestial's genitive, except where the bake states the IAU's in its place, and only over the value stated
+        stated = bake.GENITIVE_EXCEPTIONS.get(abbr)
+        assert rows[abbr]["gen"] == (stated[0] if stated else genitive)
+        assert genitive == (stated[1] if stated else rows[abbr]["gen"])
         assert rows[abbr]["name"] == name or rows[abbr]["name"].startswith(name + " ")
+
+
+IAU = json.loads((ROOT / "tests" / "fixtures" / "iau_constellations.json").read_text(encoding="utf-8"))
+
+
+def test_every_genitive_is_the_iaus_own() -> None:
+    # The IAU's list, read at its source (tests/fixtures/iau_constellations.json): all 88 genitives, the two d3-celestial
+    # writes otherwise among them (Crux, whose stars are Alpha Crucis and so on, and Corona Australis)
+    assert IAU["source"].startswith("https://www.iau.org/") and IAU["read"] == "2026-11-18"
+    iau = {abbr: genitive for abbr, _name, genitive in IAU["rows"]}
+    assert len(iau) == len(IAU["rows"]) == 88
+    assert {abbr: genitive for abbr, _name, genitive in DESIGNATION_CONSTELLATIONS} == iau
+    assert dz.long_designation("Del", None, "Cru") == "Delta Crucis"
+    assert dz.long_designation("Alp", 1, "Cru") == "Alpha1 Crucis"
+    assert dz.long_designation("Alp", None, "CrA") == "Alpha Coronae Australis"
+
+
+def test_the_bake_states_the_iau_genitive_only_over_the_value_it_names() -> None:
+    assert bake.GENITIVE_EXCEPTIONS == {"Cru": ("Crux", "Crucis"), "CrA": ("Coronae Austrini", "Coronae Australis")}
+
+    def feature(desig: str, name: str, gen: str) -> dict[str, Any]:
+        return {"properties": {"desig": desig, "name": name, "gen": gen}}
+
+    def rows_for(cru_gen: str) -> list[list[str]]:
+        features = [feature("Cru", "Crux", cru_gen), feature("CrA", "Corona Austrina", "Coronae Austrini")]
+        features += [feature(f"X{i:02d}", f"Filler {i}", f"Filleri {i}") for i in range(86)]
+        return bake.constellation_rows(json.dumps({"features": features}).encode())
+
+    assert rows_for("Crux")[0] == ["Cru", "Crux", "Crucis"]
+    assert rows_for("Crux")[1] == ["CrA", "Corona Austrina", "Coronae Australis"]
+    # A source that already says something else is not overwritten unseen: the bake stops and names the row
+    with pytest.raises(ValueError, match="Cru"):
+        rows_for("Crucis")
+
+
+def test_a_stored_crux_star_written_before_the_iau_genitive_reads_with_it() -> None:
+    from services.science.designations import upgrade_stored_solution
+
+    ref = {"catalogSourceId": "HIP 59747", "commonName": "Imai", "constellation": "Crux", "bayerDesignation": "Delta Crux"}
+    stored = {"id": "sol-old", "findings": [{"id": "finding-imai", "catalogRef": ref}]}
+    read = upgrade_stored_solution(stored)
+    assert read["findings"][0]["catalogRef"]["bayerDesignation"] == "Delta Crucis"
+    assert stored["findings"][0]["catalogRef"]["bayerDesignation"] == "Delta Crux"
+    assert upgrade_stored_solution(read) == read
+    assert not re.fullmatch(dz.BAYER_DESIGNATION_PATTERN, "Delta Crux")
 
 
 def test_a_constellation_listed_in_parts_takes_the_name_its_parts_share_and_refuses_a_disagreement() -> None:
     def feature(desig: str, name: str, gen: str) -> dict[str, Any]:
         return {"properties": {"desig": desig, "name": name, "gen": gen}}
 
-    others = [feature(f"X{i:02d}", f"Name {i}", f"Gen {i}") for i in range(87)]
+    # The two rows the bake's stated exceptions name, as d3-celestial writes them, then fillers to make 87
+    stated = [feature("Cru", "Crux", "Crux"), feature("CrA", "Corona Austrina", "Coronae Austrini")]
+    others = stated + [feature(f"X{i:02d}", f"Name {i}", f"Gen {i}") for i in range(87 - len(stated))]
     two_parts = [feature("Ser", "Serpens Caput", "Serpentis"), feature("Ser", "Serpens Cauda", "Serpentis")]
     rows = bake.constellation_rows(json.dumps({"features": others + two_parts}).encode())
     assert rows[-1] == ["Ser", "Serpens", "Serpentis"]

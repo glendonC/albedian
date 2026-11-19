@@ -12,7 +12,9 @@ Nothing in the tables is typed:
 - The constellations are the 88 of d3-celestial's data/constellations.json at the commit the download registry names
   (`.cache/d3celestial/constellations.json`, BSD-3-Clause, Copyright (c) 2015 Olaf Frohn): each one's three-letter
   abbreviation (desig), Latin name (name) and genitive (gen). Serpens is listed twice there, for its two parts
-  (Serpens Caput, Serpens Cauda, one genitive), and once here, under the name both parts begin with.
+  (Serpens Caput, Serpens Cauda, one genitive), and once here, under the name both parts begin with. Two stated
+  exceptions take the IAU's own genitive where d3-celestial writes another (GENITIVE_EXCEPTIONS: Crucis for Crux,
+  Coronae Australis for Corona Australis), each only over the value it names.
 
 Outputs, each with the same rows in the same order:
 - packages/contracts/src/designation-tables.ts
@@ -48,6 +50,12 @@ FINAL_SIGMA = "GREEK SMALL LETTER FINAL SIGMA"
 # The one stated exception to the Unicode names: Unicode spells U+03BB "LAMDA"; the long form writes "Lambda", as the
 # repository's shipped designations and common usage do
 NAME_EXCEPTIONS = {"Lamda": "Lambda"}
+# The two stated exceptions to d3-celestial's genitives, each the IAU's own (https://www.iau.org/IAU/IAU/Astronomy-FAQs/
+# Constellations.aspx, read at the source 2026-11-18, kept as tests/fixtures/iau_constellations.json): d3-celestial
+# writes Crux's genitive as "Crux" and Corona Australis's as "Coronae Austrini"; the IAU writes "Crucis" (Alpha Crucis
+# is Acrux) and "Coronae Australis". Abbreviation: (d3-celestial's value, the IAU's). Applied only over the value named,
+# so a changed source stops the bake instead of being overwritten unseen.
+GENITIVE_EXCEPTIONS = {"Cru": ("Crux", "Crucis"), "CrA": ("Coronae Austrini", "Coronae Australis")}
 DIGIT_NAMES = ("ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE")
 
 
@@ -121,6 +129,11 @@ def constellation_rows(raw: bytes) -> list[list[str]]:
             row[1] = " ".join(words)
     if len(rows) != 88:
         raise ValueError(f"{len(rows)} constellations, not 88")
+    for abbr, (theirs, iau) in GENITIVE_EXCEPTIONS.items():
+        row = rows.get(abbr)
+        if row is None or row[2] != theirs:
+            raise ValueError(f"{abbr}'s genitive in the source is not {theirs!r}, the value the stated exception replaces")
+        row[2] = iau
     return list(rows.values())
 
 
@@ -149,7 +162,8 @@ HEADER = (
     "with the Greek small letter whose Unicode name begins with it and its name, with one stated\n"
     "exception: Unicode spells U+03BB LAMDA, the long form writes Lambda. Indices: the superscript digits 1 to {imax}.\n"
     "Constellations: d3-celestial data/constellations.json at commit d2e20e104b86429d90ac8227a5b021262b45d75a\n"
-    "(sha256 {csha}), BSD-3-Clause, Copyright (c) 2015 Olaf Frohn: abbreviation, Latin name, genitive."
+    "(sha256 {csha}), BSD-3-Clause, Copyright (c) 2015 Olaf Frohn: abbreviation, Latin name, genitive, with two\n"
+    "stated exceptions, the IAU's own genitives: Crucis for Crux and Coronae Australis for Corona Australis."
 )
 
 
