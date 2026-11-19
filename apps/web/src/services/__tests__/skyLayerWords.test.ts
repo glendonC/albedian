@@ -367,19 +367,19 @@ describe('the lined-up layer in plain words (REQ-SKY-6.3, 6.4)', () => {
     );
   });
 
-  it('says a sky lined up from the phone in the approved words, with no bright spot and no beacon term (UIUX-pose-phrase-APPROVED.md)', () => {
+  it("says a sky lined up from the phone in C17's words, as the iPhone says it, with no bright spot and no beacon term", () => {
     const base = sample('pose_moon_level_head').poseEstimate!;
     const { beacon: _beacon, beaconCentroidUncertaintyDeg: _term, ...rest } = base;
     const phone = { ...rest, method: 'device_attitude', maxCenterOffsetDeg: 2.3 } as unknown as typeof base;
     expect(withinAboutDeg(phone)).toBe(3);
     expect(poseBasisSentence(phone, 'image')).toBe(
-      'Lined up by which way the phone pointed. Drawn by the app, not measured in your photo, and not checked against stars.'
+      'Lined up by where your iPhone pointed. Drawn by the app, not measured in your photo, and not checked against stars.'
     );
     const approximate = { ...sample('pose_moon_level_head'), poseEstimate: phone } as ObservationSolution;
-    expect(skyLayerSentence(approximate, photo(), SEARCHED)).toBe('Lined up by which way the phone pointed, within about 3 degrees; not checked against stars.');
-    // No bright spot was taken to be anything: the sentence keeps only what holds for any pose
+    expect(skyLayerSentence(approximate, photo(), SEARCHED)).toBe('Lined up by where your iPhone pointed, within about 3 degrees; not checked against stars.');
+    // No bright spot was taken to be anything: more toward the edges, as C17 words it
     expect(poseUncertaintySentence(phone)).toBe(
-      'Within about 3 degrees at the middle of the frame. Each dashed ring shows how far its marker may be off, if those assumptions hold.'
+      'Within about 3 degrees at the middle of the frame, more toward the edges. Each dashed ring shows how far its marker may be off, if those assumptions hold.'
     );
   });
 

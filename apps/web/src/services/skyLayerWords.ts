@@ -30,7 +30,8 @@ const BEACON_NAMES: Record<NonNullable<PoseEstimate['beacon']>, string> = { moon
 // it is, so every line says the spot was taken to be one and never that it is one. The phone's own attitude takes no
 // spot to be anything (UIUX-pose-phrase-APPROVED.md, the owner's yes of 18 Nov 20:58)
 const POSE_TAKEN: Record<PoseEstimate['method'], string> = {
-  device_attitude: 'which way the phone pointed',
+  // C17 item 7 (decided 12:47): as the iPhone's own screens say it
+  device_attitude: 'where your iPhone pointed',
   moon_camera_profile_level_head: "taking a bright spot to be the Moon, with the camera's field of view and a level head",
   moon_horizon: 'taking a bright spot to be the Moon, with the skyline taken to be level',
   sun_horizon: 'taking a bright spot to be the Sun, with the skyline taken to be level',
@@ -154,7 +155,8 @@ export function poseBasisSentence(pose: PoseEstimate, mediaKind: 'image' | 'vide
 export function poseUncertaintySentence(pose: PoseEstimate): string {
   const n = withinAboutDeg(pose);
   // Only a beacon pose holds a bright spot in place; the phone's attitude takes none, so that clause is left out
-  const nearSpot = pose.beacon ? `, less near the bright spot taken to be the ${BEACON_NAMES[pose.beacon]} and more away from it` : '';
+  // with none, more toward the edges (C17 item 7)
+  const nearSpot = pose.beacon ? `, less near the bright spot taken to be the ${BEACON_NAMES[pose.beacon]} and more away from it` : ', more toward the edges';
   return `Within about ${plural(n, 'degree', 'degrees')} at the middle of the frame${nearSpot}. Each dashed ring shows how far its marker may be off, if those assumptions hold.`;
 }
 
