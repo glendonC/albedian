@@ -36,8 +36,32 @@ enum AlbedianIcon: String {
 }
 
 extension Animation {
-    /// One of the approved timings, or none with Reduce Motion on.
-    static func control(_ seconds: Double, _ curve: (Double, Double, Double, Double), reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : .timingCurve(curve.0, curve.1, curve.2, curve.3, duration: seconds)
+    /// One of the approved timings; with Reduce Motion on, the note's dissolve instead, never nothing, so a change is still
+    /// seen (MOTION-READY-iphone section 2).
+    static func control(_ seconds: Double, _ curve: (Double, Double, Double, Double), reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeInOut(duration: MotionStyle.reduceMotionSeconds) : .timingCurve(curve.0, curve.1, curve.2, curve.3, duration: seconds)
+    }
+
+    /// A named timing of the note (`MotionStyle`), its delay added, extra waits after it; the dissolve with Reduce Motion.
+    static func motion(_ timing: MotionStyle.Timing, after extra: Double = 0, reduceMotion: Bool) -> Animation {
+        if reduceMotion { return .easeInOut(duration: MotionStyle.reduceMotionSeconds).delay(extra) }
+        return .timingCurve(timing.x1, timing.y1, timing.x2, timing.y2, duration: timing.seconds).delay(timing.delaySeconds + extra)
+    }
+}
+
+extension AnyTransition {
+    /// A line of words arriving from 6 pt below and fading in (wordsIn), and leaving the same way (wordsOut); opacity alone,
+    /// the dissolve, with Reduce Motion. `after` staggers a line behind another (`MotionStyle.staggerSeconds`).
+    static func words(reduceMotion: Bool, after extra: Double = 0) -> AnyTransition {
+        if reduceMotion { return .opacity.animation(.motion(MotionStyle.wordsIn, after: extra, reduceMotion: true)) }
+        let moved = AnyTransition.opacity.combined(with: .offset(y: MotionStyle.wordsOffsetPt))
+        return .asymmetric(insertion: moved.animation(.motion(MotionStyle.wordsIn, after: extra, reduceMotion: false)),
+                           removal: moved.animation(.motion(MotionStyle.wordsOut, reduceMotion: false)))
+    }
+
+    /// An overlay or a block arriving (frameIn) and leaving (frameOut), fading; the dissolve with Reduce Motion.
+    static func frame(reduceMotion: Bool) -> AnyTransition {
+        .asymmetric(insertion: .opacity.animation(.motion(MotionStyle.frameIn, reduceMotion: reduceMotion)),
+                    removal: .opacity.animation(.motion(MotionStyle.frameOut, reduceMotion: reduceMotion)))
     }
 }

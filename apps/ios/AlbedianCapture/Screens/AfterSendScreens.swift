@@ -82,6 +82,7 @@ struct StoppedScreen: View {
 /// while they go, in the button's place the wait's row: "Sending", photos sent of photos kept, and the line they fill.
 struct KeptScreen: View {
     let model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
@@ -103,6 +104,8 @@ struct KeptScreen: View {
                                 Rectangle().fill(Color(ControlStyle.hairline))
                                 Rectangle().fill(Color(ControlStyle.ink))
                                     .frame(width: line.size.width * CGFloat(KeptWords.fraction(sent: sending.sent, of: sending.total)))
+                                    // MOTION-READY-iphone (D13): a photo sent changes the fill on the colour timing
+                                    .animation(.motion(MotionStyle.colour, reduceMotion: reduceMotion), value: sending.sent)
                             }
                         }
                         .frame(height: 2)

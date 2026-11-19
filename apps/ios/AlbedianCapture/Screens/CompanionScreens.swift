@@ -147,6 +147,7 @@ struct CreditsScreen: View {
 /// capture button bottom centre. With no overlay drawn there is no "Predicted" tag and no source line.
 struct AimScreen: View {
     let model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
@@ -192,6 +193,8 @@ struct AimScreen: View {
                                 Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
                                     .foregroundStyle(Color(ControlStyle.inkQuiet))
                                     .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                                    // MOTION-READY-iphone: a missing-sensor line words in
+                                    .transition(.words(reduceMotion: reduceMotion))
                             }
                         }
                     }
@@ -229,6 +232,7 @@ struct ShotPhoto: View {
 /// result follows (arrive iPhone 5).
 struct AfterShotScreen: View {
     let model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { geometry in
@@ -248,11 +252,14 @@ struct AfterShotScreen: View {
                             .foregroundStyle(Color(ControlStyle.inkSecondary))
                     }
                     .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                    // MOTION-READY-iphone: the message lines word in, the two buttons 20 ms after them
+                    .transition(.words(reduceMotion: reduceMotion))
                     HStack(spacing: 10) {
                         MainButton(title: "Try again", icon: .send, action: model.send)
                         OutlinePill(title: "Change address", action: model.changeAddress)
                     }
                     .atBottom(Arrive.unreachableButtonsBottomGap)
+                    .transition(.words(reduceMotion: reduceMotion, after: MotionStyle.staggerSeconds))
                 } else {
                     MainButton(title: "Send", icon: .send, action: model.send).atBottom(Arrive.mainBottomGap)
                 }
@@ -266,6 +273,7 @@ struct AfterShotScreen: View {
 /// front, the line under it, and "Connect". No example address is shown.
 struct ConnectScreen: View {
     @Bindable var model: CompanionModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -300,10 +308,13 @@ struct ConnectScreen: View {
                         Text("Type the address Albedian shows on the laptop.").font(AlbedianFont.regular(15)).tracking(-0.01 * 15)
                     }
                     .foregroundStyle(Color(ControlStyle.ink))
+                    // MOTION-READY-iphone: the message words in under the field
+                    .transition(.words(reduceMotion: reduceMotion))
                 } else {
                     Text("Albedian shows this address on the laptop when it starts.")
                         .font(AlbedianFont.regular(14)).tracking(-0.005 * 14).lineSpacing(14 * 0.2)
                         .foregroundStyle(Color(ControlStyle.inkSecondary))
+                        .transition(.words(reduceMotion: reduceMotion))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
