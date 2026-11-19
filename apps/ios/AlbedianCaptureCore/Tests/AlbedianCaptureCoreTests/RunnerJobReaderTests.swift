@@ -57,7 +57,34 @@ final class RunnerJobReaderTests: XCTestCase {
                 XCTAssertFalse(isSolve(record), "valid[\(index)] refused: \(refusal)")
             }
         }
-        XCTAssertEqual(solves, 10)
+        XCTAssertEqual(solves, 16)
+    }
+
+    /// align-2c: a solve's record may hold the person's alignment it ran from in `request`, in any state; the phone
+    /// takes it as the contract holds it and refuses any other request on a solve.
+    func testTakesTheAlignmentASolveRanFromAndNoOtherRequest() throws {
+        let valid = try XCTUnwrap(fixture()["valid"]?.arrayValue).compactMap(\.objectValue)
+        let aligned = valid.filter { $0["kind"]?.stringValue == "solve" && $0["request"] != nil }
+        XCTAssertEqual(aligned.count, 6)
+        let record = try XCTUnwrap(aligned.first)
+        XCTAssertTrue(accepts(.object(record)))
+        let alignment = try XCTUnwrap(record["request"])
+        func with(_ key: String, _ value: JSONValue?) -> JSONValue {
+            var changed = record
+            changed["request"] = { var a = alignment; a[key] = value; return a }()
+            return .object(changed)
+        }
+        for (name, sample) in [("a restoration's request", { var r = record; r["request"] = .object(JSONObject(["kind": .string("restoration"), "exposureEv": .number(JSONNumber(1.5)!)])); return JSONValue.object(r) }()),
+                               ("another source", with("source", .string("phone"))), ("another format", with("format", .string("albedian.alignment"))),
+                               ("format version 2", with("formatVersion", .int(2))), ("an unknown key", with("note", .string("x"))),
+                               ("no roll", with("rollDeg", nil)), ("azimuth 360", with("centerAzDeg", .int(360))),
+                               ("altitude past 90", with("centerAltDeg", .number(JSONNumber(90.5)!))), ("roll past 180", with("rollDeg", .number(JSONNumber(180.5)!))),
+                               ("a field of 0", with("fovDiagonalDeg", .int(0))), ("a field past 175", with("fovDiagonalDeg", .number(JSONNumber(175.5)!)))] {
+            XCTAssertEqual(refusalPath(sample), "request", name)
+        }
+        XCTAssertTrue(accepts(with("fovDiagonalDeg", .int(175))))
+        XCTAssertTrue(accepts(with("centerAzDeg", .int(0))))
+        XCTAssertTrue(accepts(with("rollDeg", .int(-180))))
     }
 
     /// platform-10a: a solve's record may say when it published the sky predicted from an early pose, once started and

@@ -52,13 +52,30 @@ public enum RunnerJob {
                               "predictedSkyAtUTC"]
     /// `JOB_STATE_TABLE.solve`, row by row as the contract writes it; `rejected` has no row for a solve.
     static let solveTable: [SolveJob.State: [Rule]] = [
-        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .f, .f, .f, .f],
-        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
-        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
-        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
-        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .f, .f, .s, .s],
-        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .f, .f, .e, .s],
+        .queued:      [.f, .f, .f, .f, .f, .f, .f, .f, .e, .a, .e, .f, .f, .f],
+        .running:     [.r, .f, .f, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
+        .succeeded:   [.r, .r, .f, .r, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
+        .failed:      [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
+        .canceled:    [.e, .r, .f, .f, .f, .f, .s, .a, .f, .a, .e, .f, .s, .s],
+        .interrupted: [.r, .r, .r, .f, .f, .f, .e, .s, .f, .a, .e, .f, .e, .s],
     ]
+
+    /// The person's alignment a solve ran from (`PersonAlignmentSchema`, packages/contracts/src/alignment.ts; align-2c):
+    /// its keys, its format and source, and each angle's bounds.
+    static let alignmentKeys: Set<String> = ["format", "formatVersion", "source", "centerAltDeg", "centerAzDeg", "rollDeg",
+                                             "fovDiagonalDeg"]
+    static let alignmentFovMaxDeg = 175.0
+
+    static func isPersonAlignment(_ value: JSONValue) -> Bool {
+        guard let fields = value.objectValue, Wire.onlyKeys(fields, alignmentKeys) == nil,
+              fields["format"]?.stringValue == "albedian.person-alignment", Wire.whole(fields["formatVersion"]) == 1,
+              fields["source"]?.stringValue == "person",
+              let alt = fields["centerAltDeg"]?.numberValue, (-90...90).contains(alt),
+              let az = fields["centerAzDeg"]?.numberValue, az >= 0, az < 360,
+              let roll = fields["rollDeg"]?.numberValue, (-180...180).contains(roll),
+              let fov = fields["fovDiagonalDeg"]?.numberValue, fov > 0, fov <= alignmentFovMaxDeg else { return false }
+        return true
+    }
 
     /// `^[a-z][a-z0-9_.]{0,79}$` (`PRODUCER_NAME_PATTERN`).
     static func isProducerName(_ text: String) -> Bool {
@@ -135,6 +152,10 @@ extension SolveJobReader {
         if let value = object["queueAhead"] {
             guard let ahead = Wire.whole(value), ahead >= 0 else { return refuse("queueAhead", "not a count") }
             queueAhead = ahead
+        }
+        // A solve's request is the person's alignment it ran from (align-2c), held only to the contract, not shown
+        if let request = object["request"], !RunnerJob.isPersonAlignment(request) {
+            return refuse("request", "a solve's request is the person's alignment it ran from")
         }
         // A media job's fields (request, graphId, attemptId, variantId) are refused below by the state table, which forbids
         // each in every state of a solve, whatever its value; and more stages than the contract has break the solve's order
