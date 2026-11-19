@@ -13,7 +13,8 @@ import { CraftPicker, PilotTrip } from '../spatial/flight/PilotPieces.js';
 import { FlightClock } from '../spatial/flight/pilotReadout.js';
 import { craftFromSearch, type Craft } from '../spatial/flight/crafts.js';
 import { noDistanceSentence } from '../spatial/flight/flightRings.js';
-import { isConeViewOn } from '../spatial/flight/coneView.js';
+import { CONE_LINES, coneGeometryOf } from '../spatial/flight/coneView.js';
+import { ConeReadout, FlightPills } from '../spatial/flight/ConePieces.js';
 import { placeFinding } from '../spatial/flight/flightFrame.js';
 import { phoneSlotRect } from './phoneSlot.js';
 import { PhoneNoMatch } from './PhoneNoMatch.js';
@@ -182,7 +183,13 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
     clock.current.observe(phase, performance.now());
     setFlightSeconds(clock.current.seconds);
   }, [phase]);
-  const cone = there && isConeViewOn(session);
+  // D28: "Your photo's view" turns the cone view on and off there; leaving there turns it off
+  const [coneAsked, setConeAsked] = useState(false);
+  useEffect(() => {
+    if (!there) setConeAsked(false);
+  }, [there]);
+  const cone = there && coneAsked;
+  const coneGeometry = cone ? coneGeometryOf(session) : null;
   const skyOnScreen = skyShown && skyDrawn && !originalPixels;
   // An answer lights the first star it is about, as a picked star, in the picked star's place; none for a refusal
   const lit = answer ? (answer.answer ? (answerFindings(answer.answer)[0] ?? null) : null) : undefined;
@@ -262,11 +269,23 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || cone) ? (
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
-          <p className="reveal-status__line">{FLIGHT_LINES.spec}</p>
-          <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
-          {!cone && <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>}
-          {!cone && noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
-          {!cone && <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>}
+          {cone ? (
+            <>
+              <p className="reveal-status__line">{CONE_LINES.spec}</p>
+              <p className="reveal-status__line">{CONE_LINES.view}</p>
+              <p className="reveal-status__line">{CONE_LINES.stars}</p>
+              <p className="reveal-status__line">{CONE_LINES.rings}</p>
+              {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+            </>
+          ) : (
+            <>
+              <p className="reveal-status__line">{FLIGHT_LINES.spec}</p>
+              <p className="reveal-status__line">{FLIGHT_LINES.stars}</p>
+              <p className="reveal-status__line">{FLIGHT_LINES.rings}</p>
+              {noDistanceSentence(noDistance) && <p className="reveal-status__line">{noDistanceSentence(noDistance)}</p>}
+              <p className="reveal-status__line">{FLIGHT_LINES.milkyWay}</p>
+            </>
+          )}
         </div>
       ) : skyOnScreen ? (
         <div key="real-sky" className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" data-moment="real-sky" role="status">
@@ -344,7 +363,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </section>
       )}
 
-      {there && !phone && !cone && <CraftPicker craft={craft} onPick={setCraft} />}
+      {there && !phone && (
+        <FlightPills craftPill={<CraftPicker craft={craft} onPick={setCraft} />} cone={cone} onCone={() => setConeAsked((on) => !on)} />
+      )}
+      {!answer && cone && coneGeometry && <ConeReadout geometry={coneGeometry} />}
 
       {!answer && !there && picked && (
         <StarCard

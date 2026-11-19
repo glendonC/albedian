@@ -514,22 +514,33 @@ describe('RevealPhoto: there, after Go there (fly, approved 2026-11-12)', () => 
   it('leaves out what is only true from Earth in the cone view: the panorama, the marks, the readout, the rings and the panorama\'s line (cone-1)', () => {
     const { session } = rigelPicked();
     const flying = { ...session, spatialView: { ...session.spatialView, mode: 'catalog_3d' }, machines: { ...session.machines, navigation: 'space' } } as ObservationSession;
-    const before = window.location.href;
     (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext = class {};
-    window.history.replaceState(null, '', '/?view=cone');
     try {
       show(flying, { flight: { name: 'Rigel', toStarLy: 1, fromEarthLy: 859.4 } });
+      // D28 item 1: "Your photo's view" at the bottom left, right of the craft pill
+      expect(q('[data-testid="cone-pill"]')!.getAttribute('aria-pressed')).toBe('false');
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
       expect(q('[data-testid="real-sky"]')).toBeNull();
       expect(q('[data-testid="reveal-marks"]')).toBeNull();
       expect(q('[data-testid="reveal-leader"]')).toBeNull();
       expect(q(READOUT)).toBeNull();
       expect(q('[data-testid="craft-picker"]')).toBeNull();
+      // D28 item 7's lines, and item 6's readout in the readout's place
       expect(all('[data-testid="reveal-status"] .reveal-status__line').map((p) => p.textContent)).toEqual([
         'Drawn or computed by the app; not measured in the source recording.',
-        'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances, as bright as they would look from here.',
+        "Your photo's view: the part of the sky your photo holds, from its solve, out to its farthest matched star with a measured distance.",
+        'Stars at their Bailer-Jones (2021) or Hipparcos 2007 distances.',
+        'Rings: the stars your photo matched.',
       ]);
+      expect(q('[data-testid="cone-readout"] h1')!.textContent).toBe("Your photo's view");
+      expect(q('[data-testid="cone-readout"]')!.textContent).toContain('of your stars inside');
+      expect(q('[data-testid="cone-pill"]')!.getAttribute('aria-pressed')).toBe('true');
+      // Pressed again, the flight view comes back at the same star
+      act(() => (q('[data-testid="cone-pill"]') as HTMLButtonElement).click());
+      expect(q('[data-testid="cone-readout"]')).toBeNull();
+      expect(q(READOUT)).not.toBeNull();
+      expect(q('[data-testid="craft-picker"]')).not.toBeNull();
     } finally {
-      window.history.replaceState(null, '', before);
       delete (globalThis as unknown as Record<string, unknown>).WebGL2RenderingContext;
     }
   });

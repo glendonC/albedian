@@ -21,7 +21,7 @@ export const CraftPicker: React.FC<{ craft: Craft | null; onPick: (craft: Craft 
   const [open, setOpen] = useState(false);
   const current = CRAFT_CHOICES.find((c) => c.id === (craft?.id ?? null))!;
   return (
-    <div className="craft-picker" data-testid="craft-picker" data-hud-interactive="true" style={{ position: 'absolute', left: 36, bottom: 32, pointerEvents: 'auto' }}>
+    <div className="craft-picker" data-testid="craft-picker" data-hud-interactive="true" style={{ position: 'relative', pointerEvents: 'auto' }}>
       {open && (
         <div
           role="listbox"

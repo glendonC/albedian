@@ -27,6 +27,7 @@ uniform vec3 uAffY;
 uniform vec2 uView;
 uniform float uLimit;
 uniform float uPixelRatio;
+uniform float uGain;
 out vec3 vTint;
 out float vAlpha;
 out float vGain;
@@ -49,7 +50,7 @@ void main() {
   float m = aPlaced > 0.5 ? aMag + 5.0 * log2(len / aEarthPc) * 0.30102999566 : aMag;
   float fade = clamp((uLimit - m) / 0.3, 0.0, 1.0);
   float rel = pow(10.0, -0.4 * (m - 6.0));
-  vAlpha = clamp(sqrt(rel), 0.05, 1.0) * fade;
+  vAlpha = clamp(sqrt(rel), 0.05, 1.0) * fade * uGain;
   vGain = clamp(pow(rel, 0.18), 1.0, 3.5);
   vTint = aTint;
   vSpike = m < 1.0 ? 1.0 : 0.0;

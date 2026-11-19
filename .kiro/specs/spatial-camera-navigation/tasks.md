@@ -24,3 +24,5 @@
   - Traced to: `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
 - [x] 12. Steering math for the free camera (D26 item 6, pilot-1e): turn about the camera's own up and right, move along where it looks at its speed, W and S doubling or halving the speed each second held within limits; the controls wait on the key question (Space is Ask out loud).
   - Traced to: `packages/camera-rig/src/__tests__/steer.test.ts`
+- [x] 13. Build D28 for the cone view (cone-1b): "Your photo's view" pill right of the craft pill, the cone to the farthest matched star's cross-section with the photo at three quarters of the nearest's, line work, Earth, your stars ringed and the picked one named, the far field at 45 percent, the readout and disclosure in the record's words, and an orbit that starts beside the cone and turns rigidly round Earth.
+  - Traced to: `apps/web/src/spatial/flight/__tests__/coneView.test.ts`; `apps/web/src/reveal/__tests__/revealPhoto.test.tsx`
