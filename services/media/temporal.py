@@ -44,13 +44,13 @@ NOISE_VARIANCES = 2.0
 # 10 states 4.3, the number P-RST-22 tests]
 DISAGREE_SIGMAS = 4.3
 # A neighbour whose difference from the frame, through the detector's own kernel, exceeds this many of the
-# difference's measured noise is not used there [proposed: restore-6, on synthetic clips; the pairwise weight alone
-# let a point drawn into every neighbour show in the frame in 10 of 10 trials at every peak from 3 to 30 noise
-# sigmas; at 3 such a point of 4 to 200 luminance noise sigmas was kept out in every trial, and one of 3.5 in 39 of
-# 40 seeds against 36 of 40 at 4, restore-6 report]
+# difference's measured noise is not used there [proposed: design section 10, from restore-6 on synthetic clips: the
+# pairwise weight alone let a point drawn into every neighbour show in the frame in 10 of 10 trials at every peak from
+# 3 to 30 noise sigmas; at 3 such a point of 4 to 200 luminance noise sigmas was kept out in every trial, and one of
+# 3.5 in 39 of 40 seeds against 36 of 40 at 4]
 DISAGREE_Z = 3.0
-# and nowhere within this distance of such a sample [proposed: restore-6; the light of a point of sigma 1.3 px is
-# under 1 percent of its peak beyond 3 sigma]
+# and nowhere within this distance of such a sample [proposed: design section 10; the light of a point of sigma 1.3 px
+# is under 1 percent of its peak beyond 3 sigma]
 DISAGREE_REACH_PX = 3.0
 # A sample equal to the previous original frame's at the same place is a codec copy only while the scene moved
 # more than this between the two frames [proposed: design section 10, "over half a pixel"]
@@ -61,9 +61,9 @@ DETAIL_STEPS = (1, 2, 4)
 # A cross power below this share of its largest value is taken as none when it is normalised [proposed: a floor far
 # under the rounding of float64 sums of the frame's own detail]
 CROSS_POWER_FLOOR = 1e-12
-# The cross power is divided by its magnitude to this power [proposed: restore-6; on 93 noisy synthetic frame pairs
-# shifted up to 19 px, full phase correlation (1) missed by up to 0.23 px and its square root by up to 0.05 px,
-# restore-6 report]
+# The cross power is divided by its magnitude to this power [proposed: design section 10, from restore-6: on noisy
+# synthetic pairs shifted up to 19 px, the full division (1) missed by up to 0.23 px (93 pairs) and the square root
+# by 0.108 px at worst (401 pairs)]
 CROSS_POWER_EXPONENT = 0.5
 
 LUMA = np.asarray(LUMA_WEIGHTS)
@@ -401,11 +401,12 @@ def unshifted_mean(lumas: Sequence[np.ndarray], centre: int, window: Window) -> 
 def register_parameters() -> list[dict]:
     """The `register` step's parameters, as the graph records them."""
     rows = (("windowFrames", WINDOW_FRAMES), ("blockPx", BLOCK_PX), ("closureMaxPx", CLOSURE_MAX_PX),
-            ("blockResidualMaxPx", BLOCK_RESIDUAL_MAX_PX))
+            ("blockResidualMaxPx", BLOCK_RESIDUAL_MAX_PX), ("crossPowerExponent", CROSS_POWER_EXPONENT))
     return [{"name": name, "value": value, "origin": "default", "basis": DEFAULT_BASIS} for name, value in rows]
 
 
 def merge_parameters() -> list[dict]:
     """The `temporal_merge` step's parameters, as the graph records them."""
-    rows = (("windowFrames", WINDOW_FRAMES), ("windowPx", MERGE_WINDOW_PX), ("toleranceFactor", NOISE_VARIANCES))
+    rows = (("windowFrames", WINDOW_FRAMES), ("windowPx", MERGE_WINDOW_PX), ("toleranceFactor", NOISE_VARIANCES),
+            ("disagreementZ", DISAGREE_Z), ("disagreementReachPx", DISAGREE_REACH_PX))
     return [{"name": name, "value": value, "origin": "default", "basis": DEFAULT_BASIS} for name, value in rows]

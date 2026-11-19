@@ -593,7 +593,7 @@ def test_where_no_neighbour_is_used_the_gates_images_are_the_frame() -> None:
 # ---------------------------------------------------------------------------------------------------------------
 
 
-def test_the_register_and_merge_steps_record_their_parameters() -> None:
+def test_the_register_and_merge_steps_record_their_parameters(monkeypatch: pytest.MonkeyPatch) -> None:
     contracts.GraphStep.model_validate({"kind": "register", "version": temporal.STEP_VERSION,
                                         "parameters": temporal.register_parameters()})
     contracts.GraphStep.model_validate({"kind": "temporal_merge", "version": temporal.STEP_VERSION,
@@ -601,7 +601,18 @@ def test_the_register_and_merge_steps_record_their_parameters() -> None:
     recorded = {p["name"]: p["value"] for p in temporal.register_parameters() + temporal.merge_parameters()}
     assert recorded == {"windowFrames": temporal.WINDOW_FRAMES, "blockPx": temporal.BLOCK_PX,
                         "closureMaxPx": temporal.CLOSURE_MAX_PX, "blockResidualMaxPx": temporal.BLOCK_RESIDUAL_MAX_PX,
-                        "windowPx": temporal.MERGE_WINDOW_PX, "toleranceFactor": temporal.NOISE_VARIANCES}
+                        "crossPowerExponent": temporal.CROSS_POWER_EXPONENT,
+                        "windowPx": temporal.MERGE_WINDOW_PX, "toleranceFactor": temporal.NOISE_VARIANCES,
+                        "disagreementZ": temporal.DISAGREE_Z, "disagreementReachPx": temporal.DISAGREE_REACH_PX}
+    # Each on its own step: a variant's record says the values that made it (restore-6c)
+    register = {p["name"] for p in temporal.register_parameters()}
+    merge = {p["name"] for p in temporal.merge_parameters()}
+    assert "crossPowerExponent" in register and {"disagreementZ", "disagreementReachPx"} <= merge
+    # Each records its own constant, read when the step runs: with the two that share a value moved apart
+    monkeypatch.setattr(temporal, "DISAGREE_Z", 3.5)
+    monkeypatch.setattr(temporal, "DISAGREE_REACH_PX", 2.5)
+    moved = {p["name"]: p["value"] for p in temporal.merge_parameters()}
+    assert (moved["disagreementZ"], moved["disagreementReachPx"]) == (3.5, 2.5)
 
 
 def test_every_numeric_constant_of_the_temporal_step_names_its_source() -> None:
@@ -618,6 +629,9 @@ DESIGN_VALUES = [
     ("MERGE_WINDOW_PX", r"mean over a (\d+) by \d+ window"),
     ("DISAGREE_SIGMAS", r"below one tenth beyond ([\d.]+) sigma"),
     ("REPEAT_SHIFT_PX", r"shift between those two frames is over (half) a pixel"),
+    ("CROSS_POWER_EXPONENT", r"to the power ([\d.]+), not 1 \(`crossPowerExponent`\)"),
+    ("DISAGREE_Z", r"exceeds (\d+) times that response's noise \(`disagreementZ`\)"),
+    ("DISAGREE_REACH_PX", r"nor within (\d+) px of such a sample \(`disagreementReachPx`\)"),
 ]
 
 
