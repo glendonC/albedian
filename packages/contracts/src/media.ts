@@ -342,6 +342,7 @@ export type ParameterOrigin = (typeof PARAMETER_ORIGINS)[number];
 /** Pipeline order: a graph lists its steps in this order, each at most once. */
 export const GRAPH_STEP_KINDS = [
   'decode',
+  'convert_colour',
   'find_stars',
   'measure_noise',
   'register',
@@ -367,6 +368,15 @@ export const DISCLOSURES = {
   display_copy: "The original's own pixels, re-encoded without loss so a browser can show them. Nothing was restored.",
   restoration: "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
 } as const;
+/**
+ * The disclosure of a display copy converted to sRGB through the photo's own colour profile, of an 8 bit photo and of a
+ * 16 bit one (review row C20, the design lane's words, decided by the lead on 2026-11-19; restore-8e).
+ */
+export const CONVERTED_DISCLOSURES = [
+  "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can.",
+  "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can." +
+    ' This copy has 8 bits for each colour; your photo has 16.',
+] as const;
 
 /** Pattern sources, identical to the Python mirror's, so both sides accept the same strings. */
 export const MEDIA_PATTERNS = {
@@ -409,6 +419,8 @@ export const PIXEL_FORMATS = [
 export const VARIANT_CONTAINERS = ['png', 'mov', 'mp4'] as const;
 export const VARIANT_ENCODERS = ['png', 'libx264', 'libx265'] as const;
 /** x264's and x265's preset names (design section 10). */
+/** The ICC rendering intents, by the header's code 0 to 3 [verified: ICC.1:2022 section 7.2.15, read 2026-11-19]. */
+export const RENDERING_INTENTS = ['perceptual', 'relative_colorimetric', 'saturation', 'absolute_colorimetric'] as const;
 export const ENCODER_PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow', 'placebo'] as const;
 export const EXPORT_MANIFEST_FORMAT = 'albedian.export-manifest';
 export const EXPORT_MANIFEST_FORMAT_VERSION = 1;
@@ -419,6 +431,7 @@ export const MEDIA_ENUMS = {
   variantKinds: VARIANT_KINDS,
   parameterOrigins: PARAMETER_ORIGINS,
   graphStepKinds: GRAPH_STEP_KINDS,
+  renderingIntents: RENDERING_INTENTS,
   colourModels: COLOUR_MODELS,
   colourBitDepths: COLOUR_BIT_DEPTHS,
   colourRanges: COLOUR_RANGES,
@@ -471,6 +484,7 @@ export const STEP_PARAMETERS: readonly StepParameter[] = [
   text('preset', ['encode'], ENCODER_PRESETS),
   integer('crf', ['encode'], 0, 51, 'x264 quality'),
   integer('zlibLevel', ['encode'], 0, 9, 'zlib level'),
+  text('renderingIntent', ['convert_colour'], RENDERING_INTENTS),
   integer('tilePx', ['find_stars'], 16, 4096, 'px'),
   integer('overlapPx', ['find_stars'], 0, 1024, 'px'),
   number('confirmThresholdSnr', ['find_stars'], 0, 100, 'signal to noise'),
@@ -591,6 +605,8 @@ export const FAILURE_SENTENCES = [
   'The restoration stopped at its time limit.',
   'The restoration stopped on an internal error.',
   'The server stopped before this job finished.',
+  // Review row C20 (restore-8e): a photo whose colour profile cannot be rebuilt
+  "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
 ] as const;
 /** The plain sentences a record's notes may hold [proposed, each from the requirement named in design section 14]. */
 export const NOTES = [
@@ -621,6 +637,9 @@ export const ASSUMPTION_REASONS = [
     assumed: 'left',
     reason: 'The file does not state its chroma siting, so left is assumed, the common default of H.264 and HEVC.',
   },
+  // Review row C20 (restore-8e): a display copy kept without a profile nothing can read
+  { field: 'transfer', assumed: 'srgb', reason: "The file's ICC profile could not be read, so sRGB is assumed." },
+  { field: 'primaries', assumed: 'bt709', reason: "The file's ICC profile could not be read, so sRGB is assumed." },
 ] as const;
 /** What a parameter's basis may say, by its origin: what on this file it was measured from, the request field, or a source. */
 export const BASES = {
@@ -702,7 +721,8 @@ const M = {
   parameterStep: "a step holds only its kind's parameters",
   graphKind: 'the graph is of the kind its request asks for',
   firstDecode: 'the first step is decode',
-  displayCopySteps: 'a display copy is decode then encode, nothing more',
+  displayCopySteps: 'a display copy is decode, at most a colour conversion, then encode',
+  convertDisplayOnly: 'only a display copy converts its colours',
   pipelineOrder: 'steps run once each, in pipeline order',
   liftAndEncode: 'a restoration holds a lift and an encode',
   rgb: "R'G'B' has no matrix and no chroma subsampling",
@@ -753,6 +773,7 @@ const M = {
   manifestFrames: "the measured clip has the variant's frame count",
   stillGate: "a still's gate checks one frame",
   solution: "the solution is the source's own",
+  convertedDisclosure: 'a copy says it was converted exactly when its graph converts it',
 } as const;
 const attemptFit = (status: string) => `fields do not fit a ${status} attempt`;
 export const MEDIA_REFINEMENT_MESSAGES: readonly string[] = [...Object.values(M), ...ATTEMPT_STATUSES.map(attemptFit)];
@@ -796,7 +817,8 @@ const pattern = (source: string) => z.string().regex(new RegExp(source));
 const mediaId = (kind: keyof typeof MEDIA_ID_PATTERNS) => pattern(MEDIA_ID_PATTERNS[kind]);
 const semver = () => pattern(MEDIA_PATTERNS.semver);
 const utcInstant = () => wireUtcInstant();
-const disclosure = () => z.enum([DISCLOSURES.display_copy, DISCLOSURES.restoration]);
+const disclosure = () => z.enum([DISCLOSURES.display_copy, DISCLOSURES.restoration, ...CONVERTED_DISCLOSURES]);
+const isConverted = (text: string) => (CONVERTED_DISCLOSURES as readonly string[]).includes(text);
 
 type Issue = (path: (string | number)[], message: string) => void;
 const issuer =
@@ -862,8 +884,10 @@ export const ProcessingGraphSchema = z
     if (graph.kind !== graph.request.kind) issue(['request', 'kind'], M.graphKind);
     if (kinds[0] !== 'decode') issue(['steps', 0, 'kind'], M.firstDecode);
     if (graph.kind === 'display_copy') {
-      if (kinds.length !== 2 || kinds[1] !== 'encode') issue(['steps'], M.displayCopySteps);
+      const rest = kinds.slice(1).join(' ');
+      if (rest !== 'encode' && rest !== 'convert_colour encode') issue(['steps'], M.displayCopySteps);
     } else {
+      if (kinds.includes('convert_colour')) issue(['steps'], M.convertDisplayOnly);
       const order = kinds.map((kind) => GRAPH_STEP_KINDS.indexOf(kind));
       if (order.some((index, i) => i > 0 && index <= order[i - 1]!)) issue(['steps'], M.pipelineOrder);
       if (!kinds.includes('lift') || !kinds.includes('encode')) issue(['steps'], M.liftAndEncode);
@@ -1112,7 +1136,8 @@ export const MediaVariantSchema = z
   .superRefine((variant, ctx) => {
     const issue = issuer(ctx);
     const still = variant.mimeType === 'image/png';
-    if (variant.disclosure !== DISCLOSURES[variant.kind]) issue(['disclosure'], M.disclosure);
+    const converted = variant.kind === 'display_copy' && isConverted(variant.disclosure);
+    if (variant.disclosure !== DISCLOSURES[variant.kind] && !converted) issue(['disclosure'], M.disclosure);
     if (variant.sourceAssetId !== `src_${variant.sourceSha256.slice(0, 16)}`) issue(['sourceAssetId'], M.sourceAsset);
     if (
       still &&
@@ -1158,6 +1183,9 @@ export const ExportManifestSchema = z
     }
     if (attempt.status !== 'ready') issue(['attempt', 'status'], M.manifestReady);
     if (manifest.disclosure !== variant.disclosure) issue(['disclosure'], M.manifestDisclosure);
+    if (isConverted(variant.disclosure) !== graph.steps.some((step) => step.kind === 'convert_colour')) {
+      issue(['disclosure'], M.convertedDisclosure);
+    }
     if ((attempt.gate !== undefined) !== (graph.kind === 'restoration')) issue(['attempt', 'gate'], M.manifestGate);
     const measured = attempt.measured;
     if (graph.kind === 'restoration' && measured !== undefined && (measured.noise === undefined) === (measured.noiseNotMeasured === undefined)) {

@@ -479,7 +479,8 @@ def test_every_entry_of_every_list_is_accepted_in_its_slot() -> None:
         schema, base, path = _SLOTS[slot]
         for text in allowed:
             assert accepts(MODELS[schema], _put(base(), path, text)), f"{slot}: {text!r}"
-    assert len(FAILURES) == 8 + len(media.FAILURE_FORMATS) + len(media.FAILURE_CAPABILITIES)
+    # restore-8e added the restoration's refusal for a colour profile it cannot carry (review row C20)
+    assert len(FAILURES) == 9 + len(media.FAILURE_FORMATS) + len(media.FAILURE_CAPABILITIES)
     assert len(DEFAULT_BASES) == 3 * 18 + len(media.RESTORATION_CRITERIA) + 1
 
 
@@ -716,7 +717,7 @@ def _a_parameter_of(step: str) -> dict[str, Any]:
 )
 @example(kind="display_copy", request_kind="display_copy", steps=["decode", "encode"], fault="none")
 @example(kind="restoration", request_kind="restoration", steps=["decode", "lift", "encode"], fault="none")
-@example(kind="restoration", request_kind="restoration", steps=list(media.GRAPH_STEP_KINDS), fault="none")
+@example(kind="restoration", request_kind="restoration", steps=[k for k in media.GRAPH_STEP_KINDS if k != "convert_colour"], fault="none")
 @example(kind="restoration", request_kind="restoration", steps=["decode", "encode", "lift"], fault="none")
 @example(kind="restoration", request_kind="restoration", steps=["find_stars", "lift", "encode"], fault="none")
 @example(kind="restoration", request_kind="restoration", steps=["decode", "lift", "lift", "encode"], fault="none")
@@ -724,6 +725,8 @@ def _a_parameter_of(step: str) -> dict[str, Any]:
 @example(kind="restoration", request_kind="restoration", steps=["decode", "lift", "encode"], fault="another_steps")
 @example(kind="restoration", request_kind="restoration", steps=["find_stars", "decode", "lift", "encode"], fault="none")
 @example(kind="display_copy", request_kind="display_copy", steps=["decode", "encode", "copy_audio"], fault="none")
+@example(kind="display_copy", request_kind="display_copy", steps=["decode", "convert_colour", "encode"], fault="none")
+@example(kind="restoration", request_kind="restoration", steps=["decode", "convert_colour", "lift", "encode"], fault="none")
 def test_pbt_rst_20_a_graph_is_accepted_exactly_when_its_steps_and_parameters_fit_its_kind(
     kind: str, request_kind: str, steps: list[str], fault: str
 ) -> None:
@@ -748,10 +751,12 @@ def test_pbt_rst_20_a_graph_is_accepted_exactly_when_its_steps_and_parameters_fi
         first.append(_a_parameter_of("copy_audio") if steps[0] != "copy_audio" else _a_parameter_of("decode"))
     order = [media.GRAPH_STEP_KINDS.index(step) for step in steps]
     if kind == "display_copy":
-        steps_fit = steps == ["decode", "encode"]
+        # restore-8e: a display copy may convert its colours between its decode and its encode
+        steps_fit = steps in (["decode", "encode"], ["decode", "convert_colour", "encode"])
     else:
         steps_fit = (
             steps[0] == "decode"
+            and "convert_colour" not in steps
             and all(later > earlier for earlier, later in zip(order, order[1:]))
             and "lift" in steps
             and "encode" in steps

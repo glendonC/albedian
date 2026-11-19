@@ -54,7 +54,7 @@ VARIANT_KINDS = ("display_copy", "restoration")
 PARAMETER_ORIGINS = ("measured", "requested", "default")
 # Pipeline order: a graph lists its steps in this order, each at most once
 GRAPH_STEP_KINDS = (
-    "decode", "find_stars", "measure_noise", "register", "temporal_merge", "spatial_denoise",
+    "decode", "convert_colour", "find_stars", "measure_noise", "register", "temporal_merge", "spatial_denoise",
     "dissolve_unconfirmed", "lift", "encode", "copy_audio",
 )
 # Each id as the code that mints it writes it (design section 9; services/ingest/router.py for src_, REQ-JOB-5.8 for sol_)
@@ -69,6 +69,13 @@ DISCLOSURES = {
     "display_copy": "The original's own pixels, re-encoded without loss so a browser can show them. Nothing was restored.",
     "restoration": "Restored from the original's own pixels with deterministic filters. Nothing was generated.",
 }
+# The disclosure of a display copy converted to sRGB through the photo's own colour profile, of an 8 bit photo and of a
+# 16 bit one (review row C20, the design lane's words, decided by the lead on 2026-11-19; restore-8e)
+CONVERTED_DISCLOSURES = (
+    "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can.",
+    "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can."
+    " This copy has 8 bits for each colour; your photo has 16.",
+)
 MEDIA_PATTERNS = {
     "sha256": SHA256_HEX_PATTERN,
     "utcInstant": UTC_INSTANT_PATTERN,
@@ -106,6 +113,8 @@ VARIANT_CONTAINERS = ("png", "mov", "mp4")
 VARIANT_ENCODERS = ("png", "libx264", "libx265")
 # x264's and x265's preset names (design section 10)
 ENCODER_PRESETS = ("ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow", "placebo")
+# The ICC rendering intents, by the header's code 0 to 3 [verified: ICC.1:2022 section 7.2.15, read 2026-11-19]
+RENDERING_INTENTS = ("perceptual", "relative_colorimetric", "saturation", "absolute_colorimetric")
 EXPORT_MANIFEST_FORMAT = "albedian.export-manifest"
 EXPORT_MANIFEST_FORMAT_VERSION = 1
 # The largest exposure a request may ask for, in EV [proposed in design section 14; the lift's own bounds decide]
@@ -115,6 +124,7 @@ MEDIA_ENUMS = {
     "variantKinds": list(VARIANT_KINDS),
     "parameterOrigins": list(PARAMETER_ORIGINS),
     "graphStepKinds": list(GRAPH_STEP_KINDS),
+    "renderingIntents": list(RENDERING_INTENTS),
     "colourModels": list(COLOUR_MODELS),
     "colourBitDepths": list(COLOUR_BIT_DEPTHS),
     "colourRanges": list(COLOUR_RANGES),
@@ -168,6 +178,7 @@ STEP_PARAMETERS = (
     _text("preset", ("encode",), ENCODER_PRESETS),
     _integer("crf", ("encode",), 0, 51, "x264 quality"),
     _integer("zlibLevel", ("encode",), 0, 9, "zlib level"),
+    _text("renderingIntent", ("convert_colour",), RENDERING_INTENTS),
     _integer("tilePx", ("find_stars",), 16, 4096, "px"),
     _integer("overlapPx", ("find_stars",), 0, 1024, "px"),
     _number("confirmThresholdSnr", ("find_stars",), 0, 100, "signal to noise"),
@@ -285,6 +296,8 @@ FAILURE_SENTENCES = (
     "The restoration stopped at its time limit.",
     "The restoration stopped on an internal error.",
     "The server stopped before this job finished.",
+    # Review row C20 (restore-8e): a photo whose colour profile cannot be rebuilt
+    "Your photo's colour profile cannot be carried into a restored copy, so it was not restored.",
 )
 # The plain sentences a record's notes may hold [proposed, each from the requirement named in design section 14]
 NOTES = (
@@ -310,6 +323,9 @@ ASSUMPTION_REASONS = (
      "reason": "The file does not state its primaries, so they stay unspecified and are never converted."},
     {"field": "chromaSiting", "assumed": "left",
      "reason": "The file does not state its chroma siting, so left is assumed, the common default of H.264 and HEVC."},
+    # Review row C20 (restore-8e): a display copy kept without a profile nothing can read
+    {"field": "transfer", "assumed": "srgb", "reason": "The file's ICC profile could not be read, so sRGB is assumed."},
+    {"field": "primaries", "assumed": "bt709", "reason": "The file's ICC profile could not be read, so sRGB is assumed."},
 )
 # What a parameter's basis may say, by its origin: what on this file it was measured from, the request field, or a source
 BASES = {
@@ -399,7 +415,9 @@ M_PARAMETER_ONCE = "a step names each parameter once"
 M_PARAMETER_STEP = "a step holds only its kind's parameters"
 M_GRAPH_KIND = "the graph is of the kind its request asks for"
 M_FIRST_DECODE = "the first step is decode"
-M_DISPLAY_COPY_STEPS = "a display copy is decode then encode, nothing more"
+M_DISPLAY_COPY_STEPS = "a display copy is decode, at most a colour conversion, then encode"
+M_CONVERT_DISPLAY_ONLY = "only a display copy converts its colours"
+M_CONVERTED_DISCLOSURE = "a copy says it was converted exactly when its graph converts it"
 M_PIPELINE_ORDER = "steps run once each, in pipeline order"
 M_LIFT_AND_ENCODE = "a restoration holds a lift and an encode"
 M_RGB = "R'G'B' has no matrix and no chroma subsampling"
@@ -458,7 +476,7 @@ def _attempt_fit(status: str) -> str:
 
 REFINEMENT_MESSAGES = (
     M_CALENDAR, M_REQUEST_OPTION, M_PARAMETER_VALUE, M_BASIS, M_PARAMETER_ONCE, M_PARAMETER_STEP, M_GRAPH_KIND,
-    M_FIRST_DECODE, M_DISPLAY_COPY_STEPS, M_PIPELINE_ORDER, M_LIFT_AND_ENCODE, M_RGB, M_YCBCR, M_SITING, M_BIT_DEPTH,
+    M_FIRST_DECODE, M_DISPLAY_COPY_STEPS, M_CONVERT_DISPLAY_ONLY, M_PIPELINE_ORDER, M_LIFT_AND_ENCODE, M_RGB, M_YCBCR, M_SITING, M_BIT_DEPTH,
     M_PROFILE, M_ASSUMED_ONCE, M_ASSUMED_VALUE, M_ASSUMPTION_REASON, M_NOISE_COLUMNS, M_NOISE_INCREASING,
     M_GATE_PASSED, M_GATE_POINTS, M_GATE_FRAMES, M_GATE_ANY_FRAME, M_GATE_FRAME_POINTS, M_GATE_STARS,
     M_GATE_FLUX_GIVEN, M_GATE_WORST, M_STARS_CONFIRMED, M_NO_LIFT, M_CLIP_NEIGHBOURS, M_FRAMES_TOGETHER, M_NOTE,
@@ -466,7 +484,7 @@ REFINEMENT_MESSAGES = (
     M_REFUSED_IS_REJECTED, M_GATE_REJECTION, M_REJECTION_NAMED, M_NO_GATE_BEFORE, M_GATE_STARS_FOUND,
     M_ATTEMPT_TIMES, M_DISCLOSURE, M_SOURCE_ASSET, M_STILL, M_CLIP_TIMES, M_DISPLAY_COPY_STILL, M_VARIANT_URI,
     M_VARIANT_COLOUR, M_MANIFEST_SOURCE, M_MANIFEST_IDS, M_MANIFEST_READY, M_MANIFEST_DISCLOSURE, M_MANIFEST_GATE,
-    M_MANIFEST_NOISE, M_MANIFEST_FRAMES, M_STILL_GATE, M_SOLUTION,
+    M_MANIFEST_NOISE, M_MANIFEST_FRAMES, M_STILL_GATE, M_SOLUTION, M_CONVERTED_DISCLOSURE,
 )
 
 
@@ -524,7 +542,7 @@ Positive = Annotated[WireInt, Field(gt=0)]
 NonNegative = Annotated[WireNumber, Field(ge=0)]
 PositiveNumber = Annotated[WireNumber, Field(gt=0)]
 VariantKind = Literal[*VARIANT_KINDS]
-Disclosure = Literal[*DISCLOSURES.values()]
+Disclosure = Literal[*DISCLOSURES.values(), *CONVERTED_DISCLOSURES]
 Note = _from_list(NOTES, M_NOTE)
 FailureReason = _from_templates(FAILURE_SENTENCES, M_FAILURE_SENTENCE)
 
@@ -672,9 +690,11 @@ class ProcessingGraph(_Record):
         if kinds[0] != "decode":
             failures.append(M_FIRST_DECODE)
         if self.kind == "display_copy":
-            if len(kinds) != 2 or kinds[1] != "encode":
+            if kinds[1:] not in (["encode"], ["convert_colour", "encode"]):
                 failures.append(M_DISPLAY_COPY_STEPS)
         else:
+            if "convert_colour" in kinds:
+                failures.append(M_CONVERT_DISPLAY_ONLY)
             order = [GRAPH_STEP_KINDS.index(kind) for kind in kinds]
             if any(later <= earlier for earlier, later in zip(order, order[1:])):
                 failures.append(M_PIPELINE_ORDER)
@@ -964,7 +984,8 @@ class MediaVariant(_Record):
     def _fits_its_kind_and_file(self) -> "MediaVariant":
         failures = []
         still = self.mime_type == "image/png"
-        if self.disclosure != DISCLOSURES[self.kind]:
+        converted = self.kind == "display_copy" and self.disclosure in CONVERTED_DISCLOSURES
+        if self.disclosure != DISCLOSURES[self.kind] and not converted:
             failures.append(M_DISCLOSURE)
         if self.source_asset_id != f"src_{self.source_sha256[:16]}":
             failures.append(M_SOURCE_ASSET)
@@ -1005,6 +1026,8 @@ class ExportManifest(_Record):
             failures.append(M_MANIFEST_READY)
         if self.disclosure != variant.disclosure:
             failures.append(M_MANIFEST_DISCLOSURE)
+        if (variant.disclosure in CONVERTED_DISCLOSURES) != any(step.kind == "convert_colour" for step in graph.steps):
+            failures.append(M_CONVERTED_DISCLOSURE)
         if (attempt.gate is not None) != (graph.kind == "restoration"):
             failures.append(M_MANIFEST_GATE)
         measured = attempt.measured
@@ -1159,6 +1182,11 @@ def build_media_samples() -> dict[str, Any]:
 
     graph_display = {"id": _id("graph", "display copy"), "sourceSha256": heic_sha, "kind": "display_copy",
                      "pipelineVersion": "1.0.0", "request": requests[0], "steps": [decode_heic, encode_png8]}
+    graph_converted = {"id": _id("graph", "converted display copy"), "sourceSha256": heic_sha, "kind": "display_copy",
+                       "pipelineVersion": "1.0.0", "request": requests[0],
+                       "steps": [decode_heic, _step("convert_colour", _parameter("renderingIntent", "perceptual", "measured",
+                                                                                 "Read from the file's ICC profile.")),
+                                 encode_png8]}
     graph_still = {"id": _id("graph", "still restoration"), "sourceSha256": still_sha, "kind": "restoration",
                    "pipelineVersion": "1.0.0", "request": requests[1],
                    "steps": [_step("decode", _parameter("transfer", "icc_parametric", "measured", "Read from the file's ICC profile.")),
@@ -1306,7 +1334,7 @@ def build_media_samples() -> dict[str, Any]:
         "RestoreRequest": requests,
         "GraphParameter": parameters,
         "GraphStep": [decode_heic, encode_png8, find_stars, lift_clip, copy_audio, encode_h264],
-        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black],
+        "ProcessingGraph": [graph_display, graph_still, graph_clip, graph_black, graph_converted],
         "ColourDescription": [colour_heic, colour_png8, colour_jpeg, colour_png16, colour_clip],
         "NoiseTable": [noise_still, noise_clip],
         "IntegrityGateResult": [gate_passed, gate_unconfirmed, gate_flux, gate_no_stars, gate_clip, gate_written_as_floats,
@@ -1323,6 +1351,7 @@ def build_media_samples() -> dict[str, Any]:
         "jobIdPattern": JOB_ID_PATTERN,
         "enums": MEDIA_ENUMS,
         "disclosures": DISCLOSURES,
+        "convertedDisclosures": list(CONVERTED_DISCLOSURES),
         "vocabulary": MEDIA_VOCABULARY,
         "messages": list(REFINEMENT_MESSAGES),
         "pythonNames": python_names(),
@@ -1638,6 +1667,16 @@ def _invalid_samples(valid: dict[str, list[dict[str, Any]]]) -> list[dict[str, A
     bad("MediaVariant", edit(display_variant, ["disclosure"], DISCLOSURES["restoration"]), "a display copy with the restoration's disclosure",
         M_DISCLOSURE)
     bad("MediaVariant", edit(still_variant, ["disclosure"], "Restored."), "a disclosure that is not one of the two")
+    bad("MediaVariant", edit(still_variant, ["disclosure"], CONVERTED_DISCLOSURES[0]), "a restoration saying it was converted",
+        M_DISCLOSURE)
+    converted_graph = valid["ProcessingGraph"][4]
+    bad("ProcessingGraph", edit(converted_graph, ["steps"], [converted_graph["steps"][i] for i in (0, 2, 1)]),
+        "a display copy converting after its encode", M_DISPLAY_COPY_STEPS)
+    bad("ProcessingGraph", edit(graph_still, ["steps"], [graph_still["steps"][0], converted_graph["steps"][1], *graph_still["steps"][1:]]),
+        "a restoration converting its colours", M_CONVERT_DISPLAY_ONLY)
+    said = edit(display_manifest, ["variant", "disclosure"], CONVERTED_DISCLOSURES[1])
+    bad("ExportManifest", {**said, "disclosure": CONVERTED_DISCLOSURES[1]}, "a copy saying it was converted by a graph that does not",
+        M_CONVERTED_DISCLOSURE)
     bad("MediaVariant", edit(still_variant, ["frameCount"], 2), "a still of two frames", M_STILL)
     bad("MediaVariant", edit(still_variant, ["durationMs"], 40), "a still with a duration", M_STILL)
     bad("MediaVariant", edit(still_variant, ["audioStreams"], clip_variant["audioStreams"]), "a still with audio", M_STILL)

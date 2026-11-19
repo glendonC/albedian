@@ -26,6 +26,7 @@
     ],
     "graphStepKinds": [
       "decode",
+      "convert_colour",
       "find_stars",
       "measure_noise",
       "register",
@@ -35,6 +36,12 @@
       "lift",
       "encode",
       "copy_audio"
+    ],
+    "renderingIntents": [
+      "perceptual",
+      "relative_colorimetric",
+      "saturation",
+      "absolute_colorimetric"
     ],
     "colourModels": [
       "rgb",
@@ -185,6 +192,10 @@
     "display_copy": "The original's own pixels, re-encoded without loss so a browser can show them. Nothing was restored.",
     "restoration": "Restored from the original's own pixels with deterministic filters. Nothing was generated."
   },
+  "convertedDisclosures": [
+    "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can.",
+    "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can. This copy has 8 bits for each colour; your photo has 16."
+  ],
   "vocabulary": {
     "failureSentences": [
       "The file could not be decoded.",
@@ -196,7 +207,8 @@
       "The original changed while the job ran.",
       "The restoration stopped at its time limit.",
       "The restoration stopped on an internal error.",
-      "The server stopped before this job finished."
+      "The server stopped before this job finished.",
+      "Your photo's colour profile cannot be carried into a restored copy, so it was not restored."
     ],
     "notes": [
       "The noise could not be measured, so no noise reduction ran and the lift is held by the quantisation bound alone.",
@@ -248,6 +260,16 @@
         "field": "chromaSiting",
         "assumed": "left",
         "reason": "The file does not state its chroma siting, so left is assumed, the common default of H.264 and HEVC."
+      },
+      {
+        "field": "transfer",
+        "assumed": "srgb",
+        "reason": "The file's ICC profile could not be read, so sRGB is assumed."
+      },
+      {
+        "field": "primaries",
+        "assumed": "bt709",
+        "reason": "The file's ICC profile could not be read, so sRGB is assumed."
       }
     ],
     "bases": {
@@ -582,6 +604,19 @@
         "min": 0,
         "max": 9,
         "unit": "zlib level"
+      },
+      {
+        "name": "renderingIntent",
+        "steps": [
+          "convert_colour"
+        ],
+        "type": "text",
+        "values": [
+          "perceptual",
+          "relative_colorimetric",
+          "saturation",
+          "absolute_colorimetric"
+        ]
       },
       {
         "name": "tilePx",
@@ -1078,7 +1113,8 @@
     "a step holds only its kind's parameters",
     "the graph is of the kind its request asks for",
     "the first step is decode",
-    "a display copy is decode then encode, nothing more",
+    "a display copy is decode, at most a colour conversion, then encode",
+    "only a display copy converts its colours",
     "steps run once each, in pipeline order",
     "a restoration holds a lift and an encode",
     "R'G'B' has no matrix and no chroma subsampling",
@@ -1131,7 +1167,8 @@
     "a restoration records its noise table or why it has none",
     "the measured clip has the variant's frame count",
     "a still's gate checks one frame",
-    "the solution is the source's own"
+    "the solution is the source's own",
+    "a copy says it was converted exactly when its graph converts it"
   ],
   "pythonNames": {
     "attemptId": "attempt_id",
@@ -1279,7 +1316,7 @@
       "__proto__"
     ],
     "value": "/Users/me/Pictures/IMG_0001.MOV",
-    "records": 2120
+    "records": 2170
   },
   "valid": {
     "RestoreRequest": [
@@ -1873,6 +1910,77 @@
                 "value": 1,
                 "origin": "measured",
                 "basis": "Counted from the asset record's audio streams."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "graph_35fda20d5c26b502",
+        "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "kind": "display_copy",
+        "pipelineVersion": "1.0.0",
+        "request": {
+          "kind": "display_copy"
+        },
+        "steps": [
+          {
+            "kind": "decode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "matrix",
+                "value": "bt601",
+                "origin": "measured",
+                "basis": "Read from the file's own colour tags."
+              },
+              {
+                "name": "transfer",
+                "value": "srgb",
+                "origin": "measured",
+                "basis": "Read from the file's own colour tags."
+              },
+              {
+                "name": "chromaSiting",
+                "value": "left",
+                "origin": "default",
+                "basis": "Proposed in design section 1."
+              }
+            ]
+          },
+          {
+            "kind": "convert_colour",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "renderingIntent",
+                "value": "perceptual",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          },
+          {
+            "kind": "encode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "container",
+                "value": "png",
+                "origin": "default",
+                "basis": "Proposed in design section 8."
+              },
+              {
+                "name": "bitDepth",
+                "value": 8,
+                "origin": "measured",
+                "basis": "Read from the decoded original."
+              },
+              {
+                "name": "zlibLevel",
+                "value": 6,
+                "origin": "default",
+                "basis": "Proposed in design section 8."
               }
             ]
           }
@@ -5305,7 +5413,7 @@
         ]
       },
       "reason": "a display copy with a lift",
-      "message": "a display copy is decode then encode, nothing more"
+      "message": "a display copy is decode, at most a colour conversion, then encode"
     },
     {
       "schema": "ProcessingGraph",
@@ -5381,7 +5489,7 @@
         ]
       },
       "reason": "a display copy with a step after its encode",
-      "message": "a display copy is decode then encode, nothing more"
+      "message": "a display copy is decode, at most a colour conversion, then encode"
     },
     {
       "schema": "ProcessingGraph",
@@ -12155,6 +12263,382 @@
       },
       "reason": "a disclosure that is not one of the two",
       "message": null
+    },
+    {
+      "schema": "MediaVariant",
+      "sample": {
+        "id": "var_9fe713304b9d00ed",
+        "kind": "restoration",
+        "sourceSha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "sourceAssetId": "src_5f2b0c9a7d31e448",
+        "graphId": "graph_9fe713304b9d00ed",
+        "attemptId": "att_9fe713304b9d00ed",
+        "sha256": "8f57eaf7e968f84a792b337a7fee315678b97d64018c2a94470f0743d656e9b9",
+        "uri": "/api/media/5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50/variants/var_9fe713304b9d00ed/file",
+        "byteSize": 46137344,
+        "mimeType": "image/png",
+        "durationMs": 0,
+        "frameCount": 1,
+        "audioStreams": [],
+        "width": 4032,
+        "height": 3024,
+        "colour": {
+          "model": "rgb",
+          "bitDepth": 16,
+          "range": "full",
+          "matrix": "identity",
+          "transfer": "icc_parametric",
+          "primaries": "icc",
+          "chromaSubsampling": "444",
+          "iccProfileSha256": "3506e755d7d1b808dd351b2ca07bb62a1ddb0e48ad21be8ea5c31d3e231dce37",
+          "assumptions": []
+        },
+        "disclosure": "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can.",
+        "createdAtUTC": "2031-05-02T19:20:07.500Z"
+      },
+      "reason": "a restoration saying it was converted",
+      "message": "the disclosure is the fixed sentence of its kind"
+    },
+    {
+      "schema": "ProcessingGraph",
+      "sample": {
+        "id": "graph_35fda20d5c26b502",
+        "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "kind": "display_copy",
+        "pipelineVersion": "1.0.0",
+        "request": {
+          "kind": "display_copy"
+        },
+        "steps": [
+          {
+            "kind": "decode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "matrix",
+                "value": "bt601",
+                "origin": "measured",
+                "basis": "Read from the file's own colour tags."
+              },
+              {
+                "name": "transfer",
+                "value": "srgb",
+                "origin": "measured",
+                "basis": "Read from the file's own colour tags."
+              },
+              {
+                "name": "chromaSiting",
+                "value": "left",
+                "origin": "default",
+                "basis": "Proposed in design section 1."
+              }
+            ]
+          },
+          {
+            "kind": "encode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "container",
+                "value": "png",
+                "origin": "default",
+                "basis": "Proposed in design section 8."
+              },
+              {
+                "name": "bitDepth",
+                "value": 8,
+                "origin": "measured",
+                "basis": "Read from the decoded original."
+              },
+              {
+                "name": "zlibLevel",
+                "value": 6,
+                "origin": "default",
+                "basis": "Proposed in design section 8."
+              }
+            ]
+          },
+          {
+            "kind": "convert_colour",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "renderingIntent",
+                "value": "perceptual",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          }
+        ]
+      },
+      "reason": "a display copy converting after its encode",
+      "message": "a display copy is decode, at most a colour conversion, then encode"
+    },
+    {
+      "schema": "ProcessingGraph",
+      "sample": {
+        "id": "graph_9fe713304b9d00ed",
+        "sourceSha256": "5f2b0c9a7d31e4486a0be2f1c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f50",
+        "kind": "restoration",
+        "pipelineVersion": "1.0.0",
+        "request": {
+          "kind": "restoration"
+        },
+        "steps": [
+          {
+            "kind": "decode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "transfer",
+                "value": "icc_parametric",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          },
+          {
+            "kind": "convert_colour",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "renderingIntent",
+                "value": "perceptual",
+                "origin": "measured",
+                "basis": "Read from the file's ICC profile."
+              }
+            ]
+          },
+          {
+            "kind": "find_stars",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "confirmThresholdSnr",
+                "value": 4.75,
+                "origin": "default",
+                "basis": "The detector's own floor."
+              },
+              {
+                "name": "tilePx",
+                "value": 256,
+                "origin": "default",
+                "basis": "Proposed in design section 3."
+              }
+            ]
+          },
+          {
+            "kind": "measure_noise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "bins",
+                "value": 12,
+                "origin": "default",
+                "basis": "Proposed in design section 4."
+              }
+            ]
+          },
+          {
+            "kind": "spatial_denoise",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "sigmaScale",
+                "value": 1.0,
+                "origin": "measured",
+                "basis": "Measured on this file's noise table."
+              }
+            ]
+          },
+          {
+            "kind": "dissolve_unconfirmed",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "maxPasses",
+                "value": 3,
+                "origin": "default",
+                "basis": "Required by REQ-RST-6.3."
+              }
+            ]
+          },
+          {
+            "kind": "lift",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "gainAtBlack",
+                "value": 4.2,
+                "origin": "measured",
+                "basis": "Solved for this file from its median and its measured bounds."
+              }
+            ]
+          },
+          {
+            "kind": "encode",
+            "version": "1.0.0",
+            "parameters": [
+              {
+                "name": "container",
+                "value": "png",
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              },
+              {
+                "name": "bitDepth",
+                "value": 16,
+                "origin": "default",
+                "basis": "Decided by the lead in design section 8."
+              }
+            ]
+          }
+        ]
+      },
+      "reason": "a restoration converting its colours",
+      "message": "only a display copy converts its colours"
+    },
+    {
+      "schema": "ExportManifest",
+      "sample": {
+        "format": "albedian.export-manifest",
+        "formatVersion": 1,
+        "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+        "variant": {
+          "id": "var_cb7714362b152f56",
+          "kind": "display_copy",
+          "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "sourceAssetId": "src_3c4d5e6f7a8b9c0d",
+          "graphId": "graph_cb7714362b152f56",
+          "attemptId": "att_cb7714362b152f56",
+          "sha256": "b1cdf820bcb1486665a40f17c47896e89da5ad79dde806224a6f1a5e6ca4231f",
+          "uri": "/api/media/3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d/variants/var_cb7714362b152f56/file",
+          "byteSize": 17825792,
+          "mimeType": "image/png",
+          "durationMs": 0,
+          "frameCount": 1,
+          "audioStreams": [],
+          "width": 3024,
+          "height": 4032,
+          "colour": {
+            "model": "rgb",
+            "bitDepth": 8,
+            "range": "full",
+            "matrix": "identity",
+            "transfer": "srgb",
+            "primaries": "p3_d65",
+            "chromaSubsampling": "444",
+            "assumptions": [
+              {
+                "field": "transfer",
+                "assumed": "srgb",
+                "reason": "The file has no ICC profile and no EXIF ColorSpace, so sRGB is assumed."
+              }
+            ]
+          },
+          "displayOrientation": {
+            "quarterTurnsClockwise": 1,
+            "mirrored": false
+          },
+          "disclosure": "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can. This copy has 8 bits for each colour; your photo has 16.",
+          "createdAtUTC": "2031-05-02T19:20:07.500Z"
+        },
+        "graph": {
+          "id": "graph_cb7714362b152f56",
+          "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "kind": "display_copy",
+          "pipelineVersion": "1.0.0",
+          "request": {
+            "kind": "display_copy"
+          },
+          "steps": [
+            {
+              "kind": "decode",
+              "version": "1.0.0",
+              "parameters": [
+                {
+                  "name": "matrix",
+                  "value": "bt601",
+                  "origin": "measured",
+                  "basis": "Read from the file's own colour tags."
+                },
+                {
+                  "name": "transfer",
+                  "value": "srgb",
+                  "origin": "measured",
+                  "basis": "Read from the file's own colour tags."
+                },
+                {
+                  "name": "chromaSiting",
+                  "value": "left",
+                  "origin": "default",
+                  "basis": "Proposed in design section 1."
+                }
+              ]
+            },
+            {
+              "kind": "encode",
+              "version": "1.0.0",
+              "parameters": [
+                {
+                  "name": "container",
+                  "value": "png",
+                  "origin": "default",
+                  "basis": "Proposed in design section 8."
+                },
+                {
+                  "name": "bitDepth",
+                  "value": 8,
+                  "origin": "measured",
+                  "basis": "Read from the decoded original."
+                },
+                {
+                  "name": "zlibLevel",
+                  "value": 6,
+                  "origin": "default",
+                  "basis": "Proposed in design section 8."
+                }
+              ]
+            }
+          ]
+        },
+        "attempt": {
+          "id": "att_cb7714362b152f56",
+          "sourceSha256": "3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d3c4d5e6f7a8b9c0d",
+          "graphId": "graph_cb7714362b152f56",
+          "jobId": "job_cb7714362b152f567a778a3fb9505121",
+          "status": "ready",
+          "startedAtUTC": "2031-05-02T19:20:01Z",
+          "finishedAtUTC": "2031-05-02T19:20:07.500Z",
+          "elapsedMs": 6500,
+          "cpuMs": 6100,
+          "variantId": "var_cb7714362b152f56",
+          "measured": {
+            "colour": {
+              "model": "ycbcr",
+              "bitDepth": 8,
+              "range": "full",
+              "matrix": "bt601",
+              "transfer": "srgb",
+              "primaries": "p3_d65",
+              "chromaSubsampling": "420",
+              "chromaSiting": "left",
+              "assumptions": [
+                {
+                  "field": "chromaSiting",
+                  "assumed": "left",
+                  "reason": "The file does not state its chroma siting, so left is assumed, the common default of H.264 and HEVC."
+                }
+              ]
+            },
+            "notes": []
+          }
+        },
+        "disclosure": "Shown in sRGB, converted through your photo's own colour profile; colours sRGB cannot show are changed to ones it can. This copy has 8 bits for each colour; your photo has 16."
+      },
+      "reason": "a copy saying it was converted by a graph that does not",
+      "message": "a copy says it was converted exactly when its graph converts it"
     },
     {
       "schema": "MediaVariant",

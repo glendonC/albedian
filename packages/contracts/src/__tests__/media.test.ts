@@ -17,6 +17,7 @@ import {
   COLOUR_TRANSFERS,
   ColourDescriptionSchema,
   DISCLOSURES,
+  CONVERTED_DISCLOSURES,
   ExportArtifactSchema,
   ExportManifestSchema,
   FAILURE_CAPABILITIES,
@@ -88,6 +89,7 @@ interface MediaFixture {
   jobIdPattern: string;
   enums: Record<string, unknown[]>;
   disclosures: Record<string, string>;
+  convertedDisclosures: string[];
   vocabulary: unknown;
   messages: string[];
   pythonNames: Record<string, string>;
@@ -183,6 +185,7 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
     expect(fixture.jobIdPattern).toBe(JOB_ID_PATTERN);
     expect(fixture.enums).toEqual(plain(MEDIA_ENUMS));
     expect(fixture.disclosures).toEqual(DISCLOSURES);
+    expect(fixture.convertedDisclosures).toEqual([...CONVERTED_DISCLOSURES]);
     expect(fixture.vocabulary).toEqual(plain(MEDIA_VOCABULARY));
     expect([...fixture.messages].sort()).toEqual([...MEDIA_REFINEMENT_MESSAGES].sort());
     // One UTC form, one hash form and one job id form for every record of the app: the wire module's and media's
@@ -437,7 +440,8 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
       const [schema, base, at] = slots[slot]!;
       for (const text of texts) expect(accepts(SCHEMAS[schema], put(base(), at, text)), `${slot}: ${text}`).toBe(true);
     }
-    expect(FAILURES.length).toBe(8 + FAILURE_FORMATS.length + FAILURE_CAPABILITIES.length);
+    // restore-8e added the restoration's refusal for a colour profile it cannot carry (review row C20)
+    expect(FAILURES.length).toBe(9 + FAILURE_FORMATS.length + FAILURE_CAPABILITIES.length);
     expect(DEFAULT_BASES.length).toBe(3 * 18 + RESTORATION_CRITERIA.length + 1);
   });
 
@@ -727,8 +731,10 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
           const order = kinds.map((step) => (GRAPH_STEP_KINDS as readonly string[]).indexOf(step));
           const stepsFit =
             kind === 'display_copy'
-              ? kinds.length === 2 && kinds[0] === 'decode' && kinds[1] === 'encode'
+              ? // restore-8e: a display copy may convert its colours between its decode and its encode
+                kinds.join(' ') === 'decode encode' || kinds.join(' ') === 'decode convert_colour encode'
               : kinds[0] === 'decode' &&
+                !kinds.includes('convert_colour') &&
                 order.every((index, i) => i === 0 || index > order[i - 1]!) &&
                 kinds.includes('lift') &&
                 kinds.includes('encode');
@@ -742,7 +748,10 @@ describe('@albedian/contracts: restoration and export (REQ-RST-10, P-RST-20)', (
         examples: [
           ['display_copy', 'display_copy', ['decode', 'encode'], 'none'],
           ['restoration', 'restoration', ['decode', 'lift', 'encode'], 'none'],
+          ['restoration', 'restoration', GRAPH_STEP_KINDS.filter((k) => k !== 'convert_colour'), 'none'],
           ['restoration', 'restoration', [...GRAPH_STEP_KINDS], 'none'],
+          ['display_copy', 'display_copy', ['decode', 'convert_colour', 'encode'], 'none'],
+          ['display_copy', 'display_copy', ['decode', 'encode', 'convert_colour'], 'none'],
           ['restoration', 'restoration', ['decode', 'encode', 'lift'], 'none'],
           ['restoration', 'restoration', ['find_stars', 'lift', 'encode'], 'none'],
           ['restoration', 'restoration', ['decode', 'lift', 'lift', 'encode'], 'none'],
