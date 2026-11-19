@@ -227,6 +227,7 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/ingest/{sha256}/original": 0,
     "/api/ingest/{sha256}/solve": 0,
     "/api/ingest/jobs/{job_id}": 0,
+    "/api/ingest/jobs/{job_id}/predicted-sky": 0,
     "/api/ingest/jobs/{job_id}/cancel": 0,
     "/api/ingest/{sha256}/solution": 0,
     # Largest measured body 1,936 bytes (a pointing record of the fixture, indented); 4 times is 7,744

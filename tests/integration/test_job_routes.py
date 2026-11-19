@@ -518,3 +518,42 @@ def _solved(client: TestClient, sha: str) -> tuple[int, dict]:
         time.sleep(0.02)
         job = client.get(f"/api/ingest/jobs/{job['id']}").json()
     return started.status_code, job
+
+
+def test_the_predicted_sky_route_serves_a_running_solves_sky_and_nothing_else(
+        setup: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """platform-10b, REQ-JOB-2.7: `GET /api/ingest/jobs/{job_id}/predicted-sky` answers 200 with the sky while the
+    job runs and has published one, and 404 before, after and for a job it does not know."""
+    client, fake, sha = setup["client"], setup["fake"], setup["shas"][0]
+    fixture = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "observation_solution_contract.json")
+                         .read_text(encoding="utf-8"))["valid"]["approximate_with_pose"]
+    text = json.dumps(fixture).replace(fixture["sourceAssetId"], f"src_{sha[:16]}")
+    if fixture.get("sourceSha256"):
+        text = text.replace(fixture["sourceSha256"], sha)
+    sky = {**json.loads(text), "id": f"sol_{sha[:16]}"}
+    running, told = threading.Event(), threading.Event()
+    real_run = fake.run
+
+    def run(ctx: JobContext) -> KindResult:
+        running.set()
+        assert told.wait(BOUND_S)
+        ctx.predicted_sky(sky)
+        return real_run(ctx)
+
+    monkeypatch.setitem(job_runner._KINDS, "solve", dataclasses.replace(ingest_jobs.SOLVE_KIND, run=run))
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    assert client.get("/api/ingest/jobs/job_" + "0" * 32 + "/predicted-sky").status_code == 404
+    assert running.wait(BOUND_S)
+    before = client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky")
+    assert before.status_code == 404 and before.json()["detail"] == ingest_router.NO_PREDICTED_SKY
+    told.set()
+    deadline = time.monotonic() + BOUND_S
+    while "predictedSkyAtUTC" not in client.get(f"/api/ingest/jobs/{job['id']}").json():
+        assert time.monotonic() < deadline, "the record never named its predicted sky"
+        time.sleep(0.02)
+    during = client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky")
+    assert during.status_code == 200 and during.json() == sky
+    fake.release.set()
+    ended = _until_state(client, job["id"], ("succeeded",))
+    assert "predictedSkyAtUTC" in ended
+    assert client.get(f"/api/ingest/jobs/{job['id']}/predicted-sky").status_code == 404

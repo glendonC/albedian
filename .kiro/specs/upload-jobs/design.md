@@ -467,6 +467,12 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   belongs to), its stars and planets `predicted` and placed through that pose, served by
   the job's predicted-sky route while the job runs [proposed: the route and its life after the job ends are the
   publishing unit's; the record holds a time, not the sky, so each read of the job stays small].
+- As built in platform-10b [tested]: a solve kind calls `ctx.predicted_sky(solution)` with an approximate
+  solution and its pose estimate (anything else, or a media kind, is a ValueError); the runner keeps it whole
+  among the job's partials (`predicted_sky.json`, put in place in one step) and sets `predictedSkyAtUTC` on the
+  live record, written at once. `GET /api/ingest/jobs/{job_id}/predicted-sky` serves it while the job runs in
+  this process and 404 otherwise; it goes with the job's partials at its end. Which poses call it (the head-worn
+  Moon pose found before the search, the phone's pointing record, a person's alignment) are later units.
 - `producer` is required on a job that started and absent on one that never did, as design 4 writes it with the
   start [decided 2026-11-13]; a record today's code wrote has none and could not have had one, so the store judges
   it by `SolveJob` and never gives it one (3.1). `error` keeps its 2000 character bound.

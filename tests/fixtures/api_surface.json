@@ -940,6 +940,51 @@
           }
         }
       },
+      "/api/ingest/jobs/{job_id}/predicted-sky": {
+        "get": {
+          "summary": "Get Ingest Job Predicted Sky",
+          "description": "The sky a running solve predicted from a pose it knew before its search ended (an approximate\nObservationSolution with its pose estimate), while the job runs and once its record names\n`predictedSkyAtUTC`; 404 before that, after the job ends (its solution then holds the sky) and for any other\njob.",
+          "operationId": "get_ingest_job_predicted_sky_api_ingest_jobs__job_id__predicted_sky_get",
+          "parameters": [
+            {
+              "name": "job_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^job_[0-9a-f]{16,64}$",
+                "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters",
+                "title": "Job Id"
+              },
+              "description": "The solve job's id, job_ followed by 16 to 64 lowercase hex characters"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Ingest Job Predicted Sky Api Ingest Jobs  Job Id  Predicted Sky Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/ingest/jobs/{job_id}/cancel": {
         "post": {
           "summary": "Cancel Ingest Job",
@@ -1767,6 +1812,15 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/ingest/jobs/{job_id}/predicted-sky",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_ingest_job_predicted_sky",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
       "path": "/api/ingest/jobs/{job_id}/cancel",
       "methods": [
         "POST"
@@ -1874,6 +1928,7 @@
           "/api/ingest/{sha256}/original": 0,
           "/api/ingest/{sha256}/solve": 0,
           "/api/ingest/jobs/{job_id}": 0,
+          "/api/ingest/jobs/{job_id}/predicted-sky": 0,
           "/api/ingest/jobs/{job_id}/cancel": 0,
           "/api/ingest/{sha256}/solution": 0,
           "/api/ingest/{sha256}/pointing": 65536

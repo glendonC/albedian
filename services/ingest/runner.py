@@ -26,6 +26,7 @@ import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -35,6 +36,7 @@ from typing import Any, Callable, Mapping, Optional
 
 from pydantic import ValidationError
 
+from services.contracts.astronomy import parse_observation_solution
 from services.contracts.ingest import format_utc
 from services.contracts.jobs import JOB_PASS_LABELS, JOB_PASS_MAX, JOB_STAGE_UNITS, MEDIA_JOB_KINDS, UploadJob
 from services.ingest.job_store import (
@@ -151,6 +153,9 @@ class JobKind:
     results_valid: Callable[[JobStore, Mapping[str, Any]], bool] = _results_whole
 
 
+# The partial a solve's early predicted sky is kept in while it runs (platform-10b)
+PREDICTED_SKY_PARTIAL = "predicted_sky.json"
+
 _KINDS: dict[str, JobKind] = {}
 _KINDS_GUARD = threading.Lock()
 
@@ -255,6 +260,13 @@ class JobContext:
     def publish(self, partial: Path, target: Path) -> None:
         self._runner.store.publish(partial, target)
         self._job.published.append(target)
+
+    def predicted_sky(self, solution: Mapping[str, Any]) -> None:
+        """Publishes the sky predicted from a pose known before the search ends (REQ-JOB-2.7, platform-10b): an
+        approximate solution with its pose estimate, kept whole among the job's partial outputs and named on the
+        record by the moment it was published. It is served while the job runs and goes with the job's partials;
+        a solve that succeeds stores the same sky in its solution. ValueError for anything else."""
+        self._runner._predicted_sky(self._job, solution)
 
     def live(self) -> dict[str, Any]:
         """The job's record as a read would serve it now."""
@@ -766,6 +778,32 @@ class Runner:
                 write = False
         if write:
             self._write(job, force=True, quiet=True)
+
+    def _predicted_sky(self, job: _Job, solution: Mapping[str, Any]) -> None:
+        if job.kind.name != "solve":
+            raise ValueError("only a solve publishes a predicted sky")
+        parsed = parse_observation_solution(solution)
+        if parsed.status != "approximate" or parsed.pose_estimate is None:
+            raise ValueError("a predicted sky is an approximate solution placed by its pose")
+        # Written whole beside the job's other partials, then put in place in one step; both go when the job ends
+        target = self.store.partial(job.id, PREDICTED_SKY_PARTIAL)
+        scratch = self.store.partial(job.id, PREDICTED_SKY_PARTIAL.replace(".json", "_next.json"))
+        scratch.write_text(json.dumps(dict(solution)), encoding="utf-8")
+        os.replace(scratch, target)
+        with self._cond:
+            job.record = {**job.record, "predictedSkyAtUTC": format_utc(_now())}
+        self._write(job, force=True, quiet=True)
+
+    def predicted_sky(self, job_id: str) -> Optional[dict[str, Any]]:
+        """The sky a running solve of this process published before its search ended, or None."""
+        with self._cond:
+            job = self._jobs.get(job_id)
+            if job is None or job.ended.is_set() or "predictedSkyAtUTC" not in job.record:
+                return None
+        try:
+            return json.loads(self.store.partial(job_id, PREDICTED_SKY_PARTIAL).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
 
     def _input_span(self, job: _Job, first: int, count: int, start_sec: float, end_sec: float) -> None:
         if job.kind.name in MEDIA_JOB_KINDS:

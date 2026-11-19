@@ -321,6 +321,9 @@ def start_ingest_solve_job(
     return JSONResponse(job, status_code=202 if created else 200)
 
 
+NO_PREDICTED_SKY = "no predicted sky is served for that job"
+
+
 def _job_or_404(store: IngestStore, job_id: str, read: Any) -> Any:
     try:
         answer = read(job_id)
@@ -339,6 +342,20 @@ def get_ingest_solve_job(
     # Today's solve records by their 16-character ids, the runner's by its 32-character ones; a stored record that
     # fails the contract is answered 409, never served (the docstring above is the published description)
     return _job_or_404(store, job_id, runner_for(store).get)
+
+
+@router.get("/api/ingest/jobs/{job_id}/predicted-sky")
+def get_ingest_job_predicted_sky(
+    job_id: str = _job_id_path(), store: IngestStore = Depends(get_ingest_store)
+) -> dict[str, Any]:
+    """The sky a running solve predicted from a pose it knew before its search ended (an approximate
+    ObservationSolution with its pose estimate), while the job runs and once its record names
+    `predictedSkyAtUTC`; 404 before that, after the job ends (its solution then holds the sky) and for any other
+    job."""
+    sky = runner_for(store).predicted_sky(job_id)
+    if sky is None:
+        raise HTTPException(status_code=404, detail=NO_PREDICTED_SKY)
+    return sky
 
 
 @router.post("/api/ingest/jobs/{job_id}/cancel")

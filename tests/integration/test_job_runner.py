@@ -1360,3 +1360,81 @@ def test_a_media_job_whose_child_passes_its_bound_ends_with_the_contracts_time_l
     ended = _followed(media_client, started.json())
     assert (ended["state"], ended["error"]) == ("failed", media_decode.TIME_LIMIT), ended
     assert media_decode.TIME_LIMIT == "The restoration stopped at its time limit."
+
+
+# ---- platform-10b: the sky a solve predicts from a pose known before its search ends ----
+
+
+def _approximate_with_pose(sha: str) -> dict[str, Any]:
+    fixture = json.loads((Path(__file__).resolve().parents[1] / "fixtures" / "observation_solution_contract.json")
+                         .read_text(encoding="utf-8"))["valid"]["approximate_with_pose"]
+    text = json.dumps(fixture)
+    if fixture.get("sourceSha256"):
+        text = text.replace(fixture["sourceSha256"], sha)
+    out = json.loads(text.replace(fixture["sourceAssetId"], f"src_{sha[:16]}"))
+    out["id"] = f"sol_{sha[:16]}"
+    return out
+
+
+def test_a_solve_publishes_its_predicted_sky_while_it_runs_and_its_record_says_when(world: dict[str, Any]) -> None:
+    """REQ-JOB-2.7: the pose-placed sky is served while the search goes on, the record names its time on disk and
+    live, keeps it when the job ends, and the sky itself goes with the job's other partial outputs."""
+    published, release = threading.Event(), threading.Event()
+
+    def body(ctx: JobContext) -> KindResult:
+        ctx.predicted_sky(_approximate_with_pose(ctx.sha256))
+        published.set()
+        assert release.wait(BOUND_S), "the test never released the run"
+        return _publish_solution(ctx)
+
+    world["kinds"]["solve"] = solve_kind(Script(), body)
+    runner, sha = world["runner"](), world["shas"][0]
+    record, _ = runner.start(sha, "solve")
+    assert published.wait(BOUND_S)
+    live = runner.get(record["id"])
+    UploadJob.model_validate(live)
+    assert live["state"] == "running" and live["startedAtUTC"] <= live["predictedSkyAtUTC"]
+    assert _on_disk(world["store"], record["id"])["predictedSkyAtUTC"] == live["predictedSkyAtUTC"]
+    assert runner.predicted_sky(record["id"]) == _approximate_with_pose(sha)
+    # A job whose ending is being written serves none, even before its partials are gone
+    job = runner._jobs[record["id"]]
+    job.ended.set()
+    assert runner.predicted_sky(record["id"]) is None
+    job.ended.clear()
+    release.set()
+    ended = runner.wait(record["id"], BOUND_S)
+    assert ended["state"] == "succeeded" and ended["predictedSkyAtUTC"] == live["predictedSkyAtUTC"]
+    UploadJob.model_validate(ended)
+    assert runner.predicted_sky(record["id"]) is None
+    partials = world["root"] / ".partial"
+    assert not any(p.name.startswith(record["id"]) for p in (partials.iterdir() if partials.exists() else []))
+
+
+def test_only_a_solve_publishes_a_predicted_sky_and_only_an_approximate_one_with_its_pose(world: dict[str, Any]) -> None:
+    refusals: list[str] = []
+
+    def body(ctx: JobContext) -> KindResult:
+        # A whole solution the contract takes, but calibrated and with no pose, and no solution at all
+        calibrated = _solution_payload(ctx.sha256)
+        for sky in (calibrated, {"not": "a solution"}):
+            try:
+                ctx.predicted_sky(sky)
+            except ValueError:
+                refusals.append("refused")
+        return _publish_solution(ctx)
+
+    def media_body(ctx: JobContext) -> KindResult:
+        try:
+            ctx.predicted_sky(_approximate_with_pose(ctx.sha256))
+        except ValueError:
+            refusals.append("media refused")
+        return KindResult("succeeded", {"attemptId": f"att_{ctx.job_id[4:20]}", "variantId": f"var_{ctx.job_id[4:20]}"})
+
+    world["kinds"]["solve"] = solve_kind(Script(), body)
+    world["kinds"]["restoration"] = media_kind(Script(), media_body)
+    runner, sha = world["runner"](), world["shas"][0]
+    solve, _ = runner.start(sha, "solve")
+    media, _ = runner.start(sha, "restoration", {"kind": "restoration"})
+    for ended in (runner.wait(solve["id"], BOUND_S), runner.wait(media["id"], BOUND_S)):
+        assert ended["state"] == "succeeded" and "predictedSkyAtUTC" not in ended, ended
+    assert sorted(refusals) == ["media refused", "refused", "refused"]
