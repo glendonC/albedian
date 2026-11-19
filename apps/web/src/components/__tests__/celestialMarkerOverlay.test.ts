@@ -393,8 +393,10 @@ describe('CelestialMarkerOverlay (experience-4)', () => {
     // Choose a photo on the home, which leaves it
     choosePhotoOnHome(container);
 
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
-    const markerBtn = container.querySelector('[data-testid="celestial-marker-finding_betelgeuse"]') as HTMLButtonElement;
+    // Over the photo the approved reveal draws the marks (reveal/RevealPhoto.tsx); this overlay serves the sky and 3D views
+    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).not.toBeNull();
+    const markerBtn = container.querySelector('[data-testid="reveal-mark-finding_betelgeuse"]') as HTMLButtonElement;
     expect(markerBtn).not.toBeNull();
     act(() => markerBtn.click());
     expect(onSelectFinding).toHaveBeenCalledWith(

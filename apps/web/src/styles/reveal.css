@@ -182,3 +182,201 @@
 .work-file-input {
   display: none;
 }
+
+/* The reveal, your photo (approved 2026-11-12, laptop screen 1): over the photo, which SourcePhotoStage draws under
+   it with its side edges fading over 56 px. Only the logo and the marks take the pointer. */
+.reveal-photo {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  color: var(--look-ink);
+  font-family: var(--look-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.reveal-word {
+  all: unset;
+  position: absolute;
+  left: 36px;
+  top: 30px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.reveal-word:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+/* What the solve found, in its own counts; a sky lined up by an estimate leads with the Predicted tag */
+.reveal-status {
+  position: absolute;
+  left: 36px;
+  top: 70px;
+  width: 300px;
+  font: 400 13px / 1.55 var(--look-font-sans);
+  letter-spacing: -0.005em;
+  color: var(--look-ink-2);
+}
+
+.reveal-status .look-tag {
+  margin-bottom: 12px;
+}
+
+.reveal-status__line {
+  margin: 0;
+}
+
+/* The solve's warnings, word for word (cautions, decided 2026-11-12): always in view, never folded away */
+.reveal-status__warning {
+  --look-ic: 13px;
+  display: flex;
+  gap: 7px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--look-ink-3);
+}
+
+.reveal-status__warning .look-i {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* How many findings the photo has of each evidence class */
+.reveal-legend {
+  position: absolute;
+  left: 36px;
+  bottom: 36px;
+  display: grid;
+  gap: 14px;
+}
+
+.reveal-legend__title {
+  margin: 0 0 2px;
+  font-size: 13px;
+  color: var(--look-ink-3);
+}
+
+.reveal-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+}
+
+.reveal-legend__count {
+  width: 92px;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A mark on a star: a 44 px target centred on it, holding the approved ring and ticks and, beside it, its name */
+.reveal-marks {
+  position: absolute;
+  inset: 0;
+}
+
+.reveal-mark {
+  all: unset;
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  pointer-events: auto;
+  color: var(--look-ev-catalog);
+}
+
+.reveal-mark:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+  border-radius: 50%;
+}
+
+.reveal-mark__glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.1;
+}
+
+.reveal-mark__name {
+  position: absolute;
+  left: calc(50% + 19px);
+  top: 50%;
+  transform: translateY(-50%);
+  font: 400 13px / 1 var(--look-font-sans);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: rgba(244, 243, 239, 0.84);
+  paint-order: stroke;
+  -webkit-text-stroke: 3px rgba(0, 0, 0, 0.75);
+}
+
+.reveal-mark.is-left .reveal-mark__name {
+  left: auto;
+  right: calc(50% + 19px);
+}
+
+/* A predicted object, drawn only where a pose estimate lines the sky up: amber, dashed, never as if measured */
+.reveal-mark.is-predicted {
+  color: var(--look-ev-predicted);
+}
+
+.reveal-mark.is-predicted .reveal-mark__name {
+  left: calc(50% + 14px);
+  color: var(--look-ev-predicted);
+}
+
+.reveal-mark.is-predicted.is-left .reveal-mark__name {
+  left: auto;
+  right: calc(50% + 14px);
+}
+
+/* The picked star: white, larger, with an outer ring, its name in ink. A star's look only: a picked predicted object
+   keeps its amber dashed drawing */
+.reveal-mark.is-catalog.is-picked {
+  color: var(--look-ink);
+}
+
+.reveal-mark.is-catalog.is-picked .reveal-mark__glyph {
+  stroke-width: 1.4;
+}
+
+.reveal-mark.is-catalog.is-picked .reveal-mark__halo {
+  stroke: rgba(244, 243, 239, 0.35);
+  stroke-width: 1;
+}
+
+.reveal-mark.is-catalog.is-picked .reveal-mark__name {
+  left: calc(50% + 25px);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--look-ink);
+}
+
+.reveal-mark.is-catalog.is-picked.is-left .reveal-mark__name {
+  left: auto;
+  right: calc(50% + 25px);
+}
+
+/* How far a predicted mark may be off (REQ-SKY-6): a faint dashed ring under the marks */
+.reveal-mark__may-be-off {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  fill: none;
+  stroke: var(--look-ev-predicted);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}

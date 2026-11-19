@@ -11,6 +11,9 @@ import {
   useViewportSize,
 } from './sourcePhotoRect.js';
 
+/** The reveal's edge fade: clear at each side edge, whole from 56 px in. */
+export const SIDE_FADE = 'linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%)';
+
 export interface SourcePhotoStageProps {
   session: ObservationSession;
   viewportWidthPx?: number;
@@ -21,6 +24,8 @@ export interface SourcePhotoStageProps {
   bare?: boolean;
   /** The photo at 55 percent: a failed job's screen, where it stays in its place (failed, decided 2026-11-12). */
   dimmed?: boolean;
+  /** The photo's left and right edges fade into the black over 56 px (reveal, approved 2026-11-12); the pixels between are untouched. */
+  fadeSides?: boolean;
 }
 
 /**
@@ -43,6 +48,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
   onFrameMismatch,
   bare = false,
   dimmed = false,
+  fadeSides = false,
 }) => {
   const windowSize = useViewportSize();
   const viewW = viewportWidthPx ?? windowSize.widthPx;
@@ -101,6 +107,7 @@ export const SourcePhotoStage: React.FC<SourcePhotoStageProps> = ({
     // The browser turns the photo by its tag; set here so no stylesheet can switch that off
     imageOrientation: 'from-image',
     ...(dimmed ? { opacity: 0.55 } : {}),
+    ...(fadeSides ? { maskImage: SIDE_FADE, WebkitMaskImage: SIDE_FADE } : {}),
   };
   const failed = failedUri === asset.uri;
   const kind = asset.mediaKind === 'video' ? 'clip' : 'photo';

@@ -40,6 +40,8 @@ import { HomeScreen } from './HomeScreen.js';
 import type { HomeRefusal } from './homeRefusal.js';
 import { isSourcePhotoShown, sessionPhotoRect, useViewportSize } from './sourcePhotoRect.js';
 import { WorkingScreen } from '../reveal/WorkingScreen.js';
+import { RevealPhoto } from '../reveal/RevealPhoto.js';
+import { usePhoneLayout } from '../reveal/usePhoneLayout.js';
 import type { Arrival } from '../reveal/arrival.js';
 import '../styles/albedian.css';
 
@@ -149,6 +151,9 @@ export const SpatialObservatoryViewport: React.FC<
   onTryAgain,
 }) => {
   const windowSize = useViewportSize();
+  // The approved laptop reveal shows over the photo, above phone width; the phone keeps its sheets until its own unit
+  const phone = usePhoneLayout();
+  const revealShown = !phone && isSourcePhotoShown(session);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<CosmosRenderer | null>(null);
   const [rendererChoice] = useState<RendererChoice>(readRendererChoice);
@@ -527,8 +532,16 @@ export const SpatialObservatoryViewport: React.FC<
 
       {!entryStageActive && !arrival && (
         <>
-          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} />
-          {!(photoFrameMismatch && isSourcePhotoShown(session)) && (
+          <SourcePhotoStage session={session} onFrameMismatch={setPhotoFrameMismatch} bare={revealShown} fadeSides={revealShown} />
+          {revealShown && (
+            <RevealPhoto
+              session={session}
+              onSelectFinding={onSelectFinding}
+              onHome={() => setEntryStageActive(true)}
+              frameMismatch={photoFrameMismatch}
+            />
+          )}
+          {!revealShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
               session={session}
               selectedFinding={selectedFinding}
@@ -547,10 +560,12 @@ export const SpatialObservatoryViewport: React.FC<
             session={session}
             setSession={setSession}
           />
-          <ObservationSolveAndCompareHud
-            session={session}
-            setSession={setSession}
-          />
+          {!revealShown && (
+            <ObservationSolveAndCompareHud
+              session={session}
+              setSession={setSession}
+            />
+          )}
           <EpochAndDisclosureHud
             session={session}
             setSession={setSession}
@@ -577,6 +592,7 @@ export const SpatialObservatoryViewport: React.FC<
           data-hud-interactive="true"
         >
           <div className="alb-lusion-header-left">
+            {!revealShown && (
             <button
               type="button"
               className="alb-lusion-brand-btn"
@@ -611,6 +627,7 @@ export const SpatialObservatoryViewport: React.FC<
                 />
               </svg>
             </button>
+            )}
           </div>
 
           <div className="alb-lusion-header-right">

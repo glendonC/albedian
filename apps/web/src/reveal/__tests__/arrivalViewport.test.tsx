@@ -237,7 +237,8 @@ describe('the viewport shows the working screen while an upload is on its way', 
     expect(q(WORKING)).toBeNull();
     expect(q('.alb-lusion-header')).not.toBeNull();
     expect(q('[data-testid="voice-command-hud"]')).not.toBeNull();
-    expect(q('[data-testid="source-photo-layer-label"]')).not.toBeNull();
+    // The reveal takes the working screen's place over the same photo, at full strength again
+    expect(q('[data-testid="reveal-photo"]')).not.toBeNull();
     expect((q(`${STAGE} img`) as HTMLImageElement).style.opacity).toBe('');
   });
 
@@ -252,5 +253,74 @@ describe('the viewport shows the working screen while an upload is on its way', 
     renderViewport(storedPhoto(), { uploadedMediaUrl: null, arrival: arrival() });
     expect(q(HOME_SCREEN)).not.toBeNull();
     expect(q(WORKING)).toBeNull();
+  });
+});
+
+describe('the viewport shows the approved reveal over the photo, above phone width (unit 1d)', () => {
+  const PANEL = '[data-testid="observation-solve-compare-hud"]';
+  const OLD_MARKS = '[data-testid="celestial-marker-overlay"]';
+  const REVEAL = '[data-testid="reveal-photo"]';
+  const LABEL = '[data-testid="source-photo-layer-label"]';
+  const mask = () => {
+    const img = q(`${STAGE} img`) as HTMLImageElement;
+    return img.style.maskImage || img.style.getPropertyValue('-webkit-mask-image');
+  };
+  function open(session: ObservationSession) {
+    renderViewport(session, { uploadedMediaUrl: null });
+    choosePhotoOnHome(container);
+    renderViewport(session);
+  }
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>).matchMedia;
+  });
+
+  it('draws the reveal, the photo bare with fading sides, and neither the old panel, the old rings nor the old logo', () => {
+    open(storedPhoto());
+    expect(q(REVEAL)).not.toBeNull();
+    expect(q(PANEL)).toBeNull();
+    expect(q(OLD_MARKS)).toBeNull();
+    expect(q(LABEL)).toBeNull();
+    expect(mask()).toContain('56px');
+    expect(q('.alb-lusion-brand-btn')).toBeNull();
+    expect(container.querySelectorAll('.look-logo')).toHaveLength(1);
+  });
+
+  it('keeps the old sheets on a phone, whose approved reveal is its own unit', () => {
+    (window as unknown as Record<string, unknown>).matchMedia = (query: string) => ({
+      matches: query.includes('max-width: 720px'),
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    open(storedPhoto());
+    expect(q(REVEAL)).toBeNull();
+    expect(q(PANEL)).not.toBeNull();
+    expect(q(OLD_MARKS)).not.toBeNull();
+    expect(q(LABEL)).not.toBeNull();
+    expect(mask()).toBe('');
+    expect(q('.alb-lusion-brand-btn')).not.toBeNull();
+  });
+
+  it('is not shown in the sky and 3D views, which keep their own pieces until their units', () => {
+    const base = storedPhoto();
+    open({ ...base, spatialView: { ...base.spatialView, mode: 'registered_sky' } } as ObservationSession);
+    expect(q(REVEAL)).toBeNull();
+    expect(q(PANEL)).not.toBeNull();
+    expect(q('.alb-lusion-brand-btn')).not.toBeNull();
+  });
+
+  it('draws neither corners nor marks once the browser shows the photo turned differently from its tag', () => {
+    const base = storedPhoto();
+    const tagged = { ...base, sourceAsset: { ...base.sourceAsset!, width: 4032, height: 3024, displayOrientation: { quarterTurnsClockwise: 1, mirrored: false } } } as ObservationSession;
+    open(tagged);
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
+    const img = q(`${STAGE} img`) as HTMLImageElement;
+    Object.defineProperty(img, 'naturalWidth', { value: 4032, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 3024, configurable: true });
+    act(() => {
+      img.dispatchEvent(new Event('load'));
+    });
+    expect(q('[data-testid="reveal-marks"]')).toBeNull();
+    expect(q('svg.photo-corners')).toBeNull();
+    expect(q(REVEAL)).not.toBeNull();
   });
 });

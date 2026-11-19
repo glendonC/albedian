@@ -144,7 +144,7 @@ describe('the app opened at ?upload=<sha256>', () => {
     // The stored original, from the server's own route for that hash
     expect(photo.getAttribute('src')).toBe(`/api/ingest/${sha256}/original`);
     expect(q('[data-testid="working-screen"]')).toBeNull();
-    expect(q('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+    expect(q('[data-testid="reveal-marks"]')).not.toBeNull();
     expect(calls).toEqual([`GET /api/ingest/${sha256}`, `GET /api/ingest/${sha256}/solution`]);
   });
 

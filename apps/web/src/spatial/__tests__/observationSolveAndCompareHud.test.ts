@@ -320,7 +320,9 @@ describe('ObservationSolveAndCompareHud (moments 02 & 03: solve receipt & A/B wi
   });
 
   it('wires ObservationSolveAndCompareHud in SpatialObservatoryViewport and defines scoped CSS rules in albedian.css', async () => {
-    let latestSession = createSyntheticCalibratedSession();
+    // Past the photo, in the sky view: over the photo the approved reveal's status block has taken this panel's place
+    const calibratedSession = createSyntheticCalibratedSession();
+    let latestSession: typeof calibratedSession = { ...calibratedSession, spatialView: { ...calibratedSession.spatialView, mode: 'registered_sky' } };
     const noop = () => {};
 
     await act(async () => {

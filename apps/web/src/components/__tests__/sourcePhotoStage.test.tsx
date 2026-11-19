@@ -620,7 +620,7 @@ describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () =
       sourceAsset: { ...base.sourceAsset!, displayOrientation: EXIF_ORIENTATIONS[6] },
     } as ObservationSession;
     act(() => renderViewport(session, 'blob:http://localhost:5189/uploaded-photo'));
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).not.toBeNull();
 
     const loadAs = (w: number, h: number) => {
       const img = container.querySelector('[data-testid="source-photo-stage"] img') as HTMLImageElement;
@@ -631,9 +631,9 @@ describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () =
       });
     };
     loadAs(480, 360);
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).toBeNull();
     loadAs(360, 480);
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).not.toBeNull();
   });
 
   it('forgets a mismatch when a new photo arrives, before it loads (experience-9h)', () => {
@@ -649,13 +649,13 @@ describe('SpatialObservatoryViewport orientation mismatch (experience-9e)', () =
     act(() => {
       img.dispatchEvent(new Event('load'));
     });
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).toBeNull();
     const next = {
       ...base,
       sourceAsset: { ...base.sourceAsset!, id: 'src_next_photo', uri: 'blob:http://localhost:5189/next-photo' },
     } as ObservationSession;
     act(() => renderViewport(next, 'blob:http://localhost:5189/next-photo'));
-    expect(container.querySelector('[data-testid="celestial-marker-overlay"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="reveal-marks"]')).not.toBeNull();
   });
 });
 

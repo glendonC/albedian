@@ -323,7 +323,7 @@ describe('the viewport opens on the home', () => {
   it("returns to the home from the app's logo", () => {
     renderViewport();
     choosePhotoOnHome(container);
-    act(() => (q('.alb-lusion-brand-btn') as HTMLButtonElement).click());
+    act(() => (q('[data-testid="reveal-home"]') as HTMLButtonElement).click());
     expect(q(HOME_SCREEN)).not.toBeNull();
   });
 
