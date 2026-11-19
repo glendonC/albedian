@@ -184,6 +184,10 @@ function answerFor(question: string) {
 
 /** Types the words into the approved field (the keyboard button turns the ask button into it) and sends them. */
 async function typeAndSend(words: string) {
+  // A field still leaving after the last send (its words out, 100 ms: the motion record) is not the one to type in
+  if (q('.ask-bar__field.is-leaving')) await waitUntil(() => expect(q('.ask-bar__field')).toBeNull());
+  // There after Go there the ask buttons are away until the camera rests (1500 ms: the motion record)
+  await waitUntil(() => expect(q('.ask-bar__field input') ?? q('.ask-bar__type') ?? q('.ask-bar__ask')).not.toBeNull());
   if (!q('.ask-bar__field input')) {
     // jsdom has no speech recognition, so the ask button itself reads "Type to ask" and opens the field
     await act(async () => ((q('.ask-bar__type') ?? q('.ask-bar__ask')) as HTMLButtonElement).click());
@@ -565,7 +569,8 @@ describe('asking about the photo on the laptop reveal', () => {
       await act(async () => (q('.ask-bar__fly') as HTMLButtonElement).click());
       expect([...container.querySelectorAll('[data-testid="steer-line"]')].map((p) => p.textContent)).toContain('Press the sky: autopilot again');
       expect(q('[data-testid="flight-readout"]')!.textContent).not.toContain('to Rigel');
-      expect(q('.ask-bar__fly')).toBeNull();
+      // It leaves on words out (motion-31), then is gone
+      await waitUntil(() => expect(q('.ask-bar__fly')).toBeNull());
     } finally {
       delete (window as unknown as Record<string, unknown>).WebGL2RenderingContext;
       delete (window as unknown as Record<string, unknown>).matchMedia;
