@@ -169,6 +169,15 @@
   animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
 }
 
+/* A file leaving the window: the words go and the frame with them, 300 ms (a drop goes with the home, at once) */
+.home-drop.is-leaving {
+  animation: look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both;
+}
+
+.home-drop.is-leaving .home-drop__mid {
+  animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
+}
+
 .home-drop__frame {
   position: absolute;
   inset: 20px;

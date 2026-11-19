@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { resolveMotionTokens } from '@albedian/design-system';
+import { blockLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { IconButton, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { CreditsPage } from './CreditsPage.js';
 import { nameParts, refusalSentence, shortFileName, type HomeRefusal } from './homeRefusal.js';
@@ -45,6 +47,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   // A file held over the window: how many parts of the window it has entered and not yet left (a browser sends a
   // child's enter before its parent's leave), so the overlay stays while the file crosses the window
   const [fileOver, setFileOver] = useState(false);
+  // A file leaving the window lets the overlay leave (words out, frame out: the motion record); a drop takes it with
+  // the home, and Credits in the home's place, at once
+  const [goneAtOnce, setGoneAtOnce] = useState(false);
+  const drop = useLeaving(fileOver, blockLeaveMs(1, resolveMotionTokens(reducedMotion())));
   const entered = useRef(0);
   const chosen = useRef(onFileChosen);
   chosen.current = onFileChosen;
@@ -55,11 +61,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     if (creditsOpen) return undefined;
     const close = () => {
       entered.current = 0;
+      setGoneAtOnce(true);
       setFileOver(false);
     };
     const onEnter = (event: DragEvent) => {
       if (!carriesFiles(event.dataTransfer)) return;
       entered.current += 1;
+      setGoneAtOnce(false);
       setFileOver(true);
     };
     const onOver = (event: DragEvent) => {
@@ -166,8 +174,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           if (file) onFileChosen(file);
         }}
       />
-      {fileOver && (
-        <div className="home-drop" data-testid="home-drop">
+      {drop.mounted && !(drop.leaving && goneAtOnce) && (
+        <div className={drop.leaving ? 'home-drop is-leaving' : 'home-drop'} data-testid="home-drop">
           <div className="home-drop__frame" aria-hidden="true" />
           <div className="home-drop__mid">
             <span className="home-drop__circle" aria-hidden="true">

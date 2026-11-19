@@ -6,7 +6,9 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import postcss from 'postcss';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MOTION_TOKENS } from '@albedian/design-system';
 import { HomeScreen } from '../HomeScreen.js';
+import { blockLeaveMs } from '../../hooks/useLeaving.js';
 import { carriesFiles, droppedFile } from '../homeDrop.js';
 import { LOOK_ICON_PATHS } from '../../look/index.js';
 import { HOME_SCREEN } from './homeEntry.js';
@@ -37,6 +39,8 @@ afterEach(() => {
 const noop = () => {};
 const q = (selector: string) => container.querySelector(selector);
 const DROP = '[data-testid="home-drop"]';
+/** The overlay is up and not leaving (once a file leaves the window it leaves as the motion record says). */
+const shown = () => q(DROP) !== null && !q(DROP)!.classList.contains('is-leaving');
 
 function renderHome(props: Partial<Parameters<typeof HomeScreen>[0]> = {}) {
   act(() => {
@@ -156,16 +160,16 @@ describe('a photo dragged onto the home', () => {
     drag('dragenter', data);
     drag('dragenter', data, document.body);
     drag('dragleave', data);
-    expect(q(DROP)).not.toBeNull();
+    expect(shown()).toBe(true);
     drag('dragleave', data, document.body);
-    expect(q(DROP)).toBeNull();
+    expect(shown()).toBe(false);
     // A leave with no enter before it does not go below none: the next file shows the overlay at once
     drag('dragleave', data);
     drag('dragenter', data);
-    expect(q(DROP)).not.toBeNull();
+    expect(shown()).toBe(true);
     // and that one enter is undone by one leave
     drag('dragleave', data);
-    expect(q(DROP)).toBeNull();
+    expect(shown()).toBe(false);
   });
 
   it('hands the dropped file on once, as the picker does, closes, and stops the browser opening the file', () => {
@@ -180,9 +184,9 @@ describe('a photo dragged onto the home', () => {
     expect(q(DROP)).toBeNull();
     // The count starts again: one enter and one leave after a drop show and hide it
     drag('dragenter', withFiles(photo()));
-    expect(q(DROP)).not.toBeNull();
+    expect(shown()).toBe(true);
     drag('dragleave', withFiles(photo()));
-    expect(q(DROP)).toBeNull();
+    expect(shown()).toBe(false);
   });
 
   it('closes and chooses nothing when the drop holds no file after all', () => {
@@ -272,11 +276,77 @@ describe("the overlay's rules are the approved page's", () => {
     });
   });
 
-  it('moves as the motion record says: the frame in first, its words 120 ms later; nothing else moves', () => {
+  it('moves as the motion record says: the frame in first, its words 120 ms later, both out together; nothing else moves', () => {
     const rules = homeCss.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.home-drop[^{]*\{[^}]*\}/g) ?? [];
-    expect(rules).toHaveLength(5);
+    expect(rules).toHaveLength(7);
     const moving = rules.filter((rule) => /animation/.test(rule)).map((rule) => rule.slice(0, rule.indexOf('{')).trim());
-    expect(moving).toEqual(['.home-drop', '.home-drop__mid']);
+    expect(moving).toEqual(['.home-drop', '.home-drop.is-leaving', '.home-drop.is-leaving .home-drop__mid', '.home-drop__mid']);
     for (const rule of rules) expect(rule).not.toMatch(/transition/);
+  });
+});
+
+// The motion record (MOTION-READY-web.md, "Drop overlay (arrive)"): when the file leaves the window the overlay's words
+// go and its frame with them (words out, frame out: 300 ms); on a drop it goes with the home, at once.
+describe('the drop overlay leaves as the motion record says', () => {
+  it('leaves for 300 ms once the file leaves the window, then is gone', () => {
+    vi.useFakeTimers();
+    try {
+      renderHome();
+      drag('dragenter', withFiles(photo()));
+      drag('dragleave', withFiles(photo()));
+      expect(q(DROP)!.classList.contains('is-leaving')).toBe(true);
+      expect(blockLeaveMs(1, MOTION_TOKENS)).toBe(300);
+      act(() => vi.advanceTimersByTime(blockLeaveMs(1, MOTION_TOKENS) - 1));
+      expect(q(DROP)).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q(DROP)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('comes back whole when a file comes over the window again while it leaves', () => {
+    vi.useFakeTimers();
+    try {
+      renderHome();
+      drag('dragenter', withFiles(photo()));
+      drag('dragleave', withFiles(photo()));
+      act(() => vi.advanceTimersByTime(100));
+      drag('dragenter', withFiles(photo()));
+      expect(shown()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('after a drop, lets the next file that leaves the window leave as before', () => {
+    renderHome();
+    drag('dragenter', withFiles(photo()));
+    drag('drop', withFiles(photo()));
+    expect(q(DROP)).toBeNull();
+    drag('dragenter', withFiles(photo()));
+    drag('dragleave', withFiles(photo()));
+    expect(q(DROP)!.classList.contains('is-leaving')).toBe(true);
+  });
+
+  it('is gone after the one 270 ms dissolve under reduced motion', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-reduced-motion: reduce)', addEventListener: () => {}, removeEventListener: () => {} }));
+    try {
+      renderHome();
+      drag('dragenter', withFiles(photo()));
+      drag('dragleave', withFiles(photo()));
+      act(() => vi.advanceTimersByTime(MOTION_TOKENS.dissolveMs - 1));
+      expect(q(DROP)).not.toBeNull();
+      act(() => vi.advanceTimersByTime(1));
+      expect(q(DROP)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('times the leaving in home.css: the words out and the frame out together', () => {
+    expect(declarationsOf('.home-drop.is-leaving')).toEqual({ animation: 'look-mo-frame-out var(--look-mo-dur-frame-out) var(--look-mo-ease-frame-out) both' });
+    expect(declarationsOf('.home-drop.is-leaving .home-drop__mid')).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
   });
 });
