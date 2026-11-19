@@ -15,6 +15,7 @@ import { KeyboardHelp } from '../KeyboardHelp.js';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
 
 let container: HTMLDivElement;
 let root: Root;
@@ -138,7 +139,7 @@ describe('KeyboardHelp', () => {
 });
 
 describe("keyboard help's rules are the design lane's page", () => {
-  it('centres a 420 px dark card over the screen dimmed to 60 percent, with no movement', () => {
+  it('centres a 420 px dark card over the screen dimmed to 60 percent, its layout rules still (its movement is in motion.css)', () => {
     expect(declarationsOf('.keys-help')).toEqual({ position: 'fixed', inset: '0', 'z-index': '60', display: 'grid', 'place-items': 'center' });
     expect(declarationsOf('.keys-help__veil')).toEqual({ position: 'absolute', inset: '0', background: 'rgba(0, 0, 0, 0.6)' });
     expect(declarationsOf('.keys-help__card')).toEqual({
@@ -169,5 +170,38 @@ describe("keyboard help's rules are the design lane's page", () => {
       color: 'var(--look-ink-2)',
     });
     expect(css).not.toMatch(/\.keys-help[^{]*\{[^}]*(transition|animation)/);
+  });
+
+  // The motion record (MOTION-READY-web.md, "Keyboard help"): the card's frame in, its title 120 ms later, each row
+  // 20 ms after the line above; the dimmed screen behind it fades in with the frame
+  const motionOf = (selector: string): Record<string, string> => {
+    const found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+      });
+    });
+    return found;
+  };
+  const WORDS_IN = 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std)';
+  const FRAME_IN = 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both';
+
+  it('arrives as the motion record says: the frame and the dim, then the title, then each row 20 ms apart', () => {
+    expect(motionOf('.keys-help__veil')).toEqual({ animation: FRAME_IN });
+    expect(motionOf('.keys-help__card')).toEqual({ animation: FRAME_IN });
+    expect(motionOf('.keys-help__head')).toEqual({ animation: `${WORDS_IN} var(--look-mo-delay-words-in) both` });
+    expect(motionOf('.keys-help__row')).toEqual({
+      animation: `${WORDS_IN} calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--keys-i) + 1)) both`,
+    });
+  });
+
+  it('numbers each row for its place in the stagger, and loads the motion with the card', () => {
+    show();
+    key(window, { key: '?' });
+    const rows = [...container.querySelectorAll<HTMLElement>('.keys-help__row')];
+    expect(rows.length).toBeGreaterThan(1);
+    rows.forEach((row, i) => expect(row.style.getPropertyValue('--keys-i')).toBe(String(i)));
+    expect(fs.readFileSync(path.resolve(here, '../KeyboardHelp.tsx'), 'utf8')).toContain("import '../styles/motion.css';");
   });
 });

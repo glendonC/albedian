@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { IconButton } from '../look/index.js';
+import '../styles/motion.css';
 
 /** Whether a key went to a field the person is typing in. */
 const typing = (target: EventTarget | null): boolean => {
@@ -66,8 +67,8 @@ export const KeyboardHelp: React.FC<{ threeD: boolean }> = ({ threeD }) => {
           <b className="keys-help__title">Keyboard</b>
           <IconButton label="Close" icon="x" part="keys-help__close" onClick={() => setOpen(false)} />
         </header>
-        {rows.map(([label, keys]) => (
-          <div key={label} className="keys-help__row">
+        {rows.map(([label, keys], i) => (
+          <div key={label} className="keys-help__row" style={{ '--keys-i': i } as React.CSSProperties}>
             <span>{label}</span>
             <span className="keys-help__keys">
               {keys.map((k) => (

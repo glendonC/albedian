@@ -20,3 +20,21 @@
 .work-why .work-acts {
   animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-stagger) both;
 }
+
+/* Keyboard help: the dimmed screen and the card's frame fade in together, the title 120 ms later, each row 20 ms after
+   the line above. */
+.keys-help__veil {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+.keys-help__card {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) both;
+}
+
+.keys-help__head {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.keys-help__row {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--keys-i) + 1)) both;
+}
