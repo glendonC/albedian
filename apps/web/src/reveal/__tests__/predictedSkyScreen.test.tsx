@@ -225,6 +225,8 @@ describe('the predicted sky in the app (laptop)', () => {
       expect(screen.className).toBe('predsky is-phone');
       expect(screen.querySelector('.reveal-word')).toBeNull();
       expect(screen.querySelector('.predsky-top button[aria-label="Close"]')).not.toBeNull();
+      // Only the close circle at the top: not the old Audio strip (the design lane's read, 13:22)
+      expect(q('[data-testid="inline-audio-coalescing"]')).toBeNull();
       const status = screen.querySelector('.predsky-status')!;
       expect([...status.children].map((el) => el.className)).toEqual(['look-tag look-tag--predicted', 'predsky-status__lead', 'predsky-status__note', 'predsky-status__facts']);
       expect([...status.querySelectorAll('.predsky-status__facts p')].map((p) => p.textContent)).toEqual(['2031-08-30 03:01 UTC · 30.00° N · 40.00° W']);

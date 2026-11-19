@@ -932,7 +932,8 @@ export const SpatialObservatoryViewport: React.FC<
 
           {/* The phone keeps its old audio strip until its own unit; above phone width the approved Sound circle
               is in the row at the top right (below) */}
-          {phone && (
+          {/* Not on D33's predicted sky, whose phone frame has only the close circle at the top */}
+          {phone && !predictedSkyShown && (
           <div className="alb-lusion-header-right">
             <div
               className="alb-zzzz-inline-control"
