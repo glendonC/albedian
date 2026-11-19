@@ -1340,7 +1340,7 @@ class IntegrityGateResult(_Model):
     stars_outside_flux_tolerance: Count
     flux_tolerance_sigma: Annotated[float, Field(gt=0)]
     worst_flux_change_sigma: Optional[NonNegative] = None
-    median_flux_ratio: Optional[Annotated[float, Field(gt=0)]] = None
+    median_flux_ratio: Optional[float] = None   # any finite number: 0 or below when every star lost its light
     passed: bool
 
 class StarCounts(_Model):

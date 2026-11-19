@@ -337,10 +337,9 @@ def gate_scene() -> tuple:
     return light, field, gate.Kept(field, footprint), gate.Original.of(field), expected
 
 
-@pytest.mark.xfail(strict=True, reason="open [AUDIT-B, restore-7 read, 2026-11-19]: with no measured star keeping a "
-                   "positive flux ratio, run_gate drops the flux check, since the contract's medianFluxRatio must be "
-                   "positive whenever a star was measured; the fix needs that contract change (proposed to the lead)")
 def test_a_star_whose_light_is_gone_is_outside_the_flux_tolerance() -> None:
+    # AUDIT-B's restore-7 read (2026-11-19): with no measured star keeping a positive flux ratio, run_gate dropped
+    # the whole flux check, so a frame whose stars all lost their light passed it
     light, field, kept, original, expected = gate_scene()
     stored = gate.kept_samples(expected, expected, kept.weight).astype(np.uint16)
     # The variant's light with the star taken out and its place left darker than the sky: a flux ratio under 0, so
@@ -349,7 +348,10 @@ def test_a_star_whose_light_is_gone_is_outside_the_flux_tolerance() -> None:
     outcome = gate.run_gate(stored, original=original, kept=kept, expected=expected, original_luminance=light,
                             variant_luminance=gone)
     assert outcome.record["starsMeasured"] == 1 and outcome.record["starsOutsideFluxTolerance"] == 1, outcome.record
-    assert not outcome.record["passed"]
+    assert not outcome.record["passed"] and outcome.rejection == "star_flux_changed"
+    # and the record is one the contract takes, its median ratio under 0
+    contracts.IntegrityGateResult.model_validate(outcome.record)
+    assert outcome.record["medianFluxRatio"] < 0
 
 
 def test_the_gate_refuses_a_changed_star_for_its_flux_and_a_painted_point_for_itself() -> None:

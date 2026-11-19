@@ -222,7 +222,8 @@ recorded, at the brightness it recorded.
      frames together). The tolerance SHALL be stated in the record and measured against the noise of empty
      apertures of the same size on the same original pixels. A star outside it SHALL end the attempt `rejected`
      with the reason `star_flux_changed`. The record SHALL carry the number of stars measured, the worst change and
-     the median ratio.
+     the median ratio over every star measured, which is 0 or below when they all lost their light; such stars SHALL
+     still be counted and refused (AUDIT-B's restore-7 read, 2026-11-19).
   7. THE gate SHALL refuse a painted star [decided 2026-11-11: the detector's own statistic refused none of 40
      painted stars on the most lifted crop, so it cannot be the gate as it stands]. On every real photo of the
      corpus, lifted as the job lifts it, a star-shaped patch painted into the stored variant at the stated

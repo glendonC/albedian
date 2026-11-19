@@ -924,8 +924,9 @@ def flux_check(field: stars.StarField, original_luminance: np.ndarray, variant_l
 def _flux_summary(changes: list[float], ratios: list[float]) -> tuple[int, int, float | None, float | None]:
     if not changes:
         return 0, 0, None, None
-    positive = [r for r in ratios if r > 0]
-    median = float(np.median(positive)) if positive else None
+    # Over every measured star: a star that lost all its light has a ratio of 0 or below and is still counted
+    # (AUDIT-B's restore-7 read: over the positive ones only, a frame with none dropped its flux check)
+    median = float(np.median(ratios)) + 0.0  # never minus zero
     return len(changes), sum(c > FLUX_TOLERANCE_SIGMA for c in changes), float(max(changes)), median
 
 
@@ -993,9 +994,6 @@ def run_gate(stored: np.ndarray, *, original: Original, kept: Kept, expected: np
         more_changes, more_ratios = flux_changes(together, together_luminance, variant_luminance, kept.weight)
         changes, ratios = changes + more_changes, ratios + more_ratios
     measured, outside, worst, median = _flux_summary(changes, ratios)
-    if measured and median is None:
-        measured, outside, worst = 0, 0, None
-        changes, ratios = [], []
     record = {
         "statistic": STATISTIC, "variantThresholdSnr": VARIANT_THRESHOLD_SNR,
         "confirmThresholdSnr": stars.CONFIRM_THRESHOLD_SNR, "tilePx": stars.TILE_PX, "matchRadiusPx": stars.MATCH_RADIUS_PX,
