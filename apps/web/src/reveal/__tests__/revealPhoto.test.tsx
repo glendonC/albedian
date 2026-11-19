@@ -1037,6 +1037,65 @@ describe('the status line comes in at its moment\'s time', () => {
   });
 });
 
+// AGENTS.md 1.2 with the motion record: a simulated layer on screen always shows its Simulated tag. Measured live
+// (MOTION motion-36's note, 17:31): the tag rode with its line's words, 120 ms after the Real sky layer began to show,
+// and went 100 ms after the line gave way while the layer took 400 ms to go. So a line that names a simulated layer
+// (Real sky, there) brings its tag in at once, with the layer, while its words keep their 120 ms; and the Real sky line
+// stays until the layer has gone.
+describe('the Simulated tag shows whenever a simulated layer does', () => {
+  const momentOf = () => q('[data-testid="reveal-status"]')?.getAttribute('data-moment') ?? null;
+  it('brings a simulated line\'s tag in at once while its words wait their 120 ms, and lets a leaving line go whole', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    const line = '.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving)';
+    expect(rules[line]).toEqual({ animation: 'none' });
+    expect(rules[`${line} > *`]).toEqual({ animation: 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both' });
+    expect(rules[`${line} > [data-evidence-class="simulated"]`]).toEqual({ animation: 'look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both' });
+    expect(rules['.reveal-status.is-leaving']).toEqual({ animation: 'look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both' });
+  });
+
+  for (const phone of [false, true])
+  it(`keeps the Real sky line, its tag with it, while the layer fades out, then gives way to the photo's${phone ? ', at phone width' : ''}`, () => {
+    vi.useFakeTimers();
+    try {
+      show(calibrated(), { realSky: true, phone });
+      expect(momentOf()).toBe('real-sky');
+      const line = q('[data-testid="reveal-status"]');
+      show(calibrated(), { realSky: false, phone });
+      // The layer is still on screen leaving: the same line stays, its tag in it
+      expect(q('[data-testid="real-sky"]')).not.toBeNull();
+      expect(q('[data-testid="reveal-status"]')).toBe(line);
+      expect(line!.querySelector('[data-evidence-class="simulated"]')).not.toBeNull();
+      act(() => vi.advanceTimersByTime(REAL_SKY_FADE_MS - 1));
+      expect(momentOf()).toBe('real-sky');
+      act(() => vi.advanceTimersByTime(1));
+      expect(q('[data-testid="real-sky"]')).toBeNull();
+      // The photo's line on the laptop; at phone width none shows over the photo
+      expect(momentOf()).toBe(phone ? null : 'photo');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets the line go at once with the layer when Original pixels takes the layer away at once', () => {
+    show(calibrated(), { realSky: true });
+    expect(momentOf()).toBe('real-sky');
+    show(calibrated(), { realSky: true, originalPixels: true });
+    expect(q('[data-testid="real-sky"]')).toBeNull();
+    expect(momentOf()).toBe('photo');
+    // Real sky let go while Original pixels is held: no layer is drawn, so no Simulated line is kept for it
+    show(calibrated(), { realSky: true });
+    show(calibrated(), { realSky: false, originalPixels: true });
+    expect(momentOf()).toBe('photo');
+  });
+});
+
 // The motion record (MOTION-READY-web.md, row "Original pixels (A6)" and "Your photo and Real sky"): pressing Original
 // pixels, the marks go on the words-out timing (100 ms; a fade, no sinking: they are marks, not words); released, they
 // come back on the words-in timing (300 ms, 120 ms after the release, as a status line after a view change), all

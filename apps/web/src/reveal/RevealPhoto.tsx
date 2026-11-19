@@ -462,6 +462,11 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const marksClass = marksLayer.leaving ? 'reveal-marks is-leaving' : marksBack ? 'reveal-marks is-back' : 'reveal-marks';
   // At Go there, In this photo leaves: its rows last first, then its title (the motion record)
   const legend = useLeaving(!phone && !there && counts.length > 0, linesLeaveMs(counts.length + 1, leaveMotion));
+  // While the Real sky layer is still on screen leaving, its line stays with its Simulated tag (AGENTS.md 1.2): the
+  // photo's line comes once the layer has gone. Original pixels takes the layer away at once, and the line with it.
+  const lastSkyLine = useRef<React.ReactElement | null>(null);
+  const skyLeaving = !skyShown && skyMounted && skyDrawn && !originalPixels && !earthOnly && lastSkyLine.current !== null;
+  const skyLineShown = skyOnScreen || skyLeaving;
   // The status line for this moment (each moment its own element, keyed: motion-14)
   const statusLine: React.ReactElement | null = phone && !skyOnScreen && status.kind === 'unmatched' && aligning ? (
         // Aligning at phone width (alp-align): the sentence at 654, the one line of hints at 700; the close circle
@@ -472,7 +477,7 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
         </div>
       ) : phone && !skyOnScreen && status.kind === 'unmatched' ? (
         <PhoneNoMatch status={status} onShowPredictedSky={() => onShowPredictedSky?.()} onAlign={alignOffered ? () => setAligning(alignStart) : undefined} />
-      ) : phone && (!skyOnScreen || there) ? null : there && (skyOnScreen || earthOnly) ? (
+      ) : phone && (!skyLineShown || there) ? null : there && (skyOnScreen || earthOnly) ? (
         <div key="there" className="reveal-status" data-testid="reveal-status" data-moment="there" role="status">
           <EvidenceTag evidenceClass="simulated" />
           {cone ? (
@@ -500,6 +505,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
             </>
           )}
         </div>
+      ) : skyLeaving ? (
+        lastSkyLine.current
       ) : skyOnScreen ? (
         <div key="real-sky" className={phone ? 'reveal-status is-phone' : 'reveal-status'} data-testid="reveal-status" data-moment="real-sky" role="status">
           <EvidenceTag evidenceClass="simulated" />
@@ -614,6 +621,8 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   }, [lineKey]);
   useEffect(() => {
     latestLine.current = statusLine;
+    if (statusLine?.key === 'real-sky') lastSkyLine.current = statusLine;
+    else if (!skyLeaving) lastSkyLine.current = null;
   });
   const outgoingLine = outgoing
     ? React.cloneElement(outgoing as React.ReactElement<Record<string, unknown>>, {

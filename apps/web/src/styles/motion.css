@@ -259,6 +259,21 @@
   animation: look-mo-words-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
 }
 
+/* A line that names a simulated layer (Real sky, there): its Simulated tag comes in at once, with the layer, so the
+   layer never shows without it (AGENTS.md 1.2; measured live 19 Nov 17:31); its words keep their 120 ms. Leaving,
+   the line goes whole, above. */
+.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving) {
+  animation: none;
+}
+
+.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving) > * {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.reveal-status:is([data-moment="real-sky"], [data-moment="there"]):not(.is-leaving) > [data-evidence-class="simulated"] {
+  animation: look-mo-frame-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
 /* The reveal's words arrive only once its marks are in (the marks' span): the status first (its own rule), then In this
    photo 20 ms later, then Ask out loud 20 ms after that. */
 /* At Go there, In this photo leaves: its rows last first, 20 ms apart, then its title (it has no frame) */
