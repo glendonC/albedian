@@ -4,6 +4,7 @@ import { EvidenceTag, IconButton, Logo } from '../look/index.js';
 import { useViewportSize } from '../components/sourcePhotoRect.js';
 import type { CameraSkyPose } from '../spatial/cosmosRenderer.js';
 import { phoneFacts, predictedSkyWords } from './predictedSky.js';
+import { StarCard } from './StarCard.js';
 import { predictedSkyMarks, type Box } from './predictedSkyMarks.js';
 
 /** The places on screen D33's marks keep clear of (ruled 13:10): the status column, the Sound circle, the foot's buttons. */
@@ -27,7 +28,16 @@ import '../styles/reveal.css';
  * stars brighter than magnitude 3.2, placed where the renderer's camera draws them, followed frame by frame. The
  * horizon and the cardinal letters are the renderer's (SPATIAL's file; asked in WEB-UX-predsky-2-FILES.md).
  */
-export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome: () => void; skyPose?: () => CameraSkyPose | null; phone?: boolean }> = ({ session, onHome, skyPose, phone = false }) => {
+export const PredictedSkyScreen: React.FC<{
+  session: ObservationSession;
+  onHome: () => void;
+  skyPose?: () => CameraSkyPose | null;
+  phone?: boolean;
+  /** A name pressed: picks its star, whose D14 card then opens (ruled 13:25). */
+  onSelect?: (findingId: string) => void;
+  onGoThere?: (findingId: string) => void;
+  onCloseCard?: () => void;
+}> = ({ session, onHome, skyPose, phone = false, onSelect, onGoThere, onCloseCard }) => {
   const words = predictedSkyWords(session);
   // The renderer's camera, followed frame by frame; a new pose only when it changed
   const [pose, setPose] = useState<CameraSkyPose | null>(null);
@@ -52,6 +62,7 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
   // Names at 11 px on the phone, 13 on the laptop
   const marks = predictedSkyMarks(session.observationSolution, pose, size.widthPx, size.heightPx, phone ? 11 : 13, clearOf(status.current));
   const facts = phone ? phoneFacts(words) : words.facts;
+  const picked = session.observationSolution?.findings.find((f) => f.id === session.selectedFindingId && f.evidenceClass === 'predicted') ?? null;
   return (
     <div className={phone ? 'predsky is-phone' : 'predsky'} data-testid="predicted-sky" data-evidence-class="predicted">
       <svg className="align-layer__rings" data-testid="predicted-sky-rings" aria-hidden="true" focusable="false">
@@ -61,13 +72,15 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
       </svg>
       {marks.map((mark) =>
         mark.name === null ? null : (
-          <span
+          <button
+            type="button"
             key={`name:${mark.id}`}
-            className={mark.nameOnLeft ? 'align-layer__name is-left' : 'align-layer__name'}
+            className={mark.nameOnLeft ? 'align-layer__name predsky-name is-left' : 'align-layer__name predsky-name'}
+            onClick={() => onSelect?.(mark.id)}
             style={mark.nameOnLeft ? { right: `${size.widthPx - (mark.xPx - mark.r - 4)}px`, top: `${mark.yPx}px` } : { left: `${mark.xPx + mark.r + 4}px`, top: `${mark.yPx}px` }}
           >
             {mark.name}
-          </span>
+          </button>
         )
       )}
       {phone ? (
@@ -90,6 +103,18 @@ export const PredictedSkyScreen: React.FC<{ session: ObservationSession; onHome:
           ))}
         </div>
       </div>
+      {picked && (
+        <StarCard
+          key={picked.id}
+          finding={picked}
+          originalPixels={false}
+          onToggleOriginalPixels={() => {}}
+          onGoThere={() => onGoThere?.(picked.id)}
+          onClose={() => onCloseCard?.()}
+          phone={phone}
+          inSky
+        />
+      )}
     </div>
   );
 };

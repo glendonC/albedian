@@ -240,6 +240,44 @@ describe("D20's marks on the predicted sky (item 4)", () => {
   });
 });
 
+describe("D14's card from a name on the predicted sky (ruled 13:25)", () => {
+  it('opens on a pressed name; no Original pixels; Go there only where the star can be flown to; Esc closes the card first', async () => {
+    const { PredictedSkyScreen } = await import('../PredictedSkyScreen.js');
+    const base = predictedSky();
+    const template = base.observationSolution!.findings.find((f) => f.evidenceClass === 'predicted')!;
+    const star = { ...template, id: 'finding-predicted-star-a', skyPosition: { raDeg: 10, decDeg: -80, uncertaintyArcsec: 1 }, catalogRef: { id: 'a', provider: 'Hipparcos', releaseVersion: 'Hipparcos 2007', catalogSourceId: 'HIP 1', commonName: 'Alpha', apparentMagnitude: 0.5 } } as unknown as typeof template;
+    const session = { ...base, observationSolution: { ...base.observationSolution!, findings: [star] } } as ObservationSession;
+    const pose: CameraSkyPose = { cameraWorldQuaternion: [0, 0, 0, 1], icrsWorldQuaternion: [0, 0, 0, 1], fovDeg: 60, aspect: innerWidth / innerHeight, limitingMagnitude: 6 };
+    const picked: string[] = [];
+    const render = (selected: string | null) =>
+      act(() => root.render(createElement(PredictedSkyScreen, { session: { ...session, selectedFindingId: selected }, onHome: noop, skyPose: () => pose, onSelect: (id: string) => picked.push(id), onCloseCard: noop, onGoThere: noop })));
+    render(null);
+    await act(async () => await new Promise((r) => setTimeout(r, 30)));
+    const name = [...container.querySelectorAll<HTMLButtonElement>('.predsky button.predsky-name')].find((b) => b.textContent === 'Alpha')!;
+    act(() => name.click());
+    expect(picked).toEqual(['finding-predicted-star-a']);
+    render('finding-predicted-star-a');
+    const card = container.querySelector('.reveal-card')!;
+    expect(card).not.toBeNull();
+    expect([...card.querySelectorAll('button')].map((b) => b.textContent)).not.toContain('Original pixels');
+  });
+});
+
+describe("the card's action row in the sky (ruled 13:25)", () => {
+  it('keeps Go there where the star can be flown to, and never Original pixels', async () => {
+    const { StarCard } = await import('../StarCard.js');
+    const { starCardFacts } = await import('../starCardFacts.js');
+    const flyable = sample('plate_calibrated').findings.find((f) => starCardFacts(f).canGoThere)!;
+    expect(flyable).toBeDefined();
+    const card = (inSky: boolean) => {
+      act(() => root.render(createElement(StarCard, { finding: flyable, originalPixels: false, onToggleOriginalPixels: noop, onGoThere: noop, onClose: noop, inSky })));
+      return [...container.querySelectorAll('.reveal-card__acts button')].map((b) => b.textContent);
+    };
+    expect(card(false)).toEqual(['Go there', 'Original pixels']);
+    expect(card(true)).toEqual(['Go there']);
+  });
+});
+
 describe("the predicted sky's rules are the record's", () => {
   function declarationsOf(selector: string): Record<string, string> {
     const found: Record<string, string> = {};

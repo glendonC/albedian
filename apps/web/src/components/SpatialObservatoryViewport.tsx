@@ -667,7 +667,8 @@ export const SpatialObservatoryViewport: React.FC<
   // There, and on D33's predicted sky (which takes There's frame and replaced the old panel that held this key), Esc
   // returns too, with nothing on screen saying so; an open answer takes Esc first
   useEffect(() => {
-    if (!(flightShown || predictedSkyShown) || answer) return undefined;
+    // An open card on the predicted sky takes Esc first, as an answer does
+    if (!(flightShown || (predictedSkyShown && !session.selectedFindingId)) || answer) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase();
       if (event.key !== 'Escape' || event.defaultPrevented || tag === 'input' || tag === 'textarea') return;
@@ -676,7 +677,7 @@ export const SpatialObservatoryViewport: React.FC<
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [flightShown, predictedSkyShown, answer]);
+  }, [flightShown, predictedSkyShown, session.selectedFindingId, answer]);
 
   const handleToggleSound = useCallback(() => {
     const next = observatoryAudio.toggle();
@@ -790,7 +791,18 @@ export const SpatialObservatoryViewport: React.FC<
               corners={!clipShaded}
             />
           )}
-          {predictedSkyShown && <PredictedSkyScreen session={session} onHome={() => setEntryStageActive(true)} skyPose={readSkyPose} phone={phone} />}
+          {predictedSkyShown && <PredictedSkyScreen
+              session={session}
+              onHome={() => setEntryStageActive(true)}
+              skyPose={readSkyPose}
+              phone={phone}
+              onSelect={(findingId) => onSelectFinding(findingId)}
+              onGoThere={(findingId) => {
+                const title = session.observationSolution?.findings.find((finding) => finding.id === findingId)?.title;
+                if (title) onRunUtterance(`Take me to ${title}`, 'pointer');
+              }}
+              onCloseCard={() => setSession((prev) => ({ ...prev, selectedFindingId: null }))}
+            />}
           {!revealShown && !predictedSkyShown && !(photoFrameMismatch && isSourcePhotoShown(session)) && (
             <CelestialMarkerOverlay
               session={session}

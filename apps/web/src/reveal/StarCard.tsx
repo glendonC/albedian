@@ -20,6 +20,11 @@ export interface StarCardProps {
   deepSky?: DeepSkyRow | null;
   /** Let go: its lines are leaving (the motion record); it hears no keys or taps and takes no input meanwhile. */
   leaving?: boolean;
+  /**
+   * Opened from a name in D33's predicted sky (ruled 13:25): no Original pixels, since no photo is on screen; Go there
+   * only where the star can be flown to; with neither, no action row.
+   */
+  inSky?: boolean;
 }
 
 /** A pointer that went down and up within this distance is a tap, not a drag. */
@@ -36,7 +41,7 @@ const typing = (target: EventTarget | null): boolean => {
  * catalog row, Go there (only for a star the app can fly to) and Original pixels, and at the foot its limitations,
  * always in view. Esc and a tap on empty sky close it; G goes there. Every word is the finding's (starCardFacts.ts).
  */
-export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null, leaving = false }) => {
+export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onToggleOriginalPixels, onGoThere, onClose, phone = false, deepSky = null, leaving = false, inSky = false }) => {
   const facts = starCardFacts(finding, deepSky);
   const close = useRef(onClose);
   close.current = onClose;
@@ -110,10 +115,12 @@ export const StarCard: React.FC<StarCardProps> = ({ finding, originalPixels, onT
             </div>
           )}
           {facts.sourceLine !== null && <p className="reveal-card__source">{facts.sourceLine}</p>}
-          <div className="reveal-card__acts">
-            {canGoThere && <MainAction label="Go there" onClick={onGoThere} />}
-            <SecondAction label="Original pixels" aria-pressed={originalPixels} onClick={onToggleOriginalPixels} />
-          </div>
+          {(!inSky || canGoThere) && (
+            <div className="reveal-card__acts">
+              {canGoThere && <MainAction label="Go there" onClick={onGoThere} />}
+              {!inSky && <SecondAction label="Original pixels" aria-pressed={originalPixels} onClick={onToggleOriginalPixels} />}
+            </div>
+          )}
           {facts.notes.length > 0 && (
             <ul className="reveal-card__notes">
               {facts.notes.map((note) => (

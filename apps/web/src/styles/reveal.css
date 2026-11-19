@@ -1816,3 +1816,12 @@
 .predsky.is-phone .align-layer__name {
   font-size: 11px;
 }
+
+/* D33: a name on the predicted sky is pressed to open its card (ruled 13:25); it keeps the name's look */
+.predsky .predsky-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
