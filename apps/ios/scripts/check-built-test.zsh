@@ -153,8 +153,10 @@ make_app FontStringApp "$plain_main" "" "<key>UIAppFonts</key><string>Other.ttf<
   && expect refused "a font entry that is not an array" "fonts are" "$scratch/FontStringApp.app"
 make_app FontEmptyApp "$plain_main" "" "<key>UIAppFonts</key><array/>" \
   && expect refused "an empty font list" "fonts are" "$scratch/FontEmptyApp.app"
-make_app GeistApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string></array>" \
-  && expect passes "the two approved font files" - "$scratch/GeistApp.app"
+make_app GeistApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string><string>Geist-wght.woff2</string></array>" \
+  && expect passes "the three approved font files" - "$scratch/GeistApp.app"
+make_app GeistTwoApp "$plain_main" "" "<key>UIAppFonts</key><array><string>Geist-Regular.ttf</string><string>Geist-SemiBold.ttf</string></array>" \
+  && expect refused "the static weights without the variable font" "fonts are" "$scratch/GeistTwoApp.app"
 make_app ArbitraryApp "$plain_main" "" "<key>NSAppTransportSecurity</key><dict><key>NSAllowsArbitraryLoads</key><true/></dict>" \
   && expect refused "a transport exception" "transport security" "$scratch/ArbitraryApp.app"
 print -r -- '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>application-identifier</key><string>X.example</string><key>com.apple.developer.icloud-container-identifiers</key><array/></dict></plist>' > "$scratch/cloud.xcent"

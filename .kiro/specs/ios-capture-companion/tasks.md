@@ -131,6 +131,10 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - The screens styled from the board the owner says yes to (the owner asked on 2026-11-11 for clean typography,
     no extra text and clean colour); no change in behaviour.
   - Needs first: the design-mobile lane's board and the owner's yes.
+  - Built from the records: home with Credits, Credits, Connect, aiming without the overlay, after the shot, can't
+    reach the laptop, the result. Not built: the Credits link icons and "Open" (opening a page needs the lead's yes), the
+    states with no record (a refused send, a failed job, a bad address, no camera), asked of the lead on
+    2026-11-18; the box is ticked once those land.
   - Only on an iPhone: how it reads outdoors at night (dark adaptation, brightness).
   - _Requirements: REQ-IOS-3.2 (the labels stay legible)_
 

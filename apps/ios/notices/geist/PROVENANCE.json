@@ -29,6 +29,17 @@
         "method": "downloaded-as-is"
       },
       "note": "The release's licence text, byte for byte; also bundled with the fonts at apps/ios/AlbedianCapture/Fonts/OFL.txt."
+    },
+    {
+      "path": "../../AlbedianCapture/Fonts/Geist-wght.woff2",
+      "sha256": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+      "sources": [
+        "geist-font-v1.9.2"
+      ],
+      "producedBy": {
+        "method": "copied-from-repository"
+      },
+      "note": "The web app's own apps/web/public/fonts/geist/Geist-wght.woff2 (its record: apps/web/public/fonts/geist/PROVENANCE.json; the tag's fonts/Geist/webfonts/Geist[wght].woff2), byte for byte; the app uses its Geist-Light instance (weight 300) for the approved 40 pt titles and the result's count. Nothing was downloaded for it."
     }
   ],
   "fileSets": []

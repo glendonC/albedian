@@ -74,6 +74,8 @@ final class PrivacyScanTests: XCTestCase {
     static let exceptions: [Exception] = [
         (file: "CaptureStore.swift", line: 98, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
          reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
+        (file: "CompanionFlow.swift", line: 25, code: "public static let fixedScheme = \"http://\"",
+         reason: "the scheme the connect screen shows fixed in front of the field (UIUX-connect-APPROVED); the typed text joined to it is read only as a pairing address (LaptopAddress: plain http to a local network host), and nothing is opened from it"),
     ]
 
     typealias Asset = (path: String, sha256: String, reason: String)
@@ -107,6 +109,24 @@ final class PrivacyScanTests: XCTestCase {
          reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
         (path: "Assets.xcassets/arrow-counter-clockwise.imageset/Contents.json", sha256: "9155f322a819068f24fecca253c61513b582a2e777e9158096f84e185bfb56e8",
          reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/arrow-left.imageset/arrow-left.svg", sha256: "3c2001cf957d182fc54927e4b286cc8cf66dd97830f441ca2650d42a63a9006a",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/arrow-left.imageset/Contents.json", sha256: "9e4ddba329640c4d3e100746381bc6fd36430f279b14cda155191f237d19ce1f",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/arrow-square-out.imageset/arrow-square-out.svg", sha256: "8610e8f5c7d4952ae1ada34ef56fa7cbab1780bc85f25a5c9482b74144790fc8",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/arrow-square-out.imageset/Contents.json", sha256: "b2921a719bcbde94fbe8633026de1a92d6ab36f06e031628967ab0115eb1981d",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/wifi-slash.imageset/wifi-slash.svg", sha256: "39ed62ae822a3917ac70239bbaa2144152049783451f4687456aae8f044152fc",
+         reason: "a Phosphor 2.1.1 regular icon the approved screens use, byte for byte from the package (MIT, apps/ios/notices/phosphor, data/downloads.json)"),
+        (path: "Assets.xcassets/wifi-slash.imageset/Contents.json", sha256: "d34c9ed7681ca6a346d950afc69548a8c75fdb974e59d0a85f2c505dd05938bc",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Assets.xcassets/milky-way-home.imageset/milky-way-home.jpg", sha256: "d453e529eba662a0ee4eeb7fef16a40a22333325c2bcaf544de9aca71a231b71",
+         reason: "the approved iPhone home's Milky Way: a crop of the web's own eso0932a panorama (ESO/S. Brunier, CC BY 4.0, apps/ios/notices/eso)"),
+        (path: "Assets.xcassets/milky-way-home.imageset/Contents.json", sha256: "2769ecab90823d7c763d7a7f67c47d761dd014cb037aa156e5fdbf0add0630f4",
+         reason: "the asset catalog's own description of its images, written for this app"),
+        (path: "Fonts/Geist-wght.woff2", sha256: "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+         reason: "Geist v1.9.2's variable font, the web's own copy byte for byte, for the approved light weight (SIL OFL 1.1, apps/ios/notices/geist)"),
     ]
 
     static func sha256(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }

@@ -201,19 +201,22 @@ public final class SolveCoordinator {
         startedAt = nil
     }
 
-    public func start(sha256: String, client: SolveClient) {
+    /// - Parameter then: called on the main actor with the solve's last state, unless another start or a reset came first.
+    public func start(sha256: String, client: SolveClient, then: (@MainActor (SolveState) -> Void)? = nil) {
         generation &+= 1
         task?.cancel()
         let runGeneration = generation
         state = .starting
         startedAt = ContinuousClock.now
         task = Task { @MainActor [weak self] in
-            _ = await client.solve(sha256: sha256) { [weak self] next in
+            let last = await client.solve(sha256: sha256) { [weak self] next in
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == runGeneration else { return }
                     self.state = next
                 }
             }
+            guard let self, self.generation == runGeneration else { return }
+            then?(last)
         }
     }
 }

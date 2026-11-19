@@ -9,7 +9,7 @@ import XCTest
 /// asks for, and the licence notices and provenance records beside them and bundled with the app.
 final class ApprovedAssetsTests: XCTestCase {
     private let app = repositoryRoot.appendingPathComponent("apps/ios/AlbedianCapture")
-    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise"]
+    private let icons = ["arrow-right", "x", "paper-plane-tilt", "arrow-counter-clockwise", "arrow-left", "arrow-square-out", "wifi-slash"]
 
     private func sha256(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -51,6 +51,14 @@ final class ApprovedAssetsTests: XCTestCase {
             XCTAssertEqual(try svg(name), try Data(contentsOf: webNotices.appendingPathComponent("\(name).svg")), name)
             XCTAssertTrue(webIcon.contains("'\(try path(name))'"), name)
         }
+        // The back and open-link icons the Credits and Connect screens draw are the web's notice copies too
+        for name in ["arrow-left", "arrow-square-out"] {
+            XCTAssertEqual(try svg(name), try Data(contentsOf: webNotices.appendingPathComponent("\(name).svg")), name)
+        }
+        XCTAssertEqual(
+            try path("wifi-slash"),
+            "M213.92,210.62a8,8,0,1,1-11.84,10.76l-52-57.15a60,60,0,0,0-57.41,7.24,8,8,0,1,1-9.42-12.93A75.43,75.43,0,0,1,128,144c1.28,0,2.55,0,3.82.1L104.9,114.49A108,108,0,0,0,61,135.31,8,8,0,0,1,49.73,134,8,8,0,0,1,51,122.77a124.27,124.27,0,0,1,41.71-21.66L69.37,75.4a155.43,155.43,0,0,0-40.29,24A8,8,0,0,1,18.92,87,171.87,171.87,0,0,1,58,62.86L42.08,45.38A8,8,0,1,1,53.92,34.62ZM128,192a12,12,0,1,0,12,12A12,12,0,0,0,128,192ZM237.08,87A172.3,172.3,0,0,0,106,49.4a8,8,0,1,0,2,15.87A158.33,158.33,0,0,1,128,64a156.25,156.25,0,0,1,98.92,35.37A8,8,0,0,0,237.08,87ZM195,135.31a8,8,0,0,0,11.24-1.3,8,8,0,0,0-1.3-11.24,124.25,124.25,0,0,0-51.73-24.2A8,8,0,1,0,150,114.24,108.12,108.12,0,0,1,195,135.31Z"
+        )
         // The other two match the full Phosphor 2.1.1 regular paths the approved iPhone board draws
         XCTAssertEqual(
             try path("paper-plane-tilt"),
@@ -76,9 +84,13 @@ final class ApprovedAssetsTests: XCTestCase {
         }
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(
             from: try Data(contentsOf: repositoryRoot.appendingPathComponent("apps/ios/AlbedianCapture-Info.plist")), format: nil) as? [String: Any])
-        XCTAssertEqual(plist["UIAppFonts"] as? [String], expected.keys.sorted())
+        XCTAssertEqual(plist["UIAppFonts"] as? [String], expected.keys.sorted() + ["Geist-wght.woff2"])
         let style = try String(contentsOf: app.appendingPathComponent("UI/Style.swift"), encoding: .utf8)
         for postScript in expected.values { XCTAssertTrue(style.contains("\"\(postScript)\""), postScript) }
+        // The light weight is the web's own variable font, byte for byte, and the app asks for its Geist-Light instance
+        let variable = try Data(contentsOf: app.appendingPathComponent("Fonts/Geist-wght.woff2"))
+        XCTAssertEqual(variable, try Data(contentsOf: repositoryRoot.appendingPathComponent("apps/web/public/fonts/geist/Geist-wght.woff2")))
+        XCTAssertTrue(style.contains("\"Geist-Light\""))
     }
 
     func testCarriesTheLicenceNoticesAndProvenanceRecordsBesideTheAssetsAndInTheBundle() throws {
@@ -97,7 +109,7 @@ final class ApprovedAssetsTests: XCTestCase {
         XCTAssertEqual(bundledPhosphorNotice, phosphorNotice)
         XCTAssertEqual(downloads[".cache/phosphor-icons/core-2.1.1.tgz"]?["licence"] as? String, "MIT")
 
-        for folder in ["apps/ios/notices/geist", "apps/ios/notices/phosphor"] {
+        for folder in ["apps/ios/notices/geist", "apps/ios/notices/phosphor", "apps/ios/notices/eso"] {
             let dir = repositoryRoot.appendingPathComponent(folder)
             let recordData = try Data(contentsOf: dir.appendingPathComponent("PROVENANCE.json"))
             let record = try XCTUnwrap(JSONSerialization.jsonObject(with: recordData) as? [String: Any])

@@ -18,6 +18,7 @@ final class AAShuffledOrder: XCTestCase {
         SensorMappingTests.self, MotionRingTests.self, SensorRecorderTests.self, PhotoClockTests.self, CaptureStoreTests.self,
         StoredRecordSendTests.self, CheckReadoutTests.self, CaptureStoreFailureTests.self, OffMainActorTests.self, ShutterGeometryTests.self,
         ControlStyleTests.self, ApprovedAssetsTests.self, CarbonMainFixesTests.self, SolveReadersTests.self, SolveClientTests.self, SolutionSizeTests.self,
+        CompanionFlowTests.self, CoordinatorEndTests.self,
     ]
 
     override class var defaultTestSuite: XCTestSuite {

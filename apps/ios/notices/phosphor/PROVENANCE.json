@@ -15,7 +15,7 @@
         "conditions": "The copyright and permission notice travels with every copy: LICENSE sits beside this record and is bundled in AlbedianCapture.app as Phosphor-LICENSE.txt."
       },
       "credit": "Phosphor Icons",
-      "note": "Four regular-weight icons the approved iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
+      "note": "Seven regular-weight icons the approved iPhone screens use, unpacked byte for byte from @phosphor-icons/core 2.1.1 (pinned in data/downloads.json) into apps/ios/AlbedianCapture/Assets.xcassets/."
     }
   ],
   "files": [
@@ -73,6 +73,39 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/x.svg, byte for byte; embedded in apps/ios/AlbedianCapture/Assets.xcassets/x.imageset/x.svg."
+    },
+    {
+      "path": "arrow-left.svg",
+      "sha256": "3c2001cf957d182fc54927e4b286cc8cf66dd97830f441ca2650d42a63a9006a",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/arrow-left.svg, byte for byte (the same bytes as apps/web/public/notices/phosphor/arrow-left.svg); embedded in apps/ios/AlbedianCapture/Assets.xcassets/arrow-left.imageset/arrow-left.svg for the back buttons of Credits and Connect."
+    },
+    {
+      "path": "arrow-square-out.svg",
+      "sha256": "8610e8f5c7d4952ae1ada34ef56fa7cbab1780bc85f25a5c9482b74144790fc8",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/arrow-square-out.svg, byte for byte (the same bytes as apps/web/public/notices/phosphor/arrow-square-out.svg); embedded in apps/ios/AlbedianCapture/Assets.xcassets/arrow-square-out.imageset/arrow-square-out.svg for the Credits rows that link out."
+    },
+    {
+      "path": "wifi-slash.svg",
+      "sha256": "39ed62ae822a3917ac70239bbaa2144152049783451f4687456aae8f044152fc",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/wifi-slash.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/wifi-slash.imageset/wifi-slash.svg for the screen when the laptop cannot be reached."
     }
   ],
   "fileSets": []

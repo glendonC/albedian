@@ -13,14 +13,20 @@ extension Color {
 enum AlbedianFont {
     static func regular(_ size: Double) -> Font { .custom("Geist-Regular", size: size, relativeTo: .body) }
     static func semibold(_ size: Double) -> Font { .custom("Geist-SemiBold", size: size, relativeTo: .title) }
+    /// The light weight (300) the approved titles and the result's count use, a named instance of the web's own Geist variable
+    /// font (`Fonts/Geist-wght.woff2`, the same bytes as `apps/web/public/fonts/geist/Geist-wght.woff2`).
+    static func light(_ size: Double) -> Font { .custom("Geist-Light", size: size, relativeTo: .largeTitle) }
 }
 
-/// The four Phosphor icons (regular weight) the approved iPhone screens use, by their file names in the asset catalog.
+/// The seven Phosphor icons (regular weight) the approved iPhone screens use, by their file names in the asset catalog.
 enum AlbedianIcon: String {
     case arrow = "arrow-right"
     case close = "x"
     case send = "paper-plane-tilt"
     case again = "arrow-counter-clockwise"
+    case back = "arrow-left"
+    case openLink = "arrow-square-out"
+    case unreachable = "wifi-slash"
 
     func image(_ size: Double) -> some View {
         Image(rawValue).resizable().renderingMode(.template).aspectRatio(contentMode: .fit).frame(width: size, height: size)

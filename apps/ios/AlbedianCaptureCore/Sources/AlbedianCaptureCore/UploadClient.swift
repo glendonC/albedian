@@ -362,15 +362,26 @@ public final class UploadCoordinator {
         state = nil
     }
 
+    /// Sends a capture the phone kept, its record as the very bytes kept (`CaptureUploader.send(photo:contentType:recordWire:)`).
+    public func start(photo: Data, contentType: PhotoContentType, recordWire: Data?, uploader: CaptureUploader,
+                      then: (@MainActor (UploadState) -> Void)? = nil) {
+        run(then: then) { onState in await uploader.send(photo: photo, contentType: contentType, recordWire: recordWire, onState: onState) }
+    }
+
     /// - Parameter then: called on the main actor with the upload's last state, unless another start or a reset came first.
     public func start(photo: Data, contentType: PhotoContentType, record: PointingRecord?, uploader: CaptureUploader,
                       then: (@MainActor (UploadState) -> Void)? = nil) {
+        run(then: then) { onState in await uploader.send(photo: photo, contentType: contentType, record: record, onState: onState) }
+    }
+
+    private func run(then: (@MainActor (UploadState) -> Void)?,
+                     _ send: @escaping @MainActor (@escaping @Sendable (UploadState) -> Void) async -> UploadState) {
         generation &+= 1
         task?.cancel()
         let runGeneration = generation
         state = .waiting
         task = Task { @MainActor [weak self] in
-            let last = await uploader.send(photo: photo, contentType: contentType, record: record) { [weak self] next in
+            let last = await send { [weak self] next in
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == runGeneration else { return }
                     self.state = next

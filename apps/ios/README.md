@@ -60,6 +60,13 @@ bundled inside `AlbedianCapture.app`). Each full screen's layout still waits for
   - `ControlStyle` and `ShutterGeometry` hold the numbers of the approved iPhone controls (colours, 44 pt split main
     action and icon button geometry, 1.2 s spring and 0.15 s / 0.2 s standard curves, the website logo's proportions,
     and all four evidence classes' words, colours and tints), tested in `ControlStyleTests` and `ShutterGeometryTests`.
+- The approved screens (unit mobile-6, `AlbedianCapture/Screens/`): the app opens on the home (UIUX-arrive-READY
+  iPhone 1 with UIUX-credit), then Credits, aiming (no overlay until mobile-5), after the shot, "Connect to your
+  laptop" (UIUX-connect: typed once, kept by `PairingKeeper` after a send goes through), "Can't reach the laptop"
+  (UIUX-unreachable, chosen by `SendEnd`) and the result (status word, card with the catalog matched marks placed by
+  `StoredFrame.placeCovering`, counts by evidence class). `CompanionModel` runs them on the camera, the store, the
+  uploader and the solve. The home's Milky Way is a crop of the web's eso0932a panorama (`notices/eso`), the light
+  weight is the web's own Geist variable font, and the three new icons come from the pinned Phosphor package.
 - `AlbedianCapture/`: the app: two plain screens in the system's default style (the pipeline run by hand with sample
   values, cancelling any in-flight upload when rebuilt, and `CaptureCheckScreen`), plus in `DEBUG` builds
   `ControlsGallery` showing the approved controls together. `UI/` holds `MainButton`, `IconButton`, `EvidenceTag`,

@@ -1,0 +1,34 @@
+{
+  "format": "albedian.asset-provenance",
+  "formatVersion": 1,
+  "sources": [
+    {
+      "id": "eso0932a",
+      "title": "The Milky Way panorama",
+      "url": "https://www.eso.org/public/images/eso0932a/",
+      "version": "Large JPEG, 6000x3000",
+      "license": {
+        "spdx": "CC-BY-4.0",
+        "name": "Creative Commons Attribution 4.0 International",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "conditions": "Under ESO's image use terms (https://www.eso.org/public/outreach/copyright/): the credit stays unaltered and clearly visible, and modifications must be indicated. The iPhone credits it on its Credits screen (UIUX-credit-APPROVED)."
+      },
+      "credit": "ESO/S. Brunier"
+    }
+  ],
+  "files": [
+    {
+      "path": "../../AlbedianCapture/Assets.xcassets/milky-way-home.imageset/milky-way-home.jpg",
+      "sha256": "d453e529eba662a0ee4eeb7fef16a40a22333325c2bcaf544de9aca71a231b71",
+      "sources": [
+        "eso0932a"
+      ],
+      "producedBy": {
+        "method": "cropped",
+        "from": "apps/web/public/textures/eso_milkyway_panorama.jpg (sha256 60400c92c54b7c1bd12299c69e83b16e5b6256e7dabacc478c021758ecd28179)",
+        "recipe": "sips --cropToHeightWidth 3000 1386 --cropOffset 0 2312 (.lanetools/mobile6_assets.zsh in the MOBILE lane): the full height and 1386 of the 6000 columns from column 2312, at the panorama's own pixels, written as JPEG by sips"
+      },
+      "note": "The region of the approved iPhone home capture (arrive p-home and phone3 c-home, crop mw-tall.jpg 780 by 1688), found by normalised cross-correlation on luminance at 0.944 (.lanetools/match_tall.py): left 0.3853, top 0.0013, 0.2301 of the width, 0.9959 of the height. The app darkens it toward the bottom as the capture does; nothing else is changed."
+    }
+  ]
+}
