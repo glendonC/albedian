@@ -33,6 +33,7 @@ enum AlbedianIcon: String {
     case moon = "moon"
     case hand = "hand"
     case compass = "compass"
+    case sunHorizon = "sun-horizon"
 
     func image(_ size: Double) -> some View {
         Image(rawValue).resizable().renderingMode(.template).aspectRatio(contentMode: .fit).frame(width: size, height: size)

@@ -8,6 +8,8 @@ public enum CoachLine: Equatable, Sendable {
     case compass
     /// The Moon, from the sky context (`SkyConditions`).
     case moon(String)
+    /// The Sun in twilight, from the sky context (skycontext-3); it takes the Moon line's place while it shows.
+    case sun(String)
     /// The phone moves enough to smear the stars in the coming exposure.
     case steadiness
 
@@ -15,15 +17,17 @@ public enum CoachLine: Equatable, Sendable {
         switch self {
         case .compass: "Move the phone in a figure eight to settle the compass."
         case .moon(let words): words
+        case .sun(let words): words
         case .steadiness: "The phone is moving: rest it on something steady."
         }
     }
 
-    /// Phosphor's icon for the line (moon, hand, compass).
+    /// Phosphor's icon for the line (moon, sun-horizon, hand, compass).
     public var icon: String {
         switch self {
         case .compass: "compass"
         case .moon: "moon"
+        case .sun: "sun-horizon"
         case .steadiness: "hand"
         }
     }
@@ -42,12 +46,26 @@ public enum Coach {
         return "The Moon is up, \(lit) percent lit: fewer stars show."
     }
 
-    /// The lines in the record's order (compass, then the Moon, then steadiness), the compass taking steadiness's place
-    /// while it shows, at most two.
+    /// The Sun's line while it is in one of the three twilights (D29 item 5, LEAD ANSWER 12:44): its depth below the
+    /// horizon rounded to a whole degree as services/science/predicted_sky.py `sky_phase` rounds it, "1 degree" in the
+    /// singular as it writes it; none by day, none at night, none without the Sun in the sky context.
+    public static func sunWords(_ conditions: SkyConditions?) -> String? {
+        guard let sun = conditions?.sun,
+              [.civilTwilight, .nauticalTwilight, .astronomicalTwilight].contains(sun.band) else { return nil }
+        let whole = Int((abs(sun.altDeg) + 0.5).rounded(.down))
+        return "The Sun is \(whole) \(whole == 1 ? "degree" : "degrees") below the horizon: still twilight."
+    }
+
+    /// The lines in the record's order (compass, then the Sun or else the Moon, then steadiness), the compass taking
+    /// steadiness's place and the Sun the Moon's while each shows, at most two.
     public static func lines(compassAsked: Bool, conditions: SkyConditions?, moving: Bool) -> [CoachLine] {
         var out: [CoachLine] = []
         if compassAsked { out.append(.compass) }
-        if let moon = moonWords(conditions) { out.append(.moon(moon)) }
+        if let sun = sunWords(conditions) {
+            out.append(.sun(sun))
+        } else if let moon = moonWords(conditions) {
+            out.append(.moon(moon))
+        }
         if moving && !compassAsked { out.append(.steadiness) }
         return Array(out.prefix(maxLines))
     }

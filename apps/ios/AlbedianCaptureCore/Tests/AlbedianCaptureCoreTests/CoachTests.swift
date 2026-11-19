@@ -15,6 +15,56 @@ final class CoachTests: XCTestCase {
         return try XCTUnwrap(SkyConditions.read(copy))
     }
 
+    /// The base reply's sky (the Moon 20 degrees up, adding light) with the Sun at `sunAlt`, its band the contract's for
+    /// that altitude, or with no Sun, as a laptop that predates it answers.
+    private func sky(sunAlt: Double?) throws -> SkyConditions {
+        var reply: JSONValue = try XCTUnwrap(ContractFixture.load("sky_context_contract")["bases"]?["reply"])
+        var block = reply["predictedSkyBrightness"]!.objectValue!
+        block.set("moonAltDeg", .number(JSONNumber(20)!))
+        block.set("lunarVeilDeltaMag", .number(JSONNumber(1)!))
+        block.set("illuminationFraction", .number(JSONNumber(0.7)!))
+        reply["predictedSkyBrightness"] = .object(block)
+        if let sunAlt {
+            reply["sun"]?["altDeg"] = .number(JSONNumber(sunAlt)!)
+            reply["sun"]?["band"] = .string(JSONString(SkySun.band(of: sunAlt).rawValue))
+        } else {
+            reply["sun"] = nil
+        }
+        return try XCTUnwrap(SkyConditions.read(reply))
+    }
+
+    /// D29 item 5 with the lead's answer of 12:44: the Sun's depth in whole degrees, in the three twilights only; none by
+    /// day, none at night, none from a laptop that predates the Sun; "1 degree" in the singular, as sky_phase writes it.
+    func testTheSunsLineInTwilightOnly() throws {
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -11.175)), "The Sun is 11 degrees below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -17.6)), "The Sun is 18 degrees below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -18)), "The Sun is 18 degrees below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -5.5)), "The Sun is 6 degrees below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -50.0 / 60.0)), "The Sun is 1 degree below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -1.49)), "The Sun is 1 degree below the horizon: still twilight.")
+        XCTAssertEqual(Coach.sunWords(try sky(sunAlt: -1.5)), "The Sun is 2 degrees below the horizon: still twilight.")
+        XCTAssertNil(Coach.sunWords(try sky(sunAlt: -18.000001)), "night")
+        XCTAssertNil(Coach.sunWords(try sky(sunAlt: -47.7)), "night")
+        XCTAssertNil(Coach.sunWords(try sky(sunAlt: -0.5)), "day: the Sun's disc still touches the horizon")
+        XCTAssertNil(Coach.sunWords(try sky(sunAlt: 30)), "day")
+        XCTAssertNil(Coach.sunWords(try sky(sunAlt: nil)), "no Sun in the reply")
+        XCTAssertNil(Coach.sunWords(nil))
+        XCTAssertEqual(CoachLine.sun("x").icon, "sun-horizon")
+    }
+
+    /// The Sun's line takes the Moon line's place while it shows, so the line that asks the person to act keeps its own.
+    func testTheSunTakesTheMoonsPlaceAndTwoLinesStayTheMost() throws {
+        let twilight = try sky(sunAlt: -11.175)
+        let sun = CoachLine.sun("The Sun is 11 degrees below the horizon: still twilight.")
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: twilight, moving: true), [sun, .steadiness])
+        XCTAssertEqual(Coach.lines(compassAsked: true, conditions: twilight, moving: true), [.compass, sun])
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: twilight, moving: false), [sun])
+        let night = try sky(sunAlt: -47.7)
+        let moon = CoachLine.moon("The Moon is up, 70 percent lit: fewer stars show.")
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: night, moving: true), [moon, .steadiness])
+        XCTAssertEqual(Coach.lines(compassAsked: false, conditions: try sky(sunAlt: 30), moving: false), [moon])
+    }
+
     func testTheMoonsThreeLinesAndNoneWithoutTheSkyContext() throws {
         XCTAssertEqual(Coach.moonWords(try sky(moonAlt: 24.1, veil: 1.35, lit: 0.7)), "The Moon is up, 70 percent lit: fewer stars show.")
         XCTAssertEqual(Coach.moonWords(try sky(moonAlt: 0.1, veil: 0.2, lit: 0.004)), "The Moon is up, 0 percent lit: fewer stars show.")

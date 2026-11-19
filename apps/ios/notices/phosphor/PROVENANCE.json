@@ -161,6 +161,17 @@
         "method": "downloaded-as-is"
       },
       "note": "The package's assets/regular/compass.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/compass.imageset/compass.svg for the capture coach's lines (D29)."
+    },
+    {
+      "path": "sun-horizon.svg",
+      "sha256": "9d63240fd584ffdc66fc0a2f01dae36ef1e7b0e074d1771375f46179692adbcb",
+      "sources": [
+        "phosphor-icons-core-2.1.1"
+      ],
+      "producedBy": {
+        "method": "downloaded-as-is"
+      },
+      "note": "The package's assets/regular/sun-horizon.svg, byte for byte, extracted from the pinned .cache/phosphor-icons/core-2.1.1.tgz (sha256 checked); embedded in apps/ios/AlbedianCapture/Assets.xcassets/sun-horizon.imageset/sun-horizon.svg for the capture coach's Sun line (D29)."
     }
   ],
   "fileSets": []
