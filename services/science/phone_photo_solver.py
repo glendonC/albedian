@@ -1773,6 +1773,23 @@ def _search_horizon_attitude(
     return best_wcs if best_score >= 7 else None
 
 
+# [proposed] The blind search's catalog: the brightest BLIND_CATALOG_STARS tile stars to V BLIND_CATALOG_V of the whole
+# sky (no region chosen, so a frame anywhere, the southern sky included, holds its share: 7 to 63 of them in the
+# benchmark's solved real frames); each star makes catalog triangles with its BLIND_NEIGHBOURS nearest stars within the
+# frame's reach (solve-search-1)
+BLIND_CATALOG_V = 5.5
+BLIND_CATALOG_STARS = 400
+BLIND_NEIGHBOURS = 8
+# [proposed] How many of the ranked pool's detections the blind search makes triangles from (16 before solve-search-1)
+BLIND_DETECTIONS = 24
+
+
+def _blind_search_catalog(tile_index: "_TileStarIndex", epoch_jyear: float) -> tuple[np.ndarray, np.ndarray]:
+    """The blind search's stars: the whole sky's brightest, at the photo's epoch, in no region's favour."""
+    _, ra, dec, _ = tile_index.query_bright(v_limit=BLIND_CATALOG_V, max_stars=BLIND_CATALOG_STARS, epoch_jyear=epoch_jyear)
+    return ra, dec
+
+
 def _search_blind_icrs_triangles(
     pool: Sequence[SourceDetection],
     width: int,
@@ -1783,7 +1800,7 @@ def _search_blind_icrs_triangles(
     on_candidate: Callable[[int, int], None] | None,
 ) -> PhoneCameraWCS | None:
     """Scale-invariant 3D triangle matcher in ICRS when capture time or observer location is omitted."""
-    det_sub = list(pool[:16])
+    det_sub = list(pool[:BLIND_DETECTIONS])
     if len(det_sub) < 6 or len(cat_ra) < 6:
         return None
 
@@ -1803,17 +1820,28 @@ def _search_blind_icrs_triangles(
     d_rays = _normalize_vecs(np.stack([xd, yd, np.ones_like(xd)], axis=-1))
 
     # Build catalog triangles from brightest stars in clustered sky patches
-    u_all = _radec_to_vec_batch(cat_ra[:80], cat_dec[:80])
-    k_sub = min(28, len(u_all))
-    u_cat = u_all[:k_sub]
+    # Catalog triangles over the whole list (solve-search-1): each star with its BLIND_NEIGHBOURS nearest stars inside
+    # the frame's reach, so the count grows with the list's length, not its cube, and no part of the sky is left out
+    u_all = _radec_to_vec_batch(cat_ra, cat_dec)
+    u_cat = u_all
+    from scipy.spatial import cKDTree
+
+    reach_deg = min(0.85 * fov_deg, 75.0)
+    chord = 2.0 * math.sin(math.radians(reach_deg) / 2.0)
+    neighbours_of = cKDTree(u_all).query(u_all, k=min(BLIND_NEIGHBOURS + 1, len(u_all)), distance_upper_bound=chord)[1]
+    triples: set[tuple[int, int, int]] = set()
+    for star, row in enumerate(neighbours_of):
+        near = [int(n) for n in row[1:] if n < len(u_all)]
+        for n1, n2 in itertools.combinations(near, 2):
+            triples.add(tuple(sorted((star, n1, n2))))
 
     cat_tris: list[tuple[int, int, int, float, float, float]] = []
-    for i, j, k in itertools.combinations(range(k_sub), 3):
+    for i, j, k in sorted(triples):
         a_ij = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[i] @ u_cat[j])))))
         a_jk = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[j] @ u_cat[k])))))
         a_ik = math.degrees(math.acos(max(-1.0, min(1.0, float(u_cat[i] @ u_cat[k])))))
         sides = sorted([a_ij, a_jk, a_ik])
-        if sides[0] < 2.5 or sides[2] > min(0.85 * fov_deg, 75.0):
+        if sides[0] < 2.5 or sides[2] > reach_deg:
             continue
         pairs = [((i, j), a_ij), ((j, k), a_jk), ((i, k), a_ik)]
         pairs.sort(key=lambda p: p[1], reverse=True)
@@ -2052,14 +2080,8 @@ def solve_phone_photo(
             c_ra = np.array([s.ra_deg for s in custom_list], dtype=np.float64)
             c_dec = np.array([s.dec_deg for s in custom_list], dtype=np.float64)
         else:
-            # Query bright stars across Orion/Taurus + all-sky navigation stars for blind search
-            orion_cone_idx, c_ra, c_dec, _ = tile_index.query_bright(v_limit=5.5, max_stars=400, epoch_jyear=epoch_jyear)
-            # Prioritize stars near Orion/Taurus + brightest all-sky
-            sep_orion = np.array([angular_separation_deg(float(r), float(d), 83.8, -1.2) for r, d in zip(c_ra, c_dec)])
-            in_orion = np.flatnonzero(sep_orion <= 55.0)
-            if in_orion.size >= 15:
-                c_ra = np.concatenate([c_ra[in_orion], c_ra[:60]])
-                c_dec = np.concatenate([c_dec[in_orion], c_dec[:60]])
+            # The whole sky's brightest stars, in no region's favour (solve-search-1)
+            c_ra, c_dec = _blind_search_catalog(tile_index, epoch_jyear)
         initial_wcs = _search_blind_icrs_triangles(
             pool, width, height, c_ra, c_dec, fov_models, on_candidate if sky_frame is None else None
         )

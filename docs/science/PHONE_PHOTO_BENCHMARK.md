@@ -257,6 +257,22 @@ What it shows [tested, on simulated frames only]:
   `pos-035`, with median field errors of 0.62 px, 0.31 px, and 0.08 px), with zero false claims and
   zero false solves across all tested positives and hard negatives.
 
+### The blind search since solve-search-2
+
+Before solve-search-2 the blind search (a photo whose file holds no place) searched only the first 28 stars of a list
+chosen within 55 deg of Orion and Taurus, with the top 16 detections, so a frame elsewhere in the sky, the southern
+sky above all, could not be solved without a place [tested, solve-search-1]. Since then it searches the 400 brightest
+tile stars to V 5.5 over the whole sky (`BLIND_CATALOG_STARS`, `BLIND_CATALOG_V`), each making catalog triangles with
+its 8 nearest stars within the frame's reach (`BLIND_NEIGHBOURS`), from the top 24 detections (`BLIND_DETECTIONS`)
+[proposed values, measured below]. The held-out gate is unchanged.
+
+Real corpus, upload path, each claim judged against astrometry.net (run `si-search2-all60`, 19 Nov) [tested]: 2 of 60
+calibrated, both correct: rp-b-01 as before, and rp-a-10, a southern frame whose file holds no place (19 of 19 named
+stars confirmed, held out 21 of 28, median 1.84 px); 0 wrong, 0 false solves, 0 stopped at the time bound; median
+28.5 s and worst 192.9 s per photo, at a load of 6 to 11. Of the 9 photos with no place, 1 calibrates (none did before).
+Simulated: the Crux frames `pos-003` and `pos-073` now solve blind (`tests/science/test_blind_search_catalog.py`). Why the
+other 8 photos with no place still fail is [open]: solve-search-1 found few true stars among their searched detections.
+
 ## Real clips (no ground truth)
 
 The baseline 18-star solver on the three local real-clip captures (`real_clips.py`): six single
