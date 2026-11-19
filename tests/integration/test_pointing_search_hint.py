@@ -104,7 +104,9 @@ import hashlib  # noqa: E402
 import io  # noqa: E402
 import json  # noqa: E402
 from pathlib import Path  # noqa: E402
+import dataclasses  # noqa: E402
 import time  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
 from typing import Iterator  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -354,3 +356,76 @@ def test_only_a_calibrated_solution_states_the_offset_from_the_hint(status: str)
     other = SimpleNamespace(status=status, wcs=calibrated.wcs)
     hint, warning = ingest_jobs.pointing_hint_for(other, None, search, "c" * 63 + "1", spec.width, spec.height)  # type: ignore[arg-type]
     assert hint is not None and hint.verified_center_offset_deg is None and warning is None
+
+
+
+def test_a_lent_moment_never_costs_the_blind_solve(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The lead's answer of 13:20: when the searches with a lent moment do not calibrate, the searches once more with no
+    # time and no place (the whole-sky blind search), kept only when they calibrate
+    calls: list[tuple[Any, Any]] = []
+    Outcome = dataclasses.make_dataclass(
+        "Outcome", ["status", ("observed_at_utc", Any, None), ("observer_lat", Any, None), ("observer_lon", Any, None)]
+    )
+
+    def once(statuses: list[str]):
+        def chain(*args: Any, **kwargs: Any) -> Any:
+            calls.append((kwargs.get("hint_ra_deg"), kwargs.get("obs_utc_iso")))
+            return Outcome(statuses[len(calls) - 1])
+        return chain
+
+    moment = dict(obs_utc_iso="2030-01-01T00:00:00Z", lat_deg=10.0, lon_deg=20.0)
+    hinted = dict(hint_ra_deg=10.0, hint_dec_deg=20.0, hint_radius_deg=5.0, triangle_radius_deg=40.0)
+    for kwargs, statuses, expected_calls, expected_status in (
+        ({**moment, **hinted, "moment_lent": True}, ["unresolved", "unresolved", "calibrated"],
+         [(10.0, moment["obs_utc_iso"]), (None, moment["obs_utc_iso"]), (None, None)], "calibrated"),
+        ({**moment, "moment_lent": True}, ["unresolved", "calibrated"], [(None, moment["obs_utc_iso"]), (None, None)], "calibrated"),
+        ({**moment, "moment_lent": True}, ["ambiguous", "unresolved"], [(None, moment["obs_utc_iso"]), (None, None)], "ambiguous"),
+        ({**moment, "moment_lent": True}, ["calibrated"], [(None, moment["obs_utc_iso"])], "calibrated"),
+        ({**moment, "moment_lent": False}, ["unresolved"], [(None, moment["obs_utc_iso"])], "unresolved"),
+    ):
+        calls.clear()
+        monkeypatch.setattr(ingest_jobs, "_solve_chain_once", once(statuses))
+        result = ingest_jobs._solve_chain(None, [], 10, 10, on_event=lambda *a: None, **kwargs)
+        assert calls == expected_calls and result.status == expected_status
+        if expected_calls[-1] == (None, None) and expected_status == "calibrated":
+            # The blind solution states the solve's own (lent) moment
+            assert (result.observed_at_utc, result.observer_lat, result.observer_lon) == (
+                moment["obs_utc_iso"], moment["lat_deg"], moment["lon_deg"]
+            )
+
+
+def _timeless_png() -> bytes:
+    """The frame as the companion app sends it, with no time in the file: the camera's EXIF and 35 mm focal length."""
+    frame = _frame()
+    exif = Image.Exif()
+    exif[0x010F], exif[0x0110] = "Apple", "iPhone 18 Pro, 24 mm f/1.78"
+    exif.get_ifd(0x8769)[0xA405] = 24
+    buf = io.BytesIO()
+    Image.fromarray(frame.rgb, mode="RGB").save(buf, format="PNG", exif=exif.tobytes(), compress_level=1)
+    return buf.getvalue()
+
+
+def test_a_photo_whose_lent_moment_is_wrong_still_gets_the_solve_its_stars_give(client: TestClient) -> None:
+    # The record lends a time seven hours off and no heading: the horizon search at that moment finds nothing, and the
+    # blind search over the whole sky, which the photo alone would get, calibrates it
+    spec = _frame().spec
+    body = _timeless_png()
+    resp = client.post("/api/ingest", content=body, headers={"content-type": "image/png"})
+    assert resp.status_code == 201, resp.text
+    sha = hashlib.sha256(body).hexdigest()
+    record = _record(sha, 0.0, 0.0, heading=False)
+    wrong = datetime.fromisoformat(spec.utc.replace("Z", "+00:00")) + timedelta(hours=7)
+    record["capturedAtDeviceClockUTC"] = wrong.strftime("%Y-%m-%dT%H:%M:%SZ")
+    put = client.put(f"/api/ingest/{sha}/pointing", content=json.dumps(record), headers={"content-type": "application/json"})
+    assert put.status_code == 201, put.text
+    job = client.post(f"/api/ingest/{sha}/solve").json()
+    deadline = time.monotonic() + 300.0
+    while job.get("state") in ("queued", "running") and time.monotonic() < deadline:
+        time.sleep(0.02)
+        job = client.get(f"/api/ingest/jobs/{job['id']}").json()
+    assert job["state"] == "succeeded", (job.get("error"), job.get("stages"))
+    solution = client.get(f"/api/ingest/{sha}/solution").json()
+    assert solution["status"] == "calibrated", solution["warnings"]
+    assert [f for f in solution["findings"] if f["evidenceClass"] == "catalog_matched"]
+    hint = solution["pointingHint"]
+    assert hint["usedAs"] == ["moment"] and (hint["timeFrom"], hint["placeFrom"]) == ("record", "record")

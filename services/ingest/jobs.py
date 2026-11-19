@@ -448,21 +448,42 @@ def _solve_chain(
     hint_dec_deg: float | None = None,
     hint_radius_deg: float | None = None,
     triangle_radius_deg: float | None = None,
+    moment_lent: bool = False,
     **chain: Any,
 ):
     """The searches (`_solve_chain_once`), with a pointing record's centre hint first when there is one; when the
     hinted searches do not calibrate, the searches once more without it, in the same child under the same bound, and
     their solution when it calibrates (REQ-IOS-2.2: the verified WCS wins over a hint outside its uncertainty, which
     `pointing_hint_for` then records as a warning; pointing-4 v2, AUDIT's read of 2026-11-19). A hint can narrow the
-    searches, never stand between a photo and the solve it gets without one; the held-out gate is the same in both."""
+    searches, never stand between a photo and the solve it gets without one; the held-out gate is the same in both.
+
+    When the record lent the time or the place (`moment_lent`) and still nothing calibrated, the searches once more
+    with no time and no place, so the phone solver's whole-sky blind search runs as it would for the photo alone, its
+    solution kept only when it calibrates (the lead's answer of 2026-11-19 13:20: a lent moment must never cost a photo
+    a solve it gets alone). The predicted sky still uses the lent moment."""
     solution = _solve_chain_once(
         solve_image, detections, width, height, on_event=on_event, hint_ra_deg=hint_ra_deg, hint_dec_deg=hint_dec_deg,
         hint_radius_deg=hint_radius_deg, triangle_radius_deg=triangle_radius_deg, **chain,
     )
-    if hint_ra_deg is None or solution.status == "calibrated":
+    if solution.status == "calibrated":
         return solution
-    unhinted = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, **chain)
-    return unhinted if unhinted.status == "calibrated" else solution
+    if hint_ra_deg is not None:
+        unhinted = _solve_chain_once(solve_image, detections, width, height, on_event=on_event, **chain)
+        if unhinted.status == "calibrated":
+            return unhinted
+    if moment_lent:
+        blind = _solve_chain_once(
+            solve_image, detections, width, height, on_event=on_event,
+            **{**chain, "obs_utc_iso": None, "lat_deg": None, "lon_deg": None},
+        )
+        if blind.status == "calibrated":
+            # The stars alone placed it; the solution states the solve's own (lent) time and place, as the hinted one
+            # would, so the predicted sky and the pointing hint read the same moment
+            return replace(
+                blind, observed_at_utc=chain.get("obs_utc_iso"), observer_lat=chain.get("lat_deg"),
+                observer_lon=chain.get("lon_deg"),
+            )
+    return solution
 
 
 def _solve_chain_once(
@@ -880,6 +901,8 @@ def solve_upload(ctx: SolveContext) -> ObservationSolution:
         hint_dec_deg=None if search is None else search.dec_deg,
         hint_radius_deg=None if search is None else search.uncertainty_deg,
         triangle_radius_deg=None if search is None else triangle_hint_radius_deg(search),
+        # The record lent the time or the place: the blind search stays open to the photo (the lead, 13:20)
+        moment_lent=moment_hint is not None,
     )
     read_for_pose: list[list[tuple[float, np.ndarray]]] = []
 
