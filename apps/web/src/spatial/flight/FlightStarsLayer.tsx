@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ObservationSession } from '@albedian/contracts';
 import type { Vec3 } from '@albedian/camera-rig';
 import { CatalogStarTileLoader } from '../catalogStars/CatalogStarTileLoader.js';
@@ -6,10 +6,13 @@ import { STAR_CATALOG_BASE_URL } from '../catalogStars/field/fieldTypes.js';
 import { catalogStarTint } from '../catalogStars/catalogStarTint.js';
 import { usesBMinusV, type CatalogStarCoreTile } from '../catalogStars/tileCodec.js';
 import type { CatalogStarView } from '../catalogStars/tileLoaderTypes.js';
-import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf, flightViewCone, type FlightCamera } from './flightFrame.js';
+import { FLIGHT_DRAW_LIMIT_MAG, buildFlightTileArrays, flightCameraOf, flightViewCone } from './flightFrame.js';
 import { FLIGHT_STAR_FRAGMENT, FLIGHT_STAR_VERTEX, flightStarUniforms } from './flightStarShader.js';
 import { FlightCraftLayer } from './FlightCraftLayer.js';
 import { craftFromSearch, type Craft } from './crafts.js';
+import { ConeLayer } from './ConeLayer.js';
+import { coneLengthPc, coneStarView, dragOrbit, initialOrbit, isConeViewOn, zoomOrbit, type OrbitState } from './coneView.js';
+import { starViewOfFlight, type StarView } from './starView.js';
 
 /**
  * The flight's catalog stars (REQ-SCN-2), drawn over the There screen's panorama after Go there: Gaia DR3 and
@@ -115,7 +118,7 @@ function uploadTile(gpu: Gpu, tile: CatalogStarCoreTile, reference: Vec3, existi
   return { tile, vao, buffers, referenceKey: keyOfReference(reference), skySphere: arrays.skySphereCount };
 }
 
-function drawFrame(gpu: Gpu, camera: FlightCamera, canvas: HTMLCanvasElement, pixelRatio: number): void {
+function drawFrame(gpu: Gpu, camera: StarView, canvas: HTMLCanvasElement, pixelRatio: number): void {
   const { gl, program, uniforms } = gpu;
   // A new star flown to rebases every tile on its place (the floating origin)
   const refKey = keyOfReference(camera.referencePc);
@@ -158,7 +161,16 @@ export const FlightStarsLayer: React.FC<{
   openTiles?: OpenFlightTiles;
   /** pilot-1: a NASA craft drawn in the view; by default the one the page address asks for (`?craft=`), INTERIM. */
   craft?: Craft | null;
-}> = ({ session, viewportWidthPx, viewportHeightPx, openTiles = openCatalogTiles, craft = typeof window === 'undefined' ? null : craftFromSearch(window.location.search) }) => {
+  /** cone-1: the third-person view of the photo's cone; by default as the page address asks (`?view=cone`), INTERIM. */
+  cone?: boolean;
+}> = ({
+  session,
+  viewportWidthPx,
+  viewportHeightPx,
+  openTiles = openCatalogTiles,
+  craft = typeof window === 'undefined' ? null : craftFromSearch(window.location.search),
+  cone = isConeViewOn(session),
+}) => {
   const canvas = useRef<HTMLCanvasElement>(null);
   const gpu = useRef<Gpu | null>(null);
   const source = useRef<FlightTileSource | null>(null);
@@ -169,8 +181,19 @@ export const FlightStarsLayer: React.FC<{
     () => flightCameraOf(session, viewportWidthPx, viewportHeightPx),
     [session.observationSolution, session.sourceAsset, session.cropTransform, session.selectedFindingId, session.spatialView?.observerOriginParsec, viewportWidthPx, viewportHeightPx]
   );
+  const coneLength = useMemo(() => coneLengthPc(session), [session.observationSolution]);
+  const [orbit, setOrbit] = useState<OrbitState>(() => initialOrbit(coneLength));
+  // The camera the stars are drawn through: the photo's own in the flight, the orbit camera in the cone view
+  const view = useMemo<StarView | null>(
+    () => (camera ? (cone ? coneStarView(session, orbit, viewportWidthPx, viewportHeightPx) : starViewOfFlight(camera)) : null),
+    [camera, cone, orbit, session.observationSolution, viewportWidthPx, viewportHeightPx]
+  );
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
+  const onDrag = useCallback((dx: number, dy: number) => setOrbit((o) => dragOrbit(o, dx, dy)), []);
+  const onWheel = useCallback((dy: number) => setOrbit((o) => zoomOrbit(o, dy, coneLength)), [coneLength]);
 
   // The GL program and the tile source, once per mount
   useEffect(() => {
@@ -184,10 +207,10 @@ export const FlightStarsLayer: React.FC<{
     gpu.current = made;
     const onTile = (tile: CatalogStarCoreTile) => {
       const g = gpu.current;
-      const cam = cameraRef.current;
-      if (!current || !g || !cam || !canvas.current) return;
+      const v = viewRef.current;
+      if (!current || !g || !v || !canvas.current) return;
       const key = `${tile.layer}/${tile.pix}`;
-      const entry = uploadTile(g, tile, cam.referencePc, g.tiles.get(key));
+      const entry = uploadTile(g, tile, v.referencePc, g.tiles.get(key));
       if (!entry) return;
       g.tiles.set(key, entry);
       let stars = 0;
@@ -197,7 +220,7 @@ export const FlightStarsLayer: React.FC<{
         skySphere += t.skySphere;
       }
       setCounts({ stars, skySphere });
-      drawFrame(g, cam, canvas.current, dpr);
+      drawFrame(g, v, canvas.current, dpr);
       setState('drawn');
     };
     void openTiles(onTile).then(
@@ -230,29 +253,32 @@ export const FlightStarsLayer: React.FC<{
     };
   }, [openTiles, dpr]);
 
-  // The window's sky for the loader when the photo, its frame or the window changes (the flight's orientation is fixed)
+  // The photo's sky for the loader when the photo, its frame or the window changes (the flight's orientation is fixed;
+  // the cone view shows the same stars, around the photo's cone)
   useEffect(() => {
     if (camera && source.current) source.current.setView(flightViewCone(camera));
   }, [camera?.wcs, camera?.storedToScreen]);
 
-  // Every change of where the camera stands draws a frame
+  // Every change of where the camera stands, or of the orbit, draws a frame
   useEffect(() => {
     const g = gpu.current;
-    if (g && camera && canvas.current && g.tiles.size > 0) drawFrame(g, camera, canvas.current, dpr);
-  }, [camera, dpr]);
+    if (g && view && canvas.current && g.tiles.size > 0) drawFrame(g, view, canvas.current, dpr);
+  }, [view, dpr]);
 
-  const fromEarthPc = camera ? Math.hypot(camera.observerPc[0], camera.observerPc[1], camera.observerPc[2]) : 0;
+  const at = view?.observerPc ?? [0, 0, 0];
+  const fromEarthPc = Math.hypot(at[0], at[1], at[2]);
   return (
     <>
     <div
       className="flight-stars"
       data-testid="flight-stars"
       data-state={state}
+      data-view={cone ? 'cone' : 'flight'}
       data-stars={counts.stars}
       data-sky-sphere={counts.skySphere}
       data-from-earth-pc={fromEarthPc.toFixed(4)}
       aria-hidden="true"
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'screen' }}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: cone ? 'normal' : 'screen', background: cone ? '#000' : undefined }}
     >
       <canvas
         ref={canvas}
@@ -261,7 +287,8 @@ export const FlightStarsLayer: React.FC<{
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
       />
     </div>
-    {craft && camera && <FlightCraftLayer camera={camera} craft={craft} />}
+    {cone && view && <ConeLayer session={session} view={view} lengthPc={coneLength} onDrag={onDrag} onWheel={onWheel} />}
+    {!cone && craft && camera && <FlightCraftLayer camera={camera} craft={craft} />}
     </>
   );
 };

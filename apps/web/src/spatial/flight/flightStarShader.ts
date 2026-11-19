@@ -1,5 +1,4 @@
-import { distortionFoldRadiusRad, wcsCameraRows } from '@albedian/camera-rig';
-import type { FlightCamera } from './flightFrame.js';
+import type { StarView } from './starView.js';
 
 /**
  * The flight layer's shaders (WebGL 2). The vertex shader is `projectPlacementThroughWcs` (packages/camera-rig
@@ -97,25 +96,23 @@ export interface FlightStarUniforms {
   uView: [number, number];
 }
 
-export function flightStarUniforms(camera: FlightCamera): FlightStarUniforms {
-  const rows = wcsCameraRows(camera.wcs);
-  const fold = distortionFoldRadiusRad(camera.wcs);
-  const m = camera.storedToScreen;
+export function flightStarUniforms(view: StarView): FlightStarUniforms {
+  const m = view.storedToScreen;
   // The camera's offset from the reference, in float64 before the cast (the floating origin)
   const eye: [number, number, number] = [
-    camera.observerPc[0] - camera.referencePc[0],
-    camera.observerPc[1] - camera.referencePc[1],
-    camera.observerPc[2] - camera.referencePc[2],
+    view.observerPc[0] - view.referencePc[0],
+    view.observerPc[1] - view.referencePc[1],
+    view.observerPc[2] - view.referencePc[2],
   ];
   return {
     uEye: eye,
-    uRowX: [...rows.x],
-    uRowY: [...rows.y],
-    uRowZ: [...rows.z],
-    uPix: [camera.wcs.crpixX, camera.wcs.crpixY, (camera.wcs.scaleDegPerPx * Math.PI) / 180],
-    uLens: [camera.wcs.radialDistortionK1, camera.wcs.radialDistortionK2, Number.isFinite(fold) ? fold : -1],
+    uRowX: [...view.rows.x],
+    uRowY: [...view.rows.y],
+    uRowZ: [...view.rows.z],
+    uPix: [view.crpixX, view.crpixY, view.scaleRadPerPx],
+    uLens: [view.k1, view.k2, Number.isFinite(view.foldRad) ? view.foldRad : -1],
     uAffX: [m[0], m[1], m[2]],
     uAffY: [m[3], m[4], m[5]],
-    uView: [camera.viewportWidthPx, camera.viewportHeightPx],
+    uView: [view.viewportWidthPx, view.viewportHeightPx],
   };
 }
