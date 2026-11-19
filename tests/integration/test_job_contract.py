@@ -322,11 +322,12 @@ READING: list[tuple[list[tuple[str, str]], Any]] = [
      and ("attemptId" not in has or st in ("succeeded", "rejected", "failed"))
      and (st != "succeeded" or ({"solutionId"} <= has if g == "solve" else {"attemptId", "variantId"} <= has))
      and (st != "rejected" or "attemptId" in has)),
-    ([("design 3.8", "Per kind: `solutionId` and `inputSpan` only for solve; `request`, `graphId`, `attemptId`, "
-                     "`variantId` only for the media kinds, which require `request` and `graphId`, with "
-                     "`request.kind` equal to the job's kind.")],
+    ([("design 3.8", "Per kind: `solutionId` and `inputSpan` only for solve; `graphId`, `attemptId`, `variantId` "
+                     "only for the media kinds, which require `request` and `graphId`, with `request.kind` equal to "
+                     "the job's kind; a solve's `request`, when it has one, is the person's alignment it ran from "
+                     "(align-2c, D24's Solve from here), kept from its creation.")],
      lambda g, st, has: (g == "solve" or not {"solutionId", "inputSpan"} & has)
-     and (g == "media" or not {"request", "graphId", "attemptId", "variantId"} & has)
+     and (g == "media" or not {"graphId", "attemptId", "variantId"} & has)
      and (g == "solve" or {"request", "graphId"} <= has)),
     ([("REQ-JOB-2.2", "WHILE a job is `queued`, THE served record SHALL say how many jobs are ahead of it in its "
                       "group's queue in this process, counted at the moment of the answer, and this count SHALL never "

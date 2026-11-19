@@ -459,8 +459,9 @@ Refinements, the same in both languages, each with a named fault in the fixture:
   `interrupted` has a start, a finish and an error, and no result id [changed in platform-1's fourth version to say
   what the table says: a running job's cancel time by the lead's ruling of 2026-11-12, and the start of a failed and
   an interrupted job, which design 4 reaches only from `running`].
-- Per kind: `solutionId` and `inputSpan` only for solve; `request`, `graphId`, `attemptId`, `variantId` only for the
-  media kinds, which require `request` and `graphId`, with `request.kind` equal to the job's kind.
+- Per kind: `solutionId` and `inputSpan` only for solve; `graphId`, `attemptId`, `variantId` only for the media kinds,
+  which require `request` and `graphId`, with `request.kind` equal to the job's kind; a solve's `request`, when it has
+  one, is the person's alignment it ran from (align-2c, D24's Solve from here), kept from its creation.
 - Every stage belongs to the job's kind, appears once, in its kind's order, in one of its units (generalising
   ingest.ts:196-199).
 - `queueAhead` only when `queued` (a served count: the store refuses to write it). `cancelRequestedAtUTC` only on a

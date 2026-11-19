@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PersonAlignmentSchema } from './alignment.js';
 import { FAILURE_SENTENCES, JOB_ID_PATTERN, MEDIA_ID_PATTERNS, RestoreRequestSchema, fillsAnyTemplate } from './media.js';
 import { SHA256_HEX_PATTERN, wireInt, wireNumber, wireUtcInstant } from './wire.js';
 
@@ -110,13 +111,13 @@ export const jobStateRow = (letters: string, errors: JobStateRow['errors']): Job
 //                    start fin  err  sol  att  var  span cancel queue prod req graph work sky
 export const JOB_STATE_TABLE: Record<'solve' | 'media', Record<State, JobStateRow | null>> = {
   solve: {
-    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    F   F     F    F', 'none'),
-    running:     jobStateRow('R    F    F    F    F    F    E    S      F     A    F   F     E    S', 'none'),
-    succeeded:   jobStateRow('R    R    F    R    F    F    E    S      F     A    F   F     E    S', 'none'),
+    queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    E   F     F    F', 'none'),
+    running:     jobStateRow('R    F    F    F    F    F    E    S      F     A    E   F     E    S', 'none'),
+    succeeded:   jobStateRow('R    R    F    R    F    F    E    S      F     A    E   F     E    S', 'none'),
     rejected:    null,
-    failed:      jobStateRow('R    R    R    F    F    F    E    S      F     A    F   F     E    S', 'failure'),
-    canceled:    jobStateRow('E    R    F    F    F    F    S    A      F     A    F   F     S    S', 'none'),
-    interrupted: jobStateRow('R    R    R    F    F    F    E    S      F     A    F   F     E    S', 'interrupted'),
+    failed:      jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S', 'failure'),
+    canceled:    jobStateRow('E    R    F    F    F    F    S    A      F     A    E   F     S    S', 'none'),
+    interrupted: jobStateRow('R    R    R    F    F    F    E    S      F     A    E   F     E    S', 'interrupted'),
   },
   media: {
     queued:      jobStateRow('F    F    F    F    F    F    F    F      E     A    R   R     F    F', 'none'),
@@ -175,7 +176,8 @@ const UploadJobShape = {
     solutionId: pattern(MEDIA_ID_PATTERNS.solution).optional(),
     error: z.string().optional(),
     producer: JobProducerSchema.optional(),
-    request: RestoreRequestSchema.optional(),
+    // A media job's request, or the person's alignment a solve ran from (align-2c, D24's Solve from here)
+    request: z.union([RestoreRequestSchema, PersonAlignmentSchema]).optional(),
     graphId: pattern(MEDIA_ID_PATTERNS.graph).optional(),
     attemptId: pattern(MEDIA_ID_PATTERNS.attempt).optional(),
     variantId: pattern(MEDIA_ID_PATTERNS.variant).optional(),
@@ -212,7 +214,11 @@ export const UploadJobSchema = z
     const start = started ? Date.parse(job.startedAtUTC!) : undefined;
     const end = finished ? Date.parse(job.finishedAtUTC!) : undefined;
     if ((start !== undefined && start < created) || (end !== undefined && end < (start ?? created))) fail(M.times);
-    if (media && job.request !== undefined && job.request.kind !== job.kind) fail(M.requestKind);
+    if (job.request !== undefined) {
+      const request = job.request as Record<string, unknown>;
+      const ofKind = media ? request.kind === job.kind : request.source === 'person';
+      if (!ofKind) fail(M.requestKind);
+    }
     const order = Object.keys(JOB_STAGE_UNITS[job.kind]);
     if (job.stages.some((stage) => !order.includes(stage.stage))) {
       fail(M.stageKind);

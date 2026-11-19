@@ -23,11 +23,12 @@ from __future__ import annotations
 import copy
 from datetime import datetime
 import math
-from typing import Annotated, Any, ClassVar, Literal, Optional
+from typing import Annotated, Any, ClassVar, Literal, Optional, Union
 
 from pydantic import Field, StringConstraints, model_validator
 
 from services.contracts.ingest import JOB_ID_PATTERN
+from services.contracts.alignment import PersonAlignment
 from services.contracts.media import FAILURE_SENTENCES, MEDIA_ID_PATTERNS, RestoreRequest, fills_any_template
 from services.contracts.wire import MAX_SAFE_INTEGER, SHA256_HEX_PATTERN, UtcInstant, WireInt, WireModel, WireNumber
 
@@ -104,7 +105,8 @@ JOB_MESSAGES = (M_DONE, M_SPAN, M_STATE, M_TIMES, M_REQUEST_KIND, M_STAGE_KIND, 
 # job becomes interrupted, with one sentence (3.2), and a queued one runs again (3.3); only the media kinds end rejected
 # (3.7); a queued job is canceled at once (4.1) and a cancel time is recorded once it runs (4.2, 4.3); a result is named
 # only by a succeeded job (4.5, 5.4), the rejected one naming its attempt (design 3.8); a media job names its request
-# and graph and a solve neither (design 3.8).
+# and graph and a solve no graph (design 3.8); a solve's request, when it has one, is the person's alignment it ran
+# from (align-2c: D24's Solve from here), written at its creation and kept in every state.
 # A job reaches succeeded, rejected, failed and interrupted only from running, and canceled from queued or running
 # (design 4), so only a canceled job may hold no start; once it started, the cancel was asked and recorded (4.2). A
 # record never drops a true thing it recorded (the lead's ruling, 2026-11-12, from 4.2 and 4.3): a cancel time asked of a
@@ -121,13 +123,13 @@ _RULES = {"R": "required", "F": "forbidden", "E": "either", "S": "started", "A":
 #                     start fin  err  sol  att  var  span cancel queue prod req graph work sky  errors
 _STATE_ROWS: dict[str, dict[str, Optional[tuple[str, str]]]] = {
     "solve": {
-        "queued":      ("F    F    F    F    F    F    F    F      E     A    F   F     F    F", "none"),
-        "running":     ("R    F    F    F    F    F    E    S      F     A    F   F     E    S", "none"),
-        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    F   F     E    S", "none"),
+        "queued":      ("F    F    F    F    F    F    F    F      E     A    E   F     F    F", "none"),
+        "running":     ("R    F    F    F    F    F    E    S      F     A    E   F     E    S", "none"),
+        "succeeded":   ("R    R    F    R    F    F    E    S      F     A    E   F     E    S", "none"),
         "rejected":    None,
-        "failed":      ("R    R    R    F    F    F    E    S      F     A    F   F     E    S", "failure"),
-        "canceled":    ("E    R    F    F    F    F    S    A      F     A    F   F     S    S", "none"),
-        "interrupted": ("R    R    R    F    F    F    E    S      F     A    F   F     E    S", "interrupted"),
+        "failed":      ("R    R    R    F    F    F    E    S      F     A    E   F     E    S", "failure"),
+        "canceled":    ("E    R    F    F    F    F    S    A      F     A    E   F     S    S", "none"),
+        "interrupted": ("R    R    R    F    F    F    E    S      F     A    E   F     E    S", "interrupted"),
     },
     "media": {
         "queued":      ("F    F    F    F    F    F    F    F      E     A    R   R     F    F", "none"),
@@ -232,7 +234,8 @@ class UploadJob(WireModel):
     solution_id: Optional[_pattern(MEDIA_ID_PATTERNS["solution"])] = None
     error: Optional[str] = None
     producer: Optional[JobProducer] = None
-    request: Optional[RestoreRequest] = None
+    # A media job's request, or the person's alignment a solve ran from (align-2c, D24's Solve from here)
+    request: Optional[Union[RestoreRequest, PersonAlignment]] = None
     graph_id: Optional[_pattern(MEDIA_ID_PATTERNS["graph"])] = None
     attempt_id: Optional[_pattern(MEDIA_ID_PATTERNS["attempt"])] = None
     variant_id: Optional[_pattern(MEDIA_ID_PATTERNS["variant"])] = None
@@ -258,7 +261,10 @@ class UploadJob(WireModel):
         created, start, end = _instant(self.created_at_utc), _instant(self.started_at_utc), _instant(self.finished_at_utc)
         if (start is not None and start < created) or (end is not None and end < (start or created)):
             failures.append(M_TIMES)
-        if media and self.request is not None and self.request.kind != self.kind:
+        if self.request is not None and not (
+            isinstance(self.request, RestoreRequest) and self.request.kind == self.kind if media
+            else isinstance(self.request, PersonAlignment)
+        ):
             failures.append(M_REQUEST_KIND)
         order = list(JOB_STAGE_UNITS[self.kind])
         if any(stage.stage not in order for stage in self.stages):
@@ -398,13 +404,17 @@ def build_job_samples() -> dict[str, Any]:
     # A cancel asked of a running job stays when the server then stops, or the restoration's check refuses
     interrupted_after_cancel = {**solve["interrupted"], "cancelRequestedAtUTC": "2031-05-02T19:20:04Z"}
     rejected_after_cancel = {**media["rejected"], "cancelRequestedAtUTC": "2031-05-02T19:20:04Z"}
+    # A solve that ran from a person's alignment (align-2c) holds it in every state
+    alignment = {"format": "albedian.person-alignment", "formatVersion": 1, "source": "person", "centerAltDeg": 41.5,
+                 "centerAzDeg": 128.25, "rollDeg": -6.0, "fovDiagonalDeg": 68.5}
+    aligned = [{**record, "request": alignment} for record in solve.values()]
     # A solve that published the sky predicted from an early pose while it ran, and kept saying so when it ended
     sky_at = "2031-05-02T19:20:20Z"
     running_with_sky = {**solve["running"], "predictedSkyAtUTC": sky_at}
     succeeded_with_sky = {**solve["succeeded"], "predictedSkyAtUTC": sky_at}
     valid = [*solve.values(), *media.values(), display, interrupted_media, canceled_queued_solve,
              canceled_queued_media, interrupted_after_cancel, rejected_after_cancel, running_with_sky,
-             succeeded_with_sky]
+             succeeded_with_sky, *aligned]
 
     invalid: list[dict[str, Any]] = []
 
@@ -438,7 +448,10 @@ def build_job_samples() -> dict[str, Any]:
     bad(_with(media["succeeded"], ["solutionId"], "sol_0a1b2c3d4e5f6071"), "a media job has no solution", M_STATE)
     bad(_with(media["succeeded"], ["inputSpan"], span), "a media job has no frame span", M_STATE)
     bad(_with(solve["queued"], ["graphId"], "graph_7e6f5a4b3c2d1e0f"), "a solve has no graph", M_STATE)
-    bad(_with(solve["queued"], ["request"], {"kind": "restoration"}), "a solve has no request", M_STATE)
+    bad(_with(solve["queued"], ["request"], {"kind": "restoration"}), "a solve's request is a person's alignment", M_REQUEST_KIND)
+    bad(_with(solve["succeeded"], ["request"], {"kind": "display_copy"}), "a solve takes no media request", M_REQUEST_KIND)
+    bad(_with(display, ["request"], alignment), "a media job's request is of its kind, never an alignment", M_REQUEST_KIND)
+    bad(_with(media["succeeded"], ["request"], alignment), "a restoration's request is never an alignment", M_REQUEST_KIND)
     bad(_with(display, ["request"], _DROP), "a media job names its request", M_STATE)
     bad(_with(display, ["graphId"], _DROP), "a media job names its graph", M_STATE)
     # The audit's cases: work counted on a job that never started, an interrupted job that never started, a result id
@@ -576,7 +589,10 @@ def build_job_samples() -> dict[str, Any]:
                   "solutionId": "sol_0a1b2c3d4e5f6071", "attemptId": "att_7e6f5a4b3c2d1e0f",
                   "variantId": "var_7e6f5a4b3c2d1e0f", "inputSpan": span, "cancelRequestedAtUTC": "2031-05-02T19:20:04Z",
                   "queueAhead": 0, "producer": producer, "predictedSkyAtUTC": "2031-05-02T19:20:20Z",
-                  "request": {"kind": "restoration", "exposureEv": 1.5} if kind != "display_copy" else {"kind": kind},
+                  "request": ({"format": "albedian.person-alignment", "formatVersion": 1, "source": "person",
+                               "centerAltDeg": 41.5, "centerAzDeg": 128.25, "rollDeg": -6.0, "fovDiagonalDeg": 68.5}
+                              if kind == "solve" else {"kind": "restoration", "exposureEv": 1.5} if kind != "display_copy"
+                              else {"kind": kind}),
                   "graphId": "graph_7e6f5a4b3c2d1e0f"}
         for field in JOB_STATE_FIELDS:
             if field != "workStages" and presence[field]:
@@ -603,23 +619,31 @@ def build_job_samples() -> dict[str, Any]:
 
     # Every key of every valid record dropped at every level: refused where the key is required, and where an
     # optional field's absence breaks the state table; otherwise taken
-    def model_at(path: tuple) -> Any:
+    def model_at(record: dict[str, Any], path: tuple) -> Any:
+        """The model that reads the object at `path`: of a union (a request is a media request or an alignment), the
+        one whose fields name every key the object holds."""
         model: Any = UploadJob
-        for key in [k for k in path if not isinstance(k, int)]:
+        for depth, key in enumerate(path):
+            if isinstance(key, int):
+                continue
             field = next(f for n, f in model.model_fields.items() if (f.alias or n) == key)
+            keys = set(_at(record, path[: depth + 1])) if isinstance(_at(record, path[: depth + 1]), dict) else set()
             stack, model = [field.annotation], None
             while stack:
                 kind_ = stack.pop()
                 if isinstance(kind_, type) and hasattr(kind_, "model_fields"):
-                    model = kind_
-                    break
+                    names = {f.alias or n for n, f in kind_.model_fields.items()}
+                    if keys <= names:
+                        model = kind_
+                        break
+                    continue
                 stack.extend(getattr(kind_, "__args__", ()))
         return model
 
     dropped: list[dict[str, Any]] = []
     for index, record in enumerate(valid):
         for path in _object_paths(record):
-            model = model_at(path)
+            model = model_at(record, path)
             for key in list(_at(record, path)):
                 field = next(f for n, f in model.model_fields.items() if (f.alias or n) == key)
                 if field.is_required():
