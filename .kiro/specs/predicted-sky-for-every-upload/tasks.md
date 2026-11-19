@@ -67,6 +67,12 @@ lead's checkpoint of 2026-11-11 (the lead's `.lead/HANDOFF.md` has the commits, 
   - Also there: `docs/science/PREDICTED_SKY.md` labels the roll claim (that the level-pose count did not change
     between the swept rolls) "[tested, not proven]", while the design derives the one-pose test from the closed form
     [inference] (verdict `sky-3b.md`, left alone (3)); bring the two into line. Done in sky-4: both say [inference].
+  - sky-4 itself landed as `b98f55cf` (REQ-SKY-4.1, 4.2, 4.4: `horizon_pose_solution` in
+    `services/science/predicted_sky.py`, `solve_horizon_and_beacon_pose` in `services/media/discovery.py`, the
+    topocentric Moon in `services/science/pose_estimate.py`). Missing: the separate small unit for REQ-SKY-5.4; on
+    `main` at `698e9c50` neither `ObservationSolutionSchema` (`packages/contracts/src/astronomy.ts`) nor
+    `ObservationSolution` (`services/science/wcs_models.py`) refuses an `approximate` solution without a
+    `poseEstimate`.
   - _Requirements: REQ-SKY-4.1, 4.2, 4.4, 5.4_
 
 - [ ] 6. sky-6: the Sun as the beacon in daytime photos (REQ-SKY-4.3)

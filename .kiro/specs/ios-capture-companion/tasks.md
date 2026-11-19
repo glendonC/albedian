@@ -7,18 +7,22 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
 
 - [x] 0. The owner confirms `requirements.md` in this folder (2026-11-11, `.lead/APPROVALS.md`).
 
-- [ ] 1. pointing-1: the design, these tasks and the pointing record contract (REQ-IOS-7; P4)
+- [x] 1. pointing-1: the design, these tasks and the pointing record contract (REQ-IOS-7; P4)
   - `design.md`, `tasks.md`; `PointingRecordSchema` in `packages/contracts/src/pointing.ts` (exported from the
     package index), `PointingRecord` in `services/contracts/pointing.py`, the shared fixture
     `tests/fixtures/pointing_contract.json`, `tests/integration/test_pointing_contract.py`,
     `packages/contracts/src/__tests__/pointing.test.ts`, the schema name in `scripts/verify-contracts.mjs`.
-  - Built on branch `claude/lane-pointing-4f7fd0`; not yet audited.
+  - Landed as `ff8f2630` (audits: FAIL three times, then PASS on the fourth version).
   - _Requirements: REQ-IOS-1.2, 1.3, REQ-IOS-2 (the evidence statement), REQ-IOS-6.2, REQ-IOS-7.1_
 
 - [ ] 2. pointing-2: receive the record (REQ-IOS-4.1, REQ-IOS-6.1; P3)
   - `PUT` and `GET /api/ingest/{sha256}/pointing` in `services/ingest/router.py`, the record stored beside the
     receipt by `services/ingest/store.py`; the rules of design component 4 (404, 422, 409, 200); no record value in
     any log or error. P3: the stored bytes and SHA-256 equal the uploaded ones, with a record and without.
+  - Split in two. pointing-2a, the route's reply contract (`packages/contracts/src/pointing-reply.ts`,
+    `services/contracts/pointing_reply.py`, the shared fixture `tests/fixtures/pointing_reply_contract.json`), landed
+    as `61fa49b2` (audits: FAIL, then PASS on the second version). Missing: pointing-2b, the two routes and the
+    stored record; `services/ingest/router.py` has no pointing route on `main` at `698e9c50`.
   - _Requirements: REQ-IOS-1.1, REQ-IOS-4.1, REQ-IOS-6.1_
 
 - [ ] 3. pointing-3: the contract changes a pose from the record needs (design component 6)
@@ -39,13 +43,14 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     heading accuracy, field of view, zoom and roll, widened by the motion window; no sensor pose without a heading.
   - _Requirements: REQ-IOS-2.3; spec `predicted-sky-for-every-upload` REQ-SKY-3 to 6_
 
-- [ ] 6. mobile-0: the app's project, these mobile tasks and the tested core
+- [x] 6. mobile-0: the app's project, these mobile tasks and the tested core
   - `apps/ios/`: an Xcode project for an iPhone app (iOS 26.0, simulator builds only, no signing team), the Swift
     package `AlbedianCaptureCore` (the pointing record built from sensor readings, its wire JSON, a third reading of
     the shared fixture, the upload client for the proposed `PUT /api/ingest/{sha256}/pointing`), one plain screen in
     system default style to run the pipeline by hand with sample values; the `mobile` row in `AGENTS.md`.
   - Needs first: pointing-1 (the contract and its fixture).
   - Only on an iPhone: nothing; this unit reads no sensor and no camera.
+  - Landed as `893a074c` (audits: FAIL six times, then PASS on the seventh version).
   - _Requirements: REQ-IOS-1.2, 1.3, REQ-IOS-4.2 (bytes sent), REQ-IOS-6.1 (no device name, nothing logged),
     REQ-IOS-7.1 (P4 in Swift)_
 
@@ -62,6 +67,8 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     top to true north, then tilted up); Core Location's true heading against the attitude's azimuth of the
     `headingOrientation` axis; gravity's length at rest, for the band; the motion rate delivered. Each result goes
     to the design as counts and differences only, never a place or a time.
+  - The code landed as `74c406f5` (audits: FAIL, then PASS on the second version). Missing: the device checks
+    above; none is recorded in `design.md` (components 1 and 5 still say [open] or [inference] for each).
   - _Requirements: REQ-IOS-1.2, 1.3, REQ-IOS-6.2_
 
 - [ ] 8. mobile-2: the camera, and the photo exactly as written
@@ -79,6 +86,9 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
   - Only on an iPhone: the simulator has no camera. Checks: the host clock and `CMLogItem.timestamp` count the same
     seconds; whether `AVCapturePhoto.metadata` holds an EXIF time and its offset; which axis "horizontal" field of
     view refers to; `photoDimensions` for RAW (zero by zero, per Apple); what the HEIC file holds (no GPS block).
+  - The code landed as `9b087d1c` (the sixth version's audit was a FAIL on tests in `OffMainActorTests.swift`
+    alone; the lead landed it in the batch of 2026-11-18). Missing: the device checks above, none recorded in
+    `design.md`, and the iOS 26 field of view per aspect ratio, still [open].
   - _Requirements: REQ-IOS-1.1, 1.2, REQ-IOS-4.3, REQ-IOS-6.1_
 
 - [ ] 9. mobile-3: pairing and sending
@@ -89,6 +99,12 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     says so).
   - Only on an iPhone: the phone's hotspot with the laptop joined; the local network prompt; plain http to an IP
     address under `NSAllowsLocalNetworking`; a full-size HEIC upload's byte counts.
+  - Not on `main` as written. On `main`: `NSLocalNetworkUsageDescription` and `NSAllowsLocalNetworking` in
+    `apps/ios/AlbedianCapture-Info.plist`, the uploader's send of a kept capture in the core, and the transport's
+    hardening (`1cf24ed6`, mobile-fix-1). The unit reported and landed under the name mobile-3 (`69dca733`, the
+    approved controls, logo, Geist and Phosphor icons) is not this task. Missing: the address is not kept on the
+    phone (`apps/ios/AlbedianCapture/PipelineModel.swift` starts it empty each launch), and no screen sends the
+    stored captures, keeps each one's state with its reason, or retries on the person's request.
   - _Requirements: REQ-IOS-4.1, 4.2 (upload), 4.3_
 
 - [ ] 10. mobile-4: the solve and the result
