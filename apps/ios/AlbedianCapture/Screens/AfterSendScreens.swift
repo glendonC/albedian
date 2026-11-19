@@ -22,9 +22,19 @@ struct WaitingScreen: View {
                 ShotPhoto(shot: model.shot, width: width).atTop(Arrive.photoTop)
                 // D31: the early marks over the photo, from the phone's own record (predicted until matched)
                 if let pose = model.earlyPose, earlyDrawn {
-                    SkyOverlayView(marks: model.earlyMarks, attitude: pose.attitude, acrossFovDeg: pose.acrossPortraitWidthDeg,
-                                   width: width, height: width * 4 / 3)
-                        .atTop(Arrive.photoTop)
+                    if let pass = model.lockOnPass {
+                        LockOnLayer(placed: SkyOverlayView.placed(model.earlyMarks, attitude: pose.attitude,
+                                                                  acrossFovDeg: pose.acrossPortraitWidthDeg, width: width,
+                                                                  height: width * 4 / 3),
+                                    targets: LockOnTravel.targets(early: model.earlyMarks, readout: pass.readout, frame: pass.frame,
+                                                                  widthPt: width, heightPt: width * 4 / 3),
+                                    settled: model.lockOnSettled, width: width, height: width * 4 / 3)
+                            .atTop(Arrive.photoTop)
+                    } else {
+                        SkyOverlayView(marks: model.earlyMarks, attitude: pose.attitude, acrossFovDeg: pose.acrossPortraitWidthDeg,
+                                       width: width, height: width * 4 / 3)
+                            .atTop(Arrive.photoTop)
+                    }
                 }
                 IconButton(icon: .close, label: "Close", action: model.close)
                     .atTop(Arrive.topControls, alignment: .leading).padding(.leading, CGFloat(Arrive.edge))
@@ -50,6 +60,67 @@ struct WaitingScreen: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// D31 item 3 with MOTION-READY-iphone section 5: each early ring the solve matched travels to its detection, all
+/// together in 0.4 s on (0.16, 1, 0.3, 1), no spring; every other ring, and the names, leave on the same timing; at rest
+/// each ring becomes the result's catalog matched mark in 0.2 s on the standard curve. Under Reduce Motion nothing
+/// travels: the early rings go and the matched marks come, together, in a 0.27 s dissolve.
+private struct LockOnLayer: View {
+    let placed: [(SkyMark, CGPoint)]
+    let targets: [String: (x: Double, y: Double)]
+    let settled: Bool
+    let width: Double
+    let height: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var moved = false
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(placed, id: \.0.id) { mark, start in
+                let end = targets[mark.id].map { CGPoint(x: $0.x, y: $0.y) }
+                let at = reduceMotion ? start : (moved ? (end ?? start) : start)
+                // The early ring: amber and dashed, gone at rest (or at once under Reduce Motion), or leaving if unmatched
+                Circle()
+                    .stroke(Color(ControlStyle.Evidence.predicted.colour),
+                            style: StrokeStyle(lineWidth: CGFloat(SkyOverlayStyle.ringLineWidthPt),
+                                               dash: SkyOverlayStyle.ringDash.map { CGFloat($0) }))
+                    .frame(width: CGFloat(2 * SkyOverlayStyle.ringRadiusPt), height: CGFloat(2 * SkyOverlayStyle.ringRadiusPt))
+                    .opacity(moved && (end == nil || reduceMotion || settled) ? 0 : 1)
+                    .position(at)
+                if let end {
+                    MatchedMark()
+                        .opacity(reduceMotion ? (moved ? 1 : 0) : (settled ? 1 : 0))
+                        .position(reduceMotion ? end : at)
+                }
+            }
+        }
+        .frame(width: CGFloat(width), height: CGFloat(height), alignment: .topLeading)
+        .animation(reduceMotion ? .easeInOut(duration: MotionStyle.reduceMotionSeconds)
+                                : .motion(MotionStyle.frameIn, reduceMotion: false), value: moved)
+        .animation(reduceMotion ? nil : .motion(MotionStyle.colour, reduceMotion: false), value: settled)
+        .onAppear { moved = true }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The result's catalog matched mark (`CatalogMarks`): a 3.6 pt ring and four ticks in the class's colour.
+private struct MatchedMark: View {
+    var body: some View {
+        Canvas { context, size in
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            let colour = Color(ControlStyle.Evidence.catalogMatched.colour)
+            context.stroke(Path(ellipseIn: CGRect(x: c.x - 3.6, y: c.y - 3.6, width: 7.2, height: 7.2)), with: .color(colour), lineWidth: 1)
+            var ticks = Path()
+            for (dx, dy) in [(0.0, -1.0), (0, 1), (-1, 0), (1, 0)] {
+                ticks.move(to: CGPoint(x: c.x + dx * 5, y: c.y + dy * 5))
+                ticks.addLine(to: CGPoint(x: c.x + dx * 7.5, y: c.y + dy * 7.5))
+            }
+            context.stroke(ticks, with: .color(colour), lineWidth: 1)
+        }
+        .frame(width: 16, height: 16)
     }
 }
 

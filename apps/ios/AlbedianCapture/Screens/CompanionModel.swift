@@ -217,6 +217,8 @@ final class CompanionModel {
         earlyTask?.cancel()
         earlyPose = nil
         earlyMarks = []
+        lockOnPass = nil
+        lockOnSettled = false
         unreachable = false
         shot = nil
         result = nil
@@ -389,11 +391,17 @@ final class CompanionModel {
     /// sky context predicts for its moment and place, asked once when the solve starts; none without either.
     private(set) var earlyPose: EarlyPose?
     private(set) var earlyMarks: [SkyMark] = []
+    /// D31 item 3: the calibrated solution the early rings travel to on the wait, and whether they have come to rest
+    /// (the class change follows the travel).
+    private(set) var lockOnPass: (readout: SolutionReadout, frame: StoredFrame)?
+    private(set) var lockOnSettled = false
     private var earlyTask: Task<Void, Never>?
 
     private func startEarlySky(address: LaptopAddress) {
         earlyTask?.cancel()
         earlyMarks = []
+        lockOnPass = nil
+        lockOnSettled = false
         earlyPose = shot?.recordWire.flatMap { EarlyPose.read(recordWire: $0) }
         guard let pose = earlyPose else { return }
         let client = SkyContextClient(address: address)
@@ -415,7 +423,22 @@ final class CompanionModel {
         switch end {
         case .solved(_, let readout, let frame, let facts):
             result = (readout, frame, facts)
-            screen = .result
+            // D31 item 3: a calibrated solve with early rings drawn passes on the wait first (the travel, then the class
+            // change at rest, MOTION-READY-iphone section 5), then the result; anything else goes straight there
+            guard readout.status == .calibrated, readout.hasWCS, earlyPose != nil, !earlyMarks.isEmpty else {
+                screen = .result
+                return
+            }
+            lockOnPass = (readout, frame)
+            lockOnSettled = false
+            earlyTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(MotionStyle.frameIn.seconds))
+                guard !Task.isCancelled, let self else { return }
+                self.lockOnSettled = true
+                try? await Task.sleep(for: .seconds(MotionStyle.colour.seconds))
+                guard !Task.isCancelled, self.lockOnPass != nil else { return }
+                self.screen = .result
+            }
         case .failed(.networkError), .failed(.timedOut), .failed(.connectionClosed), .failed(.notThePairedPeer):
             unreachable = true
             screen = .afterShot
