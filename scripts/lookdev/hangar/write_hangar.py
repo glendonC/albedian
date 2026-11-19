@@ -136,6 +136,9 @@ def build_facts(models: list[str]) -> dict:
             if sf.get("native")
             else {"part": sf["material"], "metres": sf["metres"], "page": sf["page"], "quote": sf["quote"]}
         )
+        if sf.get("size") == "model":
+            # NASA's model units read as metres with no size NASA states to check them by: the size is the model's own
+            scale_from["size"] = "model"
         if sf.get("quoted_cm") is not None:
             scale_from["quotedCm"] = sf["quoted_cm"]
         if sf.get("quoted_ft") is not None:

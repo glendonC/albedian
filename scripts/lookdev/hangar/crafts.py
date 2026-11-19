@@ -282,9 +282,10 @@ CRAFTS: dict[str, dict] = {
         # The suit stands up +Z and faces -Y in the import frame (its visor there): it moves the way it faces.
         "forward": (0.0, -1.0, 0.0),
         "up": (0.0, 0.0, 1.0),
-        # NASA's model is built in metres (glTF's unit): 1.94 m tall.
+        # NASA's model units read as metres (glTF's unit): 1.94 m tall; the size is the model's own, not one NASA states.
         "scale_from": {
             "native": True,
+            "size": "model",
             "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
             "quote": "fit crewmembers who are sized in the medium ISS EMU HUT",
         },
@@ -468,6 +469,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "scale_from": {
             "native": True,
+            "size": "model",
             "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
             "quote": "NASA's first spacesuits were developed for the Mercury program."
         },
@@ -517,6 +519,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "scale_from": {
             "native": True,
+            "size": "model",
             "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
             "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
         },
@@ -570,6 +573,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "scale_from": {
             "native": True,
+            "size": "model",
             "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
             "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
         },
@@ -620,6 +624,7 @@ CRAFTS: dict[str, dict] = {
         ],
         "scale_from": {
             "native": True,
+            "size": "model",
             "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
             "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized."
         },

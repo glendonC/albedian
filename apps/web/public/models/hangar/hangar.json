@@ -351,7 +351,8 @@
       "scaleFrom": {
         "native": true,
         "page": "https://ntrs.nasa.gov/api/citations/20140009911/downloads/20140009911.pdf",
-        "quote": "fit crewmembers who are sized in the medium ISS EMU HUT"
+        "quote": "fit crewmembers who are sized in the medium ISS EMU HUT",
+        "size": "model"
       }
     },
     "hubble": {
@@ -579,7 +580,8 @@
       "scaleFrom": {
         "native": true,
         "page": "https://science.nasa.gov/3d-resources/mercury-spacesuit/",
-        "quote": "NASA's first spacesuits were developed for the Mercury program."
+        "quote": "NASA's first spacesuits were developed for the Mercury program.",
+        "size": "model"
       }
     },
     "mark3": {
@@ -635,7 +637,8 @@
       "scaleFrom": {
         "native": true,
         "page": "https://science.nasa.gov/3d-resources/mark-iii-spacesuit/",
-        "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi."
+        "quote": "Both the JSC Mark III and the ARC AX-5 suit have been designed to operate at a pressure of 8.3 psi.",
+        "size": "model"
       }
     },
     "aces": {
@@ -691,7 +694,8 @@
       "scaleFrom": {
         "native": true,
         "page": "https://science.nasa.gov/3d-resources/advanced-crew-escape-suit/",
-        "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection."
+        "quote": "The Advanced Crew Escape Suit (ACES) is a full pressure vessel providing an atmosphere of protection.",
+        "size": "model"
       }
     },
     "gemini_suit": {
@@ -747,7 +751,8 @@
       "scaleFrom": {
         "native": true,
         "page": "https://science.nasa.gov/3d-resources/gemini-spacesuit/",
-        "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized."
+        "quote": "The Gemini spacesuit had a combination of a pressure bladder and a link-net restraint layer that made the whole suit flexible when pressurized.",
+        "size": "model"
       }
     },
     "shuttle": {

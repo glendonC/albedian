@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import struct
 from pathlib import Path
 from urllib.parse import urlparse
@@ -95,6 +96,9 @@ def test_the_scale_comes_from_a_dimension_nasa_states() -> None:
             assert CRAFTS[name]["scale_from"]["native"] is True
             height = model["boundsM"]["max"][1] - model["boundsM"]["min"][1]
             assert 1.5 < height < 2.3, (name, height)
+            # a quote with no height in it checks nothing: the record then says the size is the model's own
+            states_height = re.search(r"\d+\s*(ft|feet|m\b|meters?|')", sf["quote"]) is not None
+            assert (sf.get("size") == "model") is not states_height, (name, sf)
         else:
             assert sf["metres"] == CRAFTS[name]["scale_from"]["metres"] > 0
             if "quotedFt" in sf:
