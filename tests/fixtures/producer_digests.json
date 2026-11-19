@@ -1,4 +1,23 @@
 {
+ "albedian.restore": {
+  "revision": 1,
+  "files": [
+   "services/media/jobs.py",
+   "services/media/photo.py",
+   "services/media/gate.py",
+   "services/media/encode.py",
+   "services/media/decode.py",
+   "services/media/colour.py",
+   "services/media/png16.py",
+   "services/media/variants.py",
+   "services/media/stars.py",
+   "services/media/noise.py",
+   "services/media/spatial.py",
+   "services/media/tone.py",
+   "services/science/detector.py"
+  ],
+  "digest": "e336f5337afae1c0ac279a6f32167cfe39b03902ef6dd2860d3bae9c14860275"
+ },
  "albedian.solve_chain": {
   "revision": 3,
   "files": [

@@ -56,7 +56,7 @@ pictures under `.cache/restore-review/<unit>/`.
   - _Requirements: REQ-RST-1.2, 1.3, 1.5, 1.6, 2.1 to 2.4, 3.1 to 3.6_
   - Landed on `main` as `ee2436c5`.
 
-- [ ] 2b. restore-2b: the job and the routes (REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, REQ-RST-8; P-RST-18, 19)
+- [x] 2b. restore-2b: the job and the routes (REQ-RST-1.1, 1.4, 1.7, 2.5 to 2.7, REQ-RST-8; P-RST-18, 19)
   - New: `services/media/jobs.py` (registers the kinds `display_copy` and `restoration` on the upload job runner,
     the upload jobs spec, design 3.10, calling restore-2a's functions); tests under `tests/media/`.
   - Changed: `services/media/router.py` (the restore, list, records and file routes; a job is read through the

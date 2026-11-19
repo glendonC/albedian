@@ -49,6 +49,7 @@ from starlette.routing import compile_path
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from services.ingest.jobs import SOLVE_KIND
+from services.media.jobs import MEDIA_KINDS
 from services.ingest.runner import register_default_kind, runner_for
 from services.ingest.router import get_ingest_store
 from services.ingest.router import router as ingest_router
@@ -206,6 +207,11 @@ BODY_LIMITS: dict[str, int | None] = {
     "/api/media/discover": 0,
     # Largest measured body 1,072,159 bytes (frames as JSON); 4 times is 4,288,636
     "/api/media/restore": 5 * MIB,
+    # A RestoreRequest: its kind and an exposure, under 64 bytes of JSON (services/contracts/media.py)
+    "/api/media/{sha256}/restore": BODY_LIMIT_FLOOR,
+    "/api/media/{sha256}/variants": 0,
+    "/api/media/{sha256}/variants/{variant_id}": 0,
+    "/api/media/{sha256}/variants/{variant_id}/file": 0,
     # Largest measured body 5,154 bytes from the tests and 553 from the web's; an utterance at its 2,000 UTF-16
     # unit cap is at most 12,000 bytes of JSON (services/contracts/voice.py UTTERANCE_MAX_UTF16)
     "/api/voice/command": BODY_LIMIT_FLOOR,
@@ -382,6 +388,8 @@ def create_app(
     origins = allowed_origins(cors_origins)
     hosts = allowed_hosts(trusted_hosts)
     register_default_kind(SOLVE_KIND)
+    for kind in MEDIA_KINDS:
+        register_default_kind(kind)
 
     @asynccontextmanager
     async def lifespan(started: FastAPI) -> AsyncIterator[None]:

@@ -295,6 +295,197 @@
           }
         }
       },
+      "/api/media/{sha256}/restore": {
+        "post": {
+          "summary": "Start Restoration Job",
+          "description": "Start, join or return a display copy or restoration job of a stored upload: 202 with a new job, 200 with the\nactive job it joined or the current succeeded one; poll it at GET /api/ingest/jobs/{job_id}.",
+          "operationId": "start_restoration_job_api_media__sha256__restore_post",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Body"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/{sha256}/variants": {
+        "get": {
+          "summary": "List Variants",
+          "description": "An upload's stored variants and every finished attempt, oldest first; there is no listing across uploads.",
+          "operationId": "list_variants_api_media__sha256__variants_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response List Variants Api Media  Sha256  Variants Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/{sha256}/variants/{variant_id}": {
+        "get": {
+          "summary": "Get Variant",
+          "description": "A stored variant's three records: the variant, the graph that made it and the attempt that passed its gate.",
+          "operationId": "get_variant_api_media__sha256__variants__variant_id__get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "title": "Response Get Variant Api Media  Sha256  Variants  Variant Id  Get"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/media/{sha256}/variants/{variant_id}/file": {
+        "get": {
+          "summary": "Get Variant File",
+          "description": "The stored variant's bytes, served as the original is: cached privately, never sniffed, shown inline.",
+          "operationId": "get_variant_file_api_media__sha256__variants__variant_id__file_get",
+          "parameters": [
+            {
+              "name": "sha256",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "title": "Sha256"
+              }
+            },
+            {
+              "name": "variant_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "pattern": "^var_[0-9a-f]{16}$",
+                "title": "Variant Id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/api/voice/command": {
         "post": {
           "summary": "Post Voice Command",
@@ -1356,6 +1547,42 @@
       "includeInSchema": true
     },
     {
+      "path": "/api/media/{sha256}/restore",
+      "methods": [
+        "POST"
+      ],
+      "name": "start_restoration_job",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/{sha256}/variants",
+      "methods": [
+        "GET"
+      ],
+      "name": "list_variants",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/{sha256}/variants/{variant_id}",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_variant",
+      "responseModel": "dict[str, typing.Any]",
+      "includeInSchema": true
+    },
+    {
+      "path": "/api/media/{sha256}/variants/{variant_id}/file",
+      "methods": [
+        "GET"
+      ],
+      "name": "get_variant_file",
+      "responseModel": null,
+      "includeInSchema": true
+    },
+    {
       "path": "/api/voice/command",
       "methods": [
         "POST"
@@ -1513,6 +1740,10 @@
           "/api/science/ephemeris": 65536,
           "/api/media/discover": 0,
           "/api/media/restore": 5242880,
+          "/api/media/{sha256}/restore": 65536,
+          "/api/media/{sha256}/variants": 0,
+          "/api/media/{sha256}/variants/{variant_id}": 0,
+          "/api/media/{sha256}/variants/{variant_id}/file": 0,
           "/api/voice/command": 65536,
           "/api/voice/answer/{sha256}": 65536,
           "/api/ingest": null,

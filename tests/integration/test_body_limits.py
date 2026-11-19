@@ -39,7 +39,7 @@ from uvicorn.protocols.http.flow_control import HIGH_WATER_LIMIT
 from services import api
 
 # A value for each path parameter the routes use, so every row is reached by a real path
-SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16}
+SAMPLE_PARAMS = {"sha256": "0" * 64, "job_id": "job_" + "0" * 16, "variant_id": "var_" + "0" * 16}
 UPLOAD_PATH = "/api/ingest"
 VOICE_PATH = "/api/voice/command"
 ANSWER_PATH = "/api/voice/answer/{sha256}"
@@ -63,6 +63,8 @@ MEASURED_LARGEST_BODY = {
     ANSWER_PATH: 516,
     # A pointing record of the fixture written with an indent of one (test_pointing_route.py)
     POINTING_PATH: 1_936,
+    # A display copy asked with an exposure, which the contract refuses (tests/media/test_jobs.py)
+    "/api/media/{sha256}/restore": 41,
 }
 
 
