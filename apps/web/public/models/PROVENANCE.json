@@ -479,7 +479,7 @@
     },
     {
       "path": "hangar/hangar.json",
-      "sha256": "9cb6b385e6e7ebec593e84894b24c520f001e8ce6fd5737d3d2595137397f48a",
+      "sha256": "782b9520afddc2af0e4b44b7e9301c5370013dc942678241f371c2757672b4f5",
       "sources": [
         "nasa-3d-resources",
         "nasa-science-mission-pages"
@@ -785,6 +785,65 @@
         "changes": "A picture of the rebuilt model rendered by Blender's Cycles with one light on a clear background, 176 pixels square, since NASA's own render of this model shows the NASA insignia the rebuild covers."
       },
       "note": "Rendered from this folder's lod0 build of https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mark%20III%20Spacesuit/Mark%20III%20Spacesuit.glb."
+    },
+    {
+      "path": "hangar/maven/maven_lod0.glb",
+      "sha256": "a8bf99eb8d07429899eb941b1aa9e405c295a5b66b1b34ef856bfd14f4f48fc9",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft maven --out apps/web/public/models/hangar/maven",
+        "changes": "Rebuilt from NASA's model, not copied: helper objects removed, the parts joined into one mesh, turned so the craft travels along +Z with +Y up and scaled to metres from a dimension NASA states; NASA's photo texture kept as the base colour, with any NASA insignia or logotype it shows painted over in the colour around it, metalness, roughness and surface relief added from the texture's own colours and shading, flat paint colours for the painted parts with NASA's baked shading moved to the occlusion slot, and the textures re-encoded as WebP."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.glb (11696720 bytes, SHA-256 cbb0d721a09bb8bee391d7a9eaa3edf12c7db4cb089465e9061113b9fa49d91c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/maven/maven_lod1.glb",
+      "sha256": "55930d7e90b8f37336b1b4b0b606f810655e6b935990b001f0c8ee568db1841f",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft maven --out apps/web/public/models/hangar/maven",
+        "changes": "The same rebuild as lod0 with fewer triangles, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 1024 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.glb (11696720 bytes, SHA-256 cbb0d721a09bb8bee391d7a9eaa3edf12c7db4cb089465e9061113b9fa49d91c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/maven/maven_lod2.glb",
+      "sha256": "de43b5d172260c7a6ace82b822b3e156c9e5280618153f7151311c6bbefe6243",
+      "sources": [
+        "nasa-3d-resources",
+        "nasa-science-mission-pages"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft maven --out apps/web/public/models/hangar/maven",
+        "changes": "The same rebuild as lod0 with fewer triangles still, removed by Blender's collapse decimation (the share kept is listed with the craft's facts), and textures at most 512 pixels on a side."
+      },
+      "note": "Built from https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.glb (11696720 bytes, SHA-256 cbb0d721a09bb8bee391d7a9eaa3edf12c7db4cb089465e9061113b9fa49d91c); scaled from the dimension hangar/hangar.json names with its NASA page."
+    },
+    {
+      "path": "hangar/maven/maven_picker.webp",
+      "sha256": "cb0398c9e33f7db55a2f12c9ef639eb5229f7a106255cf633f6ba66e33bcb2d4",
+      "sources": [
+        "nasa-3d-resources"
+      ],
+      "producedBy": {
+        "method": "script",
+        "script": "scripts/lookdev/hangar/build_craft.py",
+        "command": "blender -b --factory-startup -P scripts/lookdev/hangar/build_craft.py -- --craft maven --out apps/web/public/models/hangar/maven",
+        "changes": "NASA's own render of its model, scaled down to 176 pixels on its longer side and re-encoded as WebP."
+      },
+      "note": "From NASA's render https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.png (987785 bytes, SHA-256 341b33c06e92e385bfa49f14096ece0399d430129fa7b14b8002f42074808161)."
     },
     {
       "path": "hangar/mercury_suit/mercury_suit_lod0.glb",

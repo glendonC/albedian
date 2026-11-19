@@ -1247,6 +1247,58 @@ CRAFTS: dict[str, dict] = {
         "body_radius_m": 1.4,
         "changes": "photo_label",
     },
+    "maven": {
+        "title": "MAVEN",
+        "kind": "craft",
+        "source": {
+            "id": "nasa3d-maven-b",
+            "title": "Mars Atmosphere and Volatile EvolutioN (MAVEN) (B), NASA 3D Resources",
+            "folder": "Mars Atmosphere and Volatile EvolutioN (MAVEN) (B)",
+            "file": "Mars Atmosphere and Volatile EvolutioN (MAVEN) (B).glb",
+            "bytes": 11_696_720,
+            "sha256": "cbb0d721a09bb8bee391d7a9eaa3edf12c7db4cb089465e9061113b9fa49d91c",
+            "picture": "Mars Atmosphere and Volatile EvolutioN (MAVEN) (B).png",
+            "picture_bytes": 987_785,
+            "picture_sha256": "341b33c06e92e385bfa49f14096ece0399d430129fa7b14b8002f42074808161",
+            "local": "maven",
+        },
+        # The source's unit cube at the root has no material and is not part of the craft.
+        "drop_objects": ["_root"],
+        # The high-gain dish is on top at +Z in the import frame and faces Earth, so the craft is flown along -Z, away
+        # from it, as Voyager is; the wings reach along X, so +Y is up.
+        "forward": (0.0, 0.0, -1.0),
+        "up": (0.0, 1.0, 0.0),
+        # Scale from the dish, NASA's silver foil part, 1.9978 units across, to NASA's 2 m (NASA's model is in metres).
+        "scale_from": {
+            "material": "foil_silver",
+            "axis": "x",
+            "metres": 2,
+            "page": "https://science.nasa.gov/mission/maven/",
+            "quote": "6.56 feet (2 meters) in diameter",
+        },
+        "materials": {
+            "tex_01": {
+                "role": "photo_atlas",
+                # The maker's two-line label on the photographed circuit panel Dawn's texture also holds, illegible.
+                "paint_out": [{"box": (376, 345, 420, 359), "what": "a printed label"}],
+            },
+            "foil_gold": {"role": "photo_atlas"},
+            "foil_silver": {"role": "pbr", "base": (0.80, 0.80, 0.80), "metallic": 1.0, "roughness": 0.35},
+            "shiny_panel": {"role": "textured", "metallic": 0.0, "roughness": 0.25},
+            # Parts NASA's file shades with baked occlusion maps: flat paint, each keeping its own map.
+            "AO_dish_frame": {"role": "painted", "base": (0.80, 0.80, 0.78), "roughness": 0.55, "occlusion_from_source": True},
+            "AO_parts_01": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "AO_parts_02": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "AO_parts_03": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "AO_parts_04": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+            "AO_parts_05": {"role": "painted", "base": (0.62, 0.62, 0.62), "roughness": 0.5, "occlusion_from_source": True},
+        },
+        "material_rules": [{"match": [""], "role": "nasa_flat"}],
+        "lod_ratio": {"lod0": 0.8, "lod1": 0.3, "lod2": 0.1},
+        "texture_edge": {"lod1": 512, "lod2": 256},
+        "body_radius_m": 2.0,
+        "changes": "photo",
+    },
 }
 
 # The hangar as the picker lists it: one entry per real craft or suit, each naming the model it is drawn with (two
@@ -1677,6 +1729,22 @@ HANGAR: list[dict] = [
             {"key": "erosOrbit", "value": "2000-02-14", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A", "quote": "Orbit insertion around Eros occurred on 14 February 2000 at 15:33 UT"},
             {"key": "landedOnEros", "value": "2001-02-12", "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "just south of a saddle-shaped feature named Himeros, on Feb. 12, 2001, at 19:44 UT."},
             {"key": "lastContact", "value": "2001-02-28", "page": "https://science.nasa.gov/mission/near-shoemaker/", "quote": "Last contact with NEAR was Feb. 28, 2001, the spacecraft having succumbed to the extreme cold."},
+        ],
+    },
+    {
+        # MAVEN orbited Mars: no speed between stars.
+        "id": "maven",
+        "name": "MAVEN",
+        "model": "maven",
+        "travel": None,
+        "facts": [
+            {"key": "launch", "value": "2013-11-18", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A", "quote": "MAVEN launched successfully on 18 November 2013 at 18:28 UT (1:28 p.m. EST)"},
+            {"key": "dryMassKg", "value": 809, "page": "https://science.nasa.gov/mission/maven/", "quote": "Dry (unfueled) mass at launch: 1,784 pounds (809 kilograms)"},
+            {"key": "launchMassKg", "value": "2,454", "page": "https://science.nasa.gov/mission/maven/", "quote": "Wet (fueled with hydrazine) mass at launch: 5,410 pounds (2,454 kilograms)"},
+            {"key": "lengthM", "value": 11.4, "page": "https://science.nasa.gov/mission/maven/", "quote": "37.5 feet (11.4 meters)"},
+            {"key": "heightM", "value": 3.47, "page": "https://science.nasa.gov/mission/maven/", "quote": "11.4 feet (3.47 meters)"},
+            {"key": "dishDiameterM", "value": 2, "page": "https://science.nasa.gov/mission/maven/", "quote": "6.56 feet (2 meters) in diameter"},
+            {"key": "marsOrbit", "value": "2014-09-22", "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A", "quote": "completing its orbit insertion burn at 2:24 UT on 22 September 2014 (10:24 p.m. EDT, Sept. 21)"},
         ],
     },
 ]

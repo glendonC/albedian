@@ -1507,6 +1507,63 @@
         "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1996-008A",
         "quote": "a fixed 1.5 m X-band high-gain radio antenna"
       }
+    },
+    "maven": {
+      "title": "MAVEN",
+      "kind": "craft",
+      "files": {
+        "lod0": {
+          "path": "maven/maven_lod0.glb",
+          "bytes": 2435588,
+          "triangles": 35922,
+          "textureEdgeMax": 2048,
+          "budgetBytes": 4000000
+        },
+        "lod1": {
+          "path": "maven/maven_lod1.glb",
+          "bytes": 1031480,
+          "triangles": 13470,
+          "textureEdgeMax": 512,
+          "budgetBytes": 1500000
+        },
+        "lod2": {
+          "path": "maven/maven_lod2.glb",
+          "bytes": 391036,
+          "triangles": 4490,
+          "textureEdgeMax": 256,
+          "budgetBytes": 600000
+        },
+        "picker": {
+          "path": "maven/maven_picker.webp",
+          "bytes": 4064,
+          "edgePx": 176,
+          "budgetBytes": 60000
+        }
+      },
+      "boundsM": {
+        "min": [
+          -6.555,
+          -3.4,
+          -0.309
+        ],
+        "max": [
+          6.587,
+          4.825,
+          5.118
+        ]
+      },
+      "bodyRadiusM": 2.0,
+      "lodTriangleShare": {
+        "lod0": 0.8,
+        "lod1": 0.3,
+        "lod2": 0.1
+      },
+      "scaleFrom": {
+        "part": "foil_silver",
+        "metres": 2,
+        "page": "https://science.nasa.gov/mission/maven/",
+        "quote": "6.56 feet (2 meters) in diameter"
+      }
     }
   },
   "entries": [
@@ -2525,6 +2582,56 @@
           "value": "2001-02-28",
           "page": "https://science.nasa.gov/mission/near-shoemaker/",
           "quote": "Last contact with NEAR was Feb. 28, 2001, the spacecraft having succumbed to the extreme cold."
+        }
+      ]
+    },
+    {
+      "id": "maven",
+      "name": "MAVEN",
+      "model": "maven",
+      "travel": null,
+      "facts": [
+        {
+          "key": "launch",
+          "value": "2013-11-18",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A",
+          "quote": "MAVEN launched successfully on 18 November 2013 at 18:28 UT (1:28 p.m. EST)"
+        },
+        {
+          "key": "dryMassKg",
+          "value": 809,
+          "page": "https://science.nasa.gov/mission/maven/",
+          "quote": "Dry (unfueled) mass at launch: 1,784 pounds (809 kilograms)"
+        },
+        {
+          "key": "launchMassKg",
+          "value": "2,454",
+          "page": "https://science.nasa.gov/mission/maven/",
+          "quote": "Wet (fueled with hydrazine) mass at launch: 5,410 pounds (2,454 kilograms)"
+        },
+        {
+          "key": "lengthM",
+          "value": 11.4,
+          "page": "https://science.nasa.gov/mission/maven/",
+          "quote": "37.5 feet (11.4 meters)"
+        },
+        {
+          "key": "heightM",
+          "value": 3.47,
+          "page": "https://science.nasa.gov/mission/maven/",
+          "quote": "11.4 feet (3.47 meters)"
+        },
+        {
+          "key": "dishDiameterM",
+          "value": 2,
+          "page": "https://science.nasa.gov/mission/maven/",
+          "quote": "6.56 feet (2 meters) in diameter"
+        },
+        {
+          "key": "marsOrbit",
+          "value": "2014-09-22",
+          "page": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2013-063A",
+          "quote": "completing its orbit insertion burn at 2:24 UT on 22 September 2014 (10:24 p.m. EDT, Sept. 21)"
         }
       ]
     }

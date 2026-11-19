@@ -1550,6 +1550,26 @@
       "licence": "LicenseRef-NASA-Media-Guidelines",
       "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
       "source": "NASA 3D Resources, NEAR Shoemaker: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/maven/Mars Atmosphere and Volatile EvolutioN (MAVEN) (B).glb",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.glb",
+      "bytes": 11696720,
+      "sha256": "cbb0d721a09bb8bee391d7a9eaa3edf12c7db4cb089465e9061113b9fa49d91c",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, MAVEN: NASA's own model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
+    },
+    {
+      "path": ".cache/hangar/nasa3d/maven/Mars Atmosphere and Volatile EvolutioN (MAVEN) (B).png",
+      "fetch": "scripts/fetch_download.py",
+      "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29/Mars%20Atmosphere%20and%20Volatile%20EvolutioN%20%28MAVEN%29%20%28B%29.png",
+      "bytes": 987785,
+      "sha256": "341b33c06e92e385bfa49f14096ece0399d430129fa7b14b8002f42074808161",
+      "licence": "LicenseRef-NASA-Media-Guidelines",
+      "licenceUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "source": "NASA 3D Resources, MAVEN: NASA's own render of the model (github.com/nasa/NASA-3D-Resources, whose README says the assets are free and without copyright); the hangar's build input, scripts/lookdev/hangar/crafts.py"
     }
   ]
 }
