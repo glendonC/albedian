@@ -1093,3 +1093,21 @@ describe('at Go there, In this photo leaves as the motion record says', () => {
     });
   });
 });
+
+// The motion record (MOTION-READY-web.md, row "Estimate status and its may-be-off ring (estimate)"): the ring frames
+// in; it says how far its mark may be off, so it comes once the marks are in (their 330 ms span), never before them.
+describe("a predicted mark's may-be-off ring arrives as the motion record says", () => {
+  it('frames in after the marks\' span, in motion.css', () => {
+    const rules: Record<string, Record<string, string>> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.parent?.type !== 'root') return;
+      const sel = rule.selector.replace(/\s+/g, ' ');
+      rule.walkDecls((decl) => {
+        rules[sel] = { ...(rules[sel] ?? {}), [decl.prop]: decl.value.replace(/\s+/g, ' ') };
+      });
+    });
+    expect(rules['.reveal-marks .reveal-mark__may-be-off']).toEqual({
+      animation: 'look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) var(--look-mo-span-marks) both',
+    });
+  });
+});

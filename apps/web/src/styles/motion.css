@@ -76,6 +76,12 @@
   animation: look-mo-frame-in var(--look-mo-dur-mark) linear calc(var(--mark-i) * var(--mark-step)) both;
 }
 
+/* A predicted mark's may-be-off ring frames in once the marks are in (their span): the mark first, then how far it
+   may be off. Reduced motion: the span is 0 and the frame in the 270 ms dissolve. */
+.reveal-marks .reveal-mark__may-be-off {
+  animation: look-mo-frame-in var(--look-mo-dur-frame-in) var(--look-mo-ease-frame-in) var(--look-mo-span-marks) both;
+}
+
 /* Original pixels pressed: the marks fade on the words-out time, 100 ms (no sinking: they are marks, not words) */
 .reveal-marks.is-leaving {
   animation: look-mo-frame-out var(--look-mo-dur-words-out) var(--look-mo-ease-std) both;
