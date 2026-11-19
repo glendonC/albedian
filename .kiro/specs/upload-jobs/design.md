@@ -234,7 +234,9 @@ kind; results stay where their kind's spec puts them; the modes are the restorat
   two checks cannot be stopped from outside (Python threads cannot be killed), so the bound holds within the longest
   step between checks [inference]; the solve's long steps are the searches (in the child, stopped at once) and the
   ffmpeg decodes (bounded by `DECODE_TIMEOUT_SEC`, jobs.py:53). The restoration runs all its work in the child
-  (restoration design section 11), so its bound is hard.
+  (restoration design section 11), so its bound is hard. A child call given a bound inside the job's (the media
+  kinds leave five seconds for the ending) that runs past it (`WorkerTimeout`) also ends the job `failed` with the
+  kind's time-limit sentence, never the internal error one (platform-9); the solve catches its search's own.
 - Cancel: sets the stop event; a `queued` job becomes `canceled` at once; a `running` one gets `cancelRequestedAtUTC`
   and becomes `canceled` when the work stops, unless the commit came first; its partial outputs are removed.
 - Start-up: a FastAPI lifespan in `create_app` runs the sweep for the configured store and starts the runner;

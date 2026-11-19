@@ -49,7 +49,7 @@ from services.ingest.store import IngestStore
 from services.media import decode as media_decode
 from services.media import jobs as media_jobs
 from services.media import variants as media_variants
-from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC
+from services.science.bounded_worker import POLL_SEC, STOP_GRACE_SEC, WorkerTimeout
 
 BOUND_S = 30.0
 # A stop in the child is seen at its next poll, then the child's group is terminated and, after the grace, killed
@@ -627,6 +627,25 @@ def test_p_job_5_work_in_the_runner_thread_past_the_bound_fails_with_the_kinds_s
     assert (ended["state"], ended["error"]) == ("failed", TIME_LIMIT_SENTENCE)
     assert 0.5 <= time.monotonic() - started < 0.5 + 2.0
     assert "cancelRequestedAtUTC" not in ended
+
+
+@pytest.mark.parametrize("kind_name, sentence", [("solve", TIME_LIMIT_SENTENCE), ("restoration", MEDIA_TIME_LIMIT)])
+def test_a_child_call_past_its_own_bound_ends_the_job_with_the_kinds_time_limit_sentence(
+        world: dict[str, Any], kind_name: str, sentence: str) -> None:
+    """A kind bounds its child call a little inside the job's bound (the media kinds leave five seconds for the
+    ending), so the child's bound passes while the job's has not: the job ran out of time all the same and ends with
+    the kind's time-limit sentence, never the internal error one (platform-9; found in platform-5d)."""
+    def body(ctx: JobContext) -> KindResult:
+        ctx.child().call(time.sleep, (60.0,), timeout_s=1.0, stop=ctx.stop)
+        raise AssertionError("the child's bound did not stop the call")
+
+    world["kinds"][kind_name] = solve_kind(Script(), body) if kind_name == "solve" else media_kind(Script(), body)
+    runner = world["runner"]()
+    started = time.monotonic()
+    record, _ = runner.start(world["shas"][0], kind_name, None if kind_name == "solve" else {"kind": "restoration"})
+    ended = runner.wait(record["id"], BOUND_S)
+    assert (ended["state"], ended["error"]) == ("failed", sentence)
+    assert time.monotonic() - started < BOUND_S, "the job's own bound had not passed"
 
 
 # ---- Failures ----
@@ -1320,3 +1339,24 @@ def test_a_rejected_ending_that_names_an_attempt_never_kept_fails_with_the_kinds
     ended = _followed(media_client, started.json())
     assert (ended["state"], ended["error"]) == ("failed", media_decode.INTERNAL_ERROR), ended
     assert "attemptId" not in ended
+
+
+class TimedOutChild:
+    """The media group's child as it answers a call that ran past the bound the kind gave it."""
+
+    def call(self, target: Callable[..., dict], args: tuple, *, timeout_s: float, **options: Any) -> dict:
+        raise WorkerTimeout(f"over {timeout_s:g} s")
+
+
+@pytest.mark.parametrize("kind", ["display_copy", "restoration"])
+def test_a_media_job_whose_child_passes_its_bound_ends_with_the_contracts_time_limit_sentence(
+        media_client: TestClient, monkeypatch: pytest.MonkeyPatch, kind: str) -> None:
+    """The two real media kinds: their child's bound comes five seconds before the job's, and a still that takes
+    longer ends "The restoration stopped at its time limit.", the media contract's sentence (platform-9)."""
+    monkeypatch.setattr(JobContext, "child", lambda self: TimedOutChild())
+    sha = _media_upload(media_client, 9)
+    started = media_client.post(f"/api/media/{sha}/restore", json={"kind": kind})
+    assert started.status_code == 202, started.text
+    ended = _followed(media_client, started.json())
+    assert (ended["state"], ended["error"]) == ("failed", media_decode.TIME_LIMIT), ended
+    assert media_decode.TIME_LIMIT == "The restoration stopped at its time limit."

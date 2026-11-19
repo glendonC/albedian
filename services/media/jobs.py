@@ -44,10 +44,12 @@ MEDIA_PRODUCER_FILES = (
 # their surroundings and the original's own dissolved by the passes (restore-4f); 3, a stored still's colour
 # profile keeps its colour data and loses its text (restore-8b)
 MEDIA_PRODUCER = Producer("albedian.restore", 3, MEDIA_PRODUCER_FILES)
-# The whole job's bound: a base and seconds per megapixel of every frame [proposed in design section 11: three times the
-# prototype's still rate and a base for starting the child, probing and hashing]
+# The whole job's bound: a base, and for every frame seconds per megapixel that grow with its megapixels (platform-9:
+# public stills restored on this laptop at load 10 to 19 took 5 s per megapixel at 2.4, 46 at 24.2 and 147 at 50.1,
+# so 4 s x megapixels squared leaves an iPhone's 24 megapixel photo twice the slowest measured one of its size and a
+# 50 megapixel one 1.4 times its measured run) [measured; the rate stands until the gate's speed work lands]
 BOUND_BASE_SEC = 120.0
-BOUND_SEC_PER_MEGAPIXEL = 6.0
+BOUND_SEC_PER_SQUARE_MEGAPIXEL = 4.0
 # The child's own bound leaves this much of the job's for storing the ending record [proposed: the runner writes it]
 CHILD_MARGIN_SEC = 5.0
 CLIP_DISPLAY_COPY = "A display copy is not made for a clip."
@@ -56,10 +58,10 @@ STEP_VERSION = "1.0.0"
 
 
 def bound_s(asset: Mapping[str, Any], request: Optional[Mapping[str, Any]]) -> float:
-    """120 s and 6 s for each megapixel of every frame (design section 11)."""
+    """120 s and 4 s for each square megapixel of every frame (platform-9; design section 11 had 6 s a megapixel)."""
     frames = int(asset.get("frameCount") or 1)
     megapixels = int(asset["width"]) * int(asset["height"]) / 1e6
-    return BOUND_BASE_SEC + BOUND_SEC_PER_MEGAPIXEL * megapixels * frames
+    return BOUND_BASE_SEC + BOUND_SEC_PER_SQUARE_MEGAPIXEL * megapixels * megapixels * frames
 
 
 def subject(sha256: str, request: Optional[Mapping[str, Any]]) -> Optional[str]:

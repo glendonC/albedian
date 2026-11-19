@@ -50,7 +50,7 @@ from services.ingest.job_store import (
     new_job_id,
 )
 from services.ingest.store import IngestStore
-from services.science.bounded_worker import POLL_SEC, BoundedWorker, WorkerStopped
+from services.science.bounded_worker import POLL_SEC, BoundedWorker, WorkerStopped, WorkerTimeout
 
 LOG = logging.getLogger("albedian.jobs")
 # [proposed, the restoration's rule (restoration design section 11)] the record on disk follows the live one at
@@ -567,6 +567,10 @@ class Runner:
             outcome: Any = kind.run(JobContext(self, job))
         except (JobStopped, WorkerStopped):
             outcome = JobStopped()
+        except WorkerTimeout:
+            # A child call past the bound its kind gave it, which sits inside the job's (the media kinds leave five
+            # seconds for the ending): the job ran out of time, so it ends with the kind's time-limit sentence
+            outcome = JobRefusal(kind.time_limit_reason)
         except JobRefusal as refusal:
             outcome = refusal
         except Exception:  # noqa: BLE001 - its text is never stored or logged (REQ-JOB-9)

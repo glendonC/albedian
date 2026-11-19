@@ -376,10 +376,23 @@ def test_the_childs_outcome_is_the_jobs_ending() -> None:
     assert late.worker.calls[0]["timeout_s"] == 1.0
 
 
-def test_the_bound_is_a_base_and_seconds_for_each_megapixel_of_every_frame() -> None:
-    assert media_jobs.bound_s({"width": 4000, "height": 3000}, None) == 120.0 + 6.0 * 12.0
-    assert media_jobs.bound_s({"width": 1000, "height": 1000, "frameCount": 30}, None) == 120.0 + 6.0 * 30
+# Restorations of public photos through the API on this laptop with the bound lifted, one at a time, at load 10 to
+# 19 (platform-9, main 9e679c99): megapixels and seconds from the job's start to its end. The seconds per megapixel
+# grow with the megapixels (5 at 2.4, 46 at 24.2, 147 at 50.1), so the bound grows with their square
+MEASURED_STILLS = ((2.4, 12.1), (7.2, 75.3), (12.2, 94.1), (16.0, 117.6), (24.2, 1121.7), (33.6, 665.8),
+                   (50.1, 7377.9))
+
+
+def test_the_bound_is_a_base_and_seconds_for_each_megapixel_that_grow_with_the_megapixels_of_every_frame() -> None:
+    assert media_jobs.bound_s({"width": 4000, "height": 3000}, None) == 120.0 + 4.0 * 12.0 * 12.0
+    assert media_jobs.bound_s({"width": 1000, "height": 1000, "frameCount": 30}, None) == 120.0 + 4.0 * 30
     assert media_jobs.subject("a" * 64, None) is None
+    # Every measured still ends inside its bound with room; an iPhone's 24 megapixel photo (5712 x 4284) gets at
+    # least twice the slowest measured one of its size
+    for megapixels, seconds in MEASURED_STILLS:
+        bound = media_jobs.bound_s({"width": round(megapixels * 1e6), "height": 1}, None)
+        assert bound - media_jobs.CHILD_MARGIN_SEC > 1.3 * seconds, megapixels
+    assert media_jobs.bound_s({"width": 5712, "height": 4284}, None) - media_jobs.CHILD_MARGIN_SEC > 2 * 1121.7
 
 
 def test_a_job_whose_variant_is_gone_runs_again_and_one_missing_a_file_is_never_overwritten(client) -> None:
