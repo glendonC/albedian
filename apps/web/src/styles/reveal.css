@@ -1837,3 +1837,48 @@
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
+
+/* D36: two or more ready restorations, listed under Download with no heading: rows of 36 px in Geist 13 (the Layers
+   list's, UIUX-space), the size at the right in ink 44 percent with tabular figures, the check 14 px at the far right,
+   an older row's second line at 12 px in ink 44 percent. [proposed] 12 px between Download and the list */
+.restore-versions {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.restore-versions__row {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr auto 14px;
+  column-gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  font: 400 13px / 1.3 var(--look-font-sans);
+  color: var(--look-ink);
+  cursor: pointer;
+}
+
+.restore-versions__row:focus-visible {
+  outline: var(--look-focus-width) solid var(--look-ink);
+  outline-offset: var(--look-focus-offset);
+}
+
+.restore-versions__size {
+  color: var(--look-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.restore-versions__mark .look-icon {
+  --look-ic: 14px;
+}
+
+.restore-versions__older {
+  grid-column: 1 / -1;
+  padding-bottom: 8px;
+  font-size: 12px;
+  color: var(--look-ink-3);
+}

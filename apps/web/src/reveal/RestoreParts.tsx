@@ -4,6 +4,8 @@ import type { DisplayOrientation, UploadJob } from '@albedian/contracts';
 import { LookIcon, MainAction, SecondAction } from '../look/index.js';
 import type { PhotoRect } from '../components/sourcePhotoRect.js';
 import { restorationRows, type RestoreRow } from './restoration.js';
+import { madeAtWords, type StoredRestoration } from '../services/apiClient.js';
+import { megabytes } from './arrival.js';
 
 const ROW_CLASS: Readonly<Record<RestoreRow['state'], string>> = {
   done: 'work-step is-done',
@@ -296,3 +298,23 @@ export const RestoreCompare: React.FC<{
     </div>
   );
 };
+
+/**
+ * D36 (UIUX-restorations-READY.md, decided by the lead 13:45): under Download, only when the photo has two or more
+ * ready restorations, one row each, newest first, with no heading: the time it was made, its size at the right, the
+ * check on the one shown, and under each older one "Made by an earlier version of Albedian." A row pressed shows it.
+ */
+export const RestoreVersions: React.FC<{ versions: readonly StoredRestoration[]; shownId: string; onShow: (id: string) => void }> = ({ versions, shownId, onShow }) => (
+  <ul className="restore-versions" data-testid="restore-versions">
+    {versions.map((version, i) => (
+      <li key={version.id}>
+        <button type="button" className="restore-versions__row" aria-pressed={version.id === shownId} onClick={() => onShow(version.id)}>
+          <span className="restore-versions__time">{madeAtWords(version.createdAtUTC)}</span>
+          <span className="restore-versions__size">{megabytes(version.byteSize)}</span>
+          <span className="restore-versions__mark">{version.id === shownId ? <LookIcon name="check" /> : null}</span>
+          {i > 0 && <span className="restore-versions__older">Made by an earlier version of Albedian.</span>}
+        </button>
+      </li>
+    ))}
+  </ul>
+);

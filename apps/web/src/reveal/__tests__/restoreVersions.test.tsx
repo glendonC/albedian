@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { act, createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MediaVariantSchema, type UploadJob } from '@albedian/contracts';
+import { poseSession, sample } from '../../components/__tests__/poseSessions.js';
+import { madeAtWords, readRestorations } from '../../services/apiClient.js';
+import { RevealPhoto } from '../RevealPhoto.js';
+
+vi.mock('../RealSkyLayer.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../RealSkyLayer.js')>();
+  return { ...original, RealSkyLayer: () => null };
+});
+
+// D36 (UIUX-restorations-READY.md, decided by the lead 13:45): a photo with two or more ready restorations lists them
+// under Download, newest first: the time each was made, its size, a check on the one shown, and under each older one
+// "Made by an earlier version of Albedian."; a row pressed shows it in the compare, and Download saves the one shown.
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+const here = path.dirname(fileURLToPath(import.meta.url));
+const fixtures = path.resolve(here, '../../../../../tests/fixtures');
+const media = JSON.parse(fs.readFileSync(path.join(fixtures, 'media_contract.json'), 'utf8')) as { valid: { MediaVariant: Array<Record<string, unknown>> } };
+const template = media.valid.MediaVariant.find((v) => v.kind === 'restoration')!;
+const jobs = (JSON.parse(fs.readFileSync(path.join(fixtures, 'job_contract.json'), 'utf8')) as { valid: UploadJob[] }).valid;
+const succeeded = structuredClone(jobs.find((job) => job.kind === 'restoration' && job.state === 'succeeded')!);
+const session = poseSession(sample('plate_calibrated'));
+const sha = session.sourceAsset!.sha256;
+const variant = (id: string, createdAtUTC: string, byteSize: number) => ({
+  ...template,
+  id,
+  createdAtUTC,
+  byteSize,
+  sourceSha256: sha,
+  sourceAssetId: `src_${sha.slice(0, 16)}`,
+  uri: `/api/media/${sha}/variants/${id}/file`,
+});
+const OLDER = variant('var_0000000000000001', '2026-11-18T18:20:00Z', 14_000_000);
+const NEWER = variant(succeeded.variantId!, '2026-11-19T18:20:00Z', 14_600_000);
+
+let container: HTMLDivElement;
+let root: Root;
+beforeEach(() => {
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.restoreAllMocks();
+});
+const q = (s: string) => container.querySelector(s);
+const answer = (variants: unknown[]) => vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ variants, attempts: [] }), { status: 200 }));
+async function showDone(extra: Record<string, unknown> = {}) {
+  act(() =>
+    root.render(
+      createElement(RevealPhoto, {
+        session,
+        onSelectFinding: () => {},
+        onHome: () => {},
+        viewportWidthPx: 1440,
+        viewportHeightPx: 900,
+        restoration: { phase: 'done', job: succeeded, variantUrl: `/api/media/${sha}/variants/${succeeded.variantId}/file`, orientation: { quarterTurnsClockwise: 0, mirrored: false } },
+        ...extra,
+      })
+    )
+  );
+  for (let i = 0; i < 5; i++) await act(async () => await new Promise((r) => setTimeout(r, 0)));
+}
+
+describe('readRestorations', () => {
+  it('lists the stored restorations newest first, and nothing else the route lists', async () => {
+    expect(MediaVariantSchema.safeParse(OLDER).success).toBe(true);
+    // A valid display copy of this upload, newest of all, is not a restoration
+    const copyTemplate = media.valid.MediaVariant.find((v) => v.kind === 'display_copy')!;
+    const copy = { ...copyTemplate, id: 'var_00000000000000c0', createdAtUTC: '2026-11-20T00:00:00Z', sourceSha256: sha, sourceAssetId: `src_${sha.slice(0, 16)}`, uri: `/api/media/${sha}/variants/var_00000000000000c0/file` };
+    expect(MediaVariantSchema.safeParse(copy).success).toBe(true);
+    answer([OLDER, NEWER, copy, { nonsense: true }]);
+    const list = await readRestorations(sha);
+    expect(list.map((v) => v.id)).toEqual([NEWER.id, OLDER.id]);
+    expect(list[0]!.byteSize).toBe(14_600_000);
+  });
+});
+
+describe('madeAtWords', () => {
+  it("writes the time in the viewer's local time as '19 Nov, 13:20'", () => {
+    const at = new Date(2026, 10, 19, 13, 20, 59);
+    expect(madeAtWords(at.toISOString())).toBe('19 Nov, 13:20');
+    expect(madeAtWords(new Date(2026, 0, 3, 7, 5).toISOString())).toBe('3 Jan, 07:05');
+  });
+});
+
+describe('the list under Download (D36)', () => {
+  it('lists two ready restorations newest first, the shown one checked, the older one said to be by an earlier version', async () => {
+    answer([OLDER, NEWER]);
+    await showDone();
+    const rows = [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.querySelector('.restore-versions__size')!.textContent)).toEqual(['14.6 MB', '14.0 MB']);
+    expect(rows.map((r) => r.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    expect(rows[0]!.querySelector('.restore-versions__mark svg')).not.toBeNull();
+    expect(rows[1]!.querySelector('.restore-versions__mark svg')).toBeNull();
+    expect(rows.map((r) => r.querySelector('.restore-versions__older')?.textContent ?? null)).toEqual([null, 'Made by an earlier version of Albedian.']);
+    // The list sits under Download, with no heading
+    const download = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Download')!;
+    expect(download.compareDocumentPosition(q('[data-testid="restore-versions"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows a pressed row in the compare, moves the check, and Download saves the one shown', async () => {
+    answer([OLDER, NEWER]);
+    await showDone();
+    const rows = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')];
+    act(() => rows()[1]!.click());
+    expect(rows().map((r) => r.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+    expect((q('[data-testid="restore-compare"] .restore-compare__pic img') as HTMLImageElement).getAttribute('src')).toBe(`/api/media/${sha}/variants/${OLDER.id}/file`);
+    const saved: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.getAttribute('href')!);
+    });
+    act(() => ([...container.querySelectorAll('button')].find((b) => b.textContent === 'Download') as HTMLButtonElement).click());
+    expect(saved).toEqual([`/api/media/${sha}/variants/${OLDER.id}/export`]);
+  });
+
+  it('shows the newest again after the compare is left and come back to (AUDIT-C, 17:14)', async () => {
+    answer([OLDER, NEWER]);
+    await showDone();
+    const pressed = () => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')].map((r) => r.getAttribute('aria-pressed'));
+    act(() => [...container.querySelectorAll<HTMLButtonElement>('[data-testid="restore-versions"] button')][1]!.click());
+    expect(pressed()).toEqual(['false', 'true']);
+    // Original pixels leaves the compare; coming back shows the newest
+    await showDone({ originalPixels: true });
+    expect(q('[data-testid="restore-compare"]')).toBeNull();
+    await showDone({ originalPixels: false });
+    expect(pressed()).toEqual(['true', 'false']);
+  });
+
+  it('shows no list with one ready restoration', async () => {
+    answer([NEWER]);
+    await showDone();
+    expect(q('[data-testid="restore-versions"]')).toBeNull();
+  });
+});

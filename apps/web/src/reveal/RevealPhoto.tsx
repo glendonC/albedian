@@ -6,12 +6,12 @@ import { lockOnPlan } from './lockOn.js';
 import type { ObservationSolution } from '@albedian/contracts';
 import { answerFindings, DISCLOSURES, hasVerifiedWcs, orientedSize, type CelestialFinding, type ObservationSession } from '@albedian/contracts';
 import { deepSkyRowOf, isDeepSky, useDeepSkyTable, type DeepSkySymbol } from './deepSky.js';
-import { saveFromServer, variantExportUrl } from '../services/apiClient.js';
+import { readRestorations, saveFromServer, variantExportUrl, variantFileUrl, type StoredRestoration } from '../services/apiClient.js';
 import { getMarkerVisualSpec, MOTION_TOKENS, resolveMotionTokens } from '@albedian/design-system';
 import { blockLeaveMs, linesLeaveMs, reducedMotion, useLeaving } from '../hooks/useLeaving.js';
 import { EvidenceTag, LookIcon, Logo, MainAction, SecondAction } from '../look/index.js';
 import { SIDE_FADE } from '../components/SourcePhotoStage.js';
-import { RestoreCompare, RestoreSteps, RestoreWhy } from './RestoreParts.js';
+import { RestoreCompare, RestoreSteps, RestoreVersions, RestoreWhy } from './RestoreParts.js';
 import type { Restoration } from './restoration.js';
 import { sessionPhotoRect, useViewportSize } from '../components/sourcePhotoRect.js';
 import { PhotoCorners } from './PhotoCorners.js';
@@ -393,10 +393,38 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
   const asset = session.sourceAsset;
   // Download (D10, D22), 18 px under the fixed sentence on a ready restoration: the export route's one zip, handed to the
   // browser's own download
-  const ready = compareShown && restoration?.phase === 'done' ? restoration.job.variantId : undefined;
+  // D36: the photo's ready restorations, read once its restoration is done; the compare shows the newest, or the row
+  // pressed until the compare is left; Download saves the one shown
+  const doneVariant = restoration?.phase === 'done' ? restoration.job.variantId : undefined;
+  const [versions, setVersions] = useState<StoredRestoration[]>([]);
+  const [pickedVersion, setPickedVersion] = useState<string | null>(null);
+  useEffect(() => {
+    setVersions([]);
+    if (doneVariant === undefined || !asset) return undefined;
+    let live = true;
+    readRestorations(asset.sha256)
+      .then((list) => {
+        if (live) setVersions(list);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [doneVariant, asset?.sha256]);
+  useEffect(() => {
+    if (!compareShown) setPickedVersion(null);
+  }, [compareShown]);
+  const shownVersionId = pickedVersion ?? versions[0]?.id ?? doneVariant;
+  const shownVersion = versions.find((v) => v.id === shownVersionId) ?? null;
+  const ready = compareShown && restoration?.phase === 'done' ? shownVersionId : undefined;
+  const versionsList =
+    ready !== undefined && versions.length >= 2 ? <RestoreVersions versions={versions} shownId={ready} onShow={setPickedVersion} /> : null;
   const downloadAction =
     ready !== undefined && asset ? (
-      <MainAction label="Download" icon="download-simple" onClick={() => saveFromServer(variantExportUrl(asset.sha256, ready))} />
+      <>
+        <MainAction label="Download" icon="download-simple" onClick={() => saveFromServer(variantExportUrl(asset.sha256, ready))} />
+        {versionsList}
+      </>
     ) : null;
   const uprightWidth = asset ? orientedSize(asset.width, asset.height, asset.displayOrientation).widthPx : 0;
 
@@ -610,10 +638,10 @@ export const RevealPhoto: React.FC<RevealPhotoProps> = ({
       {compareShown && frame && restoration?.phase === 'done' && asset && (
         <RestoreCompare
           rect={frame}
-          src={restoration.variantUrl}
+          src={shownVersion && shownVersion.id !== restoration.job.variantId ? variantFileUrl(asset.sha256, shownVersion.id) : restoration.variantUrl}
           originalSrc={asset.uri}
           fade={SIDE_FADE}
-          orientation={restoration.orientation}
+          orientation={shownVersion && shownVersion.id !== restoration.job.variantId ? shownVersion.orientation : restoration.orientation}
           maxZoom={uprightWidth / Math.max(1, frame.widthPx)}
           onZoomed={setCompareZoomed}
         />

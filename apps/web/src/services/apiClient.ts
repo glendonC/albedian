@@ -13,6 +13,7 @@ import {
   UploadJob,
   UploadJobSchema,
   DisplayOrientationSchema,
+  MediaVariantSchema,
   type DisplayOrientation,
 } from '@albedian/contracts';
 import { createSessionForSourceAsset } from '@albedian/observation';
@@ -629,6 +630,41 @@ export async function readVariantOrientation(sha256: string, variantId: string):
   const body = (await res.json()) as { variant?: { displayOrientation?: unknown } };
   const named = body.variant?.displayOrientation;
   return named === undefined ? { quarterTurnsClockwise: 0, mirrored: false } : DisplayOrientationSchema.parse(named);
+}
+
+/** A ready restoration of the upload as the variants route lists it (D36). */
+export interface StoredRestoration {
+  id: string;
+  createdAtUTC: string;
+  byteSize: number;
+  orientation: DisplayOrientation;
+}
+
+/**
+ * The upload's ready restorations, newest first (D36): the variants route stores a variant only once its gate passed,
+ * so every restoration it lists is ready. Anything that is not a restoration of this upload is left out.
+ */
+export async function readRestorations(sha256: string): Promise<StoredRestoration[]> {
+  const res = await fetchAnswer(`/api/media/${sha256}/variants`);
+  if (!res.ok) throw new Error(await serverReason(res));
+  const body = (await res.json()) as { variants?: unknown[] };
+  return (body.variants ?? [])
+    .flatMap((raw) => {
+      const parsed = MediaVariantSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.kind !== 'restoration' || parsed.data.sourceSha256 !== sha256) return [];
+      const v = parsed.data;
+      return [{ id: v.id, createdAtUTC: v.createdAtUTC, byteSize: v.byteSize, orientation: v.displayOrientation ?? { quarterTurnsClockwise: 0, mirrored: false } }];
+    })
+    .sort((a, b) => Date.parse(b.createdAtUTC) - Date.parse(a.createdAtUTC) || (a.id < b.id ? 1 : -1));
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** When a restoration was made, in the viewer's local time: "19 Nov, 13:20" (D36). */
+export function madeAtWords(utc: string): string {
+  const d = new Date(utc);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
 /** Where a stored variant's bytes are served (`GET /api/media/{sha256}/variants/{variantId}/file`). */
