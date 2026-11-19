@@ -32,9 +32,9 @@
 set -u
 setopt null_glob
 
-families_demangled='(^|[^A-Za-z0-9_])(NSURLSession|NSURLSessionConfiguration|NSURLConnection|NSURLRequest|NSMutableURLRequest|NSURLDownload|NSStream|NSInputStream|NSOutputStream|NSNetService|NSNetServiceBrowser|WKWebView|WKWebsiteDataStore|SFSafariViewController|ASWebAuthenticationSession|UIActivityViewController|MFMailComposeViewController|MFMessageComposeViewController|UIDocumentInteractionController|UIPasteboard|NSPasteboard|MCSession|MCPeerID|MCNearbyServiceAdvertiser|MCNearbyServiceBrowser|MCAdvertiserAssistant|CKContainer|CKDatabase|NSUbiquitousKeyValueStore|CLGeocoder|MKMapView|MKLocalSearch|GKMatch|CBPeripheralManager|CBCentralManager|NSUserActivity|SKPaymentQueue|NWListener|NWBrowser|NWConnectionGroup|NWMulticastGroup|NWEthernetChannel|URLSession|URLRequest|ShareLink|PasteButton|OpenURLAction|AsyncImage|WebView|WebPage|Link|UIApplication|NSWorkspace|NSXMLParser|XMLParser|AVPlayer|AVQueuePlayer|AVURLAsset|LPMetadataProvider|LPLinkView|PHPhotoLibrary|PHAssetCreationRequest)([^A-Za-z0-9_]|$)'
+families_demangled='(^|[^A-Za-z0-9_])(NSURLSession|NSURLSessionConfiguration|NSURLConnection|NSURLRequest|NSMutableURLRequest|NSURLDownload|NSStream|NSInputStream|NSOutputStream|NSNetService|NSNetServiceBrowser|WKWebView|WKWebsiteDataStore|ASWebAuthenticationSession|UIActivityViewController|MFMailComposeViewController|MFMessageComposeViewController|UIDocumentInteractionController|UIPasteboard|NSPasteboard|MCSession|MCPeerID|MCNearbyServiceAdvertiser|MCNearbyServiceBrowser|MCAdvertiserAssistant|CKContainer|CKDatabase|NSUbiquitousKeyValueStore|CLGeocoder|MKMapView|MKLocalSearch|GKMatch|CBPeripheralManager|CBCentralManager|NSUserActivity|SKPaymentQueue|NWListener|NWBrowser|NWConnectionGroup|NWMulticastGroup|NWEthernetChannel|URLSession|URLRequest|ShareLink|PasteButton|OpenURLAction|AsyncImage|WebView|WebPage|Link|UIApplication|NSWorkspace|NSXMLParser|XMLParser|AVPlayer|AVQueuePlayer|AVURLAsset|LPMetadataProvider|LPLinkView|PHPhotoLibrary|PHAssetCreationRequest)([^A-Za-z0-9_]|$)'
 families_c='^_(socket|connect|sendto|sendmsg|getaddrinfo|gethostbyname|gethostbyname2|res_query|dlsym|dlopen|NSClassFromString|NSSelectorFromString|objc_getClass|objc_lookUpClass|objc_getRequiredClass|CFHTTP.*|CFStream.*|CFReadStream.*|CFWriteStream.*|CFSocket.*|CFNetService.*|CFHost.*|nw_connection.*|nw_listener.*|nw_browser.*|DNSService.*|SCNetworkReachability.*|objc_msgSend\$openURL.*|objc_msgSend\$getStreamsToHost.*)$'
-families_strings='(^|[^A-Za-z0-9_])(NSURLSession|NSURLConnection|NSURLRequest|NSURLDownload|NSInputStream|NSOutputStream|NSNetService|WKWebView|SFSafariViewController|ASWebAuthenticationSession|UIActivityViewController|MFMailComposeViewController|MFMessageComposeViewController|UIPasteboard|MCSession|CKContainer|CLGeocoder|getStreamsToHost|openURL:options:completionHandler:|CFStreamCreatePairWithSocketToHost|nw_connection_create|dataWithContentsOfURL|initWithContentsOfURL|stringWithContentsOfURL|NSXMLParser|LPMetadataProvider|PHPhotoLibrary)([^A-Za-z0-9_]|$)'
+families_strings='(^|[^A-Za-z0-9_])(NSURLSession|NSURLConnection|NSURLRequest|NSURLDownload|NSInputStream|NSOutputStream|NSNetService|WKWebView|ASWebAuthenticationSession|UIActivityViewController|MFMailComposeViewController|MFMessageComposeViewController|UIPasteboard|MCSession|CKContainer|CLGeocoder|getStreamsToHost|openURL:options:completionHandler:|CFStreamCreatePairWithSocketToHost|nw_connection_create|dataWithContentsOfURL|initWithContentsOfURL|stringWithContentsOfURL|NSXMLParser|LPMetadataProvider|PHPhotoLibrary)([^A-Za-z0-9_]|$)'
 creating='(^|[^A-Za-z0-9_])NWConnection\.(__allocating_init|init)\('
 client_object='AlbedianCaptureCore.build/LaptopConnection.o'
 # Rule 1 in the built code: an address made from text, and the standard types' readers of an address, only in the
@@ -46,6 +46,9 @@ address_reading='(^|[^A-Za-z0-9_])(Data\.init\(contentsOf:|String\.init\(content
 transport_objects=(AlbedianCaptureCore.build/LaptopConnection.o AlbedianCaptureCore.build/UploadClient.o)
 # CaptureStore reads back each file it has just written (P3): a file's address in the app's own folder
 exceptions=(AlbedianCaptureCore.build/CaptureStore.o:Data.init)
+# OutsidePages makes the Safari view's three addresses (the reveal, two credit pages), each checked by SafariViewGate and
+# opened only by the system's Safari process, never fetched by the app (mobile-4b)
+make_exceptions=(AlbedianCaptureCore.build/OutsidePages.o:URL.init)
 # The four closed lists, read from the .app
 allowed_links=(
   /System/Library/Frameworks/Foundation.framework/Foundation /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
@@ -55,6 +58,8 @@ allowed_links=(
   /System/Library/Frameworks/AVFoundation.framework/AVFoundation /System/Library/Frameworks/CoreMedia.framework/CoreMedia
   /System/Library/Frameworks/CoreMotion.framework/CoreMotion /System/Library/Frameworks/CoreLocation.framework/CoreLocation
   /System/Library/Frameworks/_LocationEssentials.framework/_LocationEssentials
+  # The system's Safari view for the reveal and the two credit pages only (mobile-4b; SafariViewGate in the core)
+  /System/Library/Frameworks/SafariServices.framework/SafariServices
   /usr/lib/libSystem.B.dylib /usr/lib/libobjc.A.dylib
   /usr/lib/swift/libswiftCore.dylib /usr/lib/swift/libswiftCoreFoundation.dylib /usr/lib/swift/libswiftCoreImage.dylib
   /usr/lib/swift/libswiftDispatch.dylib /usr/lib/swift/libswiftMetal.dylib /usr/lib/swift/libswiftOSLog.dylib
@@ -144,7 +149,10 @@ for f in $macho; do
   if single_object "$f"; then
     oid=$(object_id "$f")
     if (( ${transport_objects[(Ie)$oid]} == 0 )); then
-      for s in ${(f)"$(print -l -- $demangled | grep -E "$address_making")"}; do findings+=("$oid: makes an address from text: $s"); done
+      for s in ${(f)"$(print -l -- $demangled | grep -E "$address_making")"}; do
+        call=${s%%\(*}
+        (( ${make_exceptions[(Ie)$oid:$call]} )) || findings+=("$oid: makes an address from text: $s")
+      done
       for s in ${(f)"$(print -l -- $demangled | grep -E "$address_reading")"}; do
         call=${s%%\(*}
         (( ${exceptions[(Ie)$oid:$call]} )) || findings+=("$oid: reads an address's contents: $s")

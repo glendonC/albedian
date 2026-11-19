@@ -110,13 +110,12 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     sending again captures kept from earlier sessions, which has no design record (asked of the lead).
   - _Requirements: REQ-IOS-4.1, 4.2 (upload), 4.3_
 
-- [ ] 10. mobile-4: the solve and the result
+- [x] 10. mobile-4: the solve and the result
   - `POST /api/ingest/{sha256}/solve`, the job's progress from its own denominators or elapsed time, the status and
     the counts by evidence class as the server reports them, the reveal opened in the web app. Swift readers only for
     the job and solution fields shown, judged on the existing contract fixtures as a further reading.
-  - Built: the solve, its job read beside it, the status and counts by evidence class, on the plain pipeline screen.
-    Not built: opening the reveal, which needs an address of the web app for one upload and a change to the
-    built-code check (both asked of the lead on 2026-11-18); the box is ticked once that lands.
+  - Built: the solve, its job read beside it, the status and counts by evidence class (mobile-4 v2); "Open" on the
+    result shows `<paired address>/?upload=<sha256>` in the system's Safari view (mobile-4b).
   - Needs first: mobile-3; pointing-3 if the result shows the pointing hint.
   - Only on an iPhone: nothing beyond mobile-3's network path.
   - _Requirements: REQ-IOS-4.2 (solve), REQ-IOS-5.1, 5.2_
@@ -135,7 +134,7 @@ an independent `albedian-auditor` verdict, then the lead lands it. Server units 
     no extra text and clean colour); no change in behaviour.
   - Needs first: the design-mobile lane's board and the owner's yes.
   - Built from the records: home with Credits, Credits, Connect, aiming without the overlay, after the shot, can't
-    reach the laptop, the result. Not built: the Credits link icons and "Open" (opening a page needs the lead's yes), the
+    reach the laptop, the result (its "Open" and the Credits links are mobile-4b). Not built: the
     states with no record (a refused send, a failed job, a bad address, no camera), asked of the lead on
     2026-11-18; the box is ticked once those land.
   - Only on an iPhone: how it reads outdoors at night (dark adaptation, brightness).

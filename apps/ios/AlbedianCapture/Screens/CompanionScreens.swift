@@ -55,6 +55,7 @@ struct CompanionRoot: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(item: $model.openPage) { page in SafariView(url: page.url).ignoresSafeArea() }
         #if DEBUG
         .task { model.runFromLaunchArguments() }
         #endif
@@ -87,15 +88,15 @@ struct HomeScreen: View {
 }
 
 /// Credits (UIUX-credit-APPROVED): back, the title, and rows divided by hairlines, each a small grey label over its
-/// lines. The open-link icon of the two rows that link out is not drawn: opening a page outside the app waits for the
-/// lead's answer [open].
+/// lines. The two rows that link out carry the open-link icon (arrow-square-out, 16 pt, secondary ink), which opens
+/// the source's page in the system's Safari view (mobile-4b).
 struct CreditsScreen: View {
     let model: CompanionModel
-    private let rows: [(label: String, lines: [String])] = [
-        ("Milky Way photograph", ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0"]),
-        ("Star catalogs", ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3"]),
-        ("Type", ["Geist, SIL Open Font License"]),
-        ("Icons", ["Phosphor Icons, MIT License"]),
+    private let rows: [(label: String, lines: [String], page: OutsidePage?)] = [
+        ("Milky Way photograph", ["ESO/S. Brunier", "The Milky Way panorama, eso0932a", "CC BY 4.0"], .milkyWayPhotograph),
+        ("Star catalogs", ["ESA Hipparcos, Hipparcos 2007", "ESA/Gaia/DPAC, Gaia DR3"], .starCatalogs),
+        ("Type", ["Geist, SIL Open Font License"], nil),
+        ("Icons", ["Phosphor Icons, MIT License"], nil),
     ]
 
     var body: some View {
@@ -111,6 +112,16 @@ struct CreditsScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 16).padding(.trailing, 36)
+                    .overlay(alignment: .trailing) {
+                        if let page = row.page {
+                            Button { model.openCredit(page) } label: {
+                                AlbedianIcon.openLink.image(16).foregroundStyle(Color(ControlStyle.inkSecondary))
+                                    .frame(width: CGFloat(ControlStyle.minTouchTarget), height: CGFloat(ControlStyle.minTouchTarget), alignment: .trailing)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(row.label)
+                        }
+                    }
                     .overlay(alignment: .top) { Rectangle().fill(Color(ControlStyle.hairline)).frame(height: 1) }
                 }
             }
@@ -244,7 +255,7 @@ struct ConnectScreen: View {
 
 /// The result (arrive iPhone 6): close, the server's status word, the photo as a card with the catalog matched marks,
 /// the catalog matched count large with its tag, then the observed and predicted counts with theirs, as the server
-/// reports them. "Open" is not built until the lead answers what it opens [open].
+/// reports them, and "Open", which shows the photo's reveal on the paired laptop in the system's Safari view (mobile-4b).
 struct ResultScreen: View {
     let model: CompanionModel
 
@@ -277,6 +288,7 @@ struct ResultScreen: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, CGFloat(Arrive.side))
                     .atTop(Arrive.photoTop + cardHeight + 78)
+                    MainButton(title: "Open", icon: .arrow, action: model.openReveal).atBottom(Arrive.mainBottomGap)
                 }
             }
         }

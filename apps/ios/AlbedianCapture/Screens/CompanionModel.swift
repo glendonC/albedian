@@ -27,6 +27,8 @@ final class CompanionModel {
     /// The text typed after "http://" on the connect screen.
     var typedAddress = ""
     private(set) var cameraProblem: CameraSession.Failure?
+    /// The page the Safari view shows, set only for a page `SafariViewGate` allows.
+    var openPage: OutsidePageItem?
 
     let camera = CameraSession()
     private var recorder: SensorRecorder?
@@ -192,6 +194,20 @@ final class CompanionModel {
     }
 
     func changeAddress() { screen = .pairing }
+
+    /// "Open" on the result: the photo's reveal on the paired laptop's web app (mobile-4b).
+    func openReveal() {
+        guard let shot, let laptop = pairing.kept, let url = RevealPage.address(of: shot.sha256, on: laptop) else { return }
+        show(url)
+    }
+
+    /// A Credits row's link.
+    func openCredit(_ page: OutsidePage) { show(page.address) }
+
+    private func show(_ url: URL) {
+        guard SafariViewGate.permits(url, paired: pairing.kept) else { return }
+        openPage = OutsidePageItem(url: url)
+    }
 
     func back() { screen = shot == nil ? .home : .afterShot }
 

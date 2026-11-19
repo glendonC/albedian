@@ -70,10 +70,21 @@ final class PrivacyScanTests: XCTestCase {
         "AlbedianCaptureCore/Sources/AlbedianCaptureCore/UploadClient.swift",
     ]
 
+    /// The system's Safari view (mobile-4b, the lead's answer of 2026-11-18): the one file where its two names may stand,
+    /// by path under `apps/ios`; it shows only pages `SafariViewGate` allows, and Safari's process makes the request.
+    static let safariViewPath = "AlbedianCapture/Screens/SafariView.swift"
+    static let safariViewNames: Set<String> = ["SafariServices", "SFSafariViewController"]
+
     /// Where the app's own code needs what the rules refuse: file, line, the code on it, and why.
     static let exceptions: [Exception] = [
         (file: "CaptureStore.swift", line: 98, code: "public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }",
          reason: "the store reads back each file it has just written, to count it kept only when the bytes are equal (P3); the address is a file's in the app's own folder"),
+        (file: "OutsidePages.swift", line: 18, code: "case .milkyWayPhotograph: URL(string: \"https://www.eso.org/public/images/eso0932a/\")!",
+         reason: "one of the two fixed credit pages (UIUX-credit-APPROVED); only handed to the system's Safari view after SafariViewGate, so Safari makes the request, not the app"),
+        (file: "OutsidePages.swift", line: 19, code: "case .starCatalogs: URL(string: \"https://gea.esac.esa.int/archive/\")!",
+         reason: "the other fixed credit page, the archive the repository's Hipparcos and Gaia records name; only handed to the system's Safari view after SafariViewGate"),
+        (file: "OutsidePages.swift", line: 30, code: "return URL(string: laptop.description + \"/?upload=\" + sha256)",
+         reason: "the reveal on the paired laptop's web app for a contract SHA-256 (the lead's answer, mobile-4b); only handed to the system's Safari view after SafariViewGate, never fetched by the app"),
         (file: "CompanionFlow.swift", line: 25, code: "public static let fixedScheme = \"http://\"",
          reason: "the scheme the connect screen shows fixed in front of the field (UIUX-connect-APPROVED); the typed text joined to it is read only as a pairing address (LaptopAddress: plain http to a local network host), and nothing is opened from it"),
     ]
@@ -219,6 +230,7 @@ final class PrivacyScanTests: XCTestCase {
                 }
                 for pattern in privacy { for line in lines(of: pattern, in: tokens) { findings.append(Finding(file: name, line: line, what: pattern)) } }
                 for token in tokens where sendingNames.contains(token.text) || sendingPrefixes.contains(where: { token.text.hasPrefix($0) }) {
+                    if relPath == safariViewPath, safariViewNames.contains(token.text) { continue }
                     findings.append(Finding(file: name, line: token.line, what: token.text))
                 }
                 // An exception counts only while its line holds the very code it lists
@@ -414,6 +426,8 @@ final class PrivacyScanTests: XCTestCase {
             ("V4.swift", "let fd = socket(AF_INET, SOCK_STREAM, 0)\n_ = connect(fd, nil, 0)", "socket"),
             ("V5.swift", "Stream.getStreamsToHost(withName: \"h\", port: 1, inputStream: nil, outputStream: nil)", "Stream"),
             ("V7.swift", "ShareLink(item: url)\nUIPasteboard.general.string = text", "ShareLink"),
+            // The Safari view's names stand only in AlbedianCapture/Screens/SafariView.swift; a file anywhere else is refused
+            ("V10.swift", "import SafariServices\nlet v = SFSafariViewController(url: u)", "SFSafariViewController"),
             ("V9.m", "#import <Foundation/Foundation.h>\nvoid f(void) { [[NSURLSession sharedSession] dataTaskWithURL:nil]; }", "NSURLSession"),
             ("Raw.swift", "let x = #\"a \\(b)\"# + \"\\(URLRequest(url: u))\"", "URLRequest"),
             ("RawInterp.swift", "let x = #\"\\#(WKWebView())\"#", "WKWebView"),

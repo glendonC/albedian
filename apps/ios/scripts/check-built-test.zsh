@@ -55,8 +55,6 @@ public func f() { var i: InputStream?; var o: OutputStream?; Stream.getStreamsTo
 public func f() { var r: Unmanaged<CFReadStream>?; var w: Unmanaged<CFWriteStream>?; CFStreamCreatePairWithSocketToHost(nil, "h" as CFString, 1, &r, &w) }'
   WKWebView       'import WebKit
 @MainActor public func f() { _ = WKWebView() }'
-  SFSafariViewController 'import SafariServices
-@MainActor public func f(_ u: URL) { _ = SFSafariViewController(url: u) }'
   UIActivityViewController 'import UIKit
 @MainActor public func f() { _ = UIActivityViewController(activityItems: [], applicationActivities: nil) }'
   UIPasteboard    'import UIKit
@@ -114,6 +112,16 @@ public func read(_ url: URL) throws -> Data { try Data(contentsOf: url) }'
 compile_swift AlbedianCaptureCore.build/CaptureStore "$readback" && expect passes "the store's listed read-back" - "$scratch/AlbedianCaptureCore.build/CaptureStore.o"
 compile_swift AlbedianCapture.build/CaptureStore "$readback" && expect refused "a file named CaptureStore in the app target" "reads an address" "$scratch/AlbedianCapture.build/CaptureStore.o"
 compile_swift Elsewhere "$readback" && expect refused "the same read in another object" "reads an address" "$scratch/Elsewhere.o"
+# The system's Safari view is allowed since mobile-4b (its pages are gated in the core); the web view stays refused above
+compile_swift SafariApp 'import SafariServices
+@MainActor public func f(_ u: URL) { _ = SFSafariViewController(url: u) }' && expect passes "the system Safari view" - "$scratch/SafariApp.o"
+# The Safari view's pages may be made from text in OutsidePages' own core object only, and only by URL(string:)
+pages='import Foundation
+public func f(_ t: String) -> URL? { URL(string: t) }'
+compile_swift AlbedianCaptureCore.build/OutsidePages "$pages" && expect passes "the listed pages object" - "$scratch/AlbedianCaptureCore.build/OutsidePages.o"
+compile_swift AlbedianCapture.build/OutsidePages "$pages" && expect refused "a file named OutsidePages in the app target" "makes an address from text" "$scratch/AlbedianCapture.build/OutsidePages.o"
+compile_swift AlbedianCaptureCore.build/OutsidePages 'import Foundation
+public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect refused "URL components in the pages object" "makes an address from text" "$scratch/AlbedianCaptureCore.build/OutsidePages.o"
 # The transport's own object may make an address from text, only inside AlbedianCaptureCore.build
 compile_swift AlbedianCaptureCore.build/UploadClient 'import Foundation
 public func f(_ t: String) -> URLComponents? { URLComponents(string: t) }' && expect passes "the transport making the paired address" - "$scratch/AlbedianCaptureCore.build/UploadClient.o"
