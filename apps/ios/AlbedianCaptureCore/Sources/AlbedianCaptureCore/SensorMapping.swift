@@ -263,6 +263,20 @@ public final class SensorRecorder: @unchecked Sendable {
     /// its place and heading, by the builder's own rules (`PointingRecordBuilder.place`, `.heading`) on the newest
     /// readings; nil while both are there, or while no motion sample says whether a heading could be.
     public func aimingLine(at deviceClock: Date) -> String? {
+        let (place, heading) = aimingReadings(at: deviceClock)
+        return AimNotice.line(place: place, heading: heading)
+    }
+
+    /// What the aim overlay needs (mobile-5): the place and the heading accuracy a photo's record would carry now, by
+    /// the same rules as `aimingLine`; nil whenever that record would have no place or no heading, so the overlay is
+    /// drawn only while both are there (UIUX-iphone-aim-QUESTION: no usable heading or no place, no overlay).
+    public func aimingSky(at deviceClock: Date) -> AimingSky? {
+        let (place, heading) = aimingReadings(at: deviceClock)
+        guard case .allowed(let allowed) = place, case .measured(let measured)? = heading else { return nil }
+        return AimingSky(latDeg: allowed.latDeg, lonDeg: allowed.lonDeg, headingAccuracyDeg: measured.headingAccuracyDeg)
+    }
+
+    private func aimingReadings(at deviceClock: Date) -> (PointingRecord.Place, PointingRecord.Heading?) {
         lock.withLock {
             let heading = Self.newest(headings, notAfter: deviceClock, maxAgeSec: SensorMapping.maxHeadingAgeSec, time: \.timestamp)
             let fix = Self.newest(fixes, notAfter: deviceClock, maxAgeSec: SensorMapping.maxFixAgeSec, time: \.timestamp)
@@ -278,7 +292,7 @@ public final class SensorRecorder: @unchecked Sendable {
                     return .absent(.headingInvalid)
                 }
             }
-            return AimNotice.line(place: place, heading: headingOutlook)
+            return (place, headingOutlook)
         }
     }
 

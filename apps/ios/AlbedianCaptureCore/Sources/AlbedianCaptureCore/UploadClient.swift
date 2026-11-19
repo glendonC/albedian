@@ -274,11 +274,12 @@ public final class CaptureUploader: Sendable {
         return state
     }
 
-    /// The one decision on whether and where a request may go: only the app's six requests, each for a contract
-    /// SHA-256 or job id, and only to the endpoint the paired address holds, the same value. The connection is opened to
-    /// the endpoint it returns. The uploader's two: `POST /api/ingest` and `PUT /api/ingest/{sha256}/pointing`. The
-    /// solve's four (`SolveClient`): `POST /api/ingest/{sha256}/solve`, `GET /api/ingest/{sha256}` (the receipt),
-    /// `GET /api/ingest/{sha256}/solution` and `GET /api/ingest/jobs/{id}` (`JOB_ID_PATTERN`).
+    /// The one decision on whether and where a request may go: only the app's seven requests, each for a contract
+    /// SHA-256 or job id where it names one, and only to the endpoint the paired address holds, the same value. The
+    /// connection is opened to the endpoint it returns. The uploader's two: `POST /api/ingest` and
+    /// `PUT /api/ingest/{sha256}/pointing`. The solve's four (`SolveClient`): `POST /api/ingest/{sha256}/solve?wait=false` (the start, answered at once),
+    /// `GET /api/ingest/{sha256}` (the receipt), `GET /api/ingest/{sha256}/solution` and `GET /api/ingest/jobs/{id}`
+    /// (`JOB_ID_PATTERN`). The aim overlay's one: `POST /api/science/sky-context` (`SkyContextRequest`).
     static func permits(method: String, path: String, to address: LaptopAddress) -> ApprovedRequest? {
         let parts = path.split(separator: "/", omittingEmptySubsequences: false)
         let underIngest = parts.count >= 3 && parts[0] == "" && parts[1] == "api" && parts[2] == "ingest"
@@ -287,6 +288,7 @@ public final class CaptureUploader: Sendable {
         switch method {
         case "POST":
             allowed = parts == ["", "api", "ingest"] || (ofPhoto && parts.count == 5 && parts[4] == "solve?wait=false")
+                || path == SkyContextRequest.path
         case "PUT":
             allowed = ofPhoto && parts.count == 5 && parts[4] == "pointing"
         case "GET":

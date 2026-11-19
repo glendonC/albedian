@@ -167,17 +167,32 @@ struct AimScreen: View {
                     .padding(.horizontal, CGFloat(Arrive.side))
                     .atTop(340)
                 } else {
+                    let width = Double(geometry.size.width)
                     CameraPreview(session: model.camera.session)
                         .frame(width: geometry.size.width, height: geometry.size.width * 4 / 3).clipped()
                         .atTop(Arrive.photoTop)
-                    // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why
-                    TimelineView(.periodic(from: .now, by: 0.5)) { _ in
-                        if let line = model.aimingLine {
-                            Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
-                                .foregroundStyle(Color(ControlStyle.inkQuiet))
+                    // mobile-5: the overlay over the preview, the "Predicted" tag at top centre and the source line under it,
+                    // redrawn with every frame while the laptop's marks are there
+                    TimelineView(.animation) { _ in
+                        let placed = SkyOverlayView.placed(model.skyMarks, attitude: model.currentAttitude,
+                                                           acrossFovDeg: model.previewFovDeg, width: width, height: width * 4 / 3)
+                        ZStack {
+                            SkyOverlayView(marks: model.skyMarks, attitude: model.currentAttitude,
+                                           acrossFovDeg: model.previewFovDeg, width: width, height: width * 4 / 3)
+                                .atTop(Arrive.photoTop)
+                            if !placed.isEmpty {
+                                EvidenceTag(evidence: .predicted).frame(height: 44).atTop(Arrive.topControls)
+                            }
+                            // D8, INTERIM (ia-head, ia-place): with no heading or no place, one small line under the preview says why;
+                            // with both and marks drawn, the overlay's sources and the heading accuracy
+                            if let line = model.aimingLine ?? model.skyHeadingAccuracyDeg.flatMap({
+                                SkyOverlayWords.sourceLine(placed.map(\.0), headingAccuracyDeg: $0) }) {
+                                Text(line).font(AlbedianFont.regular(12).monospacedDigit()).tracking(-0.005 * 12)
+                                    .foregroundStyle(Color(ControlStyle.inkQuiet))
+                                    .atTop(Arrive.photoTop + width * 4 / 3 + 16)
+                            }
                         }
                     }
-                    .atTop(Arrive.photoTop + Double(geometry.size.width) * 4 / 3 + 16)
                     // The 64 pt capture button's top at 706: its bottom 74 above the 844 point screen's
                     CaptureButton(action: model.shoot).atBottom(Arrive.referenceHeight - 706 - 64)
                 }

@@ -134,6 +134,36 @@ final class SensorRecorderTests: XCTestCase {
         XCTAssertEqual(recorder.aimingLine(at: moment.addingTimeInterval(step)), "No heading: no magnetometer")
     }
 
+    /// mobile-5: the overlay is asked for only while the record would hold a place and a heading, the same rules as the
+    /// aiming line; its place and heading accuracy are the record's.
+    func testTheOverlaysPlaceAndHeadingAreThereExactlyWhenTheAimingLineIsSilent() throws {
+        let motion = StandInMotion(Set(AttitudeFrame.allCases))
+        let place = StandInPlace()
+        let recorder = try XCTUnwrap(SensorRecorder(motion: motion, place: place))
+        _ = recorder.start(interface: .portrait)
+        let deliverMotion = try XCTUnwrap(motion.deliver)
+        let deliverPlace = try XCTUnwrap(place.deliver)
+        deliverPlace(.authorization(.denied, .full))
+        XCTAssertNil(recorder.aimingSky(at: moment))
+        deliverPlace(.authorization(.authorizedWhenInUse, .full))
+        deliverPlace(fixEvent(-2.5))
+        XCTAssertNil(recorder.aimingSky(at: moment), "no motion sample yet")
+        deliverMotion(motionEvent(0))
+        XCTAssertNil(recorder.aimingSky(at: moment), "no heading event")
+        deliverPlace(.heading(HeadingEvent(trueHeadingDeg: 212.5, headingAccuracyDeg: 40, timestamp: moment.addingTimeInterval(-1), orientation: .portrait)))
+        XCTAssertNil(recorder.aimingSky(at: moment), "a heading past the limit")
+        deliverPlace(headingEvent(-0.5))
+        XCTAssertNil(recorder.aimingLine(at: moment))
+        let sky = try XCTUnwrap(recorder.aimingSky(at: moment))
+        let record = try PointingRecordBuilder.build(capture(recorder))
+        guard case .allowed(let allowed) = record.location, case .measured(let measured) = record.heading else {
+            return XCTFail("the record holds no place or no heading")
+        }
+        XCTAssertEqual(sky, AimingSky(latDeg: allowed.latDeg, lonDeg: allowed.lonDeg, headingAccuracyDeg: measured.headingAccuracyDeg))
+        deliverMotion(motionEvent(step, frame: .xArbitraryZVertical))
+        XCTAssertNil(recorder.aimingSky(at: moment.addingTimeInterval(step)), "no true north")
+    }
+
     func testHandsTheBuilderWhatTheSourcesSaidAndARecordTheContractTakes() throws {
         let motion = StandInMotion(Set(AttitudeFrame.allCases))
         let place = StandInPlace()

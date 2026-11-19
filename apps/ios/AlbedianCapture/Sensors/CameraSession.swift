@@ -75,7 +75,7 @@ final class CameraSession: NSObject, AVCapturePhotoCaptureDelegate, @unchecked S
         let size = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
         guard horizontal > 0, horizontal < 180, size.width > 0, size.height > 0 else { return nil }
         let ratio = Double(min(size.width, size.height)) / Double(max(size.width, size.height))
-        return 2 * atan(tan(horizontal * .pi / 360) * ratio) * 180 / .pi
+        return SkyProjection.acrossPortraitWidthDeg(longSideFovDeg: horizontal, shortOverLong: ratio)
     }
 
     /// One long exposure (mobile-7): the format's longest duration at the ISO that carries the meter's light

@@ -99,12 +99,57 @@ final class CompanionModel {
         guard !cameraRefused else { return }
         cameraProblem = camera.configure()
         if cameraProblem == nil { camera.start() }
+        startSky()
     }
 
     /// D8, INTERIM: the line under the aiming preview, what the photo's record would say of its place and heading now.
     var aimingLine: String? { recorder?.aimingLine(at: Date()) }
 
+    // MARK: The aim overlay (mobile-5)
+
+    /// The marks the kept laptop last predicted for the phone's time and place, every one `predicted`; none without a
+    /// kept laptop, while the laptop cannot be reached, or while the record would hold no place or no heading.
+    private(set) var skyMarks: [SkyMark] = []
+    /// The heading accuracy the marks were asked with, for the line under the preview.
+    private(set) var skyHeadingAccuracyDeg: Double?
+    private var skyTask: Task<Void, Never>?
+
+    /// While aiming, asks the kept laptop for the sky every `SkyContextRequest.refreshSec`, and at once when the place and
+    /// heading first come; clears the marks whenever the place or heading goes, or the laptop does not answer.
+    private func startSky() {
+        skyTask?.cancel()
+        skyMarks = []
+        skyHeadingAccuracyDeg = nil
+        guard let address = pairing.kept else { return }
+        let client = SkyContextClient(address: address)
+        skyTask = Task { @MainActor [weak self] in
+            var askedAt: Date?
+            while !Task.isCancelled {
+                guard let self else { return }
+                let now = Date()
+                if let sky = self.aimingSkyNow() {
+                    if askedAt.map({ now.timeIntervalSince($0) >= SkyContextRequest.refreshSec }) ?? true {
+                        askedAt = now
+                        let marks = await client.marks(at: now, latDeg: sky.latDeg, lonDeg: sky.lonDeg)
+                        guard !Task.isCancelled else { return }
+                        self.skyMarks = marks ?? []
+                        self.skyHeadingAccuracyDeg = marks == nil ? nil : sky.headingAccuracyDeg
+                    }
+                } else {
+                    askedAt = nil
+                    self.skyMarks = []
+                    self.skyHeadingAccuracyDeg = nil
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
+    }
+
     private func stopAiming() {
+        skyTask?.cancel()
+        skyTask = nil
+        skyMarks = []
+        skyHeadingAccuracyDeg = nil
         recorder?.stop()
         recorder = nil
         camera.stop()
@@ -159,7 +204,28 @@ final class CompanionModel {
     }
 
     /// The newest attitude Core Motion reported.
-    var currentAttitude: PointingRecord.Quaternion? { recorder?.status.lastSample?.quaternion }
+    var currentAttitude: PointingRecord.Quaternion? {
+        #if DEBUG
+        if let standIn = standInAim { return standIn.attitude }
+        #endif
+        return recorder?.status.lastSample?.quaternion
+    }
+
+    /// The field of view across the aiming preview.
+    var previewFovDeg: Double? {
+        #if DEBUG
+        if let standIn = standInAim { return standIn.fovDeg }
+        #endif
+        return camera.previewAcrossFieldOfViewDeg
+    }
+
+    /// The place and heading the overlay is asked with, while a photo's record would hold both.
+    private func aimingSkyNow() -> AimingSky? {
+        #if DEBUG
+        if let standIn = standInAim { return standIn.sky }
+        #endif
+        return recorder?.aimingSky(at: Date())
+    }
 
     private func keep(_ result: Result<CameraSession.Shot, CameraSession.Failure>) {
         guard !stopRequested, case .success(let taken) = result else {
@@ -305,6 +371,13 @@ final class CompanionModel {
     }
 
     #if DEBUG
+    /// `-AlbedianAimStandIn <latDeg> <lonDeg> <azDeg> <altDeg> <fovDeg>`: aiming with a phone held still toward that
+    /// azimuth and altitude at that place, a heading of ±12 degrees (the record's own number) and that field of view, so
+    /// the overlay can be seen in the simulator, which has no camera, motion or compass. A stand-in, never a reading.
+    private(set) var standInAim: (attitude: PointingRecord.Quaternion, sky: AimingSky, fovDeg: Double)?
+    #endif
+
+    #if DEBUG
     /// For simulator captures only (the simulator has no camera): `-AlbedianShotFile <path>` takes a photo file from the
     /// Mac as if the camera had written it, with no record, and opens the screen after the shot; `-AlbedianSendShot`
     /// then sends it. `-AlbedianOpen credits|pairing` opens that screen.
@@ -316,6 +389,16 @@ final class CompanionModel {
            PhotoHash.isContractHash(args[index + 1]) {
             startSolve(sha256: args[index + 1], address: laptop)
             return
+        }
+        if let index = args.firstIndex(of: "-AlbedianAimStandIn"), args.indices.contains(index + 5) {
+            let n = args[(index + 1)...(index + 5)].compactMap(Double.init)
+            if n.count == 5 {
+                standInAim = (SkyProjection.uprightAttitude(towardAzDeg: n[2], pitchUpDeg: n[3]),
+                              AimingSky(latDeg: n[0], lonDeg: n[1], headingAccuracyDeg: 12), n[4])
+                screen = .aim
+                startSky()
+                return
+            }
         }
         // The hold-still layout with the mockup's own numbers (1.1 s, 0.6 s in), for the owner's look at it in the
         // simulator, which has no camera: a stand-in, never a capture
