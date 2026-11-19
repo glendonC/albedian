@@ -6,6 +6,7 @@ import { PhotoCorners } from './PhotoCorners.js';
 import '../styles/look-tokens.css';
 import '../styles/look.css';
 import '../styles/reveal.css';
+import '../styles/motion.css';
 
 export interface WorkingScreenProps {
   arrival: Arrival;
@@ -93,8 +94,13 @@ export const WorkingScreen: React.FC<WorkingScreenProps> = ({ arrival, photoRect
         </div>
       )}
       <ol className="work-steps">
-        {stageRows(arrival).map((row) => (
-          <li key={row.stage} className={ROW_CLASS[row.state]} aria-current={row.state === 'now' ? 'step' : undefined}>
+        {stageRows(arrival).map((row, i) => (
+          <li
+            key={row.stage}
+            className={ROW_CLASS[row.state]}
+            aria-current={row.state === 'now' ? 'step' : undefined}
+            style={{ '--work-i': i } as React.CSSProperties}
+          >
             <span className="work-step__mark" aria-hidden="true">
               {row.state === 'done' ? (
                 <LookIcon name="check" />

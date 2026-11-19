@@ -19,6 +19,7 @@ import { WorkingScreen } from '../WorkingScreen.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const css = fs.readFileSync(path.resolve(here, '../../styles/reveal.css'), 'utf8');
+const motionCss = fs.readFileSync(path.resolve(here, '../../styles/motion.css'), 'utf8');
 
 let container: HTMLDivElement;
 let root: Root;
@@ -369,10 +370,43 @@ describe("the working screen's rules are the approved pages'", () => {
     expect(declarationsOf('.photo-corners path')).toEqual({ fill: 'none', stroke: 'rgba(244, 243, 239, 0.7)', 'stroke-width': '1.2' });
   });
 
-  it('moves nothing of its own: no animation and no transition in the working rules', () => {
+  it('keeps its layout rules still: every movement of the working screen is in motion.css', () => {
     const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').match(/\.(work|photo)-[^{]*\{[^}]*\}/g) ?? [];
     expect(rules.length).toBeGreaterThanOrEqual(20);
     for (const rule of rules) expect(rule).not.toMatch(/transition|animation/);
+  });
+
+  // The motion record (MOTION-READY-web.md, "Working rows" and "Failed, canceled, interrupted job")
+  const motionOf = (selector: string): Record<string, string> => {
+    const found: Record<string, string> = {};
+    postcss.parse(motionCss).walkRules((rule) => {
+      if (rule.selector.replace(/\s+/g, ' ') !== selector || rule.parent?.type !== 'root') return;
+      rule.walkDecls((decl) => {
+        found[decl.prop] = decl.value.replace(/\s+/g, ' ');
+      });
+    });
+    return found;
+  };
+  const WORDS_IN = 'look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std)';
+
+  it('brings the size line in, then each row 20 ms after the one above, and changes a finished step in the colour time', () => {
+    expect(motionOf('.work-size')).toEqual({ animation: `${WORDS_IN} var(--look-mo-delay-words-in) both` });
+    expect(motionOf('.work-step')).toEqual({
+      animation: `${WORDS_IN} calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--work-i) + 1)) both`,
+      transition: 'color var(--look-mo-dur-colour) var(--look-mo-ease-std)',
+    });
+  });
+
+  it("brings a stopped or waiting job's sentence in, then its buttons 20 ms later", () => {
+    expect(motionOf('.work-why p')).toEqual({ animation: `${WORDS_IN} both` });
+    expect(motionOf('.work-why .work-acts')).toEqual({ animation: `${WORDS_IN} var(--look-mo-stagger) both` });
+  });
+
+  it('numbers each row for its place in the stagger, and loads the motion with the screen', () => {
+    show();
+    rows().forEach((row, i) => expect((row as HTMLElement).style.getPropertyValue('--work-i')).toBe(String(i)));
+    const source = fs.readFileSync(path.resolve(here, '../WorkingScreen.tsx'), 'utf8');
+    expect(source).toContain("import '../styles/motion.css';");
   });
 });
 

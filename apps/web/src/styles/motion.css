@@ -1,0 +1,22 @@
+/* How the screens move (the MOTION record, decided by the lead 2026-11-19; .lead/uiux/motion/MOTION-READY-web.md).
+   Layout stays in each screen's own stylesheet; the movement of its parts is here, on the --look-mo-* tokens and the
+   shared keyframes of look.css, so under reduced motion every one becomes the 270 ms dissolve with no rise. */
+
+/* The working screen: the size line's words in, then each row 20 ms after the one above; a finished step's colour
+   changes in the colour time. A stopped or waiting job's sentence comes in, its buttons 20 ms later. */
+.work-size {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-delay-words-in) both;
+}
+
+.work-step {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) calc(var(--look-mo-delay-words-in) + var(--look-mo-stagger) * (var(--work-i) + 1)) both;
+  transition: color var(--look-mo-dur-colour) var(--look-mo-ease-std);
+}
+
+.work-why p {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) both;
+}
+
+.work-why .work-acts {
+  animation: look-mo-words-in var(--look-mo-dur-words-in) var(--look-mo-ease-std) var(--look-mo-stagger) both;
+}
