@@ -6,7 +6,9 @@ import {
   computeAudioBusGains,
   computeContrastRatio,
   getMarkerVisualSpec,
+  MOTION_TOKENS,
   resolveTransitionTiming,
+  type MotionInteractionKind,
 } from '../index.js';
 
 describe('@albedian/design-system: Tokens, Contrast, Markers, Motion & Audio Bus', () => {
@@ -71,15 +73,40 @@ describe('@albedian/design-system: Tokens, Contrast, Markers, Motion & Audio Bus
     expect(selectedSpec.visibleRadiusPx).toBeGreaterThan(hoverSpec.visibleRadiusPx);
   });
 
-  it('replaces spatial camera flight with short opacity crossfades when reducedMotion is enabled', () => {
+  it('replaces spatial camera flight with the motion record\'s dissolve when reducedMotion is enabled', () => {
     const normalFlight = resolveTransitionTiming('phase_b_sky_to_space', false);
     const reducedFlight = resolveTransitionTiming('phase_b_sky_to_space', true);
 
     expect(normalFlight.usesSpatialCameraTravel).toBe(true);
-    expect(normalFlight.durationMs).toBe(2200);
+    expect(normalFlight.durationMs).toBe(MOTION_TOKENS.cameraHalfMs);
+    expect(normalFlight.easing).toBe(MOTION_TOKENS.easeCamera);
 
     expect(reducedFlight.usesSpatialCameraTravel).toBe(false);
-    expect(reducedFlight.durationMs).toBeLessThanOrEqual(200);
+    expect(reducedFlight.durationMs).toBe(MOTION_TOKENS.dissolveMs);
+    expect(reducedFlight.easing).toBe('ease-in-out');
+  });
+
+  it('takes every interaction timing from the motion tokens (the MOTION record), never a number of its own', () => {
+    const expected: Record<MotionInteractionKind, [number, string]> = {
+      import_place: [MOTION_TOKENS.frameInMs, MOTION_TOKENS.easeFrameIn],
+      analyze_badge: [MOTION_TOKENS.wordsInMs, MOTION_TOKENS.easeStandard],
+      restoration_crossfade: [MOTION_TOKENS.viewMs, MOTION_TOKENS.easeStandard],
+      compare_wipe: [0, 'linear'],
+      detection_reveal: [MOTION_TOKENS.markMs, 'linear'],
+      inspector_dock: [MOTION_TOKENS.frameInMs, MOTION_TOKENS.easeFrameIn],
+      phase_a_photo_to_sky: [MOTION_TOKENS.cameraHalfMs, MOTION_TOKENS.easeCamera],
+      phase_b_sky_to_space: [MOTION_TOKENS.cameraHalfMs, MOTION_TOKENS.easeCamera],
+      viewpoint_orbit: [MOTION_TOKENS.cameraHalfMs, MOTION_TOKENS.easeCamera],
+      return_to_moment: [MOTION_TOKENS.cameraHalfMs, MOTION_TOKENS.easeCamera],
+    };
+    for (const [kind, [ms, ease]] of Object.entries(expected) as [MotionInteractionKind, [number, string]][]) {
+      const t = resolveTransitionTiming(kind, false);
+      expect([kind, t.durationMs, t.easing]).toEqual([kind, ms, ease]);
+      const r = resolveTransitionTiming(kind, true);
+      // the wipe follows the hand, so it has nothing to dissolve; everything else is the one dissolve
+      expect([kind, r.durationMs]).toEqual([kind, kind === 'compare_wipe' ? 0 : MOTION_TOKENS.dissolveMs]);
+      expect(r.usesSpatialCameraTravel).toBe(false);
+    }
   });
 
   it('pauses source audio in 3D space and ducks monitor audio during active voice interaction', () => {

@@ -5,6 +5,7 @@ import {
 } from '@albedian/contracts';
 import { getEpistemicBadgeDescriptor } from '@albedian/evidence';
 import { HUD_FONTS } from './hudGlass.js';
+import { MOTION_TOKENS } from './look.js';
 
 export * from './hudGlass.js';
 export * from './look.js';
@@ -147,73 +148,26 @@ export interface TransitionTimingSpec {
   interruptible: boolean;
 }
 
+// Every timing is the MOTION record's (decided by the lead 2026-11-19; .lead/uiux/motion/MOTION-APPROVED.md), taken
+// from MOTION_TOKENS so no interaction carries a number of its own. The compare wipe follows the hand (no duration).
 const STANDARD_TIMINGS: Record<MotionInteractionKind, Omit<TransitionTimingSpec, 'interaction'>> = {
-  import_place: {
-    durationMs: 240,
-    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  analyze_badge: {
-    durationMs: 150,
-    easing: 'ease-out',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  restoration_crossfade: {
-    durationMs: 220,
-    easing: 'ease-in-out',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  compare_wipe: {
-    durationMs: 0,
-    easing: 'linear',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  detection_reveal: {
-    durationMs: 200,
-    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  inspector_dock: {
-    durationMs: 200,
-    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-    usesSpatialCameraTravel: false,
-    interruptible: true,
-  },
-  phase_a_photo_to_sky: {
-    durationMs: 680,
-    easing: 'cubic-bezier(0.33, 1, 0.68, 1)',
-    usesSpatialCameraTravel: true,
-    interruptible: true,
-  },
-  phase_b_sky_to_space: {
-    durationMs: 2200,
-    easing: 'cubic-bezier(0.45, 0, 0.2, 1)',
-    usesSpatialCameraTravel: true,
-    interruptible: true,
-  },
-  viewpoint_orbit: {
-    durationMs: 650,
-    easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
-    usesSpatialCameraTravel: true,
-    interruptible: true,
-  },
-  return_to_moment: {
-    durationMs: 680,
-    easing: 'cubic-bezier(0.33, 1, 0.68, 1)',
-    usesSpatialCameraTravel: true,
-    interruptible: true,
-  },
+  import_place: { durationMs: MOTION_TOKENS.frameInMs, easing: MOTION_TOKENS.easeFrameIn, usesSpatialCameraTravel: false, interruptible: true },
+  analyze_badge: { durationMs: MOTION_TOKENS.wordsInMs, easing: MOTION_TOKENS.easeStandard, usesSpatialCameraTravel: false, interruptible: true },
+  restoration_crossfade: { durationMs: MOTION_TOKENS.viewMs, easing: MOTION_TOKENS.easeStandard, usesSpatialCameraTravel: false, interruptible: true },
+  compare_wipe: { durationMs: 0, easing: 'linear', usesSpatialCameraTravel: false, interruptible: true },
+  detection_reveal: { durationMs: MOTION_TOKENS.markMs, easing: 'linear', usesSpatialCameraTravel: false, interruptible: true },
+  inspector_dock: { durationMs: MOTION_TOKENS.frameInMs, easing: MOTION_TOKENS.easeFrameIn, usesSpatialCameraTravel: false, interruptible: true },
+  phase_a_photo_to_sky: { durationMs: MOTION_TOKENS.cameraHalfMs, easing: MOTION_TOKENS.easeCamera, usesSpatialCameraTravel: true, interruptible: true },
+  phase_b_sky_to_space: { durationMs: MOTION_TOKENS.cameraHalfMs, easing: MOTION_TOKENS.easeCamera, usesSpatialCameraTravel: true, interruptible: true },
+  viewpoint_orbit: { durationMs: MOTION_TOKENS.cameraHalfMs, easing: MOTION_TOKENS.easeCamera, usesSpatialCameraTravel: true, interruptible: true },
+  return_to_moment: { durationMs: MOTION_TOKENS.cameraHalfMs, easing: MOTION_TOKENS.easeCamera, usesSpatialCameraTravel: true, interruptible: true },
 };
 
 /**
  * Resolves functional motion timing while honoring `prefers-reduced-motion: reduce`.
- * In reduced-motion mode, all spatial z-depth camera flights are replaced by a short
- * 160ms opacity crossfade or 0ms instant state commit.
+ * In reduced-motion mode nothing travels: every change, the camera flights included, is the record's one dissolve
+ * (MOTION_TOKENS.dissolveMs, ease-in-out; Apple's own Reduce Motion cross-fade, measured), and the wipe that follows
+ * the hand stays instant (REQ-DSA-2.1).
  */
 export function resolveTransitionTiming(
   interaction: MotionInteractionKind,
@@ -226,8 +180,8 @@ export function resolveTransitionTiming(
 
   return {
     interaction,
-    durationMs: interaction === 'compare_wipe' ? 0 : 140,
-    easing: 'ease-out',
+    durationMs: interaction === 'compare_wipe' ? 0 : MOTION_TOKENS.dissolveMs,
+    easing: 'ease-in-out',
     usesSpatialCameraTravel: false,
     interruptible: true,
   };
